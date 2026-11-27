@@ -7,7 +7,9 @@ import {
   type MilestoneOwner,
   namesZone,
   milestoneMoment,
+  neverReached,
   serverClock,
+  shownBeside,
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { type RefObject, useEffect, useState } from 'react';
@@ -53,15 +55,16 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
   automatic: 'timeline.key_automatic',
 };
 
+const FAILED: Load = { kind: 'failed' };
+
 const OWNER_SHAPE: Record<MilestoneOwner, string> = { event: '▦', you: '●', automatic: '→' };
 
 const HIDDEN = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
 
-/** A screen that shows its own band reads through its watch, and keeps the dates it showed when a read does not reach Soirely (sc-27086). */
-interface Watched {
-  watch: <T>(load: Promise<T>) => Promise<T>;
-  refresh: number;
-}
+/** How the dates sit with the screen's band, whose Try again reads them again either way (sc-27086, sc-98386): on All dates they are the screen's load, read through its watch, whose verdict says what a failed read leaves; on the Overview the band is the event's, so they read beside it and keep what they showed only while that band is up. */
+export type Watched =
+  | { watch: <T>(load: Promise<T>) => Promise<T>; refresh: number }
+  | { underBand: boolean; refresh: number };
 
 export interface TimelineRead {
   load: Load;
@@ -69,6 +72,25 @@ export interface TimelineRead {
   ended: boolean;
   retried: boolean;
   retry: () => void;
+}
+
+/** One read of the dates, told apart by what starts it; `kept` holds only while the read that never reached Soirely is the one out or last finished, so a read still out shows what it loaded whatever the band does. */
+interface Read {
+  eventId: string;
+  event: OrganisationEvent | undefined;
+  attempt: number;
+  watch: (<T>(load: Promise<T>) => Promise<T>) | null;
+  refresh: number;
+}
+
+function sameRead(a: Read, b: Read): boolean {
+  return (
+    a.eventId === b.eventId &&
+    a.event === b.event &&
+    a.attempt === b.attempt &&
+    a.watch === b.watch &&
+    a.refresh === b.refresh
+  );
 }
 
 /** Read again whenever the page's event is replaced, so a save that moves a date (Reply by, the start) or a Call off shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
@@ -79,29 +101,34 @@ export function useTimeline(
   watched?: Watched,
 ): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [unreached, setUnreached] = useState<Read | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const watch = watched?.watch;
+  const watch = watched != null && 'watch' in watched ? watched.watch : null;
+  const underBand = watched != null && 'underBand' in watched ? watched.underBand : true;
   const refresh = watched?.refresh ?? 0;
 
   useEffect(() => {
     let live = true;
-    const read = Promise.all([api.eventTimeline(eventId), event ?? api.event(eventId)]);
+    const read: Read = { eventId, event, attempt, watch, refresh };
+    const answers = Promise.all([api.eventTimeline(eventId), event ?? api.event(eventId)]);
 
-    (watch == null ? read : watch(read)).then(
-      ([timeline, standing]) =>
-        live &&
+    (watch == null ? answers : watch(answers)).then(
+      ([timeline, standing]) => {
+        if (!live) return;
         setLoad({
           kind: 'loaded',
           timeline,
           status: standing.status,
           event: standing,
           at: serverClock.now(),
-        }),
-      (error: unknown) =>
-        live &&
-        setLoad((was) =>
-          watch == null ? { kind: 'failed' } : afterFailedLoad(was, error, { kind: 'failed' }),
-        ),
+        });
+      },
+      (error: unknown) => {
+        if (!live) return;
+        const unreached = watch == null ? neverReached : undefined;
+        setLoad((was) => afterFailedLoad(was, error, FAILED, unreached));
+        setUnreached(watch == null && neverReached(error) ? read : null);
+      },
     );
 
     return () => {
@@ -109,10 +136,14 @@ export function useTimeline(
     };
   }, [eventId, event, attempt, watch, refresh]);
 
+  const kept =
+    unreached != null && sameRead(unreached, { eventId, event, attempt, watch, refresh });
+  const shown = shownBeside(load, kept, underBand, FAILED);
+
   return {
-    load,
-    now: load.kind === 'loaded' && load.at > now ? load.at : now,
-    ended: (event?.status ?? (load.kind === 'loaded' ? load.status : null)) === 'ended',
+    load: shown,
+    now: shown.kind === 'loaded' && shown.at > now ? shown.at : now,
+    ended: (event?.status ?? (shown.kind === 'loaded' ? shown.status : null)) === 'ended',
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -295,7 +326,7 @@ export function AllDates({
   );
 }
 
-function DatesLoading({ testID }: { testID: string }) {
+export function DatesLoading({ testID }: { testID: string }) {
   const { t } = useTranslation();
 
   return (
@@ -306,7 +337,7 @@ function DatesLoading({ testID }: { testID: string }) {
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */
-function DatesFailed({
+export function DatesFailed({
   announced,
   onRetry,
   wide = false,

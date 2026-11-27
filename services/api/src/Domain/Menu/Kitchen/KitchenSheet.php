@@ -79,6 +79,27 @@ final readonly class KitchenSheet
         ];
     }
 
+    /** @return array<string, array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, diets: list<string>, otherDiet: ?string}> everyone coming, with what each eats */
+    public function roomNeeds(Event $event): array
+    {
+        $room = $this->picksFigures->room($event);
+        $needs = $this->guestNeedsRecord->of($room);
+
+        return Dict\from_entries(Vec\map($room, static function (Guest $person) use ($needs): array {
+            $id = $person->getId()->toRfc4122();
+            $theirs = $needs[$id] ?? GuestNeeds::none();
+
+            return [$id, [
+                'id' => $id,
+                'name' => $person->getFullName() ?? '',
+                'allergens' => $theirs->codesOf(NeedKind::Allergen),
+                'otherAllergy' => $theirs->otherOf(NeedKind::Allergen),
+                'diets' => $theirs->codesOf(NeedKind::Diet),
+                'otherDiet' => $theirs->otherOf(NeedKind::Diet),
+            ]];
+        }));
+    }
+
     /**
      * @param list<Guest>                        $room
      * @param list<Course>                       $courses

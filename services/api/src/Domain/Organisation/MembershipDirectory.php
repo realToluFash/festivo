@@ -93,6 +93,11 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         return Iter\any($this->outsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
     }
 
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return $this->staffLinkGrants->endedWithTheEvent($user, $eventId);
+    }
+
     /**
      * The account's live grants from outside, less those on an organisation it is an active member of: there its role wins (sc-94843).
      * An event held both ways is listed once, at the grant from outside's level, as grantsOnEvent reads it.

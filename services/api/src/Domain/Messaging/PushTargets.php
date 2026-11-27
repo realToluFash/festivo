@@ -9,6 +9,7 @@ use App\Enum\PushTargetKind;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
+use Psl\Dict;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -18,6 +19,14 @@ use Symfony\Component\Uid\Uuid;
 /** The devices each member takes push on (sc-3980). An address belongs to whoever registered it last, under that session. */
 final readonly class PushTargets
 {
+    /** Signed in: the target's session still has a live refresh token. The one definition both reads share. */
+    private const string SIGNED_IN = <<<'SQL'
+        EXISTS (
+            SELECT 1 FROM refresh_tokens r
+            WHERE r.chain_id = t.session_id AND r.user_id = t.user_id AND r.revoked_at IS NULL AND r.expires_at > :now
+        )
+        SQL;
+
     public function __construct(
         private Connection $connection,
         private ClockInterface $clock,
@@ -56,16 +65,7 @@ final readonly class PushTargets
     public function of(Uuid $userId): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            <<<'SQL'
-                SELECT t.id, t.user_id, t.kind, t.address, t.public_key, t.auth_secret
-                FROM push_targets t
-                WHERE t.user_id = :user
-                  AND EXISTS (
-                      SELECT 1 FROM refresh_tokens r
-                      WHERE r.chain_id = t.session_id AND r.user_id = t.user_id AND r.revoked_at IS NULL AND r.expires_at > :now
-                  )
-                ORDER BY t.id
-                SQL,
+            'SELECT t.id, t.user_id, t.kind, t.address, t.public_key, t.auth_secret FROM push_targets t WHERE t.user_id = :user AND ' . self::SIGNED_IN . ' ORDER BY t.id',
             ['user' => $userId->toRfc4122(), 'now' => $this->clock->now()],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
@@ -78,6 +78,26 @@ final readonly class PushTargets
             Type\nullable(Type\string())->coerce($row['public_key']),
             Type\nullable(Type\string())->coerce($row['auth_secret']),
         ));
+    }
+
+    /**
+     * Of these members, those signed in to the app with notifications allowed: a live session holding an Expo target (sc-4333).
+     *
+     * @return array<string, true> by the member's id
+     */
+    public function inApp(Uuid ...$userIds): array
+    {
+        if ([] === $userIds) {
+            return [];
+        }
+
+        $ids = $this->connection->fetchFirstColumn(
+            'SELECT DISTINCT t.user_id FROM push_targets t WHERE t.user_id IN (:users) AND t.kind = :expo AND ' . self::SIGNED_IN,
+            ['users' => Vec\map($userIds, static fn (Uuid $id): string => $id->toRfc4122()), 'expo' => PushTargetKind::Expo->value, 'now' => $this->clock->now()],
+            ['users' => ArrayParameterType::STRING, 'now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        return Dict\from_keys(Vec\map($ids, static fn (mixed $id): string => Type\string()->coerce($id)), static fn (): true => true);
     }
 
     /** The provider said the device no longer takes it. */

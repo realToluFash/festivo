@@ -10,6 +10,8 @@ export function appPlace(place: string | null): Href | null {
 
   const event = /^\/app\/events\/([^/?#]+)$/.exec(place);
   if (event?.[1] != null) return `/events/${event[1]}`;
+  const myNight = /^\/app\/events\/([^/?#]+)\/my-night$/.exec(place);
+  if (myNight?.[1] != null) return `/events/${myNight[1]}/my-night`;
   const track = /^\/app\/events\/([^/?#]+)\/schedule\?track=([^&#]*)$/.exec(place);
   if (track?.[1] != null && track[2] != null)
     return `/events/${track[1]}/night?track=${track[2]}` as Href;

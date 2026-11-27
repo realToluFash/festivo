@@ -132,14 +132,26 @@ import {
   type StaffEntry,
   type StaffLinkWindow,
   type StaffPlan,
+  type StaffReminder,
   STAFF_ACCESS,
   asStaffEntry,
+  asStaffReminder,
   asStaffLinkWindow,
   asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import { type MyNight, asMyNight } from './myNight.ts';
+import {
+  type MobileAdded,
+  type TypedMobile,
+  type WalkOnAdded,
+  type WalkOnTyped,
+  type WhosHere,
+  asMobileAdded,
+  asWalkOnAdded,
+  asWhosHere,
+} from './whosHere.ts';
 import {
   type ClockAction,
   type ClockOutcome,
@@ -1279,7 +1291,7 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
-/** `guestsInvited`: a Live or Paused event with a guest Invited is deleted only once it is Finished (sc-14445). Any reason refuses the same way. */
+/** `guestsInvited` (sc-14445) or `staffBriefed` (sc-4333): a Live or Paused event with a guest Invited or a briefing gone is deleted only once it is Finished. Any reason refuses the same way. */
 export type DeleteRefusal = string;
 
 /** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
@@ -3408,6 +3420,20 @@ export class ApiClient {
     return typeof body.rules === 'string' ? body.rules : null;
   }
 
+  /** The staffing page's Reminder the day before card (sc-4333); staff.read. */
+  async staffReminder(eventId: string): Promise<StaffReminder> {
+    return this.staffReminderOf(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/staff/reminder`),
+    );
+  }
+
+  /** staff.manage; refused 409 `event_concluded` once the event is Finished. */
+  async setStaffReminder(eventId: string, on: boolean): Promise<StaffReminder> {
+    return this.staffReminderOf(
+      await this.put<unknown>(`/api/events/${encodeURIComponent(eventId)}/staff/reminder`, { on }),
+    );
+  }
+
   /** The person's shift page as they would see it (sc-3917), recording nothing; staff.read. */
   async previewStaffNight(eventId: string, staffId: string): Promise<MyNight> {
     return this.myNightOf(
@@ -3589,6 +3615,17 @@ export class ApiClient {
       (() => {
         throw new Error(
           'The API answered the staff plan in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffReminderOf(body: unknown): StaffReminder {
+    return (
+      asStaffReminder(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the staff reminder in a shape this client does not know. Check the staff reminder in services/api.',
         );
       })()
     );
@@ -4309,6 +4346,83 @@ export class ApiClient {
     return this.staffHoursOf(
       await this.put<unknown>(`/api/events/${eventId}/staff/hours/${shiftId}/${staffId}`, typed),
     );
+  }
+
+  /** Who's here tonight (sc-3918): to staff.read, the floor lead, and a station lead for their own station; 403 for anybody else. */
+  async whosHere(eventId: string): Promise<WhosHere> {
+    return this.whosHereOf(await this.get<unknown>(this.whosHerePath(eventId)));
+  }
+
+  /** Someone at the door: their roster entry, a shift from now and their station, and the link to copy with a number. Refused 422 `validation_failed` per field and 409 `event_concluded` once the event has ended. */
+  async addWalkOn(eventId: string, typed: WalkOnTyped): Promise<WalkOnAdded> {
+    const added = asWalkOnAdded(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/walk-ons`, typed),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a walk-on in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** A number for someone with none, and their link to copy; to staff.manage, and the lead who added that walk-on. */
+  async addWhosHereMobile(
+    eventId: string,
+    staffId: string,
+    mobile: TypedMobile,
+  ): Promise<MobileAdded> {
+    const added = asMobileAdded(
+      await this.put<unknown>(
+        `${this.whosHerePath(eventId)}/people/${encodeURIComponent(staffId)}/mobile`,
+        { mobile },
+      ),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a mobile number in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** Moves someone who is here onto an absent person's station; the floor lead's and staff.manage's only. */
+  async coverStation(eventId: string, absent: string, mover: string): Promise<WhosHere> {
+    return this.whosHereOf(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/cover`, { absent, mover }),
+    );
+  }
+
+  /** A hub token for this event's Who's here signal; its messages carry nothing but read again. */
+  async whosHereSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.whosHerePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private whosHerePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/whos-here`;
+  }
+
+  private whosHereOf(raw: unknown): WhosHere {
+    const read = asWhosHere(raw);
+
+    if (read == null) {
+      throw new Error(
+        "The API answered Who's here in a shape this client does not know. Check WhosHereController in services/api.",
+      );
+    }
+
+    return read;
   }
 
   private staffHoursOf(raw: unknown): StaffHours {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { Skeleton } from '../components/Skeleton.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -47,9 +48,9 @@ import './menu.css';
 import './stations.css';
 import './roster.css';
 import './jobsShifts.css';
-import './staffHours.css';
+import '../routes/app/events/hoursWorked.css';
 
-const RETRY_MS = 1200;
+const RETRY_MS = 2200;
 
 /** /demo/events/evt-wed-4/staff/hours (sc-234): Hours worked on the event's Staff page at 1280 × 800, by ?state=. */
 export function StaffHoursPage() {
@@ -150,13 +151,7 @@ function HoursView({
 
   let body;
   if (phase === 'loading')
-    body = (
-      <div className="hw-loading" role="status" aria-label={HW.loading}>
-        {[0, 1, 2, 3, 4, 5].map((one) => (
-          <span key={one} className="hw-bone" />
-        ))}
-      </div>
-    );
+    body = <Skeleton words={HW.loading} shape="rows" rowHeight={56} rows={6} />;
   else if (phase === 'failed')
     body = (
       <div className="hw-failed">

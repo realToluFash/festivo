@@ -124,7 +124,9 @@ For `#[InEvent]`:
 2. **Membership of that organisation is checked.** An account that is not an active member,
    and holds no live grant from outside (sc-71) or staff link (sc-4235) in it, gets **404**,
    the same as an event that does not exist. A 403 would confirm the event exists to
-   somebody outside it. An expired or revoked grant is no grant, and gets the same 404.
+   somebody outside it. An expired or revoked grant is no grant, and gets the same 404. On a route with
+   `endedLink`, an account whose staff link on the event was open when the event finished,
+   at its end or its early end, gets **409 `event_concluded`** instead (sc-3918, 27 Nov).
 3. **A Member's role on the event is found.** A Member with no role on it gets the same
    **404**. An Owner's or an Admin's grants are the organisation's.
 4. **Then the permission**, from the role on the event for a Member. A member without it gets **403 `permission_required`**, with

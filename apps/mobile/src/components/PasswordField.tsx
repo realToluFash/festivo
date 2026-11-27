@@ -61,6 +61,7 @@ export function PasswordField({
       <TextInput
         {...rest}
         autoFocus={opened.autoFocus}
+        onPressIn={opened.onPressIn}
         {...refusedField(refused, rest, labelID)}
         {...passwordProps(Platform.OS, revealed)}
         {...holding}

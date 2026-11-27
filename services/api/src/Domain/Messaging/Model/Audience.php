@@ -96,6 +96,18 @@ final readonly class Audience
         return new self(NotificationAudienceKind::Person, null, only: [$id], conditions: ['address' => $address, 'locale' => $locale]);
     }
 
+    /** One person on an event's staff, through the account they sign in to the app with, while they are still on its roster when it goes (sc-4333). */
+    public static function staffMember(Uuid $eventId, Uuid $staffMemberId): self
+    {
+        return new self(NotificationAudienceKind::Staff, null, only: [$staffMemberId], eventId: $eventId);
+    }
+
+    /** Somebody taken off an event's staff, through their account, since there is no roster entry left to find them by (sc-4333). */
+    public static function removedStaffMember(Uuid $eventId, Uuid $accountId): self
+    {
+        return new self(NotificationAudienceKind::Staff, null, conditions: ['account' => $accountId->toRfc4122()], eventId: $eventId);
+    }
+
     /** @param array<string, mixed> $conditions */
     public static function guests(Uuid $eventId, array $conditions): self
     {

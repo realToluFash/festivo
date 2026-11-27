@@ -352,6 +352,11 @@ span {
   background: var(--colorCard);
 }
 
+/* In the shell a page that borrows Settings' .desk-page never scrolls itself: the card scrolls it from 641 px and the window under that. A page that scrolled itself would clip a part opened past its rows into sideways scroll, and hold its sticky bars and panels where they sit (sc-98499). */
+.shell-content .desk-page {
+  overflow: visible;
+}
+
 /* From 641 px the sidebar is beside the page (sc-60699). */
 @media (width > 40rem) {
   /* At a desk no page has the band (sc-39471, sc-39509): the page is one card 10 from the window's edges, and it scrolls inside the card. */
@@ -4878,25 +4883,6 @@ button.members-row {
 
 .timeline-failed-mark {
   color: var(--colorBroken);
-}
-
-.timeline-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXl);
-  margin: var(--spaceLg) 0 0;
-}
-
-.timeline-key div {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.timeline-key dd {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
 }
 
 /* On a phone the pills leave the date line for their own, as in the app, so a far-off date in another zone and the longer fr and pt words wrap within the rows' floor rather than past it. */

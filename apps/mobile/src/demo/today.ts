@@ -431,6 +431,8 @@ function owedOn([key, due, title = KITCHEN]: Owed): YouEvent {
   return {
     shown: sample(key),
     startsAt: `${EVENTS[key].first}T12:00:00Z`,
+    endsAt: `${EVENTS[key].first}T22:00:00Z`,
+    status: 'live',
     timeZone: SAMPLE_ZONE,
     permissions: ['menu.manage'],
     milestones: [

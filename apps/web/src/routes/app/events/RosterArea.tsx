@@ -38,6 +38,7 @@ import { useStartingCountry } from './useStartingCountry.ts';
 import { EventCrumb } from './EventOverview.tsx';
 import { StaffTabs } from './StaffTabs.tsx';
 import { useBriefing } from './Briefing.tsx';
+import { removalLine } from './notices.ts';
 import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
@@ -300,6 +301,7 @@ function Roster({
     finished,
     onEntry: (entry) => relinked(entry),
     onRules: (rules) => onPlan({ ...plan, rules }),
+    reload,
     focus: (id) => {
       focusAfter.current = id;
     },
@@ -712,6 +714,7 @@ function Roster({
                 {panel.kind === 'remove' && opened != null && (
                   <RemoveAsk
                     entry={opened}
+                    told={removalLine(opened, finished, t)}
                     times={times}
                     busy={busy}
                     failed={failed}
@@ -1174,6 +1177,7 @@ function Details({
 
 function RemoveAsk({
   entry,
+  told,
   times,
   busy,
   failed,
@@ -1181,6 +1185,8 @@ function RemoveAsk({
   onRemove,
 }: {
   entry: StaffEntry;
+  /** The added line once a push will tell them (sc-4333). */
+  told: string | null;
   times: StaffTimes;
   busy: boolean;
   failed: string | null;
@@ -1202,6 +1208,7 @@ function RemoveAsk({
         {failed != null && <Failed words={failed} />}
         <ShiftList entry={entry} times={times} ask />
         <p className="mn-quiet">{t('roster.stopsWorking')}</p>
+        {told != null && <p className="mn-quiet">{told}</p>}
       </div>
       <div className="mn-panel-foot">
         <div className="mn-panel-acts">

@@ -44,7 +44,7 @@ import { PAGE_NEEDS } from './handoff.ts';
 import { MessagesArea } from './MessagesArea.tsx';
 import { Forbidden } from '../Forbidden.tsx';
 import { typeLabel } from './eventTypes.ts';
-import { AllDates } from './Timeline.tsx';
+import { AllDates, type Beside } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { OutsideOverview } from './OutsideOverview.tsx';
 import { OutsideGone } from '../OutsideShell.tsx';
@@ -269,12 +269,13 @@ function EventOf({
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
   const answered = useRef<Date | null>(null);
-  const { watch, keep, refreshing } = useOffline({
+  const { watch, keep, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
     event: true,
   });
+  const beside: Beside = { reloads: refresh, underBand: stale != null };
 
   useEffect(() => {
     let current = true;
@@ -490,9 +491,29 @@ function EventOf({
                     event={load.event}
                     tag={load.tag}
                     heading={heading}
+                    beside={beside}
                     onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
                   />
                 )}
+              </Arrived>
+            )}
+          </div>
+        )}
+      </EventDesk>
+    );
+
+  if (page === 'dates')
+    return (
+      <EventDesk>
+        {(covered) => (
+          <div className="event-page ev-wide" inert={covered}>
+            <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+              {refreshing && <Refreshing />}
+            </EventCrumb>
+            {states}
+            {load.kind === 'loaded' && (
+              <Arrived>
+                <AllDatesPage event={load.event} heading={heading} beside={beside} />
               </Arrived>
             )}
           </div>
@@ -530,7 +551,6 @@ function EventOf({
                   onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
                 />
               )}
-              {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
               {page === 'people' && <PeoplePage event={load.event} />}
               {isPlaceholderEventArea(page) &&
                 page !== 'menu' &&
@@ -544,7 +564,7 @@ function EventOf({
   );
 }
 
-/** Above every area but Overview, whose cover card is its top, and People, which opens on its own title (sc-69635): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top, and People and All dates, which open on their own title (sc-69635, sc-98187): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,
@@ -641,21 +661,18 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
 function AllDatesPage({
   event,
   heading,
+  beside,
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
 }) {
   const { t } = useTranslation();
   const now = useServerNow();
 
   usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
 
-  return (
-    <section className="card timeline-page" aria-labelledby="all-dates-title">
-      <h2 id="all-dates-title">{t('timeline.allDates')}</h2>
-      <AllDates event={event} now={now} heading={heading} />
-    </section>
-  );
+  return <AllDates event={event} now={now} heading={heading} beside={beside} />;
 }
 
 function PeoplePage({ event }: { event: OrganisationEvent }) {
@@ -679,7 +696,7 @@ function AreaComing({ event, area }: { event: OrganisationEvent; area: Placehold
   );
 }
 
-/** A desk for the event's page: the dialogs its edits ask in, over the page they make inert. */
+/** A desk for the event's page and its All dates: the dialogs its edits ask in, over the page they make inert, and the desk's variables and list reset the demo draws both under. */
 function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) {
   const { layers, covered, setHost } = useDeskLayers();
 

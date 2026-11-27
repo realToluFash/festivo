@@ -7,6 +7,7 @@ namespace App\Domain\Staff\Attendance;
 use App\Audit\Auditor;
 use App\Domain\Organisation\MembershipDirectory;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\WhosHere\WhosHereSignal;
 use App\Entity\Event;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
@@ -34,6 +35,7 @@ final readonly class AttendanceCorrector
         private Auditor $auditor,
         private ClockInterface $clock,
         private MembershipDirectory $membershipDirectory,
+        private WhosHereSignal $whosHereSignal,
     ) {
     }
 
@@ -116,6 +118,7 @@ final readonly class AttendanceCorrector
             ]);
             $this->entityManager->flush();
         });
+        $this->whosHereSignal->publish($event);
     }
 
     private static function same(?DateTimeImmutable $one, ?DateTimeImmutable $other): bool

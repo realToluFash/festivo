@@ -109,6 +109,8 @@ function person(id: string, fullName: string, job: string | null, shifts: string
     briefing: 'none',
     briefingCopy: null,
     contactsErased: false,
+    notice: null,
+    inApp: false,
   };
 }
 

@@ -12,9 +12,10 @@ use App\Enum\PermissionArea;
 use App\Repository\TableSharingRepository;
 use DateTimeImmutable;
 use DateTimeZone;
+use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** The seating milestone a saved Share by adds, owner You (sc-4022): "Share tables" at the end of that day until the tables are shared, then "Tables shared" when they were. One key for both, so a subscribed calendar moves the entry. */
+/** The seating milestone a saved Share by adds, owner You (sc-4022): "Share tables" at the end of that day until the tables are shared or the event starts, then "Tables shared" when they were. One key for both, so a subscribed calendar moves the entry. */
 final readonly class TableSharingDates implements MilestoneSourceInterface
 {
     public const string KEY = 'seating.share_tables';
@@ -22,6 +23,7 @@ final readonly class TableSharingDates implements MilestoneSourceInterface
     public function __construct(
         private TableSharingRepository $tableSharingRepository,
         private TranslatorInterface $translator,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -38,6 +40,10 @@ final readonly class TableSharingDates implements MilestoneSourceInterface
 
         if (null !== $sharedAt) {
             return [new Milestone(self::KEY, $sharedAt, $this->translator->trans('timeline.tables_shared'), null, MilestoneOwner::You, PermissionArea::Seating, done: true)];
+        }
+
+        if (null !== $event->getEndedAt() || $this->clock->now() >= $event->getStartsAt()) {
+            return [];
         }
 
         $endOfDay = new DateTimeImmutable($shareBy->format('Y-m-d') . ' 23:59:59', new DateTimeZone($event->getTimeZone()));

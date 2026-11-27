@@ -5,8 +5,7 @@ import {
   type ArrivedFocus,
   arrivedFocusStep,
   type MountedKeys,
-  KEY_RAISES,
-  KEYS_RAISED_AGAIN_TICKS,
+  KEYS_RAISE_AFTER_TICKS,
   mountedKeys,
   mountedKeysStep,
   openedFocus,
@@ -104,48 +103,59 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
     opened: 'mount',
     autoFocus: true,
     focused: true,
-    raises: 0,
-    raisedAt: 0,
+    focusedSince: 1,
     readerOn: false,
-    ticks: 1,
+    touched: false,
+    ticks: 1 + KEYS_RAISE_AFTER_TICKS,
   };
 
-  it('raises the keys on the field once it has the focus, a tick after mount', () => {
-    expect(mountedKeysStep({ ...mounted, ticks: 0 })).toBe('tick');
-    expect(mountedKeysStep({ ...mounted, focused: false })).toBe('wait');
+  it('raises the keys once the focus has stood a while, as Android can drop an early raise (qa #97238)', () => {
+    expect(mountedKeysStep({ ...mounted, focusedSince: null, ticks: 0 })).toBe('tick');
+    expect(mountedKeysStep({ ...mounted, focusedSince: null, focused: false })).toBe('wait');
+    expect(mountedKeysStep({ ...mounted, ticks: KEYS_RAISE_AFTER_TICKS })).toBe('tick');
     expect(mountedKeysStep(mounted)).toBe('raise');
   });
 
   it('waits for the focus however late it comes (qa #97238)', () => {
-    expect(mountedKeysStep({ ...mounted, focused: false, ticks: ARRIVED_FOCUS_TICKS })).toBe(
-      'wait',
+    const step = mountedKeys('android', 'mount', true);
+    const late = ARRIVED_FOCUS_TICKS;
+    expect(step({ focused: false, readerOn: false, touched: false, ticks: late })).toBe('wait');
+    expect(step({ focused: true, readerOn: false, touched: false, ticks: late })).toBe('tick');
+    expect(step({ focused: true, readerOn: false, touched: false, ticks: late + 1 })).toBe('tick');
+    expect(
+      step({
+        focused: true,
+        readerOn: false,
+        touched: false,
+        ticks: late + KEYS_RAISE_AFTER_TICKS,
+      }),
+    ).toBe('raise');
+  });
+
+  it('raises them once and never again, so Back, which leaves the field focused, keeps them down (qa #98098)', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: true, readerOn: false, touched: false };
+    const sent = Array.from({ length: ARRIVED_FOCUS_TICKS }, (_, i) =>
+      step({ ...now, ticks: i + 1 }),
     );
-    expect(mountedKeysStep({ ...mounted, ticks: ARRIVED_FOCUS_TICKS })).toBe('raise');
+    expect(sent.filter((s) => s === 'raise')).toHaveLength(1);
+    expect(sent.at(-1)).toBe('done');
   });
 
-  it('raises them once more soon after, as Android can drop the first (qa #97238), and then no more', () => {
-    const raised = { ...mounted, raises: 1, raisedAt: 1 };
-    expect(mountedKeysStep({ ...raised, ticks: 1 + KEYS_RAISED_AGAIN_TICKS - 1 })).toBe('tick');
-    expect(mountedKeysStep({ ...raised, ticks: 1 + KEYS_RAISED_AGAIN_TICKS })).toBe('raise');
-    expect(mountedKeysStep({ ...mounted, raises: KEY_RAISES, ticks: 9 })).toBe('done');
-  });
-
-  it('raises nothing more after a blur and a focus, as the back key and a tap make', () => {
+  it('raises nothing after a blur and a focus, as a tap elsewhere makes', () => {
     const step = mountedKeys('android', 'mount', true);
-    const now = { focused: false, readerOn: false, ticks: 1 };
-    expect(step(now)).toBe('wait');
-    expect(step({ ...now, focused: true })).toBe('raise');
-    expect(step({ ...now, ticks: 2 })).toBe('done');
-    expect(step({ ...now, focused: true, ticks: 3 })).toBe('done');
+    const now = { focused: true, readerOn: false, touched: false, ticks: 1 };
+    expect(step(now)).toBe('tick');
+    expect(step({ ...now, focused: false, ticks: 2 })).toBe('done');
+    expect(step({ ...now, ticks: 9 })).toBe('done');
   });
 
-  it('sends the second raise through the tracker, then stops', () => {
+  it('raises nothing on a field a person pressed, whose own keys Back may have put down', () => {
     const step = mountedKeys('android', 'mount', true);
-    const now = { focused: true, readerOn: false, ticks: 1 };
-    expect(step(now)).toBe('raise');
-    expect(step({ ...now, ticks: 2 })).toBe('tick');
-    expect(step({ ...now, ticks: 3 })).toBe('raise');
-    expect(step({ ...now, ticks: 4 })).toBe('done');
+    const now = { focused: true, readerOn: false, touched: false, ticks: 1 };
+    expect(step(now)).toBe('tick');
+    expect(step({ ...now, touched: true, ticks: 1 + KEYS_RAISE_AFTER_TICKS })).toBe('done');
+    expect(step({ ...now, ticks: 9 })).toBe('done');
   });
 
   it('waits for the screen reader to be known, and with one on leaves focus as it was', () => {
