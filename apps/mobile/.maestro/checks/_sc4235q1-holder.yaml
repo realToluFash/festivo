@@ -7,8 +7,11 @@ appId: host.exp.Exponent
       id: 'redeem.event.send'
     timeout: 30000
 - runFlow:
-    file: sc4235/_q1-signin.yaml
-    env: { NAME: 'Cap Holder', NUMBER: '08034440721', DIGITS: '4440721' }
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440721' }
 - extendedWaitUntil:
     visible:
       id: 'redeem.in.open'
@@ -29,7 +32,7 @@ appId: host.exp.Exponent
       id: 'redeem.event.send'
     timeout: 20000
 - runFlow:
-    file: sc4235/_q1-fill.yaml
+    file: sc4235/fill.yaml
     env: { NAME: 'Rita Alt', NUMBER: '08034440702' }
 - extendedWaitUntil:
     visible:
@@ -46,5 +49,5 @@ appId: host.exp.Exponent
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: 03-alternative-keyboard
-- runFlow: sc4235/_q1-dismiss.yaml
+- tapOn: 'Kemi and Tayo'
 - takeScreenshot: 04-alternative

@@ -7,8 +7,11 @@ appId: host.exp.Exponent
       id: 'redeem.event.send'
     timeout: 30000
 - runFlow:
-    file: sc4235/_q1-signin.yaml
-    env: { NAME: 'Ada Typed', NUMBER: '08034440711', DIGITS: '4440711' }
+    file: sc4235/fill.yaml
+    env: { NAME: 'Ada Typed', NUMBER: '08034440711' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440711' }
 - extendedWaitUntil:
     visible:
       id: 'redeem.in.open'
@@ -37,8 +40,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: 03-after-continue
 - runFlow:
-    file: sc4235/_q1-signin.yaml
-    env: { NAME: 'Cap Holder', NUMBER: '08034440721', DIGITS: '4440721' }
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440721' }
 - extendedWaitUntil:
     visible:
       id: 'redeem.in.open'
@@ -58,8 +64,11 @@ appId: host.exp.Exponent
       id: 'redeem.event.send'
     timeout: 20000
 - runFlow:
-    file: sc4235/_q1-signin.yaml
-    env: { NAME: 'Cap Two', NUMBER: '08034440731', DIGITS: '4440731' }
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Two', NUMBER: '08034440731' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440731' }
 - extendedWaitUntil:
     visible:
       id: 'redeem.in.open'
@@ -78,12 +87,15 @@ appId: host.exp.Exponent
     visible:
       id: 'redeem.event.send'
     timeout: 20000
-- runFlow: sc4235/_q1-dismiss.yaml
+- tapOn: 'Kemi and Tayo'
 - waitForAnimationToEnd
 - takeScreenshot: 06-full-event
 - runFlow:
-    file: sc4235/_q1-signin.yaml
-    env: { NAME: 'New Person', NUMBER: '08034440742', DIGITS: '4440742' }
+    file: sc4235/fill.yaml
+    env: { NAME: 'New Person', NUMBER: '08034440742' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440742' }
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
@@ -91,6 +103,6 @@ appId: host.exp.Exponent
     timeout: 20000
 - assertNotVisible:
     id: 'redeem.in.open'
-- runFlow: sc4235/_q1-dismiss.yaml
+- tapOn: 'Kemi and Tayo'
 - waitForAnimationToEnd
 - takeScreenshot: 07-full-new-refused

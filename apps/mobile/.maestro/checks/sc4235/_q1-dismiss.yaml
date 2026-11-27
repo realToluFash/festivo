@@ -1,5 +1,0 @@
-# sc-4235 subflow (qa1): close the keyboard on the door code's event step by tapping its title (qa1's event "Kemi and Tayo"); hideKeyboard presses Back on Android when no keyboard is up.
-appId: host.exp.Exponent
----
-- tapOn: 'Kemi and Tayo'
-- waitForAnimationToEnd

@@ -25,6 +25,10 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: demo-second-number
+- openLink: ${METRO_URL}/--/demo/redeem?state=signed-out
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-signed-out-direct
 - openLink: ${METRO_URL}/--/demo/redeem?state=in
 - waitForAnimationToEnd:
     timeout: 4000
