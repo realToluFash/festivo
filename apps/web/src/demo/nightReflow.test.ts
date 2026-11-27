@@ -21,7 +21,7 @@ describe('the live night at 400% zoom, 320 CSS px (sc-100788)', () => {
     expect(cssRule('.nt .nt-top', AT_320)).toMatch(
       /flex-direction: column;\s+align-items: stretch;/u,
     );
-    expect(cssRule('.nt .nt-top .gs-title', AT_320)).toContain('overflow-wrap: normal;');
+    expect(cssRule('.nt .nt-top .gs-title', AT_320)).toContain('flex: none;');
     expect(cssRule('.nt .nt-head-end', AT_320)).toContain('flex-wrap: wrap;');
   });
 
@@ -30,6 +30,13 @@ describe('the live night at 400% zoom, 320 CSS px (sc-100788)', () => {
     expect(cssRule('.nt .nt-split', AT_320)).toContain('flex-direction: column;');
     expect(cssRule('.nt .nt-panel', AT_320)).toContain('width: auto;');
     expect(cssRule('.nt .nt-pair', AT_320)).toContain('flex-wrap: wrap;');
+  });
+
+  it('drops Try now and Dismiss under their words, the words a real basis so they wrap first', () => {
+    expect(cssRule('.nt .nt-alert', AT_320)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.nt .nt-alert-words,\n  .nt .nt-strip-words', AT_320)).toContain(
+      'flex: 1 1 12rem;',
+    );
   });
 
   it('runs the Tracks menu the page’s width, each row a 44 px target', () => {

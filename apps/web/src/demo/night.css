@@ -645,7 +645,6 @@ button.nt-later-row:hover {
 
   .nt .nt-top .gs-title {
     flex: none;
-    overflow-wrap: normal;
   }
 
   .nt .nt-picker {
@@ -669,6 +668,11 @@ button.nt-later-row:hover {
 
   .nt .nt-alert {
     flex-wrap: wrap;
+  }
+
+  .nt .nt-alert-words,
+  .nt .nt-strip-words {
+    flex: 1 1 12rem;
   }
 
   .nt .nt-split {
