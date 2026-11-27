@@ -92,7 +92,12 @@ import type {
   GuestMessageSent,
   PickableGuest,
 } from './guestMessages.ts';
-import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
+import {
+  type FinalNumbers,
+  type KitchenSheet,
+  asFinalNumbers,
+  asKitchenSheet,
+} from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -128,14 +133,34 @@ import {
   type StaffEntry,
   type StaffLinkWindow,
   type StaffPlan,
+  type StaffReminder,
   STAFF_ACCESS,
   asStaffEntry,
+  asStaffReminder,
   asStaffLinkWindow,
   asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import { type MyNight, asMyNight } from './myNight.ts';
+import {
+  type MobileAdded,
+  type TypedMobile,
+  type WalkOnAdded,
+  type WalkOnTyped,
+  type WhosHere,
+  asMobileAdded,
+  asWalkOnAdded,
+  asWhosHere,
+} from './whosHere.ts';
+import {
+  type ClockAction,
+  type ClockOutcome,
+  type HoursTyped,
+  type StaffHours,
+  asClockOutcome,
+  asStaffHours,
+} from './shiftHours.ts';
 import {
   type Dish,
   type DishDetails,
@@ -166,6 +191,12 @@ import {
   asSchedule,
 } from './schedule.ts';
 import type { KeptServiceTap } from './serviceTapQueue.ts';
+import {
+  type KitchenStationsRead,
+  type ServiceRead,
+  asKitchenStationsRead,
+  asServiceRead,
+} from './serviceRead.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
@@ -547,6 +578,8 @@ export interface Account {
   waitingFor: JoinRequest | null;
   /** The events this account is on from outside their organisations (sc-71), soonest first. */
   outsideEvents: OutsideEvent[];
+  /** When this session ends, for a browser's that ends with the account's grants (sc-4235); null for any other. */
+  signedOutAt: string | null;
 }
 
 export interface JoinOffer {
@@ -736,6 +769,8 @@ export interface OpenedDoorCode {
     endsAt: string;
     timeZone: string;
     organisation: string;
+    /** The organisation's country, where a number typed at the door code starts. */
+    country: string;
   };
   standing: 'member' | 'in' | null;
 }
@@ -747,6 +782,8 @@ export interface RedeemedDoorCode {
   jobLabel: string | null;
   endsAt: string | null;
   again: boolean;
+  /** For a code that names a shift (sc-234): on it, the redeem ends on My night; not joined, You're in says why. */
+  shift: { landsOn: 'night' } | { landsOn: 'in'; notJoined: 'full' | 'ended'; job: string } | null;
 }
 
 /** An event someone in no organisation of its own reaches from outside (sc-71). */
@@ -758,6 +795,8 @@ export interface OutsideEvent {
   jobLabel: string | null;
   startsAt: string;
   endsAt: string | null;
+  /** The event's IANA zone, which its times are read in. */
+  timeZone: string;
 }
 
 /** A person on the roster holding a link not yet ended (sc-3912), with their job's level; `signedIn` stays false until sc-4235 signs them in. */
@@ -1253,7 +1292,7 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
-/** `guestsInvited`: a Live or Paused event with a guest Invited is deleted only once it is Finished (sc-14445). Any reason refuses the same way. */
+/** `guestsInvited` (sc-14445) or `staffBriefed` (sc-4333): a Live or Paused event with a guest Invited or a briefing gone is deleted only once it is Finished. Any reason refuses the same way. */
 export type DeleteRefusal = string;
 
 /** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
@@ -3350,6 +3389,59 @@ export class ApiClient {
     ).staff;
   }
 
+  /** A new link for the person from the briefing (sc-3917): as deliverStaffLink, and recorded as the briefing's copy, which leaves the briefing where it was. */
+  async copyBriefingLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/link`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** After a briefing copy: Sent, not read, and Link sent; refused 409 `conflict` before one. */
+  async markBriefingSent(eventId: string, staffId: string): Promise<StaffEntry> {
+    return this.staffAnswerOf(
+      await this.post<unknown>(
+        `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/sent`,
+      ),
+    ).staff;
+  }
+
+  /** Blank clears them; refused `validation_failed` on `rules` past STAFF_RULES_MAXIMUM code points. */
+  async saveHouseRules(eventId: string, rules: string): Promise<string | null> {
+    const body = await this.put<{ rules?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/briefing/rules`,
+      { rules },
+    );
+
+    return typeof body.rules === 'string' ? body.rules : null;
+  }
+
+  /** The staffing page's Reminder the day before card (sc-4333); staff.read. */
+  async staffReminder(eventId: string): Promise<StaffReminder> {
+    return this.staffReminderOf(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/staff/reminder`),
+    );
+  }
+
+  /** staff.manage; refused 409 `event_concluded` once the event is Finished. */
+  async setStaffReminder(eventId: string, on: boolean): Promise<StaffReminder> {
+    return this.staffReminderOf(
+      await this.put<unknown>(`/api/events/${encodeURIComponent(eventId)}/staff/reminder`, { on }),
+    );
+  }
+
+  /** The person's shift page as they would see it (sc-3917), recording nothing; staff.read. */
+  async previewStaffNight(eventId: string, staffId: string): Promise<MyNight> {
+    return this.myNightOf(
+      await this.get<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/preview`),
+    );
+  }
+
   /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
   async staffPlan(eventId: string): Promise<StaffPlan> {
     return this.staffPlanOf(await this.get<unknown>(this.staffPath(eventId)));
@@ -3373,7 +3465,7 @@ export class ApiClient {
     );
   }
 
-  /** Refused 409 `staff_job_staffed` while anyone is on its shifts. */
+  /** Refused 409 `staff_job_worked` once anyone has clocked in on one of its shifts, else `staff_job_staffed` while anyone is on them. */
   async removeStaffJob(eventId: string, jobId: string): Promise<StaffPlan> {
     return this.staffPlanOf(
       await this.delete<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`),
@@ -3407,6 +3499,7 @@ export class ApiClient {
     );
   }
 
+  /** Refused 409 `staff_shift_worked` once they have clocked in on it. */
   async unassignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
     return this.staffPlanOf(
       await this.delete<unknown>(
@@ -3523,6 +3616,17 @@ export class ApiClient {
       (() => {
         throw new Error(
           'The API answered the staff plan in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffReminderOf(body: unknown): StaffReminder {
+    return (
+      asStaffReminder(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the staff reminder in a shape this client does not know. Check the staff reminder in services/api.',
         );
       })()
     );
@@ -3896,8 +4000,10 @@ export class ApiClient {
 
   /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
   async kitchenSheet(eventId: string): Promise<KitchenSheet> {
-    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
-    const sheet = asKitchenSheet(body?.sheet);
+    const body = await this.get<{ sheet?: unknown; finalNumbers?: unknown }>(
+      `${this.menuPath(eventId)}/kitchen-sheet`,
+    );
+    const sheet = asKitchenSheet(body?.sheet, body?.finalNumbers);
 
     if (sheet == null)
       throw new Error(
@@ -3911,9 +4017,40 @@ export class ApiClient {
   async kitchenSheetPdf(
     eventId: string,
   ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
-    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
-      method: 'POST',
-    });
+    return this.pdfAt(`${this.menuPath(eventId)}/kitchen-sheet/pdf`);
+  }
+
+  /** Final numbers due (sc-30812), a day or null: refused 403 without menu.manage, 422 on `due`. */
+  async setFinalNumbersDue(eventId: string, due: string | null): Promise<FinalNumbers> {
+    const body = await this.put<{ finalNumbers?: unknown }>(
+      `${this.menuPath(eventId)}/final-numbers`,
+      { due },
+    );
+
+    return asFinalNumbers(body?.finalNumbers);
+  }
+
+  /** Give final numbers…: the PDF as `kitchenSheetPdf` makes it, recorded as given; 503 records nothing. Refused 403 without menu.manage. */
+  async giveFinalNumbers(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    return this.pdfAt(`${this.menuPath(eventId)}/kitchen-sheet/copies`);
+  }
+
+  /** Download this copy: as given, in the request's language. */
+  async kitchenCopyPdf(
+    eventId: string,
+    copyId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    return this.pdfAt(
+      `${this.menuPath(eventId)}/kitchen-sheet/copies/${encodeURIComponent(copyId)}/pdf`,
+    );
+  }
+
+  private async pdfAt(
+    path: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(path, { method: 'POST' });
 
     return {
       name: downloadName(response.headers.get('Content-Disposition')),
@@ -4056,6 +4193,50 @@ export class ApiClient {
     );
   }
 
+  /** sc-4005's read of one course's service: 403 without service.work. */
+  async serviceRead(eventId: string, courseId: string): Promise<ServiceRead> {
+    const body = await this.get<{ service?: unknown }>(
+      `${this.servicePath(eventId)}/course/${encodeURIComponent(courseId)}`,
+    );
+    const read = asServiceRead(body?.service);
+
+    if (read == null)
+      throw new Error(
+        'The API answered a service read in a shape this client does not know. Check ServiceRead in services/api.',
+      );
+
+    return read;
+  }
+
+  /** The event's kitchen stations, the reader's own and the courses fired (sc-4015): 403 without service.work, or to whoever works only the floor. */
+  async kitchenStations(eventId: string): Promise<KitchenStationsRead> {
+    const body = await this.get<unknown>(`${this.servicePath(eventId)}/stations`);
+    const read = asKitchenStationsRead(body);
+
+    if (read == null)
+      throw new Error(
+        'The API answered the kitchen stations in a shape this client does not know. Check KitchenStationList in services/api.',
+      );
+
+    return read;
+  }
+
+  /** A hub token for this event's service topic alone (sc-4005). */
+  async serviceSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.servicePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private servicePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/service`;
+  }
+
   /** A kept service tap (sc-4028); the same key again answers as the first time, 409 `service_changed` names each plate or item that moved since. */
   async sendServiceTap(tap: KeptServiceTap): Promise<void> {
     await this.request<unknown>(
@@ -4070,19 +4251,7 @@ export class ApiClient {
 
   /** Floor (sc-4021): every course's read as the caller sees it; 403 `permission_required` at the pass's level alone. */
   async serviceFloor(eventId: string): Promise<FloorRead> {
-    return this.get<FloorRead>(`/api/events/${encodeURIComponent(eventId)}/service/floor`);
-  }
-
-  /** A hub token for this event's service topic: each course's patches and the heartbeat (sc-4005, sc-4028). */
-  async serviceSubscription(eventId: string): Promise<RealtimeSubscription> {
-    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
-      `/api/events/${encodeURIComponent(eventId)}/service/subscriptions`,
-    );
-
-    return {
-      token: typeof body.token === 'string' ? body.token : '',
-      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
-    };
+    return this.get<FloorRead>(`${this.servicePath(eventId)}/floor`);
   }
 
   /** A hub token for this event's schedule topic alone. */
@@ -4140,6 +4309,138 @@ export class ApiClient {
   /** The same night in the app, for an account on the event's roster; 404 for anybody else. */
   async myNight(eventId: string): Promise<MyNight> {
     return this.myNightOf(await this.get<unknown>(`/api/events/${eventId}/my-night`));
+  }
+
+  /** Clock in or out at the person's link (sc-234), at the server's time when it arrives; also past access while still clocked in. Refused 409 `conflict` outside the window, or out with no clock-in. */
+  async staffLinkClock(token: string, action: ClockAction): Promise<ClockOutcome> {
+    return this.clockOutcomeOf(
+      await this.post<unknown>('/api/staff-links/clock', { token, action }),
+    );
+  }
+
+  /** The same in the app. */
+  async myNightClock(eventId: string, action: ClockAction): Promise<ClockOutcome> {
+    return this.clockOutcomeOf(
+      await this.post<unknown>(`/api/events/${eventId}/my-night/clock`, { action }),
+    );
+  }
+
+  private clockOutcomeOf(raw: unknown): ClockOutcome {
+    const outcome = asClockOutcome(raw);
+
+    if (outcome == null) {
+      throw new Error(
+        'The API answered a clock-in in a shape this client does not know. Check StaffClockController in services/api.',
+      );
+    }
+
+    return outcome;
+  }
+
+  /** An event's hours worked (sc-234), to anybody who can see its staff. */
+  async staffHours(eventId: string): Promise<StaffHours> {
+    return this.staffHoursOf(await this.get<unknown>(`/api/events/${eventId}/staff/hours`));
+  }
+
+  /** Corrects one person's times on one shift, keeping what was recorded; `staff.manage` only, never on one's own shift. Refused 422 `validation_failed` on `clockedInAt` or `clockedOutAt`. */
+  async correctStaffHours(
+    eventId: string,
+    shiftId: string,
+    staffId: string,
+    typed: HoursTyped,
+  ): Promise<StaffHours> {
+    return this.staffHoursOf(
+      await this.put<unknown>(`/api/events/${eventId}/staff/hours/${shiftId}/${staffId}`, typed),
+    );
+  }
+
+  /** Who's here tonight (sc-3918): to staff.read, the floor lead, and a station lead for their own station; 403 for anybody else. */
+  async whosHere(eventId: string): Promise<WhosHere> {
+    return this.whosHereOf(await this.get<unknown>(this.whosHerePath(eventId)));
+  }
+
+  /** Someone at the door: their roster entry, a shift from now and their station, and the link to copy with a number. Refused 422 `validation_failed` per field and 409 `event_concluded` once the event has ended. */
+  async addWalkOn(eventId: string, typed: WalkOnTyped): Promise<WalkOnAdded> {
+    const added = asWalkOnAdded(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/walk-ons`, typed),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a walk-on in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** A number for someone with none, and their link to copy; to staff.manage, and the lead who added that walk-on. */
+  async addWhosHereMobile(
+    eventId: string,
+    staffId: string,
+    mobile: TypedMobile,
+  ): Promise<MobileAdded> {
+    const added = asMobileAdded(
+      await this.put<unknown>(
+        `${this.whosHerePath(eventId)}/people/${encodeURIComponent(staffId)}/mobile`,
+        { mobile },
+      ),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a mobile number in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** Moves someone who is here onto an absent person's station; the floor lead's and staff.manage's only. */
+  async coverStation(eventId: string, absent: string, mover: string): Promise<WhosHere> {
+    return this.whosHereOf(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/cover`, { absent, mover }),
+    );
+  }
+
+  /** A hub token for this event's Who's here signal; its messages carry nothing but read again. */
+  async whosHereSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.whosHerePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private whosHerePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/whos-here`;
+  }
+
+  private whosHereOf(raw: unknown): WhosHere {
+    const read = asWhosHere(raw);
+
+    if (read == null) {
+      throw new Error(
+        "The API answered Who's here in a shape this client does not know. Check WhosHereController in services/api.",
+      );
+    }
+
+    return read;
+  }
+
+  private staffHoursOf(raw: unknown): StaffHours {
+    const hours = asStaffHours(raw);
+
+    if (hours == null) {
+      throw new Error(
+        'The API answered hours worked in a shape this client does not know. Check StaffHoursSerialiser in services/api.',
+      );
+    }
+
+    return hours;
   }
 
   private myNightOf(raw: unknown): MyNight {
@@ -6549,6 +6850,7 @@ function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
       endsAt: opened.endsAt,
       timeZone: opened.timeZone,
       organisation: opened.organisation,
+      country: isString(opened.country) ? opened.country : '',
     },
     standing: standing === 'member' || standing === 'in' ? standing : null,
   };
@@ -6557,7 +6859,7 @@ function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
 function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { eventId, name, role, jobLabel, endsAt, again } = raw as Record<string, unknown>;
+  const { eventId, name, role, jobLabel, endsAt, again, shift } = raw as Record<string, unknown>;
 
   if (
     !isString(eventId) ||
@@ -6573,7 +6875,20 @@ function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
     jobLabel: isString(jobLabel) ? jobLabel : null,
     endsAt: isString(endsAt) ? endsAt : null,
     again: again === true,
+    shift: asRedeemedShift(shift),
   };
+}
+
+function asRedeemedShift(raw: unknown): RedeemedDoorCode['shift'] {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { landsOn, notJoined, job } = raw as Record<string, unknown>;
+
+  if (landsOn === 'night') return { landsOn };
+
+  return landsOn === 'in' && (notJoined === 'full' || notJoined === 'ended') && isString(job)
+    ? { landsOn, notJoined, job }
+    : null;
 }
 
 function asRequestLink(raw: unknown): RequestLink {
@@ -6681,13 +6996,14 @@ function asAccount(raw: unknown): Account | null {
     outsideEvents: Array.isArray(candidate.outsideEvents)
       ? candidate.outsideEvents.flatMap(asOutsideEvent)
       : [],
+    signedOutAt: typeof candidate.signedOutAt === 'string' ? candidate.signedOutAt : null,
   };
 }
 
 function asOutsideEvent(raw: unknown): OutsideEvent[] {
   if (typeof raw !== 'object' || raw == null) return [];
 
-  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt, timeZone } = raw as Record<
     string,
     unknown
   >;
@@ -6697,6 +7013,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
     typeof name !== 'string' ||
     typeof organisationName !== 'string' ||
     typeof startsAt !== 'string' ||
+    typeof timeZone !== 'string' ||
     !(EVENT_LEVELS as readonly unknown[]).includes(role)
   )
     return [];
@@ -6710,6 +7027,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
       jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
       startsAt,
       endsAt: typeof endsAt === 'string' ? endsAt : null,
+      timeZone,
     },
   ];
 }

@@ -11,9 +11,14 @@ import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
+import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { daysWords } from '../../../eventsList.ts';
+import { canOn } from '../../../session.ts';
+import { DownloadMark, FinalNumbersBlock, type Giving } from './FinalNumbersBlock.tsx';
+import { KitchenChanges } from './KitchenChanges.tsx';
 import {
   allergenName,
   allergensOf,
@@ -50,6 +55,7 @@ export function KitchenSheetArea({ event }: { event: OrganisationEvent }) {
   const [query] = useSearchParams();
   const asked = query.get('paper');
   const paper: Paper | null = asked === 'a4' || asked === 'letter' ? asked : null;
+  const { layers, covered, setHost } = useDeskLayers();
 
   usePageTitle(pageTitle(t, [t('kitchenSheet.title'), event.name]));
 
@@ -76,43 +82,46 @@ export function KitchenSheetArea({ event }: { event: OrganisationEvent }) {
     return <SheetPaper event={event} sheet={load.sheet} paper={paper} />;
 
   return (
-    <div className="desk ev desk-page ev-page gs ks">
-      <div className="ev-wide gs-page">
-        <Crumbs event={event} />
-        {load.kind === 'loaded' ? (
-          <SheetScreen event={event} sheet={load.sheet} />
-        ) : (
-          <>
-            <Top event={event} />
-            {load.kind === 'loading' ? (
-              <div className="ks-loading" aria-busy="true">
-                <p role="status">{t('kitchenSheet.loading')}</p>
-                {[0, 1, 2].map((one) => (
-                  <div key={one} className="ks-bone" aria-hidden="true" />
-                ))}
-              </div>
-            ) : (
-              <div className="ks-failed" role="alert">
-                <p>
-                  <Glyph name="alert" size={17} weight={2.4} />
-                  {t('kitchenSheet.cannotReach')}
-                </p>
-                <button
-                  type="button"
-                  className="gs-pill is-secondary ks-act"
-                  onClick={() => {
-                    setLoad({ kind: 'loading' });
-                    setAttempt((n) => n + 1);
-                  }}
-                >
-                  {t('kitchenSheet.retry')}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+    <LayersContext value={layers}>
+      <div className="desk ev desk-page ev-page gs ks">
+        <div className="ev-wide gs-page" inert={covered}>
+          <Crumbs event={event} />
+          {load.kind === 'loaded' ? (
+            <SheetScreen event={event} sheet={load.sheet} />
+          ) : (
+            <>
+              <Top event={event} />
+              {load.kind === 'loading' ? (
+                <div className="ks-loading" aria-busy="true">
+                  <p role="status">{t('kitchenSheet.loading')}</p>
+                  {[0, 1, 2].map((one) => (
+                    <div key={one} className="ks-bone" aria-hidden="true" />
+                  ))}
+                </div>
+              ) : (
+                <div className="ks-failed" role="alert">
+                  <p>
+                    <Glyph name="alert" size={17} weight={2.4} />
+                    {t('kitchenSheet.cannotReach')}
+                  </p>
+                  <button
+                    type="button"
+                    className="gs-pill is-secondary ks-act"
+                    onClick={() => {
+                      setLoad({ kind: 'loading' });
+                      setAttempt((n) => n + 1);
+                    }}
+                  >
+                    {t('kitchenSheet.retry')}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div ref={setHost} className="desk-layers" />
       </div>
-    </div>
+    </LayersContext>
   );
 }
 
@@ -209,6 +218,12 @@ function Top({
 function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: KitchenSheet }) {
   const { t } = useTranslation();
   const [pdf, setPdf] = useState<Pdf>({ kind: 'rest' });
+  const [final, setFinal] = useState(sheet.finalNumbers);
+  const [told, setTold] = useState<string | null>(null);
+  const [giving, setGiving] = useState<Giving | null>(null);
+  const manage = canOn(event, 'menu.manage');
+  const [openedAt] = useState(() => Date.now());
+  const started = openedAt >= Date.parse(event.startsAt);
 
   const make = () => {
     setPdf({ kind: 'making' });
@@ -269,40 +284,61 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
           </button>
         </div>
       )}
-      <div className="ks-body">
-        <p className="ks-summary">{summaryLine(t, sheet)}</p>
-        <section className="desk-block ks-card ks-allergies" aria-labelledby="ks-allergies">
-          <h2 id="ks-allergies" className="ks-card-head">
-            <span className="ks-allergy-mark" aria-hidden="true">
-              <Glyph name="alert" size={18} weight={2.4} />
-            </span>
-            {t('kitchenSheet.allergies')}
-          </h2>
-          <Allergies sheet={sheet} screen />
-        </section>
-        <section className="desk-block ks-card" aria-labelledby="ks-diets">
-          <h2 id="ks-diets" className="ks-card-head">
-            {t('kitchenSheet.diets')}
-          </h2>
-          <Diets sheet={sheet} />
-        </section>
-        {sheet.courses.map((course) => (
-          <section
-            key={course.id}
-            className="desk-block ks-card"
-            aria-labelledby={`ks-${course.id}`}
-          >
-            <h2 id={`ks-${course.id}`} className="ks-card-head">
-              {course.name}
+      <div className="ev-columns ks-columns">
+        <div className="ks-body ev-left">
+          {final.changes != null && (
+            <KitchenChanges
+              changes={final.changes}
+              timeZone={event.timeZone}
+              onGive={manage && !started ? () => setGiving('rest') : null}
+            />
+          )}
+          <p className="ks-summary">{summaryLine(t, sheet)}</p>
+          <section className="desk-block ks-card ks-allergies" aria-labelledby="ks-allergies">
+            <h2 id="ks-allergies" className="ks-card-head">
+              <span className="ks-allergy-mark" aria-hidden="true">
+                <Glyph name="alert" size={18} weight={2.4} />
+              </span>
+              {t('kitchenSheet.allergies')}
             </h2>
-            <Course course={course} />
-            <ByStation course={course} at="ks" />
+            <Allergies sheet={sheet} screen />
           </section>
-        ))}
+          <section className="desk-block ks-card" aria-labelledby="ks-diets">
+            <h2 id="ks-diets" className="ks-card-head">
+              {t('kitchenSheet.diets')}
+            </h2>
+            <Diets sheet={sheet} />
+          </section>
+          {sheet.courses.map((course) => (
+            <section
+              key={course.id}
+              className="desk-block ks-card"
+              aria-labelledby={`ks-${course.id}`}
+            >
+              <h2 id={`ks-${course.id}`} className="ks-card-head">
+                {course.name}
+              </h2>
+              <Course course={course} />
+              <ByStation course={course} at="ks" />
+            </section>
+          ))}
+        </div>
+        <div className="ev-right">
+          <FinalNumbersBlock
+            event={event}
+            final={final}
+            manage={manage}
+            giving={giving}
+            onGiving={setGiving}
+            onChange={setFinal}
+            tell={setTold}
+          />
+        </div>
       </div>
       <div className="ks-paper-page is-print" hidden>
         <PaperSheets event={event} sheet={sheet} paper={sheet.paper} />
       </div>
+      {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
     </>
   );
 }
@@ -736,14 +772,6 @@ function StateMark({ kind }: { kind: State }) {
     );
 
   return null;
-}
-
-function DownloadMark() {
-  return (
-    <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-    </svg>
-  );
 }
 
 function PrintMark() {

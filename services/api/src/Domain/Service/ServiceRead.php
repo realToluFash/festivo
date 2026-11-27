@@ -8,6 +8,7 @@ use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
 use App\Domain\Service\Model\ServingTable;
+use App\Domain\Staff\RosterNames;
 use App\Domain\Staff\Station\ServiceTables;
 use App\Entity\Guest;
 use App\Entity\MenuCourse;
@@ -35,6 +36,7 @@ final readonly class ServiceRead
         private ServingTables $servingTables,
         private ServingStationsInterface $servingStations,
         private ServiceTables $serviceTables,
+        private RosterNames $rosterNames,
         private GuestNeedsRecord $guestNeedsRecord,
         private ServiceFiringRepository $serviceFiringRepository,
         private ServiceItemRepository $serviceItemRepository,
@@ -56,6 +58,7 @@ final readonly class ServiceRead
         $states = $this->states($course);
         $plates = $this->servicePlateRepository->findOfCourse($course);
         $trays = $this->trayRead->trays($plates);
+        $nameOf = $this->rosterNames->of($event);
         $onTrays = $this->servicePlateRepository->findOnTrays($trays);
         $firings = Dict\from_entries(Vec\map($this->serviceFiringRepository->findOfCourse($course), static fn (ServiceFiring $one): array => [$one->getTableKey(), $one]));
         $tables = $this->servingTables->of($event);
@@ -108,7 +111,7 @@ final readonly class ServiceRead
             'course' => ['id' => $course->getId()->toRfc4122(), 'name' => $course->getName()],
             'items' => $this->items($course, $stations['courses'], $stops, $passId, $states, $plates),
             'tables' => $tableReads,
-            'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId)),
+            'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId, $nameOf)),
             'sections' => ServiceCounts::bySection($tableReads),
             'counts' => ServiceCounts::of(Vec\filter($plates, static fn (ServicePlate $plate): bool => $plate->isOrder()), $states),
             // Not in a patch: it moves with the clock and the event, and a device learns it from the heartbeat and its reads (sc-4028).
@@ -143,6 +146,7 @@ final readonly class ServiceRead
             $row = $rows[$item['key']] ?? null;
 
             return [
+                'id' => $row?->getId()->toRfc4122(),
                 'key' => $item['key'],
                 'name' => $item['name'],
                 'station' => $stops[$item['stop']] ?? null,
@@ -150,6 +154,7 @@ final readonly class ServiceRead
                 'readyIn' => $row?->getReadyIn(),
                 'changedAt' => $row?->getChangedAt()?->format(\DATE_RFC3339_EXTENDED),
                 'changedBy' => $row?->getChangedBy()?->getId()->toRfc4122(),
+                'preparingSince' => $row?->getPreparingSince()?->format(\DATE_RFC3339_EXTENDED),
             ];
         });
     }
@@ -182,6 +187,7 @@ final readonly class ServiceRead
             'isOrder' => $plate->isOrder(),
             'stage' => $plate->getStage()->value,
             'items' => Vec\map($plate->getItems(), static fn (array $item): array => [...$item, 'state' => ($states[$item['key']] ?? ItemState::Ready)->value]),
+            'variant' => $plate->getVariant(),
             'toFollow' => $plate->getToFollow(),
             'trayId' => $plate->getTray()?->getId()->toRfc4122(),
             'steps' => $plate->getSteps(),

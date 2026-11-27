@@ -19,6 +19,7 @@ final readonly class Money
 
     public function __construct(
         private TranslatorInterface $translator,
+        private LocaleNumbers $localeNumbers,
     ) {
     }
 
@@ -58,11 +59,8 @@ final readonly class Money
     public function example(string $currency): string
     {
         $digits = self::minorDigits($currency);
-        $formatter = new NumberFormatter($this->translator->getLocale(), NumberFormatter::DECIMAL);
-        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, $digits);
-        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, $digits);
 
-        return (string) $formatter->format(0 === $digits ? 12 : 12.5);
+        return $this->localeNumbers->decimal(0 === $digits ? 12 : 12.5, $digits);
     }
 
     /** "£1,234.50" in the reader's locale (CLDR currency format), at the currency's minor unit, for a refusal to name an amount. */

@@ -1,5 +1,14 @@
-import { ApiError, type MyNight, type MyNightTable } from '@soirely/api-client';
+import {
+  ApiError,
+  type ClockAction,
+  type ClockOutcome,
+  type ClockPhase,
+  type MyNight,
+  type MyNightTable,
+  type ShiftClockCard as ClockCard,
+} from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
+import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -9,14 +18,17 @@ import Svg, { Path } from 'react-native-svg';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
+  checkInOf,
   clockAt,
-  clockOpensAt,
   crossesMidnight,
   dietaryOf,
   headingOf,
   updatedAfter,
   weekdayOf,
+  whosHereOf,
 } from '../kit/myNight.ts';
+import { type ClockLine, actionOf, answerOf, recordedWords } from '../kit/shiftClock.ts';
+import { openStationOf } from '../kit/stationWayIn.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -24,7 +36,8 @@ import { Brand } from './Brand.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
-import { useReadOut } from './ReadOut.tsx';
+import { readOut, useReadOut } from './ReadOut.tsx';
+import { ShiftClockCard } from './ShiftClockCard.tsx';
 import { Text } from './Text.tsx';
 
 /** Changes to their station, shift or lead show within 10 seconds (sc-3915). */
@@ -107,6 +120,7 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
   );
 
   const you = <You name={account?.name ?? ''} inBar={wide} />;
+  const pastAccess = seen.kind === 'shown' && seen.night.pastAccess;
 
   return (
     <View style={[styles.page, { paddingTop: insets.top }]} testID="myNight.page">
@@ -156,9 +170,9 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
           { paddingBottom: insets.bottom + 48 },
         ]}
       >
-        <View style={wide ? styles.wide : styles.column}>
+        <View style={wide && !pastAccess ? styles.wide : styles.column}>
           {seen.kind === 'shown' ? (
-            <Night night={seen.night} now={seen.at} wide={wide} />
+            <Night eventId={eventId} night={seen.night} now={seen.at} wide={wide} reread={again} />
           ) : (
             <View style={styles.card} accessibilityRole="progressbar" testID="myNight.loading">
               <Text size={17}>{t('myNight.loading')}</Text>
@@ -173,11 +187,43 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
   );
 }
 
-function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolean }) {
+function Night({
+  eventId,
+  night,
+  now,
+  wide,
+  reread,
+}: {
+  eventId: string;
+  night: MyNight;
+  now: number;
+  wide: boolean;
+  reread: () => void;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const heading = headingOf(night);
-  const opens = clockOpensAt(night, new Date(now));
+  const clock = <Clock eventId={eventId} night={night} now={now} reread={reread} />;
+
+  if (night.pastAccess)
+    return (
+      <>
+        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+          {night.event.name}
+        </Text>
+        {clock}
+      </>
+    );
+  const checkIn = checkInOf(night);
+  const station = openStationOf(night);
+  const whosHere = whosHereOf(night, station);
+  const openWhosHere = () =>
+    router.push({ pathname: '/events/[id]/whos-here', params: { id: night.event.id } });
+  const openStation = () =>
+    router.push({
+      pathname: '/events/[id]/station',
+      params: { id: night.event.id, from: 'night' },
+    });
 
   const left = (
     <>
@@ -195,25 +241,53 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
           {heading}
         </Text>
       </View>
-      {opens != null && (
-        <View style={styles.clock} testID="myNight.clock">
-          <PrimaryButton
-            label={t('myNight.clockOpensAt', {
-              time: formatEventClock(opens, night.event.timeZone, locale),
-            })}
-            onPress={() => undefined}
-            off
-            testID="myNight.clockOpens"
-          />
-          <Text size={17} style={styles.secondary}>
-            {t('myNight.clockOpensLine')}
-          </Text>
-        </View>
+      {clock}
+      {checkIn != null && (
+        <PrimaryButton
+          label={t('checkIn.title')}
+          onPress={() => router.push(checkIn)}
+          testID="myNight.checkIn"
+        />
       )}
+      {station != null &&
+        (checkIn == null ? (
+          <PrimaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ))}
+      {whosHere != null &&
+        (whosHere.primary ? (
+          <PrimaryButton
+            label={t('whosHere.open')}
+            onPress={openWhosHere}
+            testID="myNight.whosHere"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('whosHere.open')}
+            onPress={openWhosHere}
+            testID="myNight.whosHere"
+          />
+        ))}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />
       </Card>
+      {night.rules != null && (
+        <Card title={t('myNight.beforeYouStart')}>
+          <Text size={17} style={styles.rules}>
+            {night.rules}
+          </Text>
+        </Card>
+      )}
     </>
   );
 
@@ -265,6 +339,77 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
         </>
       )}
     </>
+  );
+}
+
+type Tapped = {
+  /** The card as the tap's answer had it, until a later read of the night. */
+  clock: ClockCard | null;
+  line: ClockLine;
+  /** The phase the line was said in: it goes once the card has moved on. */
+  phase: ClockPhase;
+  at: number;
+};
+
+/** Clock in and Clock out send at once and show what the server recorded; nothing is kept on the phone to send later. */
+function Clock({
+  eventId,
+  night,
+  now,
+  reread,
+}: {
+  eventId: string;
+  night: MyNight;
+  now: number;
+  reread: () => void;
+}) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState(0);
+  const [tapped, setTapped] = useState<Tapped | null>(null);
+  const clock = tapped?.clock != null && tapped.at > now ? tapped.clock : night.clock;
+  if (clock == null) return null;
+  const line = tapped != null && tapped.phase === clock.phase ? tapped.line : null;
+  const { timeZone } = night.event;
+
+  function answered(action: ClockAction, result: { outcome: ClockOutcome } | { error: unknown }) {
+    const answer = answerOf(action, result);
+    const at = Date.now();
+    setBusy(false);
+    setSaid((n) => n + 1);
+    if (answer.kind === 'reread') {
+      setTapped(null);
+      reread();
+    } else if (answer.kind === 'offline') {
+      setTapped({ clock: null, line: answer.line, phase: clock?.phase ?? 'ready', at });
+    } else {
+      setTapped({ clock: answer.clock, line: answer.line, phase: answer.clock.phase, at });
+      const words = recordedWords(t, answer.clock, new Date(at), timeZone, dateLocale());
+      if (answer.line == null && words != null) readOut(words);
+    }
+  }
+
+  function press() {
+    const action = clock == null ? null : actionOf(clock);
+    if (action == null || busy) return;
+    setBusy(true);
+    api.myNightClock(eventId, action).then(
+      (outcome) => answered(action, { outcome }),
+      (error: unknown) => answered(action, { error }),
+    );
+  }
+
+  return (
+    <ShiftClockCard
+      clock={clock}
+      past={night.pastAccess}
+      line={line}
+      said={said}
+      busy={busy}
+      now={new Date(Math.max(now, tapped?.at ?? 0))}
+      timeZone={timeZone}
+      onPress={press}
+    />
   );
 }
 
@@ -445,6 +590,7 @@ function You({ name, inBar }: { name: string; inBar: boolean }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
+  rules: { lineHeight: 26 },
   bar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -484,14 +630,6 @@ const styles = StyleSheet.create({
   },
   onLabel: { color: tokens.colorInkOnDarkSecondary },
   onInk: { color: tokens.colorInkOnDark },
-  clock: {
-    gap: tokens.spaceMd,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusCardPhone,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-  },
   card: {
     gap: tokens.spaceSm,
     padding: tokens.spaceLg,

@@ -1,6 +1,7 @@
 import { type OrganisationEvent } from '@soirely/api-client';
 import {
-  comingUp,
+  comingUpPanel,
+  formatEventClock,
   type EventTimeline as Timeline,
   type MarkedMilestone,
   markedMilestones,
@@ -8,18 +9,26 @@ import {
   namesZone,
   milestoneMoment,
   serverClock,
+  shownPhase,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { listEventOf, rowLine, shownEvent, venuePlace } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { useLoadedAt } from '../../../serverNow.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { distanceWords } from './distanceWords.ts';
-import { Glyph } from '../../../components/Glyph.tsx';
+import { EventThumb } from '../../../components/EventCard.tsx';
+import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
+import { RowWords } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import '../../../components/SettingsParts.css';
+import '../../../components/eventPage.css';
+import './guests.css';
+import './allDates.css';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
@@ -34,6 +43,12 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
   event: 'timeline.key_event',
   you: 'timeline.key_you',
   automatic: 'timeline.key_automatic',
+};
+
+const OWNER_GLYPH: Record<MilestoneOwner, GlyphName> = {
+  event: 'events',
+  you: 'user',
+  automatic: 'refresh',
 };
 
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
@@ -82,7 +97,7 @@ function readerZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Event View's panel: the next four, or why there are none, in rows held at one height. */
+/** Event View's panel: the next four, or why there are none, in rows held at one height; while it is on with none, when it ends, as Today's live cover says it (sc-93858). */
 export function ComingUp({
   event,
   timeline: { load, now, retried, retry },
@@ -94,8 +109,7 @@ export function ComingUp({
   heading: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
-  const shown =
-    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
+  const panel = load.kind === 'loaded' ? comingUpPanel(event, load.timeline.milestones, now) : null;
 
   return (
     <section className="card coming-up" aria-labelledby="coming-up-title">
@@ -116,7 +130,14 @@ export function ComingUp({
       <div className="coming-up-rows">
         {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
-        {load.kind === 'loaded' && shown.length === 0 && (
+        {load.kind === 'loaded' && panel?.kind === 'endsToday' && (
+          <p className="timeline-inset arrives">
+            {t('today.endsToday', {
+              time: formatEventClock(event.endsAt, event.timeZone, dateLocale()),
+            })}
+          </p>
+        )}
+        {load.kind === 'loaded' && panel?.kind === 'finished' && (
           <p className="timeline-inset timeline-finished arrives">
             <span className="timeline-finished-mark" aria-hidden="true">
               ✓
@@ -124,15 +145,14 @@ export function ComingUp({
             {t('timeline.finished')}
           </p>
         )}
-        {load.kind === 'loaded' && shown.length > 0 && (
+        {load.kind === 'loaded' && panel?.kind === 'rows' && (
           <ol className="timeline-list arrives">
-            {shown.map((marked, index) => (
+            {panel.rows.map((marked, index) => (
               <MilestoneRow
                 key={index}
                 marked={marked}
                 timeZone={load.timeline.timeZone}
                 now={now}
-                distance
               />
             ))}
           </ol>
@@ -142,7 +162,7 @@ export function ComingUp({
   );
 }
 
-/** Every milestone, earliest first, under the line naming the event's zone. */
+/** All dates as its demo draws it (sc-98187): the title, the event's strip, then every milestone earliest first in flat rows under the line naming the event's zone, and the key. */
 export function AllDates({
   event,
   now: tick,
@@ -154,40 +174,114 @@ export function AllDates({
 }) {
   const { t } = useTranslation();
   const { load, now, retried, retry } = useTimeline(event, heading, tick);
+  const loadedAt = useLoadedAt(event);
+  const strip = shownEvent(
+    { ...listEventOf({ ...event, milestones: [] }), place: venuePlace(event.venue, t) },
+    shownPhase(event, loadedAt, tick),
+  );
 
   return (
-    <>
+    <div className="dates">
+      <h1 ref={heading} className="gs-title" tabIndex={-1}>
+        {t('timeline.allDates')}
+      </h1>
+      <div className="ev-strip">
+        <EventThumb event={strip} size={40} />
+        <RowWords title={event.name} lines={[rowLine(strip, tick, dateLocale(), t)]} />
+      </div>
       {load.kind === 'loading' && <DatesLoading />}
-      {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
+      {load.kind === 'failed' && (
+        <div className="dates-failed" role={retried ? 'alert' : undefined}>
+          <p>
+            <Glyph name="alert" size={16} weight={2.2} />
+            {t('timeline.failed')}
+          </p>
+          <button type="button" className="gs-pill is-secondary" onClick={retry}>
+            {t('timeline.retry')}
+          </button>
+        </div>
+      )}
       {load.kind === 'loaded' && (
         <>
-          <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
-          <ol className="timeline-list arrives">
+          <p className="dates-intro">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
+          <ol className="desk-rows ev-details arrives">
             {markedMilestones(load.timeline.milestones, now, event.status === 'ended').map(
               (marked, index) => (
-                <MilestoneRow
-                  key={index}
-                  marked={marked}
-                  timeZone={load.timeline.timeZone}
-                  now={now}
-                  distance={false}
-                />
+                <DateRow key={index} marked={marked} timeZone={load.timeline.timeZone} now={now} />
               ),
             )}
           </ol>
-          <dl className="timeline-key">
+          <dl className="dates-key">
             {(['event', 'you', 'automatic'] as const).map((owner) => (
-              <div key={owner}>
-                <dt>
-                  <OwnerPill owner={owner} />
-                </dt>
+              <div key={owner} className="dates-key-row">
+                <OwnerLead owner={owner} />
+                <dt>{t(OWNER_WORD[owner])}</dt>
                 <dd>{t(OWNER_KEY[owner])}</dd>
               </div>
             ))}
           </dl>
         </>
       )}
-    </>
+    </div>
+  );
+}
+
+function OwnerLead({ owner }: { owner: MilestoneOwner }) {
+  return (
+    <span className="ev-lead" aria-hidden="true">
+      <Glyph name={OWNER_GLYPH[owner]} size={22} weight={2} />
+    </span>
+  );
+}
+
+function DateRow({
+  marked: { milestone, standing, nextUp },
+  timeZone,
+  now,
+}: {
+  marked: MarkedMilestone;
+  timeZone: string;
+  now: Date;
+}) {
+  const { t } = useTranslation();
+  const moment = milestoneMoment(milestone.at, timeZone, now, dateLocale());
+
+  return (
+    <li>
+      <div className="desk-row dates-row">
+        <OwnerLead owner={milestone.owner} />
+        <RowWords
+          title={milestone.title}
+          lines={[
+            <time key="when" dateTime={milestone.at}>
+              {t('timeline.ownerMoment', { owner: t(OWNER_WORD[milestone.owner]), moment })}
+            </time>,
+            ...(milestone.note == null ? [] : [milestone.note]),
+          ]}
+        />
+        <span className="dates-tags">
+          {standing === 'overdue' && (
+            <span className="dates-tag is-overdue">
+              <Glyph name="alert" size={13} weight={2.4} />
+              {t('timeline.overdue')}
+            </span>
+          )}
+          {standing === 'passed' && (
+            <span className="dates-tag is-passed">
+              <Glyph name="tick" size={13} weight={2.6} />
+              {t('timeline.passed')}
+            </span>
+          )}
+          {nextUp && <span className="dates-tag">{t('timeline.nextUp')}</span>}
+        </span>
+      </div>
+      {milestone.action != null && (
+        <Link className="desk-text ev-maps" to={milestone.action.link}>
+          {milestone.action.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
+    </li>
   );
 }
 
@@ -216,16 +310,15 @@ function DatesFailed({ announced, onRetry }: { announced: boolean; onRetry: () =
   );
 }
 
+/** A Coming up row: the moment, named with its zone when the reader's differs, and how far off it is. */
 function MilestoneRow({
   marked,
   timeZone,
   now,
-  distance,
 }: {
   marked: MarkedMilestone;
   timeZone: string;
   now: Date;
-  distance: boolean;
 }) {
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
@@ -235,16 +328,14 @@ function MilestoneRow({
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>
       <p className="timeline-when">
         <time dateTime={milestone.at}>
-          {distance && namesZone(timeZone, readerZone())
+          {namesZone(timeZone, readerZone())
             ? t('timeline.momentInZone', { moment, timeZone })
             : moment}
         </time>
-        {distance && (
-          <span className="muted">
-            {' '}
-            · <Distance at={milestone.at} timeZone={timeZone} now={now} />
-          </span>
-        )}
+        <span className="muted">
+          {' '}
+          · <Distance at={milestone.at} timeZone={timeZone} now={now} />
+        </span>
       </p>
       <p className="timeline-title">{milestone.title}</p>
       {milestone.note != null && <p className="muted timeline-note">{milestone.note}</p>}

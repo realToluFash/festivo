@@ -12,6 +12,7 @@ import { TabBar } from '../../components/TodayCover.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { areaTrack } from '../events/EventFrame.tsx';
 import { Face } from '../people/PeopleRole.tsx';
 import {
   listed,
@@ -40,7 +41,6 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import {
-  type CodeChoice,
   atWords,
   clockWords,
   dayWords,
@@ -54,7 +54,14 @@ import {
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
-import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
+import { stationItem, type TonightRow } from '../station/TonightRows.tsx';
+import {
+  AREA_WORDS,
+  areasFor,
+  type InsideArea,
+  type InsideLevel,
+  moreAreas,
+} from './RedeemModel.ts';
 
 const AREA_GLYPH: Record<InsideArea, GlyphName> = { ...EVENT_GLYPH, checkIn: 'tick' };
 const TABS = [
@@ -63,6 +70,8 @@ const TABS = [
   [W.more, 'dots'],
 ] as const satisfies readonly (readonly [string, GlyphName])[];
 type Tab = (typeof TABS)[number][0];
+/** A service level has no Guests: Overview, and More for the account (sc-96279). */
+const SERVICE_TABS = TABS.filter(([tab]) => tab !== W.guests);
 
 const JOAO: PeopleViewer = { id: JOAO_ID, role: 'Member' };
 const CHECK_IN_LATER = 'Check-in has its own design.';
@@ -95,6 +104,9 @@ export interface NightRow {
   onOpen: () => void;
 }
 
+/** Someone whose access opens the kitchen stations, on the event's day (sc-95382): under Your night, or first. */
+export type StationRow = TonightRow;
+
 export interface MoreGroup {
   key: string;
   title: string;
@@ -124,6 +136,7 @@ export function InsideEvent({
   shown = doorEvent(code),
   groups = [],
   night,
+  station,
   onAt,
   onSignOut,
   onAccount,
@@ -132,10 +145,11 @@ export function InsideEvent({
   locale: string;
   moreAtStart?: boolean;
   code?: Redeemable;
-  role: CodeChoice;
+  role: InsideLevel;
   shown?: Shown;
   groups?: readonly MoreGroup[];
   night?: NightRow;
+  station?: StationRow;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -167,6 +181,7 @@ export function InsideEvent({
         locale={locale}
         you={!side}
         night={night}
+        station={station}
         onPeople={() => onAt('people')}
         onSignOut={onSignOut}
         tell={tell}
@@ -261,12 +276,12 @@ export function InsideEvent({
           at={at}
           top={insets.top + tokens.spaceSm}
           onArea={go}
-          onMore={() => setMore(true)}
+          onMore={groups.length > 0 ? () => setMore(true) : null}
         />
       )}
       {phone && (
         <TabBar
-          tabs={TABS}
+          tabs={areasFor(role).includes('guests') ? TABS : SERVICE_TABS}
           bottom={foot}
           at={at === 'people' ? W.more : W.overview}
           onTab={onTab}
@@ -346,7 +361,8 @@ function SideBar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Initials name={who} size={12} weight="bold" style={styles.faceInk} />
+          <EventMesh event={{ mesh: 'amber', photo: null }} />
+          <Initials name={who} size={12} weight="bold" />
         </View>
         <Text size={14} weight="semibold" accessible={false} style={styles.grow}>
           {who}
@@ -364,23 +380,80 @@ function Overview({
   locale,
   you,
   night,
+  station,
   onPeople,
   onSignOut,
   tell,
 }: {
   shown: Shown;
-  role: CodeChoice;
+  role: InsideLevel;
   who: string;
   locale: string;
   /** Signed in as and Sign out at the foot; on its side the person button holds them. */
   you: boolean;
   night: NightRow | undefined;
+  station: StationRow | undefined;
   onPeople: () => void;
   onSignOut: () => void;
   tell: (words: string) => void;
 }) {
   const until = atWords(shown.ends, locale, shown.day);
   const checks = role === 'Can check guests in';
+  /** A service level opens no Guests or People: Overview is its card, Your night and the service (sc-96279). */
+  const reads = areasFor(role).includes('guests');
+  const rows = [
+    ...(night == null
+      ? []
+      : [
+          {
+            key: 'night',
+            inset: 40,
+            row: (
+              <Row
+                title={W.yourNight}
+                line={night.line}
+                lead={<LineIcon name="clock" />}
+                opens
+                onPress={night.onOpen}
+                testID="inside.night"
+              />
+            ),
+          },
+        ]),
+    ...(station == null ? [] : [stationItem(station, 'inside.station')]),
+    ...(reads
+      ? [
+          {
+            key: 'guests',
+            inset: 40,
+            row: (
+              <Row
+                title={W.guests}
+                line={W.guestsLine}
+                lead={<LineIcon name="users" />}
+                opens
+                onPress={() => tell('Guests has its own design.')}
+                testID="inside.guests"
+              />
+            ),
+          },
+          {
+            key: 'people',
+            inset: 40,
+            row: (
+              <Row
+                title={W.people}
+                line={onEventCount(everyone().length)}
+                lead={<LineIcon name="people" />}
+                opens
+                onPress={onPeople}
+                testID="inside.people"
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -414,56 +487,7 @@ function Overview({
           strong
         />
       </SummaryCard>
-      <RowList
-        items={[
-          ...(night == null
-            ? []
-            : [
-                {
-                  key: 'night',
-                  inset: 40,
-                  row: (
-                    <Row
-                      title={W.yourNight}
-                      line={night.line}
-                      lead={<LineIcon name="clock" />}
-                      opens
-                      onPress={night.onOpen}
-                      testID="inside.night"
-                    />
-                  ),
-                },
-              ]),
-          {
-            key: 'guests',
-            inset: 40,
-            row: (
-              <Row
-                title={W.guests}
-                line={W.guestsLine}
-                lead={<LineIcon name="users" />}
-                opens
-                onPress={() => tell('Guests has its own design.')}
-                testID="inside.guests"
-              />
-            ),
-          },
-          {
-            key: 'people',
-            inset: 40,
-            row: (
-              <Row
-                title={W.people}
-                line={onEventCount(everyone().length)}
-                lead={<LineIcon name="people" />}
-                opens
-                onPress={onPeople}
-                testID="inside.people"
-              />
-            ),
-          },
-        ]}
-      />
+      {rows.length > 0 && <RowList items={rows} />}
       {you && <You who={who} onSignOut={onSignOut} />}
     </>
   );
@@ -668,7 +692,7 @@ function MoreSheet({
   );
 }
 
-/** Upright, the event's tabs as a capsule at the top, each area with its glyph, as the product's sc-71 shell draws them. */
+/** Upright, the event's tabs as the product's shell draws them inside an event, `EventFrame`'s track across the page with the chosen tab raised on white (sc-30413): More only when it holds the account's groups, the account itself being at Overview's foot. */
 function Capsule({
   areas,
   at,
@@ -680,17 +704,17 @@ function Capsule({
   at: 'overview' | 'people';
   top: number;
   onArea: (area: InsideArea) => void;
-  onMore: () => void;
+  onMore: (() => void) | null;
 }) {
-  const tabs: readonly (InsideArea | 'more')[] = [...areas, 'more'];
+  const tabs: readonly (InsideArea | 'more')[] = onMore == null ? areas : [...areas, 'more'];
 
   return (
     <View style={[styles.capsuleAt, { top }]} pointerEvents="box-none">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.capsuleBar}
-        contentContainerStyle={styles.capsule}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
       >
         {tabs.map((tab) => {
@@ -701,20 +725,15 @@ function Capsule({
           return (
             <Pressable
               key={tab}
-              onPress={() => (tab === 'more' ? onMore() : onArea(tab))}
-              style={[styles.capsuleTab, on && styles.capsuleOn]}
+              onPress={() => (tab === 'more' ? onMore?.() : onArea(tab))}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={label}
               testID={`inside.tab.${tab}`}
             >
-              <Glyph name={tab === 'more' ? 'dots' : AREA_GLYPH[tab]} ink={ink} />
-              <Text
-                size={15}
-                weight={on ? 'semibold' : 'medium'}
-                accessible={false}
-                style={{ color: ink }}
-              >
+              <Glyph name={tab === 'more' ? 'dots' : AREA_GLYPH[tab]} size={18} ink={ink} />
+              <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
                 {label}
               </Text>
             </Pressable>
@@ -751,11 +770,10 @@ const styles = StyleSheet.create({
     width: tokens.space5xl,
     height: tokens.space5xl,
     borderRadius: tokens.spaceXl,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
   },
-  faceInk: { color: tokens.colorAccentText },
   person: {
     minHeight: 52,
     flexDirection: 'row',
@@ -794,19 +812,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: tokens.space5xl,
     right: tokens.space5xl,
-    alignItems: 'center',
     zIndex: 2,
   },
-  capsuleBar: { flexGrow: 0, borderRadius: 25, backgroundColor: tokens.colorInset },
-  capsule: { flexDirection: 'row', gap: tokens.spaceHair, padding: 3 },
-  capsuleTab: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 13,
-    paddingRight: tokens.spaceXl,
-    borderRadius: tokens.sizeHit / 2,
-  },
-  capsuleOn: { backgroundColor: tokens.colorAccentTint },
 });

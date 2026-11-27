@@ -1,10 +1,5 @@
 /* The Roster on the event's Staff page (sc-3906), as its demo draws it: src/demo/roster.css, with the menu's docked panel and the stations' card it borrows. */
 
-/* The card scrolls, not Settings' desk-page inside it: a desk-page that never scrolls holds its sticky children where they sit, so the bar stayed below the fold on a long roster (sc-3912, #78264). */
-.rs.desk-page {
-  overflow: visible;
-}
-
 .rs .mn-page {
   display: flex;
   flex-direction: column;
@@ -613,4 +608,14 @@
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeBody);
+}
+
+.rs-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceXxl);
+  color: var(--colorInkSecondary);
+  text-align: center;
 }

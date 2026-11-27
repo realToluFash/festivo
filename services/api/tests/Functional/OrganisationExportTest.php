@@ -99,6 +99,8 @@ final class OrganisationExportTest extends ApiTestCase
         'menu_dish_choices' => ['id', 'dish_id', 'position', 'question', 'pick', 'required'],
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
         'meal_answers' => ['id', 'guest_id', 'course_id', 'kind', 'dish_id', 'variant_id', 'options', 'created_at', 'updated_at'],
+        'kitchen_final_numbers' => ['event_id', 'due_on'],
+        'kitchen_copies' => ['id', 'event_id', 'recorded_at', 'recorded_by_name', 'sheet'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
@@ -107,6 +109,7 @@ final class OrganisationExportTest extends ApiTestCase
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
+        'staff_attendance' => ['shift_id', 'staff_id', 'removed_name', 'clocked_in_at', 'clocked_out_at', 'corrected_in_at', 'in_corrected_by', 'corrected_out_at', 'out_corrected_by'],
         'staff_rates' => ['id', 'event_id', 'job_id', 'staff_id', 'pay', 'amount_minor', 'amount_currency', 'set_at'],
         'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
         'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
@@ -349,6 +352,30 @@ final class OrganisationExportTest extends ApiTestCase
             self::assertSame(Str\join($columns, ','), $lines[0], $name);
             self::assertCount(Iter\count($table($name)) + 1, $lines, $name);
         }
+    }
+
+    #[Test]
+    public function theArchiveHoldsTheFinalNumbersDayAndEachKitchenCopyAsItWasGiven(): void
+    {
+        $eventId = $this->newEvent();
+        $this->row('kitchen_final_numbers', ['event_id' => $eventId, 'due_on' => '2026-11-03']);
+        $sheet = Json\encode(['coming' => 2, 'names' => true, 'allergic' => [['name' => 'Bísí Adéwálé']], 'allergyCounts' => [['code' => 'peanuts', 'count' => 1]]]);
+        $named = $this->row('kitchen_copies', ['event_id' => $eventId, 'recorded_at' => '2026-10-16 09:00:00', 'recorded_by_name' => 'Folake Adeyemi', 'names' => true, 'sheet' => $sheet]);
+        $counted = $this->row('kitchen_copies', ['event_id' => $eventId, 'recorded_at' => '2026-10-16 10:00:00', 'recorded_by_name' => 'Julien Moreau', 'names' => false, 'sheet' => $sheet]);
+
+        $files = $this->archive();
+        $json = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($files['archive.json']));
+
+        self::assertSame([['event_id' => $eventId, 'due_on' => '2026-11-03']], $json['kitchen_final_numbers']);
+        $copies = Type\vec(Type\shape(['id' => Type\string(), 'recorded_at' => Type\string(), 'recorded_by_name' => Type\string(), 'sheet' => Type\dict(Type\string(), Type\mixed())], true))->coerce($json['kitchen_copies']);
+        self::assertSame(
+            [[$named, '2026-10-16T09:00:00Z', 'Folake Adeyemi'], [$counted, '2026-10-16T10:00:00Z', 'Julien Moreau']],
+            Vec\map($copies, static fn (array $copy): array => [$copy['id'], $copy['recorded_at'], $copy['recorded_by_name']]),
+        );
+        self::assertEquals([[['name' => 'Bísí Adéwálé']], null], Vec\map($copies, static fn (array $copy): mixed => $copy['sheet']['allergic']));
+        self::assertSame([true, false], Vec\map($copies, static fn (array $copy): mixed => $copy['sheet']['names']));
+        self::assertEquals([['code' => 'peanuts', 'count' => 1]], $copies[1]['sheet']['allergyCounts']);
+        self::assertCount(2, Str\split($files['kitchen_copies.csv'], 'Bísí'), 'the CSV names the guest in the named copy only');
     }
 
     #[Test]

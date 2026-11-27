@@ -158,12 +158,15 @@ import {
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import type { BriefingState } from '../briefing/briefingModel.ts';
+import type { ShiftState } from '../shiftNotices/shiftNoticesModel.ts';
 import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { type TonightRow, TonightRows } from '../station/TonightRows.tsx';
 import { isBellState } from '../messages/BellStates.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
@@ -240,6 +243,8 @@ export function EventScreen({
   guests = null,
   budget = null,
   staff = null,
+  briefing = null,
+  shift = null,
   people = null,
   peopleParams,
   guestsFrom: figureOpens = null,
@@ -249,6 +254,8 @@ export function EventScreen({
   failed = null,
   opened: openedOver,
   clock,
+  night,
+  station,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -260,6 +267,10 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The Staff area's roster state (sc-77903). */
   staff?: RosterState | null;
+  /** sc-3917: the briefing above the roster, on a tablet. */
+  briefing?: BriefingState | null;
+  /** sc-4333: the reminder card and each person's shift notices, on every layout. */
+  shift?: ShiftState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
   /** People's own query, when People opens in this frame from its own page (sc-67665). */
@@ -276,6 +287,10 @@ export function EventScreen({
   opened?: Opened | undefined;
   /** The moment the frame reads as now, when what it holds runs on its own sample's clock (sc-72). */
   clock?: Date | undefined;
+  /** Your night, for a member of the organisation with a shift (sc-3915). */
+  night?: TonightRow | undefined;
+  /** Kitchen station, under Your night or in its place, on the event's day (sc-95382). */
+  station?: TonightRow | undefined;
 }) {
   const shell = useShell();
   const top = useBehind(openedOver);
@@ -599,6 +614,7 @@ export function EventScreen({
       else setAt('overview');
     },
   });
+  const tonight = <TonightRows night={night} station={station} />;
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -879,7 +895,7 @@ export function EventScreen({
   if (at === 'staff' && messagesHere)
     page = (
       <AreaPage area={at} event={shown} locale={dateLocale()}>
-        <StaffRoster state={staff ?? 'populated'} />
+        <StaffRoster state={staff ?? 'populated'} briefing={briefing} shift={shift} />
       </AreaPage>
     );
   else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;
@@ -914,6 +930,7 @@ export function EventScreen({
         }
         right={
           <>
+            {tonight}
             {numbers}
             {peopleCard}
             {guestsPage}
@@ -927,6 +944,7 @@ export function EventScreen({
             {banner}
             {demoNote}
             {thankYou}
+            {tonight}
             {numbers}
             {peopleCard}
             {details}

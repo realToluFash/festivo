@@ -223,14 +223,13 @@ describe('Needs you’s rows are the timeline’s You milestones (sc-29884)', ()
   const rows = (needing: 'overdue' | 'one' | 'none' | 'long') =>
     momentOf('plan', us, t, { needing });
 
-  it('has one row an event, each opening that event and none with an action', () => {
+  it('has one row an event, each opening that event', () => {
     const { needs } = momentOf('plan', us, t);
 
     expect(needs?.map(({ event }) => event.id)).toEqual(['party', 'wed', 'ireti', 'draft']);
     expect(new Set(needs?.map(({ title }) => title))).toEqual(
       new Set(['Give final numbers to the kitchen']),
     );
-    expect(needs?.every(({ action }) => action === '')).toBe(true);
   });
 
   it('draws every overdue form at 23:59 on the due day', () => {

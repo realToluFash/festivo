@@ -42,6 +42,8 @@
     "check_in_closed": "Arrivals can’t be recorded now.",
     "staff_number_shared": "That number is already on the roster.",
     "staff_job_staffed": "People are on this job’s shifts.",
+    "staff_job_worked": "Someone has worked a shift in this job.",
+    "staff_shift_worked": "They have worked this shift.",
     "staff_shift_full": "Every place on this shift is filled.",
     "staff_works_as": "This person works another job on this event.",
     "staff_shift_overlap": "This person is on another shift at that time.",
@@ -171,6 +173,6 @@
     "table_nothing_to_serve": "There is nothing to put on a tray for this table yet.",
     "tray_check_incomplete": "Mark every item On, or Not on and Bring after, before checking the tray.",
     "undo_expired": "It is more than 2 minutes since that step, so it cannot be undone.",
-    "service_changed": "This changed while you were offline. Nothing was changed.",
+    "service_changed": "Someone else changed this while you were offline. Nothing was saved.",
     "expected_required": "Send what the tap saw with each service step."
 }

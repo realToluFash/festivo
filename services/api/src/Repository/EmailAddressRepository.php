@@ -8,6 +8,7 @@ use App\Domain\User\EmailAddressNormaliser;
 use App\Entity\EmailAddress;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Vec;
 
 /** @extends ServiceEntityRepository<EmailAddress> */
 final class EmailAddressRepository extends ServiceEntityRepository
@@ -34,6 +35,28 @@ final class EmailAddressRepository extends ServiceEntityRepository
             ->andWhere('e.address LIKE :atDomain')
             ->setParameter('atDomain', '%@' . $domain)
             ->orderBy('e.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @param list<string> $addresses
+     *
+     * @return list<EmailAddress> the verified ones among them, with their accounts
+     */
+    public function findVerifiedAmong(array $addresses): array
+    {
+        if ([] === $addresses) {
+            return [];
+        }
+
+        /** @var list<EmailAddress> */
+        return $this->createQueryBuilder('e')
+            ->select('e', 'u')
+            ->innerJoin('e.user', 'u')
+            ->where('e.address IN (:addresses)')
+            ->andWhere('e.verifiedAt IS NOT NULL')
+            ->setParameter('addresses', Vec\map($addresses, EmailAddressNormaliser::normalise(...)))
             ->getQuery()
             ->getResult();
     }

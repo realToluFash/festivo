@@ -93,6 +93,9 @@ import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
+import { JOINED } from './noOrg.ts';
+import { OutsideSide } from './NoOrgEvent.tsx';
+import { areasAt, wallClock, wallDay } from './outsideEvents.ts';
 import { type SampleEvent } from './events.ts';
 import { RETRY_MS } from './general.ts';
 import { Pill } from './GuestsParts.tsx';
@@ -182,6 +185,8 @@ import './menu.css';
 import './menuLibrary.css';
 import './menuCourses.css';
 
+const OUTSIDER = JOINED.joao;
+
 const SAMPLE_LIBRARY = SAMPLE_DISHES.filter((one) => !one.archived);
 
 /** sc-3902's event Menu (board Menu, page e32): its courses in order with the dishes on each, at a desk and down to a 320 px web window. */
@@ -204,15 +209,35 @@ export function CoursesAt({
       <EventsShell
         renderSide={(tell, covered) => (
           <div className={navOpen ? 'mc-nav is-open' : 'mc-nav'} id="mc-nav">
-            <EventSidebar
-              event={event}
-              area="menu"
-              now={clockOfKitchen()}
-              tell={tell}
-              inert={covered}
-              waiting={waitingLine(keptInbox())}
-              menuLine={menuReady}
-            />
+            {first.outside === true ? (
+              <OutsideSide
+                card={{
+                  name: event.name,
+                  when: `${wallDay(event.startsAt)} · ${wallClock(event.startsAt)}`,
+                  cover: event.mesh,
+                }}
+                areas={areasAt('Can edit')}
+                current="menu"
+                person={{
+                  name: OUTSIDER[0],
+                  initials: OUTSIDER[1],
+                  tone: OUTSIDER[2],
+                  role: 'Can edit',
+                }}
+                tell={tell}
+                inert={covered}
+              />
+            ) : (
+              <EventSidebar
+                event={event}
+                area="menu"
+                now={clockOfKitchen()}
+                tell={tell}
+                inert={covered}
+                waiting={waitingLine(keptInbox())}
+                menuLine={menuReady}
+              />
+            )}
           </div>
         )}
       >
@@ -226,6 +251,7 @@ export function CoursesAt({
                 navOpen={navOpen}
                 onNav={() => setNavOpen((now) => !now)}
                 withheld={first.system === 'noAccess'}
+                outside={first.outside === true}
               />
               <Body first={first} lang={lang} budget={budget} tell={tell} onReady={setMenuReady} />
             </div>
@@ -242,12 +268,15 @@ function Crumbs({
   navOpen,
   onNav,
   withheld,
+  outside,
 }: {
   event: SampleEvent;
   tell: Tell;
   navOpen: boolean;
   onNav: () => void;
   withheld: boolean;
+  /** sc-95116: held from outside, the page has no Events to go back to and no bell, as the product's outsider shell (sc-71). */
+  outside: boolean;
 }) {
   return (
     <div className="ev-crumb-row">
@@ -261,28 +290,30 @@ function Crumbs({
         <Glyph name={navOpen ? 'clear' : 'filter'} size={16} weight={2.4} />
         {navOpen ? CW.closeNavigation : CW.navigation}
       </button>
-      <nav className="ev-crumb" aria-label={CW.crumb}>
-        <ol>
-          <li className="ev-crumb-part">
-            <Link to="/demo/events">{CW.events}</Link>
-          </li>
-          {!withheld && (
-            <>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{CW.title}</span>
-              </li>
-            </>
-          )}
-        </ol>
-      </nav>
-      <DemoBell tell={tell} />
+      {!outside && (
+        <nav className="ev-crumb" aria-label={CW.crumb}>
+          <ol>
+            <li className="ev-crumb-part">
+              <Link to="/demo/events">{CW.events}</Link>
+            </li>
+            {!withheld && (
+              <>
+                <li className="ev-crumb-part">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
+                    {event.name}
+                  </Link>
+                </li>
+                <li className="ev-crumb-part" aria-current="page">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <span className="ev-crumb-name">{CW.title}</span>
+                </li>
+              </>
+            )}
+          </ol>
+        </nav>
+      )}
+      {!outside && <DemoBell tell={tell} />}
     </div>
   );
 }

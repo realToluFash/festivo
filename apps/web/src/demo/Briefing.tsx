@@ -14,7 +14,9 @@ import {
   afterBriefMark,
   asPerson,
   checkOf,
+  cost,
   countLine,
+  endedPeople,
   dueAll,
   dueChanged,
   fitRules,
@@ -22,6 +24,7 @@ import {
   noteOf,
   onShift,
   resultLines,
+  stoppedFor,
   sendTo,
   tallyOf,
 } from './briefing.ts';
@@ -30,7 +33,18 @@ import { Pill } from './GuestsParts.tsx';
 import { MN } from './myNight.ts';
 import { type Entry, sorted } from './roster.ts';
 import { ISSUE_MS, SAMPLE_LINK, copyIssued, plainItem } from './staffLink.ts';
+import { QUIET_ENDS } from './staffText.ts';
 import { Select } from './Stations.tsx';
+import { NoticeLines, ReminderCard, UnreachableWord } from './Notices.tsx';
+import {
+  type Concluded,
+  NW,
+  cardOf,
+  removalLine,
+  rowLines,
+  sendsOffered,
+  stateOf,
+} from './notices.ts';
 import './guests.css';
 import './menu.css';
 import './myNight.css';
@@ -53,6 +67,8 @@ export interface Briefing {
   dismiss: () => void;
   /** A person added or edited on the Roster, with their briefing kept. */
   adopt: (made: Entry, before: Entry | null) => Entry;
+  removal: (one: Entry) => string | null;
+  footnote: string | null;
 }
 
 const OFF: Briefing = {
@@ -65,6 +81,8 @@ const OFF: Briefing = {
   check: null,
   dismiss: () => undefined,
   adopt: (made) => made,
+  removal: () => null,
+  footnote: null,
 };
 
 /** The briefing's state and actions on the Roster's own rows: a briefing copy turns the Link column to Copied, and a Link-column copy leaves Briefing alone. */
@@ -97,6 +115,9 @@ export function useBriefing({
   const [draft, setDraft] = useState(first?.draft ?? null);
   const [cut, setCut] = useState(first?.cut ?? false);
   const [saved, setSaved] = useState(first?.saved ?? false);
+  const [notSaved, setNotSaved] = useState(first?.notSaved ?? false);
+  const [previewAt, setPreviewAt] = useState(first?.previewAt ?? 'shown');
+  const [previewStuck, setPreviewStuck] = useState(first?.previewAt === 'loading');
   const [busy, setBusy] = useState(first?.busy ?? null);
   const [missed, setMissed] = useState(first?.missed ?? null);
   const [handHeld, setHandHeld] = useState(first?.handHeld ?? null);
@@ -106,6 +127,11 @@ export function useBriefing({
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
   const [result, setResult] = useState(first?.result ?? null);
+  const [remindOn, setRemindOn] = useState(first?.notices?.on ?? true);
+  const [remindNotSaved, setRemindNotSaved] = useState(first?.notices?.notSaved ?? false);
+  const [concluded, setConcluded] = useState(first?.notices?.concluded ?? null);
+  const [stale, setStale] = useState(first?.notices?.stale ?? false);
+  const [over, setOver] = useState(first?.notices?.alreadyOver ?? false);
 
   useEffect(() => {
     if (first?.handHeld == null) return;
@@ -120,18 +146,29 @@ export function useBriefing({
     return () => window.clearTimeout(timer);
   }, [check, checkAt, stuck]);
 
+  useEffect(() => {
+    if (previewAt !== 'loading' || previewStuck) return;
+    const timer = window.setTimeout(() => setPreviewAt('shown'), ISSUE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [previewAt, previewStuck]);
+
   if (first == null) return OFF;
 
   const people = entries as readonly Person[];
   const manage = first.access === 'manage';
   const acts = manage && !first.finished;
-  const sends = acts && first.live;
+  const notices = first.notices;
+  const sends = acts && sendsOffered(first.live, concluded);
   const rows = sorted(people) as Person[];
   const here = (id: string) => people.find((one) => one.id === id);
   const shown = (id: string) => here(id) as Person;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
+  const unreachable =
+    notices == null ? 0 : people.filter((one) => stateOf(one) === 'unreachable').length;
+  tally.none -= unreachable;
 
   function open(next: Side) {
     onSide();
@@ -202,6 +239,15 @@ export function useBriefing({
   }
 
   function ask(target: string) {
+    if (stale) {
+      setStale(false);
+      setConcluded('ended');
+      setOver(true);
+      setEntries(endedPeople());
+      announce(NW.alreadyOver);
+      focus('sv-over');
+      return;
+    }
     setStuck(false);
     setSendFailed(false);
     setCheckAt('loading');
@@ -217,7 +263,12 @@ export function useBriefing({
           ? changed
           : people.filter((one) => one.id === check);
   const costs: Check | null =
-    check == null ? null : checkOf(due, noMobileFor(people, check), credits);
+    check == null
+      ? null
+      : checkOf(due, noMobileFor(people, check), credits, {
+          stopped: stoppedFor(people, check),
+          quiet: first.quiet,
+        });
 
   function closeCheck() {
     focus(
@@ -242,7 +293,13 @@ export function useBriefing({
       setEntries(sent.people);
       spend(costs.credits);
       setCheck(null);
-      const lines = resultLines(sent.sent, costs.noMobile, sent.held.length);
+      const lines = resultLines(
+        sent.sent,
+        costs.noMobile,
+        sent.held.length,
+        costs.stopped,
+        sent.waits.length,
+      );
       setResult({ lines, held: sent.held });
       announce(lines.join(' '));
       focus('bf-result');
@@ -259,6 +316,7 @@ export function useBriefing({
   }
 
   function saveRules() {
+    setNotSaved(false);
     setRules((draft ?? '').trim());
     setDraft(null);
     setSaved(true);
@@ -272,127 +330,171 @@ export function useBriefing({
   const heldHere = (result?.held ?? []).filter((id) => here(id) != null);
   const previewed = side?.kind === 'preview' ? here(side.id) : undefined;
 
+  function flip(next: boolean) {
+    if (notices?.saves === false) {
+      setRemindNotSaved(true);
+      announce(NW.notSaved(remindOn));
+      return;
+    }
+    setRemindNotSaved(false);
+    setRemindOn(next);
+  }
+
+  const reminder =
+    notices == null ? null : (
+      <ReminderCard
+        card={cardOf(
+          rows,
+          {
+            on: remindOn,
+            next: notices.next,
+            sent: notices.sent,
+            concluded,
+            balance: credits,
+          },
+          cost,
+        )}
+        manage={manage}
+        on={remindOn}
+        notSaved={remindNotSaved}
+        billing={first.billing}
+        ask={notices.ask}
+        owners={notices.owners}
+        over={over}
+        onSwitch={flip}
+      />
+    );
+
   const card = (
-    <section className="sn-card bf-card" aria-labelledby="bf-title">
-      <div className="sn-card-top">
-        <div className="sn-card-names">
-          <h2 id="bf-title">{BW.card}</h2>
-          <p className="mn-sub">{BW.cardSub}</p>
+    <>
+      <section className="sn-card bf-card" aria-labelledby="bf-title">
+        <div className="sn-card-top">
+          <div className="sn-card-names">
+            <h2 id="bf-title">{BW.card}</h2>
+            <p className="mn-sub">{BW.cardSub}</p>
+          </div>
         </div>
-      </div>
-      {!manage && (
-        <p className="mn-lock">
-          <Glyph name="lock" size={16} weight={2.2} />
-          {BW.lock}
-        </p>
-      )}
-      <ul className="bf-tally" aria-label="Where the briefing is">
-        {BRIEFS.map((brief) => (
-          <li key={brief}>
-            <BriefWord brief={brief} />
-            <span className="bf-tally-n">{tally[brief]}</span>
-          </li>
-        ))}
-      </ul>
-      {acts && (
-        <div className="bf-acts">
-          {sends && all.length > 0 && (
-            <button
-              id="bf-send"
-              type="button"
-              className="gs-pill is-primary"
-              aria-haspopup="dialog"
-              onClick={() => ask('all')}
-            >
-              {BW.sendAll(all.length)}
-            </button>
+        {!manage && (
+          <p className="mn-lock">
+            <Glyph name="lock" size={16} weight={2.2} />
+            {BW.lock}
+          </p>
+        )}
+        <ul className="bf-tally" aria-label="Where the briefing is">
+          {BRIEFS.map((brief) => (
+            <li key={brief}>
+              <BriefWord brief={brief} />
+              <span className="bf-tally-n">{tally[brief]}</span>
+            </li>
+          ))}
+          {unreachable > 0 && (
+            <li>
+              <UnreachableWord />
+              <span className="bf-tally-n">{unreachable}</span>
+            </li>
           )}
-          {sends && changed.length > 0 && (
+        </ul>
+        {acts && (
+          <div className="bf-acts">
+            {sends && all.length > 0 && (
+              <button
+                id="bf-send"
+                type="button"
+                className="gs-pill is-primary"
+                aria-haspopup="dialog"
+                onClick={() => ask('all')}
+              >
+                {BW.sendAll(all.length)}
+              </button>
+            )}
+            {sends && changed.length > 0 && (
+              <button
+                id="bf-changed"
+                type="button"
+                className="gs-pill is-secondary"
+                aria-haspopup="dialog"
+                onClick={() => ask('changed')}
+              >
+                {BW.sendChanged(changed.length)}
+              </button>
+            )}
             <button
-              id="bf-changed"
+              id="bf-copy"
               type="button"
               className="gs-pill is-secondary"
-              aria-haspopup="dialog"
-              onClick={() => ask('changed')}
+              aria-expanded={side?.kind === 'copy'}
+              onClick={() => open({ kind: 'copy' })}
             >
-              {BW.sendChanged(changed.length)}
+              {BW.copy}
             </button>
-          )}
-          <button
-            id="bf-copy"
-            type="button"
-            className="gs-pill is-secondary"
-            aria-expanded={side?.kind === 'copy'}
-            onClick={() => open({ kind: 'copy' })}
-          >
-            {BW.copy}
-          </button>
-        </div>
-      )}
-      <div className="bf-more">
-        <button
-          id="bf-rules"
-          type="button"
-          className="desk-text"
-          aria-expanded={side?.kind === 'rules'}
-          onClick={() => open({ kind: 'rules', editing: false })}
-        >
-          <Glyph name="pen" size={16} weight={2.3} />
-          {manage ? BW.editRules : BW.rules}
-        </button>
-        <button
-          id="bf-preview"
-          type="button"
-          className="desk-text"
-          aria-expanded={side?.kind === 'preview'}
-          onClick={() => {
-            const firstOne = rows.find((one) => one.shift != null) ?? rows[0];
-            if (firstOne != null) open({ kind: 'preview', id: firstOne.id });
-          }}
-        >
-          <Glyph name="eye" size={16} weight={2.3} />
-          {BW.previewAs}
-        </button>
-      </div>
-      {result != null && (
-        <div className="bf-result" id="bf-result" tabIndex={-1}>
-          <div className="bf-result-lines">
-            <Glyph name="tick" size={18} weight={2.6} />
-            <div>
-              {result.lines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
           </div>
-          {heldHere.length > 0 && (
-            <ul className="bf-held-list">
-              {heldHere.map((id) => (
-                <CopyRow
-                  key={id}
-                  one={shown(id)}
-                  acts={acts}
-                  busy={busy === id}
-                  missed={missed === id}
-                  handHeld={handHeld?.id === id ? handHeld.url : null}
-                  onCopy={() => void copy(id)}
-                  onMark={() => mark(id)}
-                  brief={false}
-                />
-              ))}
-            </ul>
-          )}
-          <button type="button" className="desk-text" onClick={() => setResult(null)}>
-            {BW.dismiss}
+        )}
+        <div className="bf-more">
+          <button
+            id="bf-rules"
+            type="button"
+            className="desk-text"
+            aria-expanded={side?.kind === 'rules'}
+            onClick={() => open({ kind: 'rules', editing: false })}
+          >
+            <Glyph name="pen" size={16} weight={2.3} />
+            {acts ? BW.editRules : BW.rules}
+          </button>
+          <button
+            id="bf-preview"
+            type="button"
+            className="desk-text"
+            aria-expanded={side?.kind === 'preview'}
+            onClick={() => {
+              const firstOne = rows.find((one) => one.shift != null) ?? rows[0];
+              if (firstOne != null) open({ kind: 'preview', id: firstOne.id });
+            }}
+          >
+            <Glyph name="eye" size={16} weight={2.3} />
+            {BW.previewAs}
           </button>
         </div>
-      )}
-      {sendFailed && check == null && (
-        <p className="rs-missed" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {BW.sendFailed}
-        </p>
-      )}
-    </section>
+        {result != null && (
+          <div className="bf-result" id="bf-result" tabIndex={-1}>
+            <div className="bf-result-lines">
+              <Glyph name="tick" size={18} weight={2.6} />
+              <div>
+                {result.lines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            </div>
+            {heldHere.length > 0 && (
+              <ul className="bf-held-list">
+                {heldHere.map((id) => (
+                  <CopyRow
+                    key={id}
+                    one={shown(id)}
+                    acts={acts}
+                    busy={busy === id}
+                    missed={missed === id}
+                    handHeld={handHeld?.id === id ? handHeld.url : null}
+                    onCopy={() => void copy(id)}
+                    onMark={() => mark(id)}
+                    brief={false}
+                  />
+                ))}
+              </ul>
+            )}
+            <button type="button" className="desk-text" onClick={() => setResult(null)}>
+              {BW.dismiss}
+            </button>
+          </div>
+        )}
+        {sendFailed && check == null && (
+          <p className="rs-missed" role="alert">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {BW.sendFailed}
+          </p>
+        )}
+      </section>
+      {reminder}
+    </>
   );
 
   const panel =
@@ -405,13 +507,13 @@ export function useBriefing({
         {side.kind === 'copy' && (
           <CopyPanel
             people={rows}
-            loading={first.loading}
             acts={acts}
             busy={busy}
             missed={missed}
             handHeld={handHeld}
             onCopy={(id) => void copy(id)}
             onMark={mark}
+            jobsAt={`/demo/events/${event.id}/staff/jobs`}
             onClose={() => close('bf-copy')}
           />
         )}
@@ -422,6 +524,7 @@ export function useBriefing({
             manage={acts}
             cut={cut}
             saved={saved}
+            notSaved={notSaved}
             onEdit={() => {
               setDraft(rules);
               setSaved(false);
@@ -433,6 +536,7 @@ export function useBriefing({
             onCancel={() => {
               setDraft(null);
               setCut(false);
+              setNotSaved(false);
               setSide({ kind: 'rules', editing: false });
               focus('sn-panel-title');
             }}
@@ -445,7 +549,16 @@ export function useBriefing({
             one={previewed as Person}
             rules={rules}
             event={event.name}
-            onPick={(id) => setSide({ kind: 'preview', id })}
+            at={previewAt}
+            onPick={(id) => {
+              setPreviewStuck(false);
+              setPreviewAt(previewAt === 'shown' ? 'shown' : 'loading');
+              setSide({ kind: 'preview', id });
+            }}
+            onRetry={() => {
+              setPreviewStuck(false);
+              setPreviewAt('loading');
+            }}
             onClose={() => close('bf-preview')}
           />
         )}
@@ -496,6 +609,8 @@ export function useBriefing({
         sends={sends}
         busy={busy === one.id}
         missed={missed === one.id}
+        notices={notices != null}
+        concluded={concluded}
         onAgain={() => ask(one.id)}
         onCopy={() => void copy(one.id)}
         onMark={() => mark(one.id)}
@@ -513,6 +628,8 @@ export function useBriefing({
     check: dialog,
     dismiss,
     adopt: asPerson,
+    removal: (one) => (notices == null ? null : removalLine(one as Person, concluded)),
+    footnote: notices == null || concluded != null ? null : NW.footnote,
   };
 }
 
@@ -550,6 +667,8 @@ function BriefCell({
   sends,
   busy,
   missed,
+  notices,
+  concluded,
   onAgain,
   onCopy,
   onMark,
@@ -559,17 +678,25 @@ function BriefCell({
   sends: boolean;
   busy: boolean;
   missed: boolean;
+  notices: boolean;
+  concluded: Concluded | null;
   onAgain: () => void;
   onCopy: () => void;
   onMark: () => void;
 }) {
-  const note = noteOf(one);
+  const lines = notices ? rowLines(one, concluded) : [];
+  const note = lines.length > 0 ? null : noteOf(one);
   const changedActs = acts && one.brief === 'changed' && one.mobile != null;
 
   return (
     <span className="rs-link-cell">
-      <BriefWord brief={one.brief} />
-      {note != null && <span className="rs-trail">{note}</span>}
+      {notices && stateOf(one) === 'unreachable' ? (
+        <UnreachableWord />
+      ) : (
+        <BriefWord brief={one.brief} />
+      )}
+      <NoteLine one={one} note={note} />
+      <NoticeLines lines={lines} />
       {one.briefCopy != null && one.brief === 'changed' && <CopiedLine one={one} />}
       {missed && one.brief === 'changed' && (
         <span className="rs-missed">
@@ -579,7 +706,7 @@ function BriefCell({
       )}
       {changedActs && (
         <span className="rs-link-acts">
-          {sends && !one.heldText && (
+          {sends && !one.heldText && !one.waitText && one.stopped !== true && (
             <button
               id={`bf-again-${one.id}`}
               type="button"
@@ -597,6 +724,20 @@ function BriefCell({
           )}
         </span>
       )}
+    </span>
+  );
+}
+
+/** A text held, waiting or stopped reads as sc-77904's Link column does: a clock or a slash with the words. */
+function NoteLine({ one, note }: { one: Person; note: string | null }) {
+  if (note == null) return null;
+  const stopped = note === BW.stopped;
+  if (!stopped && !one.heldText && !one.waitText) return <span className="rs-trail">{note}</span>;
+
+  return (
+    <span className={stopped ? 'rs-note is-stopped' : 'rs-note'}>
+      <Glyph name={stopped ? 'slash' : 'clock'} size={15} weight={2.2} />
+      {note}
     </span>
   );
 }
@@ -712,7 +853,7 @@ function CopyRow({
         {brief && (
           <span className="bf-copy-state">
             <BriefWord brief={one.brief} />
-            {note != null && <span className="rs-trail">{note}</span>}
+            <NoteLine one={one} note={note} />
           </span>
         )}
         <CopiedLine one={one} />
@@ -724,7 +865,7 @@ function CopyRow({
         )}
         {handHeld != null && <HandHeld one={one} url={handHeld} short />}
       </div>
-      {acts && (
+      {acts && one.mobile != null && (
         <span className="bf-copy-acts">
           <CopyButton id={`bf-copy-${one.id}`} one={one} busy={busy} onCopy={onCopy} />
           {one.briefCopy != null && !one.briefCopy.marked && (
@@ -754,23 +895,23 @@ function PanelHead({ title, onClose }: { title: string; onClose: () => void }) {
 
 function CopyPanel({
   people,
-  loading,
   acts,
   busy,
   missed,
   handHeld,
   onCopy,
   onMark,
+  jobsAt,
   onClose,
 }: {
   people: readonly Person[];
-  loading: boolean;
   acts: boolean;
   busy: string | null;
   missed: string | null;
   handHeld: { id: string; url: string } | null;
   onCopy: (id: string) => void;
   onMark: (id: string) => void;
+  jobsAt: string;
   onClose: () => void;
 }) {
   const listed = onShift(people);
@@ -778,21 +919,14 @@ function CopyPanel({
   return (
     <>
       <PanelHead title={BW.copyTitle} onClose={onClose} />
-      <div className="mn-panel-body" aria-busy={loading || undefined}>
-        {loading ? (
-          <div className="bf-bones" role="status">
-            <p className="visually-hidden">{BW.loading}</p>
-            {[0, 1, 2, 3].map((at) => (
-              <span key={at} className="bf-bone" aria-hidden="true" />
-            ))}
-          </div>
-        ) : listed.length === 0 ? (
+      <div className="mn-panel-body">
+        {listed.length === 0 ? (
           <div className="rs-empty">
             <Glyph name="staff" size={28} weight={2} />
             <p className="rs-empty-title">{BW.nobody}</p>
-            <button type="button" className="gs-pill is-secondary" onClick={onClose}>
+            <Link className="gs-pill is-secondary" to={jobsAt}>
               {BW.giveShift}
-            </button>
+            </Link>
           </div>
         ) : (
           <>
@@ -824,6 +958,7 @@ function RulesPanel({
   manage,
   cut,
   saved,
+  notSaved,
   onEdit,
   onType,
   onSave,
@@ -835,6 +970,7 @@ function RulesPanel({
   manage: boolean;
   cut: boolean;
   saved: boolean;
+  notSaved: boolean;
   onEdit: () => void;
   onType: (next: string) => void;
   onSave: () => void;
@@ -900,6 +1036,12 @@ function RulesPanel({
                 {BW.cut}
               </p>
             )}
+            {notSaved && (
+              <p className="mn-failed" role="alert">
+                <Glyph name="alert" size={17} weight={2.2} />
+                {BW.notSaved}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -922,14 +1064,18 @@ function PreviewPanel({
   one,
   rules,
   event,
+  at,
   onPick,
+  onRetry,
   onClose,
 }: {
   people: readonly Person[];
   one: Person;
   rules: string;
   event: string;
+  at: 'loading' | 'shown' | 'failed';
   onPick: (id: string) => void;
+  onRetry: () => void;
   onClose: () => void;
 }) {
   const [starts, ends] = (one.shift ?? '').split(' to ');
@@ -952,40 +1098,59 @@ function PreviewPanel({
           <Glyph name="eye" size={16} weight={2.3} />
           {BW.previewBanner}
         </p>
-        <div className="bf-phone" aria-label={`${one.name}’s page`} role="group">
-          <p className="myn-event">{event}</p>
-          {one.shift == null ? (
-            <section className="myn-card">
-              <p className="myn-big">{BW.previewNoShift('Saturday')}</p>
-            </section>
-          ) : (
-            <>
-              <p className="bf-phone-on">
-                <span className="myn-on-label">{MN.onTonight}</span>{' '}
-                <span className="myn-on-station">{one.station ?? one.job}</span>
-              </p>
+        {at === 'failed' ? (
+          <div className="bf-check-failed" role="alert">
+            <p className="rs-missed">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {BW.didNotWork}
+            </p>
+            <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+              {BW.tryAgain}
+            </button>
+          </div>
+        ) : at === 'loading' ? (
+          <div className="bf-phone bf-bones" role="status" aria-busy="true">
+            <p className="visually-hidden">{BW.previewLoading}</p>
+            {[0, 1, 2].map((bone) => (
+              <span key={bone} className="bf-bone" aria-hidden="true" />
+            ))}
+          </div>
+        ) : (
+          <div className="bf-phone" aria-label={`${one.name}’s page`} role="group">
+            <p className="myn-event">{event}</p>
+            {one.shift == null ? (
               <section className="myn-card">
-                <p className="bf-phone-h">{MN.yourShift}</p>
-                <p className="myn-big">{one.job}</p>
-                <p className="myn-time">{MN.times(starts ?? '', ends ?? '')}</p>
+                <p className="myn-big">{BW.previewNoShift('Saturday')}</p>
               </section>
+            ) : (
+              <>
+                <p className="bf-phone-on">
+                  <span className="myn-on-label">{MN.onTonight}</span>{' '}
+                  <span className="myn-on-station">{one.station ?? one.job}</span>
+                </p>
+                <section className="myn-card">
+                  <p className="bf-phone-h">{MN.yourShift}</p>
+                  <p className="myn-big">{one.job}</p>
+                  <p className="myn-time">{MN.times(starts ?? '', ends ?? '')}</p>
+                </section>
+                <section className="myn-card">
+                  <p className="bf-phone-h">{MN.yourLead}</p>
+                  {one.id === 'ifeoma' ? (
+                    <p className="myn-quiet">{MN.noLead}</p>
+                  ) : (
+                    <p className="myn-big">Ifeoma Nduka · {MN.floorLead}</p>
+                  )}
+                </section>
+              </>
+            )}
+            {rules !== '' && (
               <section className="myn-card">
-                <p className="bf-phone-h">{MN.yourLead}</p>
-                {one.id === 'ifeoma' ? (
-                  <p className="myn-quiet">{MN.noLead}</p>
-                ) : (
-                  <p className="myn-big">Ifeoma Nduka · {MN.floorLead}</p>
-                )}
+                <p className="bf-phone-h">{MN.beforeYouStart}</p>
+                <p className="myn-rules">{rules}</p>
               </section>
-            </>
-          )}
-          {rules !== '' && (
-            <section className="myn-card">
-              <p className="bf-phone-h">{MN.beforeYouStart}</p>
-              <p className="myn-rules">{rules}</p>
-            </section>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
@@ -1068,6 +1233,7 @@ function CheckBody({
               </button>
             </div>
           )}
+          {costs.quiet > 0 && <p className="rs-check-hint">{BW.quiet(costs.quiet, QUIET_ENDS)}</p>}
           <p className="rs-check-hint">{BW.usage}</p>
           {failed && (
             <p className="rs-missed" role="alert">

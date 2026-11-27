@@ -6,6 +6,7 @@ namespace App\Domain\Staff;
 
 use App\Audit\Auditor;
 use App\Domain\Staff\Model\StaffDetails;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
 use App\Entity\StaffJob;
 use App\Entity\StaffMember;
@@ -15,7 +16,9 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
+use App\Repository\ShiftAttendanceRepository;
 use App\Repository\StaffMemberRepository;
+use App\Repository\StaffRateRepository;
 use App\Repository\StaffShiftRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,8 +43,11 @@ final readonly class StaffRoster
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
         private StaffPlan $staffPlan,
+        private ShiftNotices $shiftNotices,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private ShiftAttendanceRepository $shiftAttendanceRepository,
+        private StaffRateRepository $staffRateRepository,
     ) {
     }
 
@@ -103,7 +109,7 @@ final readonly class StaffRoster
         return $entry;
     }
 
-    /** Refused 409 `event_concluded` once the event has finished, so its hours keep who worked them. */
+    /** Refused 409 `event_concluded` once the event has finished, so its hours keep who worked them. Before then the times of a shift they clocked in on outlive them, under their name and at their own rate (Decided, 26 Nov); their contacts go with the entry. */
     public function remove(StaffMember $entry, User $by): void
     {
         $event = $entry->getEvent();
@@ -116,7 +122,18 @@ final readonly class StaffRoster
             }
 
             $this->audit(self::REMOVED, $entry, $by);
+            $this->shiftNotices->removed($entry);
             $this->staffPlan->release($entry);
+            $ownRate = $this->staffRateRepository->findOneBy(['person' => $entry]);
+
+            foreach ($this->shiftAttendanceRepository->findOfPerson($entry) as $attendance) {
+                if ($attendance->worked()) {
+                    $attendance->outliveRemoval($ownRate);
+                } else {
+                    $this->entityManager->remove($attendance);
+                }
+            }
+
             $this->entityManager->remove($entry);
             $this->entityManager->flush();
         });

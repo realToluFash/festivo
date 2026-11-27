@@ -1,10 +1,11 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { type BriefingStateName, BW, briefingAt } from './briefing.ts';
+import { NW } from './notices.ts';
 import { ISSUE_MS } from './staffLink.ts';
 
 const tested = config();
@@ -51,6 +52,13 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.queryByRole('button', { name: /^Send|Copy link/ })).toBeNull();
     expect(button('House rules')).toBeTruthy();
     expect(button('Preview as')).toBeTruthy();
+  });
+
+  it('gives a finished event House rules, opening on the rules with no Edit', async () => {
+    await open('finished');
+    expect(button('Edit the rules')).toBeNull();
+    press('House rules');
+    expect(button('Edit the rules')).toBeNull();
   });
 
   it('sends after the check, and the result counts who has no number', async () => {
@@ -135,5 +143,74 @@ describe('the briefing on the web (sc-3917)', () => {
     await open(null);
     expect(screen.queryByRole('heading', { name: BW.card })).toBeNull();
     expect(button('Add a person')).toBeTruthy();
+  });
+  it('offers no Copy link in the copy list to a person with no mobile number (sc-3912)', async () => {
+    await open('copyList');
+    expect(button('Copy link for the briefing: Ada Nnaji')).toBeNull();
+    expect(button('Copy link for the briefing: Amina Yusuf')).toBeTruthy();
+  });
+
+  it('sends Give someone a shift to the Jobs and shifts tab', async () => {
+    await open('copyNobody');
+    const link = screen.getByRole('link', { name: BW.giveShift });
+    expect(link.getAttribute('href')).toBe('/demo/events/evt-wed-4/staff/jobs');
+  });
+
+  it('keeps the draft when the rules are not saved, and saves on the next press', async () => {
+    await open('rulesNotSaved');
+    expect(screen.getByRole('alert').textContent).toContain(BW.notSaved);
+    press(BW.save);
+    expect(screen.queryByText(BW.notSaved)).toBeNull();
+    expect(screen.getByText(/No phones on the floor\./)).toBeTruthy();
+  });
+
+  it('loads Preview as again after it failed', async () => {
+    await open('previewFailed');
+    expect(screen.getByText(BW.didNotWork)).toBeTruthy();
+    press(BW.tryAgain);
+    expect(screen.getByText(BW.previewLoading)).toBeTruthy();
+    await wait(ISSUE_MS);
+    expect(screen.getByRole('group', { name: 'Amina Yusuf’s page' })).toBeTruthy();
+  });
+
+  it('refuses a send on a page opened before End now, and reloads it Finished (sc-4333)', async () => {
+    await open('noticesFinishedRefusedBefore');
+    expect(document.getElementById('sv-over')).toBeNull();
+    const sends = screen.getAllByRole('button', { name: /^Send/ });
+    fireEvent.click(sends[0] as HTMLElement);
+    expect(document.getElementById('sv-over')?.textContent).toContain(NW.alreadyOver);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
+  });
+
+  it('says under the roster that changes reach the briefed, until the event is Finished (sc-4333)', async () => {
+    await open('noticesList');
+    expect(screen.getByText(NW.footnote)).toBeTruthy();
+    cleanup();
+    await open('noticesCalledOff');
+    expect(screen.queryByText(NW.footnote)).toBeNull();
+  });
+
+  it('offers Add credits to billing.manage when the reminder’s credits fall short, opening Plan and billing (sc-4333)', async () => {
+    await open('noticesCostShort');
+    const card = screen.getByRole('region', { name: NW.card });
+    expect(within(card).getByText(NW.short(1))).toBeTruthy();
+    expect(within(card).getByRole('link', { name: 'Add credits' }).getAttribute('href')).toBe(
+      '/demo/settings/plan-and-billing?state=packs',
+    );
+    expect(within(card).queryByRole('button', { name: /Buy credits|Ask an owner/ })).toBeNull();
+  });
+
+  it('offers Ask an owner to anyone else, with its sent and not-sent lines (sc-4333)', async () => {
+    await open('noticesCostShortAskFailed');
+    const card = screen.getByRole('region', { name: NW.card });
+    expect(within(card).getByRole('alert').textContent).toBe('Not sent. Try again in a moment.');
+    expect(within(card).queryByRole('link', { name: 'Add credits' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Ask an owner' }));
+    await wait(600);
+    expect(
+      within(card).getByText('The owners have been sent the link to Plan and billing.'),
+    ).toBeTruthy();
+    expect(within(card).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
   });
 });

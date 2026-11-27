@@ -1,0 +1,11 @@
+# sc-4015: the app demo's Kitchen station, state twoHere, top and one scroll, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/kitchen-station?state=twoHere
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled

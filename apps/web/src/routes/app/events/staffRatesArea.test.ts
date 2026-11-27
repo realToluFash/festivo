@@ -13,6 +13,7 @@ import {
   rateProblem,
   sourceLine,
   typedOf,
+  workedLine,
 } from './staffRatesArea.ts';
 
 const t = i18next.getFixedT('en');
@@ -33,6 +34,7 @@ function job(fields: Partial<StaffRateJob> = {}): StaffRateJob {
     fees: 0,
     paidOnce: [],
     keepOwn: ['Kunle Ajayi'],
+    worked: null,
     ...fields,
   };
 }
@@ -152,11 +154,57 @@ describe('Staff rates’ words (sc-101)', () => {
           changed: null,
           minutes: 0,
           cost: '0.00',
+          worked: null,
         },
         null,
         'GBP',
         EN,
       ),
     ).toEqual(['£16 an hour · Instead of Waiter’s No rate yet', '0 h as Waiter']);
+  });
+
+  it('writes the hours worked after the event, what is assumed and what had no attendance (sc-234)', () => {
+    const worked = {
+      minutes: 2042,
+      assumedMinutes: 548,
+      noAttendance: 1,
+      people: 4,
+      cost: '476.47',
+    };
+
+    expect(workedLine(t, job())).toBeNull();
+    expect(workedLine(t, job({ worked }))).toBe(
+      '34 h 2 min · of which 9 h 8 min assumed (not clocked out) · 1 shift with no attendance recorded',
+    );
+    expect(
+      workedLine(
+        t,
+        job({
+          rate: { kind: 'flat', amount: '80.00' },
+          worked: { ...worked, assumedMinutes: 0, noAttendance: 0, people: 0 },
+        }),
+      ),
+    ).toBe('34 h 2 min · Nobody worked it');
+    expect(workedLine(t, job({ shifts: 0, worked }))).toBe('0 h · No shifts');
+  });
+
+  it('adds what a person on their own rate worked, at that rate', () => {
+    expect(
+      ownLines(
+        t,
+        {
+          member: { id: 'kunle', name: 'Kunle Ajayi' },
+          job: { id: 'waiter', name: 'Waiter' },
+          rate: { kind: 'hourly', amount: '16.00' },
+          changed: null,
+          minutes: 480,
+          cost: '128.00',
+          worked: { minutes: 42, cost: '11.20' },
+        },
+        null,
+        'GBP',
+        EN,
+      )[2],
+    ).toBe('Worked 42 min as Waiter · £11.20');
   });
 });

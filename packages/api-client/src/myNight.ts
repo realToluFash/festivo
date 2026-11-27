@@ -1,6 +1,12 @@
-/** A person's own night (sc-3915): what their page shows, and nothing about anybody else beyond their lead. Times are in the event's offset. */
+import { type ShiftClockCard, asShiftClockCard } from './shiftHours.ts';
+
+/** A person's own night (sc-3915): what their page shows, and nothing about anybody else beyond their lead. Times are in the event's offset. Past access (sc-234) it carries the event's name and the clock card alone: no station, shift, lead, timing or tables. */
 export interface MyNight {
-  event: { name: string; timeZone: string };
+  /** Past the person's access, still clocked in: the page is the clock card alone, until `endsAt`. */
+  pastAccess: boolean;
+  /** Their shift's clock card (sc-234); null once it is gone. */
+  clock: ShiftClockCard | null;
+  event: { id: string; name: string; timeZone: string };
   /** The link's end, when the browser is signed out. */
   endsAt: string;
   station: string | null;
@@ -13,6 +19,14 @@ export interface MyNight {
   doorsAt: string;
   /** Null with no section station; empty until doors open. */
   tables: MyNightTable[] | null;
+  /** Their job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
+  /** Their station is a kitchen station and their access opens it (sc-95382). */
+  dishes: boolean;
+  /** Their account may open Who's here (sc-3918): the floor lead, a station's lead, or staff.read. */
+  whosHere: boolean;
+  /** The house rules, shown as Before you start (sc-3917). */
+  rules: string | null;
 }
 
 export interface MyNightMoment {
@@ -114,15 +128,17 @@ function asLead(raw: unknown): MyNight['lead'] | undefined {
 /** The night, or null when it is not one this client knows. */
 export function asMyNight(raw: unknown): MyNight | null {
   if (!isRecord(raw) || !isRecord(raw.event)) return null;
-  const { name, timeZone } = raw.event;
+  const { id, name, timeZone } = raw.event;
   const { endsAt, station, job, doorsAt } = raw;
   const shift = asShift(raw.shift);
   const later = asLater(raw.later);
   const lead = asLead(raw.lead);
   const timing = every(raw.timing, asMoment);
   const tables = raw.tables === null ? null : every(raw.tables, asTable);
+  const clock = raw.clock === null ? null : asShiftClockCard(raw.clock);
 
   if (
+    typeof id !== 'string' ||
     typeof name !== 'string' ||
     typeof timeZone !== 'string' ||
     typeof endsAt !== 'string' ||
@@ -133,12 +149,20 @@ export function asMyNight(raw: unknown): MyNight | null {
     later === undefined ||
     lead === undefined ||
     timing == null ||
-    (raw.tables !== null && tables == null)
+    (raw.tables !== null && tables == null) ||
+    typeof raw.checksIn !== 'boolean' ||
+    typeof raw.dishes !== 'boolean' ||
+    typeof raw.whosHere !== 'boolean' ||
+    !text(raw.rules) ||
+    typeof raw.pastAccess !== 'boolean' ||
+    (raw.clock !== null && clock == null)
   )
     return null;
 
   return {
-    event: { name, timeZone },
+    pastAccess: raw.pastAccess,
+    clock,
+    event: { id, name, timeZone },
     endsAt,
     station,
     job,
@@ -148,5 +172,9 @@ export function asMyNight(raw: unknown): MyNight | null {
     timing,
     doorsAt,
     tables,
+    checksIn: raw.checksIn,
+    dishes: raw.dishes,
+    whosHere: raw.whosHere,
+    rules: raw.rules,
   };
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\PhoneSignIn;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\Verification\ContactVerifier;
@@ -14,6 +15,7 @@ use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeResender;
 use App\Entity\PhoneNumber;
 use App\Entity\PhoneSignIn;
+use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\AccountOrigin;
@@ -57,6 +59,7 @@ final readonly class PhoneSignIns
         private ContactVerifier $contactVerifier,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private SignInRules $signInRules,
         private ClockInterface $clock,
     ) {
     }
@@ -131,6 +134,7 @@ final readonly class PhoneSignIns
 
     /**
      * `$admits` sees the account the number would sign into, or null for a new one, once the code is right and before anything is written; it refuses by throwing.
+     * An account whose password sc-69's rule refuses is refused the code as well, after it is right and before two-factor (sc-94849); a link's entry is still linked to it.
      *
      * @param (Closure(?User): void)|null $admits
      *
@@ -154,6 +158,7 @@ final readonly class PhoneSignIns
                 throw new ApiException(ErrorCode::PhoneAlternative, 'phone_sign_in.alternative');
             }
 
+            $this->refuseLikeAPassword($signIn, $held->getUser());
             $this->admitOrForget($signIn, $admits, $held->getUser());
             $signIn->forgetTypedName();
             $this->entityManager->flush();
@@ -190,6 +195,28 @@ final readonly class PhoneSignIns
     /** After two-factor when it is on, and before the session is issued: the token's cap reads the link's grant by DQL, so the entry is flushed once linked. */
     public function signedIn(User $user, PhoneSignIn $signIn): void
     {
+        $entry = $this->linkEntry($signIn, $user);
+        $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
+        $this->entityManager->flush();
+    }
+
+    private function refuseLikeAPassword(PhoneSignIn $signIn, User $user): void
+    {
+        $refusal = $this->signInRules->passwordRefusal($user);
+
+        if (null === $refusal) {
+            return;
+        }
+
+        $this->linkEntry($signIn, $user);
+        $signIn->forgetTypedName();
+        $this->entityManager->flush();
+
+        throw $refusal;
+    }
+
+    private function linkEntry(PhoneSignIn $signIn, User $user): ?StaffMember
+    {
         $entry = $signIn->getStaffMember();
 
         if (null !== $entry && true !== $entry->getAccount()?->getId()->equals($user->getId())) {
@@ -197,8 +224,7 @@ final readonly class PhoneSignIns
             $this->auditor->record(self::ACCOUNT_LINKED, 'StaffMember', $entry->getId(), Actor::User, $user->getId(), $user->getName(), ['account' => [null, $user->getId()->toRfc4122()]]);
         }
 
-        $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
-        $this->entityManager->flush();
+        return $entry;
     }
 
     /**

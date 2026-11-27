@@ -9,6 +9,7 @@ use App\Domain\Service\Model\Expected;
 use App\Domain\Service\ServiceRead;
 use App\Domain\Service\ServiceSteps;
 use App\Domain\Service\ServiceTaps;
+use App\Domain\Staff\Station\KitchenStationList;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\ServicePlate;
@@ -21,6 +22,7 @@ use App\Enum\ItemState;
 use App\Enum\Permission;
 use App\Enum\PlateStage;
 use App\Enum\SentBackReason;
+use App\Enum\ServicePlace;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\InThisEvent;
@@ -53,6 +55,7 @@ final readonly class ServiceController
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private ServiceTaps $serviceTaps,
         private FloorRead $floorRead,
+        private KitchenStationList $kitchenStationList,
     ) {
     }
 
@@ -71,6 +74,17 @@ final readonly class ServiceController
         $event = $this->event($eventId);
 
         return new JsonResponse($this->floorRead->of($event, $this->grants($event), $this->user()));
+    }
+
+    /** Kitchen stations open with the pass (sc-4002), so working only the floor is refused here (sc-4015). */
+    #[Route('/api/events/{eventId}/service/stations', name: 'service_stations', methods: ['GET'])]
+    #[InEvent(Permission::ServiceWork)]
+    public function stations(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->grants($event)->requireServiceAt(ServicePlace::Pass);
+
+        return new JsonResponse($this->kitchenStationList->of($event, $this->user()));
     }
 
     #[Route('/api/events/{eventId}/service/subscriptions', name: 'service_subscribe', methods: ['POST'])]

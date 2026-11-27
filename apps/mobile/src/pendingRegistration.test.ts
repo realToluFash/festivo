@@ -38,6 +38,7 @@ const B: Account = {
   colourScheme: null,
   waitingFor: null,
   outsideEvents: [],
+  signedOutAt: null,
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],

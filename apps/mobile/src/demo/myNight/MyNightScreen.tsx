@@ -1,11 +1,11 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '../../components/Brand.tsx';
-import { SecondaryButton } from '../../components/Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -20,12 +20,16 @@ import {
   type Night,
   type Table,
   MN,
+  checkInOf,
   fresh,
   guestCount,
   headingOf,
   moved,
+  movedToGrill,
   myNightStateOf,
   nightOf,
+  openOf,
+  whosHereOf,
   rowLineOf,
   signedInUntil,
 } from './myNightModel.ts';
@@ -93,6 +97,9 @@ export function MyNightScreen({ first }: { first: Night }) {
   const you = (
     <You night={night} onSignOut={() => setTold(MN.signOutLands)} inBar={wide} told={told} />
   );
+  const checkIn = checkInOf(night);
+  const open = openOf(night);
+  const whosHere = whosHereOf(night);
 
   const left = (
     <>
@@ -111,6 +118,41 @@ export function MyNightScreen({ first }: { first: Night }) {
         </Text>
       </View>
       <Clock night={night} />
+      {checkIn != null && (
+        <PrimaryButton
+          label={checkIn.label}
+          onPress={() => router.push(checkIn.href as Href)}
+          testID="myNight.checkIn"
+        />
+      )}
+      {open != null &&
+        (open.primary ? (
+          <PrimaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ))}
+      {whosHere != null &&
+        (whosHere.primary ? (
+          <PrimaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
+          />
+        ) : (
+          <SecondaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
+          />
+        ))}
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}
@@ -255,6 +297,13 @@ export function MyNightScreen({ first }: { first: Night }) {
                 label={MN.demoMoveButton}
                 onPress={() => setNight(moved(night))}
                 testID="myNight.demo.move"
+              />
+            )}
+            {night.state === 'kitchen' && night.updated == null && (
+              <SecondaryButton
+                label={MN.demoKitchenMoveButton}
+                onPress={() => setNight(movedToGrill(night))}
+                testID="myNight.demo.moveKitchen"
               />
             )}
             <SecondaryButton label={MN.backToDemo} onPress={goBack} testID="myNight.demo.back" />

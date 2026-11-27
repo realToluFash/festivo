@@ -62,6 +62,61 @@ export interface KitchenCourse {
   stations: KitchenStation[] | null;
 }
 
+/** A kitchen sheet given to the kitchen (sc-30812): when, in the event's zone, and the full name of who gave it. */
+export interface KitchenCopy {
+  id: string;
+  recordedAt: string;
+  by: string;
+}
+
+const CHANGE_KINDS = [
+  'allergyNew',
+  'allergyGone',
+  'dietNew',
+  'dietGone',
+  'comingMore',
+  'comingFewer',
+  'added',
+  'removed',
+  'renamed',
+  'count',
+] as const;
+
+export type KitchenChangeKind = (typeof CHANGE_KINDS)[number];
+
+/** A dish, variant or side, `parent` its dish's name on the last two; or with `state`, one of a course's other figures. */
+export interface KitchenChangeItem {
+  name: string;
+  parent: string | null;
+  state: 'kitchen' | 'skipped' | 'needsHost' | 'menuChanged' | 'notYet' | 'never' | null;
+}
+
+/** One change since a copy (sc-30692). An allergy or diet line has a `code`, and `who` only under the names rule; otherwise `count` guests. `old` to `count` on a figure. */
+export interface KitchenChange {
+  kind: KitchenChangeKind;
+  code: string | null;
+  who: string | null;
+  item: KitchenChangeItem | null;
+  /** The new name on `renamed`. */
+  to: string | null;
+  old: number;
+  count: number;
+}
+
+/** The sheet against the latest copy: when that copy was recorded, in the event's zone, and each change in the sheet's order. */
+export interface KitchenChangesSince {
+  since: string;
+  lines: KitchenChange[];
+}
+
+/** Final numbers due (sc-30812), a day or null; `picksOpenUntil` the last course's close while the day ends before it; the copies newest first; `changes` null before a first copy. */
+export interface FinalNumbers {
+  due: string | null;
+  picksOpenUntil: string | null;
+  copies: KitchenCopy[];
+  changes: KitchenChangesSince | null;
+}
+
 export interface KitchenSheet {
   asOf: string;
   paper: 'a4' | 'letter';
@@ -73,6 +128,7 @@ export interface KitchenSheet {
   allergyCounts: KitchenCount[];
   dietCounts: KitchenCount[];
   courses: KitchenCourse[];
+  finalNumbers: FinalNumbers;
 }
 
 const record = (raw: unknown): Record<string, unknown> =>
@@ -142,7 +198,58 @@ function asCourse(raw: unknown): KitchenCourse {
   };
 }
 
-export function asKitchenSheet(raw: unknown): KitchenSheet | null {
+const ITEM_STATES = ['kitchen', 'skipped', 'needsHost', 'menuChanged', 'notYet', 'never'] as const;
+
+const text = (raw: unknown): string | null => (typeof raw === 'string' ? raw : null);
+
+function asChange(raw: unknown): KitchenChange[] {
+  const one = record(raw);
+  const kind = CHANGE_KINDS.find((known) => known === one.kind);
+  if (kind == null) return [];
+  const item = one.item == null ? null : record(one.item);
+
+  return [
+    {
+      kind,
+      code: text(one.code),
+      who: text(one.who),
+      item:
+        item == null
+          ? null
+          : {
+              name: str(item.name),
+              parent: text(item.parent),
+              state: ITEM_STATES.find((state) => state === item.state) ?? null,
+            },
+      to: text(one.to),
+      old: num(one.old),
+      count: num(one.count),
+    },
+  ];
+}
+
+export function asFinalNumbers(raw: unknown): FinalNumbers {
+  const one = record(raw);
+
+  return {
+    due: typeof one.due === 'string' ? one.due : null,
+    picksOpenUntil: typeof one.picksOpenUntil === 'string' ? one.picksOpenUntil : null,
+    copies: list(one.copies).map((copy) => {
+      const given = record(copy);
+
+      return { id: str(given.id), recordedAt: str(given.recordedAt), by: str(given.by) };
+    }),
+    changes:
+      one.changes == null
+        ? null
+        : {
+            since: str(record(one.changes).since),
+            lines: list(record(one.changes).lines).flatMap(asChange),
+          },
+  };
+}
+
+export function asKitchenSheet(raw: unknown, final: unknown = null): KitchenSheet | null {
   const one = record(raw);
   if (typeof one.coming !== 'number' || !Array.isArray(one.courses)) return null;
 
@@ -170,5 +277,6 @@ export function asKitchenSheet(raw: unknown): KitchenSheet | null {
     allergyCounts: list(one.allergyCounts).map(asCount),
     dietCounts: list(one.dietCounts).map(asCount),
     courses: one.courses.map(asCourse),
+    finalNumbers: asFinalNumbers(final),
   };
 }

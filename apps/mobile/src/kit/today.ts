@@ -36,7 +36,6 @@ export interface Need {
   title: string;
   due: string;
   late: boolean;
-  action: string;
 }
 
 export interface AgendaItem {

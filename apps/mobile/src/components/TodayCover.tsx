@@ -35,6 +35,7 @@ import {
 } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
 import { CAPSULE_TOP, LIVE_FOOT, liveLineHeight } from '../layout/bandLive.ts';
+import { OPEN_ABOVE_SHEET, TAB_FADE } from '../layout/todayFold.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -662,6 +663,8 @@ export function NowBlock({
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
   const whole = useAccessibilitySizes();
+  const [column, setColumn] = useState(0);
+  const [name, setName] = useState<number | null>(null);
   const { now, run } = moment;
 
   if (now == null) return null;
@@ -687,28 +690,57 @@ export function NowBlock({
     const words = (
       <>
         <Chips now={now} grows={whole} />
-        <Text
-          size={wide ? 48 : 36}
-          weight="bold"
-          accessibilityRole="header"
-          style={[
-            styles.white,
-            { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
-          ]}
-        >
-          {now.name}
-        </Text>
-        <Text size={16} weight="semibold" style={styles.white}>
-          {now.ends}
-        </Text>
+        {!wide && whole ? (
+          <CoverLine
+            size={36}
+            line={1.06}
+            weight="bold"
+            accessibilityRole="header"
+            room={column}
+            onDrawn={setName}
+            style={[styles.white, { letterSpacing: 36 * -0.02 }]}
+          >
+            {now.name}
+          </CoverLine>
+        ) : (
+          <Text
+            size={wide ? 48 : 36}
+            weight="bold"
+            accessibilityRole="header"
+            style={[
+              styles.white,
+              { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
+            ]}
+          >
+            {now.name}
+          </Text>
+        )}
+        {!wide && whole ? (
+          <CoverLine
+            size={16}
+            line={1.3}
+            weight="semibold"
+            room={column}
+            under={name ?? Infinity}
+            style={styles.white}
+          >
+            {now.ends}
+          </CoverLine>
+        ) : (
+          <Text size={16} weight="semibold" style={styles.white}>
+            {now.ends}
+          </Text>
+        )}
       </>
     );
-    const open = (
-      <WhiteButton
-        label={t('todayScreen.openEvent')}
-        onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
-      />
-    );
+    const label = t('todayScreen.openEvent');
+    const onOpen = () => go({ to: 'event', id: now.event.id, name: now.name });
+    const open =
+      !wide && whole ? (
+        <WholeWhiteButton label={label} onPress={onOpen} column={column} under={name ?? Infinity} />
+      ) : (
+        <WhiteButton label={label} onPress={onOpen} />
+      );
 
     return wide ? (
       <View style={styles.wideRow}>
@@ -723,7 +755,7 @@ export function NowBlock({
         )}
       </View>
     ) : (
-      <View style={styles.gapLg}>
+      <View style={styles.gapLg} onLayout={(event) => setColumn(event.nativeEvent.layout.width)}>
         {words}
         {now.arrived != null && <ArrivedFigure figure={now.arrived} />}
         <View style={styles.hair} />
@@ -1401,7 +1433,7 @@ export function PhoneTabBar({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: TAB_FADE },
   whiteCapsule: {
     minHeight: CAPSULE_HEIGHT,
     flexDirection: 'row',
@@ -1567,7 +1599,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
   },
   topTabletTall: { alignItems: 'flex-start' },
-  footPhone: { marginBottom: SHEET_RISE + 22 },
+  footPhone: { marginBottom: SHEET_RISE + OPEN_ABOVE_SHEET },
   footTablet: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + 30, maxWidth: 620 },
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },

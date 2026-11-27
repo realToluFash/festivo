@@ -2,6 +2,8 @@ import { ApiError, type OpenedDoorCode } from '@soirely/api-client';
 import { formatDay, formatEventDate, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { ruleRefusal } from './signInRules.ts';
+
 export const DOOR_CODE_LENGTH = 8;
 
 export type CodeLine = 'blank' | 'short' | 'refused' | 'failed';
@@ -50,6 +52,17 @@ export function refusedTo(error: unknown, now: Date = new Date()): Opening {
 
 export type JoinRefusal =
   { kind: 'member' } | TooMany | { kind: 'trouble'; trouble: 'refused' | 'failed' };
+
+/** The right phone code refused as the password is, in an organisation that signs in with Google or Apple only (sc-94849). */
+export function providerOnlyRefusal(
+  error: unknown,
+): { kind: 'providerOnly'; organisation: string; providers: string[] } | null {
+  const rule = error instanceof ApiError ? ruleRefusal(error.problem) : null;
+
+  return rule?.kind === 'providerOnly'
+    ? { kind: 'providerOnly', organisation: rule.organisation, providers: rule.providers }
+    : null;
+}
 
 /** A failed Join: the member's 409, too many tries, the one refusal for a code that filled or stopped meanwhile, or the way there failing. */
 export function joinRefusal(error: unknown, now: Date = new Date()): JoinRefusal {

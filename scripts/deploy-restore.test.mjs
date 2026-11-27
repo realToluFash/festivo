@@ -49,6 +49,7 @@ describe('the restore (sc-30204)', () => {
       'proxy',
       'api',
       'notification-worker',
+      'service-heartbeat',
       'scheduler',
       'backup',
     ]);
@@ -56,7 +57,7 @@ describe('the restore (sc-30204)', () => {
     expect(status).toBe(0);
     expect(calls.filter((call) => call.includes('config --services'))).toHaveLength(1);
     expect(calls.find((call) => call.includes(' stop '))).toMatch(
-      / stop proxy api notification-worker scheduler backup$/,
+      / stop proxy api notification-worker service-heartbeat scheduler backup$/,
     );
   });
 

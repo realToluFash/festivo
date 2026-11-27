@@ -138,7 +138,9 @@ function Queue({ name }: { name: QueueStateName }) {
               {state.online ? (
                 <>
                   <span className="queue-status-dot" aria-hidden="true" />
-                  <span>{state.started ? 'Connected · up to date 20:41' : 'Not started yet'}</span>
+                  <span>
+                    {state.started ? 'Connected · up to date at 20:41' : 'Not started yet'}
+                  </span>
                 </>
               ) : (
                 <>

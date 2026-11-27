@@ -35,6 +35,7 @@ const SIGNED_IN: Session = {
   timezone: null,
   waitingFor: null,
   outsideEvents: [],
+  signedOutAt: null,
   organisation: null,
   pausedIn: null,
 };
@@ -164,6 +165,7 @@ describe("the account's colours at sign-in (sc-30441)", () => {
       emailAddresses: [],
       phoneNumbers: [],
       outsideEvents: [],
+      signedOutAt: null,
     });
 
     expect(document.documentElement.dataset.scheme).toBe('garden');
@@ -202,6 +204,7 @@ describe('a sign-out while the account is still being read', () => {
       emailAddresses: [],
       phoneNumbers: [],
       outsideEvents: [],
+      signedOutAt: null,
     });
     await refreshing;
 
@@ -232,6 +235,7 @@ function account(overrides: Partial<Account>): Account {
     emailAddresses: [],
     phoneNumbers: [],
     outsideEvents: [],
+    signedOutAt: null,
     ...overrides,
   };
 }

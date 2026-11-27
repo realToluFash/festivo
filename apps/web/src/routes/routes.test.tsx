@@ -35,6 +35,7 @@ const ADA_ACCOUNT: Account = {
   emailAddresses: [],
   phoneNumbers: [],
   outsideEvents: [],
+  signedOutAt: null,
 };
 
 const ADA: Session = {
@@ -400,6 +401,7 @@ describe('the application tree', () => {
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
           outsideEvents: [],
+          signedOutAt: null,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),

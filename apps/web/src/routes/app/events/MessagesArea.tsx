@@ -546,14 +546,12 @@ function Idle({
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{t('eventMessages.newMessage')}</h2>
       <p className="mg-idle-line">{line}</p>
-      {desk.manage && (
-        <MiniComposer
-          desk={desk}
-          chip={allGuestsChip(t, desk.guestsFailed ? null : desk.guests)}
-          placeholder={t('eventMessages.writeToGuests')}
-          onWrite={onWrite}
-        />
-      )}
+      <MiniComposer
+        desk={desk}
+        chip={allGuestsChip(t, desk.guestsFailed ? null : desk.guests)}
+        placeholder={t('eventMessages.writeToGuests')}
+        onWrite={onWrite}
+      />
     </div>
   );
 }
@@ -564,7 +562,7 @@ function allGuestsChip(t: TFunction, guests: readonly PickableGuest[] | null): s
     : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`;
 }
 
-/** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
+/** The composer waiting at the foot, or without messages.manage the reason nobody can write: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
 function MiniComposer({
   desk,
   chip,
@@ -580,6 +578,15 @@ function MiniComposer({
 }) {
   const { t } = useTranslation();
   const off = desk.whyOff != null;
+
+  if (!desk.manage) {
+    return (
+      <p className="mg-manage">
+        <Glyph name="info" size={16} weight={2.2} />
+        <span>{t('eventMessages.onlyManage', { area: t('eventNav.messages') })}</span>
+      </p>
+    );
+  }
 
   return (
     <div className="mg-mini">
@@ -1823,23 +1830,21 @@ function MessagePane({
           />
         ))}
       </ol>
-      {desk.manage && (
-        <MiniComposer
-          desk={desk}
-          chip={audienceWords(message, t)}
-          placeholder={t('eventMessages.writeFollowUp')}
-          follows={message.deliveries.length}
-          onWrite={(_openTo, body) =>
-            onFollow(
-              message.audience === 'all'
-                ? { kind: 'all' }
-                : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
-              body,
-              message.deliveries.length,
-            )
-          }
-        />
-      )}
+      <MiniComposer
+        desk={desk}
+        chip={audienceWords(message, t)}
+        placeholder={t('eventMessages.writeFollowUp')}
+        follows={message.deliveries.length}
+        onWrite={(_openTo, body) =>
+          onFollow(
+            message.audience === 'all'
+              ? { kind: 'all' }
+              : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
+            body,
+            message.deliveries.length,
+          )
+        }
+      />
     </div>
   );
 }

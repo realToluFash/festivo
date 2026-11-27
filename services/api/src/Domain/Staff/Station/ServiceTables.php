@@ -78,7 +78,7 @@ final readonly class ServiceTables
     }
 
     /** The service levels are held from outside the organisation, so the roster's `member` link is no use here: the entry is theirs by a mobile number or email they have verified. */
-    private function isTheirs(StaffMember $entry, User $user): bool
+    public function isTheirs(StaffMember $entry, User $user): bool
     {
         if ($entry->getMember()?->getId()->equals($user->getId()) ?? false) {
             return true;

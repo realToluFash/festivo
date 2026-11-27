@@ -80,7 +80,7 @@ final readonly class ShiftClock
     }
 
     /** The wall-clock time an instant reads in the event's zone, as if in UTC, as a shift's times are kept. */
-    private static function wallOf(DateTimeImmutable $instant, Event $event): DateTimeImmutable
+    public static function wallOf(DateTimeImmutable $instant, Event $event): DateTimeImmutable
     {
         $local = $instant->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d\TH:i:s');
 

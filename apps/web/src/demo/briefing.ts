@@ -1,7 +1,8 @@
 import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
+import { type Change, type Concluded, type Notice, NO_CREDITS, NW } from './notices.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
-import { texting } from './staffText.ts';
+import { QUIET_ENDS, TW, texting } from './staffText.ts';
 import { STATIONS_EVENT } from './stations.ts';
 
 /** The briefing on the event's Staff page (sc-3917, Staffing.dc.html › Tweaks › Briefing on page e34): house rules and everyone's shift, sent with one tap. */
@@ -11,10 +12,16 @@ export interface Person extends Entry {
   brief: Brief;
   /** A briefing text waiting for credits (sc-3932): it goes by itself once there are credits. */
   heldText: boolean;
+  /** A briefing text waiting for 09:00 in their time (sc-3946's quiet hours): it goes by itself then. */
+  waitText: boolean;
   /** How the briefing reaches them when it goes; push is free and is never counted. */
   channel: 'sms' | 'whatsApp';
   /** A copy from the briefing (the copy list, a changed row or the held result), and whether it was then marked as sent. */
   briefCopy: { trail: Trail; marked: boolean } | null;
+  /** Signed in to the app with notifications allowed: told by push, which is never counted. */
+  app?: boolean;
+  notice?: Notice | null;
+  ending?: Concluded | null;
 }
 
 export const RULES_MAX = 2000;
@@ -48,6 +55,8 @@ export const BW = {
   noMobile: 'No mobile number',
   noShift: 'No shift, so nothing to send',
   held: 'Held: no credits',
+  stopped: TW.stopped,
+  waits: TW.waits,
   copyTitle: 'Copy a person’s link',
   copySub: 'Everyone with a shift. Copy a link to send it yourself, by any app.',
   copied: 'Link copied.',
@@ -62,7 +71,6 @@ export const BW = {
   marked: (name: string) => `[Marked as sent to ${name}.]`,
   nobody: '[Nobody has a shift yet.]',
   giveShift: '[Give someone a shift]',
-  loading: '[Loading the staff…]',
   roster: 'Roster',
   close: 'Close',
   cancel: 'Cancel',
@@ -75,9 +83,12 @@ export const BW = {
   atLimit: `[${n0(RULES_MAX)} of ${n0(RULES_MAX)} characters. That is the limit.]`,
   cut: `That was longer than ${n0(RULES_MAX)} characters, so the end was left out.`,
   saved: '[Saved. The rules are on everyone’s shift page now.]',
+  notSaved: 'The rules were not saved. Try again in a moment.',
   previewWho: 'Whose page',
   previewBanner: '[Preview only. Nothing is recorded: no read and no link open.]',
   previewNoShift: (day: string) => `[You are on the staff for ${day}, with no shift yet.]`,
+  previewLoading: 'Loading their page…',
+  didNotWork: 'That did not work. Try again in a moment.',
   checkTitle: 'Check it before it goes',
   people: (n: number) => plural(n, '{n} person', '{n} people'),
   smsLine: (n: number, credits: number) =>
@@ -103,6 +114,9 @@ export const BW = {
   tryAgain: 'Try again',
   sentTo: (n: number) => `Sent to ${n0(n)}.`,
   heldCount: (h: number) => plural(h, '{n} held: no credits.', '{n} held: no credits.'),
+  stoppedCount: TW.stoppedCount,
+  waitCount: TW.waitCount,
+  quiet: TW.quiet,
   sendFailed: '[Not sent. Nothing went, and no credits were used. Try again in a moment.]',
   refusedPage: '[You cannot see this event’s staff.]',
   backToEvent: '[Back to the event]',
@@ -134,20 +148,23 @@ export function countLine(text: string): { words: string; limit: boolean } | nul
 export function noteOf(one: Person): string | null {
   if (one.shift == null) return BW.noShift;
   if (one.mobile == null) return BW.noMobile;
+  if (one.stopped === true) return BW.stopped;
   if (one.heldText) return BW.held;
+  if (one.waitText) return BW.waits(QUIET_ENDS);
 
   return null;
 }
 
+/** A text is owed nobody whose number stopped texts (sc-3946), and nobody with a text already held or waiting: that one goes by itself. */
+const textable = (one: Person) =>
+  one.mobile != null && one.stopped !== true && !one.heldText && !one.waitText;
+
 export function dueAll(people: readonly Person[]): Person[] {
-  return people.filter(
-    (one) => one.mobile != null && one.shift != null && one.brief === 'none' && !one.heldText,
-  );
+  return people.filter((one) => textable(one) && one.shift != null && one.brief === 'none');
 }
 
-/** Send to {n} changed: held people are left out, since their text goes by itself once there are credits. */
 export function dueChanged(people: readonly Person[]): Person[] {
-  return people.filter((one) => one.brief === 'changed' && one.mobile != null && !one.heldText);
+  return people.filter((one) => textable(one) && one.brief === 'changed');
 }
 
 export function tallyOf(people: readonly Person[]): Record<Brief, number> {
@@ -169,6 +186,7 @@ export function asPerson(made: Entry, before: Entry | null): Person {
   return {
     channel: was?.channel ?? 'sms',
     heldText: was?.heldText ?? false,
+    waitText: was?.waitText ?? false,
     briefCopy: was?.briefCopy ?? null,
     ...made,
     brief: moved && (brief === 'sent' || brief === 'read') ? 'changed' : brief,
@@ -189,6 +207,7 @@ export function afterBriefMark(one: Person): Person {
     ...one,
     brief: one.brief === 'read' ? 'read' : 'sent',
     heldText: false,
+    waitText: false,
     link,
     trail: link === 'opened' ? (one.trail ?? null) : trail,
     briefCopy: { trail, marked: true },
@@ -208,10 +227,14 @@ export interface Check {
   after: number;
   smsWaits: number;
   whatsAppWaits: number;
+  /** The paid texts that wait for 09:00, their time; at 0 the wait line is left out. */
+  quiet: number;
+  /** Whose number stopped texts: never texted, and counted in the result only. */
+  stopped: number;
   paid: readonly string[];
 }
 
-const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
+export const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
 
 export type Target = 'all' | 'changed' | string;
 
@@ -225,8 +248,24 @@ export function noMobileFor(people: readonly Person[], target: Target): number {
   return 0;
 }
 
+export function stoppedFor(people: readonly Person[], target: Target): number {
+  const stopped = people.filter(
+    (one) => one.mobile != null && one.stopped === true && !one.heldText && !one.waitText,
+  );
+  if (target === 'all')
+    return stopped.filter((one) => one.shift != null && one.brief === 'none').length;
+  if (target === 'changed') return stopped.filter((one) => one.brief === 'changed').length;
+
+  return 0;
+}
+
 /** sc-3931 on sc-3929's reservation preview: a text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
-export function checkOf(due: readonly Person[], noMobile: number, balance: number): Check {
+export function checkOf(
+  due: readonly Person[],
+  noMobile: number,
+  balance: number,
+  at: { stopped?: number; quiet?: boolean } = {},
+): Check {
   let left = balance;
   const paid: Person[] = [];
   for (const one of due) {
@@ -254,6 +293,8 @@ export function checkOf(due: readonly Person[], noMobile: number, balance: numbe
     after: balance - credits,
     smsWaits: by('sms', due).length - by('sms', paid).length,
     whatsAppWaits: whatsApp.length - by('whatsApp', paid).length,
+    quiet: at.quiet === true ? paid.length : 0,
+    stopped: at.stopped ?? 0,
     paid: paid.map((one) => one.id),
   };
 }
@@ -262,34 +303,49 @@ export function sendTo(
   people: readonly Person[],
   due: readonly Person[],
   check: Check,
-): { people: Person[]; sent: number; held: string[] } {
+): { people: Person[]; sent: number; held: string[]; waits: string[] } {
   const ids = new Set(due.map((one) => one.id));
   const paid = new Set(check.paid);
   const held: string[] = [];
+  const waits: string[] = [];
   const next = people.map((one): Person => {
     if (!ids.has(one.id)) return one;
     if (!paid.has(one.id)) {
       held.push(one.id);
       return { ...one, heldText: true };
     }
+    if (check.quiet > 0) {
+      waits.push(one.id);
+      return { ...one, waitText: true };
+    }
     const opened = one.link === 'opened';
 
     return {
       ...one,
       brief: 'sent',
+      notice: null,
       link: opened ? 'opened' : 'sent',
       trail: opened ? (one.trail ?? null) : { by: YOU, at: NOW_AT, via: 'text' },
     };
   });
 
-  return { people: next, sent: paid.size, held };
+  return { people: next, sent: paid.size - waits.length, held, waits };
 }
 
-export function resultLines(sent: number, noMobile: number, held: number): string[] {
+/** Sent to {n} counts only who was reached, and is left out at 0; a held or waiting person is counted in their own line alone. */
+export function resultLines(
+  sent: number,
+  noMobile: number,
+  held: number,
+  stopped = 0,
+  waits = 0,
+): string[] {
   return [
-    BW.sentTo(sent),
+    ...(sent > 0 ? [BW.sentTo(sent)] : []),
     ...(noMobile > 0 ? [BW.noMobileCount(noMobile)] : []),
+    ...(stopped > 0 ? [BW.stoppedCount(stopped)] : []),
     ...(held > 0 ? [BW.heldCount(held)] : []),
+    ...(waits > 0 ? [BW.waitCount(waits, QUIET_ENDS)] : []),
   ];
 }
 
@@ -310,6 +366,7 @@ export function people(): Person[] {
     brief: BRIEFS[one.id]?.brief ?? 'none',
     channel: BRIEFS[one.id]?.channel ?? 'sms',
     heldText: false,
+    waitText: false,
     briefCopy: null,
   }));
 }
@@ -338,18 +395,41 @@ export interface BriefingStart {
   draft: string | null;
   cut: boolean;
   saved: boolean;
+  /** Save changes was refused: the draft stays, with the line under the box. */
+  notSaved: boolean;
+  previewAt: 'loading' | 'shown' | 'failed';
   copy: 'works' | 'notIssued' | 'refused' | 'slow';
   busy: string | null;
   missed: string | null;
   handHeld: { id: string; url: string } | null;
-  loading: boolean;
   check: Target | null;
   checkAt: 'loading' | 'shown' | 'failed';
   balance: number;
   billing: boolean;
   sendFails: boolean;
+  /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
+  quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
   said: string | null;
+  notices: NoticesStart | null;
+}
+
+/** The reminder card and the S2 lines (sc-4333), on its own states only. */
+export interface NoticesStart {
+  on: boolean;
+  /** The switch's save is refused, every time. */
+  saves: boolean;
+  notSaved: boolean;
+  next: string;
+  sent: { date: string; count: number } | null;
+  concluded: Concluded | null;
+  /** Ask an owner, for a person without billing.manage (sc-3931): ready, its sent line, or Not sent. */
+  ask: 'ready' | 'sent' | 'failed';
+  owners: number;
+  removing: string | null;
+  /** A page opened before End now: its sends are refused, and it reloads Finished. */
+  stale: boolean;
+  alreadyOver: boolean;
 }
 
 function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>): BriefingStart {
@@ -363,18 +443,21 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     draft: null,
     cut: false,
     saved: false,
+    notSaved: false,
+    previewAt: 'shown',
     copy: 'works',
     busy: null,
     missed: null,
     handHeld: null,
-    loading: false,
     check: null,
     checkAt: 'shown',
     balance: BALANCE,
     billing: true,
     sendFails: false,
+    quiet: false,
     result: null,
     said: null,
+    notices: null,
     ...o,
   };
 }
@@ -392,7 +475,184 @@ const afterShortSend = () => {
 
   return sent.people;
 };
+const stoppedOn = (ids: readonly string[]) => (list: Person[]) =>
+  list.map((one) => (ids.includes(one.id) ? { ...one, stopped: true } : one));
+const STOPPED = ['tolu', 'sade'];
+const afterSendAt = (list: Person[], quiet: boolean) => {
+  const due = dueAll(list);
+
+  return sendTo(
+    list,
+    due,
+    checkOf(due, noMobileFor(list, 'all'), BALANCE, { stopped: stoppedFor(list, 'all'), quiet }),
+  ).people;
+};
 const SAMPLE_URL = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
+
+const THU = 'Thursday, Oct 15';
+const FRI = 'Friday, Oct 16';
+const SAT = 'Saturday, Oct 17';
+const REFUSED = 'the carrier refused the number';
+
+function onTheShift(
+  id: string,
+  name: string,
+  job: string,
+  station: string,
+  shift: string,
+  o: Partial<Person>,
+): Person {
+  return {
+    id,
+    name,
+    job,
+    station,
+    shift,
+    more: [],
+    mobile: `+447946000${String(name.length).padStart(3, '0')}`,
+    email: null,
+    link: 'sent',
+    trail: null,
+    brief: 'sent',
+    channel: 'sms',
+    heldText: false,
+    waitText: false,
+    briefCopy: null,
+    app: false,
+    notice: null,
+    ending: null,
+    ...o,
+  };
+}
+
+/** ShiftNotices' sample, one day on Saturday, Oct 17: Kelechi goes by WhatsApp, Yusuf by text, the others briefed by push. */
+export function noticePeople(): Person[] {
+  return [
+    onTheShift('dayo', 'Dayo Adeyemi', 'Floor lead', 'Floor', '14:00 to 23:00', {
+      brief: 'read',
+      link: 'opened',
+      app: true,
+    }),
+    onTheShift('grace', 'Grace Okafor', 'Waiter', 'Section A', '15:00 to 23:00', {
+      brief: 'changed',
+      app: true,
+      notice: {
+        kind: 'waiting',
+        at: '19:55',
+        changes: [{ field: 'start', now: '15:00', was: '17:00' }],
+      },
+    }),
+    onTheShift('kelechi', 'Kelechi Eze', 'Runner', 'Pass', '16:00 to 23:00', {
+      brief: 'changed',
+      channel: 'whatsApp',
+      notice: { kind: 'quiet', day: 'Friday', at: '09:00' },
+    }),
+    onTheShift('tope', 'Tope Balogun', 'Waiter', 'Section B', '17:00 to 23:00', {
+      app: true,
+      notice: { kind: 'told', on: THU, at: '15:42', by: 'push' },
+    }),
+    onTheShift('chidi', 'Chidi Nwankwo', 'Waiter', 'Section B', '17:00 to 23:00', {
+      brief: 'none',
+      link: 'none',
+    }),
+    onTheShift('yusuf', 'Yusuf Bello', 'Bar', 'Bar', '18:00 to 00:00', {
+      brief: 'changed',
+      notice: { kind: 'failed', reason: REFUSED },
+    }),
+    onTheShift('amina', 'Amina Lawal', 'Waiter', 'Section A', '18:00 to 00:00', {
+      brief: 'none',
+      link: 'none',
+      mobile: null,
+    }),
+  ];
+}
+
+const reshaped =
+  (by: Record<string, Partial<Person>>) =>
+  (list: Person[] = noticePeople()): Person[] =>
+    list.map((one) => (by[one.id] == null ? one : { ...one, ...by[one.id] }));
+
+const waiting = (changes: readonly Change[]) => ({
+  brief: 'changed' as const,
+  notice: { kind: 'waiting' as const, at: '19:55', changes },
+});
+
+const severalShifts = reshaped({
+  grace: {
+    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' }]),
+  },
+  tope: {
+    shift: 'Saturday 17:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
+  },
+  yusuf: {
+    shift: null,
+    ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00–Sunday 00:00' }, { field: 'noShift' }]),
+  },
+});
+
+const eve = reshaped({
+  grace: { brief: 'sent', notice: { kind: 'told', on: THU, at: '19:55', by: 'push' } },
+  kelechi: { brief: 'sent', notice: { kind: 'told', on: FRI, at: '09:00', by: 'whatsApp' } },
+});
+
+const calledOff = reshaped({
+  dayo: { notice: { kind: 'told', on: THU, at: '19:40', by: 'push' }, ending: 'calledOff' },
+  grace: {
+    brief: 'sent',
+    notice: { kind: 'told', on: THU, at: '19:40', by: 'push' },
+    ending: 'calledOff',
+  },
+  tope: { notice: { kind: 'told', on: THU, at: '19:40', by: 'push' }, ending: 'calledOff' },
+  kelechi: { ending: 'calledOff' },
+  yusuf: { ending: 'calledOff' },
+});
+
+export const endedPeople = reshaped({
+  grace: {
+    brief: 'read',
+    link: 'opened',
+    notice: { kind: 'told', on: FRI, at: '21:25', by: 'push' },
+  },
+  kelechi: {
+    brief: 'read',
+    link: 'opened',
+    notice: { kind: 'told', on: FRI, at: '09:00', by: 'whatsApp' },
+  },
+  tope: { notice: { kind: 'told', on: SAT, at: '16:30', by: 'push' }, ending: 'ended' },
+  yusuf: {
+    brief: 'sent',
+    notice: { kind: 'told', on: SAT, at: '16:30', by: 'text' },
+    ending: 'ended',
+  },
+});
+
+export const SENT_FRIDAY = { date: FRI, count: 5 };
+
+function notices(o: Partial<NoticesStart> = {}): NoticesStart {
+  return {
+    on: true,
+    saves: true,
+    notSaved: false,
+    next: FRI,
+    sent: null,
+    concluded: null,
+    ask: 'ready',
+    owners: 2,
+    removing: null,
+    stale: false,
+    alreadyOver: false,
+    ...o,
+  };
+}
+
+function noticed(
+  o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>,
+  n: Partial<NoticesStart> = {},
+): BriefingStart {
+  return start({ people: noticePeople(), ...o, notices: notices(n) });
+}
 
 const STATES = {
   populated: () =>
@@ -495,6 +755,15 @@ const STATES = {
       saved: true,
       said: BW.saved,
     }),
+  rulesNotSaved: () =>
+    start({
+      name: 'The rules not saved',
+      note: 'Save changes was refused: the draft stays, with the line under the box. Press Save changes to try again.',
+      side: { kind: 'rules', editing: true },
+      draft: `${RULES}\nNo phones on the floor.`,
+      notSaved: true,
+      said: BW.notSaved,
+    }),
   previewAs: () =>
     start({
       name: 'Preview as Amina Yusuf',
@@ -507,10 +776,24 @@ const STATES = {
       note: 'Chinedu Eze: sc-3915’s page for someone on the staff with no shift yet.',
       side: { kind: 'preview', id: 'chinedu' },
     }),
+  previewLoading: () =>
+    start({
+      name: 'Preview as, loading',
+      note: 'The select and the banner stay; bones in the phone frame while Amina’s page loads.',
+      side: { kind: 'preview', id: 'amina' },
+      previewAt: 'loading',
+    }),
+  previewFailed: () =>
+    start({
+      name: 'Preview as, failed',
+      note: 'That did not work. Try again in a moment. Try again loads it; so does choosing someone.',
+      side: { kind: 'preview', id: 'amina' },
+      previewAt: 'failed',
+    }),
   copyList: () =>
     start({
       name: 'Copy a person’s link',
-      note: 'Everyone with a shift, in roster order, with their mark and a Copy link each.',
+      note: 'Everyone with a shift, in roster order, with their mark; Copy link on each row with a mobile number (sc-3912 issues no link without one).',
       side: { kind: 'copy' },
     }),
   copyBusy: () =>
@@ -565,16 +848,9 @@ const STATES = {
   copyNobody: () =>
     start({
       name: 'Nobody on a shift',
-      note: '[Nobody has a shift yet.] with [Give someone a shift], back to the roster.',
+      note: '[Nobody has a shift yet.] with [Give someone a shift], to the Jobs and shifts tab.',
       side: { kind: 'copy' },
       people: people().map((one) => ({ ...one, shift: null, more: [] })),
-    }),
-  copyLoading: () =>
-    start({
-      name: 'Copy a person’s link, loading',
-      note: 'Bones while the list loads; still with Reduce motion.',
-      side: { kind: 'copy' },
-      loading: true,
     }),
   checkLoading: () =>
     start({
@@ -654,6 +930,40 @@ const STATES = {
       handHeld: { id: 'amina', url: SAMPLE_URL },
       said: BW.refused,
     }),
+  stoppedRow: () =>
+    start({
+      name: 'Rows whose number stopped texts',
+      note: 'Tolu Bello and Sade Lawal replied STOP: Stopped texts under Not sent and Changed since sent. Sade keeps Copy link and loses Send again. Send the briefing to 2, Send to 1 changed.',
+      people: stoppedOn(STOPPED)(people()),
+    }),
+  waitingRow: () =>
+    start({
+      name: 'A row whose text waits until 09:00',
+      note: 'Amina Yusuf’s text waits for 09:00, her time: Not sent with Text waits until 09:00, their time under it. Out of Send the briefing to 2. Copy it from Copy link, then Mark as sent, and the waiting text is withdrawn.',
+      people: people().map((one) => (one.id === 'amina' ? { ...one, waitText: true } : one)),
+    }),
+  checkQuiet: () =>
+    start({
+      name: 'The check at 22:40 the night before',
+      note: 'Every shift starts after 09:00 and the event is not Happening now, so sc-3946’s wait line shows: Texts to 3 people wait until 09:00, their time. Press Send the briefing to 3.',
+      check: 'all',
+      quiet: true,
+    }),
+  resultStopped: () =>
+    start({
+      name: 'Sent, with the stopped count',
+      note: 'Sent to 2. 1 has no mobile number. 1 has stopped texts. Tolu Bello is not texted, and keeps Not sent with Stopped texts.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), false),
+      result: { lines: resultLines(2, 1, 0, 1, 0), held: [] },
+    }),
+  resultWaiting: () =>
+    start({
+      name: 'Sent at 22:40: the waiting count',
+      note: '1 has no mobile number. 1 has stopped texts. 2 wait until 09:00, their time. Sent to is left out at 0; Amina and Emeka read Text waits until 09:00, their time.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), true),
+      quiet: true,
+      result: { lines: resultLines(0, 1, 0, 1, 2), held: [] },
+    }),
   sendFailed: () =>
     start({
       name: 'The send failed outright',
@@ -661,6 +971,182 @@ const STATES = {
       check: 'all',
       sendFails: true,
     }),
+  noticesList: () =>
+    noticed({
+      name: 'The reminder card, and the lines under Briefing',
+      note: 'Next on Friday, Oct 16, to 5 people, the credits line, who is left out. Grace waits, Kelechi is held for quiet hours, Tope was told by push, Yusuf was not delivered, Amina can’t be reached. Turn the switch off and on.',
+    }),
+  noticesSeveralShifts: () =>
+    noticed({
+      name: 'Several shifts, waiting',
+      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, and Yusuf’s last is taken off. Each reads Goes at with its short line; a shift’s start carries its weekday, its end only when on another day.',
+      people: severalShifts(),
+    }),
+  noticesEve: () =>
+    noticed(
+      {
+        name: 'The reminder has gone (the eve)',
+        note: 'Sent on Friday, Oct 16, to 5 people, and nothing else: no cost line and no left-out lines. The roster still names who was not sent. Kelechi was told by WhatsApp.',
+        people: eve(),
+      },
+      { sent: SENT_FRIDAY },
+    ),
+  noticesReminderOff: () =>
+    noticed(
+      {
+        name: 'The reminder switched off',
+        note: 'Nothing under what it does while it is off. Turn it on.',
+      },
+      { on: false },
+    ),
+  noticesSwitchFailed: () =>
+    noticed(
+      {
+        name: 'The switch could not save',
+        note: 'Couldn’t save. The reminder is still on. Every press is refused here.',
+        said: NW.notSaved(true),
+      },
+      { saves: false, notSaved: true },
+    ),
+  noticesRemoved: () =>
+    noticed(
+      {
+        name: 'Removing someone briefed: the question',
+        note: 'Tope Balogun’s details, Remove from the event: one line more, as Tope gets one last message. Remove from the event, or Keep them.',
+      },
+      { removing: 'tope' },
+    ),
+  noticesNoneBriefed: () =>
+    noticed({
+      name: 'Nobody briefed yet',
+      note: 'Nobody to remind yet, with 6 not briefed and 1 who can’t be reached.',
+      people: noticePeople().map((one) => ({ ...one, brief: 'none', link: 'none', notice: null })),
+    }),
+  noticesReadOnly: () =>
+    noticed({
+      name: 'staff.read: On as a word',
+      note: 'No switch, and the Next, cost and left-out lines as for staff.manage.',
+      access: 'read',
+    }),
+  noticesEmpty: () =>
+    noticed({
+      name: 'Nobody on the staff',
+      note: 'Nobody to remind yet.',
+      people: [],
+    }),
+  noticesCostCredits: () =>
+    noticed({
+      name: 'Cost: using credits',
+      note: 'Kelechi’s WhatsApp (31 credits) and Yusuf’s text (62). Credits only: texts have nothing included.',
+    }),
+  noticesNoCredits: () =>
+    noticed({
+      name: 'Not delivered: no credits left',
+      note: 'Yusuf’s row, with Copy link, and Send again as on any changed row.',
+      people: reshaped({ yusuf: { notice: { kind: 'failed', reason: NO_CREDITS } } })(),
+    }),
+  noticesCostShort: () =>
+    noticed({
+      name: 'Credits short, with Add credits',
+      note: 'billing.manage. 40 credits cover Kelechi’s WhatsApp, not Yusuf’s text. Add credits opens Plan and billing.',
+      balance: 40,
+    }),
+  noticesCostShortReadOnly: () =>
+    noticed({
+      name: 'Credits short, with Ask an owner',
+      note: 'staff.read, 20 credits: neither is covered. Press Ask an owner.',
+      access: 'read',
+      balance: 20,
+      billing: false,
+    }),
+  noticesCostShortAsked: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the owners',
+        note: 'The owners have been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent' },
+    ),
+  noticesCostShortAskedOne: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the one owner',
+        note: 'The owner has been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent', owners: 1 },
+    ),
+  noticesCostShortAskFailed: () =>
+    noticed(
+      {
+        name: 'Ask an owner: not sent',
+        note: 'Not sent. Try again in a moment. Press Ask an owner again.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'failed' },
+    ),
+  noticesCalledOff: () =>
+    noticed(
+      {
+        name: 'Called off',
+        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again or Send to {n} changed; Copy link stays.',
+        people: calledOff(),
+      },
+      { concluded: 'calledOff' },
+    ),
+  noticesEventEnded: () =>
+    noticed(
+      {
+        name: 'Ended with End now',
+        note: 'End now on Saturday, Oct 17 at 16:30: Tope and Yusuf had not started. Friday’s reminder had gone.',
+        people: endedPeople(),
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY },
+    ),
+  noticesFinishedSent: () =>
+    noticed(
+      {
+        name: 'Past its end, the reminder sent',
+        note: 'Sunday, with no End now. The rows as on the eve.',
+        people: eve(),
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY },
+    ),
+  noticesFinishedSwitchOff: () =>
+    noticed(
+      {
+        name: 'Ended, with the switch off beforehand',
+        note: 'No reminder ever went.',
+        people: endedPeople(),
+      },
+      { concluded: 'ended', on: false },
+    ),
+  noticesFinishedRefused: () =>
+    noticed(
+      {
+        name: 'A send refused: the event is already over',
+        note: 'The page was opened before End now; it reloaded Finished beneath the notice.',
+        people: endedPeople(),
+        said: NW.alreadyOver,
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY, alreadyOver: true },
+    ),
+  noticesFinishedRefusedBefore: () =>
+    noticed(
+      {
+        name: 'A page opened before End now',
+        note: 'End now was pressed elsewhere at 16:30. Press any send: it is refused, and the page reloads Finished.',
+        people: eve(),
+      },
+      { sent: SENT_FRIDAY, stale: true },
+    ),
 } satisfies Record<string, () => BriefingStart>;
 
 export type BriefingStateName = keyof typeof STATES;
@@ -686,10 +1172,17 @@ export function briefingRosterStart(raw: string | null): RosterStart | null {
     name: b.name,
     note: b.note,
     entries: b.people,
+    panel: b.notices?.removing == null ? null : { kind: 'remove', id: b.notices.removing },
     manage: b.access === 'manage',
     finished: b.finished,
     copy: b.copy === 'slow' ? 'works' : b.copy,
-    sms: b.live ? texting({ credits: b.balance, billing: b.billing }) : null,
+    sms: b.live
+      ? texting({
+          credits: b.balance,
+          billing: b.billing,
+          ...(b.quiet ? { quiet: true, clock: '22:40' } : {}),
+        })
+      : null,
     briefing: b,
   });
 }
@@ -711,6 +1204,8 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'populated',
         'changedRow',
         'changedRefused',
+        'stoppedRow',
+        'waitingRow',
         'notLive',
         'finished',
         'readOnly',
@@ -730,10 +1225,14 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'rulesLimit',
         'rulesPasted',
         'rulesSaved',
+        'rulesNotSaved',
       ] as const
     ).map(link),
   },
-  { name: 'Preview as', states: (['previewAs', 'previewNoShift'] as const).map(link) },
+  {
+    name: 'Preview as',
+    states: (['previewAs', 'previewNoShift', 'previewLoading', 'previewFailed'] as const).map(link),
+  },
   {
     name: 'Copy a person’s link',
     states: (
@@ -746,7 +1245,6 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'copyNotIssued',
         'copyRefused',
         'copyNobody',
-        'copyLoading',
       ] as const
     ).map(link),
   },
@@ -761,11 +1259,70 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'checkShortAsk',
         'checkFailed',
         'checkChanged',
+        'checkQuiet',
       ] as const
     ).map(link),
   },
   {
     name: 'The result',
-    states: (['resultSent', 'resultHeld', 'resultHeldRefused', 'sendFailed'] as const).map(link),
+    states: (
+      [
+        'resultSent',
+        'resultStopped',
+        'resultWaiting',
+        'resultHeld',
+        'resultHeldRefused',
+        'sendFailed',
+      ] as const
+    ).map(link),
+  },
+];
+
+export const NOTICE_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'The reminder card',
+    states: (
+      [
+        'noticesList',
+        'noticesEve',
+        'noticesReminderOff',
+        'noticesSwitchFailed',
+        'noticesNoneBriefed',
+        'noticesReadOnly',
+        'noticesEmpty',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'What the next reminder costs (sc-3931)',
+    states: (
+      [
+        'noticesCostCredits',
+        'noticesCostShort',
+        'noticesCostShortReadOnly',
+        'noticesCostShortAsked',
+        'noticesCostShortAskedOne',
+        'noticesCostShortAskFailed',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'The lines under Briefing, and removing someone',
+    states: (
+      ['noticesList', 'noticesSeveralShifts', 'noticesNoCredits', 'noticesRemoved'] as const
+    ).map(link),
+  },
+  {
+    name: 'Once the event is Finished',
+    states: (
+      [
+        'noticesCalledOff',
+        'noticesEventEnded',
+        'noticesFinishedSent',
+        'noticesFinishedSwitchOff',
+        'noticesFinishedRefused',
+        'noticesFinishedRefusedBefore',
+      ] as const
+    ).map(link),
   },
 ];

@@ -1,21 +1,32 @@
-import { ApiError, type MyNight, type MyNightTable } from '@soirely/api-client';
+import {
+  ApiError,
+  ApiUnreachableError,
+  type ClockAction,
+  type ClockOutcome,
+  type MyNight,
+  type MyNightTable,
+} from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { dateLocale } from '../../i18n/index.ts';
-import {
-  clockAt,
-  clockOpensAt,
-  crossesMidnight,
-  dietaryOf,
-  headingOf,
-  weekdayOf,
-} from './myNight.ts';
+import { forgetSession } from '../../session.ts';
+import { clockAt, crossesMidnight, dietaryOf, headingOf, weekdayOf } from './myNight.ts';
+import { doorAddress } from './doorCheckIn.ts';
 import { atWords } from '../app/events/doorCodes.ts';
+import {
+  type ClockLine,
+  type ClockSeen,
+  ClockCard,
+  ClockedOutEnded,
+  PastAccess,
+} from './ShiftClock.tsx';
 import './myNight.css';
 
 /** Changes to their station, shift or lead show within 10 seconds (sc-3915). */
@@ -35,30 +46,43 @@ type Seen =
 
 /** The person's whole night at their own link, signed in (sc-3915), as the web demo's /demo/my-night draws it. */
 export function MyNightPage({
-  token,
+  source,
+  read: readNight,
+  clockTap,
   name,
   onSignOut,
+  stillSignedIn = false,
   onLost,
 }: {
-  token: string;
+  /** Names what `read` reads, so a change of it starts again. */
+  source: string;
+  read: () => Promise<MyNight>;
+  /** Sends a tap on their clock card (sc-234). */
+  clockTap: (action: ClockAction) => Promise<ClockOutcome>;
   name: string;
   onSignOut: () => void;
+  stillSignedIn?: boolean;
   /** The link no longer answers this account: read it again for what it says now. */
   onLost: () => void;
 }) {
   const { t } = useTranslation();
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
   const [round, setRound] = useState(0);
+  const [tap, setTap] = useState<{ line: ClockLine; busy: boolean }>({ line: null, busy: false });
+  const [ended, setEnded] = useState<ClockSeen | null>(null);
   const lost = useRef(onLost);
+  const reads = useRef(readNight);
 
   useEffect(() => {
     lost.current = onLost;
+    reads.current = readNight;
   });
 
   useEffect(() => {
+    if (ended != null) return undefined;
     let current = true;
     const read = () =>
-      api.staffLinkNight(token).then(
+      reads.current().then(
         (night) => current && setSeen((was) => shown(was, night)),
         (error: unknown) => {
           if (!current) return;
@@ -73,10 +97,55 @@ export function MyNightPage({
       current = false;
       window.clearInterval(every);
     };
-  }, [token, round]);
+  }, [source, round, ended]);
 
   const night = seen.kind === 'shown' ? seen.night : null;
   const now = seen.kind === 'shown' ? seen.at : 0;
+
+  /** Sent as the tap, at Soirely's time when it arrives: nothing is kept to send later. */
+  async function press(): Promise<void> {
+    const card = night?.clock;
+    if (card == null || tap.busy || (card.phase !== 'ready' && card.phase !== 'on')) return;
+    const action: ClockAction = card.phase === 'ready' ? 'in' : 'out';
+    setTap({ line: null, busy: true });
+    try {
+      const outcome = await clockTap(action);
+      const line: ClockLine =
+        outcome.outcome === 'already' ? (action === 'in' ? 'alreadyIn' : 'alreadyOut') : null;
+      setSeen((was) =>
+        was.kind === 'shown'
+          ? { ...was, night: { ...was.night, clock: outcome.clock }, at: Date.now() }
+          : was,
+      );
+      setTap({ line, busy: false });
+      if (outcome.signedOut) {
+        setEnded({ card: outcome.clock, line, busy: false });
+        void api
+          .signOut()
+          .catch(() => undefined)
+          .finally(() => forgetSession());
+      }
+    } catch (error) {
+      const offline = error instanceof TypeError || error instanceof ApiUnreachableError;
+      setTap({ line: offline ? (action === 'in' ? 'offIn' : 'offOut') : null, busy: false });
+      if (error instanceof ApiError && error.status === 409) setRound((n) => n + 1);
+    }
+  }
+
+  if (ended != null && night != null)
+    return <ClockedOutEnded seen={ended} now={now} timeZone={night.event.timeZone} />;
+
+  const clock =
+    night?.clock == null ? null : (
+      <Clock
+        night={night}
+        seen={{ card: night.clock, ...tap }}
+        now={now}
+        onPress={() => void press()}
+      />
+    );
+
+  if (night?.pastAccess === true) return <PastAccess name={night.event.name}>{clock}</PastAccess>;
 
   return (
     <main id="content" className="myn">
@@ -84,7 +153,14 @@ export function MyNightPage({
         <span className="myn-brand">
           <Brand />
         </span>
-        <You name={name} night={night} now={now} place="bar" onSignOut={onSignOut} />
+        <You
+          name={name}
+          night={night}
+          now={now}
+          place="bar"
+          onSignOut={onSignOut}
+          stillSignedIn={stillSignedIn}
+        />
       </header>
       <div className="myn-live" role="status" aria-live="polite">
         {seen.kind === 'shown' && seen.updated != null && (
@@ -111,8 +187,15 @@ export function MyNightPage({
         </div>
       )}
       <div className="myn-page">
-        {night == null ? <Loading /> : <Night night={night} now={now} />}
-        <You name={name} night={night} now={now} place="foot" onSignOut={onSignOut} />
+        {night == null ? <Loading /> : <Night night={night} now={now} clock={clock} />}
+        <You
+          name={name}
+          night={night}
+          now={now}
+          place="foot"
+          onSignOut={onSignOut}
+          stillSignedIn={stillSignedIn}
+        />
       </div>
     </main>
   );
@@ -134,21 +217,17 @@ function shown(was: Seen, night: MyNight): Seen {
   };
 }
 
-function Night({ night, now }: { night: MyNight; now: number }) {
+function Night({ night, now, clock }: { night: MyNight; now: number; clock: ReactNode }) {
   const { t } = useTranslation();
-  const locale = dateLocale();
-  const opens = clockOpensAt(night, new Date(now));
-  const opensWords =
-    opens == null
-      ? null
-      : t('staffLink.night.clockOpensAt', {
-          time: formatEventClock(opens, night.event.timeZone, locale),
-        });
 
   return (
     <>
       <div className="myn-head">
-        <p className="myn-only">{t('staffLink.night.only', { time: endsWords(night, now, t) })}</p>
+        <p className="myn-only">
+          {t('staffLink.night.only', {
+            time: formatEventClock(night.endsAt, night.event.timeZone, dateLocale()),
+          })}
+        </p>
         <p className="myn-event">{night.event.name}</p>
       </div>
       <div className="myn-columns">
@@ -159,16 +238,20 @@ function Night({ night, now }: { night: MyNight; now: number }) {
               <span className="myn-on-station">{headingOf(night)}</span>
             </h1>
           </div>
-          {opensWords != null && (
-            <section className="myn-clock" aria-label={opensWords}>
-              <button type="button" className="myn-clock-button" disabled>
-                {opensWords}
-              </button>
-              <p className="myn-clock-help">{t('staffLink.night.clockOpensLine')}</p>
+          {clock}
+          {night.checksIn && (
+            <Link className="button button-primary myn-check-in" to={doorAddress(night.event.id)}>
+              {t('checkIn.title')}
+            </Link>
+          )}
+          {night.shift != null && <NightShift night={night} shift={night.shift} />}
+          <NightLead lead={night.lead} />
+          {night.rules != null && (
+            <section className="myn-card" aria-labelledby="myn-rules">
+              <h2 id="myn-rules">{t('staffLink.night.beforeYouStart')}</h2>
+              <p className="myn-rules">{night.rules}</p>
             </section>
           )}
-          {night.shift != null && <Shift night={night} shift={night.shift} />}
-          <YourLead lead={night.lead} />
         </div>
         <div className="myn-column">
           {night.timing.length > 0 && <Timing night={night} />}
@@ -176,6 +259,46 @@ function Night({ night, now }: { night: MyNight; now: number }) {
         </div>
       </div>
     </>
+  );
+}
+
+/** Clock in opens at keeps sc-3915's look before the window; from then on it is sc-234's card. */
+function Clock({
+  night,
+  seen,
+  now,
+  onPress,
+}: {
+  night: MyNight;
+  seen: ClockSeen;
+  now: number;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+
+  if (seen.card.phase === 'before') {
+    const opensWords = t('staffLink.night.clockOpensAt', {
+      time: formatEventClock(seen.card.opensAt, night.event.timeZone, dateLocale()),
+    });
+
+    return (
+      <section className="myn-clock" aria-label={opensWords}>
+        <button type="button" className="myn-clock-button" disabled>
+          {opensWords}
+        </button>
+        <p className="myn-clock-help">{t('staffLink.night.clockOpensLine')}</p>
+      </section>
+    );
+  }
+
+  return (
+    <ClockCard
+      seen={seen}
+      past={night.pastAccess}
+      now={now}
+      timeZone={night.event.timeZone}
+      onPress={onPress}
+    />
   );
 }
 
@@ -191,7 +314,14 @@ function Loading() {
   );
 }
 
-function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
+/** Also the briefing's Preview as (sc-3917). */
+export function NightShift({
+  night,
+  shift,
+}: {
+  night: MyNight;
+  shift: NonNullable<MyNight['shift']>;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const end = clockAt(shift.endsAt, locale);
@@ -220,7 +350,7 @@ function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['s
   );
 }
 
-function YourLead({ lead }: { lead: MyNight['lead'] }) {
+export function NightLead({ lead }: { lead: MyNight['lead'] }) {
   const { t } = useTranslation();
 
   return (
@@ -375,12 +505,14 @@ function You({
   now,
   place,
   onSignOut,
+  stillSignedIn,
 }: {
   name: string;
   night: MyNight | null;
   now: number;
   place: 'bar' | 'foot';
   onSignOut: () => void;
+  stillSignedIn: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -395,6 +527,7 @@ function You({
       <button type="button" className="myn-secondary" onClick={onSignOut}>
         {t('redeem.signOut')}
       </button>
+      {stillSignedIn && <StillSignedIn />}
     </div>
   );
 }

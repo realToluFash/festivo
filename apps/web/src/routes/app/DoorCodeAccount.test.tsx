@@ -15,6 +15,7 @@ const SHIFT: OutsideEvent = {
   jobLabel: 'Bar',
   startsAt: '2030-11-14T15:00:00+00:00',
   endsAt: '2030-11-14T23:30:00+00:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const ME = {

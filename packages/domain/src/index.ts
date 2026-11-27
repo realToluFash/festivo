@@ -10,6 +10,7 @@ export * from './locales.ts';
 export * from './sentenceStops.ts';
 export * from './guestName.ts';
 export * from './guestLanguage.ts';
+export * from './doorList.ts';
 export * from './guestForm.ts';
 export * from './guestGroups.ts';
 export * from './guestNeeds.ts';

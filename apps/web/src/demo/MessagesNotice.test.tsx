@@ -243,7 +243,7 @@ describe('a guest’s conversation at a desk (sc-3976)', () => {
     await messages('readOnly');
 
     expect(screen.queryByRole('textbox', { name: 'Your answer' })).toBeNull();
-    expect(screen.getByText('Only someone who can change Messages can send.')).toBeDefined();
+    expect(screen.getByText('Only someone who can change Messages can write here.')).toBeDefined();
     expect(screen.queryByText('ines.duarte@sapo.pt')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Mark as done' })).toBeNull();
     expect(within(list()).getByRole('link', { name: /^Unknown sender/ })).toBeDefined();

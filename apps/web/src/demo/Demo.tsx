@@ -12,6 +12,7 @@ import {
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
+import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
@@ -102,7 +103,7 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
-import { BRIEFING_PAGES } from './briefing.ts';
+import { BRIEFING_PAGES, NOTICE_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -448,6 +449,8 @@ function DemoHome({ from }: { from: string }) {
         </ul>
         <h3>Events in A · Summary first · desktop</h3>
         <BoardPages pages={EVENTS_PAGES} />
+        <h3>All dates in A, loading and failed (sc-98187) · desktop and 320 px</h3>
+        <BoardPages pages={ALL_DATES_PAGES} />
         <h3>An event in a phone browser hands over to the app · 390 and 320 px</h3>
         <BoardPages pages={HANDOFF_PAGES} />
         <h3>Today, Events and Calendar fit a phone’s window (sc-57468) · 390 and 320 px</h3>
@@ -579,6 +582,11 @@ function DemoHome({ from }: { from: string }) {
           narrow web
         </h3>
         <BoardPages pages={BRIEFING_PAGES} />
+        <h3>
+          A person on the staff is told when their shift changes, and reminded the day before
+          (sc-4333) · desktop
+        </h3>
+        <BoardPages pages={NOTICE_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>

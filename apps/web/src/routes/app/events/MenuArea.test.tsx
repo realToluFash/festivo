@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import type { OutsideEvent } from '@soirely/api-client';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
@@ -34,7 +35,20 @@ const EVENT = {
   permissions: OWNER_PERMISSIONS,
 };
 
-function signedIn(organisation = IRE): void {
+const OUTSIDE_EDIT: OutsideEvent[] = [
+  {
+    id: 'ev_1',
+    name: EVENT.name,
+    organisationName: 'Ìrè Events',
+    role: 'can_edit',
+    jobLabel: null,
+    startsAt: EVENT.startsAt,
+    endsAt: EVENT.endsAt,
+    timeZone: 'Europe/Lisbon',
+  },
+];
+
+function signedIn(organisation: typeof IRE | null = IRE, outsideEvents: OutsideEvent[] = []): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -46,10 +60,11 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: organisation == null ? [] : [organisation],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
+    outsideEvents,
   };
 
   __setSessionState({ status: 'signedIn', session });
@@ -125,10 +140,15 @@ async function onMenu(
   {
     organisation = IRE,
     roleOnEvent = null,
-  }: { organisation?: typeof IRE; roleOnEvent?: string | null } = {},
+    outsideEvents,
+  }: {
+    organisation?: typeof IRE | null;
+    roleOnEvent?: string | null;
+    outsideEvents?: OutsideEvent[];
+  } = {},
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
-  signedIn(organisation);
+  signedIn(organisation, outsideEvents ?? []);
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = new URL(String(input));
@@ -540,6 +560,52 @@ describe('The event’s Menu (sc-3902)', () => {
       'true',
     );
   });
+
+  it.each([
+    ['a member of another organisation', membership({ id: 'org_2', name: 'Lagos Lights' })],
+    ['an account in no organisation', null],
+  ])(
+    'opens Add dish from outside, as %s, on the new dish form, never reading a library, and keeps the dish to the event (sc-95116)',
+    async (_who, organisation) => {
+      let menu = menuOf(LATE);
+      const sent = await onMenu(
+        {
+          'GET /api/events/ev_1/menu': () => menu(),
+          'POST /api/events/ev_1/menu/courses/c_late/dishes': () => {
+            menu = menuOf({ ...LATE, dishes: [dish('d_suya', 'Suya bites')] });
+            return menu();
+          },
+        },
+        OWNER_PERMISSIONS,
+        {
+          organisation,
+          outsideEvents: OUTSIDE_EDIT,
+        },
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+      expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
+      const panel = await screen.findByRole('complementary', { name: 'Add dish' });
+
+      expect(within(panel).queryByRole('tab')).toBeNull();
+      expect(within(panel).queryByRole('checkbox', { name: 'Only for this event' })).toBeNull();
+      expect(within(panel).queryByText('Loading the menu library…')).toBeNull();
+      expect(
+        within(panel).getByText('Not saved to the menu library. It stays on this event only.'),
+      ).toBeDefined();
+      fireEvent.change(within(panel).getByLabelText('Name'), { target: { value: 'Suya bites' } });
+      fireEvent.click(within(panel).getByRole('checkbox', { name: 'Peanuts' }));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add dish' }));
+
+      expect(await screen.findByText('Suya bites added to Late-night bites.')).toBeDefined();
+      expect(sent.some((one) => one.line.includes('/dishes') && one.line.startsWith('GET'))).toBe(
+        false,
+      );
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/menu/courses/c_late/dishes')?.body,
+      ).toMatchObject({ name: 'Suya bites', onlyForEvent: true });
+    },
+  );
 
   it('offers Everyone gets the same only with exactly one dish', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });

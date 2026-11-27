@@ -97,7 +97,8 @@ final readonly class OrderMaker
             $dish = null === $answer || null === $answer['dish'] || MealAnswerKind::ChefsChoice->value === $answer['answer']
                 ? null
                 : $this->menuDishRepository->findOneInEvent($course->getEvent()->getId(), Uuid::fromString($answer['dish']));
-            $plate = ServicePlate::order($course, $guest, $table->key, $this->items($course, $dish, $answer['variant'] ?? null, $answer['options'] ?? []), $at, $by);
+            $variant = $answer['variant'] ?? null;
+            $plate = ServicePlate::order($course, $guest, $table->key, $this->items($course, $dish, $variant, $answer['options'] ?? []), $this->variantBeside($course, $dish, $variant), $at, $by);
             $this->entityManager->persist($plate);
             $made[] = $plate;
         }
@@ -124,6 +125,16 @@ final readonly class OrderMaker
         }
 
         return $items;
+    }
+
+    /** The variant's name when the dish has no variants item, so it is not on the plate as an item (sc-34230): a child's portion. */
+    private function variantBeside(MenuCourse $course, ?MenuDish $dish, ?string $variant): ?string
+    {
+        if (null === $dish || null === $variant || !Uuid::isValid($variant) || Iter\any($dish->getItems(), static fn (array $item): bool => 'variants' === $item['kind'])) {
+            return null;
+        }
+
+        return $this->menuDishVariantRepository->findOneInEvent($course->getEvent()->getId(), Uuid::fromString($variant))?->getName();
     }
 
     /**

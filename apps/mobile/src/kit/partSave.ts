@@ -45,6 +45,15 @@ export interface PartSaveApi {
   updateEvent: (eventId: string, changes: EventChanges, tag: string) => Promise<TaggedEvent>;
 }
 
+/** The words at the top of a part's screen for a save that stopped with nothing under a field and no way to the latest. */
+export const PART_NOTICE = {
+  failed: 'eventEdit.notSaved',
+  forbidden: 'eventEdit.forbidden',
+  gone: 'eventEdit.eventGone',
+} as const satisfies Record<Exclude<EventSaveRefusal['kind'], 'changed' | 'refused'>, string>;
+
+export type PartNotice = keyof typeof PART_NOTICE;
+
 export type PartSent =
   { kind: 'unchanged' } | { kind: 'saved'; event: OrganisationEvent } | EventSaveRefusal;
 

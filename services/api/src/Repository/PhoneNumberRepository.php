@@ -21,4 +21,26 @@ final class PhoneNumberRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['number' => $number]);
     }
+
+    /**
+     * @param list<string> $numbers E.164
+     *
+     * @return list<PhoneNumber> the verified ones among them, with their accounts
+     */
+    public function findVerifiedAmong(array $numbers): array
+    {
+        if ([] === $numbers) {
+            return [];
+        }
+
+        /** @var list<PhoneNumber> */
+        return $this->createQueryBuilder('p')
+            ->select('p', 'u')
+            ->innerJoin('p.user', 'u')
+            ->where('p.number IN (:numbers)')
+            ->andWhere('p.verifiedAt IS NOT NULL')
+            ->setParameter('numbers', $numbers)
+            ->getQuery()
+            ->getResult();
+    }
 }

@@ -1716,7 +1716,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
 describe("An event's Overview (sc-22103)", () => {
   const PAST = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
 
-  it('opens on Details, Coming up, and Name and cover, beside Just for you and Manage (sc-30413)', async () => {
+  it('opens on Details, Needs you, Coming up, and Name and cover, beside Just for you and Manage (sc-30413, sc-32801)', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1725,8 +1725,16 @@ describe("An event's Overview (sc-22103)", () => {
     expect(screen.queryByRole('list', { name: 'Overview' })).toBeNull();
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(['Details', 'Coming up', 'Name and cover', 'Guests', 'Just for you', 'Manage']);
-    for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event'])
+    ).toEqual([
+      'Details',
+      'Needs you',
+      'Coming up',
+      'Name and cover',
+      'Guests',
+      'Just for you',
+      'Manage',
+    ]);
+    for (const label of ['On track', 'Replies', 'Team on this event'])
       expect(screen.queryByRole('region', { name: label })).toBeNull();
     expect(await screen.findByText('No guests invited yet')).toBeDefined();
     expect(screen.queryByText('Invited')).toBeNull();
@@ -2185,26 +2193,23 @@ describe("An event's page", () => {
     expect(screen.queryByText('Not yours')).toBeNull();
   });
 
-  it.each(['dates', 'people', 'reports'])(
-    'ends where Overview ends at a wide desk, on /%s (sc-59375)',
-    async (area) => {
-      signedIn();
-      answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
-      at(`/app/events/ev_1/${area}`);
+  it.each([
+    ['people', 'People'],
+    ['reports', 'Adaeze and Tunde'],
+  ])('ends where Overview ends at a wide desk, on /%s (sc-59375)', async (area, title) => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at(`/app/events/ev_1/${area}`);
 
-      const heading = await screen.findByRole('heading', {
-        level: 1,
-        name: area === 'people' ? 'People' : 'Adaeze and Tunde',
-      });
+    const heading = await screen.findByRole('heading', { level: 1, name: title });
 
-      expect(heading.closest('.event-page')).not.toBeNull();
-      expect(heading.closest('.ev')).toBeNull();
-      expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
-      expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
-      expect(cssRule('.event-page')).not.toContain('max-width');
-      expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
-    },
-  );
+    expect(heading.closest('.event-page')).not.toBeNull();
+    expect(heading.closest('.ev')).toBeNull();
+    expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
+    expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+    expect(cssRule('.event-page')).not.toContain('max-width');
+    expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
+  });
 
   it('gives way at its name in the crumb, never at Events (sc-60699, QA #63079)', () => {
     expect(cssRule('.ev-crumb-part:first-child', EVENT_PAGE_CSS)).toContain('flex-shrink: 0;');
@@ -2357,6 +2362,26 @@ describe("An event's venue (sc-3589)", () => {
       expect(within(details).getByText(ROLE)).toBeDefined();
       expect(screen.getByRole('group', { name: 'Venue' })).toBeDefined();
       expect(within(details).queryByText(/Try again/u)).toBeNull();
+    });
+
+    it('says an event no longer available where Not saved sits, keeps the note typed and the edit open, and offers no retry (sc-75689)', async () => {
+      const GONE = 'Nothing was changed. This event is no longer available.';
+      const { sent, details } = await typedNote({
+        'PATCH /api/events/ev_1': () => problem(404, 'not_found'),
+      });
+
+      expect((await within(details).findByRole('alert')).textContent).toContain(GONE);
+      expect(within(details).queryByText(/Not saved|Try again/u)).toBeNull();
+      expect(within(details).getByLabelText<HTMLTextAreaElement>(/Arrival note/u).value).toBe(
+        'Doors close at 23:00.',
+      );
+
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      expect(within(details).getAllByText(GONE)).toHaveLength(1);
+      expect(screen.getByRole('group', { name: 'Venue' })).toBeDefined();
     });
 
     it('keeps Not saved for a save that failed for another reason', async () => {
@@ -4562,6 +4587,48 @@ describe('The cover (sc-3590)', () => {
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
     });
 
+    it('a save to an event no longer available says so, with no Try again (sc-75689)', async () => {
+      await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'Nothing was changed. This event is no longer available.',
+      );
+      expect(within(part()).queryByText(/Try again/u)).toBeNull();
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+    });
+
+    it('brings the refusal into view on every press of Use this photo (sc-75689)', async () => {
+      const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+      const { sent } = await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      const notice = await within(part()).findByRole('alert');
+
+      expect(scrolled.mock.contexts).toContain(notice);
+      const first = scrolled.mock.contexts.filter((shown) => shown === notice).length;
+
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PUT /api/events/ev_1/cover')).toHaveLength(2),
+      );
+      await waitFor(() =>
+        expect(scrolled.mock.contexts.filter((shown) => shown === notice).length).toBeGreaterThan(
+          first,
+        ),
+      );
+      expect(within(part()).getAllByRole('alert')).toHaveLength(1);
+    });
+
     it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
       const { sent } = await opened(null, {
         'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
@@ -5381,6 +5448,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     );
   });
 
+  it('puts a You milestone that is Next up on the card, marked You and Overdue once passed, with its action as the step (sc-30812)', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            startsAt: '2026-10-24T18:00:00+02:00',
+            endsAt: '2026-10-25T02:00:00+02:00',
+            status: 'live',
+            phase: 'live',
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/Madrid',
+          milestones: [
+            {
+              ...milestone('2026-10-20T23:59:00+02:00', 'Give final numbers to the kitchen', 'you'),
+              area: 'menu',
+              action: { label: 'Open the kitchen sheet', link: '/app/events/ev_1/menu/kitchen' },
+            },
+            milestone('2026-10-24T18:00:00+02:00', 'Boda starts'),
+          ],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const steps = await screen.findAllByRole('link', { name: 'Open the kitchen sheet' });
+    const step = steps.find((link) => link.closest('.ev-card-foot') != null) as HTMLElement;
+    const foot = step.closest('.ev-card-foot') as HTMLElement;
+    expect(within(foot).getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+    expect(within(foot).getByText('You')).toBeDefined();
+    expect(within(foot).getByText('Overdue')).toBeDefined();
+    expect(step.getAttribute('href')).toBe('/app/events/ev_1/menu/kitchen');
+  });
+
   it('names the year on a row whose date is not in the current year (sc-30413)', async () => {
     clockAt('2025-12-31T22:30:00Z');
     signedIn();
@@ -5452,6 +5557,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
   });
 
+  it('says when a one-day event ends while it is on with nothing ahead, and its card offers no step (sc-93858)', async () => {
+    clockAt('2026-11-03T20:40:00Z');
+    signedIn();
+    const finished = 'Nothing coming up. Every date on this event has passed.';
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            status: 'live',
+            phase: 'happening_now',
+            startsAt: '2026-11-03T19:00:00+00:00',
+            endsAt: '2026-11-03T23:30:00+00:00',
+            timeZone: 'Europe/London',
+            dayCount: 1,
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/London',
+          milestones: [milestone('2026-11-03T19:00:00+00:00', 'Adaeze and Tunde starts')],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText('Ends today at 23:30')).toBeDefined();
+    expect(within(panel).queryByText(finished)).toBeNull();
+    expect(within(panel).queryByText('✓')).toBeNull();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    const card = document.querySelector<HTMLElement>('.ev-card')!;
+
+    expect(within(card).getByText('Happening now')).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Duplicate' })).toBeNull();
+    expect(within(card).getByText(finished).closest('.ev-card-foot.is-unseen')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate' }).className).toBe('ev-manage-do');
+  });
+
   it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
@@ -5503,17 +5646,29 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).queryByText('Loading the dates…')).toBeNull();
   });
 
-  it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
+  it('lists every milestone in All dates under the title and the event’s strip, in its zone, whose it is with its moment on one line, Passed and Next up as tags (sc-98187)', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     answering({
-      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            venue: {
+              name: 'Harbour Hall',
+              address: {
+                ...TYPED,
+                formatted: 'Harbour Hall, 1 Quay Street, London',
+                city: 'London',
+              },
+            },
+          }),
+        }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
     at('/app/events/ev_1/dates');
 
-    const heading = await screen.findByRole('heading', { level: 2, name: 'All dates' });
-    const page = heading.closest('section')!;
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
+    const page = heading.closest('.dates')! as HTMLElement;
 
     expect(
       await within(page).findByText(
@@ -5521,14 +5676,28 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
       ),
     ).toBeDefined();
     expect(rows(page)).toEqual([
-      'Sat, Oct 10, 12:00Save the date sentAutomatic✓ Passed',
-      'Sat, Oct 17, 18:00Boda startsEventNext up',
-      'Sun, Oct 18, 09:00BrunchAutomatic',
-      'Mon, Oct 19, 12:00Balance dueYou',
-      'Tue, Oct 20, 12:00Thank-you notes sentAutomatic',
-      'Mon, Oct 26, 02:00Boda endsEvent',
+      'Save the date sentAutomatic · Sat, Oct 10, 12:00Passed',
+      'Boda startsEvent · Sat, Oct 17, 18:00Next up',
+      'BrunchAutomatic · Sun, Oct 18, 09:00',
+      'Balance dueYou · Mon, Oct 19, 12:00',
+      'Thank-you notes sentAutomatic · Tue, Oct 20, 12:00',
+      'Boda endsEvent · Mon, Oct 26, 02:00',
     ]);
+    expect(heading.tagName).toBe('H1');
+    expect(screen.queryByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Make live' })).toBeNull();
+    const strip = page.querySelector('.ev-strip')!;
+    expect(strip.querySelector('.ev-thumb')).not.toBeNull();
+    expect(within(strip as HTMLElement).getByText('Adaeze and Tunde')).toBeDefined();
+    expect(spaced(strip.textContent)).toContain(' · Harbour Hall, London');
+    expect(page.closest('.desk.ev')).not.toBeNull();
+    expect(page.closest('.event-page.ev-wide')).not.toBeNull();
+    expect(page.querySelector('ol.desk-rows.ev-details')).not.toBeNull();
+    expect(page.querySelectorAll('.dates-row .ev-lead svg')).toHaveLength(6);
     expect(within(page).getByText('Something you need to do')).toBeDefined();
+    expect(page.querySelectorAll('.dates-key-row')).toHaveLength(3);
+    expect(document.title).toContain('All dates');
   });
 
   it('reads the dates again on Call off, and the called-off moment is never Next up, even stamped a second ahead of the clock (sc-16709)', async () => {
@@ -5603,9 +5772,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     expect(await within(page).findByText('Loading the dates…')).toBeDefined();
     arrive();
@@ -5623,13 +5792,15 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
-    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00Balance dueYou⚠ OverdueNext up');
-    expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
+    expect(rows(page)[3]).toBe('Balance dueYou · Mon, Oct 19, 12:00OverdueNext up');
+    expect(rows(page)[4]).toBe('Thank-you notes sentAutomatic · Tue, Oct 20, 12:00Passed');
+    expect(page.querySelector('.dates-tag.is-overdue svg')).not.toBeNull();
+    expect(page.querySelector('.dates-tag.is-passed svg')).not.toBeNull();
   });
 
   it('marks nothing Next up in All dates once the event is over', async () => {
@@ -5642,9 +5813,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(5));
     expect(within(page).queryByText('Next up')).toBeNull();
@@ -5659,13 +5830,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
-    expect(await within(page).findByText('The dates did not load.')).toBeDefined();
-    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    const line = await within(page).findByText('The dates did not load.');
+    const failed = line.closest('.dates-failed')!;
+    expect(failed.getAttribute('role')).toBeNull();
+    expect(within(page).getByRole('button', { name: 'Try again' }).className).toBe(
+      'gs-pill is-secondary',
+    );
     expect(within(page).queryByRole('listitem')).toBeNull();
+    expect(within(page).queryByText(/earliest first/)).toBeNull();
+    expect(within(page).queryByText('Something you need to do')).toBeNull();
+  });
+
+  it('says a failed retry on All dates aloud, lands on the title, and the next loads (sc-98187)', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        ++reads < 3 ? problem(500, 'internal_error') : json(MADRID),
+    });
+    at('/app/events/ev_1/dates');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
+    const page = heading.closest('.dates')! as HTMLElement;
+    await within(page).findByText('The dates did not load.');
+
+    fireEvent.click(within(page).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    const alert = await within(page).findByRole('alert');
+    expect(alert.textContent).toContain('The dates did not load.');
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByRole('alert')).toBeNull();
   });
 
   it('links a milestone to where it is acted on under its row, on Coming up and All dates, and only the action is a link (sc-3905)', async () => {
@@ -5691,13 +5893,19 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(link.closest('li')!).getAllByRole('link')).toEqual([link]);
 
     fireEvent.click(within(panel).getByRole('link', { name: 'All dates' }));
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
     const onAllDates = await within(page).findByRole('link', { name: 'Open the menu' });
 
     expect(onAllDates.getAttribute('href')).toBe('/app/events/ev_1/menu');
     expect(within(page).getAllByRole('link', { name: 'Open the menu' })).toHaveLength(1);
+    expect(onAllDates.className).toBe('desk-text ev-maps');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'All dates' }),
+      ),
+    );
   });
 });
 
@@ -5778,18 +5986,18 @@ describe('Someone who can only view an event is never told to change its dates o
       true,
     ],
   ] as const)(
-    'words the row above Dates for %s',
+    'words the row above Reports for %s',
     async (_, who, passedLine, pausedLine, offered) => {
       signedIn(who);
       answering({ 'GET /api/events/ev_1': () => json({ event: event(PASSED) }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText(passedLine)).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Change dates' }) != null).toBe(offered);
       cleanup();
 
       answering({ 'GET /api/events/ev_1': () => json({ event: paused() }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText(pausedLine)).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Resume' }) != null).toBe(offered);
@@ -5801,7 +6009,7 @@ describe('Someone who can only view an event is never told to change its dates o
     async (who) => {
       signedIn(who);
       answering({ 'GET /api/events/ev_1': () => json({ event: event(AHEAD) }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
 
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
@@ -5972,6 +6180,11 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       'a change made elsewhere',
       () => problem(412, 'precondition_failed'),
       'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+    ],
+    [
+      'an event no longer available',
+      () => problem(404, 'not_found'),
+      'Nothing was changed. This event is no longer available.',
     ],
   ] as const;
 
@@ -6175,6 +6388,34 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       directlyAboveSave(part, ROLE);
       expect(field.value).toBe(day);
     });
+
+    it.each([
+      ['Save', '2026-11-12'],
+      ['Close replies sooner', '2026-11-05'],
+      ['Close replies now', '2026-10-30'],
+    ])(
+      'says the event is no longer available after %s, keeps the date, and offers no retry (sc-75689)',
+      async (go, day) => {
+        const GONE = ANSWERS[3][2];
+        const { sent, part, field, save } = await pickedReplyBy(day, ANSWERS[3][1]);
+
+        save.focus();
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+
+        expect((await within(part).findByRole('alert')).textContent).toContain(GONE);
+        directlyAboveSave(part, GONE);
+        expect(within(part).queryByText(/Not saved|Try again/u)).toBeNull();
+        expect(field.value).toBe(day);
+
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+        await waitFor(() =>
+          expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+        );
+        expect(within(part).getAllByText(GONE)).toHaveLength(1);
+      },
+    );
 
     it('keeps Not saved for a save that failed for another reason', async () => {
       const { part } = await pickedReplyBy('2026-11-12', ANSWERS[0][1]);

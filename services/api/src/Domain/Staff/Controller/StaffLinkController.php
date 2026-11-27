@@ -13,7 +13,6 @@ use App\Domain\Staff\Link\StaffLinkWindow;
 use App\Domain\User\CallerSession;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\PhoneSignIn\PhoneHint;
-use App\Domain\User\TokenIssuer;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
@@ -27,7 +26,6 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
-use App\Repository\RefreshTokenRepository;
 use DateTimeZone;
 use Psl\Iter;
 use Psl\Type;
@@ -50,8 +48,6 @@ final readonly class StaffLinkController
         private SignInResponse $signInResponse,
         private CodeField $codeField,
         private CallerSession $callerSession,
-        private RefreshTokenRepository $refreshTokenRepository,
-        private TokenIssuer $tokenIssuer,
         private StaffLinkGrants $staffLinkGrants,
         private MyNight $myNight,
     ) {
@@ -132,21 +128,38 @@ final readonly class StaffLinkController
         $reader = $this->security->getUser();
         $window = $this->staffLinks->window($entry);
 
-        if (!$reader instanceof User || true !== $entry->getAccount()?->getId()->equals($reader->getId()) || !$window->open || null === $window->until) {
+        if (!$reader instanceof User || true !== $entry->getAccount()?->getId()->equals($reader->getId())) {
             throw ApiException::notFound('access.not_found');
         }
 
-        return new JsonResponse($this->myNight->of($entry, $window->until));
+        return match (true) {
+            $window->open && null !== $window->until => new JsonResponse($this->myNight->of($entry, $window->until)),
+            null !== $window->clockUntil => new JsonResponse($this->myNight->pastAccess($entry, $window->clockUntil)),
+            default => throw ApiException::notFound('access.not_found'),
+        };
     }
 
-    /** The same night in the app, for an account on the event's roster through its link (sc-3906); 404 for anybody else, organisers included. */
+    /** The same night in the app, for an account on the event's roster through its link (sc-3906) or a join code's shift (sc-234), and its clock card alone past access (sc-234); 404 for anybody else, organisers included. */
     #[Route('/api/events/{eventId}/my-night', name: 'staff_my_night', methods: ['GET'])]
     #[Authenticated]
     public function mine(string $eventId): JsonResponse
     {
-        $grant = Uuid::isValid($eventId) ? Iter\first($this->staffLinkGrants->live($this->user(), Uuid::fromString($eventId))) : null;
+        $event = Uuid::isValid($eventId) ? Uuid::fromString($eventId) : null;
+        $grant = null === $event ? null : Iter\first($this->staffLinkGrants->live($this->user(), $event));
 
-        return null === $grant ? throw ApiException::notFound('access.not_found') : new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
+        if (null !== $grant) {
+            return new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
+        }
+
+        $byCode = null === $event ? null : Iter\first($this->staffLinkGrants->byCode($this->user(), $event));
+
+        if (null !== $byCode) {
+            return new JsonResponse($this->myNight->of($byCode['entry'], $byCode['until'], $byCode['level']));
+        }
+
+        $clockOnly = null === $event ? null : Iter\first($this->staffLinkGrants->clockOnly($this->user(), $event));
+
+        return null === $clockOnly ? throw ApiException::notFound('access.not_found') : new JsonResponse($this->myNight->pastAccess($clockOnly['entry'], $clockOnly['until']));
     }
 
     /** Sent by the page once it is visible, so a preview fetch records nothing; answers as `look` does. */
@@ -175,7 +188,7 @@ final readonly class StaffLinkController
 
         return $state + [
             'event' => ['name' => $entry->getEvent()->getName()],
-            'job' => $entry->getJob()?->getName(),
+            'job' => true === $state['pastAccess'] ? null : $entry->getJob()?->getName(),
             'mobile' => null === $mobile ? null : PhoneHint::ofNumber($mobile),
             'reader' => match (true) {
                 !$reader instanceof User => null,
@@ -183,27 +196,18 @@ final readonly class StaffLinkController
                 default => 'other',
             },
             'name' => $reader instanceof User && !$mine ? $entry->getFullName() : null,
-        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->signedOutAt($reader, $entry), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
+        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->callerSession->endsAt($reader)?->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
     }
 
-    /** The moment a session that ends with its account's grants ends, in the event's zone; null for one that does not, as the app's. */
-    private function signedOutAt(User $reader, StaffMember $entry): ?string
-    {
-        $chain = $this->callerSession->chain();
-        $session = null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]);
-
-        if (true !== $session?->endsWithGrants()) {
-            return null;
-        }
-
-        return $this->tokenIssuer->grantsEndFor($reader)->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM);
-    }
-
-    /** @return array<string, string> */
+    /** @return array<string, string|bool> */
     private static function state(StaffLinkWindow $window, StaffMember $entry): array
     {
         if ($window->open) {
-            return ['state' => 'open'];
+            return ['state' => 'open', 'pastAccess' => false];
+        }
+
+        if (null !== $window->clockUntil) {
+            return ['state' => 'open', 'pastAccess' => true];
         }
 
         if ($window->ended) {

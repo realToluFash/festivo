@@ -2,7 +2,7 @@ import { type EventPhase, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, cardStep, dayTiles, shownEvent } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, shownEvent, venuePlace } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -140,6 +140,26 @@ describe('cardStep', () => {
     ).toMatchObject({ kind: 'next', line: 'Fri 20 Nov, 17:00' });
   });
 
+  it('offers no step while it is on with nothing ahead, in the room its Duplicate takes', () => {
+    expect(cardStep(lasting(1, 'happening_now'), before, 'en-GB', withDate)).toEqual({
+      kind: 'none',
+      keeps: {
+        kind: 'button',
+        line: 'timeline.finished',
+        label: 'eventDuplicate.open',
+        action: 'duplicate',
+      },
+    });
+  });
+
+  it('offers Duplicate once it is over', () => {
+    expect(cardStep(lasting(1, 'finished'), before, 'en-GB', withDate)).toMatchObject({
+      kind: 'button',
+      line: 'timeline.finished',
+      action: 'duplicate',
+    });
+  });
+
   it('writes the called-off day with its year only when it is not this year', () => {
     const calledOffOn = (concludedAt: string) =>
       shownEvent({ ...lasting(1, 'finished'), status: 'ended', concludedAt }, 'finished');
@@ -156,5 +176,43 @@ describe('cardStep', () => {
         withDate,
       ),
     ).toMatchObject({ kind: 'button', line: 'Wed, 5 Nov 2025' });
+  });
+});
+
+describe('venuePlace', () => {
+  const joining = ((key: string, values?: { venue?: string; city?: string }) =>
+    key === 'search.line.venueCity'
+      ? `${values?.venue}, ${values?.city}`
+      : key) as unknown as TFunction;
+  const address = (city: string | null) => ({
+    formatted: '12 Bode Thomas Street',
+    line1: null,
+    line2: null,
+    city,
+    region: null,
+    postalCode: null,
+    countryCode: null,
+    latitude: null,
+    longitude: null,
+  });
+
+  it('names a picked venue with its city', () => {
+    expect(venuePlace({ name: 'Harbour Hall', address: address('Lagos') }, joining)).toBe(
+      'Harbour Hall, Lagos',
+    );
+  });
+
+  it('names a venue typed by hand alone, with no city to add', () => {
+    expect(venuePlace({ name: 'Harbour Hall', address: address(null) }, joining)).toBe(
+      'Harbour Hall',
+    );
+    expect(venuePlace({ name: 'Harbour Hall', address: null }, joining)).toBe('Harbour Hall');
+  });
+
+  it('falls back to the address when the venue has no name, and to nothing without one', () => {
+    expect(venuePlace({ name: null, address: address('Lagos') }, joining)).toBe(
+      '12 Bode Thomas Street',
+    );
+    expect(venuePlace(null, joining)).toBeNull();
   });
 });

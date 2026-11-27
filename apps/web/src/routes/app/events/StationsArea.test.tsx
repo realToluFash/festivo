@@ -109,7 +109,11 @@ function person(id: string, fullName: string, at: Ref | null, more: Record<strin
     link: 'no_mobile',
     linkBy: null,
     linkAt: null,
+    briefing: 'none',
+    briefingCopy: null,
     contactsErased: false,
+    notice: null,
+    inApp: false,
     ...more,
   };
 }
@@ -170,7 +174,7 @@ const STATIONS = {
   walk: ['kitchen', 'grill', 'pastry'],
 };
 
-const PLAN = { staff: STAFF, jobs: [], shifts: [], stations: STATIONS };
+const PLAN = { staff: STAFF, jobs: [], shifts: [], stations: STATIONS, rules: null };
 
 async function onStations(
   answers: Record<string, Answer>,
@@ -216,6 +220,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
       'Roster',
       'Jobs and shifts',
       'Stations',
+      'Hours worked',
     ]);
     expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Stations');
   });

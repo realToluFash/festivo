@@ -1,4 +1,6 @@
 import { type Card, cardOf } from '../shiftClock/shiftClockModel.ts';
+import { EVENT as STATION_EVENT } from '../station/stationModel.ts';
+import { type Access, type ShiftStation, openButton } from '../station/wayIn.ts';
 
 export const MY_NIGHT_STATES = [
   'night',
@@ -14,6 +16,16 @@ export const MY_NIGHT_STATES = [
   'loading',
   'app',
   'app_event',
+  'kitchen',
+  'kitchen_pass',
+  'kitchen_checkin',
+  'kitchen_floor',
+  'kitchen_dishes_none',
+  'kitchen_browser',
+  'floor_lead',
+  'station_lead',
+  'station_lead_pass',
+  'floor_lead_browser',
 ] as const;
 
 export type MyNightState = (typeof MY_NIGHT_STATES)[number];
@@ -46,6 +58,15 @@ export type Night = {
   staleAt: string | null;
   loading: boolean;
   inApp: boolean;
+  /** What the station on this shift is (sc-3910), and the level the job carries (sc-4002). */
+  kind: ShiftStation;
+  access: Access;
+  /** Where Open {station} goes, by the station's own sample. */
+  opens: string | null;
+  /** The job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
+  /** Who's here (sc-3918) reads for this person: the floor lead, a station's lead, or staff.read. Where it opens, else null. */
+  whosHere: string | null;
 };
 
 export const MN = {
@@ -83,6 +104,9 @@ export const MN = {
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
+  demoKitchenMoveButton: 'Move Gbenga to the Grill',
+  checkIn: 'Check-in',
+  whosHere: 'Who’s here',
 } as const;
 
 export function guestCount(table: Table): string {
@@ -154,6 +178,29 @@ const NIGHT: Night = {
   staleAt: null,
   loading: false,
   inApp: false,
+  kind: { kind: 'section', name: 'Section B' },
+  access: 'Can work the floor',
+  opens: null,
+  checksIn: false,
+  whosHere: null,
+};
+
+const RONKE: Lead = { name: 'Ronke Alade', phone: '+2348034567890', floor: false };
+
+/** Gbenga Salami on the Fryer, on the station's own sample (sc-4015). */
+const KITCHEN: Night = {
+  ...NIGHT,
+  state: 'kitchen',
+  event: STATION_EVENT,
+  name: 'Gbenga Salami',
+  station: 'Fryer',
+  job: 'Cook',
+  lead: RONKE,
+  tables: null,
+  inApp: true,
+  kind: { kind: 'kitchen', name: 'Fryer', dishes: 2 },
+  access: 'Can work the pass',
+  opens: '/demo/kitchen-station?from=night&on=fryer',
 };
 
 export function myNightStateOf(raw: string | null | undefined): MyNightState {
@@ -177,7 +224,7 @@ export function nightOf(state: MyNightState): Night {
         clock: { ...cardOf('clocked_in'), end: 23 * 60 },
       };
     case 'no_station':
-      return { ...night, station: null, lead: KEMI, tables: null };
+      return { ...night, station: null, kind: null, lead: KEMI, tables: null };
     case 'no_lead':
       return { ...night, lead: KEMI };
     case 'no_lead_none':
@@ -202,6 +249,75 @@ export function nightOf(state: MyNightState): Night {
     case 'app':
     case 'app_event':
       return { ...night, inApp: true };
+    case 'kitchen':
+      return { ...KITCHEN, state };
+    case 'kitchen_pass':
+      return {
+        ...KITCHEN,
+        state,
+        name: 'Ronke Alade',
+        station: 'Pass',
+        job: 'Pass lead',
+        lead: { name: 'Bimpe Ojo', phone: '+2348091112223', floor: true },
+        kind: { kind: 'kitchen', name: 'Pass', dishes: 2 },
+        opens: '/demo/kitchen-station?from=night&on=pass',
+      };
+    case 'kitchen_checkin':
+      return {
+        ...KITCHEN,
+        state,
+        name: 'Ronke Alade',
+        station: 'Pass',
+        job: 'Pass lead',
+        lead: { name: 'Bimpe Ojo', phone: '+2348091112223', floor: true },
+        kind: { kind: 'kitchen', name: 'Pass', dishes: 2 },
+        access: 'Lead',
+        opens: '/demo/kitchen-station?from=night&on=pass',
+        checksIn: true,
+      };
+    case 'kitchen_floor':
+      return { ...KITCHEN, state, access: 'Can work the floor' };
+    case 'kitchen_dishes_none':
+      return {
+        ...KITCHEN,
+        state,
+        station: 'Dessert table',
+        kind: { kind: 'kitchen', name: 'Dessert table', dishes: 0 },
+      };
+    case 'kitchen_browser':
+      return { ...KITCHEN, state, inApp: false };
+    case 'floor_lead':
+    case 'floor_lead_browser':
+      return {
+        ...night,
+        name: 'Dayo Okafor',
+        station: null,
+        job: 'Floor lead',
+        starts: '14:00',
+        ends: '02:00',
+        lead: null,
+        tables: null,
+        kind: null,
+        access: 'Lead',
+        inApp: state === 'floor_lead',
+        whosHere: '/demo/whos-here?state=populated',
+      };
+    case 'station_lead':
+      return {
+        ...night,
+        station: 'Section A · T1–T6',
+        kind: { kind: 'section', name: 'Section A · T1–T6' },
+        lead: { name: 'Dayo Okafor', phone: '+2348035550101', floor: true },
+        access: 'Lead',
+        inApp: true,
+        whosHere: '/demo/whos-here?state=station_lead',
+      };
+    case 'station_lead_pass':
+      return {
+        ...nightOf('kitchen_checkin'),
+        state,
+        whosHere: '/demo/whos-here?state=station_lead',
+      };
     default:
       return night;
   }
@@ -210,6 +326,44 @@ export function nightOf(state: MyNightState): Night {
 /** The organiser moves the person to Section C: the heading, their station's lead and their tables change together. */
 export function moved(night: Night): Night {
   return { ...night, station: 'Section C', lead: IFEANYI, tables: SECTION_C, updated: 'Section C' };
+}
+
+/** Team (sc-36034) moves Gbenga to the Grill: Your shift and Open {station} change together. */
+export function movedToGrill(night: Night): Night {
+  return {
+    ...night,
+    station: 'Grill',
+    kind: { kind: 'kitchen', name: 'Grill', dishes: 2 },
+    opens: '/demo/kitchen-station?from=night&on=grill',
+    updated: 'Grill',
+  };
+}
+
+/** Who's here above Your shift, in the app only as the screen is (sc-3918): primary when no button comes before it. */
+export function whosHereOf(night: Night): { label: string; href: string; primary: boolean } | null {
+  return night.whosHere == null || !night.inApp
+    ? null
+    : {
+        label: MN.whosHere,
+        href: night.whosHere,
+        primary: checkInOf(night) == null && openOf(night) == null,
+      };
+}
+
+/** Check-in above Your shift for a job that checks in, as sc-28230 draws it; null shows no button. */
+export function checkInOf(night: Night): { label: string; href: string } | null {
+  return night.checksIn
+    ? { label: MN.checkIn, href: '/demo/guests/check-in?state=door&from=night' }
+    : null;
+}
+
+/** Open {station} above Your shift, under Check-in as the secondary button when the job checks in too (sc-95382). */
+export function openOf(night: Night): { label: string; href: string; primary: boolean } | null {
+  const label = openButton(night.kind, night.access, night.inApp);
+
+  return label == null || night.opens == null
+    ? null
+    : { label, href: night.opens, primary: checkInOf(night) == null };
 }
 
 export function fresh(night: Night): Night {
@@ -232,6 +386,34 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   app_event: [
     'In the app, from the event',
     'A staff-link holder’s event: Your night heads Overview’s rows and opens the page',
+  ],
+  kitchen: [
+    'On a kitchen station',
+    'Open Fryer above Your shift opens Kitchen station, ‹ Your night; the demo moves Gbenga to the Grill',
+  ],
+  kitchen_pass: ['On the Pass', 'Open Pass: the Pass dishes, so it opens as a station'],
+  kitchen_checkin: [
+    'On the Pass, with Check-in',
+    'A Lead whose job checks in: Check-in first and primary, Open Pass the secondary button under it',
+  ],
+  kitchen_floor: ['Can work the floor on a kitchen station', 'No button: the station refuses it'],
+  kitchen_dishes_none: ['A station that dishes nothing', 'Dessert table dishes no item: no button'],
+  kitchen_browser: [
+    'On a kitchen station, in a browser',
+    'No button: the station is in the app only',
+  ],
+  floor_lead: ['The floor lead', 'Who’s here above Your shift opens the whole floor, with Cover'],
+  station_lead: [
+    'A station lead',
+    'Who’s here above Your shift opens their own station’s people, without Cover',
+  ],
+  station_lead_pass: [
+    'A station lead with Check-in and Open Pass',
+    'Who’s here comes last, a secondary button under the other two; it opens Who’s here’s station-lead sample',
+  ],
+  floor_lead_browser: [
+    'The floor lead, in a browser',
+    'No Who’s here: the screen is in the app only',
   ],
 };
 
