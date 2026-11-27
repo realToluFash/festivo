@@ -212,11 +212,23 @@
   justify-content: center;
   gap: var(--spaceMd);
   width: 100%;
-  height: var(--sizeHitPhonePrimary);
+  min-height: var(--sizeHitPhonePrimary);
+  padding: var(--spaceXs) var(--spaceXxl);
   border-radius: var(--radiusPill);
   background: var(--colorAccent);
   color: var(--colorInkOnDark);
-  font: 600 17px/1 var(--fontFamily);
+  font: 600 17px/1.25 var(--fontFamily);
+  text-align: center;
+}
+
+.rd-primary-words {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .rd-primary:hover {
@@ -228,6 +240,7 @@
 }
 
 .rd-spin {
+  flex-shrink: 0;
   box-sizing: border-box;
   width: 16px;
   height: 16px;
@@ -258,6 +271,18 @@ a.rd-primary {
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
+}
+
+/* The provider-only refusal's buttons (sc-94849): Google's and Apple's own, the column's width, 48 high as the column's primary. */
+.rd-providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.rd-providers > .rd-provider {
+  width: 100%;
+  min-height: var(--sizeHitPhonePrimary);
 }
 
 .rd-ways {

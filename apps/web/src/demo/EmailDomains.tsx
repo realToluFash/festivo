@@ -80,7 +80,7 @@ export function EmailDomains({
 
   if (load !== 'loaded')
     return (
-      <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} above="notices">
         {load === 'failed' ? (
           <PageFailed words={W.failedLoad} onRetry={retry} />
         ) : (
@@ -106,7 +106,7 @@ export function EmailDomains({
   const recordOf = view.domains.find((one) => one.name === record) ?? null;
 
   return (
-    <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} above="offline">
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{card.says}</Says>
@@ -115,7 +115,11 @@ export function EmailDomains({
         {shown?.does === 'contact' ? (
           <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         ) : (
-          shown != null && <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
+          shown != null && (
+            <div className="dc-step step-wraps">
+              <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
+            </div>
+          )
         )}
       </Card>
       {view.plan !== 'free' && (

@@ -21,6 +21,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'guests')]
 #[ORM\Index(name: 'idx_guests_removal', columns: ['removal_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_guest_check_in_code', columns: ['check_in_code'])]
 class Guest
 {
     use Timestampable;
@@ -28,6 +29,11 @@ class Guest
     public const int NAME_MAXIMUM = 200;
 
     public const int COMPANIONS_MAXIMUM = 10;
+
+    public const int GREET_AS_MAXIMUM = 60;
+
+    /** The guest's own page, followed by their link token (sc-1526). */
+    public const string PAGE_PATH = '/i/';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -55,6 +61,10 @@ class Guest
     /** E.164. */
     #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
     private ?string $mobile;
+
+    /** A hard bounce on an email to this address (sc-3942): later messages skip it until the address is changed. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $emailBouncingAt = null;
 
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReply::class)]
     private ?GuestReply $reply;
@@ -89,6 +99,10 @@ class Guest
     #[ORM\Column(type: Types::STRING, length: 43, unique: true, nullable: true)]
     private ?string $linkToken;
 
+    /** What the guest shows at the door (sc-1301): held by whoever holds a link, and never the link itself. */
+    #[ORM\Column(type: Types::STRING, length: 43, nullable: true)]
+    private ?string $checkInCode;
+
     /** A host's Let them change their reply: they may answer after Reply by, until the start (sc-3780). */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $repliesReopenedAt = null;
@@ -111,6 +125,10 @@ class Guest
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $invitedBy = null;
+
+    /** How messages address them (sc-3960), such as "Auntie Bisi"; null greets them by their full name. */
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $greetAs = null;
 
     /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
@@ -166,7 +184,19 @@ class Guest
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $removalId = null;
 
-    private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
+    /** Recorded at the door (sc-1454): once, with when and by whom, and never touching their reply, companions or details. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $arrivedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $arrivedBy = null;
+
+    /** Added at the door with a full name and nothing else (sc-1454): no reply, companions or link. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $walkIn = false;
+
+    private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken, #[SensitiveParameter] ?string $checkInCode)
     {
         $this->id = Uuid::v7();
         $this->event = $event;
@@ -179,17 +209,27 @@ class Guest
         $this->position = $position;
         $this->addedBy = $addedBy;
         $this->linkToken = $linkToken;
+        $this->checkInCode = $checkInCode;
     }
 
     /** Not yet invited, until somebody invites them (sc-3788). */
-    public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
+    public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken, #[SensitiveParameter] string $checkInCode): self
     {
-        return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
+        return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken, $checkInCode);
+    }
+
+    public static function walkedIn(Event $event, string $fullName, string $nameKey, User $by, DateTimeImmutable $at): self
+    {
+        $guest = new self($event, null, $fullName, $nameKey, null, null, null, 0, $by, null, null);
+        $guest->walkIn = true;
+        $guest->arrive($at, $by);
+
+        return $guest;
     }
 
     public static function companionOf(self $host, ?string $fullName, ?string $nameKey, int $position, ?User $addedBy): self
     {
-        return new self($host->event, $host, $fullName, $nameKey, null, null, null, $position, $addedBy, null);
+        return new self($host->event, $host, $fullName, $nameKey, null, null, null, $position, $addedBy, null, null);
     }
 
     public function getId(): Uuid
@@ -384,12 +424,42 @@ class Guest
 
     public function setEmail(?string $email): void
     {
+        if ($email !== $this->email) {
+            $this->emailBouncingAt = null;
+        }
+
         $this->email = $email;
+    }
+
+    public function isEmailBouncing(): bool
+    {
+        return null !== $this->emailBouncingAt;
+    }
+
+    public function emailBounced(DateTimeImmutable $at): void
+    {
+        $this->emailBouncingAt = $at;
     }
 
     public function setMobile(?string $mobile): void
     {
         $this->mobile = $mobile;
+    }
+
+    public function getGreetAs(): ?string
+    {
+        return $this->greetAs;
+    }
+
+    public function setGreetAs(?string $greetAs): void
+    {
+        $this->greetAs = $greetAs;
+    }
+
+    /** What {greeting} fills in: their Greet as, or their full name. */
+    public function greeting(): string
+    {
+        return $this->greetAs ?? $this->fullName ?? '';
     }
 
     public function getLanguage(): ?string
@@ -486,10 +556,16 @@ class Guest
         return $this->linkToken;
     }
 
-    /** Ends the old link at once and clears the wrong-person flag. */
-    public function replaceLink(#[SensitiveParameter] string $linkToken): void
+    public function getCheckInCode(): ?string
+    {
+        return $this->checkInCode;
+    }
+
+    /** Ends the old link and the check-in code its page showed at once, and clears the wrong-person flag. */
+    public function replaceLink(#[SensitiveParameter] string $linkToken, #[SensitiveParameter] string $checkInCode): void
     {
         $this->linkToken = $linkToken;
+        $this->checkInCode = $checkInCode;
         $this->linkFlagged = false;
     }
 
@@ -535,5 +611,51 @@ class Guest
         $this->removedAt = null;
         $this->removedBy = null;
         $this->removalId = null;
+    }
+
+    public function isWalkIn(): bool
+    {
+        return $this->walkIn;
+    }
+
+    public function hasArrived(): bool
+    {
+        return null !== $this->arrivedAt;
+    }
+
+    public function getArrivedAt(): ?DateTimeImmutable
+    {
+        return $this->arrivedAt;
+    }
+
+    public function getArrivedBy(): ?User
+    {
+        return $this->arrivedBy;
+    }
+
+    /** The first arrival stands, so a second press of Arrived changes nothing; one recorded earlier on a device that was offline takes its place (sc-1301). False when nothing changed. */
+    public function arrive(DateTimeImmutable $at, User $by): bool
+    {
+        if (null !== $this->arrivedAt && $this->arrivedAt <= $at) {
+            return false;
+        }
+
+        $this->arrivedAt = $at;
+        $this->arrivedBy = $by;
+
+        return true;
+    }
+
+    /** False when they had not arrived. */
+    public function undoArrival(): bool
+    {
+        if (!$this->hasArrived()) {
+            return false;
+        }
+
+        $this->arrivedAt = null;
+        $this->arrivedBy = null;
+
+        return true;
     }
 }

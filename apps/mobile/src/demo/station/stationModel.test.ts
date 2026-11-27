@@ -11,6 +11,7 @@ import {
   armRunOutRival,
   askRunOut,
   at,
+  blockName,
   canUndo,
   cancelRunOut,
   confirmRunOut,
@@ -194,6 +195,14 @@ describe('when a tray is here', () => {
     expect(hereLine(second, 'fryer')).toBe('Funmi Bakare · 3 plates · here since 19:40');
   });
 
+  it('owes the Pass three items in passThree, an earlier course last', () => {
+    expect(leftToDish(seed('passThree')).map((l) => l.label)).toEqual([
+      'Moin moin',
+      'Chef’s choice',
+      'Starter · Pepper soup',
+    ]);
+  });
+
   it('is here at the Pass as it starts', () => {
     const s = { ...fresh(), station: 'pass' as const };
     expect(labels(hereTrays(s))).toEqual(['Row B', 'Table 2']);
@@ -207,7 +216,7 @@ describe('when a tray is here', () => {
   it('arrives once, with one polite line', () => {
     const s = walkHere(seed('here'));
     expect(labels(hereTrays(s))).toEqual(['Table 4', 'Table 9']);
-    expect(s.say).toBe('Table 9’s tray is here · 3 plates');
+    expect(s.say).toBe('The tray for Table 9 is here · 3 plates');
   });
 });
 
@@ -323,13 +332,13 @@ describe('offline, by sc-4028', () => {
     const s = seed('waitingToSend');
     expect(stateLine(s, 'Plantain').word).toBe('Preparing');
     expect(strip(s)).toBe('No connection · as of 19:40 · 1 tap waiting');
-    expect(strip(goOnline(s, true))).toBe('Connected · up to date 19:42');
+    expect(strip(goOnline(s, true))).toBe('Connected · up to date at 19:42');
   });
 
   it('drops a kept mark another disher beat, with its Not sent line, and holds theirs', () => {
     const s = seed('notSent');
     expect(s.notSent.map((r) => notSentLine(s, r))).toEqual([
-      'Plantain is preparing now, by Kemi Adebayo.',
+      'Plantain is now Preparing, marked by Kemi Adebayo.',
     ]);
     expect(stateLine(s, 'Plantain').line).toBe('ready in about 15 min');
   });
@@ -355,8 +364,8 @@ describe('picking a station', () => {
 
   it('says once that the station is open here and nobody’s station changed', () => {
     const s = pick(seed('pick'), 'grill');
-    expect(s.moved).toBe('Grill is open on this tablet. Nobody’s station changed.');
-    expect(pickedLine('pass')).toBe('Pass is open on this tablet. Nobody’s station changed.');
+    expect(s.moved).toBe('Grill is open on this device. Nobody’s station changed.');
+    expect(pickedLine('pass')).toBe('Pass is open on this device. Nobody’s station changed.');
   });
 
   it('follows a move by Team with one line', () => {
@@ -564,5 +573,42 @@ describe('run out, at the station that dishes it (sc-59384)', () => {
       waiting: '1 waiting for a choice',
     });
     expect(offers(marked, 'Plantain')).toMatchObject({ ready: true, runOut: true });
+  });
+});
+
+describe('single seats (sc-100403)', () => {
+  it('names a block by its first and last seats, numbers by value', () => {
+    expect(blockName(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])).toBe('Seats 1 to 10');
+    expect(blockName(['10', '9', '1'])).toBe('Seats 1 to 10');
+  });
+
+  it('names a block of one by its seat', () => {
+    expect(blockName(['11'])).toBe('Seat 11');
+  });
+
+  it('keeps the plan’s seat names as they are', () => {
+    expect(blockName(['Window', 'By the door'])).toBe('Seats By the door to Window');
+  });
+
+  it('faces a block’s tray here, with the other blocks and a table heading here', () => {
+    const s = seed('blocks');
+    expect(labels(hereTrays(s))).toEqual(['Seats 1 to 10']);
+    expect(labels(headingTrays(s))).toEqual([
+      'Seat 11',
+      'Seats At the bar, far end to Window by the garden door',
+      'Table 9',
+    ]);
+  });
+
+  it('shows each plate on a block’s tray by its own seat', () => {
+    const s = seed('blocks');
+    const tray = hereTrays(s)[0];
+    if (tray == null) throw new Error('Seats 1 to 10');
+    expect(faced(s, tray).map((r) => r.seat)).toEqual(['Seat 10', 'Seat 7', 'Seat 2']);
+  });
+
+  it('announces a block arriving by its name', () => {
+    const s = walkHere(seed('blocksHeading'));
+    expect(s.say).toBe('The tray for Seats 1 to 10 is here · 3 plates');
   });
 });

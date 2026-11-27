@@ -1,5 +1,11 @@
 import type { OrganisationEvent, OutsideEvent } from '@soirely/api-client';
-import { formatEventClock, formatEventDate, formatEventMoment } from '@soirely/domain';
+import {
+  formatEventClock,
+  formatEventDate,
+  formatEventMoment,
+  placeWords,
+  venueCity,
+} from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -8,6 +14,7 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Chevron, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
 import { eventAreaPath } from './EventNav.tsx';
 import '../../../components/SettingsParts.css';
 import '../../../components/EventsList.css';
@@ -29,6 +36,9 @@ export function OutsideOverview({
   const { t } = useTranslation();
   const onEvent = usePeopleCount(event.id);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
+  const placeLine = placeWords(place, venueCity(event.venue), (key, values) =>
+    t(key, values ?? {}),
+  );
   const locale = dateLocale();
   const day = formatEventDate(event.startsAt, event.timeZone, locale, false);
   const when = t('outsideEvent.when', {
@@ -48,7 +58,10 @@ export function OutsideOverview({
 
   return (
     <div className="desk-column">
-      <section className="ev-card today-cover is-wed" aria-labelledby="outside-event-name">
+      <section
+        className={`ev-card today-cover is-${meshFor(event.id)}`}
+        aria-labelledby="outside-event-name"
+      >
         {PIECES.map((piece) => (
           <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
         ))}
@@ -57,7 +70,7 @@ export function OutsideOverview({
           <h1 id="outside-event-name" ref={heading} className="ev-card-name" tabIndex={-1}>
             {event.name}
           </h1>
-          <p className="desk-on-card">{place ?? t('eventPage.venueToBeConfirmed')}</p>
+          <p className="desk-on-card">{placeLine}</p>
           <p className="desk-on-card">{level.join(' · ')}</p>
         </div>
       </section>

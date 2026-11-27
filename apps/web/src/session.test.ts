@@ -1,4 +1,5 @@
 import { type Account, type Membership } from '@soirely/api-client';
+import { rememberedEntry, rememberedFor } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SIGNED_OUT, api } from './api.ts';
@@ -10,7 +11,10 @@ import {
   adoptAccount,
   forgetSession,
   joinOrganisation,
+  onMovedOn,
+  rereadOrganisations,
   refreshAccount,
+  switchOrganisation,
   useSessionState,
 } from './session.ts';
 import { membership } from './test-memberships.ts';
@@ -31,6 +35,7 @@ const SIGNED_IN: Session = {
   timezone: null,
   waitingFor: null,
   outsideEvents: [],
+  signedOutAt: null,
   organisation: null,
   pausedIn: null,
 };
@@ -160,6 +165,7 @@ describe("the account's colours at sign-in (sc-30441)", () => {
       emailAddresses: [],
       phoneNumbers: [],
       outsideEvents: [],
+      signedOutAt: null,
     });
 
     expect(document.documentElement.dataset.scheme).toBe('garden');
@@ -198,6 +204,7 @@ describe('a sign-out while the account is still being read', () => {
       emailAddresses: [],
       phoneNumbers: [],
       outsideEvents: [],
+      signedOutAt: null,
     });
     await refreshing;
 
@@ -207,6 +214,31 @@ describe('a sign-out while the account is still being read', () => {
     });
   });
 });
+
+function account(overrides: Partial<Account>): Account {
+  return {
+    id: 'acc_1',
+    name: 'Folake Adeyemi',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: null,
+    locale: null,
+    timezone: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    twoFactorSetupPrompt: false,
+    colourScheme: null,
+    waitingFor: null,
+    providers: [],
+    emailAddresses: [],
+    phoneNumbers: [],
+    outsideEvents: [],
+    signedOutAt: null,
+    ...overrides,
+  };
+}
 
 describe('the organisations after a language change (sc-9267)', () => {
   const due = (written: string) => ({ at: '2026-10-31T10:44:00+00:00', written, overdue: false });
@@ -235,30 +267,6 @@ describe('the organisations after a language change (sc-9267)', () => {
         waitingFor: null,
       },
     });
-  }
-
-  function account(overrides: Partial<Account>): Account {
-    return {
-      id: 'acc_1',
-      name: 'Folake Adeyemi',
-      businessName: null,
-      countryCode: null,
-      organisationCountry: null,
-      locale: null,
-      timezone: null,
-      verified: true,
-      complete: true,
-      needsOrganisation: false,
-      hasPassword: true,
-      twoFactorSetupPrompt: false,
-      colourScheme: null,
-      waitingFor: null,
-      providers: [],
-      emailAddresses: [],
-      phoneNumbers: [],
-      outsideEvents: [],
-      ...overrides,
-    };
   }
 
   function watchDeadline(): () => string | undefined {
@@ -336,5 +344,181 @@ describe('the organisations after a language change (sc-9267)', () => {
     expect(
       current.status === 'signedIn' ? current.session.organisations.map(({ id }) => id) : [],
     ).toEqual(['org_1', 'org_2']);
+  });
+});
+
+describe('the organisation this browser was last in, paused there (sc-86056)', () => {
+  const ORGANISATION = 'soirely.organisation';
+  const a = membership();
+  const b = membership({ id: 'org_2', name: 'Ọ̀ṣun Parties' });
+  const pausedA = {
+    ...a,
+    suspension: {
+      reason: 'address_gone' as const,
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+
+  const opened = async (organisations: Membership[], paused: (typeof pausedA)[]) => {
+    vi.spyOn(api, 'organisationsWithPaused').mockResolvedValue({ organisations, paused });
+    await act(() => adoptAccount(account({})));
+    const current = renderHook(() => useSessionState()).result.current;
+    if (current.status !== 'signedIn') throw new Error('not signed in');
+
+    return current.session;
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('opens A’s paused page when A was opened by default, never chosen', async () => {
+    await opened([a, b], []);
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_1');
+
+    const next = await opened([b], [pausedA]);
+
+    expect(next.pausedIn?.id).toBe('org_1');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_1');
+  });
+
+  it('opens in A again once A restores the member', async () => {
+    await opened([a, b], []);
+    await opened([b], [pausedA]);
+
+    const next = await opened([a, b], []);
+
+    expect(next.organisation?.id).toBe('org_1');
+    expect(next.pausedIn).toBeNull();
+  });
+
+  it('opens in B with no paused card on a browser that was in no organisation before', async () => {
+    const next = await opened([b], [pausedA]);
+
+    expect(next.organisation?.id).toBe('org_2');
+    expect(next.pausedIn).toBeNull();
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_2');
+  });
+
+  it('opens in B with no paused card when B was the one chosen', async () => {
+    localStorage.setItem(ORGANISATION, rememberedEntry('acc_1', 'org_2'));
+
+    const next = await opened([b], [pausedA]);
+
+    expect(next.organisation?.id).toBe('org_2');
+    expect(next.pausedIn).toBeNull();
+  });
+
+  it('shows A’s paused page at a return to the tab, and moves nobody into B', async () => {
+    await opened([a, b], []);
+    localStorage.clear();
+    const movedTo: string[] = [];
+    const stop = onMovedOn((next) => movedTo.push(next.id));
+    vi.spyOn(api, 'organisationsWithPaused').mockResolvedValue({
+      organisations: [b],
+      paused: [pausedA],
+    });
+
+    await act(() => rereadOrganisations());
+    stop();
+
+    const current = renderHook(() => useSessionState()).result.current;
+    expect(current.status === 'signedIn' && current.session.pausedIn?.id).toBe('org_1');
+    expect(movedTo).toEqual([]);
+  });
+});
+
+describe('a browser shared by several accounts (sc-86373)', () => {
+  const ORGANISATION = 'soirely.organisation';
+  const alpha = membership({ id: 'org_a', name: 'Alpha' });
+  const beta = membership({ id: 'org_b', name: 'Beta' });
+  const pausedAlpha = {
+    ...alpha,
+    suspension: {
+      reason: 'domain_closed' as const,
+      domain: 'alpha.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+
+  const signsIn = async (
+    id: string,
+    organisations: Membership[],
+    paused: (typeof pausedAlpha)[] = [],
+  ) => {
+    vi.spyOn(api, 'organisationsWithPaused').mockResolvedValue({ organisations, paused });
+    await act(() => adoptAccount(account({ id })));
+    const current = renderHook(() => useSessionState()).result.current;
+    if (current.status !== 'signedIn') throw new Error('not signed in');
+
+    return current.session;
+  };
+
+  const xChoosesAlpha = async () => {
+    await signsIn('acc_x', [beta, alpha]);
+    act(() => switchOrganisation('org_a'));
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('opens Y in Beta, Y’s own, after X chose Alpha', async () => {
+    await xChoosesAlpha();
+
+    const y = await signsIn('acc_y', [beta, alpha]);
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta with no paused card when Y’s access to Alpha is paused', async () => {
+    await xChoosesAlpha();
+
+    const y = await signsIn('acc_y', [beta], [pausedAlpha]);
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta after Z opened Alpha by default', async () => {
+    await signsIn('acc_z', [alpha]);
+
+    expect((await signsIn('acc_y', [beta, alpha])).organisation?.id).toBe('org_b');
+    await signsIn('acc_z', [alpha]);
+    const y = await signsIn('acc_y', [beta], [pausedAlpha]);
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens X in Beta again once Y has signed in between', async () => {
+    await xChoosesAlpha();
+    await signsIn('acc_y', [beta, alpha]);
+
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_b');
+  });
+
+  it('lets X’s Alpha go even when Y signs in to a paused page alone', async () => {
+    await xChoosesAlpha();
+    expect((await signsIn('acc_y', [], [pausedAlpha])).pausedIn?.id).toBe('org_a');
+
+    expect(localStorage.getItem(ORGANISATION)).toBeNull();
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_b');
+  });
+
+  it('keeps X’s Alpha for X, and shows its paused page once X is paused there', async () => {
+    await xChoosesAlpha();
+
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_a');
+    const paused = await signsIn('acc_x', [beta], [pausedAlpha]);
+    expect(paused.pausedIn?.id).toBe('org_a');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_x')).toBe('org_a');
   });
 });

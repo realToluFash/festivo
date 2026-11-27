@@ -1,3 +1,5 @@
+import { type ApiError } from '@soirely/api-client';
+
 /** Why answering an invitation was refused: the list was loaded before the press, so any of these can still happen. */
 export type InvitationRefusalCode =
   | 'invitation_expired'
@@ -23,11 +25,45 @@ export type InvitationOutcome =
   | { kind: 'declined' }
   | { kind: 'refused'; refusal: InvitationRefusalCode }
   /** The account's address is managed by another organisation (sc-563): the API's sentence, and whose. */
-  | { kind: 'managed'; organisation: string; message: string };
+  | { kind: 'managed'; organisation: string; message: string }
+  /** Every team seat is in use (sc-3930): the invitation stays open, under the refusal `limitRefusalOf` reads from `error`. */
+  | { kind: 'seatsFull'; error: ApiError };
 
-/** Still to be answered: nothing pressed yet, a press in flight, or one that did not reach the API. */
+/** Still to be answered: nothing pressed yet, a press in flight, one that did not reach the API, or one the seats refused. */
 export function isWaiting(outcome: InvitationOutcome | undefined): boolean {
-  return outcome == null || outcome.kind === 'busy' || outcome.kind === 'failed';
+  return (
+    outcome == null ||
+    outcome.kind === 'busy' ||
+    outcome.kind === 'failed' ||
+    outcome.kind === 'seatsFull'
+  );
+}
+
+/** sc-73668: an invitation the API lists as managed reads as refused from the moment it is listed, unless something was pressed on it since. */
+export function withManaged(
+  invitations: readonly {
+    id: string;
+    managed: { organisation: { name: string }; message: string } | null;
+  }[],
+  outcomes: Readonly<Record<string, InvitationOutcome>>,
+): Readonly<Record<string, InvitationOutcome>> {
+  const managed = invitations.flatMap(({ id, managed }): [string, InvitationOutcome][] =>
+    managed == null
+      ? []
+      : [
+          [
+            id,
+            { kind: 'managed', organisation: managed.organisation.name, message: managed.message },
+          ],
+        ],
+  );
+
+  return managed.length === 0 ? outcomes : { ...Object.fromEntries(managed), ...outcomes };
+}
+
+/** sc-73668: kept in the switcher's list, its banner in place of the answers, though it no longer counts. */
+export function stillListed(outcome: InvitationOutcome | undefined): boolean {
+  return isWaiting(outcome) || outcome?.kind === 'managed';
 }
 
 export function waitingInvitations(

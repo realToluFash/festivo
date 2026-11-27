@@ -93,7 +93,7 @@ function useMenuReady(eventId: string): { ready: number; courses: number } | nul
 
 let gone: string | null = null;
 
-/** An event its page found deleted or never there (sc-1468), or never loaded in this tab and opened offline (sc-65646): the shell shows the organisation's sidebar instead of the event's. */
+/** An event its page found deleted or never there (sc-1468), never loaded in this tab and opened offline (sc-65646), or Overview's not loaded yet (sc-80863): the shell shows the organisation's sidebar instead of the event's. */
 export function useGoneEvent(eventId: string, isGone: boolean): void {
   useEffect(() => {
     if (!isGone) return;
@@ -192,8 +192,9 @@ export function EventNav({
       <ul className="today-places">
         {areas
           .filter((area) => area !== 'budget' || seesBudget(event))
+          .filter((area) => area !== 'messages' || seesMessages(event))
           .map((area) => {
-            const current = area === inside.area;
+            const current = area === litArea(inside.area, event);
             const sub =
               area === 'menu' && menuLine != null
                 ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
@@ -229,9 +230,19 @@ export function EventNav({
   );
 }
 
+/** The Budget withheld from a loaded event is drawn on Overview, as the demo's not-available page has it (sc-101). */
+function litArea(area: SideArea | null, event: OrganisationEvent | undefined): SideArea | null {
+  return area === 'budget' && event != null && !seesBudget(event) ? 'overview' : area;
+}
+
 /** Without budget.read the event's Budget is not in its navigation (sc-85); until the event has loaded, nobody is known to hold it. */
 function seesBudget(event: OrganisationEvent | undefined): boolean {
   return event != null && canOn(event, PAGE_NEEDS.budget);
+}
+
+/** Without messages.read the event's Messages is not in its navigation, as Settings has no Members without members.read (sc-3942). */
+function seesMessages(event: OrganisationEvent | undefined): boolean {
+  return event != null && canOn(event, PAGE_NEEDS.messages);
 }
 
 /** Its phase and how soon, in the words of its card on Events. */

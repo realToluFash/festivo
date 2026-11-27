@@ -2,7 +2,8 @@ import { ApiError, type EventChanges, type OrganisationEvent } from '@soirely/ap
 import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import { heldRead, partChangedElsewhere, sendPart } from './partSave.ts';
+import en from '../i18n/locales/en.json';
+import { answeredWithNotice, heldRead, partChangedElsewhere, sendPart } from './partSave.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -99,6 +100,9 @@ describe("one part's save (sc-48600)", () => {
       await saving(gala, Promise.reject(refusal(403, 'permission_required'))).send({ name: 'G' }),
     ).toEqual({ kind: 'forbidden' });
     expect(
+      await saving(gala, Promise.reject(refusal(404, 'not_found'))).send({ name: 'G' }),
+    ).toEqual({ kind: 'gone' });
+    expect(
       await saving(gala, Promise.reject(refusal(403, 'two_factor_required'))).send({ name: 'G' }),
     ).toEqual({ kind: 'failed' });
   });
@@ -121,5 +125,34 @@ describe('the read held from the opening of the screen', () => {
     await expect(held()).resolves.toMatchObject({ tag: '"7"' });
     await expect(held()).resolves.toMatchObject({ tag: '"7"' });
     expect(read).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('a save answered with a notice at the top of the screen (sc-74540)', () => {
+  const refused = { kind: 'refused', errors: {}, hosts: {}, currencyInUse: false } as const;
+
+  it('is Not saved, the role’s refusal and somebody else’s change', () => {
+    expect(answeredWithNotice({ kind: 'failed' })).toBe(true);
+    expect(answeredWithNotice({ kind: 'forbidden' })).toBe(true);
+    expect(answeredWithNotice({ kind: 'changed' })).toBe(true);
+  });
+
+  it('is the currency refused once amounts are recorded', () => {
+    expect(answeredWithNotice({ ...refused, currencyInUse: true })).toBe(true);
+  });
+
+  it('is not a refusal that names a field, nor a save that went through', () => {
+    expect(answeredWithNotice({ ...refused, errors: { name: 'eventForm.nameRequired' } })).toBe(
+      false,
+    );
+    expect(answeredWithNotice({ kind: 'saved', event: gala })).toBe(false);
+    expect(answeredWithNotice({ kind: 'unchanged' })).toBe(false);
+  });
+});
+
+describe('the notice at the top of a part for a save that stopped (sc-75689)', () => {
+  it('says the event is no longer available for a 404, and nothing was changed for the role, with no Try again', () => {
+    expect(en.eventEdit.eventGone).toBe('Nothing was changed. This event is no longer available.');
+    expect(en.eventEdit.eventGone).not.toMatch(/Try again/u);
   });
 });

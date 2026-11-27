@@ -8,7 +8,7 @@ import { __setSessionState } from '../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../test-memberships.ts';
 import { routes } from '../routes/index.tsx';
 import { type Stale, StaleScreen } from '../offline.ts';
-import { OfflineBox, OfflineProvider } from './OfflineBand.tsx';
+import { OfflineBox, OfflineProvider, StaleBand } from './OfflineBand.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -366,10 +366,9 @@ describe('the offline band (sc-22586)', () => {
       return events;
     }
 
-    const eventsBand = () =>
-      document.querySelector('.offline-band:not(.notifications-band), .ev-offline');
-    const feedBand = () => document.querySelector('.notifications-band');
-    const panel = () => document.querySelector<HTMLElement>('.notifications-panel')!;
+    const eventsBand = () => document.querySelector('.offline-band:not(.bell-band), .ev-offline');
+    const feedBand = () => document.querySelector('.bell-band');
+    const panel = () => document.querySelector<HTMLElement>('.bell-pop')!;
     const asked = (fetched: ReturnType<typeof serving>, path: string) =>
       fetched.mock.calls.filter(([input]) => new URL(String(input)).pathname === path).length;
 
@@ -600,5 +599,23 @@ describe("an event's area under the box (sc-65646)", () => {
     expect(
       screen.getByText('Offline · as of 10:05', { selector: '.ev-offline-words' }),
     ).toBeDefined();
+  });
+});
+
+describe("the band on an event's clock (sc-28230)", () => {
+  const stale = (at: string): Stale => ({ at: new Date(at), retry: () => {}, unanswered: 0 });
+
+  it('reads the time in the event’s zone, as the rows under it do', () => {
+    vi.useFakeTimers({ now: new Date('2030-11-14T10:00:00Z'), toFake: ['Date'] });
+    render(<StaleBand stale={stale('2030-11-14T09:10:00Z')} timeZone="Asia/Tokyo" />);
+
+    expect(screen.getByText('Offline · as of 18:10')).toBeDefined();
+  });
+
+  it('names the day when that was an earlier day in the event’s zone', () => {
+    vi.useFakeTimers({ now: new Date('2030-11-14T16:00:00Z'), toFake: ['Date'] });
+    render(<StaleBand stale={stale('2030-11-14T14:00:00Z')} timeZone="Asia/Tokyo" />);
+
+    expect(screen.getByText('Offline · as of Thursday, Nov 14 at 23:00')).toBeDefined();
   });
 });

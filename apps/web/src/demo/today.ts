@@ -169,6 +169,7 @@ export function dueWords(
 }
 
 export interface Need {
+  key: string;
   event: ShownEvent;
   title: string;
   due: string;
@@ -621,7 +622,14 @@ function needs(
         .map(({ key, at, title, action }) => {
           const { words, late } = dueWords(at, SAMPLE_ZONE, now, say);
 
-          return { event: shown(key), title, due: words, late, action };
+          return {
+            key: `${key}|${at}|${title}`,
+            event: shown(key),
+            title,
+            due: words,
+            late,
+            action,
+          };
         });
 }
 

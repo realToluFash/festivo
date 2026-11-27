@@ -94,6 +94,7 @@ export function OrgMenu({
   const field = useRef<HTMLInputElement>(null);
   const shown = useRef<HTMLDivElement>(null);
   const options = useRef<(HTMLDivElement | null)[]>([]);
+  const create = useRef<HTMLButtonElement>(null);
 
   const searchable = places.length > SEARCH_FROM;
   const typed = searchable ? query : '';
@@ -170,6 +171,7 @@ export function OrgMenu({
 
   useLayoutEffect(() => {
     const lit = body.current?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
+    if (lit == null && arrive) create.current?.focus();
     if (lit == null || body.current == null) return;
 
     reveal(body.current, lit);
@@ -283,7 +285,13 @@ export function OrgMenu({
     );
   });
   more.push(
-    <button key="create" type="button" className="sw-cell is-create" onClick={onCreate}>
+    <button
+      key="create"
+      ref={create}
+      type="button"
+      className="sw-cell is-create"
+      onClick={onCreate}
+    >
       <span className="sw-mark" aria-hidden="true">
         <span className="sw-tile is-create">
           <Glyph name="plus" size={20} weight={2.4} />
@@ -429,17 +437,20 @@ function reveal(scroller: HTMLElement, element: HTMLElement): void {
 export function JoinedAnswer({
   name,
   role,
+  takesFocus = false,
   onOpen,
 }: {
   name: string;
   role: string;
+  /** On a page, where nothing else moves focus to it, it takes focus and is read once. */
+  takesFocus?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Notice kind="done" lands>
+      <Notice kind="done" lands={!takesFocus} takesFocus={takesFocus}>
         {t('invitations.joined', { organisation: name, role })}
       </Notice>
       <button type="button" className="sw-button is-primary is-whole" onClick={onOpen}>
@@ -527,17 +538,23 @@ export function RefusalAnswer({
   organisation,
   email,
   signedInAs,
+  takesFocus = false,
 }: {
   refusal: InvitationRefusalCode;
   inviter: string | null;
   organisation: string;
   email: string;
   signedInAs: string;
+  takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
-    <Notice kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
+    <Notice
+      kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'}
+      lands={!takesFocus}
+      takesFocus={takesFocus}
+    >
       <strong>{t(`invitations.refused.${refusal}.word`)}</strong>{' '}
       {t(refusalBody(refusal, inviter != null), {
         inviter: inviter ?? '',

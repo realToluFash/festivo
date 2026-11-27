@@ -1,6 +1,7 @@
 /* 641 to 960 px only (sc-60699), but for Settings' stack at the end: 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
 @media (40rem < width <= 60rem) {
-  .today.desk .desk-page {
+  .today.desk .desk-page,
+  .today .today-main {
     padding-inline: var(--spaceXxl);
   }
 
@@ -43,22 +44,6 @@
 
   .today.desk .lib-cols {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
-    overflow: visible;
   }
 
   .today.desk .mn-choice-item {
@@ -139,6 +124,25 @@
   .today.desk .desk-main > .desk-list ~ .desk-page {
     flex: none;
     min-width: 0;
+    overflow: visible;
+  }
+}
+
+/* A docked panel comes before its list from 960 px down, 400% zoom (deskReflow.css) included; the run of show keeps its own. */
+@media (width <= 60rem) {
+  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
     overflow: visible;
   }
 }

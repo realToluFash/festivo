@@ -1,56 +1,50 @@
-import { primaryEmailAddress } from '@soirely/api-client';
+import { type InvitationPreview, primaryEmailAddress } from '@soirely/api-client';
+import { formatDay, type InvitationOutcome, invitationWording, roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type RefObject, useRef } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
+import type { ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { useWaitingInvitations } from '../invitations.ts';
-import { SECTION_HREF } from '../kit/appNav.ts';
+import { dateLocale } from '../i18n/index.ts';
+import { type WaitingInvitations, useInvitationAnswers } from '../invitations.ts';
+import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { invitationRowOf } from '../kit/noOrgInvitations.ts';
 import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
-import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
-import { switchByTap } from '../tappedSwitch.ts';
-import { tokens } from '../theme/tokens.ts';
-import { useStartOrganisation } from './AppFrame.tsx';
-import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
-import { InvitationRows } from './InvitationRows.tsx';
+import { useOpenJoined, useStartOrganisation } from './AppFrame.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { ManagedBanner } from './ManagedBanner.tsx';
-import { cardFrame } from './cardFrame.ts';
-import { Text, type TextHandle } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { SeatsFullSheet } from './LimitRefusal.tsx';
+import { NoOrgInvitationList, NoOrgInvitationRow } from './NoOrgInvitations.tsx';
+import { NoOrgPage, NoOrgWayOn, SignedInWays, StartYourOwn } from './NoOrganisationParts.tsx';
+import type { TextHandle } from './Text.tsx';
 
-/** `OrgSwitcher-*` Tweak `no_org_invitation`: an account in no organisation, with any invitation waiting for it, as the web's `NoOrganisation`. A managed account reads sc-563's banner where Start your own was. */
+/** Where an account in no organisation lands, as `/demo/today?orgs=none` draws it: no header, card or tab bar; any invitation waiting for it, Start your own or sc-563's banner in its place, and Your account beside Sign out (sc-75471). */
 export function NoOrganisation({
   titleRef,
+  notices,
 }: {
   /** For focus to land on once a notice above closes. */
   titleRef?: RefObject<TextHandle | null> | undefined;
+  notices?: ReactNode;
 } = {}) {
-  const { t } = useTranslation();
-  const { kind } = useLayout();
   const { account } = useSignedIn();
-  const waiting = useWaitingInvitations();
+  const waiting = useInvitationAnswers();
   const startOrganisation = useStartOrganisation();
   const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
-  const listed = waiting.invitations.length > 0;
   const end = noOrganisationEnd(startOrganisation?.managed);
 
   return (
-    <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
-      <Title ref={titleRef} size={tokens.typeTitleDialog.size} accessibilityRole="header">
-        {t('noOrganisation.title')}
-      </Title>
-      <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.body')}</Text>
-      {listed ? (
-        <View style={styles.invitations}>
-          <Text size={tokens.typeMeta.size} weight="semibold" muted accessibilityRole="header">
-            {t('invitations.heading')}
-          </Text>
-          <InvitationRows waiting={waiting} after={{ open: switchByTap }} />
-        </View>
+    <NoOrgPage titleRef={titleRef} notices={notices}>
+      {waiting.invitations.length > 0 ? (
+        <NoOrgInvitationList>
+          {waiting.invitations.map((invitation) => (
+            <Waiting key={invitation.id} invitation={invitation} waiting={waiting} />
+          ))}
+        </NoOrgInvitationList>
       ) : (
-        <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.wayOn', { email })}</Text>
+        <NoOrgWayOn email={email} />
       )}
       {end === 'managed' && startOrganisation?.managed != null && (
         <ManagedBanner
@@ -60,49 +54,79 @@ export function NoOrganisation({
         />
       )}
       {end === 'start' && startOrganisation != null && (
-        <View style={styles.start}>
-          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-            {t('noOrganisation.startTitle')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.startBody')}</Text>
-          <View style={styles.startAction}>
-            <PrimaryButton
-              label={t('noOrganisation.start')}
-              onPress={() => startOrganisation.open(startButton)}
-              ref={startButton}
-              testID="noOrganisation.start"
-            />
-          </View>
-        </View>
+        <StartYourOwn startRef={startButton} onStart={() => startOrganisation.open(startButton)} />
       )}
-      <View>
-        <Footnote
-          question={t('noOrganisation.signedInAs', { email })}
-          action={t('noOrganisation.account')}
-          onPress={() => router.navigate(SECTION_HREF.account)}
-          testID="noOrganisation.account"
-        />
-        <View style={styles.signOut}>
-          <QuietButton
-            label={t('settings.signOut')}
-            onPress={signOutHere}
-            testID="noOrganisation.signOut"
-          />
-        </View>
-      </View>
-    </View>
+      <SignedInWays
+        email={email}
+        onAccount={() => router.navigate(DESTINATION_HREF.settings)}
+        onSignOut={signOutHere}
+      />
+    </NoOrgPage>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { gap: 14 },
-  invitations: { gap: tokens.spaceSm },
-  start: {
-    gap: tokens.spaceSm,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorBorder,
-  },
-  startAction: { alignItems: 'flex-start' },
-  signOut: { alignItems: 'flex-start' },
-});
+/** One invitation waiting, answered through the API; a refusal or a failed answer reads in the switcher's words. */
+function Waiting({
+  invitation,
+  waiting,
+}: {
+  invitation: InvitationPreview;
+  waiting: WaitingInvitations;
+}) {
+  const { t } = useTranslation();
+  const outcome = waiting.outcomes[invitation.id];
+  const keys = invitationWording(invitation);
+  const organisation = invitation.organisation.name;
+  const inviter = invitation.invitedBy?.name ?? '';
+  const role = invitation.role == null ? '' : roleName(t, invitation.role);
+  const [answered, setAnswered] = useState<InvitationOutcome | null>(null);
+  const openJoined = useOpenJoined();
+  const answer = outcome === answered ? outcome : undefined;
+  const said =
+    outcome?.kind === 'failed' ? (
+      <InvitationFailedNotice answer={answer} />
+    ) : outcome?.kind === 'managed' ? (
+      <ManagedBanner
+        organisation={outcome.organisation}
+        message={outcome.message}
+        testID={`noOrganisation.invitation.${invitation.id}.managed`}
+      />
+    ) : outcome?.kind === 'refused' ? (
+      <InvitationRefusalNotice
+        refusal={outcome.refusal}
+        organisation={organisation}
+        invitation={invitation}
+        answer={answer}
+      />
+    ) : undefined;
+
+  return (
+    <>
+      <SeatsFullSheet
+        outcome={outcome}
+        testID={`noOrganisation.invitation.${invitation.id}.seatsFull`}
+      />
+      <NoOrgInvitationRow
+        id={invitation.id}
+        organisation={organisation}
+        role={role}
+        line={t(keys.line, { inviter, role })}
+        until={t(keys.until, {
+          date: formatDay(invitation.expiresAt, dateLocale()),
+          email: invitation.email,
+        })}
+        note={t(keys.declineNote, { inviter })}
+        declined={t(keys.declined, { inviter })}
+        row={invitationRowOf(outcome)}
+        said={said}
+        answer={answer}
+        onAnswer={(yes) =>
+          void waiting.answer(invitation, yes ? 'accept' : 'decline').then(setAnswered)
+        }
+        onOpen={() => {
+          if (outcome?.kind === 'accepted') openJoined?.(outcome.organisationId);
+        }}
+      />
+    </>
+  );
+}

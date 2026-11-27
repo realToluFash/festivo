@@ -6,6 +6,7 @@ namespace App\Domain\User\TwoFactor\Recovery;
 
 use App\Domain\User\Mail\MailCode;
 use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
 use App\Entity\User;
@@ -22,6 +23,7 @@ final readonly class TwoFactorRecoveryMailer
     public function __construct(
         private UserMailer $userMailer,
         private NotMeLink $notMeLink,
+        private SecondFactors $secondFactors,
         private string $webOrigin,
     ) {
     }
@@ -32,7 +34,7 @@ final readonly class TwoFactorRecoveryMailer
         $locale = $this->userMailer->localeFor($user);
 
         $this->userMailer->send(AccountMail::TwoFactorRecoveryCode, $recovery->getEmailAddress()->getAddress(), $locale, 'twoFactorRecovery.code.subject', [
-            $this->line('twoFactorRecovery.code.body', $locale),
+            $this->line('twoFactorRecovery.code.body' . $this->lost($user), $locale),
             $code,
             $this->line('twoFactorRecovery.code.expiry', $locale, ['{minutes}' => (string) VerificationChallenge::LIFETIME_MINUTES]),
             $this->line('twoFactorRecovery.code.notYou', $locale),
@@ -48,7 +50,7 @@ final readonly class TwoFactorRecoveryMailer
 
         $this->userMailer->sendToEveryVerified(AccountMail::TwoFactorRecovery, $user, 'twoFactorRecovery.started.subject', [
             $this->line('twoFactorRecovery.started.heading', $locale),
-            $this->line('twoFactorRecovery.started.body', $locale),
+            $this->line('twoFactorRecovery.started.body' . $this->lost($user), $locale),
             Str\join(Vec\filter_nulls([
                 $this->line('twoFactorRecovery.fact.when', $locale, ['{when}' => $this->when($recovery->getProvedAt(), $user, $locale)]),
                 null === $device ? null : $this->line('twoFactorRecovery.fact.device', $locale, ['{device}' => $device]),
@@ -73,7 +75,7 @@ final readonly class TwoFactorRecoveryMailer
 
         $this->userMailer->send(AccountMail::TwoFactorRecovery, $address, $locale, 'twoFactorRecovery.approver.subject', [
             $this->line('twoFactorRecovery.approver.heading', $locale, ['{name}' => $user->getName()]),
-            $this->line(null === $recovery->getPhoneNumber() ? 'twoFactorRecovery.approver.bodyEmail' : 'twoFactorRecovery.approver.bodyBoth', $locale),
+            $this->line((null === $recovery->getPhoneNumber() ? 'twoFactorRecovery.approver.bodyEmail' : 'twoFactorRecovery.approver.bodyBoth') . $this->lost($user), $locale),
             Str\join([
                 $this->line('twoFactorRecovery.fact.who', $locale, ['{name}' => $user->getName(), '{email}' => $recovery->getEmailAddress()->getAddress()]),
                 $this->line('twoFactorRecovery.fact.organisation', $locale, ['{organisation}' => $organisation->getName()]),
@@ -131,6 +133,18 @@ final readonly class TwoFactorRecoveryMailer
             ...$this->notMe($recovery, $locale),
             $this->line('twoFactorRecovery.footer', $locale),
         ]);
+    }
+
+    /** Which of the member's factors the words name as lost: the app's lines as today, or the passkeys' (sc-86885). */
+    private function lost(User $user): string
+    {
+        $kinds = $this->secondFactors->kinds($user);
+
+        return match (true) {
+            !$kinds['passkeys'] => '',
+            $kinds['app'] => 'PasskeysApp',
+            default => 'Passkeys',
+        };
     }
 
     /** @return list<string> */

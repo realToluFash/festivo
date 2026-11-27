@@ -31,6 +31,11 @@ final class WithholdingMembershipDirectory implements MembershipDirectoryInterfa
         $this->withheld[] = $permission;
     }
 
+    public function restore(): void
+    {
+        $this->withheld = [];
+    }
+
     public function grantsIn(User $user, Uuid $organisationId): ?Grants
     {
         return $this->less($this->real->grantsIn($user, $organisationId));
@@ -39,6 +44,16 @@ final class WithholdingMembershipDirectory implements MembershipDirectoryInterfa
     public function grantsOnEvent(User $user, Uuid $organisationId, Uuid $eventId): ?Grants
     {
         return $this->less($this->real->grantsOnEvent($user, $organisationId, $eventId));
+    }
+
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return $this->real->linkEndedWithTheEvent($user, $eventId);
+    }
+
+    public function isOutsideIn(User $user, Uuid $organisationId): bool
+    {
+        return $this->real->isOutsideIn($user, $organisationId);
     }
 
     public function eventScopeIn(User $user, Uuid $organisationId): ?EventScope

@@ -1,8 +1,9 @@
 import { type EventPhase, numberFormat } from '@soirely/domain';
+import type { ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, cardStep, dayTiles, shownEvent } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, listEventOf, shownEvent } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -17,6 +18,7 @@ const lasting = (days: number, phase: EventPhase) =>
       status: 'live',
       concludedAt: null,
       place: null,
+      city: null,
       photo: null,
       milestones: [],
     } as ListEvent,
@@ -140,6 +142,26 @@ describe('cardStep', () => {
     ).toMatchObject({ kind: 'next', line: 'Fri 20 Nov, 17:00' });
   });
 
+  it('offers no step while it is on with nothing ahead, in the room its Duplicate takes', () => {
+    expect(cardStep(lasting(1, 'happening_now'), before, 'en-GB', withDate)).toEqual({
+      kind: 'none',
+      keeps: {
+        kind: 'button',
+        line: 'timeline.finished',
+        label: 'eventDuplicate.open',
+        action: 'duplicate',
+      },
+    });
+  });
+
+  it('offers Duplicate once it is over', () => {
+    expect(cardStep(lasting(1, 'finished'), before, 'en-GB', withDate)).toMatchObject({
+      kind: 'button',
+      line: 'timeline.finished',
+      action: 'duplicate',
+    });
+  });
+
   it('writes the called-off day with its year only when it is not this year', () => {
     const calledOffOn = (concludedAt: string) =>
       shownEvent({ ...lasting(1, 'finished'), status: 'ended', concludedAt }, 'finished');
@@ -156,5 +178,45 @@ describe('cardStep', () => {
         withDate,
       ),
     ).toMatchObject({ kind: 'button', line: 'Wed, 5 Nov 2025' });
+  });
+});
+
+describe('listEventOf', () => {
+  const address = (city: string | null) => ({
+    formatted: '12 Bode Thomas Street',
+    line1: null,
+    line2: null,
+    city,
+    region: null,
+    postalCode: null,
+    countryCode: null,
+    latitude: null,
+    longitude: null,
+  });
+  const of = (venue: ListedEvent['venue']) =>
+    listEventOf({ venue, milestones: [] } as unknown as ListedEvent);
+
+  it('pairs a picked venue with its city', () => {
+    expect(of({ name: 'Harbour Hall', address: address('Lagos') })).toMatchObject({
+      place: 'Harbour Hall',
+      city: 'Lagos',
+    });
+  });
+
+  it('adds no city to a name typed by hand, a blank city, or a venue with no address', () => {
+    expect(of({ name: 'Harbour Hall', address: address(null) }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: address('') }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: null })).toMatchObject({
+      place: 'Harbour Hall',
+      city: null,
+    });
+  });
+
+  it('writes the address as saved, with no city, when the venue has no name', () => {
+    expect(of({ name: null, address: address('Lagos') })).toMatchObject({
+      place: '12 Bode Thomas Street',
+      city: null,
+    });
+    expect(of(null)).toMatchObject({ place: null, city: null });
   });
 });

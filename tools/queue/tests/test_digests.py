@@ -49,6 +49,27 @@ class Developers(unittest.TestCase):
                          "sc-9")
 
 
+class Designer(unittest.TestCase):
+    def lines(self, stories, prs=()):
+        p = Digest("ux")
+        with mock.patch.object(digests.store, "prs", return_value=list(prs)):
+            digests.designer(p, None, stories)
+        return p.lines
+
+    def test_a_failed_demo_only_story_is_listed_first_with_what_to_do(self):
+        failed = dict(ready(1), state="Failed QA", labels=["demo only"])
+        drawing = dict(ready(2), state="Needs Design")
+        lines = self.lines([failed, drawing])
+        self.assertEqual(lines[0], "Failed QA, demo only (1): fix the demo on a ux/ branch; "
+                                   "once it merges pm moves it to Ready For QA:")
+        self.assertIn("sc-1", lines[1])
+        self.assertTrue(lines[3].startswith("Needs Design (1)"))
+
+    def test_a_failed_story_a_developer_built_is_not_listed(self):
+        failed = dict(ready(1), state="Failed QA", labels=["dev2"])
+        self.assertTrue(self.lines([failed])[0].startswith("Needs Design (0)"))
+
+
 def blocks(subject, object_):
     return {"verb": "blocks", "subject": subject, "object": object_}
 
@@ -75,7 +96,105 @@ class HeldByBlockers(unittest.TestCase):
                 mock.patch.object(digests.store, "get_meta", return_value=None):
             digests.product_manager(p, None, [todo])
         self.assertIn("held by sc-7 (Ready For Dev), sc-8 (To Do)",
-                      [line for line in p.lines if "sc-1 " in line][0])
+                      [line for line in p.lines if line.startswith("  sc-1 ")][0])
+
+
+def epic(id_, state="in progress"):
+    return {str(id_): {"name": f"epic {id_}", "state": state}}
+
+
+class StuckBlockers(unittest.TestCase):
+    EPICS = {**epic(1), **epic(2, "to do")}
+
+    def sweep(self, every, epics=EPICS):
+        p = Digest("pm")
+        with mock.patch.object(digests.store, "stories", return_value=every), \
+                mock.patch.object(digests.store, "get_meta",
+                                  side_effect=lambda db, key: epics if key == "epics" else None):
+            digests.product_manager(p, None, [s for s in every if not s["done"]])
+        return p.lines
+
+    def held(self, id_, *blockers, state="Ready For Dev", epic_id=1):
+        return dict(ready(id_), state=state, epic_id=epic_id, epic="epic", description="",
+                    comments=[], links=[blocks(b, id_) for b in blockers])
+
+    def blocker(self, id_, state, **extra):
+        return dict(ready(id_), **{"state": state, "epic_id": 1, "epic": "epic",
+                                   "description": "", "comments": [], **extra})
+
+    def section(self, lines):
+        if "Stuck: held by a story nobody is working on" not in lines:
+            return None
+        start = lines.index("Stuck: held by a story nobody is working on")
+        return lines[start + 1:lines.index("", start)]
+
+    def test_a_backlog_blocker_holding_a_ready_story_is_listed_with_its_next(self):
+        lines = self.sweep([self.held(1, 7), self.blocker(7, "Backlog")])
+        self.assertEqual(self.section(lines), [
+            "  sc-7 [Backlog] story 7 · epic · holds sc-1 (Ready For Dev)",
+            f'    Next: {digests.SQ} pm move sc-7 "To Do"'])
+        self.assertLess(lines.index("Stuck: held by a story nobody is working on"),
+                        next(i for i, x in enumerate(lines) if x.startswith("To Do (")))
+
+    def test_a_to_do_blocker_s_next_opens_the_story(self):
+        lines = self.sweep([self.held(1, 7), self.blocker(7, "To Do")])
+        self.assertEqual(self.section(lines)[1], f"    Next: {digests.SQ} pm story sc-7")
+
+    def test_a_blocker_waiting_on_the_owner_has_no_next(self):
+        lines = self.sweep([self.held(1, 7), self.blocker(7, "Waiting On Owner")])
+        self.assertEqual(self.section(lines), [
+            "  sc-7 [Waiting On Owner] story 7 · epic · holds sc-1 (Ready For Dev)"
+            " · waits on the owner"])
+
+    def test_a_ready_blocker_whose_epic_is_not_in_progress_waits_on_that_epic(self):
+        lines = self.sweep([self.held(1, 7), self.blocker(7, "Ready For Dev", epic_id=2)])
+        self.assertEqual(self.section(lines), [
+            "  sc-7 [Ready For Dev] story 7 · epic · holds sc-1 (Ready For Dev)"
+            " · waits on its epic, epic 2, to be in progress"])
+
+    def test_a_ready_blocker_in_an_epic_in_progress_is_not_listed(self):
+        self.assertIsNone(self.section(
+            self.sweep([self.held(1, 7), self.blocker(7, "Ready For Dev")])))
+
+    def test_a_blocker_someone_is_working_on_is_not_listed(self):
+        for state in ("Needs Design", "In Progress", "Ready For QA"):
+            with self.subTest(state=state):
+                self.assertIsNone(self.section(
+                    self.sweep([self.held(1, 7), self.blocker(7, state)])))
+
+    def test_an_archived_or_translation_blocker_is_not_listed(self):
+        archived = self.blocker(7, "Backlog", archived=True)
+        translation = self.blocker(8, "Backlog", labels=["translation"])
+        self.assertIsNone(self.section(
+            self.sweep([self.held(1, 7), self.held(2, 8), archived, translation])))
+
+    def test_a_held_story_in_an_epic_not_in_progress_is_left_out(self):
+        lines = self.sweep([self.held(1, 7, epic_id=2), self.held(2, 8),
+                            self.held(3, 8, epic_id=2),
+                            self.blocker(7, "Backlog"), self.blocker(8, "Backlog")])
+        self.assertEqual(self.section(lines)[0],
+                         "  sc-8 [Backlog] story 8 · epic · holds sc-2 (Ready For Dev)")
+        self.assertEqual(len(self.section(lines)), 2)
+
+    def test_one_blocker_holding_two_stories_is_one_line_in_id_order(self):
+        lines = self.sweep([self.held(5, 7, state="To Do"), self.held(3, 7),
+                            self.blocker(7, "Backlog")])
+        self.assertEqual(self.section(lines)[0],
+                         "  sc-7 [Backlog] story 7 · epic · holds sc-3 (Ready For Dev),"
+                         " sc-5 (To Do)")
+
+    def test_blockers_holding_more_come_first_then_by_id(self):
+        lines = self.sweep([self.held(1, 9), self.held(2, 8), self.held(3, 9),
+                            self.held(4, 7), self.blocker(7, "Waiting On Owner"),
+                            self.blocker(8, "Waiting On Owner"),
+                            self.blocker(9, "Waiting On Owner")])
+        self.assertEqual([x.split()[0] for x in self.section(lines)],
+                         ["sc-9", "sc-7", "sc-8"])
+
+    def test_nothing_stuck_leaves_the_section_out(self):
+        lines = self.sweep([self.held(1), self.blocker(7, "Backlog")])
+        self.assertFalse(any("Stuck" in x for x in lines))
+        self.assertTrue(lines[0].startswith("To Do ("))
 
 
 class Testers(unittest.TestCase):

@@ -9,6 +9,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 
+import { screenReaderNow } from './screenReaderNow.ts';
 import { type TextHandle } from './Text.tsx';
 
 export type ScreenReaderTarget = ViewInstance | TextInputInstance | TextHandle;
@@ -29,7 +30,8 @@ export function pressOnDoubleTap(onPress: (() => void) | undefined) {
 
 /** TalkBack ignores the focus event VoiceOver follows, and takes a hover instead (sc-9950). */
 export function moveScreenReaderFocus(view: ScreenReaderTarget | null): void {
-  if (view == null) return;
+  // A view unmounted before a deferred move fires has no node left, and Android's event logs a warning over the screen (sc-87242).
+  if (view == null || !view.isConnected) return;
 
   if (Platform.OS === 'android') {
     AccessibilityInfo.sendAccessibilityEvent(view, 'viewHoverEnter');
@@ -42,13 +44,21 @@ export function moveScreenReaderFocus(view: ScreenReaderTarget | null): void {
 
 /** Whether a screen reader is on, false until the answer comes. */
 export function useScreenReaderOn(): boolean {
-  const [on, setOn] = useState(false);
+  return useScreenReader() === true;
+}
+
+/** Whether a screen reader is on, or null until the device has said. */
+export function useScreenReader(): boolean | null {
+  const [on, setOn] = useState(screenReaderNow);
 
   useEffect(() => {
     let gone = false;
-    void AccessibilityInfo.isScreenReaderEnabled().then((now) => {
-      if (!gone) setOn(now);
-    });
+    // Read again here: an answer that came between the render and this effect has no event left to bring it.
+    void Promise.resolve(screenReaderNow() ?? AccessibilityInfo.isScreenReaderEnabled()).then(
+      (now) => {
+        if (!gone) setOn(now);
+      },
+    );
     const changed = AccessibilityInfo.addEventListener('screenReaderChanged', setOn);
 
     return () => {

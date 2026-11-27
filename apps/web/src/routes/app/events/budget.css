@@ -7,10 +7,30 @@
   --btGreen: var(--deskGreen);
 }
 
+/* The crumbs are the way back, so in every language they wrap at word breaks rather than truncate, as the Guests' do (sc-79848). Staff rates shares .bt. */
+.bt .ev-crumb ol {
+  flex-wrap: wrap;
+}
+
+.bt .ev-crumb-part {
+  min-width: auto;
+  overflow-wrap: break-word;
+}
+
+.bt .ev-crumb-name {
+  overflow: visible;
+  white-space: normal;
+}
+
 .bt-page {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* The columns fill the page at 1280, and a row that opens reaches spaceMd past the right one: the margin keeps it inside, or focusing it scrolls the page sideways. */
+.bt .ev-right {
+  margin-inline-end: var(--spaceMd);
 }
 
 .bt-title-row {
@@ -23,14 +43,20 @@
 
 .bt-title {
   flex: 1;
-  min-width: 0;
   font: 700 30px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .bt-title:focus {
   outline: none;
+}
+
+.bt-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceXl);
 }
 
 .bt-title-actions {
@@ -245,6 +271,13 @@
 
 .bt-opened-actions .desk-text {
   margin-inline: 0;
+}
+
+.bt-staff-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
 }
 
 .bt-said {
@@ -480,10 +513,24 @@
   }
 }
 
+.bt-below {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+@media (width < 600px) {
+  .bt-title-actions {
+    flex-basis: 100%;
+  }
+}
+
 /* At a phone the shell already pads the page 16 px, as Budget A's narrow frames do, so Settings' 40 px desk-page padding is not added to it (sc-85). */
 @media (width <= 40rem) {
   .bt.desk-page {
     padding: 0;
-    overflow: visible;
   }
 }

@@ -89,6 +89,11 @@ function SignIn() {
       tap.done();
       if (params.after === 'tfaAgain') router.replace('/demo/tfa-again');
       else if (params.after === 'join') router.replace('/demo/join-message');
+      else if (params.after === 'passkey' || params.after === 'passkeyOnly')
+        router.push({
+          pathname: '/demo/passkey',
+          params: { email: email.trim(), only: params.after === 'passkeyOnly' ? '1' : '0' },
+        });
       else router.push({ pathname: '/demo/two-factor', params: { email: email.trim() } });
     }, 600);
   }

@@ -1,0 +1,6 @@
+# sc-75689: sc75689-replyby-deleted on a tablet turned to landscape.
+appId: host.exp.Exponent
+---
+- evalScript: "${http.get(HELPER_URL + '/landscape').body}"
+- waitForAnimationToEnd
+- runFlow: sc75689-replyby-deleted.yaml

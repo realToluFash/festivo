@@ -60,6 +60,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventStaff->for($eventId->toRfc4122())]);
     }
 
+    /** One event's Who's here signal to ask again, for someone the route has already found may read it (sc-3918); its messages carry nothing else. */
+    public function issueForEventWhosHere(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventWhosHere->for($eventId->toRfc4122())]);
+    }
+
     /** One event's running order, for someone the route has already found holds run_of_show.read on it (sc-3893). */
     public function issueForEventSchedule(Uuid $eventId): IssuedSubscriberToken
     {
@@ -78,22 +84,52 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventGuestPages->for($eventId->toRfc4122())]);
     }
 
+    /** One event's messages to its guests' signal to ask again, for someone the route has already found holds messages.read on it (sc-3942); its messages carry nothing else. */
+    public function issueForEventMessages(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventMessages->for($eventId->toRfc4122())]);
+    }
+
     /** One event's menu, for someone the route has already found holds menu.read on it (sc-3902). */
     public function issueForEventMenu(Uuid $eventId): IssuedSubscriberToken
     {
         return $this->issue([RealtimeTopic::EventMenu->for($eventId->toRfc4122())]);
     }
 
+    /** One event's service, for someone the route has already found works it (sc-4005). */
+    public function issueForEventService(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventService->for($eventId->toRfc4122())]);
+    }
+
     /** One event's budget lines and its headcount, which moves the range, for someone the route has already found holds budget.read on it (sc-83, sc-85). */
     public function issueForEventBudget(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventQuotes->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventQuotes->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
+    }
+
+    /** One event's markups, client prices and margin, for someone the route has already found holds budget.margin on it with a plan that unlocks margin (sc-92). */
+    public function issueForEventBudgetMargin(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventBudgetMargin->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
     }
 
     /** One event's guest list and its headcount, for someone the route has already found holds guests.read on it (sc-1468, sc-99). */
     public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
+    }
+
+    /** One event's check-in signal, for someone the route has already found holds guests.check_in on it (sc-1454); its messages carry nothing else. */
+    public function issueForCheckIn(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
+    }
+
+    /** One organisation's usage, for someone the route has already found holds billing.read on it (sc-3929). */
+    public function issueForOrganisationUsage(Uuid $organisationId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::OrganisationUsage->for($organisationId->toRfc4122())]);
     }
 
     /**
@@ -103,7 +139,7 @@ final readonly class SubscriberTokenIssuer
      */
     public function issueForHeadcounts(array $eventIds): IssuedSubscriberToken
     {
-        return $this->issue(Vec\map($eventIds, static fn (Uuid $eventId): string => RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())));
+        return $this->issue(Vec\flat_map($eventIds, static fn (Uuid $eventId): array => [RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]));
     }
 
     /**

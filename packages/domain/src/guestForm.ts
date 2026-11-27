@@ -2,6 +2,7 @@ import { visibleLength } from './visibleText.ts';
 import type { Companion, Guest, GuestList, NewGuest, Violation } from '@soirely/api-client';
 
 import { emailProblem } from './forms.ts';
+import { GREET_AS_MAXIMUM, greetAsLength } from './messageTokens.ts';
 import { nameKey } from './nameKey.ts';
 import { phoneLengthProblem } from './phone.ts';
 
@@ -9,10 +10,21 @@ import { phoneLengthProblem } from './phone.ts';
 export const GUEST_NAME_MAXIMUM = 200;
 export const COMPANIONS_MAXIMUM = 10;
 
-export type ReplyWord = Guest['reply'] | Companion['state'];
+/** `walkIn` reads in place of a reply for someone added at the door (sc-1454). */
+export type ReplyWord = Guest['reply'] | Companion['state'] | 'walkIn';
+
+/** Why a guest stays on the list: they arrived, or a companion did, since removing them erases their companions (sc-1454). Their own arrival wins. */
+export function staysBecause(guest: Guest): 'arrived' | 'companionArrived' | null {
+  if (guest.arrival != null) return 'arrived';
+  if (guest.companions.some((one) => one.arrival != null)) return 'companionArrived';
+
+  return null;
+}
 
 /** Not yet invited stands where the reply goes until somebody invites them (sc-3788). */
 export function shownReply(guest: Guest): ReplyWord {
+  if (guest.walkIn === true) return 'walkIn';
+
   return guest.invitation == null && guest.reply === 'noReply' ? 'notYetInvited' : guest.reply;
 }
 
@@ -45,6 +57,8 @@ export interface Typed {
   companions: readonly string[];
   /** The host's Language for them, null for Not set (sc-3790). */
   language: string | null;
+  /** As typed (sc-3960); a form without the field leaves it out, and the guest keeps theirs. */
+  greetAs?: string;
 }
 
 export type Problem =
@@ -54,10 +68,11 @@ export type Problem =
   | 'phoneTooShort'
   | 'phoneTooLong'
   | 'noCountry'
+  | 'greetAsTooLong'
   // A number of a length its country uses that the API still refuses, in the API's words.
   | { refused: string };
 
-/** Field keys in the form's order: fullName, email, mobile, then companion-0 and on. */
+/** Field keys in the form's order: fullName, greetAs, email, mobile, then companion-0 and on. */
 export type Problems = Readonly<Record<string, Problem>>;
 
 export function problemsOf(typed: Typed): Problems {
@@ -70,6 +85,8 @@ export function problemsOf(typed: Typed): Problems {
   if (phone === 'tooShort') found.mobile = 'phoneTooShort';
   else if (phone === 'tooLong') found.mobile = 'phoneTooLong';
   else if (phone === 'noCountry') found.mobile = 'noCountry';
+  if (typed.greetAs != null && greetAsLength(typed.greetAs) > GREET_AS_MAXIMUM)
+    found.greetAs = 'greetAsTooLong';
   typed.companions.forEach((name, at) => {
     if (nameLength(name) > GUEST_NAME_MAXIMUM) found[`companion-${at}`] = 'tooLong';
   });
@@ -96,6 +113,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
     else if (key === 'mobile')
       found.mobile =
         one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? { refused: one.message });
+    else if (key === 'greetAs') found.greetAs = 'greetAsTooLong';
     else if (key.startsWith('companion-')) found[key] = 'tooLong';
   }
 
@@ -105,6 +123,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
 export function firstProblem(problems: Problems, companions: number): string | null {
   const order = [
     'fullName',
+    'greetAs',
     'email',
     'mobile',
     ...Array.from({ length: companions }, (_, at) => `companion-${at}`),
@@ -125,6 +144,9 @@ export function newGuestOf(typed: Typed, allowDuplicate: boolean): NewGuest {
       fullName: name.trim() === '' ? null : name.trim(),
     })),
     language: typed.language,
+    ...(typed.greetAs == null
+      ? {}
+      : { greetAs: typed.greetAs.trim() === '' ? null : typed.greetAs.trim() }),
     ...(allowDuplicate ? { allowDuplicate: true } : {}),
   };
 }
@@ -177,22 +199,28 @@ export function withGuestAt(list: GuestList, guest: Guest, at: number): GuestLis
 
 export const MOST_COMPANIONS = COMPANIONS_MAXIMUM;
 
-/** Which places a new count keeps, by index, and how many unnamed ones it adds; refused with the number named when it would drop a name. */
-export type PlacesStep = { kept: number[]; added: number } | { refused: number };
+/** Which places a new count keeps, by index, and how many unnamed ones it adds; refused with the places held when it would drop a name or an arrival. */
+export type PlacesStep = { kept: number[]; added: number } | { refused: number; arrived: boolean };
 
-/** sc-3779: more places adds unnamed ones at the end; fewer takes unnamed ones only, from the end. */
-export function placesTo(names: readonly string[], places: number): PlacesStep {
+/** sc-3779: more places adds unnamed ones at the end; fewer takes unnamed ones only, from the end. An arrived place is held like a named one (sc-1454). */
+export function placesTo(
+  names: readonly string[],
+  places: number,
+  arrived: readonly boolean[] = [],
+): PlacesStep {
   const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
   const all = names.map((_, at) => at);
+  const held = (at: number) => !blank(names[at] ?? null) || arrived[at] === true;
 
   if (wanted >= names.length) return { kept: all, added: wanted - names.length };
-  const named = names.filter((name) => !blank(name)).length;
-  if (wanted < named) return { refused: named };
+  const holding = all.filter(held).length;
+  if (wanted < holding)
+    return { refused: holding, arrived: all.some((at) => arrived[at] === true) };
   let drop = names.length - wanted;
   const dropped = new Set<number>();
 
   for (let at = names.length - 1; at >= 0 && drop > 0; at -= 1) {
-    if (blank(names[at] ?? null)) {
+    if (!held(at)) {
       dropped.add(at);
       drop -= 1;
     }

@@ -7,18 +7,21 @@ namespace App\Domain\User\Http;
 use App\Domain\Messaging\EmailSuppressions;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
+use App\Domain\Organisation\MembershipDirectory;
+use App\Domain\Staff\Link\OutsideEvent;
+use App\Domain\User\CallerSession;
+use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Onboarding\AccountCompleteness;
+use App\Domain\User\TokenIssuer;
 use App\Entity\EmailAddress;
-use App\Entity\EventPerson;
 use App\Entity\PhoneNumber;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
-use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
+use App\Repository\RefreshTokenRepository;
 use Psl\Iter;
 use Psl\Vec;
-use Psr\Clock\ClockInterface;
 
 final readonly class AccountSerialiser
 {
@@ -29,16 +32,23 @@ final readonly class AccountSerialiser
         private JoinOfferFinder $joinOfferFinder,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private EmailSuppressions $emailSuppressions,
-        private EventPersonRepository $eventPersonRepository,
-        private ClockInterface $clock,
+        private MembershipDirectory $membershipDirectory,
+        private CallerSession $callerSession,
+        private RefreshTokenRepository $refreshTokenRepository,
+        private TokenIssuer $tokenIssuer,
     ) {
     }
 
-    /** @return array<string, mixed> */
-    public function serialise(User $user): array
+    /**
+     * Read in the session `$issued` has just begun, or else the caller's.
+     *
+     * @return array<string, mixed>
+     */
+    public function serialise(User $user, ?IssuedTokens $issued = null): array
     {
+        $signedOutAt = null === $issued ? $this->callerSession->endsAt($user) : $this->tokenIssuer->endsAt($this->refreshTokenRepository->find($issued->sessionId), $user);
         $memberships = $this->membershipRepository->findActiveFor($user);
-        $outside = $this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now());
+        $outside = $this->membershipDirectory->outsideEvents($user);
         $pending = [] === $memberships ? $this->joinOfferFinder->pendingRequestFor($user) : null;
         $emails = $user->getEmailAddresses();
         $suppressed = $this->emailSuppressions->suppressedAmong(Vec\map($emails, static fn (EmailAddress $address): string => $address->getAddress()));
@@ -60,14 +70,15 @@ final readonly class AccountSerialiser
             // An account on an event from outside lands inside it, and is never asked to start an organisation (sc-71).
             'needsOrganisation' => [] === $outside && $this->accountCompleteness->needsOrganisation($user),
             // Each organisation's event shown with its own name only: the account's grants elsewhere are not the organisation's business.
-            'outsideEvents' => Vec\map($outside, static fn (EventPerson $person): array => [
-                'id' => $person->getEvent()->getId()->toRfc4122(),
-                'name' => $person->getEvent()->getName(),
-                'organisationName' => $person->getEvent()->getOrganisation()->getName(),
-                'role' => $person->getRole()->value,
-                'jobLabel' => $person->getJobLabel(),
-                'startsAt' => $person->getEvent()->getStartsAt()->format(\DATE_ATOM),
-                'endsAt' => $person->getEvent()->getClosesAt()?->format(\DATE_ATOM),
+            'outsideEvents' => Vec\map($outside, static fn (OutsideEvent $reach): array => [
+                'id' => $reach->event->getId()->toRfc4122(),
+                'name' => $reach->event->getName(),
+                'organisationName' => $reach->event->getOrganisation()->getName(),
+                'role' => $reach->role->value,
+                'jobLabel' => $reach->jobLabel,
+                'startsAt' => $reach->event->getStartsAt()->format(\DATE_ATOM),
+                'endsAt' => $reach->until?->format(\DATE_ATOM),
+                'timeZone' => $reach->event->getTimeZone(),
             ]),
             // In no organisation and asked to join one (sc-561): the details screen says whom it is waiting for.
             'waitingFor' => null === $pending ? null : $this->joinRequestSerialiser->request($pending),
@@ -92,6 +103,8 @@ final readonly class AccountSerialiser
                 $this->providerIdentityRepository->findBy(['user' => $user]),
                 static fn (ProviderIdentity $identity): array => ['provider' => $identity->getProvider()->value, 'email' => $identity->getEmail()],
             ),
+            // A browser signed in by phone code is signed out with its grants (sc-4235), whatever addresses the account holds.
+            'signedOutAt' => $signedOutAt?->format(\DATE_ATOM),
         ];
     }
 }

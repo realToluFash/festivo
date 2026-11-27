@@ -5,16 +5,20 @@ import {
   type Guest,
   type GuestInvitationHow,
   type GuestDetails,
+  type GuestChange,
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
   GUESTS_TOGETHER_MOST,
   asGuestList,
   realtimeTopic,
+  stayedOf,
 } from '@soirely/api-client';
 import {
   CHOICES,
   type Choice,
+  type LimitRefusal,
+  limitRefusalOf,
   type Counts,
   MOST_COMPANIONS,
   type Problem,
@@ -52,10 +56,15 @@ import {
   needsInputOf,
   needsViolations,
   problemsByWho,
-  NO_GROUP,
   exportNarrowing,
   exportsGuests,
   peopleInView,
+  type ChangedRow,
+  changeAnswer,
+  changeWhen,
+  changedRows,
+  readerZoneOf,
+  GREET_AS_MAXIMUM,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -78,6 +87,7 @@ import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../t
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
 import {
   Ask,
@@ -94,9 +104,10 @@ import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
+import { writingToNotReplied } from './messagesArea.ts';
 import { ExportDialog } from './GuestExport.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import {
@@ -114,14 +125,16 @@ import {
   companionsWith,
   markQuestion,
   onlyCompanions,
+  nothingRemoved,
   removeQuestion,
   shownGuests,
 } from './guestSelect.ts';
-import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
+import { choiceLine, groupChipsOf, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
 import {
   CompanionField,
+  GreetAsField,
   GuestField,
   LanguageField,
   PhoneField,
@@ -156,7 +169,7 @@ const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
   useHubTopics(
-    [realtimeTopic('EventGuests', eventId)],
+    [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
     () => api.guestsSubscription(eventId),
     (data) => {
       const list = asGuestList(data);
@@ -246,6 +259,7 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
+  const readerZone = readerZoneOf(useSession().timezone);
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -263,9 +277,24 @@ export function GuestsArea({
   const open = adding ? null : params.get('guest');
   const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
   const [recount, setRecount] = useState(0);
-  const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
-  const [dietaryOnly, setDietary] = useState(false);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const {
+    choice,
+    changed: changedOn,
+    since,
+    q,
+    setChoice,
+    setChanged,
+    setQ,
+    groups,
+    dietary: dietaryOnly,
+    toggleGroup,
+    setDietary,
+    dropGroup,
+    clear,
+  } = useGuestsAddress();
+  const [unseen, setUnseen] = useState(0);
+  const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [changedFailed, setChangedFailed] = useState(false);
   const [grouping, setGrouping] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
@@ -409,6 +438,33 @@ export function GuestsArea({
       current = false;
     };
   }, [event.id, manages, attempt, heard]);
+
+  useEffect(() => {
+    let current = true;
+
+    api.guestChanges(event.id).then(
+      (from) => current && setUnseen(from.rows.length),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, heard]);
+
+  useEffect(() => {
+    if (since == null) return;
+    let current = true;
+
+    api.guestChanges(event.id, since).then(
+      (from) => current && setChanges(from.rows),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, since, attempt, heard]);
 
   useLiveGuests(
     event.id,
@@ -656,15 +712,30 @@ export function GuestsArea({
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
   const dietaryOn = manages && dietaryOnly;
-  const { view, shown } = useMemo(
-    () =>
-      counts == null
-        ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-        : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter),
-    [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
+  // A group the address names that the event no longer has narrows nothing (sc-90684).
+  const groupChips = useMemo(
+    () => (load.kind === 'loaded' ? groupChipsOf(load.list, t('guestGroups.noGroup')) : []),
+    [load, t],
   );
-  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
-  const listLook = `${choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+  const groupsOn = useMemo(
+    () => groupChips.filter((chip) => groups.includes(chip.key)),
+    [groupChips, groups],
+  );
+  const groupFilter = useMemo(() => groupsOn.map((chip) => chip.key), [groupsOn]);
+  const { view, shown } = useMemo(() => {
+    if (changedOn) {
+      const rows = changedRows(guests, changes ?? [], q);
+
+      return { view: { kind: 'rows' as const, rows }, shown: rows.length };
+    }
+
+    return counts == null
+      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+      : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter);
+  }, [guests, counts, changedOn, changes, choice, q, expanded, dietaryOn, groupFilter]);
+  const looking =
+    changedOn || choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter.length > 0;
+  const listLook = `${changedOn ? `changed ${since ?? ''}` : choice}\n${q}\n${dietaryOn}\n${groupFilter.join(' ')}`;
   const [lookedAt, setLookedAt] = useState(listLook);
 
   // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
@@ -780,11 +851,19 @@ export function GuestsArea({
   }
 
   function removeMany(ids: readonly string[] = [...picked]): void {
+    const stays = removeQuestion(guests, new Set(ids)).stays;
+
+    if (stays.length === ids.length) {
+      setSelected(NONE);
+      ended({ kind: 'removed', removed: nothingRemoved(stays) });
+      return;
+    }
     setRemoving({ busy: true });
     api.removeGuests(event.id, ids).then(
       (removed) => {
         endUndo();
-        const gone = new Set(ids);
+        const stayed = new Set(removed.stayed.map((one) => one.id));
+        const gone = new Set(ids.filter((id) => !stayed.has(id)));
 
         setLoad((was) =>
           was.kind === 'loaded'
@@ -801,7 +880,15 @@ export function GuestsArea({
         if (open != null && gone.has(open)) setParams(withGuest(null));
         ended({ kind: 'removed', removed });
       },
-      () => ended({ kind: 'failed', action: { kind: 'remove' } }),
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('guest_arrived')) {
+          setSelected(NONE);
+          setRecount((n) => n + 1);
+          ended({ kind: 'removed', removed: nothingRemoved(stayedOf(error.problem)) });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'remove' } });
+      },
     );
   }
 
@@ -818,6 +905,10 @@ export function GuestsArea({
 
   function pressRemove(): void {
     if (picked.size > GUESTS_TOGETHER_MOST) return;
+    if (removeQuestion(guests, picked).stays.length === picked.size) {
+      removeMany();
+      return;
+    }
     setRemoving({ busy: false });
   }
 
@@ -889,13 +980,20 @@ export function GuestsArea({
         step: manages ? 'add' : null,
       };
 
-    return { says: comingOf, line: counts.invited === 0 ? null : haventLine(t, counts) };
+    return {
+      says: comingOf,
+      line: counts.invited === 0 ? null : haventLine(t, counts),
+      step: counts.havent > 0 && canOn(event, 'messages.manage') ? 'write' : null,
+    };
   }
 
   function onStep(step: CoverStep): void {
     if (step === 'add') startAdd();
     else if (step === 'makeLive') makeLive.start();
-    else {
+    else if (step === 'write') {
+      const write = writingToNotReplied(event.id);
+      void navigate(write.to, { state: write.state });
+    } else {
       const dates = inPlace(event.id, 'dates');
       void navigate(dates.to, { state: dates.state });
     }
@@ -903,8 +1001,23 @@ export function GuestsArea({
 
   function clearLook(): void {
     clear();
-    setDietary(false);
-    setGroupFilter(null);
+  }
+
+  function chooseChanged(): void {
+    setChangedFailed(false);
+    api.lookAtGuestChanges(event.id).then(
+      (from) => {
+        setChanges(from.rows);
+        setUnseen(0);
+        setChanged(from.since);
+      },
+      () => setChangedFailed(true),
+    );
+  }
+
+  function chooseReply(next: Choice): void {
+    setChangedFailed(false);
+    setChoice(next);
   }
 
   function clearView(): void {
@@ -1038,10 +1151,13 @@ export function GuestsArea({
                         <SearchRow
                           q={q}
                           choice={choice}
+                          changed={changedOn}
+                          changedCount={changedOn ? (changes?.length ?? 0) : unseen}
                           counts={counts}
                           menu={menu}
                           onQ={setQ}
-                          onChoice={setChoice}
+                          onChoice={chooseReply}
+                          onChanged={chooseChanged}
                           onMenu={setMenu}
                         />
                         {manages && (
@@ -1051,19 +1167,22 @@ export function GuestsArea({
                               className={dietaryOnly ? 'gs-chip is-on' : 'gs-chip'}
                               aria-pressed={dietaryOnly}
                               data-focus="dietary"
-                              onClick={() => setDietary((was) => !was)}
+                              onClick={() => setDietary(!dietaryOnly)}
                             >
                               {dietaryOnly && <Glyph name="tick" size={16} weight={2.6} />}
                               {t('guestNeeds.dietaryNotes')}
                             </button>
                           </div>
                         )}
-                        {load.kind === 'loaded' && (
-                          <GroupChips
-                            list={load.list}
-                            filter={groupFilter}
-                            onFilter={setGroupFilter}
-                          />
+                        <GroupChips chips={groupChips} on={groupFilter} onToggle={toggleGroup} />
+                        {changedFailed && (
+                          <div className="gs-shown gs-changed-failed" role="alert">
+                            <p>
+                              <Glyph name="alert" size={18} weight={2.2} />
+                              {t('guestList.changed.failed')}
+                            </p>
+                            <TextAction label={t('events.retry')} onClick={chooseChanged} />
+                          </div>
                         )}
                         <div className={looking ? 'gs-shown' : 'visually-hidden'}>
                           <p role="status">
@@ -1129,7 +1248,19 @@ export function GuestsArea({
                             )}
                           </div>
                         )}
-                        {guests.length === 0 ? null : shown === 0 ? (
+                        {guests.length === 0 || (changedOn && changes == null) ? null : changedOn &&
+                          shown === 0 &&
+                          q.trim() === '' ? (
+                          <div className="gs-none">
+                            <h2 tabIndex={-1} data-focus="none-heading">
+                              {t('guestList.changed.nothing')}
+                            </h2>
+                            <TextAction
+                              label={t('guestList.changed.showAll')}
+                              onClick={clearView}
+                            />
+                          </div>
+                        ) : shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
                               {t('guestList.noMatch')}
@@ -1144,6 +1275,7 @@ export function GuestsArea({
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
+                            readerZone={readerZone}
                             replyBy={replies.replyBy}
                             open={open}
                             onOpen={openGuest}
@@ -1168,6 +1300,7 @@ export function GuestsArea({
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
+                                readerZone={readerZone}
                                 replyBy={replies.replyBy}
                                 open={open}
                                 onOpen={openGuest}
@@ -1192,7 +1325,7 @@ export function GuestsArea({
                         manages={manages}
                         focus={focus}
                         onChanged={(deleted) => {
-                          if (deleted != null && groupFilter === deleted) setGroupFilter(null);
+                          if (deleted != null) dropGroup(deleted);
                           setAttempt((n) => n + 1);
                         }}
                         onDone={closeGroups}
@@ -1365,15 +1498,7 @@ export function GuestsArea({
             everyone={peopleInView(guests, 'all', '').map((one) => one.id)}
             narrowing={exportNarrowing(t, t(CHOICE_KEY[choice]), q, [
               ...(dietaryOn ? [t('guestNeeds.dietaryNotes')] : []),
-              ...(groupFilter == null
-                ? []
-                : [
-                    groupFilter === NO_GROUP
-                      ? t('guestGroups.noGroup')
-                      : ((load.kind === 'loaded'
-                          ? load.list.groups.find((one) => one.id === groupFilter)?.name
-                          : null) ?? ''),
-                  ]),
+              ...groupsOn.map((chip) => chip.word),
             ])}
             needs={manages}
             onClose={() => {
@@ -1414,7 +1539,7 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-type CoverStep = 'add' | 'makeLive' | 'changeDates';
+type CoverStep = 'add' | 'makeLive' | 'changeDates' | 'write';
 
 interface Cover {
   tag?: { mark: 'draft' | 'paused' | null; word: string } | null;
@@ -1422,13 +1547,14 @@ interface Cover {
   line?: string | null;
   step?: CoverStep | null;
   /** sc-50409: Make live or Change dates beside an empty Draft's Add guest, quieter, as the app's card (sc-46879). */
-  also?: Exclude<CoverStep, 'add'> | null;
+  also?: Exclude<CoverStep, 'add' | 'write'> | null;
 }
 
 const STEP_KEY: Record<CoverStep, string> = {
   add: 'guestList.addGuest',
   makeLive: 'eventLive.makeLive',
   changeDates: 'eventLive.changeDates',
+  write: 'guestList.writeToThem',
 };
 
 /** How the room stands, in the event's colours, with the one step this page can take. */
@@ -1495,28 +1621,39 @@ const CHOICE_KEY: Record<Choice, string> = {
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
   notYetInvited: REPLY_KEY.notYetInvited,
+  walkIn: REPLY_KEY.walkIn,
 };
+
+const CHANGED = 'changed';
 
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
 function SearchRow({
   q,
   choice,
+  changed,
+  changedCount,
   counts,
   menu,
   onQ,
   onChoice,
+  onChanged,
   onMenu,
 }: {
   q: string;
   choice: Choice;
+  /** sc-4331: Changed since you looked, in use; its row leads the menu while it is or while something changed. */
+  changed: boolean;
+  changedCount: number;
   counts: Counts;
   menu: boolean;
   onQ: (q: string) => void;
   onChoice: (choice: Choice) => void;
+  onChanged: () => void;
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   const onClose = useCallback(() => onMenu(false), [onMenu]);
+  const apart = changed || changedCount > 0;
 
   return (
     <div className="ev-search-row gs-search-row">
@@ -1530,18 +1667,25 @@ function SearchRow({
           onClear={() => onQ('')}
         />
       </div>
-      <div className="gs-menu">
+      <div className={apart ? 'gs-menu has-apart' : 'gs-menu'}>
         <Menu
-          items={CHOICES.filter((key) => key !== 'notYetInvited' || counts[key] > 0).map((key) => ({
-            key,
-            word: t(CHOICE_KEY[key]),
-            count: counts[key],
-          }))}
-          picked={choice}
+          items={[
+            ...(apart
+              ? [{ key: CHANGED, word: t('guestList.changed.filter'), count: changedCount }]
+              : []),
+            ...CHOICES.filter(
+              (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
+            ).map((key) => ({
+              key,
+              word: t(CHOICE_KEY[key]),
+              count: counts[key],
+            })),
+          ]}
+          picked={changed ? CHANGED : choice}
           open={menu}
           onOpen={() => onMenu(true)}
           onClose={onClose}
-          onPick={(key) => onChoice(key as Choice)}
+          onPick={(key) => (key === CHANGED ? onChanged() : onChoice(key as Choice))}
         />
       </div>
     </div>
@@ -1597,6 +1741,7 @@ function Rows({
   choice: Choice;
   eventId: string;
   timeZone: string;
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1636,6 +1781,7 @@ function RowsFrom({
   choice,
   eventId,
   timeZone,
+  readerZone,
   replyBy,
   open,
   onOpen,
@@ -1649,6 +1795,8 @@ function RowsFrom({
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
+  /** The member's (sc-868, else the device's): when a guest changed since the last look. */
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1659,10 +1807,12 @@ function RowsFrom({
 
   return (
     <>
-      {rows.slice(from, to).map(({ person, indent }) => {
+      {rows.slice(from, to).map((row) => {
+        const { person, indent } = row;
         const { guest, companion } = person;
         const noReply = choice === 'noReply';
-        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale(), {
+        const change = 'change' in row ? (row as ChangedRow).change : null;
+        const words = rowWords(t, person, indent, timeZone, dateLocale(), {
           places: noReply ? null : 'named',
           contact: true,
           invitation:
@@ -1672,6 +1822,14 @@ function RowsFrom({
                 ? invitationLine(t, guest, timeZone, dateLocale())
                 : decideRow(t, guest, replyBy, dateLocale()),
         });
+        const name = words.name;
+        const line =
+          change == null
+            ? words.line
+            : t('guestList.changed.line', {
+                answer: changeAnswer(t, change, person),
+                when: changeWhen(t, change, readerZone, dateLocale(), new Date()),
+              });
 
         if (companion == null)
           return (
@@ -1697,8 +1855,12 @@ function RowsFrom({
                 <span className="gs-lead">
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
-                <RowWords title={name} lines={[line]} />
-                <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                <span className="gs-row-mid">
+                  <RowWords title={name} lines={[line]} />
+                  {change == null && (
+                    <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                  )}
+                </span>
               </RowLink>
             </li>
           );
@@ -1715,11 +1877,13 @@ function RowsFrom({
               <span className="gs-lead">
                 <ReplyMark reply={companion.state} />
               </span>
-              <RowWords title={name} lines={[line]} />
-              <NeedsTags
-                needs={companion.needs}
-                group={indent ? null : (guest.group?.name ?? null)}
-              />
+              <span className="gs-row-mid">
+                <RowWords title={name} lines={[line]} />
+                <NeedsTags
+                  needs={companion.needs}
+                  group={indent ? null : (guest.group?.name ?? null)}
+                />
+              </span>
             </RowLink>
           </li>
         );
@@ -1795,6 +1959,7 @@ const EMPTY: AddTyped = {
   number: '',
   companions: [],
   language: null,
+  greetAs: '',
   needs: NO_NEEDS,
 };
 
@@ -1829,6 +1994,7 @@ function AddForm({
   const [refused, setRefused] = useState<Problems>({});
   const [duplicate, setDuplicate] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [group, setGroup] = useState<GroupChoice | undefined>(undefined);
@@ -1864,6 +2030,8 @@ function AddForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -1927,7 +2095,11 @@ function AddForm({
       setDuplicate(false);
       focus('fullName');
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'guest_already_listed') {
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) {
+        setLimited(limit);
+      } else if (error instanceof ApiError && error.code === 'guest_already_listed') {
         setDuplicate(true);
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
@@ -2005,6 +2177,11 @@ function AddForm({
           error={words('fullName')}
           focusKey="fullName"
           onChange={(fullName) => change({ fullName })}
+        />
+        <GreetAsField
+          value={typed.greetAs ?? ''}
+          error={words('greetAs')}
+          onChange={(greetAs) => change({ greetAs })}
         />
         <GuestField
           label={t('guestList.emailAddress')}
@@ -2095,6 +2272,16 @@ function AddForm({
       >
         {t('guestList.addGuest')}
       </button>
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          guestsAt={`/app/events/${eventId}/guests`}
+          onBack={() => {
+            setLimited(null);
+            focus('fullName');
+          }}
+        />
+      )}
     </div>
   );
 }

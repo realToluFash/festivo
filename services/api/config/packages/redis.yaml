@@ -6,8 +6,4 @@ services:
         # whole application with it — including the health endpoint whose entire job
         # is to report that Redis is down.
         lazy: true
-        calls:
-            - connect:
-                  - '%env(REDIS_HOST)%'
-                  - '%env(int:REDIS_PORT_INTERNAL)%'
-                  - 2.0
+        factory: ['@App\Integrations\Redis\RedisFactory', 'create']

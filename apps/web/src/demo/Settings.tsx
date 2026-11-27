@@ -6,6 +6,7 @@ import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
+  type Hold,
   type Section,
   SECTION_NAMES,
   SIDEBAR_EVENTS,
@@ -24,7 +25,7 @@ import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
 import { PaymentReminders } from './Payments.tsx';
-import { AccessPaused } from './OrgSwitcher.tsx';
+import { HeldStandIn } from './OrgSwitcher.tsx';
 import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
@@ -41,7 +42,7 @@ import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
 import { usePhoneWidth } from '../phoneWidth.ts';
 import { reachOfRole } from './search.ts';
-import { usePaused, useSwitcherStart } from './switcher.ts';
+import { PAUSED, useHeld, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 import './today.css';
 import './phone.css';
 import '../components/SettingsParts.css';
@@ -81,7 +82,16 @@ export function Settings({
   const names = useSavedNames();
   const seen = useMemo(() => underSavedName(viewer, names), [viewer, names]);
   useSwitcherStart();
+  const held = useHeld();
   const paused = usePaused();
+  const { overdue } = useWhere();
+  const hold: Hold | null = paused
+    ? 'paused'
+    : overdue
+      ? 'overdue'
+      : state === 'heldTwoFactor' && viewer.role === 'Admin'
+        ? 'adminTwoFactor'
+        : null;
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const [stack, setStack] = useState<readonly string[]>([]);
@@ -95,11 +105,11 @@ export function Settings({
   const covered = stack.length > 0;
   const fit = open === 'vendors' && !reminders;
   const atPhone = usePhoneWidth();
-  const barBell = fit && atPhone;
+  const shell = fit ? 'today desk dp-fit' : atPhone ? 'today desk dp-bar' : 'today desk';
 
   return (
     <LayersContext value={layers}>
-      <div className={fit ? 'today desk dp-fit' : 'today desk'}>
+      <div className={shell}>
         <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
           <TodaySidebar
             events={SIDEBAR_EVENTS}
@@ -107,8 +117,8 @@ export function Settings({
             settings
             person={seen}
             inert={covered}
-            phone={fit}
-            bell={barBell && <DemoBell tell={tell} />}
+            phone={fit || atPhone}
+            bell={atPhone && <DemoBell tell={tell} />}
           />
           <main id="content" className="desk-main" inert={covered}>
             <>
@@ -119,11 +129,12 @@ export function Settings({
                     : null
                 }
                 viewer={seen}
+                hold={hold}
                 tell={tell}
               />
-              {paused && !YOURS.includes(open) ? (
+              {held && !YOURS.includes(open) ? (
                 <div className="desk-page">
-                  <AccessPaused />
+                  <HeldStandIn />
                 </div>
               ) : open === 'account' ? (
                 <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
@@ -170,7 +181,7 @@ export function Settings({
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   state={state}
                   tell={tell}
-                  bell={!barBell}
+                  bell={!atPhone}
                 />
               ) : viewer.manages ? (
                 <Members
@@ -194,7 +205,7 @@ export function Settings({
   );
 }
 
-/** Your account's own sections: they stay open while access to the organisation is paused, as in the product. */
+/** Your account's own sections: they stay open while access to the organisation is paused or two-factor is overdue, as in the product. */
 const YOURS: readonly Drawn[] = ['account', 'security', 'notifications', 'personalisation'];
 
 /** Members or Vendors for a role without their read permission, as the product's shared Forbidden page refuses it. */
@@ -214,14 +225,24 @@ function Forbidden({ tell }: { tell: Tell }) {
   );
 }
 
-/** Your account's sections, then the organisation's, drawn by the product's list: a section with no design yet says so. */
-function SettingsList({ open, viewer, tell }: { open: Drawn | null; viewer: Viewer; tell: Tell }) {
-  const groups = groupsFor(viewer).map((group) => ({
+/** Your account's sections, then the organisation's, drawn by the product's list: a section with no design yet says so. While paused, the organisation's are the paused one's, General with its initials (sc-86077); a hold hides what the product hides (sc-93443). */
+function SettingsList({
+  open,
+  viewer,
+  hold,
+  tell,
+}: {
+  open: Drawn | null;
+  viewer: Viewer;
+  hold: Hold | null;
+  tell: Tell;
+}) {
+  const groups = groupsFor(viewer, hold).map((group) => ({
     name: group.name,
     entries: group.sections.map((section) => ({
       section,
       label: SECTION_NAMES[section],
-      tile: <Tile section={section} viewer={viewer} />,
+      tile: <Tile section={section} viewer={viewer} paused={hold === 'paused'} />,
       ...(isDrawn(section)
         ? { to: settingsPath(section, viewer) }
         : { onPress: () => tell(`${SECTION_NAMES[section]} has its own design.`) }),
@@ -237,10 +258,11 @@ function SettingsList({ open, viewer, tell }: { open: Drawn | null; viewer: View
   );
 }
 
-function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
+function Tile({ section, viewer, paused }: { section: Section; viewer: Viewer; paused: boolean }) {
   if (section === 'account') return <SectionTile look="account">{viewer.initials}</SectionTile>;
   if (section === 'personalisation') return <PersonalTile />;
-  if (section === 'general') return <SectionTile look="general">IE</SectionTile>;
+  if (section === 'general')
+    return <SectionTile look="general">{paused ? PAUSED.initials : 'IE'}</SectionTile>;
   if (section === 'vendors')
     return (
       <SectionTile look="vendors">

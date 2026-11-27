@@ -12,8 +12,12 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import {
+  GREET_AS_MAXIMUM,
   formatPhone,
   invitationLine,
+  type LimitRefusal,
+  limitRefusalOf,
+  optOutLines,
   ownLanguageName,
   phoneE164,
   phoneFields,
@@ -25,15 +29,16 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import {
   ChoseNote,
   CompanionField,
+  GreetAsField,
   GuestField,
   LanguageField,
   PhoneField,
@@ -70,6 +75,7 @@ import {
   problemsOf,
   replyDate,
   shownReply,
+  staysBecause,
   violationProblems,
   NO_NEEDS,
   type NeedsProblems,
@@ -94,6 +100,7 @@ const MARK: Record<ReplyWord, string> = {
   noReply: 'is-no-reply',
   held: 'is-held',
   notYetInvited: 'is-not-yet',
+  walkIn: 'is-walk-in',
 };
 
 export function ReplyMark({
@@ -113,7 +120,30 @@ export function ReplyMark({
       {reply === 'coming' && <Glyph name="tick" size={Math.round(size * 0.68)} weight={3.2} />}
       {reply === 'notComing' && <span className="gs-bar" />}
       {reply === 'maybe' && <Glyph name="question" size={Math.round(size * 0.8)} weight={2.8} />}
+      {reply === 'walkIn' && <Door size={Math.round(size * 0.7)} />}
     </span>
+  );
+}
+
+/** The door the Walk-in mark carries (spec §18.8): the shared glyphs have none. */
+function Door({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 21h16" />
+      <path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21" />
+      <path d="M14.5 12.5h.01" />
+    </svg>
   );
 }
 
@@ -471,6 +501,13 @@ export function GuestColumn({
       backOnList={backOnList}
       onRemove={onRemove}
       onRemovedAlready={onRemovedAlready}
+      onReadAgain={() =>
+        api.guest(eventId, guestId).then((tagged) => {
+          setPane({ kind: 'guest', tagged });
+          onChanged(tagged.guest);
+          return tagged.guest;
+        })
+      }
       gone={pane.gone === true}
       onNotFound={() => {
         setPane({ kind: 'notFound' });
@@ -506,6 +543,7 @@ function GuestView({
   backOnList,
   onRemove,
   onRemovedAlready,
+  onReadAgain,
   gone,
   onNotFound,
 }: {
@@ -536,6 +574,7 @@ function GuestView({
   backOnList: boolean;
   onRemove: (guest: GuestDetails) => Promise<void>;
   onRemovedAlready: () => void;
+  onReadAgain: () => Promise<GuestDetails>;
   /** Read again as not found, from another host's change: an open "Remove {full name}?" turns into the 404's refusal. */
   gone: boolean;
   onNotFound: () => void;
@@ -552,15 +591,14 @@ function GuestView({
   const shown: Removing | null =
     gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
   const notFound = useEffectEvent(onNotFound);
-  const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
   const sends = manages && invites && guest.mobile != null;
   const fetchLink = useEffectEvent(onLink);
 
   useEffect(() => {
-    if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
-  }, [replace.kind]);
+    if (replace.kind === 'replaced') focus('replace');
+  }, [replace.kind, focus]);
 
   useEffect(() => {
     if (gone && removing == null) notFound();
@@ -658,7 +696,9 @@ function GuestView({
         setRemoving(
           error instanceof ApiError && error.status === 404
             ? { kind: 'gone' }
-            : { kind: 'asking', busy: false, failed: true },
+            : error instanceof ApiError && error.code === 'guest_arrived'
+              ? { kind: 'stays', why: arrivedWhy(error) }
+              : { kind: 'asking', busy: false, failed: true },
         ),
     );
   }
@@ -669,9 +709,12 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
+  const optOuts = optOutLines(guest);
+  const dayOf = (at: string) => replyDate(at, timeZone, dateLocale());
   const replied =
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
+  const stays = staysBecause(guest);
   const notYet = reply === 'notYetInvited';
   const closed = notYet ? null : closedLine(t, guest, replies, manages, timeZone, dateLocale());
   const reopens = manages && !notYet && replies.closedOn != null && guest.repliesReopened == null;
@@ -839,95 +882,140 @@ function GuestView({
           )}
         </section>
       )}
-      {(manages || guest.companions.length > 0) && (
-        <section className="desk-block" aria-labelledby={`${heading}-details`}>
-          <Head level={3} title={<span id={`${heading}-details`}>{t('guestList.details')}</span>}>
-            {manages && (
-              <button type="button" className="desk-text" data-focus="edit" onClick={onEdit}>
-                {t('guestList.edit')}
-              </button>
-            )}
-          </Head>
-          <ul className="desk-rows gs-rows">
-            {manages && (
-              <>
-                <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="mail" />
-                  <RowWords
-                    title={guest.email ?? t('guestList.none')}
-                    lines={[t('guestList.emailAddress')]}
-                  />
-                </li>
-                <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="phone" />
-                  <RowWords
-                    title={guest.mobile == null ? t('guestList.none') : formatPhone(guest.mobile)}
-                    lines={[t('guestList.mobileNumber')]}
-                  />
-                </li>
-                <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="globe" />
-                  <div className="gs-row-words">
-                    <RowWords
-                      title={
-                        ownLanguageName(guest.language) ??
-                        t('guestList.languageNotSetLine', {
-                          language: languageNameInSentence(t, guest.organisationLanguage ?? 'en'),
-                        })
-                      }
-                      lines={[t('language.label')]}
-                    />
-                    {guest.chosenLanguage != null && <ChoseNote chose={guest.chosenLanguage} />}
-                  </div>
-                </li>
-              </>
-            )}
-            {guest.companions.length > 0 && (
-              <li className="desk-row">
-                <IconLead name="users" />
+      <section className="desk-block" aria-labelledby={`${heading}-details`}>
+        <Head level={3} title={<span id={`${heading}-details`}>{t('guestList.details')}</span>}>
+          {manages && (
+            <button type="button" className="desk-text" data-focus="edit" onClick={onEdit}>
+              {t('guestList.edit')}
+            </button>
+          )}
+        </Head>
+        <ul className="desk-rows gs-rows">
+          <li className={guest.greetAs == null ? 'desk-row is-none' : 'desk-row'}>
+            <IconLead name="message" />
+            <RowWords
+              title={
+                guest.greetAs == null
+                  ? t('guestList.greetsByFullName')
+                  : t('guestList.greetsThemAs', { greetAs: guest.greetAs })
+              }
+              lines={[t('guestList.greetAs')]}
+            />
+          </li>
+          {manages && (
+            <>
+              <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="mail" />
                 <RowWords
-                  title={t('guestList.companionsNamed', {
-                    count: guest.companions.length,
-                    named: namedCount(names),
-                  })}
-                  lines={[t('guestList.placesFor')]}
+                  title={guest.email ?? t('guestList.none')}
+                  lines={[t('guestList.emailAddress')]}
                 />
               </li>
-            )}
-            {guest.companions.map((companion, at) => (
-              <li key={companion.id} className="desk-row">
-                <MarkLead reply={companion.state} />
+              {optOuts.email != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
+                  closes={optOuts.email.closes}
+                />
+              )}
+              <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="phone" />
+                <RowWords
+                  title={guest.mobile == null ? t('guestList.none') : formatPhone(guest.mobile)}
+                  lines={[t('guestList.mobileNumber')]}
+                />
+              </li>
+              {optOuts.texts != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
+                  closes={optOuts.texts.closes}
+                />
+              )}
+              {optOuts.whatsApp != null && (
+                <li className="desk-row">
+                  <IconLead name="whatsApp" />
+                  <RowWords
+                    title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
+                    lines={[t('guestList.onlyTheGuest')]}
+                  />
+                </li>
+              )}
+              <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="globe" />
                 <div className="gs-row-words">
                   <RowWords
-                    title={companionShown(t, guest.fullName, names, at)}
-                    lines={[
-                      companion.state === 'held'
-                        ? t('guestList.heldCompanion')
-                        : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
-                    ]}
+                    title={
+                      ownLanguageName(guest.language) ??
+                      t('guestList.languageNotSetLine', {
+                        language: languageNameInSentence(t, guest.organisationLanguage ?? 'en'),
+                      })
+                    }
+                    lines={[t('language.label')]}
                   />
-                  {companion.namedByGuest && (
-                    <span className="gs-named-by">{t('guestList.namedByGuest')}</span>
-                  )}
+                  {guest.chosenLanguage != null && <ChoseNote chose={guest.chosenLanguage} />}
                 </div>
               </li>
-            ))}
-            {manages && (
-              <li className="desk-row">
-                <IconLead name="user" />
+            </>
+          )}
+          {guest.companions.length > 0 && (
+            <li className="desk-row">
+              <IconLead name="users" />
+              <RowWords
+                title={t('guestList.companionsNamed', {
+                  count: guest.companions.length,
+                  named: namedCount(names),
+                })}
+                lines={[t('guestList.placesFor')]}
+              />
+            </li>
+          )}
+          {guest.companions.map((companion, at) => (
+            <li
+              key={companion.id}
+              className="desk-row"
+              {...(companion.arrival != null && guest.arrival == null
+                ? { tabIndex: -1, 'data-focus': `arrival-${companion.id}` }
+                : {})}
+            >
+              <MarkLead reply={companion.state} />
+              <div className="gs-row-words">
                 <RowWords
-                  title={
-                    guest.added.by == null
-                      ? added
-                      : t('guestList.addedBy', { date: added, name: guest.added.by })
-                  }
-                  lines={[t('guestList.added')]}
+                  title={companionShown(t, guest.fullName, names, at)}
+                  lines={[
+                    companion.state === 'held'
+                      ? t('guestList.heldCompanion')
+                      : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
+                    ...(companion.arrival == null ? [] : [t('guestList.arrived')]),
+                  ]}
                 />
-              </li>
-            )}
-          </ul>
+                {companion.namedByGuest && (
+                  <span className="gs-named-by">{t('guestList.namedByGuest')}</span>
+                )}
+              </div>
+            </li>
+          ))}
+          {guest.arrival != null && (
+            <li className="desk-row">
+              <IconLead name="tick" />
+              <RowWords title={t('guestList.arrived')} lines={[t('guestList.arrival')]} />
+            </li>
+          )}
           {manages && (
-            <div className="gr-foot">
+            <li className="desk-row">
+              <IconLead name="user" />
+              <RowWords
+                title={
+                  guest.added.by == null
+                    ? added
+                    : t('guestList.addedBy', { date: added, name: guest.added.by })
+                }
+                lines={[t('guestList.added')]}
+              />
+            </li>
+          )}
+        </ul>
+        {manages && (
+          <div className="gr-foot">
+            {stays == null ? (
               <button
                 type="button"
                 className="gs-pill is-secondary"
@@ -936,10 +1024,18 @@ function GuestView({
               >
                 {t('guestList.removeFromList')}
               </button>
-            </div>
-          )}
-        </section>
-      )}
+            ) : (
+              <p className="gr-stays">
+                {t(
+                  stays === 'arrived'
+                    ? 'guestList.staysArrived'
+                    : 'guestList.staysCompanionArrived',
+                )}
+              </p>
+            )}
+          </div>
+        )}
+      </section>
       {manages && (
         <NeedsBlock
           guest={guest}
@@ -959,7 +1055,6 @@ function GuestView({
           copyByHand={copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
           marking={marking}
           markFailed={markFailed}
-          replaceButton={replaceButton}
           send={sends && link != null ? whatsAppHref(guest, event, link) : null}
           asked={asked}
           onCopy={copied}
@@ -997,6 +1092,19 @@ function GuestView({
           }}
           onRemove={removed}
           onGone={onRemovedAlready}
+          onBack={() => {
+            const back = (details: GuestDetails) => {
+              const arrived = details.companions.find((one) => one.arrival != null);
+
+              setRemoving(null);
+              if (details.arrival == null && arrived != null)
+                focus(`arrival-${arrived.id}`, 'guest-heading');
+              else focus('guest-heading');
+            };
+
+            // The details were read before the arrival that refused the removal.
+            onReadAgain().then(back, () => back(guest));
+          }}
         />
       )}
       {replace.kind === 'asking' && (
@@ -1012,6 +1120,18 @@ function GuestView({
         />
       )}
     </div>
+  );
+}
+
+/** sc-3969: a channel the guest stopped, under the row it concerns; a record, not a control. */
+function OptOutRow({ title, closes }: { title: string; closes: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <li className="desk-row">
+      <IconLead name="slash" />
+      <RowWords title={title} lines={closes ? [t('guestList.onlyTheGuest')] : []} />
+    </li>
   );
 }
 
@@ -1081,6 +1201,7 @@ interface Values {
   number: string;
   companions: readonly { id: string | null; name: string; needs: NeedsTyped }[];
   language: string | null;
+  greetAs: string;
   needs: NeedsTyped;
 }
 
@@ -1098,6 +1219,7 @@ function valuesOf(guest: GuestDetails, country: string): Values {
       needs: needsTypedOf(one.needs),
     })),
     language: guest.language,
+    greetAs: guest.greetAs ?? '',
     needs: needsTypedOf(guest.needs),
   };
 }
@@ -1180,9 +1302,17 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-type Field = 'fullName' | 'email' | 'mobile' | 'language' | 'companions' | 'needs';
+type Field = 'fullName' | 'greetAs' | 'email' | 'mobile' | 'language' | 'companions' | 'needs';
 
-const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'language', 'companions', 'needs'];
+const FIELDS: readonly Field[] = [
+  'fullName',
+  'greetAs',
+  'email',
+  'mobile',
+  'language',
+  'companions',
+  'needs',
+];
 
 /** What the API would keep of each field, so a save that changes nothing sends nothing. */
 function keptOf(values: Values): Record<Field, string> {
@@ -1190,6 +1320,7 @@ function keptOf(values: Values): Record<Field, string> {
 
   return {
     fullName: sent.fullName,
+    greetAs: JSON.stringify(sent.greetAs ?? null),
     email: JSON.stringify(sent.email),
     mobile: JSON.stringify(mobileOf(values)),
     language: JSON.stringify(values.language),
@@ -1222,6 +1353,7 @@ function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Va
 
   return {
     fullName: mine('fullName') ? values.fullName : theirs.fullName,
+    greetAs: mine('greetAs') ? values.greetAs : theirs.greetAs,
     email: mine('email') ? values.email : theirs.email,
     country: mine('mobile') ? values.country : theirs.country,
     number: mine('mobile') ? values.number : theirs.number,
@@ -1279,7 +1411,8 @@ function EditForm({
     sent: Values;
     changed: readonly Field[];
   } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<boolean | string>(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const form = useRef<HTMLDivElement>(null);
@@ -1328,6 +1461,8 @@ function EditForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -1369,6 +1504,12 @@ function EditForm({
         field: t('account.fullName'),
         theirs: theirs.fullName,
         yours: mine.fullName,
+      },
+      {
+        key: 'greetAs',
+        field: t('guestList.greetAs'),
+        theirs: theirs.greetAs ?? none,
+        yours: mine.greetAs ?? none,
       },
       {
         key: 'email',
@@ -1445,7 +1586,10 @@ function EditForm({
 
       onSaved(saved, true);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) onGone();
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiError && error.status === 404) onGone();
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
@@ -1460,6 +1604,8 @@ function EditForm({
           if (again instanceof ApiError && again.status === 404) onGone();
           else setFailed(true);
         }
+      } else if (error instanceof ApiError && error.code === 'guest_arrived') {
+        setFailed(error.problem.detail ?? true);
       } else if (error instanceof ApiError && error.code === 'guest_already_listed') {
         setDuplicate('asked');
         focus('duplicate');
@@ -1546,7 +1692,7 @@ function EditForm({
       {failed && (
         <p className="desk-error gs-refused" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
-          {t('guestList.notSaved')}
+          {typeof failed === 'string' ? failed : t('guestList.notSaved')}
         </p>
       )}
       <NeedsRefused count={needsFailingCount(needsProblems)} />
@@ -1651,6 +1797,11 @@ function EditForm({
           focusKey="fullName"
           onChange={(fullName) => change({ fullName })}
         />
+        <GreetAsField
+          value={values.greetAs}
+          error={words('greetAs')}
+          onChange={(greetAs) => change({ greetAs })}
+        />
         <GuestField
           label={t('guestList.emailAddress')}
           value={values.email}
@@ -1694,7 +1845,14 @@ function EditForm({
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
-          seatOf={(id) => host.companions.find((one) => one.id === id)?.seat ?? null}
+          goesWith={(id) => {
+            const one = host.companions.find((each) => each.id === id);
+            const seat = one?.seat ?? null;
+            const meal = one?.meal === true;
+
+            return seat == null && !meal ? null : { seat, meal };
+          }}
+          arrivedOf={(id) => host.companions.some((one) => one.id === id && one.arrival != null)}
           said={said}
           words={words}
           needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
@@ -1703,6 +1861,13 @@ function EditForm({
           onChange={(companions) => change({ companions })}
         />
       </div>
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          guestsAt={`/app/events/${eventId}/guests`}
+          onBack={() => setLimited(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1727,11 +1892,12 @@ export function Amber({
   );
 }
 
-/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat is asked about first, and the seat is freed only when the edit is saved (sc-4013). */
+/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat or a meal is asked about first, and the seat is freed and the meal dropped only when the edit is saved (sc-4013, sc-3907). */
 function EditCompanions({
   host,
   companions,
-  seatOf,
+  goesWith,
+  arrivedOf,
   said,
   words,
   needs,
@@ -1741,7 +1907,8 @@ function EditCompanions({
 }: {
   host: string;
   companions: Values['companions'];
-  seatOf: (id: string | null) => CompanionSeat | null;
+  goesWith: (id: string | null) => GoesWith | null;
+  arrivedOf: (id: string | null) => boolean;
   said: string | null;
   words: (key: string) => string | undefined;
   needs: CompanionNeeds;
@@ -1752,7 +1919,7 @@ function EditCompanions({
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const [asking, setAsking] = useState<{
-    asks: { name: string; seat: CompanionSeat }[];
+    asks: ({ name: string } & GoesWith)[];
     after: Values['companions'];
     at: number | null;
   } | null>(null);
@@ -1774,15 +1941,16 @@ function EditCompanions({
       <PlacesStepper
         host={host}
         names={companions.map((one) => one.name)}
+        arrived={companions.map((one) => arrivedOf(one.id))}
         onStep={(kept, added) => {
           const after = [
             ...kept.flatMap((at) => companions[at] ?? []),
             ...Array.from({ length: added }, () => ({ id: null, name: '', needs: NO_NEEDS })),
           ];
           const asks = companions.flatMap((one, at) => {
-            const seat = kept.includes(at) ? null : seatOf(one.id);
+            const goes = kept.includes(at) ? null : goesWith(one.id);
 
-            return seat == null ? [] : [{ name: shownAt(at), seat }];
+            return goes == null ? [] : [{ name: shownAt(at), ...goes }];
           });
 
           if (asks.length > 0) setAsking({ asks, after, at: null });
@@ -1803,15 +1971,16 @@ function EditCompanions({
               label={label}
               placeholder={placeholder(at)}
               error={words(`companion-${at}`)}
+              arrived={arrivedOf(companion.id)}
               onChange={(name) =>
                 onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
               }
               onRemove={() => {
                 const after = companions.filter((_, index) => index !== at);
-                const seat = seatOf(companion.id);
+                const goes = goesWith(companion.id);
 
-                if (seat != null) {
-                  setAsking({ asks: [{ name: shown, seat }], after, at });
+                if (goes != null) {
+                  setAsking({ asks: [{ name: shown, ...goes }], after, at });
                   return;
                 }
                 onChange(after);
@@ -1850,13 +2019,7 @@ function EditCompanions({
         <Ask
           key={asking.asks.length}
           title={t('guestList.removeTitle', { name: asked.name })}
-          line={t('guestList.seatedLine', {
-            name: asked.name,
-            table:
-              asked.seat.kind === 'row'
-                ? t('seating.rowName', { label: asked.seat.name })
-                : asked.seat.name,
-          })}
+          line={goesLine(t, asked)}
           keep={t('guestList.cancel')}
           go={t('guestList.remove')}
           onKeep={() => setAsking(null)}
@@ -1889,4 +2052,21 @@ function EditCompanions({
       )}
     </fieldset>
   );
+}
+
+/** What leaves with a companion removed in Edit: a seat (sc-4013), a meal chosen (sc-3907), or both. */
+type GoesWith = { seat: CompanionSeat | null; meal: boolean };
+
+function goesLine(t: TFunction, { name, seat, meal }: { name: string } & GoesWith): string {
+  if (seat == null) return t('guestList.mealLine', { name });
+  const table = seat.kind === 'row' ? t('seating.rowName', { label: seat.name }) : seat.name;
+
+  return t(meal ? 'guestList.seatedMealLine' : 'guestList.seatedLine', { name, table });
+}
+
+/** Which arrival a 409 `guest_arrived` names; the guest's own wins over a companion's (sc-1454). */
+function arrivedWhy(error: ApiError): 'arrived' | 'companionArrived' {
+  return (error.problem as { why?: unknown }).why === 'companionArrived'
+    ? 'companionArrived'
+    : 'arrived';
 }

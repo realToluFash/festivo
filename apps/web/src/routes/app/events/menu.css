@@ -607,7 +607,6 @@
 
   .mc.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
   }
 
   .mc .ev-crumb-row {
@@ -928,4 +927,8 @@
 
 .mn-offer-button .mn-tag {
   margin-left: var(--spaceXxs);
+}
+
+.mc-preview {
+  flex: none;
 }

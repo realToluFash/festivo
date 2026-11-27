@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Budget\Controller;
 
 use App\Domain\Budget\Http\QuoteSerialiser;
+use App\Domain\Budget\PaymentEditor;
 use App\Domain\Budget\QuoteEditor;
 use App\Domain\Budget\QuoteRules;
 use App\Entity\Event;
@@ -40,6 +41,7 @@ final readonly class QuotesController
         private VendorRepository $vendorRepository,
         private VendorEngagementRepository $engagementRepository,
         private QuoteEditor $quoteEditor,
+        private PaymentEditor $paymentEditor,
         private QuoteSerialiser $quoteSerialiser,
     ) {
     }
@@ -109,6 +111,16 @@ final readonly class QuotesController
         return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement)], Response::HTTP_CREATED);
     }
 
+    /** A schedule started from a shape (sc-1332): every payment or none, refused 409 `payments_already_scheduled` once the vendor has any. */
+    #[Route('/api/events/{eventId}/budget/quotes/{quoteId}/schedule', name: 'budget_schedule_add', methods: ['POST'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function addSchedule(Request $request, #[InThisEvent('quoteId')] VendorEngagement $engagement): JsonResponse
+    {
+        $this->quoteEditor->addSchedule($engagement, Input::body($request, QuoteRules::sentSchedule()), $this->user());
+
+        return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement)], Response::HTTP_CREATED);
+    }
+
     #[Route('/api/events/{eventId}/budget/payments/{paymentId}', name: 'budget_payments_amend', methods: ['PUT'])]
     #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
     public function amendPayment(Request $request, #[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse
@@ -126,6 +138,61 @@ final readonly class QuotesController
         $this->quoteEditor->removePayment($payment, $this->user());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** A command, not a PATCH: the amount, the day and an optional reference, recorded with who marked it and when (sc-88). Refused 409 when already paid or cancelled. */
+    #[Route('/api/events/{eventId}/budget/payments/{paymentId}/paid', name: 'budget_payments_mark_paid', methods: ['POST'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function markPaid(Request $request, #[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse
+    {
+        $this->paymentEditor->markPaid($payment, Input::body($request, QuoteRules::sentPaid()), $this->user());
+
+        return $this->engagement($payment->getEngagement());
+    }
+
+    /** Undo: unmarks a scheduled payment, and deletes one added as already paid. */
+    #[Route('/api/events/{eventId}/budget/payments/{paymentId}/paid', name: 'budget_payments_undo_paid', methods: ['DELETE'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function undoPaid(#[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse
+    {
+        $engagement = $payment->getEngagement();
+        $this->paymentEditor->undo($payment, $this->user());
+
+        return $this->engagement($engagement);
+    }
+
+    /** Not owed after all: kept, struck through, with an optional reason. Refused 409 when paid. */
+    #[Route('/api/events/{eventId}/budget/payments/{paymentId}/cancellation', name: 'budget_payments_cancel', methods: ['POST'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function cancelPayment(Request $request, #[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse
+    {
+        $this->paymentEditor->cancel($payment, Input::body($request, QuoteRules::sentCancellation()), $this->user());
+
+        return $this->engagement($payment->getEngagement());
+    }
+
+    #[Route('/api/events/{eventId}/budget/payments/{paymentId}/cancellation', name: 'budget_payments_restore', methods: ['DELETE'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function restorePayment(#[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse
+    {
+        $this->paymentEditor->restore($payment, $this->user());
+
+        return $this->engagement($payment->getEngagement());
+    }
+
+    /** Add a payment already made: added to the vendor's schedule and marked paid in one action. */
+    #[Route('/api/events/{eventId}/budget/quotes/{quoteId}/paid-payments', name: 'budget_payments_add_made', methods: ['POST'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function addMade(Request $request, #[InThisEvent('quoteId')] VendorEngagement $engagement): JsonResponse
+    {
+        $payment = $this->paymentEditor->addMade($engagement, Input::body($request, QuoteRules::sentMade()), $this->user());
+
+        return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement), 'paymentId' => $payment->getId()->toRfc4122()], Response::HTTP_CREATED);
+    }
+
+    private function engagement(VendorEngagement $engagement): JsonResponse
+    {
+        return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement)]);
     }
 
     private function event(string $id): Event

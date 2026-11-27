@@ -9,6 +9,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { __forgetTab } from '../../../tabKept.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { readAddressesInline } from '../../../components/wholeAddressTesting.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -51,6 +52,7 @@ interface Row {
   address: string | null;
   addressKind: 'email' | 'mobile' | null;
   endsAt: string | null;
+  doorCode?: string | null;
 }
 
 function person(id: string, name: string, role: string, jobLabel: string | null = null): Row {
@@ -162,6 +164,7 @@ async function onPeople(
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/people')
       return json({ people, owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+    if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
     if (line === 'GET /api/events/ev_1/people/addable')
       return json({
         members: MEMBERS.filter(
@@ -761,6 +764,7 @@ describe('coming back to People while offline (sc-65646)', () => {
       if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
       if (line === 'GET /api/events/ev_1/people')
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
       if (line === 'PATCH /api/events/ev_1/people/p_tom')
         return json({ person: { ...TOM, role: 'can_edit' } });
@@ -794,7 +798,35 @@ describe('coming back to People while offline (sc-65646)', () => {
   });
 });
 
+describe('People keeping up while it is open (sc-72)', () => {
+  it('lists someone who joins by a door code within 10 seconds, reading the codes first, with a dialog left open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      signedIn();
+      const rows = [PRIYA, TOM];
+      const sent = await onPeople(rows);
+      fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+      const before = sent.length;
+
+      rows.push({ ...outsider('kemi', { name: 'Kemi Ade' }, 'can_view'), doorCode: 'K7P2QX9M' });
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+
+      expect(within(people()).getByRole('button', { name: /Kemi Ade.*Door code/ })).toBeDefined();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+      const reads = sent.slice(before).map((one) => one.line);
+      expect(reads.slice(0, 2)).toEqual([
+        'GET /api/events/ev_1/door-codes',
+        'GET /api/events/ev_1/people',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('People from outside the organisation (sc-71)', () => {
+  readAddressesInline();
+
   it('tags them, and lists someone not joined yet by the address an owner added', async () => {
     signedIn();
     await onPeople([
@@ -805,7 +837,9 @@ describe('People from outside the organisation (sc-71)', () => {
 
     expect(within(people()).getAllByText('Outside Ìrè Events')).toHaveLength(2);
     expect(within(people()).getByText('Kemi Okafor')).toBeDefined();
-    expect(within(people()).getByText('sade@thelandmark.example')).toBeDefined();
+    expect(
+      within(people()).getByRole('button', { name: /^sade@thelandmark\.example/u }),
+    ).toBeDefined();
   });
 
   it('says Not joined yet to whoever is not given the address', async () => {
@@ -832,6 +866,129 @@ describe('People from outside the organisation (sc-71)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove from this event…' }));
 
     expect(screen.getByText('Their access ends on their next request.')).toBeDefined();
+  });
+
+  it('offers someone from outside the service levels under their own heading, and saves one (sc-4002)', async () => {
+    signedIn();
+    const sent = await onPeople([outsider('kemi', { name: 'Kemi Okafor' }, 'can_view')], {
+      'PATCH /api/events/ev_1/people/p_kemi': () =>
+        json({ person: outsider('kemi', { name: 'Kemi Okafor' }, 'can_work_floor') }),
+    });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Kemi Okafor/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+
+    expect(within(dialog).getByText('For the service')).toBeDefined();
+    expect(
+      within(dialog).getByText(
+        'The service levels open only the service. None of them sees contact details or the budget.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(dialog)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).value),
+    ).toEqual([
+      'lead',
+      'can_edit',
+      'can_view',
+      'can_check_in',
+      'can_work_floor',
+      'can_work_pass',
+      'can_run_floor',
+    ]);
+    expect(
+      within(dialog).getByText('Marks plates and requests at their own tables.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can work the floor/ }));
+
+    expect(
+      await within(dialog).findByText('Saved. Kemi Okafor can work the floor now.'),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/people/p_kemi')?.body).toEqual({
+      role: 'can_work_floor',
+    });
+  });
+
+  it('never offers a member the service levels (sc-4002)', async () => {
+    signedIn();
+    await onPeople([PRIYA, TOM]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
+    expect(within(dialog).queryByRole('radio', { name: /Can work the floor/ })).toBeNull();
+  });
+
+  it('gives someone added from outside a service level, never a ticked member (sc-4002, #93365)', async () => {
+    signedIn();
+    const sent = await onPeople([TOM], {
+      'POST /api/events/ev_1/people': () =>
+        json({ person: outsider('new', { address: 'kemi@example.com' }, 'can_work_floor') }, 201),
+    });
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.change(find, { target: { value: 'kemi@example.com' } });
+
+    expect(within(dialog).getByText('For the service')).toBeDefined();
+    expect(
+      (within(dialog).getByRole('radio', { name: /Can work the floor/ }) as HTMLInputElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      within(dialog).getAllByText('For someone from outside only. Untick the members to give it.'),
+    ).toHaveLength(3);
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can work the floor/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(await screen.findByText('kemi@example.com can work the floor now.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/people')?.body).toEqual({
+      address: 'kemi@example.com',
+      role: 'can_work_floor',
+      jobLabel: null,
+    });
+  });
+
+  it('keeps members off while a service level is picked (sc-4002)', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
+    fireEvent.change(find, { target: { value: 'kemi@example.com' } });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can run the floor/ }));
+    fireEvent.change(find, { target: { value: '' } });
+
+    expect(
+      within(dialog).getByText(
+        'Members take one of the four roles above. Pick one to add them as well.',
+      ),
+    ).toBeDefined();
+    for (const box of within(dialog).getAllByRole('checkbox')) {
+      expect((box as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(within(dialog).getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can view/ }));
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
   });
 
   it('adds someone by email address with a job label', async () => {
@@ -868,7 +1025,9 @@ describe('People from outside the organisation (sc-71)', () => {
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
-    expect(await within(people()).findByText('kemi@example.com')).toBeDefined();
+    expect(
+      await within(people()).findByRole('button', { name: /^kemi@example\.com/u }),
+    ).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/people')?.body).toEqual({
       address: 'kemi@example.com',
       role: 'can_check_in',
@@ -1001,6 +1160,7 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
         await held;
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] });
       }
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
 
       return json({});
@@ -1055,6 +1215,7 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
             jobLabel: null,
             startsAt: EVENT.startsAt,
             endsAt: EVENT.endsAt,
+            timeZone: 'Europe/Lisbon',
           },
         ],
       },
@@ -1074,5 +1235,154 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
     expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
       'People',
     ]);
+  });
+});
+
+describe('Staff links on People (sc-3912)', () => {
+  it('lists each person with a live staff link once, after the people, opening nothing, with Not signed in yet until they sign in', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({
+          people: [TOM],
+          owners: [],
+          admins: [],
+          staffLinks: [
+            {
+              id: 'st_grace',
+              name: 'Grace Okon',
+              job: 'Waiter',
+              access: 'view',
+              endsAt: '2030-11-15T03:00:00+01:00',
+              signedIn: false,
+            },
+            {
+              id: 'st_tolu',
+              name: 'Tolu Bello',
+              job: 'Door',
+              access: 'check_in',
+              endsAt: '2030-11-14T23:00:00+01:00',
+              signedIn: true,
+            },
+          ],
+        }),
+    });
+
+    const rows = within(people()).getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.textContent).toBe(
+      'Staff link · Grace Okon · Waiter · ends 03:00 on Friday, Nov 15Not signed in yetCan view',
+    );
+    expect(rows[2]?.textContent).toBe(
+      'Staff link · Tolu Bello · Door · ends 23:00Can check guests in',
+    );
+    expect(within(rows[1] as HTMLElement).queryByRole('button')).toBeNull();
+    expect(within(people()).getByText('3')).toBeDefined();
+  });
+});
+
+describe('an outsider’s address breaks after its @, never inside its domain (sc-91529)', () => {
+  readAddressesInline();
+
+  const UNBROKEN = 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test';
+
+  function wholeIn(place: HTMLElement): HTMLElement {
+    const shown = place.querySelector<HTMLElement>('.whole-address');
+    if (shown == null) throw new Error('No whole address here');
+
+    return shown;
+  }
+
+  it('reads the address as typed in the row, the dialog and the Remove ask, with breaks put in and nothing else', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('fun', { address: UNBROKEN }, 'can_view')]);
+
+    const row = within(people()).getByRole('button', { name: new RegExp(`^${UNBROKEN}`, 'u') });
+    expect(wholeIn(row).textContent).toBe(UNBROKEN);
+    expect(wholeIn(row).querySelector('.whole-address-domain')?.textContent).toBe('soirely.test');
+
+    fireEvent.click(row);
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+    expect(wholeIn(dialog).textContent).toBe(UNBROKEN);
+    expect(wholeIn(dialog).querySelector('.whole-address-at')?.textContent).toBe('s@');
+    expect(wholeIn(dialog).querySelectorAll('wbr').length).toBeGreaterThan(0);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: `Remove ${UNBROKEN} from this event?` });
+    expect(ask.querySelector('h2')?.textContent).toBe(`Remove ${UNBROKEN} from this event?`);
+    expect(wholeIn(ask).querySelector('.whole-address-domain')?.textContent).toBe('soirely.test');
+  });
+
+  it('asks in French around the whole address', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('amaka', { address: 'amaka.outside@soirely.test' }, 'can_view')]);
+    await act(() => i18next.changeLanguage('fr'));
+
+    try {
+      fireEvent.click(
+        within(people()).getByRole('button', { name: /^amaka\.outside@soirely\.test/u }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^Retirer de cet événement/u }));
+      const ask = screen.getByRole('alertdialog', {
+        name: 'Retirer amaka.outside@soirely.test de cet événement\u00a0?',
+      });
+      expect(wholeIn(ask).textContent).toBe('amaka.outside@soirely.test');
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
+  it('leaves a mobile number and a joined name as they read', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('ngozi', { address: '+2348031234567' }, 'can_view')]);
+
+    expect(within(people()).getByRole('button', { name: /^\+234 803 123 4567/u })).toBeDefined();
+    expect(people().querySelector('.whole-address')).toBeNull();
+
+    fireEvent.click(within(people()).getByRole('button', { name: /^Tom Becker/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
+    expect(ask.querySelector('.whole-address')).toBeNull();
+  });
+
+  it.each([
+    ['an address', 'amaka.outside@soirely.test', /^amaka\.outside@soirely\.test/u],
+    ['a mobile number', '+2348031234567', /^\+234 803 123 4567/u],
+    ['nothing the viewer may see', null, /^Not joined yet/u],
+  ])(
+    'keeps someone with no account name by Keep them, given %s (sc-91678)',
+    async (_, address, row) => {
+      signedIn();
+      await onPeople([TOM, outsider('amaka', { address }, 'can_view')]);
+
+      fireEvent.click(within(people()).getByRole('button', { name: row }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+      const ask = screen.getByRole('alertdialog');
+      const keep = within(ask).getByRole('button', { name: 'Keep them' });
+      expect(keep.textContent).toBe('Keep them');
+      expect(
+        within(ask).queryByRole('button', { name: /^Keep \+|^Keep amaka|^Keep Not/u }),
+      ).toBeNull();
+
+      fireEvent.click(keep);
+
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+    },
+  );
+
+  it('keeps someone with no account name by Ne pas retirer in French (sc-91678)', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('ngozi', { address: '+2348031234567' }, 'can_view')]);
+    await act(() => i18next.changeLanguage('fr'));
+
+    try {
+      fireEvent.click(within(people()).getByRole('button', { name: /^\+234 803 123 4567/u }));
+      fireEvent.click(screen.getByRole('button', { name: /^Retirer de cet événement/u }));
+      const ask = screen.getByRole('alertdialog');
+      expect(within(ask).getByRole('button', { name: 'Ne pas retirer' })).toBeDefined();
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
   });
 });

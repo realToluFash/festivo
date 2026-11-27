@@ -11,47 +11,59 @@ final class Version20261120090000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Single sign-on (sc-610): an organisation\'s identity provider, the one still signing people in while a new one waits for its test, and required sign-on.';
+        return 'What a budget line is charged at (sc-92): a markup in tenths of a percent or an explicit client price on the line, never both, and a markup once for the event or per category. No line has either yet, so nothing is backfilled.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            CREATE TABLE organisation_sso_providers (
-                id                           UUID NOT NULL,
-                organisation_id              UUID NOT NULL,
-                standing                     VARCHAR(10) NOT NULL,
-                protocol                     VARCHAR(10) NOT NULL,
-                name                         VARCHAR(40) NOT NULL,
-                saved_at                     TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                metadata_url                 VARCHAR(2048) DEFAULT NULL,
-                metadata_file_name           VARCHAR(255) DEFAULT NULL,
-                saml_entity_id               VARCHAR(1024) DEFAULT NULL,
-                saml_sign_on_url             VARCHAR(2048) DEFAULT NULL,
-                saml_certificates            JSONB NOT NULL,
-                oidc_issuer                  VARCHAR(2048) DEFAULT NULL,
-                oidc_client_id               VARCHAR(255) DEFAULT NULL,
-                oidc_client_secret           TEXT DEFAULT NULL,
-                oidc_authorization_endpoint  VARCHAR(2048) DEFAULT NULL,
-                oidc_token_endpoint          VARCHAR(2048) DEFAULT NULL,
-                oidc_jwks_uri                VARCHAR(2048) DEFAULT NULL,
-                tested_at                    TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                tested_email                 VARCHAR(254) DEFAULT NULL,
-                tested_name                  VARCHAR(255) DEFAULT NULL,
-                test_failure                 VARCHAR(500) DEFAULT NULL,
-                switched_on_at               TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                PRIMARY KEY (id)
+            ALTER TABLE budget_lines
+              ADD markup_tenths      INT    DEFAULT NULL,
+              ADD client_price_minor BIGINT DEFAULT NULL
+            SQL);
+        $this->addSql('ALTER TABLE budget_lines DROP CONSTRAINT budget_lines_erased_past_currency');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE budget_lines
+              ADD CONSTRAINT budget_lines_markup_bounds CHECK (markup_tenths BETWEEN 0 AND 9999),
+              ADD CONSTRAINT budget_lines_client_price_not_negative CHECK (client_price_minor >= 0),
+              ADD CONSTRAINT budget_lines_one_charge CHECK (markup_tenths IS NULL OR client_price_minor IS NULL),
+              ADD CONSTRAINT budget_lines_erased_past_currency CHECK (
+                  NOT currency_changed OR (removed_at IS NOT NULL AND label IS NULL AND price_minor IS NULL AND note IS NULL AND client_price_minor IS NULL)
+              )
+            SQL);
+        $this->addSql(<<<'SQL'
+            CREATE TABLE budget_markups (
+                id            UUID NOT NULL,
+                event_id      UUID NOT NULL,
+                category      VARCHAR(16) DEFAULT NULL,
+                markup_tenths INT NOT NULL,
+                created_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                updated_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT budget_markups_category CHECK (category IN ('catering', 'venue', 'flowers', 'photography', 'music', 'transport', 'staffing', 'hire', 'other')),
+                CONSTRAINT budget_markups_bounds CHECK (markup_tenths BETWEEN 0 AND 9999)
             )
             SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_sso_provider_standing ON organisation_sso_providers (organisation_id, standing)');
-        $this->addSql('CREATE INDEX IDX_314D602A9E6B1585 ON organisation_sso_providers (organisation_id)');
-        $this->addSql('ALTER TABLE organisation_sso_providers ADD CONSTRAINT FK_314D602A9E6B1585 FOREIGN KEY (organisation_id) REFERENCES organisations (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE organisations ADD sso_required_since TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->addSql('CREATE INDEX idx_budget_markup_event ON budget_markups (event_id)');
+        $this->addSql('CREATE UNIQUE INDEX uniq_budget_markup_event ON budget_markups (event_id) WHERE (category IS NULL)');
+        $this->addSql('CREATE UNIQUE INDEX uniq_budget_markup_category ON budget_markups (event_id, category) WHERE (category IS NOT NULL)');
+        $this->addSql('ALTER TABLE budget_markups ADD CONSTRAINT FK_BUDGET_MARKUPS_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE organisations DROP sso_required_since');
-        $this->addSql('DROP TABLE organisation_sso_providers');
+        $this->addSql('DROP TABLE budget_markups');
+        $this->addSql('ALTER TABLE budget_lines DROP CONSTRAINT budget_lines_erased_past_currency');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE budget_lines
+              DROP CONSTRAINT budget_lines_one_charge,
+              DROP CONSTRAINT budget_lines_client_price_not_negative,
+              DROP CONSTRAINT budget_lines_markup_bounds,
+              DROP markup_tenths,
+              DROP client_price_minor,
+              ADD CONSTRAINT budget_lines_erased_past_currency CHECK (
+                  NOT currency_changed OR (removed_at IS NOT NULL AND label IS NULL AND price_minor IS NULL AND note IS NULL)
+              )
+            SQL);
     }
 }

@@ -1,30 +1,22 @@
-import { ApiError, type SecondFactor } from '@soirely/api-client';
 import {
-  cleanCode,
-  codeProblem,
-  formatTimeOfDay,
-  lockLiftsAt,
-  shapeRecovery,
-} from '@soirely/domain';
-import { type FormEvent, type RefObject, useEffect, useState } from 'react';
+  ApiError,
+  type HeldFactors,
+  type PasskeyOptions,
+  type SecondFactor,
+} from '@soirely/api-client';
+import { cleanCode, codeProblem, shapeRecovery } from '@soirely/domain';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { selectCode } from '../codeScreen.ts';
-import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
+import { askPasskey, canUsePasskeys } from '../passkey.ts';
+import { type Mode, type SecondFactorStatus, statusFrom } from '../secondFactorStatus.ts';
 import { FieldError } from './FieldError.tsx';
+import { NoBrowser, Refused, Waiting } from './PasskeyParts.tsx';
 import { ColumnBack } from './Onboarding.tsx';
-
-type Mode = 'app' | 'recovery';
-
-type Status =
-  | { kind: 'ready' }
-  | { kind: 'checking' }
-  | { kind: 'wrong'; message: string }
-  | { kind: 'paused'; time: string; liftsAt: number }
-  | { kind: 'failed' };
 
 /** "Enter your code", for any step a second factor guards: a sign-in, or a password reset. */
 export function SecondFactorStep({
@@ -35,10 +27,14 @@ export function SecondFactorStep({
   failedTitle,
   failedBody,
   lostBoth,
+  lostWhileWaiting = false,
   onVerify,
   onExpired,
   onBack,
   headingRef,
+  factors = { app: true, passkeys: false },
+  passkey,
+  opensOn,
 }: {
   intro: string;
   recoveryIntro: string;
@@ -48,19 +44,30 @@ export function SecondFactorStep({
   failedBody: string;
   /** The way back in for somebody who has neither (sc-509). */
   lostBoth?: { to: string; state?: unknown };
+  /** The lost link also under the passkey's waiting state: the reset's, not a sign-in's. */
+  lostWhileWaiting?: boolean;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
   /** The column's ‹ Back, where the step has one to go back to: a sign-in's (WebTwoFactor, page 27). */
   onBack?: () => void;
   headingRef?: RefObject<HTMLHeadingElement | null>;
+  factors?: HeldFactors;
+  /** Where the account holds a passkey: the step opens on it, its sheet over the page (sc-86885). */
+  passkey?: { lead: string; options: () => Promise<PasskeyOptions> };
+  /** Recovery, for a step reached from Use a recovery code instead elsewhere: the staff link's (sc-4235). */
+  opensOn?: 'recovery';
 }) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<Mode>('app');
+  const browserCan = canUsePasskeys();
+  const offersPasskey = factors.passkeys && passkey != null && browserCan;
+  const codeMode: Mode = factors.app ? 'app' : 'recovery';
+  const [mode, setMode] = useState<Mode>(opensOn ?? (offersPasskey ? 'passkey' : codeMode));
   const [typed, setTyped] = useState('');
   const [blank, setBlank] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>({ kind: 'ready' });
+  const [status, setStatus] = useState<SecondFactorStatus>({ kind: 'ready' });
 
-  const checking = status.kind === 'checking';
+  const checking = status.kind === 'checking' || status.kind === 'waiting';
+  const opened = useRef(false);
   const liftsAt = status.kind === 'paused' ? status.liftsAt : null;
   const error = blank ?? (status.kind === 'wrong' ? status.message : null);
 
@@ -80,11 +87,45 @@ export function SecondFactorStep({
     return () => window.clearTimeout(lift);
   }, [liftsAt]);
 
+  useEffect(() => {
+    if (opened.current || mode !== 'passkey') return;
+    opened.current = true;
+    void openSheet();
+    // The sheet opens by itself once, as the step arrives; after that only Use a passkey opens it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function openSheet(): Promise<void> {
+    if (passkey == null || checking || status.kind === 'paused') return;
+
+    setStatus({ kind: 'waiting' });
+
+    try {
+      const answer = await askPasskey(await passkey.options());
+      if (answer == null) {
+        setStatus({ kind: 'ready' });
+        return;
+      }
+      await onVerify({ passkey: answer });
+      setStatus({ kind: 'ready' });
+    } catch (refusal) {
+      if (refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')) {
+        onExpired();
+        return;
+      }
+      setStatus(
+        refusal instanceof ApiError && refusal.is('passkey_refused')
+          ? { kind: 'refused' }
+          : statusFrom(refusal, 'passkey', t),
+      );
+    }
+  }
+
   function switchTo(next: Mode): void {
     setMode(next);
     setTyped('');
     setBlank(null);
-    if (status.kind === 'wrong') setStatus({ kind: 'ready' });
+    if (status.kind === 'wrong' || status.kind === 'refused') setStatus({ kind: 'ready' });
   }
 
   function type(value: string): void {
@@ -138,6 +179,68 @@ export function SecondFactorStep({
     }
   }
 
+  const lostWords = !factors.passkeys
+    ? t('twoFactor.lostBoth')
+    : factors.app
+      ? t('twoFactor.lostAll')
+      : t('twoFactor.lostPasskeys');
+  const lost =
+    lostBoth == null ? null : (
+      <Link className="link-button" to={lostBoth.to} state={lostBoth.state}>
+        {lostWords}
+      </Link>
+    );
+
+  if (mode === 'passkey') {
+    return (
+      <>
+        {onBack != null && <ColumnBack onClick={onBack} />}
+        <div className="auth-heading">
+          <h1 ref={headingRef} tabIndex={headingRef == null ? undefined : -1}>
+            {t('passkey.waitTitle')}
+          </h1>
+          <p>{passkey?.lead}</p>
+          {(status.kind === 'paused' || status.kind === 'failed') && (
+            <div className="auth-notice" role="alert">
+              <p className="auth-notice-title">
+                {status.kind === 'paused' ? t('passkey.pausedTitle') : failedTitle}
+              </p>
+              <p>
+                {status.kind === 'paused'
+                  ? t('passkey.pausedBody', { time: status.time })
+                  : failedBody}
+              </p>
+              {status.kind === 'paused' && pausedNote != null && <p>{pausedNote}</p>}
+            </div>
+          )}
+        </div>
+
+        {status.kind === 'waiting' ? (
+          <Waiting />
+        ) : (
+          <button
+            className="button button-primary"
+            type="button"
+            {...offButton(status.kind === 'paused')}
+            onClick={() => void openSheet()}
+          >
+            {status.kind === 'paused'
+              ? t('twoFactor.tryAgainAt', { time: status.time })
+              : t('passkey.use')}
+          </button>
+        )}
+
+        <div className="auth-asides">
+          <button className="link-button" type="button" onClick={() => switchTo(codeMode)}>
+            {t('passkey.useCode')}
+          </button>
+        </div>
+        {status.kind === 'refused' && <Refused line={t('passkey.refused')} />}
+        {lostWhileWaiting && lost != null && <div className="auth-asides">{lost}</div>}
+      </>
+    );
+  }
+
   return (
     <>
       {onBack != null && <ColumnBack onClick={onBack} />}
@@ -146,6 +249,7 @@ export function SecondFactorStep({
           {mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}
         </h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
+        {factors.passkeys && !browserCan && <NoBrowser />}
         {(status.kind === 'paused' || status.kind === 'failed') && (
           <div className="auth-notice" role="alert">
             <p className="auth-notice-title">
@@ -200,18 +304,28 @@ export function SecondFactorStep({
       </form>
 
       <div className="auth-asides">
-        <button
-          className="link-button"
-          type="button"
-          onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
-        >
-          {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
-        </button>
-        {lostBoth != null && (
-          <Link className="link-button" to={lostBoth.to} state={lostBoth.state}>
-            {t('twoFactor.lostBoth')}
-          </Link>
+        {offersPasskey && (
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => {
+              switchTo('passkey');
+              void openSheet();
+            }}
+          >
+            {t('passkey.useInstead')}
+          </button>
         )}
+        {factors.app && (
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
+          >
+            {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
+          </button>
+        )}
+        {lost}
         {status.kind === 'paused' && (
           <p className="auth-aside">
             <span>{t('twoFactor.notYou')}</span>
@@ -223,32 +337,4 @@ export function SecondFactorStep({
       </div>
     </>
   );
-}
-
-function statusFrom(refusal: unknown, mode: Mode, t: (key: string) => string): Status {
-  if (!(refusal instanceof ApiError)) return { kind: 'failed' };
-
-  if (refusal.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
-
-    if (liftsAt != null) {
-      return {
-        kind: 'paused',
-        time: formatTimeOfDay(liftsAt, dateLocale()),
-        liftsAt: liftsAt.getTime(),
-      };
-    }
-  }
-
-  if (refusal.is('recovery_code_used'))
-    return { kind: 'wrong', message: t('twoFactor.recoveryUsed') };
-
-  if (refusal.is('two_factor_code_invalid')) {
-    return {
-      kind: 'wrong',
-      message: mode === 'app' ? t('twoFactor.codeWrong') : t('twoFactor.recoveryWrong'),
-    };
-  }
-
-  return { kind: 'failed' };
 }

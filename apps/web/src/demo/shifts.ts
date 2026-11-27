@@ -1,3 +1,4 @@
+import { SERVICE_LINES } from './people.ts';
 import { sample as rosterSample } from './roster.ts';
 import type { DemoLink } from './settings.ts';
 import { STATIONS_EVENT } from './stations.ts';
@@ -23,13 +24,17 @@ export const LEVELS: readonly { level: Level; words: string; hint: string }[] = 
   {
     level: 'floor',
     words: 'Can work the floor',
-    hint: 'Serves their tables and marks what went out.',
+    hint: SERVICE_LINES['Can work the floor'],
   },
-  { level: 'pass', words: 'Can work the pass', hint: 'Sees and sends the orders at the pass.' },
+  {
+    level: 'pass',
+    words: 'Can work the pass',
+    hint: SERVICE_LINES['Can work the pass'],
+  },
   {
     level: 'run',
     words: 'Can run the floor',
-    hint: 'Runs the floor on the night. Comes only through a personal link.',
+    hint: SERVICE_LINES['Can run the floor'],
   },
 ];
 

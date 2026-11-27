@@ -119,7 +119,11 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       titleLines: 1,
       line: own == null ? '' : draftLine(own.draft, own.thread, locale),
       time:
-        draft == null || isScheduled(draft) || draft.outcome === 'tooLate' ? '' : draft.time || NOW,
+        draft?.outcome === 'nobody' && draft.at != null
+          ? rowDay(draft.at.date, '', locale)
+          : draft == null || isScheduled(draft) || draft.outcome === 'tooLate'
+            ? ''
+            : draft.time || NOW,
       lead: <GroupTile />,
       tag,
     };
@@ -372,7 +376,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && !readsOnly(m) && (
+        {wide && !readsOnly(m) && (
           <Pill
             label={W.newButton}
             glyph="plus"

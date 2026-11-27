@@ -45,6 +45,8 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         'Entity/Guest.php: public const int COMPANIONS_MAXIMUM = 10;',
         'Entity/BudgetLine.php: public const int LABEL_MAXIMUM = 100;',
         'Entity/ScheduledPayment.php: public const int DESCRIPTION_MAXIMUM = 100;',
+        'Entity/ScheduledPayment.php: public const int REFERENCE_MAXIMUM = 100;',
+        'Domain/Budget/QuoteRules.php: public const int SCHEDULE_MAXIMUM = 10;',
         'Entity/MenuDishChoice.php: public const int PER_DISH_MAXIMUM = 3;',
         'Entity/MenuDishChoice.php: public const int OPTIONS_MAXIMUM = 8;',
         'Entity/SeatingRow.php: public const int LABEL_MAXIMUM = 10;',
@@ -53,6 +55,11 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         'Entity/VerificationChallenge.php: public const int MAXIMUM_ATTEMPTS = 5;',
         'Entity/GuestGroup.php: public const int MOST_PER_EVENT = 50;',
         'Entity/StaffShift.php: public const int NEEDED_MAXIMUM = 50;',
+        'WebAuthn/Cbor.php: private const int MAX_DEPTH = 8;',
+        'WebAuthn/Cbor.php: if ($value > (\\PHP_INT_MAX >> 8)) {',
+        'Domain/Messaging/GuestMessages/GuestEmailUnsubscribe.php: && \\hash_equals($this->signature($guest->getId(), $guest->getEvent()->getOrganisation()->getId()), Str\\Byte\\slice($token, 22));',
+        'Integrations/SingleSignOn/HttpProviderDocuments.php: $response = $this->http->request(\'GET\', $url, [\'timeout\' => 10, \'max_redirects\' => 3]);',
+        'Entity/GuestSuppression.php: #[ORM\\Column(type: Types::STRING, length: 10, enumType: GuestChannel::class)]',
     ];
 
     #[Test]

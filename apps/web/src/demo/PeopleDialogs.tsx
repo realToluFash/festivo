@@ -15,11 +15,15 @@ import {
   PICK_ANOTHER,
   UNUSABLE,
   everyoneOn,
-  type EventRole,
   FIRST_ROLE,
-  firstName,
+  askWords,
+  calledIn,
   inOrganisation,
+  isServiceLevel,
   leadOff,
+  type Level,
+  LEVEL_LINES,
+  MEMBERS_NOT_SERVICE,
   noMatchLine,
   notChangedLine,
   offeredMembers,
@@ -27,26 +31,27 @@ import {
   type OrgMember,
   OUTSIDE_ENDS,
   type PeopleViewer,
-  removeLine,
-  removeTitle,
-  ROLE_LINES,
   rolesOff,
   SAVE_MS,
   savedWords,
   SAVING,
+  SERVICE_CLOSING,
+  SERVICE_HEAD,
+  SERVICE_LEVELS,
+  SERVICE_NOT_MEMBERS,
   SETTLE_MS,
   sheetLine,
 } from './people.ts';
 import {
   Ask,
   Avatar,
-  Choices,
   Dialog,
   Field,
   Head,
   RowWords,
   TextAction,
 } from '../components/SettingsParts.tsx';
+import { AddressIn, WholeAddress } from '../components/WholeAddress.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -66,6 +71,8 @@ export function RoleDialog({
   roleFails,
   organisation,
   removing,
+  asking: askingFirst = false,
+  french = false,
   onSaved,
   onLost,
   onClose,
@@ -75,27 +82,30 @@ export function RoleDialog({
   roleFails: boolean;
   organisation?: string;
   removing?: Removing | undefined;
-  onSaved: (role: EventRole) => void;
+  asking?: boolean;
+  french?: boolean;
+  onSaved: (role: Level) => void;
   onLost: (words: string) => void;
   onClose: () => void;
   onRemove: () => void;
 }) {
   const name = useId();
-  const [picked, setPicked] = useState<EventRole>(person.role);
+  const [picked, setPicked] = useState<Level>(person.role);
   const [saving, setSaving] = useState<Saving>('idle');
   const [lost, setLost] = useState<string | null>(null);
   const [live, setLive] = useState('');
-  const [asking, setAsking] = useState(removing?.start != null);
+  const [asking, setAsking] = useState(askingFirst || removing?.start != null);
   const [gone, setGone] = useState<number | null>(
     removing?.start === 'held' ? removing.heldMs : null,
   );
-  const held = useRef<EventRole>(person.role);
+  const held = useRef<Level>(person.role);
   const byArrow = useRef(false);
   const settle = useRef<number | undefined>(undefined);
   const sending = useRef<number | undefined>(undefined);
   const open = useRef(true);
   const first = useRef<HTMLInputElement>(null);
-  const off = rolesOff(person);
+  const off: readonly Level[] = rolesOff(person);
+  const ask = askWords(person, french, organisation);
   useEffect(() => {
     open.current = true;
 
@@ -113,7 +123,7 @@ export function RoleDialog({
     return () => window.clearTimeout(timer);
   }, [gone]);
 
-  function send(role: EventRole): void {
+  function send(role: Level): void {
     sending.current = window.setTimeout(() => {
       sending.current = undefined;
       if (roleFails) {
@@ -133,7 +143,7 @@ export function RoleDialog({
     }, SAVE_MS);
   }
 
-  function pick(role: EventRole): void {
+  function pick(role: Level): void {
     const arrowed = byArrow.current;
     byArrow.current = false;
     window.clearTimeout(settle.current);
@@ -156,6 +166,35 @@ export function RoleDialog({
     byArrow.current = ARROWS.has(event.key);
   }
 
+  function row(role: Level) {
+    const isOff = off.includes(role);
+    const rowClass = ['desk-row', role === picked && 'is-picked', isOff && 'is-off'].filter(
+      Boolean,
+    );
+
+    return (
+      <li key={role}>
+        <label className={rowClass.join(' ')}>
+          <RowWords
+            title={role}
+            tag={role === picked && <SavingTag saving={saving} />}
+            lines={[isOff ? leadOff(organisation) : LEVEL_LINES[role]]}
+          />
+          <input
+            ref={role === picked ? first : undefined}
+            type="radio"
+            className="desk-radio"
+            name={name}
+            checked={role === picked}
+            disabled={isOff}
+            onKeyDown={noteArrow}
+            onChange={() => pick(role)}
+          />
+        </label>
+      </li>
+    );
+  }
+
   return (
     <>
       <Dialog
@@ -168,7 +207,10 @@ export function RoleDialog({
       >
         <div className="people-who">
           <Avatar initials={person.initials} tone={person.tone} size="face" />
-          <RowWords title={person.name} lines={[sheetLine(person, organisation)]} />
+          <RowWords
+            title={<WholeAddress text={person.name} />}
+            lines={[sheetLine(person, organisation)]}
+          />
         </div>
         {person.door != null ? (
           <div className="people-ends dc-door-lines">
@@ -185,39 +227,15 @@ export function RoleDialog({
           </p>
         )}
         <fieldset className="desk-choices">
-          <legend className="desk-unseen">{`${firstName(person)}’s role on this event`}</legend>
-          <ul className="desk-rows">
-            {EVENT_ROLES.map((role) => {
-              const isOff = off.includes(role);
-              const rowClass = [
-                'desk-row',
-                role === picked && 'is-picked',
-                isOff && 'is-off',
-              ].filter(Boolean);
-
-              return (
-                <li key={role}>
-                  <label className={rowClass.join(' ')}>
-                    <RowWords
-                      title={role}
-                      tag={role === picked && <SavingTag saving={saving} />}
-                      lines={[isOff ? leadOff(organisation) : ROLE_LINES[role]]}
-                    />
-                    <input
-                      ref={role === picked ? first : undefined}
-                      type="radio"
-                      className="desk-radio"
-                      name={name}
-                      checked={role === picked}
-                      disabled={isOff}
-                      onKeyDown={noteArrow}
-                      onChange={() => pick(role)}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
+          <legend className="desk-unseen">{`${calledIn(person)}’s role on this event`}</legend>
+          <ul className="desk-rows">{EVENT_ROLES.map(row)}</ul>
+          {person.outside && (
+            <>
+              <p className="desk-legend">{SERVICE_HEAD}</p>
+              <ul className="desk-rows">{SERVICE_LEVELS.map(row)}</ul>
+              <p className="desk-line">{SERVICE_CLOSING}</p>
+            </>
+          )}
         </fieldset>
         <p className="desk-unseen" role="status">
           {live}
@@ -228,10 +246,18 @@ export function RoleDialog({
       </Dialog>
       {asking && (
         <Ask
-          title={removeTitle(person)}
-          line={removeLine(person, organisation)}
-          keep={`Keep ${firstName(person)}`}
-          go="Remove"
+          title={
+            french ? (
+              <span lang="fr">
+                <AddressIn text={person.name} words={ask.title} />
+              </span>
+            ) : (
+              <AddressIn text={person.name} words={ask.title} />
+            )
+          }
+          line={ask.line}
+          keep={ask.keep}
+          go={ask.go}
           busy={gone == null ? undefined : removing?.words}
           onKeep={() => setAsking(false)}
           onGo={() => (removing == null ? onRemove() : setGone(removing.ms))}
@@ -257,7 +283,7 @@ function SavingTag({ saving }: { saving: Saving }) {
 }
 
 export interface Added {
-  role: EventRole;
+  role: Level;
   members: OrgMember[];
   outside: { address: Address; job: string } | null;
 }
@@ -278,11 +304,11 @@ export function AddDialog({
   viewer: PeopleViewer;
   organisation?: string;
   country: string;
-  start?: { typed: string; role: EventRole } | undefined;
+  start?: { typed: string; role: Level } | undefined;
   onClose: () => void;
   onAdd: (added: Added, finished: boolean) => void;
 }) {
-  const [role, setRole] = useState<EventRole>(start?.role ?? FIRST_ROLE);
+  const [role, setRole] = useState<Level>(start?.role ?? FIRST_ROLE);
   const [typed, setTyped] = useState(start?.typed ?? '');
   const [ticked, setTicked] = useState<readonly string[]>([]);
   const [outsideOn, setOutsideOn] = useState(true);
@@ -297,6 +323,29 @@ export function AddDialog({
   const canAdd = ticked.length > 0 || sendsOutside;
   const changed = ticked.length > 0 || role !== FIRST_ROLE || typed.trim() !== '';
   const quiet = outside.kind === 'offer' || outside.kind === 'leadOff';
+  const forService = isServiceLevel(role);
+  const showService = sendsOutside || forService;
+  const roleName = useId();
+
+  function roleRow(level: Level, off: boolean) {
+    const rowClass = ['desk-row', level === role && 'is-picked', off && 'is-off'].filter(Boolean);
+
+    return (
+      <li key={level}>
+        <label className={rowClass.join(' ')}>
+          <RowWords title={level} lines={[off ? SERVICE_NOT_MEMBERS : LEVEL_LINES[level]]} />
+          <input
+            type="radio"
+            className="desk-radio"
+            name={roleName}
+            checked={level === role}
+            disabled={off}
+            onChange={() => setRole(level)}
+          />
+        </label>
+      </li>
+    );
+  }
 
   function tick(id: string): void {
     setTicked((was) => (was.includes(id) ? was.filter((one) => one !== id) : [...was, id]));
@@ -337,12 +386,19 @@ export function AddDialog({
               </p>
             )}
           </div>
-          <Choices
-            legend="Their role"
-            choices={EVENT_ROLES.map((one) => ({ name: one, line: ROLE_LINES[one] }))}
-            picked={role}
-            onPick={(one) => setRole(EVENT_ROLES.find((each) => each === one) ?? FIRST_ROLE)}
-          />
+          <fieldset className="desk-choices">
+            <legend className="desk-legend">Their role</legend>
+            <ul className="desk-rows">{EVENT_ROLES.map((one) => roleRow(one, false))}</ul>
+            {showService && (
+              <>
+                <p className="desk-legend">{SERVICE_HEAD}</p>
+                <ul className="desk-rows">
+                  {SERVICE_LEVELS.map((one) => roleRow(one, ticked.length > 0))}
+                </ul>
+                <p className="desk-line">{SERVICE_CLOSING}</p>
+              </>
+            )}
+          </fieldset>
           <Field
             label={role === 'Lead' ? NAME_LABEL : FIND_LABEL}
             value={typed}
@@ -355,17 +411,27 @@ export function AddDialog({
           />
           <section className="desk-block" aria-label={inOrganisation(organisation)}>
             <Head title={inOrganisation(organisation)} level={3} />
+            {forService && offered.length > 0 && <p className="desk-line">{MEMBERS_NOT_SERVICE}</p>}
             {offered.length > 0 && (
               <ul className="desk-rows has-lead">
                 {offered.map((one) => (
                   <li key={one.id}>
-                    <label className={ticked.includes(one.id) ? 'desk-row is-picked' : 'desk-row'}>
+                    <label
+                      className={[
+                        'desk-row',
+                        ticked.includes(one.id) && 'is-picked',
+                        forService && 'is-off',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
                       <Avatar initials={one.initials} tone={one.tone} />
                       <RowWords title={one.name} lines={[]} />
                       <input
                         type="checkbox"
                         className="people-check"
                         checked={ticked.includes(one.id)}
+                        disabled={forService}
                         onChange={() => tick(one.id)}
                       />
                     </label>

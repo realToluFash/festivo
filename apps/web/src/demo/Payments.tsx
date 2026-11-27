@@ -4,9 +4,10 @@ import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Card, CardStep, Field } from '../components/SettingsParts.tsx';
-import { BudgetDialog, BudgetRow, MoneyField, Rows } from './BudgetParts.tsx';
+import { Amount, BudgetDialog, BudgetRow, MoneyField, RingMark, Rows } from './BudgetParts.tsx';
 import { TODAY, type Payment, money, shortDay } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
+import { DemoOffline } from './DemoOffline.tsx';
 import {
   type Cancelling,
   type Changing,
@@ -14,13 +15,14 @@ import {
   type MadeOpen,
   daysProblem,
   keptOf,
+  madeInset,
   madeProblems,
   reasonProblem,
   remindersStart,
 } from './payments.ts';
 import { PW } from './paymentsWords.ts';
 import { BUSY_MS, DateField, TextField } from './QuoteForms.tsx';
-import { type Quote } from './quotes.ts';
+import { type Budget } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { type Viewer, settingsPath } from './settings.ts';
 import { VW } from './vendorsWords.ts';
@@ -156,13 +158,13 @@ export function CancelDialog({
 /** Add a payment already made, 540: scheduled and paid in one action, its Vendor starting on the page's vendor. */
 export function MadeDialog({
   made,
-  quotes,
+  budget,
   onMade,
   onClose,
   onSaved,
 }: {
   made: MadeOpen;
-  quotes: readonly Quote[];
+  budget: Budget;
   onMade: (next: MadeOpen) => void;
   onClose: () => void;
   onSaved: (draft: MadeDraft) => void;
@@ -171,6 +173,7 @@ export function MadeDialog({
   const first = useRef<HTMLSelectElement>(null);
   const [busy, wait] = useBusy();
   const { draft, problems } = made;
+  const { quotes } = budget;
   const quoteOf = (vendorId: string) => quotes.find((one) => one.vendor.id === vendorId);
   const vendors = quotes
     .map((one) => one.vendor)
@@ -254,8 +257,63 @@ export function MadeDialog({
           optional
           onChange={(reference) => set({ reference })}
         />
+        <MadeTotals budget={budget} draft={draft} />
       </div>
     </BudgetDialog>
+  );
+}
+
+function Then({ now, after }: { now: number; after: number | undefined }) {
+  if (after == null) return money(now);
+  const said = PW.withThisSaid(money(now), money(after));
+
+  return (
+    <>
+      <span aria-hidden="true">{PW.withThis(money(now), money(after))}</span>
+      <span className="visually-hidden">{said}</span>
+    </>
+  );
+}
+
+/** sc-75579's inset (Budget-A-Payments-More 43): a preview only; what the page shows after Add as paid is the server's arithmetic. */
+function MadeTotals({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
+  const inset = madeInset(budget, draft);
+  if (inset == null) return null;
+  const { now, after, over } = inset;
+
+  return (
+    <div className="pay-inset" aria-live="polite">
+      <Rows>
+        <li>
+          <BudgetRow
+            title={PW.paidTo(inset.vendor)}
+            end={
+              <span className="bud-row-end">
+                <Amount value={<Then now={now.paid} after={after?.paid} />} />
+              </span>
+            }
+          />
+        </li>
+        <li>
+          <BudgetRow
+            title={QW.scheduled}
+            end={
+              <span className="bud-row-end">
+                <Amount value={<Then now={now.scheduled} after={after?.scheduled} />} />
+              </span>
+            }
+          />
+        </li>
+      </Rows>
+      {over != null && (
+        <div className="bud-warn">
+          <RingMark state="overIfAll" />
+          <span>
+            <strong>{PW.overWithThis(money(over))}</strong> {PW.differenceVisible}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -273,6 +331,7 @@ function Reminders({ viewer, state }: { viewer: Viewer; state: string }) {
   return (
     <div className="desk-page">
       <div className="desk-column">
+        <DemoOffline />
         <Card>
           <div className="desk-said-lines">
             <h1 className="desk-says pay-says" tabIndex={-1}>
@@ -352,7 +411,14 @@ function DaysDialog({
       onDismiss={onClose}
       onConfirm={save}
     >
-      <div className="desk-fields">
+      <form
+        className="desk-fields"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
         <Field
           label={PW.daysField}
           value={changing.typed}
@@ -364,7 +430,7 @@ function DaysDialog({
             onChanging({ typed, problem: changing.problem == null ? null : daysProblem(typed) })
           }
         />
-      </div>
+      </form>
     </BudgetDialog>
   );
 }
@@ -375,6 +441,7 @@ function Refused({ viewer }: { viewer: Viewer }) {
   return (
     <div className="desk-page">
       <div className="desk-column">
+        <DemoOffline />
         <div className="pay-refused" role="alert">
           <h1 className="desk-title" tabIndex={-1}>
             {t('forbidden.title')}

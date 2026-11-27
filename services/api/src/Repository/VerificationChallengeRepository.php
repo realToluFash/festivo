@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\EmailAddress;
+use App\Entity\PhoneSignIn;
 use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
 use App\Enum\PhoneCodeRoute;
@@ -33,6 +34,20 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
     public function findNewestFor(VerifiableContact $contact): ?VerificationChallenge
     {
         return $this->findOneBy([self::field($contact) => $contact], ['id' => 'DESC']);
+    }
+
+    /** The newest code sent to a number signing in by phone (sc-4235), through any staff link or door code. */
+    public function findNewestForSignInNumber(string $number): ?VerificationChallenge
+    {
+        /** @var VerificationChallenge|null */
+        return $this->createQueryBuilder('c')
+            ->innerJoin('c.phoneSignIn', 's')
+            ->where('s.number = :number')
+            ->setParameter('number', $number)
+            ->orderBy('c.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     public function revokeLiveFor(VerifiableContact $contact): void
@@ -78,7 +93,11 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
 
     private static function field(VerifiableContact $contact): string
     {
-        return $contact instanceof EmailAddress ? 'emailAddress' : 'phoneNumber';
+        return match (true) {
+            $contact instanceof EmailAddress => 'emailAddress',
+            $contact instanceof PhoneSignIn => 'phoneSignIn',
+            default => 'phoneNumber',
+        };
     }
 
     /** @return list<VerificationChallenge> live codes still on WhatsApp, sent before the given moment */

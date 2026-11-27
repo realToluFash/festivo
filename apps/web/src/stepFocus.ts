@@ -1,11 +1,17 @@
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from 'react';
 
-/** Focus moves to where a step begins, and the page scrolls only as far as it must to show it whole. */
-export function focusStep(target: HTMLElement | null): void {
+import { lessMotion } from './leaving.ts';
+
+/** Focus moves to where a step begins, and the page scrolls only as far as it must to show `whole` entire. */
+export function focusStep(target: HTMLElement | null, whole: HTMLElement | null = target): void {
   if (target == null) return;
 
   target.focus({ preventScroll: true });
-  target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  whole?.scrollIntoView?.({
+    block: 'nearest',
+    inline: 'nearest',
+    behavior: lessMotion() ? 'auto' : 'smooth',
+  });
 }
 
 /** Call `arrive()` with the state change a click's answer brings; once it renders, focus lands on the ref. */

@@ -195,6 +195,17 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aGuestAddedWhileTheHubIsDownIsKeptAndAnsweredAsUsual(): void
+    {
+        self::service(RecordingHub::class)->failuresLeft = 2;
+
+        $guest = $this->add(['fullName' => 'Bisi']);
+
+        self::assertSame('Bisi', $guest['fullName'] ?? null);
+        self::assertSame(1, $this->people());
+    }
+
+    #[Test]
     public function eachAddIsPublishedAsTheWholeList(): void
     {
         $this->add(['fullName' => 'Bisi']);
@@ -214,7 +225,7 @@ final class GuestsTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
         self::assertInstanceOf(UnencryptedToken::class, $token);
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount']], $token->claims()->get('mercure'));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $token->claims()->get('mercure'));
     }
 
     /** @return iterable<string, array{EventRole}> */

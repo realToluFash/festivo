@@ -1,4 +1,15 @@
 import { crowdName } from './sampleNames.ts';
+import {
+  CHOOSE_GROUP,
+  CHOOSE_STATES,
+  choseAudience,
+  chooseSeedOf,
+  idOf,
+  chosenIds,
+  flagWord,
+  isChooseState,
+  pickedOf,
+} from './messagesChoose.ts';
 import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
@@ -18,6 +29,15 @@ import {
   toSeedOf,
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
+import {
+  CHOSE_NOBODY,
+  LONG_SUBJECT,
+  LONG_TAIL,
+  REFUSAL_GROUP,
+  REFUSAL_STATES,
+  isRefusalState,
+  refusalSeedOf,
+} from './messagesRefusals.ts';
 import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
 import {
   OTHER_MEMBER,
@@ -51,6 +71,8 @@ import {
 } from './messagesInvite.ts';
 import {
   type Hour,
+  type SmsReach,
+  type SmsSample,
   SMS_GROUP,
   SMS_STATES,
   failedWhy,
@@ -73,6 +95,7 @@ import { smsEncoding } from './inviteSms.ts';
 import type { DemoLink } from './settings.ts';
 import type { Field, TellKind } from './messagesTell.ts';
 import { TELL_GROUP, TELL_STATES, isTellState } from './messagesTellStates.ts';
+import { BELL_GROUP, BELL_STATES, isBellState } from './bellFeed.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
@@ -106,7 +129,6 @@ export const MESSAGE_STATES = [
   { key: 'untold', name: 'Not told yet' },
   { key: 'invited', name: 'Invitations sent' },
   { key: 'scheduled', name: 'Scheduled' },
-  { key: 'bell', name: 'The bell' },
   { key: 'invitedReached', name: 'Who it reached, an invitation' },
   { key: 'sentReached', name: 'Who it reached, just sent' },
   { key: 'notMatched', name: 'A sender not matched' },
@@ -170,6 +192,9 @@ export const MESSAGE_STATES = [
   { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
   { key: 'previewChose', name: 'Previewed as Camille Dubois' },
   { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewFailed', name: 'Could not fill it in' },
+  { key: 'previewGone', name: 'No longer a guest' },
+  { key: 'previewGoneLast', name: 'No longer a guest, nobody left' },
   { key: 'previewMarkup', name: 'A Greet as with markup' },
   { key: 'typedBraces', name: 'A typed {Greeting}' },
   { key: 'previewBraces', name: 'Typed braces, previewed' },
@@ -195,6 +220,9 @@ export const MESSAGE_STATES = [
   { key: 'trySmsSent', name: 'Then Send by SMS' },
   { key: 'closedReached', name: 'Who it reached, the sends off' },
   { key: 'reachedQuiet', name: 'A text waiting for the morning' },
+  { key: 'unbrokenSubject', name: 'A subject of 150 with no spaces' },
+  { key: 'tallMessage', name: 'A message taller than the pane' },
+  { key: 'tallFollowUp', name: 'A follow-up under a tall message' },
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
@@ -204,6 +232,10 @@ export const MESSAGE_STATES = [
   ...TELL_STATES,
   ...WA_ANSWER_STATES,
   ...TAP_STATES,
+  ...REFUSAL_STATES,
+  ...CHOOSE_STATES,
+  { key: 'bell', name: 'The bell' },
+  ...BELL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -237,7 +269,10 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
         !isInviteState(one.key) &&
         !isSmsState(one.key) &&
         !isTellState(one.key) &&
-        !isTapState(one.key),
+        !isTapState(one.key) &&
+        !isRefusalState(one.key) &&
+        !isChooseState(one.key) &&
+        !isBellState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -266,6 +301,24 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: TAP_GROUP,
     states: [...WA_ANSWER_STATES, ...TAP_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
+  {
+    name: REFUSAL_GROUP,
+    states: REFUSAL_STATES.map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
+  {
+    name: CHOOSE_GROUP,
+    states: CHOOSE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: BELL_GROUP,
+    states: [{ key: 'bell', name: 'The bell' }, ...BELL_STATES].map((one) => ({
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
@@ -822,9 +875,49 @@ export function figuresOf(
   names: readonly Untellable[];
   smsOff: number;
 } {
+  if (audience.kind === 'who' && audience.pick === 'chosen')
+    return chosenFiguresOf(audience, ticks);
+
   const base = REACH[sampleOf(audience)];
   const counts = ticks.sms && ticks.whatsApp ? { ...base, sms: base.sms - base.whatsApp } : base;
   const names = untoldOf(audience, ticks);
+  const smsOff =
+    ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
+
+  return { counts, cantTell: names.length, names, smsOff };
+}
+
+/** SMS's reach for an audience: the sample's, or the chosen guests' own mobiles. */
+export function smsSampleOf(audience: Audience): SmsSample | SmsReach {
+  if (audience.kind !== 'who' || audience.pick !== 'chosen') return sampleOf(audience);
+
+  const people = pickedOf(chosenIds(audience));
+  const reaches = people.filter((one) => one.mobile).length;
+
+  return { reaches, noMobile: people.length - reaches, stopped: 0 };
+}
+
+/** The check for guests chosen one by one: each told by email unless flagged, by text with a mobile; nobody in the sample agreed to WhatsApp. */
+function chosenFiguresOf(audience: Audience, ticks: Ticks): ReturnType<typeof figuresOf> {
+  const people = pickedOf(chosenIds(audience));
+  const on = CHANNELS.filter((channel) => ticks[channel]);
+  const reasons: Reasons[] = people.map((one) => ({
+    name: one.name,
+    email: one.flag == null ? null : flagWord(one.flag),
+    sms: one.mobile ? null : MW.noPhone,
+    whatsApp: MW.hasNotAgreedWhatsApp,
+  }));
+  const names =
+    on.length === 0
+      ? []
+      : reasons
+          .filter((one) => on.every((channel) => one[channel] != null))
+          .map((one) => ({ name: one.name, why: whyOf(one, ticks) }));
+  const counts = {
+    email: people.filter((one) => one.flag == null).length,
+    sms: people.filter((one) => one.mobile).length,
+    whatsApp: 0,
+  };
   const smsOff =
     ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
 
@@ -890,7 +983,7 @@ export function checkOf(
         : credits === 0
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
-    sms: ticks.sms ? smsReachLine(sampleOf(audience)) : null,
+    sms: ticks.sms ? smsReachLine(smsSampleOf(audience)) : null,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
     instead: insteadOf(audience, ticks),
     wait: waitLine(ticks, hour),
@@ -2168,11 +2261,20 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
-  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  opens?: 'insert' | 'previewAs' | 'filling' | 'failed' | undefined;
   previewAs?: PersonId;
+  /** The preview answers 404 for them: removed from the guest list while the host writes, or a companion. */
+  gone?: readonly PersonId[];
+  /** Out of Preview as, once the preview found they are no longer a guest. */
+  dropped?: readonly PersonId[];
+  /** The one the status line names, until the host picks someone or closes the preview. */
+  goneSaid?: PersonId | undefined;
+  /** Nobody was left in Preview as: Preview is not offered while To is this one. */
+  nobodyLeft?: { name: string; to: Audience };
   seeAll?: boolean;
   hour?: Hour;
   invite?: InviteDraft;
+  follows?: number | undefined;
 }
 
 export interface Sched {
@@ -2394,6 +2496,18 @@ export function inviteCheck(
   );
 }
 
+/** QA's edge case on sc-3942 (#93537): the longest Subject the API takes, with nowhere to break. */
+export const UNBROKEN_SUBJECT = 'ThursdayDinnerAtTheWren'.repeat(7).slice(0, 150);
+
+/** QA's edge case on sc-3942 (#94879): a message taller than the pane, well under the Message's 10,000. */
+export const TALL_BODY = Array.from(
+  { length: 24 },
+  () =>
+    'Thursday at 18:00 the ceremony begins at The Landmark; the doors open at 17:30, and the shuttle leaves Baker Street every fifteen minutes from 17:00.',
+).join('\n\n');
+
+const TALL: readonly Segment[] = [...NEW_MESSAGE.body, { kind: 'text', text: `\n\n${TALL_BODY}` }];
+
 function outOf(stage: Stage, extra: Partial<Out> = {}): Out {
   return {
     thread: 'new',
@@ -2552,6 +2666,24 @@ function compose(base: Inbox, to: Audience, step: Draft['step'], ticks: Ticks = 
   return { ...base, pane: { kind: 'compose' }, draft: { ...draftOf(to, step), ticks } };
 }
 
+/** The composer after Send was pressed with fields that fail (sc-3942): nothing sent, every sentence shown. */
+function refusedSeed(base: Inbox, state: Parameters<typeof refusalSeedOf>[0]): Inbox {
+  const seed = refusalSeedOf(state);
+  const draft = draftOf(seed.chooseNone ? CHOSE_NOBODY : COMING);
+  const body: readonly Segment[] =
+    seed.body === 'blank'
+      ? []
+      : seed.body === 'long'
+        ? [...draft.body, { kind: 'text', text: `\n\n${LONG_TAIL}` }]
+        : draft.body;
+
+  return {
+    ...base,
+    pane: { kind: 'compose' },
+    draft: { ...draft, subject: seed.subject === 'long' ? LONG_SUBJECT : draft.subject, body },
+  };
+}
+
 export function seedOf(state: MessagesState | null): Inbox {
   const base: Inbox = {
     loading: false,
@@ -2650,6 +2782,18 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, loading: true };
     case 'conversation':
     case 'bell':
+    case 'bellPush':
+    case 'bellLoading':
+    case 'bellFailed':
+    case 'bellEmpty':
+    case 'bellMore':
+    case 'bellMoreFailed':
+    case 'bellMute':
+    case 'bellMuted':
+    case 'bellGone':
+    case 'bellOffline':
+    case 'bellRefreshing':
+    case 'bellUnknown':
     case 'stopAction':
     case 'stopAsk':
     case 'stopFailed':
@@ -2705,6 +2849,24 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, pane: open('new'), outs: [outOf(state)] };
     case 'noSubject':
       return { ...base, pane: open('new'), outs: [outOf('sent', { subject: '', seen: 12 })] };
+    case 'unbrokenSubject':
+      return { ...base, pane: open('new'), outs: [outOf('sent', { subject: UNBROKEN_SUBJECT })] };
+    case 'tallMessage':
+      return { ...base, pane: open('new'), outs: [outOf('sent', { body: TALL })] };
+    case 'tallFollowUp':
+      return {
+        ...base,
+        pane: open('new'),
+        outs: [
+          outOf('sent', { body: TALL, seen: 41 }),
+          outOf('sending', {
+            subject: '',
+            body: [{ kind: 'text', text: FOLLOW_UP }],
+            at: '10:05',
+            soFar: 20,
+          }),
+        ],
+      };
     case 'followUp':
       return {
         ...base,
@@ -2833,6 +2995,8 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'previewGreetAs':
     case 'previewChose':
     case 'previewLoading':
+    case 'previewFailed':
+    case 'previewGone':
     case 'previewMarkup':
     case 'typedBraces':
     case 'previewBraces':
@@ -2844,6 +3008,15 @@ export function seedOf(state: MessagesState | null): Inbox {
       };
     case 'previewNobody':
       return compose(base, { kind: 'who', conditions: [] }, 'write');
+    case 'previewGoneLast': {
+      const to = choseAudience([idOf('Camille Dubois')]);
+
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(to), nobodyLeft: { name: 'Camille Dubois', to } },
+      };
+    }
     case 'sendWithout':
       return {
         ...base,
@@ -2901,6 +3074,17 @@ export function seedOf(state: MessagesState | null): Inbox {
               },
             },
           ],
+        };
+      }
+
+      if (isRefusalState(state)) return refusedSeed(base, state);
+      if (isChooseState(state)) {
+        const seed = chooseSeedOf(state);
+
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: { ...draftOf(choseAudience(seed.chosen)), openTo: seed.open },
         };
       }
 

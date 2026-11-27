@@ -5,20 +5,34 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Webhook;
 
 use App\Domain\Messaging\EmailSuppressions;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
+use App\Domain\Messaging\GuestMessages\GuestSuppressions;
+use App\Enum\DeliveryNotSentReason;
 use App\Enum\MailProviderReport;
+use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
+use App\Enum\NotificationDeliveryStatus;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
+use Psl\Regex;
 use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, and a hard bounce or complaint suppresses the address. */
+/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, a hard bounce, a third soft bounce in a row or a complaint suppresses the address, and a guest's complaint is kept for the organisation (sc-3942). */
 final readonly class MailWebhook
 {
+    /** Postmark's report of an email it would not hand over, the address being on its inactive list. */
+    private const string PROVIDER_BLOCKED = 'ManuallyDeactivated';
+
+    /** Postmark's mailbox that would not take it now, full say: three in a row stop the address as a hard bounce does (sc-3969). */
+    private const string SOFT_BOUNCE = 'SoftBounce';
+
     public function __construct(
         private Connection $connection,
         private EmailSuppressions $emailSuppressions,
+        private GuestSuppressions $guestSuppressions,
+        private GuestMessagesChanged $guestMessagesChanged,
         private ClockInterface $clock,
     ) {
     }
@@ -28,7 +42,7 @@ final readonly class MailWebhook
      *
      * @param array<array-key, mixed> $report
      *
-     * @return ?MailProviderReport what it said, or null for a report that changes nothing, a soft bounce say
+     * @return ?MailProviderReport what it said, or null for a report that changes nothing, a first soft bounce say
      */
     public function receive(array $report): ?MailProviderReport
     {
@@ -37,12 +51,29 @@ final readonly class MailWebhook
             'Type' => Type\optional(Type\nullable(Type\string())),
             'Email' => Type\optional(Type\nullable(Type\string())),
             'Recipient' => Type\optional(Type\nullable(Type\string())),
+            'Details' => Type\optional(Type\nullable(Type\string())),
             'Metadata' => Type\optional(Type\nullable(Type\dict(Type\string(), Type\mixed()))),
         ], true)->coerce($report);
 
+        $delivery = $shape['Metadata']['delivery'] ?? null;
+        $delivery = \is_string($delivery) && Uuid::isValid($delivery) ? $delivery : null;
+
+        if ('Bounce' === $shape['RecordType'] && self::PROVIDER_BLOCKED === ($shape['Type'] ?? null)) {
+            if (null !== $delivery) {
+                $this->blocked($delivery);
+            }
+
+            return null;
+        }
+
+        $address = $shape['Email'] ?? $shape['Recipient'] ?? null;
         $said = match ($shape['RecordType']) {
             'Delivery' => MailProviderReport::Delivered,
-            'Bounce' => 'HardBounce' === ($shape['Type'] ?? null) ? MailProviderReport::Bounced : null,
+            'Bounce' => match ($shape['Type'] ?? null) {
+                'HardBounce' => MailProviderReport::Bounced,
+                self::SOFT_BOUNCE => null !== $address && '' !== $address && $this->emailSuppressions->softBounced($address) ? MailProviderReport::Bounced : null,
+                default => null,
+            },
             'SpamComplaint' => MailProviderReport::Complained,
             default => null,
         };
@@ -51,25 +82,25 @@ final readonly class MailWebhook
             return null;
         }
 
-        $address = $shape['Email'] ?? $shape['Recipient'] ?? null;
+        if (MailProviderReport::Delivered === $said && null !== $address && '' !== $address) {
+            $this->emailSuppressions->delivered($address);
+        }
 
         if ($said->suppresses() && null !== $address && '' !== $address) {
             $this->emailSuppressions->suppress($address, $said);
         }
 
-        $delivery = $shape['Metadata']['delivery'] ?? null;
-
-        if (\is_string($delivery) && Uuid::isValid($delivery)) {
-            $this->record($delivery, $said);
+        if (null !== $delivery) {
+            $this->record($delivery, $said, MailProviderReport::Delivered === $said ? null : self::code($shape['Details'] ?? null));
         }
 
         return $said;
     }
 
-    private function record(string $deliveryId, MailProviderReport $said): void
+    private function record(string $deliveryId, MailProviderReport $said, ?string $code): void
     {
         $earlier = $this->connection->fetchAssociative(
-            'SELECT provider_report FROM notification_deliveries WHERE id = :id AND channel = :email',
+            'SELECT provider_report, recipient_kind, recipient_id, address FROM notification_deliveries WHERE id = :id AND channel = :email',
             ['id' => $deliveryId, 'email' => NotificationChannel::Email->value],
         );
 
@@ -83,10 +114,50 @@ final readonly class MailWebhook
             return;
         }
 
-        $this->connection->executeStatement(
-            'UPDATE notification_deliveries SET provider_report = :report, provider_reported_at = :now WHERE id = :id',
-            ['report' => $said->value, 'now' => $this->clock->now(), 'id' => $deliveryId],
-            ['now' => Types::DATETIME_IMMUTABLE],
+        $now = $this->clock->now();
+        $this->connection->transactional(function () use ($deliveryId, $said, $code, $now): void {
+            $this->connection->executeStatement(
+                'UPDATE notification_deliveries SET provider_report = :report, provider_code = :code, provider_reported_at = :now WHERE id = :id',
+                ['report' => $said->value, 'code' => $code, 'now' => $now, 'id' => $deliveryId],
+                ['now' => Types::DATETIME_IMMUTABLE],
+            );
+
+            if (MailProviderReport::Complained === $said) {
+                $this->guestSuppressions->keepComplaint($deliveryId);
+            }
+        });
+
+        if (MailProviderReport::Bounced === $said && NotificationAudienceKind::Guest->value === $earlier['recipient_kind'] && null !== $earlier['address']) {
+            $this->connection->executeStatement(
+                'UPDATE guests SET email_bouncing_at = :now WHERE id = :guest AND LOWER(email) = LOWER(:address)',
+                ['now' => $now, 'guest' => $earlier['recipient_id'], 'address' => $earlier['address']],
+                ['now' => Types::DATETIME_IMMUTABLE],
+            );
+        }
+
+        $this->guestMessagesChanged->afterDelivery($deliveryId);
+    }
+
+    private function blocked(string $deliveryId): void
+    {
+        $changed = $this->connection->executeStatement(
+            'UPDATE notification_deliveries SET status = :failed, not_sent_reason = :blocked WHERE id = :id AND channel = :email AND provider_report IS NULL',
+            [
+                'failed' => NotificationDeliveryStatus::Failed->value,
+                'blocked' => DeliveryNotSentReason::ProviderBlocked->value,
+                'id' => $deliveryId,
+                'email' => NotificationChannel::Email->value,
+            ],
         );
+
+        if ($changed > 0) {
+            $this->guestMessagesChanged->afterDelivery($deliveryId);
+        }
+    }
+
+    /** The enhanced status code in the receiving server's reply (RFC 3463), "5.1.1" say. */
+    private static function code(?string $details): ?string
+    {
+        return null === $details ? null : (Regex\first_match($details, '/\\b[245]\\.\\d{1,3}\\.\\d{1,3}\\b/') ?? [])[0] ?? null;
     }
 }

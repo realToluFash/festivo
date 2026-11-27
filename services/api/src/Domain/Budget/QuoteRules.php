@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Budget;
 
+use App\Domain\Budget\Model\PaidDetails;
 use App\Domain\Budget\Model\PaymentDetails;
 use App\Domain\Budget\Model\QuoteTerms;
 use App\Domain\Budget\Model\QuoteWording;
@@ -19,6 +20,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
 use IntlDatePatternGenerator;
+use Psl\Iter;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
@@ -31,6 +33,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * @phpstan-type SentTerms array{amount?: ?string, currency?: ?string, quotedOn?: ?string}
  * @phpstan-type SentWording array{covers?: ?string, reference?: ?string, lineIds?: ?list<string>}
  * @phpstan-type SentPayment array{description?: ?string, amount?: ?string, currency?: ?string, dueOn?: ?string}
+ * @phpstan-type SentPaid array{amount?: ?string, currency?: ?string, paidOn?: ?string, reference?: ?string}
+ * @phpstan-type SentMade array{description?: ?string, amount?: ?string, currency?: ?string, paidOn?: ?string, reference?: ?string}
+ * @phpstan-type SentCancellation array{reason?: ?string}
+ * @phpstan-type SentSchedule array{payments?: ?list<SentPayment>}
  */
 final readonly class QuoteRules
 {
@@ -43,6 +49,9 @@ final readonly class QuoteRules
     public const string CURRENCY_MISMATCH = 'currency_mismatch';
 
     public const string VENDOR_GONE = 'vendor_gone';
+
+    public const string PAID_IN_FUTURE = 'payment_date_in_future';
+    public const int SCHEDULE_MAXIMUM = 10;
 
     public function __construct(
         private TranslatorInterface $translator,
@@ -93,6 +102,45 @@ final readonly class QuoteRules
             'amount' => Type\optional(Type\nullable(Type\string())),
             'currency' => Type\optional(Type\nullable(Type\string())),
             'dueOn' => Type\optional(Type\nullable(Type\string())),
+        ]);
+    }
+
+    /** @return Type\TypeInterface<SentPaid> */
+    public static function sentPaid(): Type\TypeInterface
+    {
+        return Type\shape([
+            'amount' => Type\optional(Type\nullable(Type\string())),
+            'currency' => Type\optional(Type\nullable(Type\string())),
+            'paidOn' => Type\optional(Type\nullable(Type\string())),
+            'reference' => Type\optional(Type\nullable(Type\string())),
+        ]);
+    }
+
+    /** @return Type\TypeInterface<SentMade> */
+    public static function sentMade(): Type\TypeInterface
+    {
+        return Type\shape([
+            'description' => Type\optional(Type\nullable(Type\string())),
+            'amount' => Type\optional(Type\nullable(Type\string())),
+            'currency' => Type\optional(Type\nullable(Type\string())),
+            'paidOn' => Type\optional(Type\nullable(Type\string())),
+            'reference' => Type\optional(Type\nullable(Type\string())),
+        ]);
+    }
+
+    /** @return Type\TypeInterface<SentCancellation> */
+    public static function sentCancellation(): Type\TypeInterface
+    {
+        return Type\shape([
+            'reason' => Type\optional(Type\nullable(Type\string())),
+        ]);
+    }
+
+    /** @return Type\TypeInterface<SentSchedule> */
+    public static function sentSchedule(): Type\TypeInterface
+    {
+        return Type\shape([
+            'payments' => Type\optional(Type\nullable(Type\vec(self::sentPayment()))),
         ]);
     }
 
@@ -149,31 +197,107 @@ final readonly class QuoteRules
     public function payment(array $sent, Event $event, Quote $current): PaymentDetails
     {
         $violations = [];
-        $description = Str\trim($sent['description'] ?? '');
+        $details = $this->paymentChecked($sent, $event, $current, '', $violations);
 
-        if ('' === $description) {
-            $violations[] = $this->violation('description', 'validation.payment_description_required');
-        } elseif (VisibleText::tooLong($description, ScheduledPayment::DESCRIPTION_MAXIMUM)) {
-            $violations[] = $this->violation('description', 'validation.payment_description_too_long', ['{max}' => (string) ScheduledPayment::DESCRIPTION_MAXIMUM]);
-        }
-
-        $amountMinor = $this->amountChecked($sent['amount'] ?? '', $sent['currency'] ?? '', $event, $violations);
-        $dueOn = self::day($sent['dueOn'] ?? '');
-
-        if (null === $dueOn) {
-            $violations[] = $this->violation('dueOn', 'validation.payment_due_required');
-        } elseif ($dueOn < $current->getQuotedOn()) {
-            $violations[] = $this->violation('dueOn', 'validation.payment_before_quote', [
-                '{vendor}' => $current->getEngagement()->getVendor()->getName(),
-                '{date}' => $this->written($current->getQuotedOn()),
-            ], self::BEFORE_QUOTE);
-        }
-
-        if ([] !== $violations || null === $amountMinor || null === $dueOn) {
+        if ([] !== $violations || null === $details) {
             throw ApiException::validation($violations);
         }
 
-        return new PaymentDetails($description, $amountMinor, $dueOn);
+        return $details;
+    }
+
+    /**
+     * A whole schedule sent at once (sc-1332): every row is checked before any is kept, each refusal at `payments[n].<field>`.
+     *
+     * @param SentSchedule $sent
+     *
+     * @return non-empty-list<PaymentDetails>
+     */
+    public function schedule(array $sent, Event $event, Quote $current): array
+    {
+        $violations = [];
+        $rows = $sent['payments'] ?? [];
+
+        if ([] === $rows) {
+            throw ApiException::validation([$this->violation('payments', 'validation.schedule_payments_required')]);
+        }
+
+        if (Iter\count($rows) > self::SCHEDULE_MAXIMUM) {
+            throw ApiException::validation([$this->violation('payments', 'validation.schedule_payments_too_many', ['{max}' => (string) self::SCHEDULE_MAXIMUM])]);
+        }
+
+        $schedule = [];
+
+        foreach ($rows as $index => $row) {
+            $details = $this->paymentChecked($row, $event, $current, "payments[{$index}].", $violations);
+
+            if (null !== $details) {
+                $schedule[] = $details;
+            }
+        }
+
+        if ([] !== $violations || [] === $schedule) {
+            throw ApiException::validation($violations);
+        }
+
+        return $schedule;
+    }
+
+    /** @param SentPaid $sent */
+    public function paid(array $sent, Event $event): PaidDetails
+    {
+        $violations = [];
+        $details = $this->paidChecked($sent['amount'] ?? '', $sent['currency'] ?? '', $sent['paidOn'] ?? '', $sent['reference'] ?? '', $event, $violations);
+
+        if ([] !== $violations || null === $details) {
+            throw ApiException::validation($violations);
+        }
+
+        return $details;
+    }
+
+    /**
+     * @param SentMade $sent
+     *
+     * @return array{string, PaidDetails}
+     */
+    public function made(array $sent, Event $event, Quote $first): array
+    {
+        $violations = [];
+        $description = Str\trim($sent['description'] ?? '');
+
+        if ('' === $description) {
+            $violations[] = $this->violation('description', 'validation.payment_made_description_required');
+        } elseif (VisibleText::tooLong($description, ScheduledPayment::DESCRIPTION_MAXIMUM)) {
+            $violations[] = $this->violation('description', 'validation.payment_made_description_too_long', ['{max}' => (string) ScheduledPayment::DESCRIPTION_MAXIMUM]);
+        }
+
+        $details = $this->paidChecked($sent['amount'] ?? '', $sent['currency'] ?? '', $sent['paidOn'] ?? '', $sent['reference'] ?? '', $event, $violations);
+
+        if (null !== $details && $details->paidOn < $first->getQuotedOn()) {
+            $violations[] = $this->violation('paidOn', 'validation.payment_paid_before_quote', [
+                '{vendor}' => $first->getEngagement()->getVendor()->getName(),
+                '{date}' => $this->written($first->getQuotedOn()),
+            ], self::BEFORE_QUOTE);
+        }
+
+        if ([] !== $violations || null === $details) {
+            throw ApiException::validation($violations);
+        }
+
+        return [$description, $details];
+    }
+
+    /** @param SentCancellation $sent */
+    public function reason(array $sent): ?string
+    {
+        $reason = Str\trim($sent['reason'] ?? '');
+
+        if (VisibleText::tooLong($reason, ScheduledPayment::REASON_MAXIMUM)) {
+            throw ApiException::validation([$this->violation('reason', 'validation.payment_reason_too_long', ['{max}' => (string) ScheduledPayment::REASON_MAXIMUM])]);
+        }
+
+        return '' === $reason ? null : $reason;
     }
 
     /** @return Violation */
@@ -186,6 +310,40 @@ final readonly class QuoteRules
     public function lineAgreed(string $line, string $vendor): array
     {
         return $this->violation('lineIds', 'validation.quote_line_agreed', ['{line}' => $line, '{vendor}' => $vendor], self::LINE_AGREED);
+    }
+
+    /**
+     * @param SentPayment     $sent
+     * @param list<Violation> $violations
+     */
+    private function paymentChecked(array $sent, Event $event, Quote $current, string $at, array &$violations): ?PaymentDetails
+    {
+        $before = Iter\count($violations);
+        $description = Str\trim($sent['description'] ?? '');
+
+        if ('' === $description) {
+            $violations[] = $this->violation($at . 'description', 'validation.payment_description_required');
+        } elseif (VisibleText::tooLong($description, ScheduledPayment::DESCRIPTION_MAXIMUM)) {
+            $violations[] = $this->violation($at . 'description', 'validation.payment_description_too_long', ['{max}' => (string) ScheduledPayment::DESCRIPTION_MAXIMUM]);
+        }
+
+        $amountMinor = $this->amountChecked($sent['amount'] ?? '', $sent['currency'] ?? '', $event, $violations, $at);
+        $dueOn = self::day($sent['dueOn'] ?? '');
+
+        if (null === $dueOn) {
+            $violations[] = $this->violation($at . 'dueOn', 'validation.payment_due_required');
+        } elseif ($dueOn < $current->getQuotedOn()) {
+            $violations[] = $this->violation($at . 'dueOn', 'validation.payment_before_quote', [
+                '{vendor}' => $current->getEngagement()->getVendor()->getName(),
+                '{date}' => $this->written($current->getQuotedOn()),
+            ], self::BEFORE_QUOTE);
+        }
+
+        if (Iter\count($violations) !== $before || null === $amountMinor || null === $dueOn) {
+            return null;
+        }
+
+        return new PaymentDetails($description, $amountMinor, $dueOn);
     }
 
     /**
@@ -212,6 +370,27 @@ final readonly class QuoteRules
     }
 
     /** @param list<Violation> $violations */
+    private function paidChecked(string $amount, string $currency, string $typedOn, string $reference, Event $event, array &$violations): ?PaidDetails
+    {
+        $amountMinor = $this->amountChecked($amount, $currency, $event, $violations);
+        $paidOn = self::day($typedOn);
+
+        if (null === $paidOn) {
+            $violations[] = $this->violation('paidOn', 'validation.payment_paid_on_required');
+        } elseif ($paidOn > $this->today($event)) {
+            $violations[] = $this->violation('paidOn', 'validation.payment_paid_in_future', code: self::PAID_IN_FUTURE);
+        }
+
+        $reference = Str\trim($reference);
+
+        if (VisibleText::tooLong($reference, ScheduledPayment::REFERENCE_MAXIMUM)) {
+            $violations[] = $this->violation('reference', 'validation.payment_reference_too_long', ['{max}' => (string) ScheduledPayment::REFERENCE_MAXIMUM]);
+        }
+
+        return null === $amountMinor || null === $paidOn ? null : new PaidDetails($amountMinor, $paidOn, '' === $reference ? null : $reference);
+    }
+
+    /** @param list<Violation> $violations */
     private function termsChecked(string $amount, string $currency, string $typedOn, Event $event, array &$violations): ?QuoteTerms
     {
         $amountMinor = $this->amountChecked($amount, $currency, $event, $violations);
@@ -227,20 +406,20 @@ final readonly class QuoteRules
     }
 
     /** @param list<Violation> $violations */
-    private function amountChecked(string $typed, string $sentCurrency, Event $event, array &$violations): ?int
+    private function amountChecked(string $typed, string $sentCurrency, Event $event, array &$violations, string $at = ''): ?int
     {
         $currency = $event->getCurrency();
         $amount = Str\trim($typed);
         $minor = '' === $amount ? null : Money::minorOf($amount, $currency);
 
         if (null === $minor || $minor <= 0) {
-            $violations[] = $this->violation('amount', 'validation.money_amount_invalid', ['{example}' => $this->money->example($currency)]);
+            $violations[] = $this->violation($at . 'amount', 'validation.money_amount_invalid', ['{example}' => $this->money->example($currency)]);
         }
 
         $sentCurrency = Str\uppercase(Str\trim($sentCurrency));
 
         if ($sentCurrency !== $currency) {
-            $violations[] = $this->violation('currency', 'validation.money_currency_mismatch', ['{currency}' => $currency], self::CURRENCY_MISMATCH);
+            $violations[] = $this->violation($at . 'currency', 'validation.money_currency_mismatch', ['{currency}' => $currency], self::CURRENCY_MISMATCH);
         }
 
         return null === $minor || $minor <= 0 ? null : $minor;

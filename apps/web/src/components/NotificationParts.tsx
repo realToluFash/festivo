@@ -3,19 +3,11 @@ import { useId } from 'react';
 
 import type { Channel, RowTag } from '../notificationsPage.ts';
 import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph } from './Glyph.tsx';
+import { CATEGORY_MARK } from './notificationMarks.ts';
 import { Card, CardStep, Dialog, OnCard, RowWords, Says, Tag } from './SettingsParts.tsx';
 import './AccountParts.css';
 import './NotificationParts.css';
-
-const LEADS: Record<NotificationCategory, GlyphName> = {
-  guest_replies: 'users',
-  messages: 'message',
-  event_day: 'day',
-  event_changes: 'calendar',
-  money: 'wallet',
-  account_security: 'shield',
-};
 
 /** How you hear: the bell, struck through while this browser blocks pushes, and the step to allow them. */
 export function HearingCard({
@@ -138,7 +130,7 @@ export function Kind({
         onClick={onToggle}
       >
         <span className="account-lead" aria-hidden="true">
-          <Glyph name={LEADS[category]} size={22} />
+          <Glyph name={CATEGORY_MARK[category]} size={22} />
         </span>
         <RowWords title={name} tag={<SaveTag tag={tag} words={words} />} lines={[value]} />
         <Glyph

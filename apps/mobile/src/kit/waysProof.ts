@@ -31,6 +31,29 @@ export function codeBeforeTrip(via: ReturnType<typeof proveWith>, twoFactorOn: b
   return twoFactorOn && via === 'password';
 }
 
+/** Where a trip starts over: once its proof is spent or lapsed, the next press opens Google or Apple again (sc-22601). */
+export function tripStartsOver(
+  via: ReturnType<typeof proveWith>,
+  twoFactorOn: boolean,
+): { returned: null; kept: null; signedIn: null; codeAsked: boolean } {
+  return {
+    returned: null,
+    kept: null,
+    signedIn: null,
+    codeAsked: codeBeforeTrip(via, twoFactorOn),
+  };
+}
+
+/** The press after a sign-out limit that came after a passed proof: the held proof again while it stands; once it lapsed, the proof starts over, back at the provider's button when the code was asked, else with this press making the trip (sc-22601). */
+export function pressAfterLimit(
+  held: string | null,
+  codeAsked: boolean,
+): { resend: string } | 'startOver' | 'startOverAndTrip' {
+  if (held != null) return { resend: held };
+
+  return codeAsked ? 'startOver' : 'startOverAndTrip';
+}
+
 /** A refusal of the trip itself (the wrong account, a sign-in too old, or a kept one lapsed): only then is it made again. */
 export function tripRefused(error: unknown): boolean {
   return (
@@ -108,12 +131,13 @@ export function provingRefusal(
   t: TFunction,
   providerName: string | null,
   locale: string,
-): { field: ProvingField | 'failed'; message: string } {
+): { field: ProvingField | 'failed'; message: string; until?: Date | null } {
   const refusal = proofRefusal(error, providerName == null);
 
   if (refusal.kind === 'limited')
     return {
       field: 'failed',
+      until: refusal.until,
       message:
         refusal.until == null
           ? t('passwordCard.pausedSoon')

@@ -15,6 +15,7 @@ import {
   OPEN,
   REPLY_BY,
   SEND_MS,
+  type StepFrom,
   THANK_YOU,
   type View,
   type Visit,
@@ -28,10 +29,14 @@ import {
   shows,
   showsMessages,
   startOf,
+  stepBack,
   twoColumns,
   wordsFor,
 } from './guest.ts';
 import { Thanks } from './Thanks.tsx';
+import { WalletDevices } from './Wallet.tsx';
+import { deviceOf } from './wallet.ts';
+import { WalletDevice } from './walletContext.ts';
 import {
   AddToCalendar,
   AnswerRows,
@@ -70,6 +75,8 @@ import { inDayOrder } from './guestDay.ts';
 import { KeptOut, YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
+import { LinkAnswer } from './GuestLink.tsx';
+import { carriesOn } from './guestLink.ts';
 import {
   type AskKey,
   type AskView,
@@ -98,6 +105,7 @@ export function GuestPage() {
   const replyBy = params.get('replyBy');
   const days = params.get('days');
   const save = params.get('save');
+  const wallet = params.get('wallet');
   const ask = {
     ...(isReplyByChoice(replyBy) ? { replyBy } : {}),
     ...(days != null && (DAYS_CHOICES as readonly string[]).includes(days)
@@ -111,6 +119,7 @@ export function GuestPage() {
       state={state}
       ask={ask}
       saveFails={isSaveFail(save) ? save : null}
+      wallet={wallet}
     />
   );
 }
@@ -130,10 +139,12 @@ function Visitor({
   state,
   ask,
   saveFails,
+  wallet,
 }: {
   state: string | null;
   ask: Parameters<typeof startOf>[1];
   saveFails: SaveFail | null;
+  wallet: string | null;
 }) {
   const [visit, setVisit] = useState(() => startOf(state, ask));
   const [saveFail, setSaveFail] = useState(saveFails);
@@ -141,6 +152,8 @@ function Visitor({
   const [saving, setSaving] = useState(false);
   const layout = useLayout();
   const words = useMemo(() => wordsFor(visit.lang), [visit.lang]);
+  const device = deviceOf(wallet, layout);
+  const walletOf = useMemo(() => ({ device, lang: visit.lang }), [device, visit.lang]);
   const later = useLater();
   const laterMessage = useLater();
   const { hash } = useLocation();
@@ -230,18 +243,13 @@ function Visitor({
   function answer(chosen: Answer): void {
     const { view } = visit;
 
-    if (view.kind !== 'answer' && view.kind !== 'changing') return;
-    if (chosen === 'coming' && hasStep(visit.party)) {
-      go(
-        () => ({
-          view: { kind: 'withYou', from: view.kind === 'changing' ? 'changing' : 'answer' },
-        }),
-        'withYouHead',
-      );
+    if (view.kind === 'link') {
+      linkAnswer(chosen);
       return;
     }
-    if (chosen === 'coming') {
-      kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
+    if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (carriesOn(visit, chosen)) {
+      goOn(view.kind === 'changing' ? 'changing' : 'answer');
       return;
     }
 
@@ -250,6 +258,36 @@ function Visitor({
         view.kind === 'answer' ? { ...view, busy: chosen, note: null } : { ...view, busy: chosen },
     }));
     later(SEND_MS, () => record(chosen));
+  }
+
+  function goOn(from: StepFrom): void {
+    if (hasStep(visit.party)) go(() => ({ view: { kind: 'withYou', from } }), 'withYouHead');
+    else kitchen.open(from);
+  }
+
+  function linkAnswer(chosen: Answer): void {
+    if (carriesOn(visit, chosen)) {
+      goOn('link');
+      return;
+    }
+
+    go((was) => (was.view.kind === 'link' ? { view: { ...was.view, busy: true } } : {}));
+    later(SEND_MS, () =>
+      go(
+        (was) => ({
+          ...sentAnswer({ ...was, ticked: false }, chosen),
+          view: { kind: 'recorded', same: false, downAs: true },
+        }),
+        'greeting',
+      ),
+    );
+  }
+
+  function choose(): void {
+    go(
+      (was) => ({ view: was.recorded == null ? OPEN : { kind: 'changing', busy: null } }),
+      'row-coming',
+    );
   }
 
   function askPick(key: AskKey): void {
@@ -325,10 +363,7 @@ function Visitor({
   function back(): void {
     go(
       (was) => ({
-        view:
-          was.view.kind === 'check' && was.view.from === 'changing'
-            ? { kind: 'changing', busy: null }
-            : OPEN,
+        view: stepBack(was.view.kind === 'check' ? was.view.from : 'answer'),
       }),
       'row-coming',
     );
@@ -378,6 +413,7 @@ function Visitor({
       onBack={back}
       onTick={tick}
       onChange={() => go(() => ({ view: { kind: 'changing', busy: null } }), 'newHead')}
+      onChoose={choose}
       onKeep={() => go(() => ({ view: { kind: 'recorded', same: false } }), 'change')}
       onTellThem={tellThem}
       onGoBack={() =>
@@ -409,26 +445,30 @@ function Visitor({
         <p className="visually-hidden" aria-live="polite" aria-atomic="true">
           {visit.said > 0 && <span key={visit.said}>{words.switched}</span>}
         </p>
-        <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
-          <Body
-            visit={visit}
-            words={words}
-            two={two}
-            band={band}
-            under={under}
-            retrying={retrying}
-            onRetry={retry}
-            saving={saving}
-            onSaveAgain={saveAgain}
-            yours={yours}
-            onTell={() =>
-              go(
-                (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
-                'tellHead',
-              )
-            }
-          />
-        </main>
+        <WalletDevice.Provider value={walletOf}>
+          <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
+            <Body
+              visit={visit}
+              words={words}
+              two={two}
+              band={band}
+              under={under}
+              retrying={retrying}
+              onRetry={retry}
+              saving={saving}
+              onSaveAgain={saveAgain}
+              yours={yours}
+              onTell={() =>
+                go(
+                  (was) => ({
+                    view: { kind: 'tellUs', busy: false, result: null, back: was.view },
+                  }),
+                  'tellHead',
+                )
+              }
+            />
+          </main>
+        </WalletDevice.Provider>
         <footer className="gp-footer">
           <span>{words.copyright}</span>
           <span className="gp-footer-links">
@@ -441,6 +481,7 @@ function Visitor({
         <Link className="link-button" to="/demo">
           All states in the demo
         </Link>
+        {forTheDay(visit) && <WalletDevices device={walletOf.device} />}
       </div>
     </>
   );
@@ -585,6 +626,7 @@ function Under({
   onBack,
   onTick,
   onChange,
+  onChoose,
   onKeep,
   onTellThem,
   onGoBack,
@@ -602,6 +644,7 @@ function Under({
   onBack: () => void;
   onTick: () => void;
   onChange: () => void;
+  onChoose: () => void;
   onKeep: () => void;
   onTellThem: () => void;
   onGoBack: () => void;
@@ -648,6 +691,7 @@ function Under({
         onBack={onBack}
         onTick={onTick}
         onChange={onChange}
+        onChoose={onChoose}
         onKeep={onKeep}
         onTellThem={onTellThem}
         onGoBack={onGoBack}
@@ -678,6 +722,7 @@ function Shown({
   onBack,
   onTick,
   onChange,
+  onChoose,
   onKeep,
   onTellThem,
   onGoBack,
@@ -692,6 +737,7 @@ function Shown({
   onBack: () => void;
   onTick: () => void;
   onChange: () => void;
+  onChoose: () => void;
   onKeep: () => void;
   onTellThem: () => void;
   onGoBack: () => void;
@@ -710,8 +756,23 @@ function Shown({
           )}
           {view.note === 'unsent' && <Notice kind="attention">{words.unsent}</Notice>}
           {view.note === 'notSentTap' && <Notice kind="broken">{words.notSentTap}</Notice>}
-          <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
+          <AnswerRows
+            words={words}
+            busy={view.busy}
+            goesOn={!visit.yesRecords}
+            onAnswer={onAnswer}
+          />
         </section>
+      );
+    case 'link':
+      return (
+        <LinkAnswer
+          visit={visit}
+          view={view}
+          words={words}
+          onAnswer={onAnswer}
+          onChoose={onChoose}
+        />
       );
     case 'withYou':
       return <WithYou visit={visit} words={words} actions={party} />;
@@ -778,9 +839,11 @@ function Shown({
           <div className="gp-greet">
             <Mark answer={recorded.answer} />
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {recorded.by == null
-                ? words.greeting(recorded.answer)
-                : words.answerIs(recorded.answer)}
+              {view.downAs === true
+                ? words.downAs(recorded.answer)
+                : recorded.by == null
+                  ? words.greeting(recorded.answer)
+                  : words.answerIs(recorded.answer)}
             </h2>
           </div>
           <div className="gp-indent">
@@ -823,6 +886,7 @@ function Shown({
             words={words}
             current={recorded?.answer ?? null}
             busy={view.busy}
+            goesOn={!visit.yesRecords}
             onAnswer={onAnswer}
           />
           <TextAction focus="keep" onClick={onKeep}>
@@ -866,7 +930,7 @@ function Shown({
 }
 
 /** Answers closed: by the date to answer by, at the start, by a pause, or with the event over. */
-function Closed({
+export function Closed({
   visit,
   words,
   onKitchen,
@@ -914,7 +978,7 @@ function Closed({
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
-  const saved = visit.kitchen?.saved === true;
+  const saved = !visit.started && visit.kitchen?.saved === true;
   const line =
     visit.started || !answersClosedByDate(visit)
       ? words.closed

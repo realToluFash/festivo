@@ -360,6 +360,7 @@ function OptionBlock({
   problems,
   open,
   binRefused,
+  binWords,
   onPatch,
   onOpen,
   onBin,
@@ -369,6 +370,7 @@ function OptionBlock({
   problems: ChoiceProblems['options'][number] | null;
   open: boolean;
   binRefused: boolean;
+  binWords: string | null;
   onPatch: (next: Partial<ChoiceOptionForm>) => void;
   onOpen: () => void;
   onBin: () => void;
@@ -378,7 +380,12 @@ function OptionBlock({
   const length = dishLength(form.name);
   const title = form.name.trim() === '' ? t('dishChoices.option', { n: at + 1 }) : form.name.trim();
   const allergens = form.none ? [] : form.allergens.length > 0 ? form.allergens : null;
-  const pickedLine = binRefused || problems?.picked === true ? t('dishChoices.optionPicked') : null;
+  const pickedLine =
+    binRefused && binWords != null
+      ? binWords
+      : binRefused || problems?.picked === true
+        ? t('dishChoices.optionPicked')
+        : null;
   const nameWrong = problems?.name ?? null;
 
   return (
@@ -540,6 +547,8 @@ export function ChoiceFields({
   ways,
   openKey,
   binRefused,
+  binWords = null,
+  defaultLine = null,
   optionsFull,
   intro,
   onPatch,
@@ -554,6 +563,10 @@ export function ChoiceFields({
   ways: number;
   openKey: string | null;
   binRefused: string | null;
+  /** The words for a refused bin when it is not "Guests have picked this option." (sc-1362). */
+  binWords?: string | null;
+  /** An edit that would leave the course's default unfinished, refused at the control it changes (sc-1362). */
+  defaultLine?: { at: 'pick' | 'required' | 'draft'; words: string } | null;
   optionsFull: boolean;
   intro: ReactNode;
   onPatch: (next: Partial<ChoiceForm>) => void;
@@ -617,6 +630,7 @@ export function ChoiceFields({
           problems={problems?.options[at] ?? null}
           open={openKey === one.key}
           binRefused={binRefused === one.key}
+          binWords={binWords}
           onPatch={(next) => onOption(one.key, next)}
           onOpen={() => onOpen(one.key)}
           onBin={() => onBin(one.key)}
@@ -645,7 +659,10 @@ export function ChoiceFields({
       </div>
       <fieldset
         className="lib-set ch-pick"
-        aria-describedby={described('ch-pick-hint', problems?.pick === true && 'ch-pick-error')}
+        aria-describedby={described(
+          'ch-pick-hint',
+          (problems?.pick === true || defaultLine?.at === 'pick') && 'ch-pick-error',
+        )}
       >
         <legend className="desk-label gs-label">{t('dishChoices.pickExactly')}</legend>
         <div className="ch-stepper">
@@ -679,6 +696,9 @@ export function ChoiceFields({
           {stepperHint(t, form)}
         </p>
         {problems?.pick === true && <Warn id="ch-pick-error" words={t('dishChoices.answered')} />}
+        {defaultLine?.at === 'pick' && problems?.pick !== true && (
+          <Warn id="ch-pick-error" words={defaultLine.words} />
+        )}
       </fieldset>
       <div className="desk-field">
         <label className="gs-tick lib-tick ch-required">
@@ -687,10 +707,13 @@ export function ChoiceFields({
             type="checkbox"
             className="gs-box"
             checked={form.required}
-            aria-invalid={problems?.required === true || undefined}
+            aria-invalid={
+              problems?.required === true || defaultLine?.at === 'required' || undefined
+            }
             aria-describedby={described(
               !form.required && 'ch-required-help',
-              problems?.required === true && 'ch-required-error',
+              (problems?.required === true || defaultLine?.at === 'required') &&
+                'ch-required-error',
             )}
             onChange={() => onPatch({ required: !form.required })}
           />
@@ -704,9 +727,19 @@ export function ChoiceFields({
         {problems?.required === true && (
           <Warn id="ch-required-error" words={t('dishChoices.answered')} />
         )}
+        {defaultLine?.at === 'required' && problems?.required !== true && (
+          <Warn id="ch-required-error" words={defaultLine.words} />
+        )}
       </div>
       <div role="status" className="ch-status">
-        {staysFinished != null ? (
+        {defaultLine?.at === 'draft' ? (
+          <div id="ch-stays" className="ch-stays">
+            <p className="ch-stays-head">
+              <Glyph name="alert" size={16} weight={2.2} />
+              {defaultLine.words}
+            </p>
+          </div>
+        ) : staysFinished != null ? (
           <div id="ch-stays" className="ch-stays">
             <p className="ch-stays-head">
               <Glyph name="alert" size={16} weight={2.2} />

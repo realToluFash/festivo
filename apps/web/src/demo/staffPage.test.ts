@@ -6,8 +6,8 @@ const STATIONS = stylesheet(import.meta.dirname, 'stations.css');
 const JOBS = stylesheet(import.meta.dirname, 'jobsShifts.css');
 
 describe("the Staff page's layout in the demo (sc-3908, sc-3910)", () => {
-  it('keeps the header its full height on every Staff tab, so the tabs sit 12px under the subtitle', () => {
-    expect(cssRule('.sn .gs-top', STATIONS)).toContain('flex: none;');
+  it('keeps the breadcrumb and the header their full height on every Staff tab, so neither runs under what follows (sc-99786)', () => {
+    expect(cssRule('.sn :is(.ev-crumb-row, .gs-top)', STATIONS)).toContain('flex: none;');
   });
 
   it('stacks a shift’s date over its time when narrow', () => {

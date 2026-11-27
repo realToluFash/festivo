@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { DrawnGlyph, LockTag, PageLoading } from '../../../components/DataControlParts.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import {
   Card,
@@ -50,8 +51,12 @@ export function DataAndControl() {
 function Hub({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const { layers } = useDeskLayers();
-  const exported = useOrganisationExport(organisation.id);
-  const domains = useEmailDomains(organisation.id);
+  const title = useRef<HTMLHeadingElement>(null);
+  const [both, setBoth] = useState(false);
+  const exported = useOrganisationExport(organisation.id, title, both);
+  const domains = useEmailDomains(organisation.id, title, both);
+  const bothNow = exported.load.kind === 'loaded' && domains.load.kind === 'loaded';
+  if (bothNow !== both) setBoth(bothNow);
   const failed = exported.load.kind === 'failed' || domains.load.kind === 'failed';
   const reload = () => {
     exported.reload();
@@ -61,7 +66,8 @@ function Hub({ organisation }: { organisation: Membership }) {
   return (
     <DeskPage layers={layers}>
       <div className="desk-column">
-        <TitleRow title={t('dataControl.title')} />
+        {(exported.refreshing || domains.refreshing) && <Refreshing />}
+        <TitleRow title={t('dataControl.title')} titleRef={title} />
         {!failed && (exported.load.kind === 'loading' || domains.load.kind === 'loading') && (
           <PageLoading words={t('dataControl.loading')} />
         )}
@@ -101,19 +107,15 @@ function Loaded({
   const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
   const row = exportRow(t, page, organisation.name);
-  const domainsLine = domainsRow(t, domains);
+  const domainsLine = domainsRow(t, domains, organisation.name);
   const exported = page.export;
   const ask = hubCard(t, page, domains, organisation.name, currentLocale());
 
-  async function download(exportId: string, askedAt: string): Promise<void> {
+  async function download(exportId: string): Promise<void> {
     setBusy(true);
 
     try {
-      saveArchive(
-        await api.downloadOrganisationExport(organisation.id, exportId),
-        organisation.name,
-        askedAt,
-      );
+      saveArchive(await api.downloadOrganisationExport(organisation.id, exportId));
     } catch {
       // Used or ended since the page loaded: asking again shows which.
     } finally {
@@ -134,7 +136,7 @@ function Loaded({
           <CardStep
             label={t('exportAllData.download')}
             busy={busy}
-            onClick={() => void download(exported.id, exported.askedAt)}
+            onClick={() => void download(exported.id)}
           />
         )}
         {ask.does === 'prove' && (

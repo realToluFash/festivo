@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import type { Looking } from '../../components/settingsShell.ts';
 import { YOU } from './sample.ts';
 
-const store = { name: null as string | null, listeners: new Set<() => void>() };
+const store = { name: null as string | null, starts: 0, listeners: new Set<() => void>() };
 
 function changed(): void {
   store.listeners.forEach((listener) => listener());
@@ -28,6 +28,17 @@ export function forgetName(): void {
   changed();
 }
 
+/** An incoming deep link: the name and Your account's page both start again from the sample. */
+export function startAgain(): void {
+  store.name = null;
+  store.starts += 1;
+  changed();
+}
+
+export function starts(): number {
+  return store.starts;
+}
+
 function hear(listener: () => void): () => void {
   store.listeners.add(listener);
 
@@ -38,6 +49,11 @@ function hear(listener: () => void): () => void {
 
 export function useSavedName(): string | null {
   return useSyncExternalStore(hear, savedName, savedName);
+}
+
+/** Counts the deep links of the visit, so a page can key on it and start again. */
+export function useStarts(): number {
+  return useSyncExternalStore(hear, starts, starts);
 }
 
 /** You, under the name you saved; anybody else the demo looks as keeps their sample. */

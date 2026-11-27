@@ -160,6 +160,8 @@ export interface Guest {
   needs: Needs;
   /** sc-3775: the one group they are in, by id; their companions follow them. Absent is No group. */
   group?: string;
+  /** sc-1291: the answer link the reply was confirmed from; absent is the page itself, which shows no source. */
+  via?: 'emailLink';
 }
 
 /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
@@ -812,7 +814,9 @@ export function replyTail(one: Guest, replyBy: string | null): string {
   if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
-  return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+  const on = GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+
+  return one.via == null ? on : GW.withWord(on, GW[one.via]);
 }
 
 function askTail(ask: AskAgain): string {
@@ -987,19 +991,19 @@ export function viewOf(
   replyBy: string | null,
   contacts = true,
   dietaryOnly = false,
-  groupFilter: GroupFilter | null = null,
+  groupFilters: readonly GroupFilter[] = [],
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
   const needed = dietaryOnly && contacts;
 
-  if (searched || needed || groupFilter != null || (choice !== 'all' && choice !== 'invited')) {
+  if (searched || needed || groupFilters.length > 0 || (choice !== 'all' && choice !== 'invited')) {
     const found = people.filter(
       (one) =>
         inChoice(one.reply, choice) &&
         matches(one, q, contacts) &&
         (!needed || dietary(needsOfPerson(one))) &&
-        inGroupFilter(one.guest, groupFilter),
+        inGroupFilter(one.guest, groupFilters),
     );
 
     return {
@@ -1174,12 +1178,18 @@ export function namedOf(one: Guest): number {
   return one.companions.filter((companion) => (companion.name ?? '').trim() !== '').length;
 }
 
-export type PlacesStep = { companions: Values['companions'] } | { refused: number };
+export type PlacesStep =
+  { companions: Values['companions'] } | { refused: number; arrived: boolean };
 
-/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. */
-export function placesTo(companions: Values['companions'], places: number): PlacesStep {
+/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. An arrived place is held like a named one (sc-1454). */
+export function placesTo(
+  companions: Values['companions'],
+  places: number,
+  arrived: (id: string | null) => boolean = () => false,
+): PlacesStep {
   const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
-  const named = companions.filter((one) => one.name.trim() !== '').length;
+  const held = (one: Values['companions'][number]) => one.name.trim() !== '' || arrived(one.id);
+  const named = companions.filter(held).length;
 
   if (wanted >= companions.length)
     return {
@@ -1188,12 +1198,12 @@ export function placesTo(companions: Values['companions'], places: number): Plac
         ...Array.from({ length: wanted - companions.length }, () => ({ id: null, name: '' })),
       ],
     };
-  if (wanted < named) return { refused: named };
+  if (wanted < named) return { refused: named, arrived: companions.some((one) => arrived(one.id)) };
   let drop = companions.length - wanted;
   const kept = [...companions]
     .reverse()
     .filter((one) => {
-      if (drop > 0 && one.name.trim() === '') {
+      if (drop > 0 && !held(one)) {
         drop -= 1;
         return false;
       }
@@ -1639,6 +1649,8 @@ export interface GuestsStart {
   since: string | null;
   /** sc-4331: when the event's Guest replies item was last marked read, as the state opens: null is never, and by default it is the state's clock, so nothing has changed since. */
   looked?: string | null;
+  /** sc-4331: choosing Changed since you looked fails until Try again; `failed` opens with its line already showing. */
+  changeFails: 'onChoose' | 'failed' | null;
   /** sc-3777's Dietary notes chip. */
   dietary: boolean;
   menu: boolean;
@@ -1651,9 +1663,9 @@ export interface GuestsStart {
   askFailed: boolean;
   markEnds: 'saved' | 'fails' | 'refused';
   paused: boolean;
-  /** sc-3775: the event's groups, and the chip pressed. */
+  /** sc-3775: the event's groups; sc-90684: the chips pressed, any number. */
   groups: GuestGroup[];
-  groupFilter: GroupFilter | null;
+  groupFilters: readonly GroupFilter[];
   /** sc-3774: Remove's question open, and what the next Remove meets. */
   removing: Removing | null;
   /** sc-3774: a guest just removed, Undo open. */
@@ -1687,6 +1699,19 @@ function everyoneReplied(list: readonly Guest[]): Guest[] {
           })),
         },
   );
+}
+
+/** sc-1291: a reply confirmed from an email answer link; the rest, the text's link among them, from the page itself. */
+function fromLinks(list: readonly Guest[]): Guest[] {
+  const via: Partial<Record<string, 'emailLink'>> = {
+    sophie: 'emailLink',
+  };
+
+  return list.map((one) => {
+    const from = via[one.id];
+
+    return from == null ? one : { ...one, via: from };
+  });
 }
 
 /** No companion held behind a guest who owes a reply: the card's line loses its bracket. */
@@ -1733,9 +1758,15 @@ export const GUESTS_STATES = [
   { key: 'changed', name: 'Changed since you looked, from the bell' },
   { key: 'changedMenu', name: 'Changed since you looked, the menu open on it' },
   { key: 'changedNone', name: 'Changed since you looked: nothing since' },
+  { key: 'changedFails', name: 'Changed since you looked: choosing it fails' },
+  { key: 'changedFailed', name: 'Changed since you looked didn’t load: Try again' },
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
+  {
+    key: 'replyFromLink',
+    name: 'Where a reply came from: the email link, or the page itself (sc-1291)',
+  },
   { key: 'closesToday', name: 'Replies close today' },
   { key: 'closesLater', name: 'Replies close on a later date' },
   { key: 'repliesClosedLive', name: 'Replies have closed, the event still to come' },
@@ -1845,6 +1876,10 @@ export const GUESTS_STATES = [
   { key: 'placesSeated', name: 'Fewer places dropping an unnamed place with a seat: asked' },
   { key: 'placesSeatedTwo', name: 'Fewer places dropping two seated places: asked about each' },
   { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
+  {
+    key: 'placesRefusedArrived',
+    name: 'Fewer places when the place left has arrived: refused, arrived stay',
+  },
   { key: 'placesMax', name: 'Add guest: ten places, the most' },
   { key: 'namedByGuest', name: 'Details: Named by the guest' },
   { key: 'needsDetails', name: 'Details: Dr Emeka Nwosu’s allergies, diet and note' },
@@ -1929,6 +1964,10 @@ export const GUESTS_STATES = [
   { key: 'groups', name: 'Each guest’s group on their row, a chip per group and No group' },
   { key: 'groupsChip', name: 'The Bride’s side chip pressed' },
   { key: 'groupsNoGroup', name: 'The No group chip pressed' },
+  {
+    key: 'groupsTwoChips',
+    name: 'Bride’s side and Work pressed, with Dietary notes: either group, with a need',
+  },
   { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
   { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
   { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
@@ -1974,6 +2013,10 @@ export const GUESTS_STATES = [
   {
     key: 'removeCompanionArrived',
     name: 'Rui Duarte has arrived: Inês Duarte has no Remove',
+  },
+  {
+    key: 'editCompanionArrived',
+    name: 'Edit guest: Rui Duarte has arrived, no Remove beside him, and why',
   },
   {
     key: 'removeCompanionArrives',
@@ -2027,6 +2070,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'all',
     q: '',
     since: null,
+    changeFails: null,
     dietary: false,
     menu: false,
     pane: { kind: 'none' },
@@ -2038,7 +2082,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     markEnds: 'saved',
     paused: false,
     groups: [],
-    groupFilter: null,
+    groupFilters: [],
     removing: null,
     undo: null,
   };
@@ -2154,6 +2198,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, choice: 'changed', menu: true, looked: start.clock.toISOString() };
     case 'changedRow':
       return { ...start, menu: true, looked: null };
+    case 'changedFails':
+      return { ...start, menu: true, looked: null, changeFails: 'onChoose' };
+    case 'changedFailed':
+      return { ...start, looked: null, changeFails: 'failed' };
     case 'changedNone':
       return {
         ...start,
@@ -2167,6 +2215,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, list: everyoneReplied(start.list) };
     case 'noCompanionsWaiting':
       return { ...start, list: noCompanionWaiting(start.list) };
+    case 'replyFromLink':
+      return column(guestPane('sophie'), { choice: 'all', list: fromLinks(start.list) });
     case 'closesToday':
       return { ...start, clock: CLOCK_CLOSES };
     case 'closesLater':
@@ -2450,6 +2500,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...edit('daniel-asamoah', { at: 'places' }), choice: 'coming' };
     case 'placesRefused':
       return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
+    case 'placesRefusedArrived':
+      return {
+        ...edit('musa', { placesRefused: true, at: 'places' }),
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'musa', '18:05'),
+      };
     case 'placesMax':
       return add({
         values: {
@@ -2582,9 +2638,11 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groups':
       return grouped;
     case 'groupsChip':
-      return { ...grouped, groupFilter: 'g-bride' };
+      return { ...grouped, groupFilters: ['g-bride'] };
     case 'groupsNoGroup':
-      return { ...grouped, groupFilter: NO_GROUP };
+      return { ...grouped, groupFilters: [NO_GROUP] };
+    case 'groupsTwoChips':
+      return { ...grouped, dietary: true, groupFilters: ['g-bride', 'g-work'] };
     case 'groupsGuest':
       return { ...grouped, pane: guestPane('emeka') };
     case 'groupsGuestNone':
@@ -2594,7 +2652,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groupsLong':
       return { ...grouped, groups: longNamedGroups() };
     case 'groupsLongChip':
-      return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
+      return { ...grouped, groups: longNamedGroups(), groupFilters: ['g-school'] };
     case 'groupsLongGuest':
       return { ...grouped, list: withLongNamedGuest(grouped.list), groups: longNamedGroups() };
     case 'groupField':
@@ -2705,6 +2763,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         card: 'day1',
         list: companionArrivedIn(start.list, 'ines', '18:05'),
       });
+    case 'editCompanionArrived':
+      return {
+        ...edit('ines'),
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+      };
     case 'removeCompanionArrives':
       return column(guestPane('ines'), {
         choice: 'coming',
@@ -2788,6 +2852,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'filterNone',
     'everyoneReplied',
     'noCompanionsWaiting',
+    'replyFromLink',
     'closesToday',
     'closesLater',
     'repliesClosedLive',
@@ -2874,6 +2939,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'placesSeated',
     'placesSeatedTwo',
     'placesRefused',
+    'placesRefusedArrived',
     'placesMax',
     'namedByGuest',
   ]),
@@ -2929,6 +2995,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'groups',
     'groupsChip',
     'groupsNoGroup',
+    'groupsTwoChips',
     'groupsGuest',
     'groupsGuestNone',
     'groupsViewerList',
@@ -2976,6 +3043,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'removeArrives',
     'removeRefusedArrived',
     'removeCompanionArrived',
+    'editCompanionArrived',
     'removeCompanionArrives',
     'removeRefusedCompanionArrived',
     'removeGoes',

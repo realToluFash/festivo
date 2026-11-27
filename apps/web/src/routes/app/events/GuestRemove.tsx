@@ -7,21 +7,26 @@ import { Ask, RowWords } from '../../../components/SettingsParts.tsx';
 import { ReplyMark } from './GuestColumn.tsx';
 import './guestRemove.css';
 
-export type Removing = { kind: 'asking'; busy: boolean; failed: boolean } | { kind: 'gone' };
+export type Removing =
+  | { kind: 'asking'; busy: boolean; failed: boolean }
+  | { kind: 'gone' }
+  | { kind: 'stays'; why: 'arrived' | 'companionArrived' };
 
-/** "Remove {full name}?" naming what goes with them, Keep on the list first (sc-3774); 404 takes its place with Back to guests. */
+/** "Remove {full name}?" naming what goes with them, Keep on the list first (sc-3774); 404 takes its place with Back to guests, and 409 `guest_arrived` with Back to their details (sc-1454). */
 export function RemoveAsk({
   guest,
   removing,
   onKeep,
   onRemove,
   onGone,
+  onBack,
 }: {
   guest: GuestDetails;
   removing: Removing;
   onKeep: () => void;
   onRemove: () => void;
   onGone: () => void;
+  onBack: () => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -36,6 +41,22 @@ export function RemoveAsk({
         line={t('guestList.alreadyRemoved', { name: guest.fullName })}
         keep={t('guestList.backToGuests')}
         onKeep={onGone}
+      >
+        <span className="gr-ask" hidden />
+      </Ask>
+    );
+
+  if (removing.kind === 'stays')
+    return (
+      <Ask
+        key="stays"
+        title={title}
+        line={t(
+          removing.why === 'arrived' ? 'guestList.justArrived' : 'guestList.companionJustArrived',
+          { name: guest.fullName },
+        )}
+        keep={t('guestList.backToDetails')}
+        onKeep={onBack}
       >
         <span className="gr-ask" hidden />
       </Ask>

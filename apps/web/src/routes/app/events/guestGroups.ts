@@ -4,8 +4,15 @@ import {
   GUEST_GROUP_NAME_MAXIMUM,
   type GroupChoice,
   type GuestGroup,
+  type GuestList,
 } from '@soirely/api-client';
-import { type GroupProblem, groupProblem, sameGroup } from '@soirely/domain';
+import {
+  type GroupProblem,
+  NO_GROUP,
+  groupProblem,
+  sameGroup,
+  sortedGroups,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 /** Escape in an open Group list closes the list, not the form around it. */
@@ -53,4 +60,14 @@ export function choiceLine(
   return problem == null || problem === 'taken'
     ? undefined
     : problemLine(t, groups, choice.name, problem, 'form');
+}
+
+/** One chip per group, A to Z, then No group while anyone has none (sc-3775); none while the event has no group. */
+export function groupChipsOf(list: GuestList, noGroup: string): { key: string; word: string }[] {
+  if (list.groups.length === 0) return [];
+
+  return [
+    ...sortedGroups(list.groups).map((one) => ({ key: one.id, word: one.name })),
+    ...(list.guests.some((one) => one.group == null) ? [{ key: NO_GROUP, word: noGroup }] : []),
+  ];
 }

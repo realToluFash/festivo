@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -27,8 +28,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { remeasureAfter } from './anchorRemeasure.ts';
+import { windowArrival, WindowArriving } from './openedFocus.ts';
+import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
+import { reachableOffset } from './reachableOffset.ts';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import {
   SilentWindowName,
@@ -80,6 +84,21 @@ function useClearOfGoing(): boolean {
   return clear;
 }
 
+/** True from when `up` turns true until SETTLED_MS later, and false while it is false. */
+function useArriving(up: boolean): boolean {
+  const [arrived, setArrived] = useState(false);
+  if (!up && arrived) setArrived(false);
+
+  useEffect(() => {
+    if (!up) return;
+    const settled = setTimeout(() => setArrived(true), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [up]);
+
+  return up && !arrived;
+}
+
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
@@ -103,6 +122,8 @@ function Window({
   const here = useIsFocused();
   const clear = useClearOfGoing();
   const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
+  const slidesIn = slides && Platform.OS === 'android';
+  const arriving = useArriving(shown && slidesIn);
   const showing = useRef(false);
 
   useLayoutEffect(() => {
@@ -131,7 +152,9 @@ function Window({
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
-      {children}
+      <WindowArriving.Provider value={windowArrival(slidesIn, arriving)}>
+        {children}
+      </WindowArriving.Provider>
     </Modal>
   );
 }
@@ -176,6 +199,7 @@ export function FocusedScreen({
   over,
   toast,
   scrollRef,
+  toTop = 0,
   fills = false,
   gap = tokens.spaceLg,
   children,
@@ -198,6 +222,8 @@ export function FocusedScreen({
   over?: Layer | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
+  toTop?: number;
   /** The body brings its own scroller, sized `flexGrow: 1, flexShrink: 1`: a tablet sheet takes its height from it, so `flex: 1` draws it at none. */
   fills?: boolean;
   gap?: number;
@@ -217,7 +243,17 @@ export function FocusedScreen({
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
   const scroll = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
-  useFocusedFieldInSight(scroll, offset);
+  const holdField = useFocusedFieldInSight(scroll, offset);
+  const reduced = useReducedMotion();
+  const wentToTop = useRef(toTop);
+
+  useEffect(() => {
+    if (toTop === wentToTop.current) return;
+
+    wentToTop.current = toTop;
+    holdField();
+    scroll.current?.scrollTo({ y: 0, animated: !reduced });
+  }, [toTop, reduced, holdField]);
 
   return (
     <Window
@@ -388,26 +424,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   );
 }
 
-/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+/** An open menu's anchor, measured again once a turned window settles or the offline band moves the frame's body; a button the turn took away closes it. */
 export function useAnchorFollowsTurn(
   trigger: RefObject<ViewInstance | null>,
   open: boolean,
   then: (at: Anchor | null) => void,
 ) {
   const { width, height } = useWindowDimensions();
-  const size = useRef({ width, height });
+  const bodyTop = useContext(BodyTop);
+  const was = useRef({ width, height, bodyTop });
 
   useEffect(() => {
-    const turned = size.current.width !== width || size.current.height !== height;
-    size.current = { width, height };
-    if (!open || !turned) return;
+    const now = { width, height, bodyTop };
+    const after = remeasureAfter(was.current, now, open, SETTLED_MS);
+    was.current = now;
+    if (after == null) return;
     const wait = setTimeout(() => {
       if (trigger.current == null) then(null);
       else anchorUnder(trigger, then);
-    }, SETTLED_MS);
+    }, after);
 
     return () => clearTimeout(wait);
-  }, [width, height, open, trigger, then]);
+  }, [width, height, bodyTop, open, trigger, then]);
 }
 
 interface MenuProps {
@@ -421,7 +459,10 @@ interface MenuProps {
   floor?: number | null;
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
+  /** Where its items are to be scrolled, held as they lay out until it is reached or a drag takes over; a new object asks again. */
+  bringTo?: { y: number } | null;
+  /** Where its items are scrolled to, as they scroll. */
+  onOffset?: (offset: number) => void;
   /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
   hidden?: boolean;
   /** Close the menu alone out of TalkBack's reach, so its own first focus can only find the menu. */
@@ -490,7 +531,8 @@ export function MenuLayer({
   below = tokens.spaceXxs,
   floor = null,
   head,
-  scrollRef,
+  bringTo = null,
+  onOffset,
   hidden = false,
   outsideHidden = false,
   children,
@@ -521,6 +563,26 @@ export function MenuLayer({
   const hold = nextHeld(held, button, side, seen.content > 0);
   if (hold !== held) setHeld(hold);
   const reach = hidden ? 'no-hide-descendants' : 'auto';
+  const scroll = useRef<ScrollViewInstance>(null);
+  const asked = useRef(bringTo);
+  const wanted = useRef(bringTo?.y ?? null);
+  const measured = useRef(false);
+  const bring = (content: number, panel: number) => {
+    if (wanted.current == null) return;
+    const y = reachableOffset(wanted.current, content, panel);
+    scroll.current?.scrollTo({ y, animated: false });
+    if (measured.current && y === wanted.current) wanted.current = null;
+  };
+
+  // The sizes seen before the ask are the items it replaced, and they can reach the offset the new items will not yet, so it is only reached once the new items are measured (sc-75211, #77053).
+  useLayoutEffect(() => {
+    if (asked.current !== bringTo) {
+      asked.current = bringTo;
+      wanted.current = bringTo?.y ?? null;
+      measured.current = false;
+    }
+    bring(seen.content, seen.panel);
+  }, [bringTo, seen.content, seen.panel]);
 
   return (
     <>
@@ -558,7 +620,7 @@ export function MenuLayer({
               {head}
             </View>
             <ScrollView
-              ref={scrollRef}
+              ref={scroll}
               bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.menuBody}
@@ -567,12 +629,18 @@ export function MenuLayer({
                 const panel = event.nativeEvent.layout.height;
                 setSeen((now) => (now.panel === panel ? now : { ...now, panel }));
               }}
-              onContentSizeChange={(_width, content) =>
-                setSeen((now) => (now.content === content ? now : { ...now, content }))
-              }
+              onContentSizeChange={(_width, content) => {
+                measured.current = true;
+                bring(content, seen.panel);
+                setSeen((now) => (now.content === content ? now : { ...now, content }));
+              }}
               onScroll={(event) => {
                 const offset = event.nativeEvent.contentOffset.y;
                 setSeen((now) => ({ ...now, offset }));
+                onOffset?.(offset);
+              }}
+              onScrollBeginDrag={() => {
+                wanted.current = null;
               }}
             >
               {children}

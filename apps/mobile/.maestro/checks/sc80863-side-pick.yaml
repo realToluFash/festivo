@@ -1,0 +1,35 @@
+# sc-80863, iPad on its side: after B's link moved the account, a pick of A in the sidebar's pill stays in A. Pass EVENT, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'frame.organisation'
+- waitForAnimationToEnd
+- takeScreenshot: switcher-open
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 8000
+    optional: true
+- takeScreenshot: picked-a

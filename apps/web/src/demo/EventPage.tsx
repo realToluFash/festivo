@@ -59,6 +59,7 @@ import {
 import { ReplyByPart } from './EventReplyBy.tsx';
 import { withNote } from './arrivalNote.ts';
 import './arrivalNote.css';
+import './overviewReflow.css';
 import {
   REPLY_BY_WORDS,
   datesSaveSays,
@@ -69,6 +70,9 @@ import {
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
 import { EventCard, EventsShell, NotBuilt, Thumb } from './EventParts.tsx';
+import { DINER_ID, comingUpShows, seedRunOfShow } from './liveOneDay.ts';
+import { dateLocale } from '../i18n/index.ts';
+import { ComingUpPart } from './LiveOneDayParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
 import {
@@ -144,7 +148,18 @@ import {
 import { JustForYou } from '../components/JustForYou.tsx';
 import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-import { useSwitcherStart } from './switcher.ts';
+import { linkStart, switchTo, useSwitcherStart, useWhere } from './switcher.ts';
+import { Switched } from './OrgSwitcher.tsx';
+import { EventLoading, EventUnavailable } from './EventLinkStates.tsx';
+import {
+  type LinkState,
+  type Load,
+  LOAD_MS,
+  answerOf,
+  eventOrgOf,
+  linkStateOf,
+  moveOf,
+} from './eventLink.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 import { MakeLiveAsk } from './EventMakeLive.tsx';
 import { FromEnquiryRow } from './EventFromEnquiry.tsx';
@@ -254,6 +269,9 @@ export function EventPage({
   useSwitcherStart();
   const noOrg = noOrgStateOf(raw);
   const outside = outsidePageOf(raw);
+  const link = dates || messages ? null : linkStateOf(params.get('link'));
+
+  if (link != null && id != null) return <EventLink key={`${id}|${link}`} id={id} state={link} />;
 
   if (outside != null && id != null && isOutsideId(id))
     return (
@@ -281,6 +299,53 @@ export function EventPage({
   );
 }
 
+/** /demo/events/:id?link= for an event's link opened while working in Ire Events: the account moves only once the event has loaded (sc-80863). */
+function EventLink({ id, state }: { id: string; state: LinkState }) {
+  const { pathname } = useLocation();
+  useState(linkStart);
+  const where = useWhere();
+  const [attempt, setAttempt] = useState(0);
+  const [load, setLoad] = useState<Load>('loading');
+  const to = moveOf(load, eventOrgOf(state), where.current);
+
+  useEffect(() => {
+    if (load !== 'loading') return undefined;
+    const later = window.setTimeout(() => setLoad(answerOf(state, attempt)), LOAD_MS);
+
+    return () => window.clearTimeout(later);
+  }, [load, state, attempt]);
+
+  useEffect(() => {
+    const place = where.places.find((one) => one.id === to);
+    if (place != null) switchTo(place, pathname);
+  }, [to, where.places, pathname]);
+
+  if (load === 'loading') return <EventLoading id={id} />;
+  if (load === 'unavailable') return <EventUnavailable id={id} />;
+  if (load === 'failed')
+    return (
+      <EventNotLoaded
+        id={id}
+        onRetry={() => {
+          setAttempt((count) => count + 1);
+          setLoad('loading');
+        }}
+      />
+    );
+
+  return (
+    <EventAt
+      id={id}
+      raw={null}
+      keptStart={tabStartOf(null, null)}
+      area="overview"
+      dates={false}
+      messages={false}
+      linked
+    />
+  );
+}
+
 function EventAt({
   id,
   raw,
@@ -288,6 +353,7 @@ function EventAt({
   area,
   dates,
   messages,
+  linked = false,
 }: {
   id: string | undefined;
   raw: string | null;
@@ -295,12 +361,15 @@ function EventAt({
   area: string;
   dates: boolean;
   messages: boolean;
+  /** Opened from its link (sc-80863): a move is said under the crumb. */
+  linked?: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [arrival] = useState<Arrival>(() => (location.state as Arrival | null) ?? {});
   const [first] = useState(() => {
     if (raw != null) resetSample();
+    if (raw != null) seedRunOfShow(raw);
     if (raw != null && messages) resetInbox();
     seedFromEvent(raw);
 
@@ -390,6 +459,7 @@ function EventAt({
       clock={seed == null ? null : clockOfPage(seed.page)}
       said={seed?.said ?? null}
       tab={kept}
+      linked={linked}
     />
   );
 }
@@ -424,6 +494,7 @@ function EventView({
   clock = null,
   said = null,
   tab,
+  linked = false,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
@@ -435,6 +506,7 @@ function EventView({
   clock?: Date | null;
   said?: string | null;
   tab: Kept;
+  linked?: boolean;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -533,12 +605,17 @@ function EventView({
       )}
     >
       {(tell, show) => (
-        <div className="desk-page ev-page">
+        <div
+          className={
+            !dates && area === 'overview' ? 'desk-page ev-page ev-overview' : 'desk-page ev-page'
+          }
+        >
           <div className="ev-wide">
             <KeptBox kept={tab} />
             <Crumb to="/demo/events" back={W.back} name={event.name}>
               <DemoBell tell={tell} />
             </Crumb>
+            {linked && !dates && area === 'overview' && <Switched />}
             {dates ? (
               <AllDates event={event} now={now} />
             ) : area === 'overview' ? (
@@ -548,6 +625,7 @@ function EventView({
                   now={now}
                   level={1}
                   milestone={cardMilestone(event, now)}
+                  dates={event.id === DINER_ID ? timelineOf(event, now) : null}
                   reads={reads}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') setMaking(ASK);
@@ -642,13 +720,30 @@ function EventView({
                         tell(replyBySays(next, now, event.timeZone).toast);
                       }}
                       needs={
-                        <EventNeedsYou
-                          timeline={timelineOf(event, now)}
-                          permissions={readerOf(needsStateOf(state))}
-                          state={needsStateOf(state)}
-                          now={now}
-                          timeZone={event.timeZone}
-                        />
+                        <>
+                          <EventNeedsYou
+                            timeline={timelineOf(event, now)}
+                            permissions={readerOf(needsStateOf(state))}
+                            state={needsStateOf(state)}
+                            now={now}
+                            timeZone={event.timeZone}
+                          />
+                          {event.id === DINER_ID && (
+                            <ComingUpPart
+                              eventId={event.id}
+                              shows={comingUpShows(
+                                event,
+                                eventPhase(event, now),
+                                timelineOf(event, now),
+                                now,
+                                event.status === 'ended',
+                                dateLocale(),
+                              )}
+                              timeZone={event.timeZone}
+                              now={now}
+                            />
+                          )}
+                        </>
                       }
                     />
                   </div>

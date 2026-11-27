@@ -28,6 +28,14 @@ describe('regions', () => {
     expect(countryChoices('en').find((choice) => choice.code === 'DE')?.name).toBe('Germany');
   });
 
+  it('sorts the countries as the language sorts, one list each time it is asked', () => {
+    expect(countryChoices('fr')).toBe(countryChoices('fr'));
+    const names = countryChoices('fr').map((choice) => choice.name);
+
+    expect(names).toEqual([...names].sort(new Intl.Collator('fr').compare));
+    expect(names.indexOf('Égypte')).toBeLessThan(names.indexOf('Espagne'));
+  });
+
   it('labels a timezone by its city, then the identifier that is stored', () => {
     expect(timezoneLabel('Africa/Lagos')).toBe('Lagos · Africa/Lagos');
     expect(timezoneLabel('America/Argentina/Buenos_Aires')).toBe(

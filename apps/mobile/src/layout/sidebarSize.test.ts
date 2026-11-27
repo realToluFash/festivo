@@ -6,11 +6,13 @@ import {
   type Widths,
   atLargest,
   glyphSide,
+  listLeast,
   rowPad,
   sideStart,
   sideTextSize,
-  wrapOf,
+  sidebarRow,
 } from './sidebarSize.ts';
+import { wrapOf } from './textSize.ts';
 
 // React Native's fontScale on iOS at the fifth through the tenth and the twelfth steps of Larger Text.
 const FIFTH = 1.118;
@@ -233,6 +235,30 @@ describe('the sidebar at the largest text sizes', () => {
     expect(sideTextSize(ROOMS.place, TWELFTH, oneWord(5000))).toBe(14.5);
   });
 
+  it("gives the invitation line the name's room less its ring and the gap after it", () => {
+    expect(ROOMS.waiting.inside).toBe(ROOMS.org.inside - 11 - 6);
+  });
+
+  it('draws the invitation line as on main at the default size and wherever it fits whole', () => {
+    expect(sideTextSize(ROOMS.waiting, 1, oneWord(500), 'line')).toBe(12.5);
+    expect(sideTextSize(ROOMS.waiting, NINTH, oneWord(0.9 * ROOMS.waiting.inside), 'line')).toBe(
+      12.5 * NINTH,
+    );
+  });
+
+  it.each([EIGHTH, NINTH, TENTH, TWELFTH])(
+    'steps the invitation line down alone at fontScale %s until it reads whole on one line',
+    (scale) => {
+      const start = 12.5 * scale;
+      const line = (83.5 / 12.5) * start;
+      const size = sideTextSize(ROOMS.waiting, scale, oneWord(line), 'line');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(12.5);
+      expect((line / start) * size).toBeLessThanOrEqual(ROOMS.waiting.inside);
+    },
+  );
+
   it('fits a one-line name whole, not only its widest word', () => {
     const scale = TWELFTH;
     const widths = {
@@ -287,5 +313,32 @@ describe('the sidebar at the largest text sizes', () => {
     expect(sideStart(ROOMS.place, 3.571, 43)).toBe(43);
     expect(sideStart(ROOMS.place, 3.571, 10)).toBe(14.5);
     expect(sideTextSize(ROOMS.place, 3.571, oneWord(10), 'label', 43)).toBe(43);
+  });
+});
+
+describe('listLeast', () => {
+  const LARGEST = 3.12;
+  const size = 12 * LARGEST;
+  const row = sidebarRow(LARGEST);
+  const twoLines = 103.5;
+
+  it('draws a row at the largest text with its padding', () => {
+    expect(row).toBeCloseTo(69.29, 2);
+  });
+
+  it.each([
+    [1, 172.79],
+    [2, 242.08],
+    [3, 311.37],
+  ])('counts a two-line heading as drawn over %i events', (rows, least) => {
+    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(least, 2);
+  });
+
+  it.each([4, 20])('stops at four rows with %i events', (rows) => {
+    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(380.66, 2);
+  });
+
+  it('counts the heading as one line before it has been drawn', () => {
+    expect(listLeast({ heading: null, size, rows: 2, row })).toBeCloseTo(196.26, 2);
   });
 });

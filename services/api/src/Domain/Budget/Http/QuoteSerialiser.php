@@ -8,6 +8,7 @@ use App\Entity\BudgetLine;
 use App\Entity\Event;
 use App\Entity\Quote;
 use App\Entity\ScheduledPayment;
+use App\Entity\User;
 use App\Entity\Vendor;
 use App\Entity\VendorEngagement;
 use App\Enum\PlanFeature;
@@ -30,10 +31,14 @@ use Psr\Clock\ClockInterface;
  *
  * @phpstan-type Chosen array{id: string, name: string, category: string, contactName: ?string, archived: bool}
  * @phpstan-type Version array{id: string, covers: string, amount: string, quotedOn: string, reference: ?string, supersededAt: ?string}
- * @phpstan-type Payment array{id: string, description: string, amount: string, dueOn: string, overdue: bool}
- * @phpstan-type Engaged array{id: string, vendor: Chosen, quote: Version, earlier: list<Version>, lines: list<array{id: string, label: string}>, payments: list<Payment>, scheduled: string, difference: string}
+ * @phpstan-type Person array{id: string, name: string}
+ * @phpstan-type Paid array{amount: string, paidOn: string, reference: ?string, at: string, by: ?Person, difference: string}
+ * @phpstan-type Cancelled array{at: string, by: ?Person, reason: ?string}
+ * @phpstan-type Payment array{id: string, description: string, amount: string, dueOn: string, overdue: bool, addedAsPaid: bool, paid: ?Paid, cancelled: ?Cancelled}
+ * @phpstan-type Engaged array{id: string, vendor: Chosen, quote: Version, earlier: list<Version>, lines: list<array{id: string, label: string}>, payments: list<Payment>, scheduled: string, difference: string, paid: string, outstanding: string, cancelled: string}
  * @phpstan-type Due array{id: string, quoteId: string, vendor: string, description: string, amount: string, dueOn: string, overdue: bool}
- * @phpstan-type Quotes array{currency: string, timeZone: string, entitled: bool, quotes: list<Engaged>, due: list<Due>}
+ * @phpstan-type Totals array{paid: string, owed: string, overdue: string, overdueCount: int}
+ * @phpstan-type Quotes array{currency: string, timeZone: string, entitled: bool, quotes: list<Engaged>, due: list<Due>, totals: Totals}
  */
 final readonly class QuoteSerialiser
 {
@@ -60,6 +65,7 @@ final readonly class QuoteSerialiser
         );
         $quotes = [];
         $due = [];
+        $totals = ['paid' => 0, 'owed' => 0, 'overdue' => 0, 'overdueCount' => 0];
 
         foreach ($this->engagementRepository->findOnEvent($event) as $engagement) {
             $id = $engagement->getId()->toRfc4122();
@@ -70,11 +76,33 @@ final readonly class QuoteSerialiser
                 continue;
             }
 
-            $owed = $payments[$id] ?? [];
-            $scheduledMinor = 0;
+            $schedule = $payments[$id] ?? [];
+            $sums = ['scheduled' => 0, 'paid' => 0, 'outstanding' => 0, 'cancelled' => 0];
 
-            foreach ($owed as $payment) {
-                $scheduledMinor += $payment->getAmountMinor();
+            foreach ($schedule as $payment) {
+                if ($payment->isCancelled()) {
+                    $sums['cancelled'] += $payment->getAmountMinor();
+
+                    continue;
+                }
+
+                $sums['scheduled'] += $payment->isAddedAsPaid() ? $payment->getPaidAmountMinor() ?? 0 : $payment->getAmountMinor();
+
+                if ($payment->isPaid()) {
+                    $sums['paid'] += $payment->getPaidAmountMinor() ?? 0;
+
+                    continue;
+                }
+
+                $overdue = $payment->getDueOn()->format('Y-m-d') < $today;
+                $sums['outstanding'] += $payment->getAmountMinor();
+                $totals['owed'] += $payment->getAmountMinor();
+
+                if ($overdue) {
+                    $totals['overdue'] += $payment->getAmountMinor();
+                    ++$totals['overdueCount'];
+                }
+
                 $due[] = [
                     'id' => $payment->getId()->toRfc4122(),
                     'quoteId' => $id,
@@ -82,9 +110,11 @@ final readonly class QuoteSerialiser
                     'description' => $payment->getDescription(),
                     'amount' => Money::written($payment->getAmountMinor(), $currency),
                     'dueOn' => $payment->getDueOn()->format('Y-m-d'),
-                    'overdue' => $payment->getDueOn()->format('Y-m-d') < $today,
+                    'overdue' => $overdue,
                 ];
             }
+
+            $totals['paid'] += $sums['paid'];
 
             $quotes[] = [
                 'id' => $id,
@@ -92,9 +122,12 @@ final readonly class QuoteSerialiser
                 'quote' => self::version($current, $currency),
                 'earlier' => Vec\map(Vec\filter($all, static fn (Quote $quote): bool => $quote !== $current), static fn (Quote $quote): array => self::version($quote, $currency)),
                 'lines' => Vec\map($lines[$id] ?? [], static fn (BudgetLine $line): array => ['id' => $line->getId()->toRfc4122(), 'label' => $line->getLabel()]),
-                'payments' => Vec\map($owed, static fn (ScheduledPayment $payment): array => self::payment($payment, $currency, $today)),
-                'scheduled' => Money::written($scheduledMinor, $currency),
-                'difference' => Money::written($scheduledMinor - $current->getAmountMinor(), $currency),
+                'payments' => Vec\map($schedule, static fn (ScheduledPayment $payment): array => self::payment($payment, $currency, $today)),
+                'scheduled' => Money::written($sums['scheduled'], $currency),
+                'difference' => Money::written($sums['scheduled'] - $current->getAmountMinor(), $currency),
+                'paid' => Money::written($sums['paid'], $currency),
+                'outstanding' => Money::written($sums['outstanding'], $currency),
+                'cancelled' => Money::written($sums['cancelled'], $currency),
             ];
         }
 
@@ -104,6 +137,12 @@ final readonly class QuoteSerialiser
             'entitled' => $this->planFeatures->unlocks($event->getOrganisation()->getId(), PlanFeature::Vendors),
             'quotes' => $quotes,
             'due' => Vec\sort($due, static fn (array $a, array $b): int => [$a['dueOn'], Str\lowercase($a['vendor'])] <=> [$b['dueOn'], Str\lowercase($b['vendor'])]),
+            'totals' => [
+                'paid' => Money::written($totals['paid'], $currency),
+                'owed' => Money::written($totals['owed'], $currency),
+                'overdue' => Money::written($totals['overdue'], $currency),
+                'overdueCount' => $totals['overdueCount'],
+            ],
         ];
     }
 
@@ -147,12 +186,37 @@ final readonly class QuoteSerialiser
     /** @return Payment */
     private static function payment(ScheduledPayment $payment, string $currency, string $today): array
     {
+        $paidMinor = $payment->getPaidAmountMinor();
+        $paidOn = $payment->getPaidOn();
+        $paidAt = $payment->getPaidAt();
+        $cancelledAt = $payment->getCancelledAt();
+
         return [
             'id' => $payment->getId()->toRfc4122(),
             'description' => $payment->getDescription(),
             'amount' => Money::written($payment->getAmountMinor(), $currency),
             'dueOn' => $payment->getDueOn()->format('Y-m-d'),
-            'overdue' => $payment->getDueOn()->format('Y-m-d') < $today,
+            'overdue' => !$payment->isPaid() && !$payment->isCancelled() && $payment->getDueOn()->format('Y-m-d') < $today,
+            'addedAsPaid' => $payment->isAddedAsPaid(),
+            'paid' => null === $paidMinor || null === $paidOn || null === $paidAt ? null : [
+                'amount' => Money::written($paidMinor, $currency),
+                'paidOn' => $paidOn->format('Y-m-d'),
+                'reference' => $payment->getPaidReference(),
+                'at' => $paidAt->format(DateTimeImmutable::ATOM),
+                'by' => self::person($payment->getPaidBy()),
+                'difference' => Money::written($paidMinor - $payment->getAmountMinor(), $currency),
+            ],
+            'cancelled' => null === $cancelledAt ? null : [
+                'at' => $cancelledAt->format(DateTimeImmutable::ATOM),
+                'by' => self::person($payment->getCancelledBy()),
+                'reason' => $payment->getCancelReason(),
+            ],
         ];
+    }
+
+    /** @return ?Person */
+    private static function person(?User $user): ?array
+    {
+        return null === $user ? null : ['id' => $user->getId()->toRfc4122(), 'name' => $user->getName()];
     }
 }

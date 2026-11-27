@@ -7,6 +7,7 @@ type Family = { prefix: string; sheets: readonly string[] | 'all'; part: string 
 
 const NARROW = 'narrowDesk.css';
 const WIDE = 'wideDesk.css';
+const REFLOW = 'deskReflow.css';
 
 const SHARED: readonly Family[] = [
   { prefix: 'is', sheets: 'all', part: 'a state on any part (is-open, is-side)' },
@@ -28,6 +29,11 @@ const SHARED: readonly Family[] = [
     part: 'the web Button as the demo sizes it',
   },
   {
+    prefix: 'dp',
+    sheets: [REFLOW, 'phone.css'],
+    part: 'the phone-fit desk (Events, Calendar, Vendors), which the one-column desk leaves to its own bar',
+  },
+  {
     prefix: 'dc-switch',
     sheets: ['dataControl.css', 'schedule.css'],
     part: 'the switch of Data control (DataControlParts), which the Schedule uses',
@@ -40,10 +46,11 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'desk',
     sheets: [
+      REFLOW,
       'arrivalNote.css',
+      'briefing.css',
       'budget.css',
       'budgetHome.css',
-      'createOrg.css',
       'dataControl.css',
       'dataSettings.css',
       'decide.css',
@@ -57,14 +64,17 @@ const SHARED: readonly Family[] = [
       'guestsMany.css',
       'handover.css',
       'kitchen.css',
+      'limitReached.css',
       'makeLive.css',
       'members.css',
       'menu.css',
       'menuCourses.css',
       'menuLibrary.css',
       'messages.css',
+      'messagesChoose.css',
       'messagesStop.css',
       NARROW,
+      'overviewReflow.css',
       'payers.css',
       'payments.css',
       'people.css',
@@ -93,8 +103,10 @@ const SHARED: readonly Family[] = [
       'guests.css',
       'guestsMany.css',
       'kitchen.css',
+      'liveOneDay.css',
       'menuCourses.css',
       NARROW,
+      'overviewReflow.css',
       'payers.css',
       'quotes.css',
       'roster.css',
@@ -123,6 +135,7 @@ const SHARED: readonly Family[] = [
       'guestCompanions.css',
       'guestDay.css',
       'guestKitchen.css',
+      'guestLink.css',
       'guestProgramme.css',
       'guestTable.css',
       'share.css',
@@ -133,12 +146,14 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'gs',
     sheets: [
+      'briefing.css',
       'guestGroups.css',
       'guests.css',
       'guestsMany.css',
       'guestsMark.css',
       'menuCourses.css',
       NARROW,
+      'night.css',
       'roster.css',
       'schedule.css',
       'showOnScreen.css',
@@ -162,8 +177,10 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mg',
     sheets: [
+      REFLOW,
       'makeLive.css',
       'messages.css',
+      'messagesChoose.css',
       'messagesInvite.css',
       'messagesNotice.css',
       'messagesPreview.css',
@@ -183,6 +200,8 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mn',
     sheets: [
+      REFLOW,
+      'briefing.css',
       'dishChoices.css',
       'dishVariants.css',
       'menu.css',
@@ -197,24 +216,39 @@ const SHARED: readonly Family[] = [
     part: 'the menu (MenuCourses, MenuCoursesParts), whose side panel the Schedule and Roster reuse',
   },
   {
+    prefix: 'myn',
+    sheets: ['briefing.css', 'myNight.css'],
+    part: "a person's My night (MyNight), which the briefing's Preview as shows",
+  },
+  {
     prefix: 'queue-initials',
     sheets: ['queue.css', 'team.css'],
     part: 'the initials of the Queue, which Team reuses',
   },
   {
+    prefix: 'rd',
+    sheets: ['redeem.css', 'staffSignIn.css'],
+    part: 'the redeem page (Redeem), whose column and fields the staff link reuses',
+  },
+  {
     prefix: 'ro',
-    sheets: [NARROW, 'schedule.css', WIDE],
+    sheets: [REFLOW, NARROW, 'schedule.css', WIDE],
     part: 'the Schedule (Schedule) at both desk widths',
   },
   {
     prefix: 'rs',
-    sheets: ['roster.css', WIDE],
+    sheets: ['briefing.css', 'roster.css', WIDE],
     part: 'the Roster (Roster) from 961 to 1279 px',
   },
   {
     prefix: 'sn',
     sheets: ['roster.css', 'schedule.css', 'stations.css'],
     part: 'Stations (Stations), whose cards the Roster and Schedule reuse',
+  },
+  {
+    prefix: 'st',
+    sheets: [REFLOW, 'seating.css'],
+    part: 'Seating (SeatingPage) at 400% zoom, its room inset by the phone gutter',
   },
   {
     prefix: 'sw',
@@ -224,13 +258,14 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'today',
     sheets: [
+      REFLOW,
       'budgetHome.css',
       'events.css',
       'guestsMany.css',
       'menuCourses.css',
       'menuLibrary.css',
       NARROW,
-      'people.css',
+      'overviewReflow.css',
       'phone.css',
       'roster.css',
       'schedule.css',
@@ -331,6 +366,28 @@ function demoSheets(): Map<string, string> {
   );
 }
 
+const HOURS_WORKED = 'routes/app/events/hoursWorked.css';
+
+function hwOutside(sheets: ReadonlyMap<string, string>): string[] {
+  return [...sheets]
+    .filter(([sheet]) => sheet !== HOURS_WORKED)
+    .flatMap(([sheet, css]) =>
+      selectorsOf(css)
+        .filter((selector) => [...selector.matchAll(CLASS)].some((m) => m[1]?.startsWith('hw-')))
+        .map((selector) => `${sheet}: ${selector}`),
+    );
+}
+
+function webSheets(): Map<string, string> {
+  const src = join(import.meta.dirname, '..');
+  return new Map(
+    readdirSync(src, { recursive: true, encoding: 'utf8' })
+      .filter((name) => name.endsWith('.css'))
+      .sort()
+      .map((name) => [name, readFileSync(join(src, name), 'utf8')] as const),
+  );
+}
+
 describe('demo stylesheets', () => {
   it('style only their own board, or a shared family they are listed for', () => {
     expect(collisions(demoSheets(), SHARED).join('\n')).toBe('');
@@ -385,5 +442,21 @@ describe('demo stylesheets', () => {
     expect(collisions(sheets, SHARED)).toEqual([
       '.mg-row: budget.css, messages.css (budget.css not listed for mg-)',
     ]);
+  });
+});
+
+describe('the Hours worked table', () => {
+  it('is styled by the product sheet alone, which the demo imports', () => {
+    expect(webSheets().has(HOURS_WORKED)).toBe(true);
+    expect(hwOutside(webSheets()).join('\n')).toBe('');
+  });
+
+  it('fails an hw- rule in any other sheet', () => {
+    const sheets = new Map([
+      [HOURS_WORKED, '.hw-card {}'],
+      ['demo/staffHours.css', '.page .hw-act .desk-text {}\n.sh-frame {}'],
+    ]);
+
+    expect(hwOutside(sheets)).toEqual(['demo/staffHours.css: .page .hw-act .desk-text']);
   });
 });

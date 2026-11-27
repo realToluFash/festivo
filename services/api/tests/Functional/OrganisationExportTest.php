@@ -83,6 +83,8 @@ final class OrganisationExportTest extends ApiTestCase
         'event_people' => ['event_id', 'held_by', 'member_id', 'name', 'address', 'address_kind', 'role', 'job_label'],
         'guests' => ['id', 'event_id', 'host_id', 'full_name', 'email', 'mobile', 'reply', 'replied_at', 'guest_group_id', 'allergens', 'diets', 'access_needs', 'needs_note', 'created_at'],
         'guest_groups' => ['id', 'event_id', 'name', 'created_at'],
+        'guest_messages' => ['id', 'event_id', 'audience', 'subject', 'body', 'created_by_name', 'created_at'],
+        'saved_audiences' => ['id', 'event_id', 'name', 'conditions', 'created_at'],
         'seating_plans' => ['id', 'event_id', 'room_name', 'width_cm', 'length_cm', 'shared_at', 'share_by', 'created_at'],
         'seating_sections' => ['id', 'event_id', 'plan_id', 'name', 'colour'],
         'seating_tables' => ['id', 'event_id', 'plan_id', 'section_id', 'name', 'shape', 'seats', 'end_seats', 'unusable_seats', 'width_cm', 'length_cm', 'x_cm', 'y_cm', 'rotation'],
@@ -96,6 +98,9 @@ final class OrganisationExportTest extends ApiTestCase
         'menu_dish_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'cost_minor', 'cost_currency'],
         'menu_dish_choices' => ['id', 'dish_id', 'position', 'question', 'pick', 'required'],
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
+        'meal_answers' => ['id', 'guest_id', 'course_id', 'kind', 'dish_id', 'variant_id', 'options', 'created_at', 'updated_at'],
+        'kitchen_final_numbers' => ['event_id', 'due_on'],
+        'kitchen_copies' => ['id', 'event_id', 'recorded_at', 'recorded_by_name', 'sheet'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
@@ -104,11 +109,16 @@ final class OrganisationExportTest extends ApiTestCase
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
+        'staff_attendance' => ['shift_id', 'staff_id', 'removed_name', 'clocked_in_at', 'clocked_out_at', 'corrected_in_at', 'in_corrected_by', 'corrected_out_at', 'out_corrected_by'],
+        'staff_rates' => ['id', 'event_id', 'job_id', 'staff_id', 'pay', 'amount_minor', 'amount_currency', 'set_at'],
         'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
         'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
-        'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
+        'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'markup_tenths', 'client_price_minor', 'client_price_currency', 'created_at', 'updated_at'],
+        'cost_markups' => ['id', 'event_id', 'category', 'markup_tenths', 'created_at', 'updated_at'],
         'quotes' => ['id', 'event_id', 'vendor_id', 'covers', 'amount_minor', 'amount_currency', 'quoted_on', 'reference', 'superseded_at', 'created_at'],
         'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
+        'payers' => ['id', 'event_id', 'name', 'note', 'created_at', 'updated_at'],
+        'cost_payers' => ['id', 'event_id', 'line_id', 'payer_id', 'split', 'value', 'value_currency', 'rest_payer_id'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
@@ -121,10 +131,16 @@ final class OrganisationExportTest extends ApiTestCase
         'calendar_feeds' => 'a link that opens without signing in',
         'catalogue_versions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'doctrine_migration_versions' => "Soirely's own records",
+        'email_soft_bounces' => "Soirely's own records",
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
         'event_covers' => 'photos',
+        'door_code_redemptions' => 'a link that opens without signing in',
+        'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
+        'guest_reply_changes' => 'change history',
+        'guest_suppressions' => 'a keyed hash only, in no export: the guest\'s details show the opt-outs of the addresses on record (pm, 25 Nov, sc-3942; sc-3969)',
+        'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
         'known_devices' => "sign-in credentials (sc-611's rule)",
         'membership_transitions' => 'change history',
@@ -138,15 +154,26 @@ final class OrganisationExportTest extends ApiTestCase
         'pending_registrations' => "a person's own account (sc-611's rule)",
         'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
         'phone_numbers' => "a person's own account (sc-611's rule)",
+        'phone_sign_ins' => "sign-in credentials (sc-611's rule)",
+        'provider_events' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'provider_identities' => "sign-in credentials (sc-611's rule)",
         'push_targets' => "notifications: one person's, or deliveries",
         'recovery_codes' => "sign-in credentials (sc-611's rule)",
         'refresh_tokens' => "sign-in credentials (sc-611's rule)",
         'schedule_presses' => "change history: the run of show's presses",
+        'service_firings' => "the night's service as it ran: its working state, like the run of show's presses",
+        'service_items' => "the night's service as it ran: its working state, like the run of show's presses",
+        'service_plates' => "the night's service as it ran: its working state, like the run of show's presses",
+        'service_steps' => "the night's service as it ran: its working state, like the run of show's presses",
+        'service_taps' => 'a write\'s key and first answer, kept 24 hours so a retried tap changes nothing',
+        'service_trays' => "the night's service as it ran: its working state, like the run of show's presses",
         'scheduled_notifications' => "notifications: one person's, or deliveries",
         'schema_probes' => "Soirely's own records",
         'screen_links' => 'a link that opens without signing in',
+        'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
+        'passkey_challenges' => "sign-in credentials (sc-611's rule)",
+        'passkeys' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'two_factor_challenges' => "sign-in credentials (sc-611's rule)",
@@ -154,6 +181,11 @@ final class OrganisationExportTest extends ApiTestCase
         'two_factor_recoveries' => "sign-in credentials (sc-611's rule)",
         'two_factor_recovery_handles' => "sign-in credentials (sc-611's rule)",
         'verification_challenges' => "sign-in credentials (sc-611's rule)",
+        'usage_hold_releases' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_records' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_reservations' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_totals' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_warnings' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
     ];
 
     private User $owner;
@@ -268,7 +300,8 @@ final class OrganisationExportTest extends ApiTestCase
         $staff = $this->row('staff_members', ['event_id' => $eventId, 'full_name' => 'Kemi Bello', 'mobile' => '+2348030000001', 'email' => 'kemi@example.com', 'member_id' => $this->owner->getId()->toRfc4122(), 'job_id' => $job, ...$stamps]);
         $shift = $this->row('staff_shifts', ['job_id' => $job, 'starts_at' => '2026-11-14 16:00:00', 'ends_at' => '2026-11-14 23:30:00', 'needed' => 3, ...$stamps]);
         $connection->insert('staff_shift_people', ['shift_id' => $shift, 'staff_member_id' => $staff]);
-        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
+        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'client_price_minor' => 560000, 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
+        $this->row('budget_markups', ['event_id' => $eventId, 'category' => 'venue', 'markup_tenths' => 0, ...$stamps]);
         $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Staff', 'category' => 'staffing', 'basis' => 'per_staff_hour', 'price_minor' => null, 'note' => null, ...$stamps]);
         $currency = Type\string()->coerce($connection->fetchOne('SELECT currency FROM events WHERE id = ?', [$eventId]));
 
@@ -311,15 +344,40 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame([[$shift, $staff]], Vec\map($table('staff_shift_people'), static fn (array $row): array => Vec\values($row)));
 
         self::assertSame(
-            [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
+            [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', null, 560000, $currency, '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
             Vec\map($table('cost_lines'), static fn (array $row): array => Vec\values(Dict\drop($row, 2))),
         );
+        self::assertSame([['venue', 0]], Vec\map($table('cost_markups'), static fn (array $row): array => [$row['category'], $row['markup_tenths']]));
         self::assertStringContainsString('"served_time": "19:30"', $files['archive.json']);
         foreach (self::TABLES as $name => $columns) {
             $lines = Str\split(Str\trim(Str\strip_prefix($files[$name . '.csv'], "\u{FEFF}")), "\r\n");
             self::assertSame(Str\join($columns, ','), $lines[0], $name);
             self::assertCount(Iter\count($table($name)) + 1, $lines, $name);
         }
+    }
+
+    #[Test]
+    public function theArchiveHoldsTheFinalNumbersDayAndEachKitchenCopyAsItWasGiven(): void
+    {
+        $eventId = $this->newEvent();
+        $this->row('kitchen_final_numbers', ['event_id' => $eventId, 'due_on' => '2026-11-03']);
+        $sheet = Json\encode(['coming' => 2, 'names' => true, 'allergic' => [['name' => 'Bísí Adéwálé']], 'allergyCounts' => [['code' => 'peanuts', 'count' => 1]]]);
+        $named = $this->row('kitchen_copies', ['event_id' => $eventId, 'recorded_at' => '2026-10-16 09:00:00', 'recorded_by_name' => 'Folake Adeyemi', 'names' => true, 'sheet' => $sheet]);
+        $counted = $this->row('kitchen_copies', ['event_id' => $eventId, 'recorded_at' => '2026-10-16 10:00:00', 'recorded_by_name' => 'Julien Moreau', 'names' => false, 'sheet' => $sheet]);
+
+        $files = $this->archive();
+        $json = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($files['archive.json']));
+
+        self::assertSame([['event_id' => $eventId, 'due_on' => '2026-11-03']], $json['kitchen_final_numbers']);
+        $copies = Type\vec(Type\shape(['id' => Type\string(), 'recorded_at' => Type\string(), 'recorded_by_name' => Type\string(), 'sheet' => Type\dict(Type\string(), Type\mixed())], true))->coerce($json['kitchen_copies']);
+        self::assertSame(
+            [[$named, '2026-10-16T09:00:00Z', 'Folake Adeyemi'], [$counted, '2026-10-16T10:00:00Z', 'Julien Moreau']],
+            Vec\map($copies, static fn (array $copy): array => [$copy['id'], $copy['recorded_at'], $copy['recorded_by_name']]),
+        );
+        self::assertEquals([[['name' => 'Bísí Adéwálé']], null], Vec\map($copies, static fn (array $copy): mixed => $copy['sheet']['allergic']));
+        self::assertSame([true, false], Vec\map($copies, static fn (array $copy): mixed => $copy['sheet']['names']));
+        self::assertEquals([['code' => 'peanuts', 'count' => 1]], $copies[1]['sheet']['allergyCounts']);
+        self::assertCount(2, Str\split($files['kitchen_copies.csv'], 'Bísí'), 'the CSV names the guest in the named copy only');
     }
 
     #[Test]
@@ -648,7 +706,7 @@ final class OrganisationExportTest extends ApiTestCase
         $this->as($someone, 'POST', $this->path(''));
 
         self::assertSame([403, ErrorCode::OwnerRequired->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
-        self::assertSame("Only an owner can export the organisation's data.", $this->last()['detail'] ?? null);
+        self::assertSame('Only an owner can export the organisation’s data.', $this->last()['detail'] ?? null);
         self::assertCount(0, self::em()->getRepository(OrganisationExport::class)->findAll());
     }
 

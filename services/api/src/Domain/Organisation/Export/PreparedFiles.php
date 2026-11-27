@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Storage\ObjectStore;
+use App\Storage\ReadProgress;
 use Psl\Filesystem;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
@@ -19,14 +20,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** How a PreparedFile is written, kept, refused and handed over; neither the file nor its download is ever held in memory whole. */
 final readonly class PreparedFiles
 {
+    private const array REFUSED = ['/' => '-', '\\' => '-', ':' => '-', '*' => '-', '?' => '-', '<' => '-', '>' => '-', '|' => '-', '"' => ''];
+
     public function __construct(
         private ObjectStore $objectStore,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @param callable(resource): void $write fills the temporary file the kept one is uploaded from */
-    public function keep(string $key, string $contentType, callable $write): void
+    /**
+     * @param callable(resource): void $write     fills the temporary file the kept one is uploaded from
+     * @param ?callable(): void        $uploading told as the upload starts, and as it goes on, every ReadProgress::EVERY bytes
+     */
+    public function keep(string $key, string $contentType, callable $write, ?callable $uploading = null): void
     {
         $this->keepAt($key, $contentType, static function (string $path) use ($write): void {
             $file = \fopen($path, 'wb') ?: throw new RuntimeException('No temporary file for a prepared file.');
@@ -36,17 +42,24 @@ final readonly class PreparedFiles
             } finally {
                 \fclose($file);
             }
-        });
+        }, $uploading);
     }
 
-    /** @param callable(string): void $write writes the file at the temporary path given, which is uploaded from where it stands */
-    public function keepAt(string $key, string $contentType, callable $write): void
+    /**
+     * @param callable(string): void $write     writes the file at the temporary path given, which is uploaded from where it stands
+     * @param ?callable(): void      $uploading told as the upload starts, and as it goes on, every ReadProgress::EVERY bytes
+     */
+    public function keepAt(string $key, string $contentType, callable $write, ?callable $uploading = null): void
     {
         $path = Filesystem\create_temporary_file(prefix: 'prepared-file-');
 
         try {
             $write($path);
             $file = \fopen($path, 'rb') ?: throw new RuntimeException('The prepared file could not be read back.');
+
+            if (null !== $uploading) {
+                ReadProgress::watch($file, $uploading);
+            }
 
             try {
                 $this->objectStore->keepFile($key, $file, $contentType);
@@ -118,12 +131,12 @@ final readonly class PreparedFiles
         return $response;
     }
 
-    /** @return array<string, string> a download named as given, with any slash or quote that a file name can't hold taken out */
+    /** @return array<string, string> a download named as given, with each character a common file system refuses read as a dash, and each quote taken out */
     public static function headers(string $contentType, string $name, string $fallback): array
     {
         return [
             'Content-Type' => $contentType,
-            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, Str\replace_every($name, ['/' => '-', '\\' => '-', '"' => '']), $fallback),
+            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, Str\replace_every($name, self::REFUSED), $fallback),
             'Cache-Control' => 'no-store',
         ];
     }

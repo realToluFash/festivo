@@ -82,7 +82,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
 
   if (load !== 'loaded')
     return (
-      <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell} above="notices">
         {load === 'failed' ? (
           <PageFailed words={W.failed} onRetry={retry} />
         ) : (
@@ -93,7 +93,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
 
   if (start.locked)
     return (
-      <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell} above="offline">
         <Card>
           <Says>{W.locked}</Says>
           <OnCard>{W.lockedLine}</OnCard>
@@ -123,7 +123,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
   ];
 
   return (
-    <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="auditLog" title={W.title} viewer={viewer} tell={tell} above="offline">
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{preparing ? W.preparing : W.says}</Says>

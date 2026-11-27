@@ -6,6 +6,8 @@ namespace App\Domain\Organisation;
 
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\Staff\Link\OutsideEvent;
+use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\PlanFeature;
@@ -15,6 +17,8 @@ use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
+use Psl\Iter;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,6 +30,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         private SignInRules $signInRules,
         private ClockInterface $clock,
         private Entitlements $entitlements,
+        private StaffLinkGrants $staffLinkGrants,
     ) {
     }
 
@@ -37,15 +42,16 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         return null === $membership ? null : $this->signInRules->narrow($this->grantsOf($membership), $membership);
     }
 
-    /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71). */
+    /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71) or a staff link (sc-4235). */
     public function grantsOnEvent(User $user, Uuid $organisationId, Uuid $eventId): ?Grants
     {
         $membership = $this->membershipRepository->findActive($user, $organisationId);
 
         if (null === $membership) {
             $outside = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());
+            $role = $outside?->getRole() ?? $this->staffLinkGrants->onEvent($user, $eventId);
 
-            return null === $outside ? null : Grants::fromOutside($outside->getRole());
+            return null === $role ? null : Grants::fromOutside($role);
         }
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {
@@ -80,6 +86,32 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         }
 
         return new EventScope($membership, $grants, $byEvent);
+    }
+
+    public function isOutsideIn(User $user, Uuid $organisationId): bool
+    {
+        return Iter\any($this->outsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
+    }
+
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return $this->staffLinkGrants->endedWithTheEvent($user, $eventId);
+    }
+
+    /**
+     * The account's live grants from outside, less those on an organisation it is an active member of: there its role wins (sc-94843).
+     * An event held both ways is listed once, at the grant from outside's level, as grantsOnEvent reads it.
+     *
+     * @return list<OutsideEvent>
+     */
+    public function outsideEvents(User $user): array
+    {
+        $memberOf = Vec\map($this->membershipRepository->findActiveFor($user), static fn (Membership $membership): Uuid => $membership->getOrganisation()->getId());
+
+        return Vec\filter(
+            Vec\unique_by($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): string => $outside->event->getId()->toRfc4122()),
+            static fn (OutsideEvent $outside): bool => !Iter\any($memberOf, static fn (Uuid $id): bool => $id->equals($outside->event->getOrganisation()->getId())),
+        );
     }
 
     /** @return list<PlanFeature> */

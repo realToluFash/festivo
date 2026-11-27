@@ -1,4 +1,4 @@
-import { type InvitationOutcome, type InvitationRefusalCode, isWaiting } from '@soirely/domain';
+import { type InvitationOutcome, type InvitationRefusalCode, stillListed } from '@soirely/domain';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 import type { Invite, Offer, OfferStatus, Place, Session } from '../kit/orgSwitcher.ts';
@@ -34,8 +34,9 @@ export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as 
 /** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
 export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
 
-export function openerLabel(place: Place, waiting: number): string {
-  const label = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
+/** Paused (sc-83881): the API returns no role for a paused membership, so the label says access is paused; the pill still opens the switcher, so it still names the switch. */
+export function openerLabel(place: Place, waiting: number, paused = false): string {
+  const label = `Organisation: ${place.name}, ${paused ? 'access paused' : `your role ${place.role}`}. Switch organisation`;
 
   if (waiting === 0) return label;
 
@@ -234,11 +235,6 @@ export function expand(session: Session, id: string): Session {
   return { ...session, expanded, managed };
 }
 
-/** sc-73668: one a managed account cannot accept is never counted, and stays listed with its banner. */
-function listed(outcome: InvitationOutcome | undefined): boolean {
-  return isWaiting(outcome) || outcome?.kind === 'managed';
-}
-
 /** The press in flight: both buttons off, the pressed one saying what it is doing. */
 export function sending(session: Session, id: string, yes: boolean): Session {
   return {
@@ -278,9 +274,9 @@ export function settled(session: Session): Session {
   return {
     ...session,
     places: [...session.places, ...joined.map(({ id, name, role }) => ({ id, name, role }))],
-    invitations: session.invitations.filter((invite) => listed(session.outcomes[invite.id])),
+    invitations: session.invitations.filter((invite) => stillListed(session.outcomes[invite.id])),
     outcomes: Object.fromEntries(
-      Object.entries(session.outcomes).filter(([, outcome]) => listed(outcome)),
+      Object.entries(session.outcomes).filter(([, outcome]) => stillListed(outcome)),
     ),
     managed: undefined,
     offer: session.offer?.status === 'dismissed' ? null : session.offer,
@@ -301,9 +297,16 @@ export function founded(session: Session, place: Place): Session {
   return { ...now, places: [...others, place], current: place.id };
 }
 
-/** Folake in no organisation; founded() gives her one. */
-export function withoutPlaces(session: Session): Session {
-  return { ...session, places: [], current: '', invitations: [], outcomes: {}, offer: null };
+/** Folake in no organisation; founded() gives her one, and with `invited` her two invitations wait (sc-75471). */
+export function withoutPlaces(session: Session, invited = false): Session {
+  return {
+    ...session,
+    places: [],
+    current: '',
+    invitations: invited ? INVITATIONS : [],
+    outcomes: {},
+    offer: null,
+  };
 }
 
 export function placeOf(session: Session): Place | null {

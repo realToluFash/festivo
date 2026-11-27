@@ -16,6 +16,7 @@ const WEDDING: OutsideEvent = {
   jobLabel: 'Cloakroom',
   startsAt: '2030-11-14T16:00:00+01:00',
   endsAt: '2030-11-15T02:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const LAUNCH: OutsideEvent = {
@@ -26,10 +27,19 @@ const LAUNCH: OutsideEvent = {
   jobLabel: null,
   startsAt: '2030-12-05T16:00:00+01:00',
   endsAt: '2030-12-05T23:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const READS = ['events.read', 'guests.read', 'schedule.read', 'seating.read', 'people.read'];
-const EDITS = [...READS, 'events.manage', 'guests.manage', 'menu.read', 'menu.manage'];
+const EDITS = [
+  ...READS,
+  'events.manage',
+  'guests.manage',
+  'menu.read',
+  'menu.manage',
+  'messages.read',
+  'messages.manage',
+];
 
 function event(held: OutsideEvent) {
   return {
@@ -206,6 +216,25 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
   });
 
+  it('refuses the Roster at a level without the staff, in place of sending it to Overview', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_1/staff/roster');
+
+    expect(await screen.findByText('You cannot see this event’s staff.')).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
+  });
+
+  it('refuses Staff, the Roster’s address, at a level without the staff, in place of sending it to Overview', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_1/staff');
+
+    expect(await screen.findByText('You cannot see this event’s staff.')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Back to the event' })).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
+  });
+
   it('reaches Your account and Sign out from the person at the sidebar’s foot', async () => {
     outside([WEDDING]);
     answering([WEDDING]);
@@ -312,7 +341,7 @@ describe('an account with no organisation on two or more events (sc-68438)', () 
     const nav = screen.getByRole('navigation', { name: 'Event' });
     expect(within(nav).getByText('Adaeze and Tunde')).toBeDefined();
     expect(within(nav).getByText(/^\S+ \S+ \S+ · 16:00$/u)).toBeDefined();
-    expect(heading.closest('.desk-column')).not.toBeNull();
+    expect(heading.closest('.desk .desk-column')).not.toBeNull();
   });
 
   it('keeps the card of an event under way as Under way until its end', async () => {

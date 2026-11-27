@@ -4,7 +4,11 @@ import {
   comingUp,
   markedMilestones,
   type Milestone,
+  isNeed,
+  isYours,
   milestoneDistance,
+  needDue,
+  needOrder,
   namesZone,
   nextUp,
 } from './timeline.ts';
@@ -161,5 +165,107 @@ describe('naming the zone', () => {
   it('names it only when the reader is somewhere else', () => {
     expect(namesZone('Europe/Madrid', 'Africa/Lagos')).toBe(true);
     expect(namesZone('Europe/Madrid', 'Europe/Madrid')).toBe(false);
+  });
+});
+
+describe('who a need is for', () => {
+  it('is the reader’s own milestone in an area their role changes', () => {
+    expect(isYours({ owner: 'you', area: 'menu' }, ['menu.read', 'menu.manage'])).toBe(true);
+    expect(isYours({ owner: 'you', area: 'menu' }, ['menu.read'])).toBe(false);
+    expect(isYours({ owner: 'event', area: 'menu' }, ['menu.manage'])).toBe(false);
+    expect(isYours({ owner: 'automatic', area: 'menu' }, ['menu.manage'])).toBe(false);
+  });
+
+  it('is not a milestone its area has already marked done', () => {
+    expect(isYours({ owner: 'you', area: 'seating', done: true }, ['seating.manage'])).toBe(false);
+    expect(isYours({ owner: 'you', area: 'seating', done: false }, ['seating.manage'])).toBe(true);
+  });
+});
+
+describe('the order of needs', () => {
+  const key = (over: Partial<Parameters<typeof needOrder>[0]> = {}) => ({
+    at: '2026-10-12T12:00:00Z',
+    title: 'B',
+    startsAt: '2026-11-01T12:00:00Z',
+    name: 'B',
+    ...over,
+  });
+
+  it('goes earliest first, then by the event’s start, its name, then the title', () => {
+    const rows = [
+      key({ title: 'z' }),
+      key({ name: 'A', title: 'y' }),
+      key({ startsAt: '2026-10-30T12:00:00Z', name: 'Z' }),
+      key({ at: '2026-10-11T12:00:00Z', name: 'Z', title: 'z' }),
+    ];
+
+    expect(
+      rows.sort(needOrder).map(({ at, startsAt, name, title }) => [at, startsAt, name, title]),
+    ).toEqual([
+      ['2026-10-11T12:00:00Z', '2026-11-01T12:00:00Z', 'Z', 'z'],
+      ['2026-10-12T12:00:00Z', '2026-10-30T12:00:00Z', 'Z', 'B'],
+      ['2026-10-12T12:00:00Z', '2026-11-01T12:00:00Z', 'A', 'y'],
+      ['2026-10-12T12:00:00Z', '2026-11-01T12:00:00Z', 'B', 'z'],
+    ]);
+  });
+});
+
+describe('how a need is due', () => {
+  const zone = 'Europe/Madrid';
+  const now = new Date('2026-12-30T10:00:00Z');
+
+  it('classifies by calendar day in the event’s zone', () => {
+    expect(needDue('2026-12-30T09:00:00Z', zone, now)).toEqual({ kind: 'overdue', late: true });
+    expect(needDue('2026-12-28T09:00:00Z', zone, now)).toEqual({
+      kind: 'overdueDays',
+      late: true,
+      count: 2,
+    });
+    expect(needDue('2026-12-30T20:00:00Z', zone, now)).toEqual({ kind: 'dueToday', late: false });
+    expect(needDue('2026-12-31T20:00:00Z', zone, now)).toEqual({
+      kind: 'dueTomorrow',
+      late: false,
+    });
+  });
+
+  it('carries the year only for a day in another year than today', () => {
+    expect(needDue('2026-12-31T20:00:00Z', zone, now).kind).toBe('dueTomorrow');
+    expect(needDue('2027-01-05T09:00:00Z', zone, now)).toEqual({
+      kind: 'dueOn',
+      late: false,
+      day: '2027-01-05',
+      withYear: true,
+    });
+    expect(needDue('2026-12-30T09:00:00Z', zone, new Date('2026-12-01T10:00:00Z'))).toEqual({
+      kind: 'dueOn',
+      late: false,
+      day: '2026-12-30',
+      withYear: false,
+    });
+  });
+});
+
+describe('isNeed', () => {
+  const mine = { owner: 'you', area: 'seating', done: false } as const;
+  const event = {
+    permissions: ['seating.manage'],
+    startsAt: '2026-06-10T12:00:00Z',
+    endsAt: '2026-06-10T20:00:00Z',
+  };
+  const NOW = new Date('2026-11-27T09:00:00Z');
+
+  it('gives a Finished event no row, ended or past its end', () => {
+    expect(isNeed(mine, { ...event, status: 'ended' }, NOW)).toBe(false);
+    expect(isNeed(mine, { ...event, status: 'live' }, NOW)).toBe(false);
+    expect(isNeed(mine, { ...event, status: 'paused' }, NOW)).toBe(false);
+  });
+
+  it('keeps a Draft’s row, and a live event before its end', () => {
+    expect(isNeed(mine, { ...event, status: 'draft' }, NOW)).toBe(true);
+    expect(isNeed(mine, { ...event, status: 'live' }, new Date('2026-06-10T10:00:00Z'))).toBe(true);
+  });
+
+  it('still asks for the reader’s own, undone milestone', () => {
+    expect(isNeed({ ...mine, done: true }, { ...event, status: 'draft' }, NOW)).toBe(false);
   });
 });

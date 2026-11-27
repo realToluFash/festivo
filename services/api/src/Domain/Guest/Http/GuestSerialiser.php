@@ -6,26 +6,31 @@ namespace App\Domain\Guest\Http;
 
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Messaging\GuestMessages\GuestSuppressions;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\GuestGroup;
+use App\Entity\MealAnswer;
 use App\Entity\SeatAssignment;
 use App\Entity\SeatingRow;
 use App\Entity\SeatingTable;
+use App\Enum\GuestChannel;
 use App\Enum\GuestReply;
 use App\Enum\GuestStanding;
+use App\Enum\MealAnswerKind;
 use App\Enum\NeedKind;
 use App\Locale\GuestLanguage;
 use App\Locale\SupportedLocales;
 use App\Repository\GuestGroupRepository;
 use App\Repository\GuestRepository;
+use App\Repository\MealAnswerRepository;
 use App\Repository\SeatAssignmentRepository;
 use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777). */
+/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Greet as goes to every reader, as how the guest is addressed and not a way to reach them (sc-3960). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777), and so do the opt-outs (sc-3969). */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -33,6 +38,8 @@ final readonly class GuestSerialiser
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestGroupRepository $guestGroupRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
+        private MealAnswerRepository $mealAnswerRepository,
+        private GuestSuppressions $guestSuppressions,
     ) {
     }
 
@@ -46,7 +53,9 @@ final readonly class GuestSerialiser
             static fn (Guest $companion): string => $companion->getHost()?->getId()->toRfc4122() ?? '',
         );
         $needs = $contacts ? $this->guestNeedsRecord->of($everybody) : null;
-        $seats = $this->seatsOf(Vec\filter($everybody, static fn (Guest $guest): bool => null !== $guest->getHost()));
+        $everyCompanion = Vec\filter($everybody, static fn (Guest $guest): bool => null !== $guest->getHost());
+        $seats = $this->seatsOf($everyCompanion);
+        $meals = $this->mealsOf($everyCompanion);
         $countOf = static function (array $those) use ($companions): array {
             $theirs = Iter\reduce($those, static fn (int $sum, Guest $host): int => $sum + Iter\count($companions[$host->getId()->toRfc4122()] ?? []), 0);
 
@@ -54,7 +63,7 @@ final readonly class GuestSerialiser
         };
 
         return [
-            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [], $needs, $seats)),
+            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [], $needs, $seats, $meals)),
             'counts' => $countOf($hosts),
             'groups' => Vec\map($this->guestGroupRepository->findOnEvent($event), static fn (GuestGroup $group): array => [
                 ...self::group($group),
@@ -93,6 +102,21 @@ final readonly class GuestSerialiser
         };
     }
 
+    /**
+     * The companions with a meal chosen, so removing them asks first (sc-3907): any answer stored but skipped.
+     *
+     * @param list<Guest> $companions
+     *
+     * @return array<string, true>
+     */
+    private function mealsOf(array $companions): array
+    {
+        return Dict\from_entries(Vec\map(
+            Vec\filter($this->mealAnswerRepository->findFor($companions), static fn (MealAnswer $answer): bool => MealAnswerKind::Skipped !== $answer->getKind()),
+            static fn (MealAnswer $answer): array => [$answer->getPerson()->getId()->toRfc4122(), true],
+        ));
+    }
+
     /** @return array{id: string, name: string} */
     public static function group(GuestGroup $group): array
     {
@@ -103,10 +127,11 @@ final readonly class GuestSerialiser
      * @param list<Guest>                                      $companions
      * @param ?array<string, GuestNeeds>                       $needs      everybody's by id for a reader with guests.manage, null for anyone else
      * @param array<string, array{kind: string, name: string}> $seats      where each seated companion sits, by id
+     * @param array<string, true>                              $meals      the companions with a meal chosen, by id
      *
      * @return array<string, mixed>
      */
-    private static function guest(Guest $host, array $companions, ?array $needs, array $seats): array
+    private static function guest(Guest $host, array $companions, ?array $needs, array $seats, array $meals): array
     {
         $reply = $host->getReply() ?? GuestReply::NoReply;
         $contacts = null !== $needs;
@@ -120,7 +145,10 @@ final readonly class GuestSerialiser
         return [
             'id' => $host->getId()->toRfc4122(),
             'fullName' => $host->getFullName(),
+            'greetAs' => $host->getGreetAs(),
             'group' => null === $group ? null : self::group($group),
+            'walkIn' => $host->isWalkIn(),
+            'arrival' => CheckInSerialiser::arrival($host, $zone),
             ...$contacts ? [
                 'email' => $host->getEmail(),
                 'mobile' => $host->getMobile(),
@@ -147,11 +175,13 @@ final readonly class GuestSerialiser
             ...$needsOf($host),
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'seat' => $seats[$companion->getId()->toRfc4122()] ?? null,
+                'meal' => $meals[$companion->getId()->toRfc4122()] ?? false,
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
                 'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
                 'coming' => !$companion->isNotComingByGuest(),
                 'namedByGuest' => $companion->isNamedByGuest(),
+                'arrival' => CheckInSerialiser::arrival($companion, $zone),
                 ...$needsOf($companion),
             ]),
         ];
@@ -194,12 +224,26 @@ final readonly class GuestSerialiser
         $companions = $this->guestRepository->findCompanionsOf($host);
 
         return [
-            ...self::guest($host, $companions, $contacts ? $this->guestNeedsRecord->of([$host, ...$companions]) : null, $this->seatsOf($companions)),
-            ...$contacts ? ['organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale())] : [],
+            ...self::guest($host, $companions, $contacts ? $this->guestNeedsRecord->of([$host, ...$companions]) : null, $this->seatsOf($companions), $this->mealsOf($companions)),
+            ...$contacts ? [
+                'organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale()),
+                'optOuts' => $this->optOuts($host),
+            ] : [],
             'added' => [
                 'at' => $host->getCreatedAt()->format(\DATE_ATOM),
                 'by' => $host->getAddedBy()?->getName(),
             ],
         ];
+    }
+
+    /** @return array<string, ?string> when the address now on each row stopped this organisation's messages on that channel (sc-3969), with guests.manage alone */
+    private function optOuts(Guest $guest): array
+    {
+        $organisation = $guest->getEvent()->getOrganisation()->getId();
+
+        return Dict\from_entries(Vec\map(GuestChannel::cases(), fn (GuestChannel $channel): array => [
+            $channel->field(),
+            $this->guestSuppressions->optedOutSince($organisation, $channel, GuestChannel::Email === $channel ? $guest->getEmail() : $guest->getMobile())?->format(\DATE_ATOM),
+        ]));
     }
 }

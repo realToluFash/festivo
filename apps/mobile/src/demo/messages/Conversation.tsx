@@ -56,9 +56,9 @@ import {
 import { NOTE_SENT, changeTitle } from './TellKinds.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
-import { previewOf } from './PreviewModel.ts';
+import { previewOf, previewOffOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
-import { SW, pausedWaits } from './ScheduledSave.ts';
+import { SW, pausedWaits, sayNobody, scheduledEnd } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
 import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
@@ -83,6 +83,7 @@ import { NW } from './NoticeWords.ts';
 import { tapParts } from './TapParts.tsx';
 import { tapFor, tapItemsOf } from './TapStates.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
+import { Held } from './HoldTop.tsx';
 import {
   type Bit,
   CountdownLine,
@@ -669,6 +670,7 @@ function ownParts(talk: Talk, followUp: string): Own {
       onCaret={talk.onCaret}
       onInsert={talk.onInsert}
       onPreview={() => dispatch({ type: 'preview' })}
+      previewOff={previewOffOf(m)}
       onSend={talk.onSend}
     />
   );
@@ -716,31 +718,33 @@ function ownParts(talk: Talk, followUp: string): Own {
       stream: (
         <>
           {earlier}
-          <CheckCard
-            draft={draft}
-            locale={talk.locale}
-            headRef={talk.checkRef}
-            goRef={talk.refFor('go')}
-            onGo={talk.onConfirm}
-            onLater={talk.onLater}
-            onChange={talk.onChangeIt}
-            onKeep={() => dispatch({ type: 'keepScheduled' })}
-            onChannel={talk.onChannel}
-            onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
-            balance={m.balance}
-            waits={m.waits}
-            clock={m.clock}
-            onWithout={(drops) => {
-              for (const action of sendWithout(drops)) dispatch(action);
-            }}
-          />
-          {note != null && (
-            <DemoOnly title={SMSW.demoTitle}>
-              <Text size={13.5} weight="medium" style={styles.note}>
-                {note}
-              </Text>
-            </DemoOnly>
-          )}
+          <Held>
+            <CheckCard
+              draft={draft}
+              locale={talk.locale}
+              headRef={talk.checkRef}
+              goRef={talk.refFor('go')}
+              onGo={talk.onConfirm}
+              onLater={talk.onLater}
+              onChange={talk.onChangeIt}
+              onKeep={() => dispatch({ type: 'keepScheduled' })}
+              onChannel={talk.onChannel}
+              onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
+              balance={m.balance}
+              waits={m.waits}
+              clock={m.clock}
+              onWithout={(drops) => {
+                for (const action of sendWithout(drops)) dispatch(action);
+              }}
+            />
+            {note != null && (
+              <DemoOnly title={SMSW.demoTitle}>
+                <Text size={13.5} weight="medium" style={styles.note}>
+                  {note}
+                </Text>
+              </DemoOnly>
+            )}
+          </Held>
         </>
       ),
       align: 'end',
@@ -783,6 +787,7 @@ function endBits(draft: Draft, when: string): Bit[] {
   if (draft.outcome === 'sent')
     return [{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, draft.time) }];
   if (draft.outcome === 'tooLate') return [{ word: W.tooLate, mark: 'notsent' }];
+  if (draft.outcome === 'nobody') return [];
 
   return draft.paused === true && draft.step === 'scheduled'
     ? [{ word: W.scheduled, ring: true }, { word: when }]
@@ -797,6 +802,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   const cancelled = draft.step === 'cancelled';
   const paused = draft.paused === true && !cancelled && draft.outcome == null;
   const refused = talk.m.refusedSave;
+  const end = scheduledEnd(draft, readsOnly(talk.m));
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
     <HostBubble
@@ -804,14 +810,30 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       text={shown.body}
       bits={endBits(draft, say.inZone(day, at.time, W.londonTime))}
       dashed={!cancelled && draft.outcome == null}
-      greyed={cancelled || draft.outcome === 'tooLate'}
+      greyed={cancelled || draft.outcome === 'tooLate' || draft.outcome === 'nobody'}
       faded={draft.was != null}
     />
   );
   let rest: ReactNode = null;
   let foot: ReactNode;
 
-  if (cancelled)
+  if (end === 'preview')
+    return {
+      title: messageName(draft),
+      bare: true,
+      stream: (
+        <Preview
+          draft={draft}
+          columns={talk.columns}
+          phone={!talk.wide}
+          as={previewOf(talk.m)}
+          dispatch={dispatch}
+        />
+      ),
+      align: 'start',
+      foot: <PreviewBar onEdit={() => dispatch({ type: 'edit' })} onSave={talk.onSaveScheduled} />,
+    };
+  if (end === 'cancelled')
     rest = (
       <SystemLine
         text={say.cancelledBy(draft.cancelledBy ?? READER, draft.cancelledAt ?? '')}
@@ -819,16 +841,20 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         glyph="x"
       />
     );
-  else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
-  else if (draft.outcome === 'sent') rest = null;
-  else if (draft.was != null) {
+  else if (end === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
+  else if (end === 'nobody') rest = <SystemLine text={sayNobody.line(at.time)} glyph="x" />;
+  else if (end === 'sent') rest = null;
+  else if (end === 'editing') {
+    const editingLine = (
+      <Text size={13.5} weight="medium" style={[styles.goes, !talk.wide && styles.goesOverFoot]}>
+        {paused ? SW.editingPaused : say.editing(day, at.time)}
+      </Text>
+    );
     rest =
       refused == null ? (
         <>
           {paused && talk.wide && <PausedLine text={pausedWaits()} />}
-          <Text size={13.5} weight="medium" style={styles.goes}>
-            {paused ? SW.editingPaused : say.editing(day, at.time)}
-          </Text>
+          {talk.wide && editingLine}
         </>
       ) : (
         <RefusedSave
@@ -840,34 +866,41 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
           }}
         />
       );
+    // Above the phone's keys the stream can be too short to show the line, so it sits on the composer.
     foot = (
-      <NewComposer
-        draft={draft}
-        bodyRef={talk.bodyRef}
-        insertRef={talk.refFor('insert')}
-        onSubject={(text) => dispatch({ type: 'subject', text })}
-        onBody={(text) => dispatch({ type: 'body', text })}
-        onCaret={talk.onCaret}
-        onInsert={talk.onInsert}
-        editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
-      />
+      <>
+        {refused == null && !talk.wide && editingLine}
+        <NewComposer
+          draft={draft}
+          bodyRef={talk.bodyRef}
+          insertRef={talk.refFor('insert')}
+          onSubject={(text) => dispatch({ type: 'subject', text })}
+          onBody={(text) => dispatch({ type: 'body', text })}
+          onCaret={talk.onCaret}
+          onInsert={talk.onInsert}
+          onPreview={() => dispatch({ type: 'preview' })}
+          editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
+        />
+      </>
     );
-  } else if (draft.step === 'check')
+  } else if (end === 'check')
     rest = (
-      <CheckCard
-        draft={draft}
-        locale={talk.locale}
-        headRef={talk.checkRef}
-        goRef={talk.refFor('go')}
-        onGo={talk.onConfirm}
-        onLater={talk.onLater}
-        onChange={talk.onChangeIt}
-        onKeep={() => dispatch({ type: 'keepScheduled' })}
-        onChannel={talk.onChannel}
-        onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
-      />
+      <Held>
+        <CheckCard
+          draft={draft}
+          locale={talk.locale}
+          headRef={talk.checkRef}
+          goRef={talk.refFor('go')}
+          onGo={talk.onConfirm}
+          onLater={talk.onLater}
+          onChange={talk.onChangeIt}
+          onKeep={() => dispatch({ type: 'keepScheduled' })}
+          onChannel={talk.onChannel}
+          onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+        />
+      </Held>
     );
-  else if (draft.asking)
+  else if (end === 'asking')
     rest = (
       <CancelAsk
         subject={messageName(draft)}
@@ -876,7 +909,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         onCancel={talk.onCancelScheduled}
       />
     );
-  else if (readsOnly(talk.m))
+  else if (end === 'reads')
     rest = paused ? (
       <PausedLine text={pausedWaits()} />
     ) : (
@@ -884,7 +917,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         {say.goesAt(say.inZone(day, at.time, W.londonTime))}
       </Text>
     );
-  else
+  else if (end === 'actions')
     rest = (
       <>
         {paused ? (
@@ -923,7 +956,10 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   return {
     title: messageName(draft),
     titleLines: 1,
-    line: `${say.toGroup(toChip(draft.to))} · ${scheduledWord(draft, talk.locale)}`,
+    line:
+      draft.outcome === 'nobody'
+        ? say.toGroup(toChip(draft.to))
+        : `${say.toGroup(toChip(draft.to))} · ${scheduledWord(draft, talk.locale)}`,
     lead: <GroupTile side={44} />,
     stream: (
       <>
@@ -1122,6 +1158,7 @@ export function partsOf(talk: Talk, open: Exclude<Open, null | { kind: 'reached'
 }
 
 const styles = StyleSheet.create({
+  goesOverFoot: { marginBottom: tokens.spaceSm },
   goes: {
     alignSelf: 'flex-end',
     maxWidth: '86%',

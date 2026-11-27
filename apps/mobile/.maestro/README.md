@@ -128,8 +128,17 @@ A check is written like a flow, and also:
   A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
   in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
   `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
+- **A wait or an assertion before every screenshot**, on what that screen shows (an id or
+  `{{t:}}` text), never a screenshot alone: a renamed, missing or blank screen would still pass.
+  The rule on conditional taps above is one case of this.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
+
+A check that needs one request held, not the whole API, runs with `QA_API_URL` pointed at
+`node scripts/qa-slow-proxy.mjs --target <api url> --path <regex> [--method POST] [--delay ms]`,
+which holds requests of that method (GET unless told) whose path matches, and names the command in its header.
+With `--status <code>` or `--body <file>` it answers those requests itself, a failure or an
+edited copy of the API's answer, instead of forwarding them.
 
 A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
@@ -160,6 +169,9 @@ and wait out the unhealthy status a long pause leaves before `up --wait`, which 
 it. The `sc17675-*` checks and the `sc59333-*-tablet` ones turn the device with `${ORIENT}`:
 pass `ORIENT=PORTRAIT` (`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the
 unset value as a driver crash.
+The `sc6476-*` checks also turn the tablet through the harness with `${ROT}`: the path `/portrait`
+or `/landscape`, never the bare word (the harness answers 404 and `helper.js` throws "the harness
+refused"), and the same way round as `ORIENT`.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
@@ -172,6 +184,11 @@ for the batch, with the account an administrator in it, and answers its id (`swi
 Then `change=pause` (through the domain, written in the database), `suspend`, `remove` or `delete`
 with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
 Access paused never outlives its check. sc-28178's checks are the example.
+
+sc-95859's day sheet checks need an account no fresh `qa-account.mjs` gives: a QA Organisation
+with 12 or more events on 25 Nov (the long day) and one on 27 Nov, made through
+`POST /api/orgs/{org}/events`. On a fresh account the long day's sheet has one row and never
+scrolls, so `sc95859-day-foot` and `sc95859-day-scroll` fail without saying why.
 
 A check that must prove what reached the server, not what the screen draws, asks
 `ASK: /schedule?event=<id>&place=<place>&done=<n>`. The harness reads the event's schedule as the
@@ -270,6 +287,13 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
   tablet it lands in the settings split list and opens another section. Their Android copies,
   `sc9674-a-*`, press `pressKey: back` instead.
+- **On an iPad, the keys go down by their hide key, never `hideKeyboard`**, which stops the
+  flow there too with "Couldn't hide the keyboard". Tap the key at `point: '97%,97%'`, as
+  `keys-down-ipad.yaml` and `keys-down-ipad-sheet.yaml` do, and only while a field has focus:
+  with the keys already down that point lands outside a sheet and closes it (sc-67886).
+- **Maestro counts a control drawn over as visible**, so `scrollUntilVisible` can stop with it
+  half under a docked foot. To tap such a control at its foot, swipe the scroll to its end first,
+  as `scroll-to-end-ipad-sheet.yaml` does for Sign in's sheet (sc-67886).
 - **On Android, `hideKeyboard` presses Back.** With the keys already down it leaves the screen,
   and on a form with unsaved changes that opens Discard your changes?. Put the keys away on a
   form only while they are up, through `keys-away.yaml`, and never as a precaution before a tap.
@@ -317,6 +341,19 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   run, or a single check with no `setOrientation`, set the one you want:
   `adb shell wm user-rotation lock 1` for portrait, `lock 0` for landscape. In a warm batch,
   do not lock the rotation: the reset and any `setOrientation` write the same setting.
+- **On iOS, `ios-bold-text-switch` flips the real Bold Text switch** (Settings >
+  Accessibility > Display & Text Size), which `simctl` cannot reach, then returns to
+  `com.soirely.app` and takes `${OUT}-switch` and `${OUT}`. It toggles, so run it once per flip.
+  The switch has no id, so it is tapped by point (`84%,18%`, iOS 26.5 on an iPhone); a new iOS
+  that moves the row moves that point.
+- **The `_sc79989-*` flows are steps of sc-79989's release-build pass** (`com.soirely.app`,
+  no Expo Go): each fills, reveals, sends or screenshots one thing, and the pass chains them,
+  passing `ID`, `NEXT`, `OUT`, `EMAIL`, `PASSWORD`, `SUBMIT`, `ANSWER`, `PWD_ID` and `EMAIL_ID`
+  as each needs. None is a check on its own.
+- **The `_sc4235q1-*` flows are sc-4235's qa1 app checks**, run in this order on qa1's stack.
+  `_sc4235q1-again` (`CODE`, `CAP`, `CAP2`, `TITLE`) then `_sc4235q1-holder` (`CODE`, `CAP`,
+  `TITLE`) and `_sc4235q1-pw-code` (`CODE`, `EMAIL` of the password account) are checks.
+  `sc4235/_q1-out` is the Sign out they share.
 - **On iOS, set a large text size only after the batch has signed in.** With
   `xcrun simctl ui <device> content_size` at `accessibility-extra-extra-large` or larger
   before the batch, its sign-in types the password into the email field (`--cold`) or misses

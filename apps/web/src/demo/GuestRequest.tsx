@@ -45,7 +45,7 @@ export function GuestRequest({
 
   if (load !== 'loaded')
     return (
-      <SubPage page="guestRequest" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="guestRequest" title={W.title} viewer={viewer} tell={tell} above="none">
         {load === 'failed' ? (
           <PageFailed words={W.failed} onRetry={retry} />
         ) : (
@@ -65,7 +65,7 @@ export function GuestRequest({
   };
 
   return (
-    <SubPage page="guestRequest" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="guestRequest" title={W.title} viewer={viewer} tell={tell} above="none">
       <Note>{W.line}</Note>
       <form className="desk-field" role="search" noValidate onSubmit={find}>
         <label htmlFor={id} className="desk-label">

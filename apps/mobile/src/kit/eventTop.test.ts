@@ -1,7 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { eventTop, sidebarCardOf } from './eventTop.ts';
+import { backToEvents, eventTop, sidebarCardOf } from './eventTop.ts';
 
 const gala: OrganisationEvent = {
   id: 'evt_gala',
@@ -33,8 +33,12 @@ describe("an event's page top", () => {
     expect(eventTop('tabletLandscape', 'overview', 'loaded').inEvent).toBe(true);
   });
 
-  it("is not the event's on a failed or missing event", () => {
-    expect(eventTop('tabletLandscape', 'overview', 'failed').inEvent).toBe(false);
+  it("stays the event's over a failed load, as the demo draws Try again in the event's frame", () => {
+    for (const kind of ['phone', 'tabletPortrait', 'tabletLandscape'] as const)
+      expect(eventTop(kind, 'overview', 'failed')).toEqual(eventTop(kind, 'overview', 'loading'));
+  });
+
+  it("is not the event's on a missing event", () => {
     expect(eventTop('tabletPortrait', 'budget', 'notFound').inEvent).toBe(false);
   });
 
@@ -44,14 +48,12 @@ describe("an event's page top", () => {
       cardNamed: true,
       areaTitled: false,
       frameBack: 'events',
-      bodyBack: false,
     });
     expect(eventTop('tabletPortrait', 'budget', 'loaded')).toEqual({
       inEvent: true,
       cardNamed: false,
       areaTitled: true,
       frameBack: 'events',
-      bodyBack: false,
     });
   });
 
@@ -61,11 +63,8 @@ describe("an event's page top", () => {
       cardNamed: true,
       areaTitled: false,
       frameBack: null,
-      bodyBack: false,
     });
     expect(eventTop('tabletLandscape', 'overview', 'loaded').cardNamed).toBe(true);
-    expect(eventTop('tabletLandscape', 'overview', 'failed').cardNamed).toBe(false);
-    expect(eventTop('tabletLandscape', 'overview', 'notFound').cardNamed).toBe(false);
   });
 
   it("on its side, draws no ‹ in the pane on any other area, the sidebar's Overview being the way back", () => {
@@ -75,13 +74,18 @@ describe("an event's page top", () => {
         cardNamed: false,
         areaTitled: false,
         frameBack: null,
-        bodyBack: false,
       });
   });
 
-  it('on its side, keeps the ‹ on a failed or missing event, which has no sidebar', () => {
-    expect(eventTop('tabletLandscape', 'overview', 'failed').bodyBack).toBe(true);
-    expect(eventTop('tabletLandscape', 'guests', 'notFound').bodyBack).toBe(true);
+  it('draws a missing event in the bare Events frame, its own Back to Events the way back', () => {
+    for (const kind of ['phone', 'tabletPortrait', 'tabletLandscape'] as const)
+      for (const area of ['overview', 'guests'] as const)
+        expect(eventTop(kind, area, 'notFound')).toEqual({
+          inEvent: false,
+          cardNamed: true,
+          areaTitled: false,
+          frameBack: null,
+        });
   });
 
   it("on a phone, names Overview by its card and goes back by the area's ‹", () => {
@@ -90,8 +94,18 @@ describe("an event's page top", () => {
       cardNamed: false,
       areaTitled: false,
       frameBack: 'area',
-      bodyBack: false,
     });
+  });
+});
+
+describe("a missing event's Back to Events", () => {
+  it("opens Events whatever the link was opened over, never the stack's back", () => {
+    const nav = { dismissTo: vi.fn(), back: vi.fn() };
+
+    backToEvents(nav);
+
+    expect(nav.dismissTo).toHaveBeenCalledExactlyOnceWith('/events');
+    expect(nav.back).not.toHaveBeenCalled();
   });
 });
 

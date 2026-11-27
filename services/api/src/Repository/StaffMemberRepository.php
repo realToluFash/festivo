@@ -6,12 +6,16 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\StaffMember;
+use App\Entity\StaffStation;
+use App\Entity\User;
 use App\Enum\EventStatus;
+use App\Enum\StaffBriefStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Type;
 use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<StaffMember> */
@@ -32,10 +36,57 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
         return $this->findOneBy(['event' => $eventId, 'id' => $id]);
     }
 
+    /** @return list<StaffMember> the roster entries an account signed in through (sc-4235) that still hold a link, on events not yet closed */
+    public function findSignedInAs(User $account, DateTimeImmutable $now, ?Uuid $eventId = null): array
+    {
+        $query = $this->createQueryBuilder('s')
+            ->select('s', 'e')
+            ->innerJoin('s.event', 'e')
+            ->where('s.account = :account')
+            ->andWhere('e.closesAt IS NULL OR e.closesAt > :now')
+            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = s)')
+            ->setParameter('account', $account->getId(), 'uuid')
+            ->setParameter('now', $now)
+            ->orderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('s.id', 'ASC');
+
+        if (null !== $eventId) {
+            $query->andWhere('s.event = :event')->setParameter('event', $eventId, 'uuid');
+        }
+
+        /** @var list<StaffMember> */
+        return $query->getQuery()->getResult();
+    }
+
+    /** @return list<StaffMember> the account's entries holding a link on the event, whether or not it has finished */
+    public function findLinkedOn(User $account, Uuid $eventId): array
+    {
+        /** @var list<StaffMember> */
+        return $this->createQueryBuilder('s')
+            ->where('s.account = :account')
+            ->andWhere('s.event = :event')
+            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = s)')
+            ->setParameter('account', $account->getId(), 'uuid')
+            ->setParameter('event', $eventId, 'uuid')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** @return list<StaffMember> in the order they were added; RosterOrder sorts them */
     public function findOnEvent(Event $event): array
     {
         return $this->findBy(['event' => $event], ['id' => 'ASC']);
+    }
+
+    /** @return list<StaffMember> on the station, as their own or as well (sc-3910) */
+    public function findOnStation(StaffStation $station): array
+    {
+        /** @var list<StaffMember> */
+        return $this->createQueryBuilder('s')
+            ->where('s.station = :station OR s.asWellStation = :station')
+            ->setParameter('station', $station)
+            ->getQuery()
+            ->getResult();
     }
 
     /** @return list<StaffMember> not yet erased, on events finished at or before `$cutoff` */
@@ -52,5 +103,33 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
             ->orderBy('e.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @param list<Event> $events
+     *
+     * @return array<string, true> keyed by the id of each event on which somebody's briefing went
+     */
+    public function eventsWithBriefed(array $events): array
+    {
+        if ([] === $events) {
+            return [];
+        }
+
+        $ids = $this->createQueryBuilder('s')
+            ->select('DISTINCT IDENTITY(s.event) AS event')
+            ->where('s.event IN (:events)')
+            ->andWhere('s.briefStatus <> :none')
+            ->setParameter('events', $events)
+            ->setParameter('none', StaffBriefStatus::None)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $found = [];
+        foreach ($ids as $id) {
+            $found[Uuid::fromString(Type\string()->coerce($id))->toRfc4122()] = true;
+        }
+
+        return $found;
     }
 }

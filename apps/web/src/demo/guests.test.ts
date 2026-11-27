@@ -17,6 +17,7 @@ import {
   countsOf,
   guestsCardOf,
   guestsStart,
+  replyLine,
   handMarked,
   haventLine,
   invitationLine,
@@ -566,6 +567,24 @@ describe('places for companions, the host’s side (sc-3779)', () => {
     expect(placesTo([], 14)).toMatchObject({ companions: { length: 10 } });
   });
 
+  it('holds an arrived place like a named one, named or not, with its own words (sc-1454)', () => {
+    const saved = (names: readonly string[]) => names.map((name, at) => ({ id: `c${at}`, name }));
+    const came = (id: string | null) => id === 'c0';
+
+    expect(placesTo(saved(['', '', '']), 1, came)).toEqual({ companions: saved(['']) });
+    expect(placesTo(saved(['', 'Hauwa Bello', '']), 1, came)).toEqual({
+      refused: 2,
+      arrived: true,
+    });
+    expect(placesTo(saved(['', 'Hauwa Bello']), 1, came)).toEqual({ refused: 2, arrived: true });
+    expect(placesTo(saved(['', 'Hauwa Bello']), 2, came)).toEqual({
+      companions: saved(['', 'Hauwa Bello']),
+    });
+    expect(GW.placesRefusedArrived('Alhaji Musa Bello', 2)).toBe(
+      'Alhaji Musa Bello already has 2 named or arrived. Arrived companions stay on the list.',
+    );
+  });
+
   it('takes unnamed places only, from the end, and refuses once every place left is named', () => {
     expect(placesTo(rows(['', 'Hauwa Bello', '']), 2)).toEqual({
       companions: rows(['', 'Hauwa Bello']),
@@ -573,7 +592,7 @@ describe('places for companions, the host’s side (sc-3779)', () => {
     expect(placesTo(rows(['', 'Hauwa Bello', '']), 1)).toEqual({
       companions: [{ id: 'c1', name: 'Hauwa Bello' }],
     });
-    expect(placesTo(rows(['Marc Laurent']), 0)).toEqual({ refused: 1 });
+    expect(placesTo(rows(['Marc Laurent']), 0)).toEqual({ refused: 1, arrived: false });
     expect(GW.placesRefused('Sophie Laurent', 1)).toBe(
       'Sophie Laurent already has 1 named. Remove some first.',
     );
@@ -681,5 +700,21 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
     expect(countsOf(list).invited).toBe(countsOf(before).invited + 1);
     expect(countsOf(list).coming).toBe(countsOf(before).coming + 1);
     expect(countsOf(list).notYet).toBe(countsOf(before).notYet - 1);
+  });
+});
+
+describe('where a reply came from (sc-1291)', () => {
+  it('names the email answer link a reply was confirmed from, and nothing for the page itself', () => {
+    const { list } = guestsStart('replyFromLink', new URLSearchParams());
+    const line = (id: string) => {
+      const one = list.find((guest) => guest.id === id);
+      if (one == null) throw new Error(id);
+
+      return replyLine(one, '2026-11-04');
+    };
+
+    expect(line('sophie')).toBe('Coming · replied Oct 12 · from the email link');
+    expect(line('camille')).toBe('Not coming · replied Oct 20');
+    expect(line('kwame')).toBe('Coming · replied Oct 2');
   });
 });

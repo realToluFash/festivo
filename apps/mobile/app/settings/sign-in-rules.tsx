@@ -10,7 +10,13 @@ import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { LIST_GAP, SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
+import {
+  LIST_GAP,
+  PANE_TITLE_ROW,
+  SETTINGS_PAGE,
+  titleFoot,
+} from '../../src/components/listFrame.ts';
+import { PausedSettingsSection } from '../../src/components/PausedSettings.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { StandChanges, StandRules } from '../../src/components/SignInRulesStand.tsx';
@@ -50,8 +56,15 @@ type Load =
   | { kind: 'loaded'; page: SignInRulesPage; tapped: boolean }
   | { kind: 'failed'; tapped: boolean };
 
+/** While the pill names a paused organisation, its row opens the paused page, and nothing of the organisation is read (sc-86077). */
+export default function SignInRulesRoute() {
+  const { pausedIn } = useSignedIn();
+
+  return pausedIn == null ? <SignInRules /> : <PausedSettingsSection open="signInRules" />;
+}
+
 /** Settings > Sign-in rules as its demo draws it (sc-30412): where you stand on each rule, then what changed. */
-export default function SignInRules() {
+function SignInRules() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
@@ -214,7 +227,7 @@ export default function SignInRules() {
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {alone && <FrameTop style={titleFoot(CONTENT[kind])} />}
           {!alone && (
-            <View style={besideRow.row}>
+            <View style={[besideRow.row, PANE_TITLE_ROW]}>
               <View style={styles.shrink}>
                 <AnswerHeading
                   ref={heading}

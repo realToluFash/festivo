@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\StaffBriefStatus;
+use App\Enum\StaffLinkStatus;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -46,6 +48,11 @@ class StaffMember
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $member;
 
+    /** The person's own account, once a code to this entry's number signed it in (sc-4235); deleting the account leaves the entry its name and hours. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $account = null;
+
     /** One job on the event (sc-3908), and every shift of theirs is of it; kept through the erasure. */
     #[ORM\ManyToOne(targetEntity: StaffJob::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -67,6 +74,61 @@ class StaffMember
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $floorLead = false;
+
+    /** Their own link (sc-3912): the person, never a token, carries how far it got. */
+    #[ORM\Column(type: Types::STRING, length: 16, enumType: StaffLinkStatus::class, options: ['default' => 'none'])]
+    private StaffLinkStatus $linkStatus = StaffLinkStatus::None;
+
+    /** Who copied or marked it as sent; never set for Opened. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $linkBy = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $linkAt = null;
+
+    /** Their briefing (sc-3917): sent, by a text or by Mark as sent after a copy, then read once they open their link. */
+    #[ORM\Column(type: Types::STRING, length: 16, enumType: StaffBriefStatus::class, options: ['default' => 'none'])]
+    private StaffBriefStatus $briefStatus = StaffBriefStatus::None;
+
+    /** What the briefing they were given said (BriefingPrinter), so a later change to it reads as Changed since sent. */
+    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    private ?string $briefPrint = null;
+
+    /** The last copy of their link from the briefing, and who copied or marked it. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $briefCopyBy = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $briefCopyAt = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $briefCopyMarked = false;
+
+    /**
+     * What the person was last told of their shifts, job, date and venue, by their briefing or their last change notice (sc-4333); null before the briefing went.
+     *
+     * @var ?array<string, mixed>
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $told = null;
+
+    /** The lead who added them at the door from Who's here (sc-3918), who may give them a number without staff.manage. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $walkOnBy = null;
+
+    /** Whom they were moved to cover from Who's here (sc-3918), the station they left and when. A move from Stations clears it. */
+    #[ORM\ManyToOne(targetEntity: StaffMember::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffMember $covering = null;
+
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $movedFrom = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $movedAt = null;
 
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
@@ -106,6 +168,16 @@ class StaffMember
     public function getMember(): ?User
     {
         return $this->member;
+    }
+
+    public function getAccount(): ?User
+    {
+        return $this->account;
+    }
+
+    public function linkAccount(?User $account): void
+    {
+        $this->account = $account;
     }
 
     public function getJob(): ?StaffJob
@@ -171,5 +243,109 @@ class StaffMember
     public function setFloorLead(bool $floorLead): void
     {
         $this->floorLead = $floorLead;
+    }
+
+    public function getLinkStatus(): StaffLinkStatus
+    {
+        return $this->linkStatus;
+    }
+
+    public function getLinkBy(): ?User
+    {
+        return $this->linkBy;
+    }
+
+    public function getLinkAt(): ?DateTimeImmutable
+    {
+        return $this->linkAt;
+    }
+
+    public function linkMoved(StaffLinkStatus $status, ?User $by, ?DateTimeImmutable $at): void
+    {
+        $this->linkStatus = $status;
+        $this->linkBy = $by;
+        $this->linkAt = $at;
+    }
+
+    public function getBriefStatus(): StaffBriefStatus
+    {
+        return $this->briefStatus;
+    }
+
+    public function getBriefPrint(): ?string
+    {
+        return $this->briefPrint;
+    }
+
+    public function setBrief(StaffBriefStatus $status, ?string $print): void
+    {
+        $this->briefStatus = $status;
+        $this->briefPrint = $print;
+    }
+
+    public function getBriefCopyBy(): ?User
+    {
+        return $this->briefCopyBy;
+    }
+
+    public function getBriefCopyAt(): ?DateTimeImmutable
+    {
+        return $this->briefCopyAt;
+    }
+
+    public function isBriefCopyMarked(): bool
+    {
+        return $this->briefCopyMarked;
+    }
+
+    public function setBriefCopy(?User $by, ?DateTimeImmutable $at, bool $marked): void
+    {
+        $this->briefCopyBy = $by;
+        $this->briefCopyAt = $at;
+        $this->briefCopyMarked = $marked;
+    }
+
+    /** @return ?array<string, mixed> */
+    public function getTold(): ?array
+    {
+        return $this->told;
+    }
+
+    /** @param ?array<string, mixed> $told */
+    public function told(?array $told): void
+    {
+        $this->told = $told;
+    }
+
+    public function getWalkOnBy(): ?User
+    {
+        return $this->walkOnBy;
+    }
+
+    public function setWalkOnBy(?User $walkOnBy): void
+    {
+        $this->walkOnBy = $walkOnBy;
+    }
+
+    public function getCovering(): ?StaffMember
+    {
+        return $this->covering;
+    }
+
+    public function getMovedFrom(): ?string
+    {
+        return $this->movedFrom;
+    }
+
+    public function getMovedAt(): ?DateTimeImmutable
+    {
+        return $this->movedAt;
+    }
+
+    public function setCover(?StaffMember $covering, ?string $movedFrom, ?DateTimeImmutable $movedAt): void
+    {
+        $this->covering = $covering;
+        $this->movedFrom = $movedFrom;
+        $this->movedAt = $movedAt;
     }
 }

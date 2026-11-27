@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_ROLES,
   ADD_PROMPT,
   addedToast,
   addRefusedLine,
@@ -9,12 +10,18 @@ import {
   AMAKA,
   DOTTED,
   LONG_MOBILE,
+  LONG_ORGANISATION,
+  ONE_WORD_ORGANISATION,
+  outsideTag,
   UNBROKEN,
   outsideRefusal,
   outsideView,
   readTyped,
+  calledIn,
   firstName,
+  keepWords,
   listed,
+  longOutsiders,
   manages,
   NOT_JOINED,
   seenBy,
@@ -80,6 +87,20 @@ describe('People on an event in the demo, as one list', () => {
       'Sade Bello',
       'Tom Becker',
       'Kemi Okafor',
+    ]);
+  });
+
+  it('places a service level after Can check guests in, as the web demo does (sc-4002)', () => {
+    const ana = on('Ana Souza');
+    const order = listed(withRole(onEvent, ana.id, 'Can run the floor'));
+
+    expect(order[0]?.role).toBe('Lead');
+    expect(names(order)).toEqual([
+      'Priya Shah',
+      'Sade Bello',
+      'Kemi Okafor',
+      'Tom Becker',
+      'Ana Souza',
     ]);
   });
 
@@ -201,6 +222,39 @@ describe('a person’s sheet', () => {
 
   it('calls someone by their first name', () => {
     expect(firstName(tom)).toBe('Tom');
+  });
+});
+
+describe('someone with no account name on the Remove ask (sc-91678)', () => {
+  const [amaka, , , mobile] = longOutsiders();
+  const joined: OnEvent = {
+    id: 'ada@ire.events',
+    name: 'Ada Obiageli Chukwuemeka Oluwaseun Obi',
+    initials: 'AO',
+    tone: 2,
+    role: 'Can edit',
+    outside: false,
+    label: null,
+  };
+
+  it('keeps them as Keep them, never part of an address or a number', () => {
+    expect(amaka && keepWords(amaka)).toBe('Keep them');
+    expect(mobile && keepWords(mobile)).toBe('Keep them');
+    expect(sheetWords(joined).keep).toBe('Keep Ada');
+    expect(mobile && sheetWords(mobile).keep).toBe('Keep them');
+  });
+
+  it('names them whole when their role change does not save', () => {
+    expect(mobile && notChangedLine(mobile)).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
+    expect(amaka && calledIn(amaka)).toBe(AMAKA);
+    expect(calledIn(joined)).toBe('Ada');
+  });
+
+  it('counts a withheld outsider as unnamed too', () => {
+    const [hidden] = seenBy(longOutsiders(), false);
+    expect(hidden && keepWords(hidden)).toBe('Keep them');
   });
 });
 
@@ -414,6 +468,16 @@ describe('adding someone from outside (sc-71)', () => {
     expect(opened('longAddressUnbroken')?.name).toBe(UNBROKEN);
     expect(opened('longMobile')).toMatchObject({ id: LONG_MOBILE, name: '+234 803 123 4567' });
     expect(peopleStart('longAddressRemove').opened).toEqual({ id: AMAKA, removing: 'ask' });
+    expect(peopleStart('longMobileRemove').opened).toEqual({ id: LONG_MOBILE, removing: 'ask' });
+    expect(sheetWords(opened('longMobileRemove') as OnEvent).keep).toBe('Keep them');
+    expect(sheetWords(opened('joinedRemove') as OnEvent).keep).toBe('Keep Kemi');
+    expect(peopleStart('longMobileRoleFails')).toMatchObject({
+      roleFails: true,
+      opened: { id: LONG_MOBILE, removing: null },
+    });
+    expect(sheetWords(opened('longMobileRoleFails') as OnEvent).notChanged('Can view')).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
     expect(peopleStart('longAddress').opened?.removing).toBeNull();
     expect(sheetWords(opened('longAddress') as OnEvent).removeTitle).toBe(
       `Remove ${AMAKA} from this event?`,
@@ -421,5 +485,40 @@ describe('adding someone from outside (sc-71)', () => {
     expect(
       peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
     ).toHaveLength(4);
+  });
+});
+
+describe('an organisation name wider than the tag’s line (sc-90472)', () => {
+  it('tags everyone from outside with the long name, and keeps the list as People’s', () => {
+    for (const [state, name] of [
+      ['longOrganisation', LONG_ORGANISATION],
+      ['oneWordOrganisation', ONE_WORD_ORGANISATION],
+    ] as const) {
+      const start = peopleStart(peopleStateOf(state));
+
+      expect(start.world?.organisation).toBe(name);
+      expect(start.onEvent).toEqual(peopleStart('people').onEvent);
+      expect(outsideTag(name)).toBe(`Outside ${name}`);
+    }
+    expect(ONE_WORD_ORGANISATION).toHaveLength(50);
+    expect(ONE_WORD_ORGANISATION).not.toMatch(/\s/u);
+  });
+});
+
+describe('the service levels on someone from outside (sc-4002)', () => {
+  it('offers them to someone from outside, after the event roles, and never to a member', () => {
+    const start = peopleStart(peopleStateOf('longAddress'));
+    const one = start.onEvent.find((each) => each.id === start.opened?.id) as OnEvent;
+
+    expect(sheetWords({ ...one, outside: true }).roles).toEqual([
+      ...EVENT_ROLES,
+      'Can work the floor',
+      'Can work the pass',
+      'Can run the floor',
+    ]);
+    expect(sheetWords({ ...one, outside: false }).roles).toEqual(EVENT_ROLES);
+    expect(sheetWords(one).means('Can run the floor')).toBe(
+      'Starts service, fires courses and acts on any table. Nothing else of the event.',
+    );
   });
 });

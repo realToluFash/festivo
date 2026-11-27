@@ -239,6 +239,7 @@ export function NewComposer({
   onCaret,
   onInsert,
   onPreview,
+  previewOff,
   onSend,
   editing,
 }: {
@@ -255,6 +256,8 @@ export function NewComposer({
   onCaret?: (at: number) => void;
   onInsert?: () => void;
   onPreview?: () => void;
+  /** Why Preview is not offered, said beside it. */
+  previewOff?: string | undefined;
   onSend?: () => void;
   editing?: { onChangeWhen: () => void; onSave: () => void } | undefined;
 }) {
@@ -315,7 +318,7 @@ export function NewComposer({
         </View>
       )}
       {tools && (
-        <View style={styles.tools}>
+        <View style={[styles.tools, editing != null && styles.toolsWrap]}>
           <TextAction
             ref={insertRef}
             label={W.insert}
@@ -323,15 +326,15 @@ export function NewComposer({
             onPress={onInsert ?? (() => undefined)}
             testID="messages.insert"
           />
+          <TextAction
+            label={W.preview}
+            glyph="eye"
+            onPress={onPreview ?? (() => undefined)}
+            off={!on || previewOff != null || matchesNobody(draft)}
+            testID="messages.preview"
+          />
           {editing == null ? (
             <>
-              <TextAction
-                label={W.preview}
-                glyph="eye"
-                onPress={onPreview ?? (() => undefined)}
-                off={!on}
-                testID="messages.preview"
-              />
               <View style={styles.grow}>
                 <Text size={13} weight="medium" style={[styles.secondary, styles.goes]}>
                   {W.goesOnTheirPage}
@@ -347,17 +350,30 @@ export function NewComposer({
                 onPress={editing.onChangeWhen}
                 testID="messages.changeWhen"
               />
-              <View style={styles.grow} />
-              <Pill
-                label={W.save}
-                height={tokens.sizeHit}
-                full={false}
-                kind={on ? 'primary' : 'off'}
-                onPress={editing.onSave}
-                testID="messages.saveScheduled"
-              />
+              <View style={styles.saveAt}>
+                <Pill
+                  label={W.save}
+                  height={tokens.sizeHit}
+                  full={false}
+                  kind={on ? 'primary' : 'off'}
+                  onPress={editing.onSave}
+                  testID="messages.saveScheduled"
+                />
+              </View>
             </>
           )}
+        </View>
+      )}
+      {tools && previewOff != null && (
+        <View style={styles.previewOff} testID="messages.previewOff">
+          <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+          <Text
+            size={13.5}
+            weight="medium"
+            style={[styles.secondary, styles.grow, styles.previewOffWords]}
+          >
+            {previewOff}
+          </Text>
         </View>
       )}
     </View>
@@ -631,16 +647,16 @@ export function WhyNot({ words }: { words: string }) {
   );
 }
 
-/** The preview's one-line bar: back to the words, Preview on, and Send. */
+/** The preview's one-line bar: back to the words, Preview on, and Send; with onSave, a scheduled message being edited, Save instead, and it still goes at its time. */
 export function PreviewBar({
   sendRef,
   onEdit,
   onSend,
+  onSave,
 }: {
   sendRef?: Ref<ViewInstance> | undefined;
   onEdit: () => void;
-  onSend: () => void;
-}) {
+} & ({ onSend: () => void; onSave?: undefined } | { onSend?: undefined; onSave: () => void })) {
   return (
     <View style={styles.bar}>
       <TextAction label={W.edit} glyph="edit" onPress={onEdit} testID="messages.edit" />
@@ -652,7 +668,18 @@ export function PreviewBar({
         testID="messages.previewOn"
       />
       <View style={styles.grow} />
-      <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      {onSave == null ? (
+        <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      ) : (
+        <Pill
+          label={W.save}
+          height={tokens.sizeHit}
+          full={false}
+          kind="primary"
+          onPress={onSave}
+          testID="messages.preview.save"
+        />
+      )}
     </View>
   );
 }
@@ -742,6 +769,11 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
   tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  previewOff: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  previewOffWords: { lineHeight: 13.5 * 1.45 },
+  // A phone has no room for Insert, Preview, Change when and Save in one row, so Save goes under them whole.
+  toolsWrap: { flexWrap: 'wrap', rowGap: 0 },
+  saveAt: { flexShrink: 0, marginLeft: 'auto' },
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
   answerLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },

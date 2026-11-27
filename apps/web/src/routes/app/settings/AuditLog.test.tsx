@@ -40,6 +40,7 @@ function entry(id: string, overrides: Partial<AuditEntry> = {}): AuditEntry {
     what: `Entry ${id}`,
     on: null,
     changes: [],
+    recorded: [],
     type: 'events',
     action: 'event.made_live',
     address: null,
@@ -123,7 +124,8 @@ function answering(answers: Record<string, (query: Record<string, string>) => Re
     const query = Object.fromEntries(url.searchParams);
     sent.push({ line, query, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
     const answer = answers[line];
-    if (answer == null) throw new TypeError('Failed to fetch');
+    // The shell's own reads answer, so that none of them tells the page the connection fell silent.
+    if (answer == null) return new Response(null, { status: 404 });
 
     return answer(query);
   });
@@ -368,6 +370,45 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(within(signIn).queryByText('Device')).toBeNull();
   });
 
+  it('opens an export’s entry with Format, Filters and Entries, and a plan change’s with its Reason', async () => {
+    const exported = entry('exported', {
+      what: 'Exported 3 audit log entries',
+      type: 'audit_log',
+      action: 'audit_log.exported',
+      recorded: [
+        { label: 'Format', value: 'CSV' },
+        { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+        { label: 'Entries', value: '3' },
+      ],
+    });
+    const plan = entry('plan', {
+      what: 'Changed the plan of Ire Events',
+      type: 'organisation',
+      action: 'organisation.plan_changed',
+      changes: ['Plan: Free → Enterprise'],
+      recorded: [{ label: 'Reason', value: 'QA retest' }],
+    });
+    signedIn();
+    answering({ [LOG]: () => json(logPage([exported, plan])), [VIEWED]: viewed });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Exported 3 audit log entries/u }));
+    const dialog = await screen.findByRole('dialog', { name: 'Entry' });
+    const text = dialog.textContent ?? '';
+
+    expect(within(dialog).queryByText('Changes')).toBeNull();
+    expect(within(dialog).getByText('Person: Priya Shah · Type: Event access')).toBeDefined();
+    expect(text.indexOf('Format')).toBeLessThan(text.indexOf('Filters'));
+    expect(text.indexOf('Filters')).toBeLessThan(text.indexOf('Entries'));
+    expect(text.indexOf('Entries')).toBeLessThan(text.indexOf('Type and action'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Changed the plan of Ire Events/u }));
+    const planned = (await screen.findByRole('dialog', { name: 'Entry' })).textContent ?? '';
+    expect(planned.indexOf('Plan: Free → Enterprise')).toBeLessThan(planned.indexOf('Reason'));
+    expect(planned.indexOf('QA retest')).toBeLessThan(planned.indexOf('Type and action'));
+  });
+
   it('locks the page off Enterprise, with no entries', async () => {
     signedIn();
     const sent = answering({ [LOG]: () => problem('plan_required', 403), [VIEWED]: viewed });
@@ -388,7 +429,14 @@ describe('Data and control › Audit log (sc-611)', () => {
       [LOG]: () => json(logPage([LIVE])),
       [VIEWED]: viewed,
       [EXPORT]: () =>
-        new Response('when,who\n', { status: 200, headers: { 'Content-Type': 'text/csv' } }),
+        new Response('when,who\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition':
+              "attachment; filename=audit-log.csv; filename*=utf-8''Acme%20-%20Quote%20Co%20audit%20log%202026-11-20.csv",
+          },
+        }),
     });
     open();
 
@@ -411,7 +459,7 @@ describe('Data and control › Audit log (sc-611)', () => {
       type: 'events',
     });
     const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
-    expect(link.download).toMatch(/^audit-log-\d{4}-\d{2}-\d{2}\.csv$/u);
+    expect(link.download).toBe('Acme - Quote Co audit log 2026-11-20.csv');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -432,7 +480,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(await screen.findByText('Preparing your export')).toBeDefined();
     expect(
       screen.getByText(
-        'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+        'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Export these entries' })).toBeNull();
@@ -476,7 +524,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
-  it('downloads a prepared export from its emailed link', async () => {
+  it('downloads a prepared export from its emailed link, as audit-log.jsonl when no name is sent', async () => {
     signedIn();
     const sent = answering({
       [LOG]: () => json(logPage([LIVE])),
@@ -489,7 +537,29 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(await screen.findByText('Downloading the audit log as JSON Lines.')).toBeDefined();
     expect(sent.filter((one) => one.line === DOWNLOAD)).toHaveLength(1);
     const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
-    expect(link.download).toMatch(/^audit-log-\d{4}-\d{2}-\d{2}\.jsonl$/u);
+    expect(link.download).toBe('audit-log.jsonl');
+  });
+
+  it('saves an emailed link’s file under the name the server sends', async () => {
+    signedIn();
+    answering({
+      [LOG]: () => json(logPage([LIVE])),
+      [VIEWED]: viewed,
+      [DOWNLOAD]: () =>
+        new Response('{}\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/jsonl',
+            'Content-Disposition':
+              "attachment; filename=audit-log.jsonl; filename*=utf-8''Soir%C3%A9e%20%C3%A0%20Lisboa%20audit%20log%202026-11-20.jsonl",
+          },
+        }),
+    });
+    open(`${AT}?download=ax_1`);
+
+    expect(await screen.findByText('Downloading the audit log as JSON Lines.')).toBeDefined();
+    const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('Soirée à Lisboa audit log 2026-11-20.jsonl');
   });
 
   it('says an emailed link has ended', async () => {

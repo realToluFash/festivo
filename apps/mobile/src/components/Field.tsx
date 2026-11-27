@@ -1,8 +1,10 @@
+import { useFocusEffect } from 'expo-router';
 import {
   createContext,
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -10,6 +12,7 @@ import {
   useState,
 } from 'react';
 import {
+  AppState,
   Keyboard,
   Platform,
   Pressable,
@@ -25,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   codeProps,
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   fieldText,
   handsHeld,
@@ -43,18 +46,24 @@ import {
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldChecked, fieldFocused, fieldLeft, fieldTyped, focusedField } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { useFocusOnAnswer } from './Screen.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { capUnderTitle } from '../layout/textSize.ts';
+import {
+  arrivedFocusStep,
+  holdsMountFocus,
+  mountedKeys,
+  openedFocus,
+  WindowArriving,
+} from './openedFocus.ts';
+import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
+import { moveScreenReaderFocus, useScreenReader } from './screenReaderFocus.ts';
+import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 import { useMarkSide } from './markSide.ts';
 
-/** 16 is the smallest size iOS Safari will not zoom into on focus. */
-export const CONTROL_TEXT_SIZE = 16;
+export { CONTROL_TEXT_SIZE };
 
 interface FieldNamed {
   labelID: string;
@@ -321,8 +330,32 @@ export function useHeld(
     onChangeText: (text) => {
       setTyping((last) => keyTyped(last, text));
       onChangeText?.(text);
+      fieldTyped();
     },
   };
+}
+
+/** Whether a password reads as typed: hidden by default, and hidden again once a submit runs, on leaving the screen and when the app goes to the background. */
+export function useRevealed(submitting: boolean) {
+  const [revealed, setRevealed] = useState(false);
+  const [wasSubmitting, setWasSubmitting] = useState(submitting);
+
+  if (submitting !== wasSubmitting) {
+    setWasSubmitting(submitting);
+    if (submitting) setRevealed(false);
+  }
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') setRevealed(false);
+    });
+
+    return () => listener.remove();
+  }, []);
+
+  useFocusEffect(useCallback(() => () => setRevealed(false), []));
+
+  return [revealed, setRevealed] as const;
 }
 
 /** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
@@ -350,6 +383,87 @@ export function focusChecked(field: RefObject<TextInputInstance | null>): void {
   if (focused && !Keyboard.isVisible()) input.blur();
   fieldChecked(focused && Keyboard.isVisible());
   input.focus();
+}
+
+/** Android binds the keyboard to a field only after the field's first layout, and shows no keys for a field focused before that. */
+const NEW_FIELD_BOUND_MS = 150;
+
+/** To a field drawn in this commit, with the keyboard and the screen reader on it. Returns what cancels the moves still to come. */
+export function focusNewField(input: TextInputInstance | null): () => void {
+  if (input == null) return () => {};
+  focusChecked({ current: input });
+  if (Platform.OS !== 'android') return () => {};
+  const bound = setTimeout(() => {
+    if (!input.isFocused()) return;
+    // TalkBack does not follow input focus, and left on the button that added the row it went to the top of the screen (qa2 #83712).
+    moveScreenReaderFocus(input);
+    if (!Keyboard.isVisible()) raiseKeysOn(input);
+  }, NEW_FIELD_BOUND_MS);
+
+  return () => clearTimeout(bound);
+}
+
+/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount, and held there for a few seconds, sent again whenever Android says the field does not have it (sc-91027). One that opens focused in an Android window that does not slide in, as on a tablet, is focused with its keys once, shortly after mount (sc-92467). Spread `autoFocus` and `onPressIn` after the field's own props; `focused` is the field's own focus, from its focus and blur events. */
+export function useOpenedFocus(
+  autoFocus: boolean | undefined,
+  focused: boolean,
+): {
+  input: RefObject<TextInputInstance | null>;
+  autoFocus: boolean | undefined;
+  onPressIn: () => void;
+} {
+  const input = useRef<TextInputInstance>(null);
+  const arrival = useContext(WindowArriving);
+  const [opened] = useState(() => openedFocus(autoFocus, arrival));
+  const [ticks, setTicks] = useState(0);
+  const readerOn = useScreenReader();
+
+  useEffect(() => {
+    const field = input.current;
+    const step = arrivedFocusStep({
+      opened,
+      arrival,
+      focused,
+      heldElsewhere: !focused && focusedField() != null,
+      readerOn,
+      ticks,
+    });
+    if (step === 'wait' || step === 'done' || field == null) return undefined;
+    // TextInput's focus() skips a field JS already counts as focused, which a lost focus leaves it doing.
+    if (step === 'focus') raiseKeysOn(field);
+    const next = setTimeout(() => setTicks((count) => count + 1), NEW_FIELD_BOUND_MS);
+
+    return () => clearTimeout(next);
+  }, [opened, arrival, focused, readerOn, ticks]);
+
+  const [held] = useState(() => holdsMountFocus(Platform.OS, opened, autoFocus, readerOn));
+  const [keysStep] = useState(() => mountedKeys(held));
+  const [keyTicks, setKeyTicks] = useState(0);
+  const touched = useRef(false);
+
+  useEffect(() => {
+    const field = input.current;
+    if (field == null) return undefined;
+    const step = keysStep({
+      heldElsewhere: !focused && focusedField() != null,
+      readerOn,
+      touched: touched.current,
+      ticks: keyTicks,
+    });
+    if (step === 'raise') raiseKeysOn(field);
+    if (step === 'wait' || step === 'done') return undefined;
+    const next = setTimeout(() => setKeyTicks((count) => count + 1), NEW_FIELD_BOUND_MS);
+
+    return () => clearTimeout(next);
+  }, [keysStep, focused, readerOn, keyTicks]);
+
+  return {
+    input,
+    autoFocus: opened === 'arrived' || held ? false : autoFocus,
+    onPressIn: () => {
+      touched.current = true;
+    },
+  };
 }
 
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
@@ -410,14 +524,17 @@ export function TextField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <TextInput
-      {...FIELD_DEFAULTS}
+      {...fieldDefaults(Platform.OS)}
       {...rest}
+      autoFocus={opened.autoFocus}
+      onPressIn={opened.onPressIn}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={ref}
+      ref={bothRefs(opened.input, ref)}
       {...edging}
       style={inputFaced([styles.input, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
@@ -448,15 +565,18 @@ export function CodeField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <TextInput
-      {...codeProps(takesRecoveryCode)}
+      {...codeProps(Platform.OS, takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
+      autoFocus={opened.autoFocus}
+      onPressIn={opened.onPressIn}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={ref}
+      ref={bothRefs(opened.input, ref)}
       {...edging}
       style={inputFaced([styles.code, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(

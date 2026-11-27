@@ -58,7 +58,7 @@ export const PW = {
   oneTicket: (table: string) => `Table ${table.slice(1)} · 1 ticket`,
   forMain: (n: number) => `${n} ${n === 1 ? 'ticket' : 'tickets'} for Main`,
   printTicketAria: (table: string) => `Print table ${table.slice(1)}’s ticket`,
-  connected: 'Connected · up to date 20:09',
+  connected: 'Connected · up to date at 20:09',
   noConnection: 'No connection · as of 20:09',
   asOf: 'as of 20:09',
   demoTitle: 'Demo only: printing as on',

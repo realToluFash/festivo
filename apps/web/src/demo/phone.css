@@ -1,4 +1,4 @@
-/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468): the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
+/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468), and its bar alone (`.dp-bar`) over every other Settings page: the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
 
 .dp-menu {
   display: none;
@@ -11,6 +11,7 @@
     min-height: 100vh;
   }
 
+  .dp-bar .today-side,
   .dp-fit .today-side {
     flex-direction: row;
     align-items: center;
@@ -23,32 +24,43 @@
     background: var(--colorCard);
   }
 
+  .dp-bar .today-side > :not(.sw, .dp-menu, .desk-bell),
   .dp-fit .today-side > :not(.sw, .dp-menu, .desk-bell) {
     display: none;
   }
 
+  /* The rest of Settings and Your account sit under the product shell's phone bar (sc-13413), its bell in the bar rather than the title row. */
+  .dp-bar .desk-main .desk-bell {
+    display: none;
+  }
+
   /* The bar's bell is the product shell's: the card's colour on the bar, not the title row's grey. */
+  .dp-bar .today-side > .desk-bell,
   .dp-fit .today-side > .desk-bell {
     border-radius: var(--radiusNav);
     background: var(--colorCard);
     color: var(--colorInk);
   }
 
+  .dp-bar .today-side > .desk-bell:hover,
   .dp-fit .today-side > .desk-bell:hover {
     background: var(--colorInset);
   }
 
+  .dp-bar .today-side > .sw,
   .dp-fit .today-side > .sw {
     flex: 1;
     min-width: 0;
   }
 
+  .dp-bar .today-side .sw-opener-name,
   .dp-fit .today-side .sw-opener-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .dp-bar .dp-menu,
   .dp-fit .dp-menu {
     display: flex;
     flex: none;
@@ -66,6 +78,7 @@
     cursor: pointer;
   }
 
+  .dp-bar .dp-menu svg,
   .dp-fit .dp-menu svg {
     width: 16px;
     height: 16px;
@@ -80,9 +93,39 @@
     box-shadow: none;
   }
 
+  /* The page never scrolls itself in the demo's frame, as it never does in the product's shell (sc-98499). */
+  .dp-fit .desk-page {
+    overflow: visible;
+  }
+
   /* Settings keeps the product shell's phone gutter, where Today, Events and Calendar keep theirs. */
   .dp-fit .desk-main:has(> .desk-list) {
     padding-inline: var(--spaceXl);
+  }
+
+  /* sc-91795: Vendors' column runs to that gutter, 16 px from each side of the window, as every desk page does at this width; its rows' tint reaches past the column into it. */
+  .dp-fit .desk-main > .desk-page:has(> .vd-column) {
+    padding-inline: 0;
+    overflow: visible;
+  }
+
+  .dp-fit .desk-page > .vd-column {
+    margin-inline-end: 0;
+  }
+
+  /* Under the search a menu's button may sit anywhere on its line, so its menu opens under the tools at the column's width, as Events' filter does in a phone (phoneFit.css), rather than past an edge of the window. */
+  .dp-fit .vd-tools {
+    position: relative;
+  }
+
+  .dp-fit .vd-tools > .desk-menu-at {
+    position: static;
+  }
+
+  .dp-fit .vd-tools .desk-menu {
+    right: 0;
+    left: 0;
+    width: auto;
   }
 
   /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */

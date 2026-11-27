@@ -1,3 +1,4 @@
+import type { Draft } from './MessagesModel.ts';
 import { CANCELLED_AT, SCHEDULED_BODY, SCHEDULE_AT } from './MessagesSample.ts';
 
 /** sc-3963's refused save, in the web demo's words (AC editing bullet; l10n #28795; pm 7 Nov). */
@@ -10,6 +11,7 @@ export const SW = {
   tooLateWhy: 'The event was not resumed or restored within 48 hours of this message’s time.',
   editingPaused: 'Editing.',
   finishedWhy: 'The event finished before this message was due.',
+  sentNothing: 'sent nothing',
 } as const;
 
 /** How late a held message may go: the API's figure, 48 in the sample. */
@@ -18,6 +20,39 @@ export const TOO_LATE_HOURS = 48;
 /** sc-3963's paused line: one string for both sides of the message's time (l10n #28804), a plural family on the API's hours. */
 export function pausedWaits(hours = TOO_LATE_HOURS): string {
   return `This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than ${hours} ${hours === 1 ? 'hour' : 'hours'} late.`;
+}
+
+/** sc-3963's `nobodyDue`, in the web demo's words: a message whose conditions matched nobody when it went. */
+export const sayNobody = {
+  row: (time: string) => `Nobody matched when it was due, ${time} · ${SW.sentNothing}`,
+  line: (time: string) => `At ${time} no guest matched its conditions, so it sent nothing.`,
+};
+
+/** What a scheduled message shows under its bubble (sc-3963). Only `actions` offers Edit, Send now and Cancel…, and only `editing` and `preview` have a composer. */
+export type ScheduledEnd =
+  | 'preview'
+  | 'cancelled'
+  | 'tooLate'
+  | 'nobody'
+  | 'sent'
+  | 'editing'
+  | 'check'
+  | 'asking'
+  | 'reads'
+  | 'actions';
+
+export function scheduledEnd(
+  draft: Pick<Draft, 'step' | 'outcome' | 'was' | 'asking'>,
+  reading: boolean,
+): ScheduledEnd {
+  if (draft.was != null && draft.step === 'preview') return 'preview';
+  if (draft.step === 'cancelled') return 'cancelled';
+  if (draft.outcome != null) return draft.outcome;
+  if (draft.was != null) return 'editing';
+  if (draft.step === 'check') return 'check';
+  if (draft.asking) return 'asking';
+
+  return reading ? 'reads' : 'actions';
 }
 
 export const saySaved = {

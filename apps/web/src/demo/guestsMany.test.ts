@@ -30,7 +30,7 @@ const EVERY_REPLY: ReadonlySet<Reply> = new Set<Reply>([
 
 describe('select many guests (sc-3776)', () => {
   it('selects only the guests a filter shows, never a companion on their own', () => {
-    const { view } = viewOf(list(), 'all', '', EVERY_REPLY, null, true, false, 'g-work');
+    const { view } = viewOf(list(), 'all', '', EVERY_REPLY, null, true, false, ['g-work']);
     const ids = shownGuests(view);
 
     expect(ids.length).toBeGreaterThan(0);

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Billing\Catalogue\CatalogueKeeper;
+use App\Domain\Budget\PaymentEditor;
 use App\Domain\Budget\QuoteRules;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\AuditEntry;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -26,6 +28,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -249,6 +252,93 @@ final class QuotesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aScheduleSavesEveryPaymentAtOnceAsOrdinaryOnesThatCanBeAmended(): void
+    {
+        $quote = $this->add();
+        $answer = $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => 'Deposit', 'amount' => '500.00', 'currency' => 'GBP', 'dueOn' => '2027-02-20'],
+            ['description' => '  Balance ', 'amount' => '500.00', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($answer));
+
+        $payments = $this->only()['payments'];
+        self::assertSame([['Deposit', '500.00', '2027-02-20'], ['Balance', '500.00', '2027-05-18']], Vec\map($payments, static fn (array $one): array => [$one['description'], $one['amount'], $one['dueOn']]));
+        self::assertSame('0.00', $this->only()['difference']);
+
+        $this->as($this->owner, 'PUT', $this->payments(Type\string()->coerce($payments[1]['id'])), ['description' => 'Balance', 'amount' => '450', 'currency' => 'GBP', 'dueOn' => '2027-05-01']);
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function aScheduleWithAnyRowRefusedSavesNoneAndNamesEachRowsField(): void
+    {
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => '   ', 'amount' => '500', 'currency' => 'GBP', 'dueOn' => '2027-02-20'],
+            ['description' => 'Balance', 'amount' => '500', 'currency' => 'GBP', 'dueOn' => '2027-02-19'],
+            ['description' => Str\repeat('d', 101), 'amount' => '0', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['payments[0].description', 'payments[1].dueOn', 'payments[2].description', 'payments[2].amount'], Vec\map($this->violations(), static fn (array $v): string => $v['propertyPath']));
+        self::assertSame('Enter what the payment is for.', $this->violation('payments[0].description')['message'] ?? null);
+        self::assertSame([], $this->only()['payments']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => []]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([], $this->only()['payments']);
+    }
+
+    #[Test]
+    public function aScheduleOfMoreRowsThanTheMaximumIsRefusedAtPaymentsAndNothingIsAdded(): void
+    {
+        $quote = $this->add();
+        $row = ['description' => 'Instalment', 'amount' => '10', 'currency' => 'GBP', 'dueOn' => '2027-03-01'];
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM + 1, $row)]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('A schedule can have at most 10 payments. Add the others one at a time.', $this->violation('payments')['message'] ?? null);
+        self::assertSame([], $this->only()['payments']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM, $row)]);
+        self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function aScheduleForAVendorThatAlreadyHasAPaymentIsRefusedAndNothingIsAdded(): void
+    {
+        $quote = $this->add();
+        $this->payment($quote['id']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => 'Payment in full', 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::PaymentsAlreadyScheduled->type(), $this->last()['type'] ?? null);
+        self::assertSame('Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.', $this->last()['detail'] ?? null);
+        self::assertSame(['Deposit'], Vec\map($this->only()['payments'], static fn (array $one): mixed => $one['description']));
+    }
+
+    #[Test]
+    public function aCancelledPaymentLeavesRoomForAScheduleAndOneAlreadyMadeDoesNot(): void
+    {
+        $row = ['description' => 'Payment in full', 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => '2027-05-18'];
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->payments($this->payment($quote['id'])) . '/cancellation', ['reason' => '']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [$row]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $made = $this->add(['vendorId' => $this->vendor('Anchor Hire', 'hire')]);
+        $this->as($this->owner, 'POST', $this->quotes($made['id']) . '/paid-payments', $this->made());
+
+        $this->as($this->owner, 'POST', $this->schedule($made['id']), ['payments' => [$row]]);
+        self::assertSame(409, $this->statusCode());
+    }
+
+    #[Test]
     public function aPaymentIsAmendedAndRemovedAndEverythingDueRunsSoonestFirstThenByVendor(): void
     {
         $bloom = $this->add();
@@ -431,6 +521,216 @@ final class QuotesTest extends ApiTestCase
         self::assertSame(['Bloom & Co', true], [$read['vendor']['name'], $read['vendor']['archived']]);
     }
 
+    #[Test]
+    public function markingPaidRecordsTheAmountTheDayTheReferenceAndWhoAndLeavesNothingDue(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id']);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => '450.5', 'paidOn' => '2027-02-28', 'reference' => '  FP-2231  ']));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $row = $this->row($payment);
+        $paid = Type\shape(['amount' => Type\string(), 'paidOn' => Type\string(), 'reference' => Type\nullable(Type\string()), 'at' => Type\string(), 'by' => Type\mixed(), 'difference' => Type\string()])->coerce($row['paid'] ?? null);
+        self::assertSame(['450.50', '2027-02-28', 'FP-2231', '50.50'], [$paid['amount'], $paid['paidOn'], $paid['reference'], $paid['difference']]);
+        self::assertSame(['id' => $this->owner->getId()->toRfc4122(), 'name' => 'Harriet Cole'], $paid['by']);
+        self::assertSame(['400.00', '450.50', '0.00'], [$this->only()['scheduled'], $this->only()['paid'], $this->only()['outstanding']]);
+        self::assertSame([], $this->read()['due']);
+        self::assertSame(['paid' => '450.50', 'owed' => '0.00', 'overdue' => '0.00', 'overdueCount' => 0], $this->as($this->owner, 'GET', $this->quotes())['totals'] ?? null);
+    }
+
+    #[Test]
+    public function aBlankZeroOverPreciseFutureOrOverlongMarkIsRefusedOnEveryField(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id']);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => '0', 'paidOn' => '2027-03-02', 'reference' => Str\repeat('r', 101)]));
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['amount', 'paidOn', 'reference'], Vec\map($this->violations(), static fn (array $v): string => $v['propertyPath']));
+        self::assertSame(QuoteRules::PAID_IN_FUTURE, $this->violation('paidOn')['code'] ?? null);
+        self::assertSame('Shorten the reference to 100 characters or fewer.', $this->violation('reference')['message'] ?? null);
+
+        foreach (['', '-5', 'abc', '10.555'] as $amount) {
+            $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => $amount]));
+            self::assertSame(422, $this->statusCode(), $amount);
+        }
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['currency' => 'EUR']));
+        self::assertSame(QuoteRules::CURRENCY_MISMATCH, $this->violation('currency')['code'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['reference' => '    ']));
+        self::assertSame(200, $this->statusCode());
+        self::assertNull(Type\dict(Type\string(), Type\mixed())->coerce($this->row($payment)['paid'])['reference']);
+    }
+
+    #[Test]
+    public function aPaymentAlreadyPaidIsRefusedNamingWhoPaidItAndStaysAsTheyMarkedIt(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id']);
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid());
+        $sam = $this->member('sam@bloom.events', 'Sam Reid', SeededRole::Admin, null);
+
+        $this->as($sam, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => '999']));
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::PaymentAlreadyPaid->type(), $this->last()['type'] ?? null);
+        self::assertSame('Harriet Cole has already marked this paid, so nothing has changed.', $this->last()['detail'] ?? null);
+
+        foreach ([['PUT', ['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']], ['DELETE', null]] as [$method, $body]) {
+            $this->as($this->owner, $method, $this->payments($payment), $body);
+            self::assertSame(409, $this->statusCode(), $method);
+        }
+
+        self::assertSame('400.00', Type\dict(Type\string(), Type\mixed())->coerce($this->row($payment)['paid'])['amount']);
+    }
+
+    #[Test]
+    public function undoUnmarksAScheduledPaymentAndItIsOwedAgain(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id'], ['dueOn' => '2027-02-25']);
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid());
+
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
+        self::assertSame(200, $this->statusCode());
+        self::assertNull($this->row($payment)['paid']);
+        self::assertSame([true, '0.00', '400.00'], [$this->read()['due'][0]['overdue'], $this->only()['paid'], $this->only()['outstanding']]);
+
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function onlyAnUnpaidPaymentIsCancelledKeptWithItsReasonAndRestoredOverdue(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id'], ['dueOn' => '2027-02-25']);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => Str\repeat('w', 201)]);
+        self::assertSame('Shorten the reason to 200 characters or fewer.', $this->violation('reason')['message'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => '  Venue includes it  ']);
+        self::assertSame(200, $this->statusCode());
+        $this->as($this->member('sam@bloom.events', 'Sam Reid', SeededRole::Admin, null), 'POST', $this->payments($payment) . '/cancellation', ['reason' => 'Already sorted']);
+        self::assertSame(200, $this->statusCode(), 'a second cancel is already done');
+        $cancelled = Type\dict(Type\string(), Type\mixed())->coerce($this->row($payment)['cancelled']);
+        self::assertSame(['Venue includes it', ['id' => $this->owner->getId()->toRfc4122(), 'name' => 'Harriet Cole']], [$cancelled['reason'], $cancelled['by']]);
+        self::assertSame(['0.00', '400.00', '0.00', []], [$this->only()['scheduled'], $this->only()['cancelled'], $this->only()['outstanding'], $this->read()['due']]);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid());
+        self::assertSame(ErrorCode::PaymentCancelled->type(), $this->last()['type'] ?? null);
+        self::assertSame('This payment has been cancelled, so it cannot be marked paid.', $this->last()['detail'] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/cancellation');
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([null, '2027-02-25', true], [$this->row($payment)['cancelled'], $this->read()['due'][0]['dueOn'], $this->read()['due'][0]['overdue']]);
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid());
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => '']);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::PaymentAlreadyPaid->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
+    public function aPaymentAlreadyMadeIsAddedPaidAndUndoDeletesIt(): void
+    {
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['reference' => 'CHQ 104']));
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $payment = Type\string()->coerce($this->last()['paymentId'] ?? null);
+
+        $row = $this->row($payment);
+        self::assertSame(['Extra stems for the arch', true, '2027-02-25'], [$row['description'], $row['addedAsPaid'], $row['dueOn']]);
+        self::assertSame(['180.00', '180.00', '0.00', []], [$this->only()['scheduled'], $this->only()['paid'], $this->only()['outstanding'], $this->read()['due']]);
+
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([[], '0.00', '0.00'], [$this->only()['payments'], $this->only()['paid'], $this->only()['scheduled']]);
+    }
+
+    #[Test]
+    public function aPaymentAlreadyMadeCountsInScheduledSoAFullyScheduledQuoteReadsOverByIt(): void
+    {
+        $quote = $this->add();
+        $this->payment($quote['id'], ['description' => 'Full balance', 'amount' => '1000']);
+        $cancelled = $this->payment($quote['id'], ['description' => 'Delivery', 'amount' => '60']);
+        $this->as($this->owner, 'POST', $this->payments($cancelled) . '/cancellation', ['reason' => '']);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made());
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['1180.00', '180.00', '180.00', '1000.00'], [$this->only()['scheduled'], $this->only()['difference'], $this->only()['paid'], $this->only()['outstanding']]);
+        self::assertSame(['paid' => '180.00', 'owed' => '1000.00', 'overdue' => '0.00', 'overdueCount' => 0], $this->as($this->owner, 'GET', $this->quotes())['totals'] ?? null);
+    }
+
+    #[Test]
+    public function everyPaymentActionIsAuditedWithItsActorAndWhatItChanged(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id']);
+        $owner = ['id' => $this->owner->getId()->toRfc4122(), 'name' => 'Harriet Cole'];
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => '450.5', 'paidOn' => '2027-02-28', 'reference' => 'FP-2231']));
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => 'Venue includes it']);
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/cancellation');
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['reference' => 'CHQ 104']));
+        $added = Type\string()->coerce($this->last()['paymentId'] ?? null);
+        $this->as($this->owner, 'DELETE', $this->payments($added) . '/paid');
+
+        $paid = ['paidAmount' => [null, '450.50'], 'paidOn' => [null, '2027-02-28'], 'reference' => [null, 'FP-2231'], 'paidBy' => [null, 'Harriet Cole']];
+        $made = ['vendor' => 'Bloom & Co', 'description' => 'Extra stems for the arch', 'amount' => '180.00', 'dueOn' => '2027-02-25', 'paidAmount' => '180.00', 'paidOn' => '2027-02-25', 'reference' => 'CHQ 104', 'paidBy' => 'Harriet Cole'];
+        $expected = [
+            [PaymentEditor::MARKED_PAID, $payment, $paid],
+            [PaymentEditor::UNMARKED, $payment, Dict\map($paid, static fn (array $change): array => [$change[1], $change[0]])],
+            [PaymentEditor::CANCELLED, $payment, ['cancelReason' => [null, 'Venue includes it'], 'cancelledBy' => [null, 'Harriet Cole']]],
+            [PaymentEditor::RESTORED, $payment, ['cancelReason' => ['Venue includes it', null], 'cancelledBy' => ['Harriet Cole', null]]],
+            [PaymentEditor::ADDED_AS_PAID, $added, Dict\map($made, static fn (string $value): array => [null, $value])],
+            [PaymentEditor::DELETED, $added, Dict\map($made, static fn (string $value): array => [$value, null])],
+        ];
+
+        foreach ($expected as [$action, $subject, $changes]) {
+            $entry = Type\instance_of(AuditEntry::class)->coerce(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => $action, 'subjectId' => Uuid::fromString($subject)]));
+            self::assertSame([$owner['id'], $owner['name']], [$entry->getActorId()?->toRfc4122(), $entry->getActorLabel()], $action);
+            self::assertSame($changes, $entry->getChanges(), $action);
+        }
+    }
+
+    #[Test]
+    public function aPaymentAlreadyMadeNeedsItsFieldsAndCannotPrecedeTheFirstQuote(): void
+    {
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/revisions', ['amount' => '1200', 'currency' => 'GBP', 'quotedOn' => '2027-02-27']);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['description' => '   ', 'amount' => '']));
+        self::assertSame(['description', 'amount'], Vec\map($this->violations(), static fn (array $v): string => $v['propertyPath']));
+        self::assertSame('Enter what it was for.', $this->violation('description')['message'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['description' => Str\repeat('d', 101)]));
+        self::assertSame('Shorten the description to 100 characters or fewer.', $this->violation('description')['message'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['paidOn' => '2027-02-19']));
+        self::assertSame(QuoteRules::BEFORE_QUOTE, $this->violation('paidOn')['code'] ?? null);
+        self::assertSame('The date paid cannot be before the quote from Bloom & Co on Sat 20 Feb. Choose that date or a later one.', $this->violation('paidOn')['message'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['paidOn' => '2027-02-20']));
+        self::assertSame(201, $this->statusCode(), 'the first quote, not the revision, is the floor');
+    }
+
+    #[Test]
+    public function aVendorWhosePaymentsArePaidOrCancelledCanBeArchived(): void
+    {
+        $quote = $this->add();
+        $paid = $this->payment($quote['id']);
+        $cancelled = $this->payment($quote['id'], ['description' => 'Balance']);
+        $this->as($this->owner, 'POST', $this->payments($paid) . '/paid', $this->paid());
+        $this->as($this->owner, 'POST', $this->payments($cancelled) . '/cancellation', ['reason' => '']);
+
+        $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/vendors/' . $this->bloom . '/archive');
+        self::assertSame(200, $this->statusCode());
+    }
+
     /** @return list<array{string, string, ?array<string, mixed>}> */
     private function routes(string $quoteId, string $paymentId): array
     {
@@ -441,8 +741,14 @@ final class QuotesTest extends ApiTestCase
             ['POST', $this->quotes($quoteId) . '/revisions', ['amount' => '5', 'currency' => 'GBP', 'quotedOn' => '2027-02-21']],
             ['PUT', $this->quotes($quoteId), ['covers' => 'x']],
             ['POST', $this->quotes($quoteId) . '/payments', ['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']],
+            ['POST', $this->schedule($quoteId), ['payments' => [['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']]]],
             ['PUT', $this->payments($paymentId), ['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']],
             ['DELETE', $this->payments($paymentId), null],
+            ['POST', $this->payments($paymentId) . '/paid', $this->paid()],
+            ['DELETE', $this->payments($paymentId) . '/paid', null],
+            ['POST', $this->payments($paymentId) . '/cancellation', ['reason' => 'x']],
+            ['DELETE', $this->payments($paymentId) . '/cancellation', null],
+            ['POST', $this->quotes($quoteId) . '/paid-payments', $this->made()],
         ];
     }
 
@@ -493,6 +799,32 @@ final class QuotesTest extends ApiTestCase
         return Type\string()->coerce(Vec\filter($payments, static fn (array $one): bool => ($over['description'] ?? 'Deposit') === $one['description'] && ($over['dueOn'] ?? '2027-03-10') === $one['dueOn'])[0]['id'] ?? null);
     }
 
+    /**
+     * @param array<string, mixed> $over
+     *
+     * @return array<string, mixed>
+     */
+    private function paid(array $over = []): array
+    {
+        return ['amount' => '400', 'currency' => 'GBP', 'paidOn' => '2027-03-01', ...$over];
+    }
+
+    /**
+     * @param array<string, mixed> $over
+     *
+     * @return array<string, mixed>
+     */
+    private function made(array $over = []): array
+    {
+        return ['description' => 'Extra stems for the arch', 'amount' => '180', 'currency' => 'GBP', 'paidOn' => '2027-02-25', ...$over];
+    }
+
+    /** @return array<string, mixed> */
+    private function row(string $paymentId): array
+    {
+        return Type\dict(Type\string(), Type\mixed())->coerce(Vec\filter($this->only()['payments'], static fn (array $one): bool => $paymentId === $one['id'])[0] ?? []);
+    }
+
     /** @return array<string, mixed> */
     private function only(): array
     {
@@ -513,7 +845,7 @@ final class QuotesTest extends ApiTestCase
         ], true)->coerce($read);
     }
 
-    /** @return array{id: string, vendor: array<string, mixed>, quote: array<string, mixed>, earlier: list<array<string, mixed>>, lines: list<array<string, mixed>>, payments: list<array<string, mixed>>, scheduled: string, difference: string} */
+    /** @return array{id: string, vendor: array<string, mixed>, quote: array<string, mixed>, earlier: list<array<string, mixed>>, lines: list<array<string, mixed>>, payments: list<array<string, mixed>>, scheduled: string, difference: string, paid: string, outstanding: string, cancelled: string} */
     private static function engaged(mixed $raw): array
     {
         $row = Type\dict(Type\string(), Type\mixed());
@@ -528,6 +860,9 @@ final class QuotesTest extends ApiTestCase
             'payments' => $rows,
             'scheduled' => Type\string(),
             'difference' => Type\string(),
+            'paid' => Type\string(),
+            'outstanding' => Type\string(),
+            'cancelled' => Type\string(),
         ])->coerce($raw);
     }
 
@@ -580,6 +915,11 @@ final class QuotesTest extends ApiTestCase
     private function quotes(?string $id = null): string
     {
         return '/api/events/' . $this->eventId . '/budget/quotes' . (null === $id ? '' : '/' . $id);
+    }
+
+    private function schedule(string $quoteId): string
+    {
+        return $this->quotes($quoteId) . '/schedule';
     }
 
     private function quoteVendors(): string

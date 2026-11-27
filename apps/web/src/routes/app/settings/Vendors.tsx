@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type PaymentRemindersSetting,
   type Vendor,
   type VendorCategory,
   type VendorView,
@@ -24,6 +25,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   Ask,
   Card,
@@ -43,9 +45,11 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { BudgetRow, Rows as RowList } from '../events/QuoteParts.tsx';
 import { vendorPagePath } from '../events/quotesArea.ts';
 import {
   BLANK,
@@ -61,6 +65,7 @@ import {
 } from './vendorsForm.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/AccountParts.css';
+import '../events/quotes.css';
 import './vendors.css';
 
 interface Looking {
@@ -102,6 +107,7 @@ export function Vendors() {
       landing={landing}
       named={organisation.name}
       manages={can(session, 'vendors.manage')}
+      setsReminders={can(session, 'organisation.manage')}
     />
   );
 }
@@ -111,11 +117,13 @@ function Directory({
   landing,
   named,
   manages,
+  setsReminders,
 }: {
   organisationId: string;
   landing: string | null;
   named: string;
   manages: boolean;
+  setsReminders: boolean;
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
@@ -132,11 +140,43 @@ function Directory({
   const search = useRef<HTMLInputElement>(null);
   const backToSearch = useRef(false);
   const retried = useRef(false);
+  const [reminders, setReminders] = useState<PaymentRemindersSetting | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const unasked = useRef(false);
+  // A search, a view or a filter loads without Refreshing…; Try again and the connection's return say it (sc-88912).
+  const [asked, setAsked] = useState(false);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => {
+      unasked.current = true;
+      setAsked(true);
+      setAttempt((n) => n + 1);
+    },
+    title: heading,
+  });
+
+  useEffect(() => {
+    if (!setsReminders) return;
+    let live = true;
+    api.paymentReminders(organisationId).then(
+      (setting) => {
+        if (live) setReminders(setting);
+      },
+      () => undefined,
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [organisationId, setsReminders]);
 
   useEffect(() => {
     const stop = new AbortController();
-    api
-      .vendors(
+    // Asked again by the connection, not by a press, a read that never reached Soirely keeps the rows in view.
+    const quiet = unasked.current;
+    unasked.current = false;
+    watch(
+      api.vendors(
         organisationId,
         {
           view: looking.view,
@@ -146,21 +186,28 @@ function Directory({
           vendor: looking.vendor,
         },
         { signal: stop.signal },
-      )
-      .then(
-        (page) => {
-          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
-        },
-        () => {
-          if (!stop.signal.aborted)
-            setLoad((was) =>
-              was.kind === 'loaded' ? { ...was, rows: 'failed' } : { kind: 'failed' },
-            );
-        },
-      );
+      ),
+    ).then(
+      (page) => {
+        if (stop.signal.aborted) return;
+        setLoad({ kind: 'loaded', page, rows: 'shown' });
+        setAsked(false);
+      },
+      (error: unknown) => {
+        if (stop.signal.aborted) return;
+        setAsked(false);
+        setLoad((was) =>
+          was.kind !== 'loaded'
+            ? { kind: 'failed' }
+            : quiet && keepsWhatLoaded(error)
+              ? was
+              : { ...was, rows: 'failed' },
+        );
+      },
+    );
 
     return () => stop.abort();
-  }, [organisationId, looking, attempt]);
+  }, [organisationId, looking, attempt, watch]);
 
   useEffect(() => {
     const wait = window.setTimeout(
@@ -215,7 +262,8 @@ function Directory({
       <div className="desk vd-desk">
         <div className="desk-page" inert={covered}>
           <div className="desk-column vd-column">
-            <TitleRow title={t('vendors.title')} bell={desk.bell} />
+            {refreshing && asked && <Refreshing />}
+            <TitleRow title={t('vendors.title')} titleRef={heading} bell={desk.bell} />
             {load.kind === 'loading' && <Loading />}
             {load.kind === 'failed' && (
               <Failed
@@ -235,6 +283,7 @@ function Directory({
                 typed={typed}
                 named={named}
                 manages={manages}
+                reminders={reminders}
                 lit={lit}
                 menu={menu}
                 search={search}
@@ -294,6 +343,7 @@ function Loaded({
   typed,
   named,
   manages,
+  reminders,
   lit,
   menu,
   search,
@@ -314,6 +364,7 @@ function Loaded({
   typed: string;
   named: string;
   manages: boolean;
+  reminders: PaymentRemindersSetting | null;
   lit: string | null;
   menu: 'category' | 'filter' | null;
   search: RefObject<HTMLInputElement | null>;
@@ -374,6 +425,21 @@ function Loaded({
         </div>
         {manages && <CardStep label={t('vendors.add')} onClick={onAdd} />}
       </Card>
+      {reminders != null && (
+        <RowList>
+          <li>
+            <BudgetRow
+              title={reminders.inForce ? t('paymentReminders.title') : t('paymentReminders.off')}
+              lines={[
+                reminders.inForce
+                  ? t('paymentReminders.whenReminded', { count: reminders.days })
+                  : t('paymentReminders.offLine'),
+              ]}
+              to="/app/settings/vendors/payment-reminders"
+            />
+          </li>
+        </RowList>
+      )}
       {page.inUse + page.archived > 0 && (
         <>
           <div className="vd-tools">

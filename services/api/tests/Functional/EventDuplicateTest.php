@@ -22,12 +22,13 @@ use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedActiveEventsLimit;
+use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Imagick;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -171,6 +172,19 @@ final class EventDuplicateTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCoverSavedBeforeLinkCardsIsCopiedWithACardOfItsOwn(): void
+    {
+        $id = $this->original();
+        $this->withCover($id, 50, null, withCard: false);
+
+        $copy = $this->duplicate($id, '2027-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $bucket = Type\string()->coerce($_SERVER['STORAGE_BUCKET_PUBLIC'] ?? null);
+        self::assertTrue(self::service(ObjectStore::class)->exists($bucket, EventCoverEditor::cardKey($this->photoKeyOf($copy['id']))));
+    }
+
+    #[Test]
     public function removingTheOriginalsCoverLeavesTheCopysAsItWas(): void
     {
         $id = $this->original();
@@ -305,7 +319,8 @@ final class EventDuplicateTest extends ApiTestCase
     public function aCopyIsMadeAtThePlansLimitSinceADraftCountsTowardNothing(): void
     {
         $id = $this->live($this->original());
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', 1);
+        $this->live($this->original());
+        self::service(ScriptedHardLimits::class)->enforce();
 
         $copy = $this->duplicate($id, '2027-05-15T16:00');
 
@@ -496,11 +511,17 @@ final class EventDuplicateTest extends ApiTestCase
         return (string) $this->client->getResponse()->headers->get('ETag');
     }
 
-    private function withCover(string $id, int $position, ?string $description): string
+    private function withCover(string $id, int $position, ?string $description, bool $withCard = true): string
     {
         $photoKey = 'event_cover/' . $id . '/' . Uuid::v7()->toRfc4122();
+        $photo = new Imagick();
+        $photo->newImage(1920, 1080, 'skyblue');
+        $photo->setImageFormat('webp');
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
-            self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), 'webp', 'image/webp');
+            self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), $photo->getImageBlob(), 'image/webp');
+        }
+        if ($withCard) {
+            self::service(ObjectStore::class)->publish(EventCoverEditor::cardKey($photoKey), 'jpeg', 'image/jpeg');
         }
         self::em()->getConnection()->executeStatement(
             'INSERT INTO event_covers (event_id, photo_key, position, description, created_at, updated_at) VALUES (:id, :photo, :position, :description, NOW(), NOW())',

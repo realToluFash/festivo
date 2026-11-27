@@ -15,6 +15,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'subscription_changes')]
 #[ORM\Index(name: 'idx_subscription_change_subscription', columns: ['subscription_id'])]
+// A provider's event writes at most one line of each kind, however often it is delivered (sc-3933).
+#[ORM\UniqueConstraint(name: 'uniq_subscription_change_provider_event', columns: ['actor_label', 'kind'], options: ['where' => "((actor_type)::text = 'system'::text) AND (actor_label IS NOT NULL)"])]
 class SubscriptionChange
 {
     #[ORM\Id]

@@ -286,7 +286,7 @@ final class SearchTest extends ApiTestCase
     private function guest(string $eventId, string $name): string
     {
         $event = self::em()->find(Event::class, $eventId) ?? self::fail('no event');
-        $guest = Guest::listed($event, $name, NameNormaliser::key($name), Str\lowercase(Str\replace($name, ' ', '.')) . '@example.com', '+2348012345678', null, SecureRandom\string(32));
+        $guest = Guest::listed($event, $name, NameNormaliser::key($name), Str\lowercase(Str\replace($name, ' ', '.')) . '@example.com', '+2348012345678', null, SecureRandom\string(32), SecureRandom\string(32));
         self::em()->persist($guest);
         self::em()->flush();
 

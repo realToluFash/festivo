@@ -22,6 +22,12 @@ describe('the Settings list at a desk (sc-29708)', () => {
     expect(groupsFor(VIEWERS.ana)[1]?.sections).toEqual(['general', 'signInRules']);
   });
 
+  it('lists only General and Sign-in rules for a paused membership, whatever the role elsewhere (sc-86077)', () => {
+    expect(groupsFor(VIEWERS.folake, 'paused')[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.ana, 'paused')[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.folake, 'paused')[0]?.sections).toHaveLength(4);
+  });
+
   it('is Folake, the owner, unless the link names somebody it knows', () => {
     expect(viewerOf(null).name).toBe('Folake Adeyemi');
     expect(viewerOf('nobody').key).toBe('folake');
@@ -40,7 +46,8 @@ describe('the Settings list at a desk (sc-29708)', () => {
     const say = settingsSayIn('en-US');
 
     expect(say.date('2026-11-02')).toBe('Nov 2, 2026');
-    expect(say.day('2026-11-02')).toBe('Nov 2');
+    expect(say.day('2026-11-02')).toBe('Monday, Nov 2');
+    expect(settingsSayIn('en-GB').day('2026-11-02')).toBe('Monday 2 Nov');
     expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 09:12 WAT');
     expect(settingsSayIn('en-GB').date('2026-11-02')).toBe('2 Nov 2026');
   });

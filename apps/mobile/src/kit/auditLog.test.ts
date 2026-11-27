@@ -41,6 +41,7 @@ const entry = (over: Partial<AuditEntry> & Pick<AuditEntry, 'id' | 'at' | 'day'>
   what: 'Made Ireti at 40 live',
   on: { name: 'Ireti at 40', eventId: 'evt-ireti', gone: false },
   changes: [],
+  recorded: [],
   type: 'events',
   action: 'event.made_live',
   address: null,
@@ -272,6 +273,45 @@ describe('an entry', () => {
     expect(rows.find((row) => row.key === 'who')?.value).toBe('System');
   });
 
+  it('shows what an entry recorded as rows of their own, after Changes and before Type and action', () => {
+    const exported = detailRows(
+      t,
+      entry({
+        id: 'exported',
+        at: '2026-10-19T11:42:09Z',
+        day: '2026-10-19',
+        action: 'audit_log.exported',
+        recorded: [
+          { label: 'Format', value: 'CSV' },
+          { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+          { label: 'Entries', value: '3' },
+        ],
+      }),
+    );
+    const plan = detailRows(
+      t,
+      entry({
+        id: 'plan',
+        at: '2026-10-16T09:20:14Z',
+        day: '2026-10-16',
+        changes: ['Plan: Free → Enterprise'],
+        recorded: [{ label: 'Reason', value: 'QA retest' }],
+      }),
+    );
+
+    expect(exported.map((row) => [row.label, row.value]).slice(4, 8)).toEqual([
+      ['Format', 'CSV'],
+      ['Filters', 'Person: Priya Shah · Type: Event access'],
+      ['Entries', '3'],
+      [t('auditLog.labels.kind'), expect.any(String)],
+    ]);
+    expect(exported.some((row) => row.key === 'changes')).toBe(false);
+    expect(plan.map((row) => row.value).slice(4, 6)).toEqual([
+      'Plan: Free → Enterprise',
+      'QA retest',
+    ]);
+  });
+
   it('hands a phone’s entry page the entry it opened, and only that one', () => {
     const one = entry({ id: 'one', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
     const two = entry({ id: 'two', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
@@ -314,7 +354,7 @@ describe('the page', () => {
     expect(auditCard(t, { ...at, preparing: 'folake@ire.events', kind: 'tabletPortrait' })).toEqual(
       {
         says: 'Preparing your export',
-        line: 'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+        line: 'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
         step: null,
       },
     );
@@ -350,7 +390,7 @@ describe('exporting', () => {
   it('downloads a small export, and prepares a large one for the address given', () => {
     const bytes = new Uint8Array(new ArrayBuffer(2));
 
-    expect(exportAnswered({ kind: 'file', type: 'text/csv', bytes })).toEqual({
+    expect(exportAnswered({ kind: 'file', type: 'text/csv', name: null, bytes })).toEqual({
       kind: 'file',
       bytes,
     });

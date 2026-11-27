@@ -8,7 +8,7 @@ import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
@@ -188,7 +188,22 @@ describe('Seating at a desk (sc-3998)', () => {
       widthCm: 2400,
       lengthCm: 1850,
     });
-    expect(screen.getByText('Add your first table, row or seat from the bar below.')).toBeDefined();
+    expect(
+      screen
+        .getByText('Add your first table, row or seat from the bar below.')
+        .closest('.st-bar')
+        ?.classList.contains('is-floor'),
+    ).toBe(true);
+  });
+
+  it("puts the first-table banner in the frame's middle, 12 px in from each side when it is narrow", () => {
+    const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+    const floor = cssRule('.st-bar.is-floor', SHEET);
+
+    expect(floor).toContain('top: 50%;');
+    expect(floor).toContain('left: 50%;');
+    expect(floor).toContain('width: min(470px, calc(100% - 2 * var(--spaceLg)));');
+    expect(floor).toContain('transform: translate(-50%, -50%);');
   });
 
   it('asks for feet and inches where the organisation is US customary', async () => {
@@ -1282,6 +1297,84 @@ describe('Tables at a desk (sc-4000)', () => {
       'Diameter180\u00a0cm',
     ]);
     expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
+  });
+
+  it("reads a long table's length, ends and rotation without seating.manage", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          seating(
+            withTables(
+              table({ shape: 'rectangular', seats: 6, lengthCm: 76, endSeats: 0, rotation: 15 }),
+            ),
+          ),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeRectangular table',
+      'Seats6',
+      'Width180\u00a0cm',
+      'Length76\u00a0cm',
+      'Seats on the ends0',
+      'Rotation15°',
+    ]);
+  });
+
+  it("reads a head table's sizes in feet and inches without seating.manage", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          json({
+            seating: {
+              measurementSystem: 'us',
+              plan: withTables(table({ shape: 'head', seats: 6, lengthCm: 76, rotation: 90 })),
+            },
+          }),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, head table, 0 of 6 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeHead table',
+      'Seats6',
+      'Width5\u00a0ft 11\u00a0in',
+      'Length2\u00a0ft 6\u00a0in',
+      'Seats on the ends0',
+      'Rotation90°',
+    ]);
+  });
+
+  it("reads a cocktail table's places and diameter, and no long-table rows", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          seating(withTables(table({ shape: 'cocktail', seats: 4, widthCm: 80, lengthCm: 80 }))),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, cocktail, 0 of 4 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeCocktail table',
+      'Places4',
+      'Diameter80\u00a0cm',
+    ]);
   });
 });
 
@@ -6700,5 +6793,123 @@ describe('The keyboard focus ring on the Floor plan (sc-64879)', () => {
     expect(cssRule('.st-focus-halo', SHEET)).toMatch(
       /stroke: color-mix\(in srgb, var\(--colorAccent\) 22%, transparent\);\s*stroke-width: 5;/u,
     );
+  });
+});
+
+describe('the zoom bar at 40rem and under (sc-91971)', () => {
+  const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+  const NARROW = mediaBlock('(width <= 40rem)', SHEET.slice(SHEET.indexOf('sc-91971')));
+
+  it('wraps by rule onto two rows, Fit the room across the second, and stays 12 px inside the room', () => {
+    expect(cssRule('.st-zoom', NARROW)).toMatch(
+      /display: grid;\s+grid-template-columns: repeat\(3, auto\);[\s\S]+max-width: calc\(100% - 2 \* var\(--spaceLg\)\);/u,
+    );
+    expect(cssRule('.st-zoom > .st-tool', NARROW)).toMatch(
+      /grid-column: 1 \/ -1;\s+justify-self: stretch;/u,
+    );
+    expect(cssRule('.st-tool', SHEET)).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
+  it('steps what stands above it up by that 46 px row, crowded or not, in a 704 px room', () => {
+    expect(cssRule('.st-minimap,\n  .st-another', NARROW)).toContain('bottom: 126px;');
+    expect(cssRule('.st-keys', NARROW)).toContain('bottom: 124px;');
+    expect(
+      cssRule('.st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another)', NARROW),
+    ).toContain('bottom: 190px;');
+    expect(cssRule('.st-canvas:has(> .st-add.is-crowded) .st-keys', NARROW)).toContain(
+      'bottom: 188px;',
+    );
+    expect(cssRule('.st-main:not(.is-none) .st-canvas.is-plan', NARROW)).toContain(
+      'height: 704px;',
+    );
+  });
+});
+
+describe('the save line beside the switch (sc-91971)', () => {
+  it.each([
+    [282, false],
+    [283, true],
+  ])(
+    'on a 718 px room with the switch 400 px wide and the save line %i px, the save line steps down: %s',
+    async (saveWidth, down) => {
+      signedIn();
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-views')
+            ? 400
+            : this.classList.contains('st-top-right')
+              ? saveWidth
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+        await screen.findByRole('group', { name: 'View' });
+
+        await waitFor(() =>
+          expect(document.querySelector('.st-canvas.is-row-down') != null).toBe(down),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it("measures the row as drawn in the page's language: Floor plan · Saved steps down, Plan · Enregistré stays", async () => {
+    signedIn();
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const drawn =
+          this.classList.contains('st-views') || this.classList.contains('st-top-right');
+        const width = drawn ? 33 * (this.textContent ?? '').length : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+      await screen.findByRole('group', { name: 'View' });
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).not.toBeNull());
+
+      await act(() => i18next.changeLanguage('fr'));
+      await screen.findByText('Enregistré');
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).toBeNull());
+    } finally {
+      measured.mockRestore();
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
+  it('steps the save line one line down, and what stood on that line a line further', () => {
+    const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+
+    expect(cssRule('.is-row-down > .st-top-right', SHEET)).toContain('top: 72px;');
+    expect(
+      cssRule('.is-row-down > :is(.st-bar:not(.is-floor), .st-under-views, .st-view-wrap)', SHEET),
+    ).toContain('top: 132px;');
   });
 });

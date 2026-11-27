@@ -108,6 +108,7 @@ export const COURSES: readonly CourseName[] = ['Starter', 'Mains'];
 
 export const ITEMS: readonly Item[] = [
   { name: 'Small chops', course: 'Starter', at: 'fryer' },
+  { name: 'Pepper soup', course: 'Starter', at: null },
   { name: 'Jollof rice', course: 'Mains', at: 'jollof' },
   { name: 'Chicken', course: 'Mains', at: 'grill' },
   { name: 'Moin moin', course: 'Mains', at: null },
@@ -119,6 +120,7 @@ export const ITEMS: readonly Item[] = [
 
 export const DISHES: Readonly<Record<string, readonly string[]>> = {
   'Small chops': ['Small chops'],
+  'Pepper soup': ['Pepper soup'],
   'Jollof rice with chicken': ['Jollof rice', 'Chicken', 'Moin moin', 'Plantain'],
   'Fried rice with grilled fish': ['Fried rice', 'Grilled fish', 'Plantain'],
   'Chef’s choice': ['Chef’s choice'],
@@ -439,8 +441,8 @@ export function goOnline(s: StationState, online: boolean): StationState {
 
 export function notSentLine(s: StationState, r: Refusal): string {
   const st = s.items[r.item] ?? { kind: 'ready' };
-  const now = st.kind === 'ready' ? 'ready' : st.kind === 'runOut' ? 'run out' : 'preparing';
-  return `${r.item} is ${now} now, by ${r.by}.`;
+  const now = st.kind === 'ready' ? 'Ready' : st.kind === 'runOut' ? 'Run out' : 'Preparing';
+  return `${r.item} is now ${now}, marked by ${r.by}.`;
 }
 
 export function dismissNotSent(s: StationState): StationState {
@@ -452,7 +454,7 @@ export function wait(s: StationState, minutes: number): StationState {
 }
 
 export function strip(s: StationState): string {
-  if (s.online) return `Connected · up to date ${hm(s.asOf)}`;
+  if (s.online) return `Connected · up to date at ${hm(s.asOf)}`;
   const n = s.kept.length;
   return `No connection · as of ${hm(s.asOf)}${n > 0 ? ` · ${plural(n, 'tap', 'taps')} waiting` : ''}`;
 }
@@ -496,8 +498,21 @@ export function walkHere(s: StationState): StationState {
 }
 
 export function arrivalLine(tray: Tray): string {
-  return `${tray.label}’s tray is here · ${plural(tray.plates.length, 'plate', 'plates')}`;
+  return `The tray for ${tray.label} is here · ${plural(tray.plates.length, 'plate', 'plates')}`;
 }
+
+const seatOrder = new Intl.Collator('en', { numeric: true });
+
+/** A block of single seats, named as Floor names it (sc-4021, sc-100403): its first and last seats in label order, numbers by value. */
+export function blockName(seats: readonly string[]): string {
+  const sorted = seats.slice().sort(seatOrder.compare);
+  const first = sorted[0] ?? '';
+  const last = sorted[sorted.length - 1] ?? first;
+  return sorted.length <= 1 ? `Seat ${first}` : `Seats ${first} to ${last}`;
+}
+
+const tenSeats = Array.from({ length: 10 }, (_, i) => String(i + 1));
+export const LONG_BLOCK = ['Window by the garden door', 'At the bar, far end', 'Garden steps'];
 
 export function takeToTable(s: StationState): StationState {
   const tray = hereTrays(s)[0];
@@ -523,7 +538,7 @@ export function pick(s: StationState, id: StationId): StationState {
 }
 
 export function pickedLine(id: StationId): string {
-  return `${nameOf(id)} is open on this tablet. Nobody’s station changed.`;
+  return `${nameOf(id)} is open on this device. Nobody’s station changed.`;
 }
 
 export function undoLine(was: 'Ready' | 'Preparing', when: number): string {
@@ -924,6 +939,66 @@ export function runOutWorld(): StationState {
   };
 }
 
+/** sc-100403: an event with a section's single seats, made into blocks of ten in label order (sc-4005). */
+export function blocksWorld(heading: boolean): StationState {
+  const s = fresh();
+  const chicken = 'Jollof rice with chicken';
+  const fish = 'Fried rice with grilled fish';
+  const before = (t: number) =>
+    heading ? {} : { 'Moin moin': on(t - 2), 'Jollof rice': on(t), Chicken: on(t + 1) };
+  const trays: Tray[] = [
+    {
+      id: 'b1',
+      label: blockName(tenSeats),
+      waiter: 'Ada Nnaji',
+      startedAt: at(19, 32),
+      paused: false,
+      taken: false,
+      plates: [
+        plate('Seat 2', chicken, before(at(19, 34))),
+        plate(
+          'Seat 7',
+          fish,
+          heading ? {} : { 'Fried rice': on(at(19, 34)), 'Grilled fish': on(at(19, 36)) },
+          { flags: ['Peanut allergy'] },
+        ),
+        plate('Seat 10', chicken, before(at(19, 34))),
+      ],
+    },
+    {
+      id: 'b2',
+      label: blockName(['11']),
+      waiter: 'Emeka Obi',
+      startedAt: at(19, 36),
+      paused: false,
+      taken: false,
+      plates: [plate('Seat 11', chicken, { 'Moin moin': on(at(19, 36)) })],
+    },
+    {
+      id: 'b3',
+      label: blockName(LONG_BLOCK),
+      waiter: 'Grace Udo',
+      startedAt: at(19, 38),
+      paused: false,
+      taken: false,
+      plates: [
+        plate('Seat At the bar, far end', fish),
+        plate('Seat Window by the garden door', chicken, {}, { flags: ['Halal'] }),
+      ],
+    },
+    {
+      id: 't9',
+      label: 'Table 9',
+      waiter: 'Chidi Okafor',
+      startedAt: at(19, 40),
+      paused: false,
+      taken: false,
+      plates: [plate('Seat 2', chicken, { 'Moin moin': on(at(19, 40)) }), plate('Seat 5', fish)],
+    },
+  ];
+  return { ...s, trays };
+}
+
 export const STATION_STATES = [
   'here',
   'twoHere',
@@ -934,6 +1009,7 @@ export const STATION_STATES = [
   'undo',
   'marks',
   'pass',
+  'passThree',
   'noCourse',
   'nothingHeading',
   'noItem',
@@ -953,6 +1029,8 @@ export const STATION_STATES = [
   'runOutFaced',
   'runOutOffline',
   'runOutEarlier',
+  'blocks',
+  'blocksHeading',
 ] as const;
 
 export type StationStateName = (typeof STATION_STATES)[number];
@@ -970,6 +1048,10 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   undo: ['Undo after a mark', 'Undo for 2 minutes, then gone'],
   marks: ['The waiter’s marks', 'On and Not on on Table 7’s plates, as Funmi marks them'],
   pass: ['The Pass as a station', 'Moin moin and Chef’s choice; every tray here as it starts'],
+  passThree: [
+    'Three left to dish',
+    'The Pass owes Starter · Pepper soup beside Moin moin and Chef’s choice: two to a row on tablet portrait',
+  ],
   noCourse: ['No course fired', 'Each part says so in words'],
   nothingHeading: ['No tray heading here', 'Heading here says so in words'],
   noItem: [
@@ -978,7 +1060,7 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   ],
   offline: ['No connection', 'sc-4028’s strip: No connection · as of 19:40'],
   waitingToSend: ['A mark waiting to send', 'Plantain Preparing kept offline, 1 tap waiting'],
-  notSent: ['Not sent', 'Plantain is preparing now, by Kemi Adebayo.'],
+  notSent: ['Not sent', 'Plantain is now Preparing, marked by Kemi Adebayo.'],
   moved: ['Moved by Team', 'You’re on Grill now.'],
   given: ['A tray given', 'Table 9’s tray given to Funmi Bakare'],
   refusedFloor: ['Refused · Can work the floor', 'sc-4002’s 403: no station drawn'],
@@ -1013,6 +1095,14 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
     'Run out on an earlier course’s item',
     'The Fryer: Starter · Small chops, owed to one plate, marked run out beside Plantain',
   ],
+  blocks: [
+    'Single seats',
+    'Seats 1 to 10 as faced; Seat 11 and a block of named seats that wraps, heading here',
+  ],
+  blocksHeading: [
+    'Single seats, heading here',
+    'Seats 1 to 10 · Ada Nnaji heading here; the next tray to walk here is announced by its block',
+  ],
 };
 
 export function stationStateOf(raw: string | undefined): StationStateName {
@@ -1045,6 +1135,13 @@ export function seed(name: StationStateName): StationState {
       return waiterMarks(s, 'on');
     case 'pass':
       return { ...s, station: 'pass', you: 'Ronke Alade' };
+    case 'passThree':
+      return {
+        ...s,
+        station: 'pass',
+        you: 'Ronke Alade',
+        waiting: [...s.waiting, plate('Seat 2', 'Pepper soup', {}, { owed: true })],
+      };
     case 'noCourse':
       return { ...s, fired: null, trays: [], held: {} };
     case 'nothingHeading':
@@ -1103,5 +1200,9 @@ export function seed(name: StationStateName): StationState {
       return askRunOut({ ...runOutWorld(), online: false, asOf: at(20, 5) }, RUN_OUT.item);
     case 'runOutEarlier':
       return confirmRunOut(askRunOut(fresh(), 'Small chops'));
+    case 'blocks':
+      return blocksWorld(false);
+    case 'blocksHeading':
+      return blocksWorld(true);
   }
 }

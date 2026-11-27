@@ -1,0 +1,19 @@
+# sc-39340: on the iPad on its side, switching organisation with the pill from Events lists the new organisation's events at once. ORIENT: LANDSCAPE_LEFT, ORG: the organisation's name.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn:
+    id: 'frame.organisation'
+- waitForAnimationToEnd
+- takeScreenshot: switcher
+- tapOn: '.*${ORG}.*'
+- takeScreenshot: at-once
+- waitForAnimationToEnd
+- takeScreenshot: after

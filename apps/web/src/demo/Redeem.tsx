@@ -14,6 +14,8 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, DOOR_EVENT, HOLD_MS } from './doorCode.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { Providers } from './BoardPage.tsx';
+import { linkedIn, PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
 import {
   type Busy,
   CALLING,
@@ -31,12 +33,16 @@ import {
   RESEND_FROM,
   type RedeemState,
   type Step,
+  BISI,
   TRIES_A_MINUTE,
   codeOpens,
   eventLines,
   joinCodeLine,
+  nameLine,
   redeemStart,
   redeemStateOf,
+  isProviderOnly,
+  isSecondNumber,
   rightPhoneCode,
   sendNewIn,
   shownNumber,
@@ -58,11 +64,16 @@ type Want = 'title' | 'field' | 'select' | 'number' | null;
 /** Where focus starts: the field being typed in, the heading of a step that shows the event, nothing on "Signed out." (a status). */
 function firstFocus(state: RedeemState): Want {
   if (state === 'signed-out') return null;
-  if (state === 'event-short') return 'number';
+  if (state === 'event-short' || state === 'second-number') return 'number';
   if (state === 'code-wrong') return 'select';
   if (state === 'code-expired' || state === 'code-expired-whatsapp' || state === 'code-exhausted')
     return 'title';
-  if (state.startsWith('enter') || state.startsWith('code') || state === 'event-blank')
+  if (
+    state.startsWith('enter') ||
+    state.startsWith('code') ||
+    state === 'event-blank' ||
+    state === 'name-blank'
+  )
     return 'field';
 
   return state === 'refused' || state === 'checking' ? 'field' : 'title';
@@ -102,10 +113,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
     if (step.kind === 'enter') {
       if (codeOpens(step.typed)) {
         setTries(0);
-        go(
-          { kind: 'event', name: '', number: '', checked: false, busy: 'no', usedUp: false },
-          'title',
-        );
+        go({ kind: 'named', checked: false, busy: 'no', usedUp: false }, 'title');
         setName('');
         setNumber('');
         return;
@@ -134,10 +142,38 @@ function RedeemPage({ state }: { state: RedeemState }) {
         );
       return;
     }
-    if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
+    if (step.kind === 'named') {
+      if (step.usedUp) setStep({ ...step, busy: 'no' });
+      else go({ kind: 'in', name: name.trim(), checks: true, held: true });
+      return;
+    }
+    if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true, held: false });
+    // Google or Apple signs her in, and the door code's page is back, signed in: Join as admits her (sc-72).
+    if (step.kind === 'providerOnly') {
+      setName(BISI.account);
+      go({ kind: 'joinAs', busy: 'no' });
+    }
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
-        go({ kind: 'in', name, checks: true });
+        if (isSecondNumber(number))
+          go(
+            {
+              kind: 'event',
+              name,
+              number,
+              checked: true,
+              busy: 'no',
+              usedUp: false,
+              secondNumber: true,
+            },
+            'number',
+          );
+        else if (isProviderOnly(number)) {
+          // Refused as her password is: no session, no use of the code, and what she typed forgotten (sc-94849).
+          setName('');
+          setNumber('');
+          go({ kind: 'providerOnly', providers: linkedIn(state), busy: 'no' });
+        } else go({ kind: 'in', name, checks: true, held: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -211,13 +247,34 @@ function RedeemPage({ state }: { state: RedeemState }) {
             titleRef={title}
             fieldRef={field}
             onName={setName}
-            onNumber={setNumber}
+            onNumber={(typed) => {
+              setNumber(typed);
+              if (step.secondNumber === true) setStep({ ...step, secondNumber: false });
+            }}
             onCountry={setCountry}
             onSend={() => {
               const lines = eventLines(name, number, country);
               setStep({ ...step, checked: true });
               if (lines.name != null || lines.number != null) {
                 document.getElementById(lines.name != null ? 'rd-name' : 'rd-number')?.focus();
+                return;
+              }
+              setStep({ ...step, checked: true, busy: 'busy' });
+            }}
+          />
+        );
+      case 'named':
+        return (
+          <NameStep
+            step={step}
+            name={name}
+            titleRef={title}
+            fieldRef={field}
+            onName={setName}
+            onJoin={() => {
+              if (nameLine(name) != null) {
+                setStep({ ...step, checked: true });
+                field.current?.focus();
                 return;
               }
               setStep({ ...step, checked: true, busy: 'busy' });
@@ -238,6 +295,22 @@ function RedeemPage({ state }: { state: RedeemState }) {
                 {R.signOut}
               </button>
             </div>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Tile />
+            <Title titleRef={title}>{providerOnlyTitle(PROVIDER_ORG)}</Title>
+            <p className="rd-intro">{providerOnlyLine(PROVIDER_ORG, step.providers)}</p>
+            <Providers
+              only={step.providers}
+              apple="black"
+              className="rd-providers"
+              buttonClassName="rd-provider"
+              busy={step.busy !== 'no'}
+              onChoose={() => setStep({ ...step, busy: 'busy' })}
+            />
           </>
         );
       case 'member':
@@ -317,7 +390,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
             )}
             <div className="rd-you">
               <p className="rd-you-name">{R.signedInAs(step.name)}</p>
-              <p className="rd-you-line">{R.signedOutAt}</p>
+              {step.held && <p className="rd-you-line">{R.signedOutAt}</p>}
               <button type="button" className="rd-out" onClick={signOut}>
                 <SignOutLine />
                 {R.signOut}
@@ -341,7 +414,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
   );
 }
 
-function Title({
+export function Title({
   titleRef,
   children,
 }: {
@@ -359,7 +432,7 @@ function Tile() {
   return <span className={`rd-tile today-cover is-${MESH}`} aria-hidden="true" />;
 }
 
-function Primary({
+export function Primary({
   busy = false,
   submit = false,
   onClick,
@@ -382,13 +455,13 @@ function Primary({
       }}
     >
       {busy && <span className="rd-spin" aria-hidden="true" />}
-      {children}
+      <span className="rd-primary-words">{children}</span>
     </button>
   );
 }
 
 /** B's onboarding field: the label inside, small once something is typed or it has focus. */
-function Field({
+export function Field({
   id,
   label,
   value,
@@ -440,7 +513,7 @@ function Field({
   );
 }
 
-function Says({
+export function Says({
   id,
   alert = false,
   children,
@@ -510,6 +583,61 @@ function EnterStep({
   );
 }
 
+/** Signed out, the device-held grant asks a name and nothing else: no number, no phone code (sc-72, until sc-4235). */
+function NameStep({
+  step,
+  name,
+  titleRef,
+  fieldRef,
+  onName,
+  onJoin,
+}: {
+  step: Extract<Step, { kind: 'named' }>;
+  name: string;
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  fieldRef: RefObject<HTMLInputElement | null>;
+  onName: (name: string) => void;
+  onJoin: () => void;
+}) {
+  const said = step.checked ? nameLine(name) : null;
+  const busy = step.busy !== 'no';
+
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!busy) onJoin();
+  }
+
+  return (
+    <form className="rd-form" noValidate onSubmit={submit}>
+      <Tile />
+      <Title titleRef={titleRef}>{DOOR_EVENT}</Title>
+      <p className="rd-intro">{EVENT_LINE}</p>
+      {step.usedUp && (
+        <p className="rd-alert" role="alert">
+          <Glyph name="alert" size={17} weight={2.2} />
+          {R.refused}
+        </p>
+      )}
+      <div className="rd-group">
+        <Field
+          id="rd-name"
+          label={R.yourName}
+          value={name}
+          wrong={said != null}
+          told={said == null ? undefined : 'rd-name-line'}
+          inputRef={fieldRef}
+          autoComplete="name"
+          onChange={onName}
+        />
+        {said != null && <Says id="rd-name-line">{said}</Says>}
+      </div>
+      <Primary submit busy={busy}>
+        {busy ? R.joining : R.join}
+      </Primary>
+    </form>
+  );
+}
+
 function EventStep({
   step,
   name,
@@ -534,6 +662,7 @@ function EventStep({
   onSend: () => void;
 }) {
   const lines: EventLines = step.checked ? eventLines(name, number, country) : {};
+  if (lines.number == null && step.secondNumber === true) lines.number = R.secondNumber;
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -623,7 +752,7 @@ const CODE_LINES = {
 } as const;
 
 /** The phone code in a browser: one field and Verify, as the web's onboarding has it (WCAG 3.2.2); nothing is sent as it is typed. */
-function CodeStep({
+export function CodeStep({
   step,
   number,
   titleRef,
@@ -632,6 +761,7 @@ function CodeStep({
   onVerify,
   onText,
   onSendNew,
+  action = { idle: R.verify, busy: R.verifying },
 }: {
   step: Extract<Step, { kind: 'code' }>;
   number: string;
@@ -641,6 +771,7 @@ function CodeStep({
   onVerify: () => void;
   onText: () => void;
   onSendNew: () => void;
+  action?: { idle: string; busy: string };
 }) {
   const texted = step.via === 'text';
   const problem =
@@ -697,7 +828,7 @@ function CodeStep({
               )}
             </div>
             <Primary submit busy={busy}>
-              {busy ? R.verifying : R.verify}
+              {busy ? action.busy : action.idle}
             </Primary>
           </form>
           <div className="rd-ways">
@@ -720,7 +851,7 @@ function CodeStep({
   );
 }
 
-function SignOutLine({ size = 18 }: { size?: number }) {
+export function SignOutLine({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}

@@ -1,16 +1,24 @@
+import type { Provider } from '@soirely/api-client';
+
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
 import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
+import type { EventField } from '../../kit/fieldsAboveSend.ts';
 
 export const REDEEM_STATES = [
   'welcome',
   'camera',
   'enter',
+  'signed-out',
   'enter-blank',
   'enter-short',
   'checking',
   'refused',
   'too-many',
+  'name',
+  'name-blank',
+  'joining',
+  'name-used-up',
   'event',
   'event-blank',
   'event-short',
@@ -24,6 +32,18 @@ export const REDEEM_STATES = [
   'code-exhausted',
   'code-failed',
   'used-up',
+  'event-keys',
+  'event-keys-number',
+  'event-keys-refused',
+  'event-keys-failed',
+  'code-second-number',
+  'second-number',
+  'code-provider-only',
+  'code-provider-only-apple',
+  'code-provider-only-both',
+  'provider-only',
+  'provider-only-apple',
+  'provider-only-both',
   'in',
   'event-in',
   'event-in-view',
@@ -37,10 +57,12 @@ export type RedeemStep =
   | 'camera'
   | 'enter'
   | 'tooMany'
+  | 'named'
   | 'event'
   | 'joinAs'
   | 'member'
   | 'code'
+  | 'providerOnly'
   | 'in'
   | 'inside'
   | 'peopleIn';
@@ -61,6 +83,10 @@ export interface Flow {
   /** The code filled up while they typed: the right phone code meets sc-72's one refusal (sc-4235). */
   full: boolean;
   usedUp: boolean;
+  /** Send code did not get through: "Something went wrong on the way." above the fields, as the app says it. */
+  failed: boolean;
+  /** The field the keys come up on as the event step opens, for a link to show the keys up (sc-97734); null leaves it to the step. */
+  keys: EventField | null;
   texted: boolean;
   digits: string;
   phone: PhoneStatus;
@@ -69,9 +95,42 @@ export interface Flow {
   tries: number;
   /** Inside the event with More open: Your account and Sign out (`more-in`). */
   more: boolean;
+  /** The providers linked to the number's account, when its organisation signs in with Google or Apple only (sc-94849). */
+  providers: readonly Provider[] | null;
+  /** Just signed out: "Signed out." above "Enter a door code", until the next step (sc-4235). */
+  signedOut: boolean;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
+/** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
+export const RITA = { name: 'Rita Sousa', number: '916 480 233' } as const;
+
+export const isSecondNumber = (number: string) =>
+  number.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
+
+/** A member of Ìrè Events, Google linked: what she types is hers until the right code, then forgotten (sc-94849). */
+export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 117' } as const;
+export const PROVIDER_ORG = 'Ìrè Events';
+
+/** As the API lists them, by provider name: Apple first. The line still reads "Google or Apple" (sc-96668). */
+const LINKED = {
+  google: ['google'],
+  apple: ['apple'],
+  both: ['apple', 'google'],
+} as const satisfies Record<string, readonly Provider[]>;
+
+function linkedIn(state: RedeemState): readonly Provider[] {
+  if (state.endsWith('-apple')) return LINKED.apple;
+
+  return state.endsWith('-both') ? LINKED.both : LINKED.google;
+}
+
+const isBisi = (number: string) => number.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '');
+
+/** Only her number is refused: Google linked, or what her deep-linked state linked. Any other number signs in, whatever a state left behind. */
+export function providersFor(flow: Flow): readonly Provider[] | null {
+  return isBisi(flow.number) ? (flow.providers ?? LINKED.google) : null;
+}
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {
   return {
@@ -86,6 +145,8 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     numberSaid: null,
     full: false,
     usedUp: false,
+    failed: false,
+    keys: null,
     texted: false,
     digits: '',
     phone: 'entering',
@@ -93,7 +154,14 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     role: BAR.role,
     tries: 0,
     more: false,
+    providers: null,
+    signedOut: false,
   };
+}
+
+/** Sign out lands on the code's first step, empty, as the browser's does (sc-4235). */
+export function signedOut(): Flow {
+  return { ...freshFlow('enter'), signedOut: true };
 }
 
 export function redeemStateOf(name: string | undefined): RedeemState {
@@ -111,6 +179,8 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'camera' };
     case 'enter':
       return { ...plain, step: 'enter', typed: BAR.code };
+    case 'signed-out':
+      return signedOut();
     case 'enter-blank':
       return { ...plain, step: 'enter', said: W.codeBlank };
     case 'enter-short':
@@ -121,6 +191,14 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'enter', typed: 'Q7KM 4XP3', said: W.refused, tries: 1 };
     case 'too-many':
       return { ...plain, step: 'tooMany' };
+    case 'name':
+      return { ...joao, step: 'named' };
+    case 'name-blank':
+      return { ...plain, step: 'named', nameSaid: W.nameBlank };
+    case 'joining':
+      return { ...joao, step: 'named', held: true };
+    case 'name-used-up':
+      return { ...plain, step: 'named', name: 'Hugo Faria', who: 'Hugo Faria', usedUp: true };
     case 'event':
       return { ...joao, step: 'event' };
     case 'event-blank':
@@ -160,6 +238,32 @@ export function flowAt(state: RedeemState): Flow {
         full: true,
         usedUp: true,
       };
+    case 'event-keys':
+      return { ...plain, step: 'event', keys: 'name' };
+    case 'event-keys-number':
+      return { ...plain, step: 'event', name: JOAO.name, keys: 'number' };
+    case 'event-keys-refused':
+      return { ...joao, step: 'event', usedUp: true, keys: 'name' };
+    case 'event-keys-failed':
+      return { ...joao, step: 'event', failed: true, keys: 'name' };
+    case 'code-second-number':
+      return { ...plain, ...RITA, step: 'code' };
+    case 'second-number':
+      return { ...plain, ...RITA, step: 'event', numberSaid: W.secondNumber };
+    case 'code-provider-only':
+    case 'code-provider-only-apple':
+    case 'code-provider-only-both':
+      return {
+        ...plain,
+        step: 'code',
+        name: BISI.typed,
+        number: BISI.number,
+        providers: linkedIn(state),
+      };
+    case 'provider-only':
+    case 'provider-only-apple':
+    case 'provider-only-both':
+      return { ...plain, step: 'providerOnly', providers: linkedIn(state) };
     case 'in':
       return { ...joao, step: 'in' };
     case 'event-in':
@@ -173,8 +277,30 @@ export function flowAt(state: RedeemState): Flow {
   }
 }
 
-/** The step a phone code ends on: the one refusal for a code that filled meanwhile, else You're in. */
+/** The step a phone code ends on: back to the number for a second number, Google or Apple only for a member whose organisation asks it (nothing typed kept), the one refusal for a code that filled meanwhile, else You're in. */
 export function afterPhoneCode(flow: Flow): Flow {
+  const providers = providersFor(flow);
+  if (providers != null)
+    return {
+      ...flow,
+      step: 'providerOnly',
+      providers,
+      name: '',
+      number: '',
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
+  if (isSecondNumber(flow.number))
+    return {
+      ...flow,
+      step: 'event',
+      numberSaid: W.secondNumber,
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
+
   return flow.full
     ? { ...flow, step: 'event', usedUp: true, digits: '', phone: 'entering', held: false }
     : { ...flow, step: 'in', who: flow.name.trim() === '' ? flow.who : flow.name.trim() };
@@ -202,17 +328,31 @@ export function refusalOf(
 
 export type InsideArea = 'checkIn' | EventPlace;
 const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
+
+/** Every level an account from outside can hold on an event: a join code's, an invite's or a job's (sc-4002, sc-4235). */
+export type InsideLevel = CodeChoice | 'Can run the floor';
+export const SERVICE_LEVELS = [
+  'Can work the floor',
+  'Can work the pass',
+  'Can run the floor',
+] as const satisfies readonly InsideLevel[];
+
+export function isServiceLevel(level: InsideLevel): boolean {
+  return SERVICE_LEVELS.some((one) => one === level);
+}
+
 /** The phone's tabs; every other area the role sees is in More. */
 export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
 
-/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order. */
-export function areasFor(role: CodeChoice): InsideArea[] {
+/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order; a service level Overview alone (sc-96279). */
+export function areasFor(role: InsideLevel): InsideArea[] {
   if (role === 'Can edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+  if (isServiceLevel(role)) return ['overview'];
 
   return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
 }
 
-export function moreAreas(role: CodeChoice, phone: boolean): InsideArea[] {
+export function moreAreas(role: InsideLevel, phone: boolean): InsideArea[] {
   return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
 }
 

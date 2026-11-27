@@ -3,10 +3,27 @@ import {
   EVENT_TYPES,
   type EventType,
   HOSTS_MAXIMUM,
+  type HostFocus,
+  type HostRow,
+  type HostsChange,
+  OSM_COPYRIGHT,
+  STADIA_ATTRIBUTION,
   foldedName,
+  hostCalled,
+  movedHost,
+  removedHost,
 } from '@soirely/domain';
-import { type ComponentProps, type ReactNode, type RefObject, useState } from 'react';
 import {
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Linking,
   Pressable,
   StyleSheet,
   type TextInputInstance,
@@ -26,16 +43,27 @@ import { EventMesh } from './EventMesh.tsx';
 import { currencyMatches } from './currencyMatches.ts';
 import { EventNotice } from './EventNotice.tsx';
 import { SearchField } from './EventsSearch.tsx';
-import { TextField, type TextFieldProps } from './Field.tsx';
+import { TextField, type TextFieldProps, focusNewField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { type ScreenReaderTarget } from './screenReaderFocus.ts';
+import { hostTarget } from './hostTarget.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
-import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
+import { GlyphMark } from './StatusMark.tsx';
+import {
+  ASK_WIDTH,
+  type AskProps,
+  FocusedScreen,
+  Row,
+  RowList,
+  RowRule,
+  TextAction,
+} from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 export const EDIT_PARTS: readonly EditPart[] = [
   'dates',
@@ -83,6 +111,8 @@ export interface ShellProps {
   elsewhere?: { onLatest: () => void; pending?: boolean } | null;
   /** A save that failed: today's Not saved, or the role's refusal (403), in the same place. */
   failed?: string | null;
+  /** Counts the saves answered with a notice up here: each one takes the screen back to its top (sc-74540). */
+  noticed?: number;
   ask?: AskProps | null;
   over?: { layer: ReactNode; onClose: () => void } | null;
   toast?: { words: string; onClose: () => void } | null;
@@ -107,6 +137,7 @@ export function EditShell({
   asking = null,
   elsewhere = null,
   failed = null,
+  noticed = 0,
   ask = null,
   over = null,
   toast = null,
@@ -115,6 +146,7 @@ export function EditShell({
   const { t } = useTranslation();
   const [question, setQuestion] = useState<'discard' | 'latest' | null>(asking);
   const gap = useEditGap();
+  const leaves = useLeaveAsk(open && changed && !busy, () => setQuestion('discard'), onClose);
   const discard: AskProps | null =
     question === 'discard'
       ? {
@@ -122,8 +154,14 @@ export function EditShell({
           line: t('eventEdit.discardLine'),
           keep: { label: t('eventEdit.keepEditing'), testID: `${testID}.keep` },
           confirm: { label: t('eventEdit.discard'), testID: `${testID}.discard`, removes: true },
-          onKeep: () => setQuestion(null),
-          onConfirm: onClose,
+          onKeep: () => {
+            setQuestion(null);
+            leaves.keep();
+          },
+          onConfirm: () => {
+            setQuestion(null);
+            leaves.discard();
+          },
         }
       : null;
   const latest: AskProps | null =
@@ -161,12 +199,13 @@ export function EditShell({
         testID: `${testID}.save`,
       }}
       waits={busy}
-      onCancel={() => (changed ? setQuestion('discard') : onClose())}
+      onCancel={() => leaves.leave()}
       cancelTestID={`${testID}.cancel`}
       opener={opener}
       ask={asked && { ...asked, width: ASK_WIDTH }}
       over={over}
       toast={toast}
+      toTop={noticed}
       testID={testID}
     >
       {elsewhere != null && (
@@ -588,6 +627,7 @@ export function VenueFieldsView({
               ),
             }))}
           />
+          <AddressCredit testID={`${testID}.credit`} />
         </>
       )}
       {offer != null && (
@@ -610,6 +650,40 @@ export function VenueFieldsView({
           }
         />
       )}
+    </>
+  );
+}
+
+/** sc-80918: the credit Stadia's terms and OpenStreetMap's licence ask for wherever their data shows, under the last suggestion and not one of them; each link is its own 48pt target and opens in the device's browser. */
+function AddressCredit({ testID }: { testID: string }) {
+  const { t } = useTranslation();
+  const link = (url: string, name: string, id: string) => (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
+      testID={`${testID}.${id}`}
+    >
+      <Text size={13} weight="medium" style={styles.creditWords}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <>
+      <RowRule inset={40} />
+      <View style={styles.credit} testID={testID}>
+        <Text size={13} weight="medium" style={styles.creditSign}>
+          ©{' '}
+        </Text>
+        {link(STADIA_ATTRIBUTION, t('eventForm.creditStadia'), 'stadia')}
+        <Text size={13} weight="medium" style={styles.creditSign}>
+          {' '}
+          ©{' '}
+        </Text>
+        {link(OSM_COPYRIGHT, t('eventForm.creditOsm'), 'osm')}
+      </View>
     </>
   );
 }
@@ -655,9 +729,16 @@ export function ArrivalNoteField({
   );
 }
 
-export interface Host {
-  key: number;
-  name: string;
+export type Host = HostRow;
+
+/** `keys` raises the keyboard on the name: a new row is typed in at once, a moved or removed one only read. */
+type FocusNext = { to: HostFocus; keys: boolean } | null;
+
+function remembered<T>(views: RefObject<Map<number, T>> | undefined, key: number) {
+  return (view: T | null) => {
+    if (view == null) views?.current.delete(key);
+    else views?.current.set(key, view);
+  };
 }
 
 export function HostRows({
@@ -668,6 +749,7 @@ export function HostRows({
   focusAt = null,
   refs,
   off = false,
+  saysNone = false,
   onSaid,
   testID,
 }: {
@@ -678,24 +760,40 @@ export function HostRows({
   focusAt?: number | null;
   refs?: RefObject<Map<number, TextInputInstance>>;
   off?: boolean;
+  saysNone?: boolean;
   onSaid: (words: string) => void;
   testID: string;
 }) {
   const { t } = useTranslation();
+  const inputs = useRef(new Map<number, TextInputInstance>());
+  const ups = useRef(new Map<number, ViewInstance>());
+  const downs = useRef(new Map<number, ViewInstance>());
+  const addButton = useRef<ViewInstance>(null);
+  const focusNext = useRef<FocusNext>(null);
   const label = (position: number) => t('eventHosts.label', { position });
-  const move = (from: number, to: number) => {
-    const moved = [...hosts];
-    const [one] = moved.splice(from, 1);
-    if (one == null) return;
-    moved.splice(to, 0, one);
-    onHosts(moved);
-    onSaid(
-      t('eventHosts.moved', {
-        name: one.name.trim() || label(from + 1),
-        position: to + 1,
-        count: moved.length,
+
+  useEffect(() => {
+    const next = focusNext.current;
+    focusNext.current = null;
+    if (next == null) return;
+
+    const { to, keys } = next;
+    if (keys && to !== 'add') return focusNewField(inputs.current.get(to.key) ?? null);
+    moveScreenReaderFocus(
+      hostTarget<ScreenReaderTarget>(to, {
+        names: inputs.current,
+        ups: ups.current,
+        downs: downs.current,
+        add: addButton.current,
       }),
     );
+  }, [hosts]);
+
+  const apply = (change: HostsChange | null) => {
+    if (change == null) return;
+    focusNext.current = { to: change.focus, keys: false };
+    onHosts(change.rows);
+    onSaid(change.said);
   };
 
   return (
@@ -703,9 +801,17 @@ export function HostRows({
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {t('eventHosts.explainer')}
       </Text>
+      {saysNone && hosts.length === 0 && (
+        <View style={styles.noHosts} testID={`${testID}.none`}>
+          <GlyphMark mark={tokens.marks.notStarted} />
+          <Text size={tokens.typeBody.size} style={styles.grow}>
+            {t('eventHosts.none')}
+          </Text>
+        </View>
+      )}
       {hosts.map((host, index) => {
         const error = errors[index] ?? null;
-        const named = host.name.trim() || label(index + 1);
+        const named = hostCalled(host, index, t);
 
         return (
           <View key={host.key} style={styles.host}>
@@ -716,10 +822,7 @@ export function HostRows({
               {!kept && !off && (
                 <TextAction
                   label={t('eventHosts.remove')}
-                  onPress={() => {
-                    onHosts(hosts.filter((one) => one.key !== host.key));
-                    onSaid(t('eventHosts.removed', { name: named }));
-                  }}
+                  onPress={() => apply(removedHost(hosts, index, t))}
                   accessibilityLabel={t('eventHosts.removeNamed', { name: named })}
                   testID={`${testID}.remove.${index}`}
                 />
@@ -729,8 +832,8 @@ export function HostRows({
               <View style={styles.grow}>
                 <BoxField
                   ref={(input) => {
-                    if (input == null) refs?.current.delete(host.key);
-                    else refs?.current.set(host.key, input);
+                    remembered(inputs, host.key)(input);
+                    remembered(refs, host.key)(input);
                   }}
                   value={host.name}
                   wrong={error != null}
@@ -741,6 +844,9 @@ export function HostRows({
                       hosts.map((one) => (one.key === host.key ? { ...one, name: typed } : one)),
                     )
                   }
+                  multiline
+                  scrollEnabled={false}
+                  submitBehavior="blurAndSubmit"
                   autoCapitalize="words"
                   autoCorrect={false}
                   accessibilityLabel={label(index + 1)}
@@ -750,16 +856,18 @@ export function HostRows({
               {!kept && !off && (
                 <>
                   <MoveButton
+                    ref={remembered(ups, host.key)}
                     glyph="up"
                     label={t('eventHosts.moveUp', { name: named })}
                     off={index === 0}
-                    onPress={() => move(index, index - 1)}
+                    onPress={() => apply(movedHost(hosts, index, -1, t))}
                   />
                   <MoveButton
+                    ref={remembered(downs, host.key)}
                     glyph="down"
                     label={t('eventHosts.moveDown', { name: named })}
                     off={index === hosts.length - 1}
-                    onPress={() => move(index, index + 1)}
+                    onPress={() => apply(movedHost(hosts, index, 1, t))}
                   />
                 </>
               )}
@@ -780,14 +888,14 @@ export function HostRows({
       ) : (
         !off && (
           <TextAction
+            ref={addButton}
             label={t('eventHosts.add')}
             glyph="plus"
-            onPress={() =>
-              onHosts([
-                ...hosts,
-                { key: Math.max(HOSTS_MAXIMUM, ...hosts.map((one) => one.key + 1)), name: '' },
-              ])
-            }
+            onPress={() => {
+              const key = Math.max(HOSTS_MAXIMUM, ...hosts.map((one) => one.key + 1));
+              focusNext.current = { to: { key, control: 'name' }, keys: true };
+              onHosts([...hosts, { key, name: '' }]);
+            }}
             testID={`${testID}.add`}
           />
         )
@@ -797,11 +905,13 @@ export function HostRows({
 }
 
 function MoveButton({
+  ref,
   glyph,
   label,
   off,
   onPress,
 }: {
+  ref: Ref<ViewInstance>;
   glyph: 'up' | 'down';
   label: string;
   off: boolean;
@@ -809,6 +919,7 @@ function MoveButton({
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={off ? undefined : onPress}
       disabled={off}
       style={({ pressed }) => [styles.move, pressed && styles.pressed]}
@@ -1218,7 +1329,27 @@ const styles = StyleSheet.create({
   },
   selectWrong: { borderWidth: 2, borderColor: tokens.colorBroken, paddingLeft: 14 },
   offer: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxl },
+  credit: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingLeft: 40 },
+  creditSign: { color: tokens.colorInkSecondary },
+  creditLink: {
+    minWidth: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexShrink: 1,
+    justifyContent: 'center',
+  },
+  creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   host: { gap: tokens.spaceHair },
+  noHosts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
   hostHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   hostRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   move: {

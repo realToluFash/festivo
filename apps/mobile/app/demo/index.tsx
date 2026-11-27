@@ -1,3 +1,6 @@
+import { BRIEFING_BOARDS } from '../../src/demo/briefing/briefingModel.ts';
+import { SHIFT_MESSAGE_BOARDS } from '../../src/demo/shiftNotices/shiftMessagesModel.ts';
+import { SHIFT_NOTICE_BOARDS } from '../../src/demo/shiftNotices/shiftNoticesModel.ts';
 import { type Href, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -5,11 +8,14 @@ import Svg, { Path } from 'react-native-svg';
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BELL_BOARDS } from '../../src/demo/bell/BellBoards.ts';
+import { USAGE_WARNING_BOARDS } from '../../src/demo/usageWarning/UsageWarningBoards.ts';
+import { LIMIT_BOARDS } from '../../src/demo/limitReached/LimitReachedBoards.ts';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
+import { NARROW_BARS_BOARDS } from '../../src/demo/narrowBars/NarrowBarsBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
@@ -25,20 +31,39 @@ import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeade
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
 import { ROWS_SIZE_BOARDS } from '../../src/demo/rowsSize/RowsSizeBoards.ts';
-import { FILTER_SIZE_BOARDS } from '../../src/demo/filterSize/FilterSizeBoards.ts';
+import {
+  FILTER_DRILLED_BOARDS,
+  FILTER_SIZE_BOARDS,
+} from '../../src/demo/filterSize/FilterSizeBoards.ts';
+import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
+import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
+import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
+import { TODAY_FOLD_BOARDS } from '../../src/demo/todayFold/TodayFoldBoards.ts';
+import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
+import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
+import {
+  BELL_SIZE_BOARDS,
+  PHONE_BELL_SIZE_BOARDS,
+} from '../../src/demo/bellSize/BellSizeBoards.ts';
+import { BAND_LIVE_BOARDS } from '../../src/demo/bandLive/BandLiveBoards.ts';
+import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
+import { LINK_BOARDS } from '../../src/demo/events/EventLink.ts';
+import { BEHIND_BOARDS } from '../../src/demo/events/opener.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
+import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
@@ -46,10 +71,20 @@ import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
 import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
+import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
+import { KITCHEN_WAY_IN_BOARDS } from '../../src/demo/station/wayInBoards.ts';
+import { FLOOR_WAY_IN_BOARDS } from '../../src/demo/floor/floorWayInBoards.ts';
+import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
-import { STAFF_LINK_BOARDS } from '../../src/demo/staffLink/StaffLinkBoards.ts';
+import {
+  STAFF_LINK_BOARDS,
+  STAFF_ROSTER_BOARDS,
+  STAFF_TEXT_BOARDS,
+} from '../../src/demo/staffLink/StaffLinkBoards.ts';
+import { SHIFT_CLOCK_BOARDS, STAFF_HOURS_BOARDS } from '../../src/demo/shiftClock/boards.ts';
+import { WHOS_HERE_BOARDS } from '../../src/demo/whosHere/WhosHereBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -117,6 +152,18 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: BELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: '37 · Billing · The 80% and 100% usage warning in the bell (sc-3931)',
+    boards: USAGE_WARNING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '37 · Billing · A plan’s hard limit, or the ceiling, refused (sc-3930)',
+    boards: LIMIT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -149,6 +196,94 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
+    page: 'Events · the Filter menu’s drilled levels whole at the largest text sizes (sc-75213)',
+    boards: FILTER_DRILLED_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the greeting and headings whole at the largest text sizes (sc-91291)',
+    boards: TODAY_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · Open the event in reach on the iPhone at the largest text sizes (sc-95084)',
+    boards: TODAY_FOLD_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings, Events and the Calendar · the organisation pill keeps its words whole at the largest text sizes (sc-92464)',
+    boards: TOP_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPad bell’s panel · its heading whole and Mark all read beside it or under it at the largest text sizes (sc-92580)',
+    boards: BELL_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPhone bell’s screen · its title whole on one line at the largest text sizes (sc-92959)',
+    boards: PHONE_BELL_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the scrolled band’s title between the tile and Search at the largest text sizes (sc-92248)',
+    boards: BAND_TITLE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the upright iPad’s band holds its live line whole under the tabs at the largest text sizes (sc-92315)',
+    boards: BAND_LIVE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Calendar · the Show menu’s words whole at the largest text sizes (sc-78219)',
+    boards: SHOW_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Calendar · the iPad header’s title and Subscribe whole at the largest text sizes (sc-79265)',
+    boards: CALENDAR_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Events · the count line whole at the largest text sizes (sc-75214)',
+    boards: COUNT_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
     page: 'Text size · the iPad sidebar on its side at the largest sizes (sc-68441)',
     boards: SIDEBAR_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
@@ -159,6 +294,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
     boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'The phone’s tab bars on a 320dp Android phone, every word whole (sc-99214)',
+    boards: NARROW_BARS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Organisation pill · when the words do not fit (sc-38149)',
@@ -198,6 +341,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Today · more than it holds',
         what: 'The same scroll on Today',
         href: '/demo/today?sidebar=many',
+      },
+    ],
+  },
+  {
+    page: 'Today · its events loading or not loaded (sc-87600)',
+    boards: [
+      {
+        title: 'Today failed',
+        what: 'The cover and the tabs stay; Try again loads',
+        href: '/demo/today?load=failed',
+      },
+      {
+        title: 'Today failed · fails again',
+        what: 'Try again shows loading, then the failed box again',
+        href: '/demo/today?load=failed&retry=fails',
+      },
+      {
+        title: 'Today loading',
+        what: 'Empty for a second, then Loading, and it stays',
+        href: '/demo/today?load=loading',
+      },
+      {
+        title: 'Today failed · sidebar keeps its list',
+        what: 'On its side: the four its own read listed before',
+        href: '/demo/today?load=failed&sidebar=kept',
+      },
+      {
+        title: 'Today loading · sidebar keeps its list',
+        what: 'On its side: the same four while Today loads',
+        href: '/demo/today?load=loading&sidebar=kept',
       },
     ],
   },
@@ -388,6 +561,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?orgs=none&state=managed',
       },
       {
+        title: 'The way in · no organisation, invitations',
+        what: 'Two waiting under Invitations; Open moves into the one joined',
+        href: '/demo/today?orgs=none&state=invitations',
+      },
+      {
+        title: 'The way in · no organisation, Your account',
+        what: 'Settings’ own list, Back in place of the tab bar',
+        href: '/demo/settings?as=noOrg&from=none',
+      },
+      {
         title: 'Step 1 · nothing typed',
         what: 'The dashed plus, the keys up',
         href: '/demo/today?create=name',
@@ -511,6 +694,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Settings · no organisation',
         what: 'Only your own sections',
         href: '/demo/settings?as=noOrg',
+      },
+      {
+        title: 'Settings · access paused',
+        what: 'The list: Organisation and Sign-in rules, no role (sc-86077)',
+        href: '/demo/settings?held=paused',
+      },
+      {
+        title: 'Settings · access paused, no other organisation',
+        what: 'The same list for a member of it alone (sc-86077)',
+        href: '/demo/settings?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · access paused, Organisation',
+        what: 'The paused page: Switch organisation (sc-86077)',
+        href: '/demo/settings/organisation?held=paused',
+      },
+      {
+        title: 'Settings · access paused, Organisation, no other organisation',
+        what: 'No Switch organisation; single events only (sc-85006)',
+        href: '/demo/settings/organisation?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · two-factor overdue',
+        what: 'Turn on two-factor, Sign out',
+        href: '/demo/settings?held=overdue',
+      },
+      {
+        title: 'Settings · two-factor overdue, no other organisation',
+        what: 'Single-event access only (sc-85006)',
+        href: '/demo/settings?held=overdue&switcher=one',
       },
       {
         title: 'Your account',
@@ -714,6 +927,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=everywhere',
       },
       {
+        title: "Security · confirm it's you, Google",
+        what: 'No password: Google’s own button, no header verb',
+        href: '/demo/settings/security?state=proveGoogle',
+      },
+      {
+        title: "Security · confirm it's you, Apple",
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/security?state=proveApple',
+      },
+      {
+        title: 'Security · everywhere else, Google',
+        what: 'After Sign them out: Google’s button',
+        href: '/demo/settings/security?state=everywhereGoogle',
+      },
+      {
+        title: 'Security · everywhere else, Apple',
+        what: 'After Sign them out: Apple’s button',
+        href: '/demo/settings/security?state=everywhereApple',
+      },
+      {
+        title: 'Security · everywhere else, two-factor',
+        what: 'Google, then the code and Continue',
+        href: '/demo/settings/security?state=everywhereGoogleCode',
+      },
+      {
+        title: 'Security · everywhere else, too many tries',
+        what: 'Google’s button off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimited',
+      },
+      {
+        title: 'Security · too many tries at the code',
+        what: 'Continue off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimitedCode',
+      },
+      {
         title: 'Security · reset your password',
         what: 'From Forgot it?',
         href: '/demo/settings/security?state=forgot',
@@ -737,6 +985,81 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Security · signed out, still loading',
         what: 'The line alone, then back in the card',
         href: '/demo/settings/security?state=factorLoadingSignedOut',
+      },
+      {
+        title: 'Passkeys · Turn on two-factor',
+        what: 'How: this device’s wording',
+        href: '/demo/settings/security?state=choose',
+      },
+      {
+        title: 'Passkeys · the choice, Face ID',
+        what: 'Use Face ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseFaceId',
+      },
+      {
+        title: 'Passkeys · the choice, Touch ID',
+        what: 'Use Touch ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseTouchId',
+      },
+      {
+        title: 'Passkeys · the choice, a passkey',
+        what: 'Android, or no Face ID or Touch ID',
+        href: '/demo/settings/security?state=choosePasskey',
+      },
+      {
+        title: 'Passkeys · the sheet open',
+        what: 'Over the choice; cancel goes back',
+        href: '/demo/settings/security?state=chooseSheet',
+      },
+      {
+        title: 'Passkeys · card, the app only',
+        what: 'Add a passkey under it',
+        href: '/demo/settings/security?state=cardApp',
+      },
+      {
+        title: 'Passkeys · card, passkeys only',
+        what: 'Add an authenticator app',
+        href: '/demo/settings/security?state=cardPasskeys',
+      },
+      {
+        title: 'Passkeys · Add an authenticator app',
+        what: 'Today’s step, titled for adding: Add the app, the passkeys keep working',
+        href: '/demo/settings/security?state=addApp',
+      },
+      {
+        title: 'Passkeys · card, both',
+        what: 'Remove… on each, Turn off at the end',
+        href: '/demo/settings/security?state=cardBoth',
+      },
+      {
+        title: 'Passkeys · card at 10',
+        what: 'No Add a passkey',
+        href: '/demo/settings/security?state=cardTen',
+      },
+      {
+        title: 'Passkeys · remove a passkey?',
+        what: 'Stays in the password manager',
+        href: '/demo/settings/security?state=removePasskey',
+      },
+      {
+        title: 'Passkeys · remove the app?',
+        what: 'The Ask over Authenticator app',
+        href: '/demo/settings/security?state=removeApp',
+      },
+      {
+        title: 'Passkeys · removing, the sheet',
+        what: 'The current factor, a passkey',
+        href: '/demo/settings/security?state=removeProof',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you',
+        what: 'After the password, the sheet',
+        href: '/demo/settings/security?state=confirmPasskey',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you, refused',
+        what: 'The server refused the passkey',
+        href: '/demo/settings/security?state=confirmRefused',
       },
       {
         title: 'Notifications',
@@ -862,6 +1185,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Organisation · the only owner',
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
+      },
+      {
+        title: 'Organisation · transfer, Google',
+        what: 'No password: Google’s own button, Transfer off until then',
+        href: '/demo/settings/organisation?state=transferGoogle',
+      },
+      {
+        title: 'Organisation · transfer, Apple',
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/organisation?state=transferApple',
+      },
+      {
+        title: 'Organisation · transfer, two-factor',
+        what: 'Google, then the code and Transfer',
+        href: '/demo/settings/organisation?state=transferGoogleCode',
       },
       { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
       {
@@ -1608,6 +1946,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=now',
       },
       {
+        title: 'A one-day event · on, nothing ahead',
+        what: 'Dîner en direct at 20:40: no step on its card, Coming up says when it ends (sc-93858)',
+        href: '/demo/events/evt-diner-1?state=liveOneDay',
+      },
+      {
+        title: 'A one-day event · Speeches ahead',
+        what: 'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDaySpeeches',
+      },
+      {
+        title: 'A one-day event · over',
+        what: 'At 23:45: every date has passed, with Duplicate, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDayOver',
+      },
+      {
+        title: 'Events · a one-day event happening now',
+        what: 'Dîner en direct leads Upcoming with no step on its card',
+        href: '/demo/events?state=liveOneDay',
+      },
+      {
         title: 'An event · paused',
         what: 'Resume is the step',
         href: '/demo/events/evt-party-2?state=paused',
@@ -1732,6 +2090,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Replies stay open until the start',
         href: '/demo/events/evt-wed-4?state=replyByRemoved',
       },
+      {
+        title: 'Reply by · the event no longer available (404)',
+        what: 'Close replies sooner: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=replyByGone',
+      },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
         title: 'Venue · suggestions',
@@ -1747,6 +2110,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Venue · suggestions down',
         what: 'Type it in full',
         href: '/demo/events/evt-wed-4?state=venueDown',
+      },
+      {
+        title: 'Venue · one suggestion, credited',
+        what: 'OpenStreetMap at the list’s foot (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueOne',
+      },
+      {
+        title: 'Venue · two letters, no list',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueShort',
+      },
+      {
+        title: 'Venue · nothing matches',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueNoMatch',
+      },
+      {
+        title: 'Venue · the credit in French',
+        what: 'Three suggestions, the line whole (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueFrench',
       },
       {
         title: 'Venue · arrival note',
@@ -1784,6 +2167,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=hosts',
       },
       {
+        title: 'Hosted by · no hosts yet',
+        what: 'A draft, before its first host',
+        href: '/demo/events/evt-draft-4?state=hosts',
+      },
+      {
         title: 'Hosted by · a name twice',
         what: 'The second, in red',
         href: '/demo/events/evt-wed-4?state=hostsDuplicate',
@@ -1818,6 +2206,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Event name · blank',
         what: 'The name, in red',
         href: '/demo/events/evt-wed-4?state=nameBlank',
+      },
+      {
+        title: 'Event name · the event no longer available (404)',
+        what: 'Save: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=nameGone',
       },
       {
         title: 'Cover',
@@ -2174,6 +2567,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · Remove asked for a mobile number',
+        what: 'Not joined, so the ask reads Keep them and Remove',
+        href: '/demo/people?state=longMobileRemove',
+      },
+      {
+        title: 'People · Remove asked for Kemi',
+        what: 'Joined from outside, so the ask reads Keep Kemi',
+        href: '/demo/people?state=joinedRemove',
+      },
+      {
+        title: 'People · a mobile number’s role change fails',
+        what: 'Pick a role offline: the line names +234 803 123 4567 whole',
+        href: '/demo/people?state=longMobileRoleFails',
+      },
+      {
         title: 'People · some added, one refused',
         what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
         href: '/demo/people?state=addPartial',
@@ -2182,6 +2590,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'People · nobody left to add',
         what: 'Everyone in Ire Events is on it already',
         href: '/demo/people?state=everyoneOn',
+      },
+      {
+        title: 'People · a long organisation name',
+        what: 'Outside Fundação Comunitária…: at AX1 to AX5 the tag keeps every word whole',
+        href: '/demo/people?state=longOrganisation',
+      },
+      {
+        title: 'People · a one-word organisation name',
+        what: 'A 50-letter name: at AX5 the tag draws at 12.5 pt and only that word breaks',
+        href: '/demo/people?state=oneWordOrganisation',
       },
       {
         title: 'People · loading',
@@ -2240,6 +2658,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'An event’s link from another organisation · sc-80863',
+    boards: LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'An event’s ‹ names the screen it goes back to · sc-83008 · phone and tablet portrait',
+    boards: BEHIND_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Events from outside · sc-68438',
     boards: OUTSIDE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -2250,8 +2676,15 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.filter(
-      ({ state }) => !isStopState(state) && !isReasonState(state) && !isSmsState(state),
+      ({ state }) =>
+        !isStopState(state) && !isReasonState(state) && !isSmsState(state) && !isBellState(state),
     ).map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: BELL_GROUP,
+    boards: MESSAGES_BOARDS.filter(({ state }) => isBellState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Who it reached: every reason, Try SMS instead (sc-3966)',
@@ -2292,8 +2725,72 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
-    page: 'Staffing · one person’s own link, Share link first (sc-3912) · phone, tablet portrait and landscape',
-    boards: STAFF_LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+    page: 'Staffing · the event’s Staff, its roster in the app (sc-77903) · phone, tablet portrait and landscape',
+    boards: STAFF_ROSTER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the briefing above the roster, house rules and everyone’s shift (sc-3917) · tablet portrait and landscape',
+    boards: BRIEFING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the reminder the day before and each person’s shift notices, on the Staff page (sc-4333) · phone, tablet portrait and landscape',
+    boards: SHIFT_NOTICE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · ShiftMessages-Phone, the change and reminder messages as a person on the staff gets them (sc-4333) · phone',
+    boards: SHIFT_MESSAGE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · one person’s own link, Share link first (sc-3912, sc-77903) · phone, tablet portrait and landscape',
+    boards: [...STAFF_LINK_BOARDS, ...STAFF_TEXT_BOARDS].map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · clocking in and out, the clock card on a person’s own shift (sc-234) · phone (also the phone browser), tablet portrait and landscape',
+    boards: SHIFT_CLOCK_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the event’s hours, actual times and corrections (sc-234) · phone, tablet portrait and landscape',
+    boards: STAFF_HOURS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · Who’s here, the floor lead’s live list, the door and Cover (sc-3918) · phone, tablet portrait and landscape',
+    boards: WHOS_HERE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · a staff member’s whole night on one page (sc-3915) · phone, tablet portrait and landscape',
+    boards: MY_NIGHT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
@@ -2328,12 +2825,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
+    page: 'Service · Floor, every table and what each one needs (sc-4021) · phone, tablet portrait and landscape',
+    boards: FLOOR_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
     boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Menu and dietary · the event’s Menu and its picks (sc-3914) · phone, tablet portrait and landscape',
+    boards: MENU_PICKS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
     boards: STATION_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382), and a service level’s Overview (sc-96279) · phone, tablet portrait and landscape',
+    boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · the way in to Floor, from Overview and Your night (sc-98893); Open Floor is on Your night’s section states above · phone, tablet portrait and landscape',
+    boards: FLOOR_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
@@ -2486,6 +3007,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/welcome?notice=byRule',
       },
       {
+        title: 'Welcome · Language sheet',
+        what: 'At the size set on the device: the title whole, Done beside it or under it',
+        href: '/demo/welcome?state=language',
+      },
+      {
+        title: 'Welcome · Language sheet in French',
+        what: 'Langue and Terminé; from the eighth step the line opens the list',
+        href: '/demo/welcome?state=languageFr',
+      },
+      {
+        title: 'Welcome · Language sheet, Terminé under the title',
+        what: 'The rule’s second row, shown whatever the row measures',
+        href: '/demo/welcome?state=languageFrUnder',
+      },
+      {
         title: 'Welcome · Terms pressed',
         what: 'Under the last button; names what the in-app browser opens',
         href: '/demo/legal-link?doc=terms',
@@ -2588,6 +3124,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     page: 'Onboarding · two-factor',
     boards: [
       { title: 'Enter your code', what: 'The authenticator’s code', href: '/demo/two-factor' },
+      {
+        title: 'Use your passkey',
+        what: 'The sheet over the waiting state',
+        href: '/demo/passkey',
+      },
+      {
+        title: 'Use your passkey · sheet cancelled',
+        what: 'Back to waiting, no error',
+        href: '/demo/passkey?sheet=closed',
+      },
+      {
+        title: 'Use your passkey · refused',
+        what: 'The server refused it',
+        href: '/demo/passkey?refused=1',
+      },
+      {
+        title: 'Use your passkey · passkeys only',
+        what: 'A code instead is a recovery code',
+        href: '/demo/passkey?only=1',
+      },
+      {
+        title: 'Use your passkey · from sign-in',
+        what: 'The password, then the passkey',
+        href: '/demo/sign-in?after=passkey',
+      },
+      {
+        title: 'Reset · use your passkey',
+        what: 'The reset link’s code step',
+        href: '/demo/passkey?step=reset',
+      },
       {
         title: 'Enter a recovery code',
         what: 'The dash goes in by itself',

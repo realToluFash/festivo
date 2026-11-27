@@ -1,0 +1,17 @@
+# sc-29914: Members' rows, then ${MEMBER}'s page and its role choice.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: rows
+- swipe: { start: '50%, 75%', end: '50%, 30%' }
+- takeScreenshot: rows-down
+- scrollUntilVisible:
+    { element: { id: 'members.row.${MEMBER}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${MEMBER}' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: member
+- swipe: { start: '50%, 75%', end: '50%, 30%' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: member-down

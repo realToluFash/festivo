@@ -172,6 +172,7 @@ export function AddDishPanel({
   onStartNew,
   onPatch,
   onOnlyEvent,
+  outside,
 }: {
   open: AddDishOpen;
   course: EvCourse;
@@ -188,9 +189,31 @@ export function AddDishPanel({
   onStartNew: (name: string) => void;
   onPatch: (next: Partial<DishForm>) => void;
   onOnlyEvent: (onlyEvent: boolean) => void;
+  /** sc-95116: held from outside at Can edit the event, so the library is neither read nor added to. */
+  outside: boolean;
 }) {
   const shown = shownDishes(library, open.q, []);
   const looking = open.q.trim() !== '';
+
+  if (outside)
+    return (
+      <DishFields
+        form={open.form}
+        errors={errors}
+        notStated={false}
+        editing={false}
+        budget={false}
+        lang={lang}
+        onPatch={onPatch}
+        beforePrice={
+          <div className="desk-field mc-only">
+            <p id="mc-only-help" className="desk-help">
+              {CW.notLibrary}
+            </p>
+          </div>
+        }
+      />
+    );
 
   return (
     <>

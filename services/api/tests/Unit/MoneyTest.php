@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Locale\LocaleNumbers;
 use App\Locale\Money;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -64,9 +65,16 @@ final class MoneyTest extends TestCase
     #[Test]
     public function theExampleFollowsTheReadersLocaleAndTheCurrency(): void
     {
-        self::assertSame('12.50', new Money(new Translator('en'))->example('EUR'));
-        self::assertSame('12,50', new Money(new Translator('fr'))->example('EUR'));
-        self::assertSame('12', new Money(new Translator('en'))->example('JPY'));
-        self::assertSame('12.500', new Money(new Translator('en'))->example('KWD'));
+        self::assertSame('12.50', self::money('en')->example('EUR'));
+        self::assertSame('12,50', self::money('fr')->example('EUR'));
+        self::assertSame('12', self::money('en')->example('JPY'));
+        self::assertSame('12.500', self::money('en')->example('KWD'));
+    }
+
+    private static function money(string $locale): Money
+    {
+        $translator = new Translator($locale);
+
+        return new Money($translator, new LocaleNumbers($translator));
     }
 }

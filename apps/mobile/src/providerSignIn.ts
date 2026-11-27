@@ -22,6 +22,7 @@ import { openAuthSessionAsync } from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { api } from './api.ts';
+import { appleSheetClosed } from './appleSheet.ts';
 import { config } from './config.ts';
 
 export const PROVIDER_NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
@@ -97,8 +98,7 @@ async function appleSheet(): Promise<Ran> {
       nonce: hex(await sha256(nonce)),
     });
   } catch (error) {
-    if ((error as { code?: unknown }).code === 'ERR_REQUEST_CANCELED')
-      throw new ProviderCancelled();
+    if (appleSheetClosed(error)) throw new ProviderCancelled();
     throw new ProviderFailed('the Apple sheet failed');
   }
 

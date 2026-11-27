@@ -7,16 +7,19 @@ namespace App\Domain\Event\Deletion;
 use App\Entity\Event;
 use App\Enum\EventPhase;
 use App\Repository\GuestRepository;
+use App\Repository\StaffMemberRepository;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
-/** Once a guest is invited, an event is deleted only when it is Finished (sc-14445). A Draft is never refused: it can be neither called off nor ended. */
+/** Once a guest is invited (sc-14445) or somebody's briefing went (sc-4333), an event is deleted only when it is Finished. A Draft is never refused: it can be neither called off nor ended. */
 final readonly class DeleteRefusal
 {
     public const string GUESTS_INVITED = 'guestsInvited';
+    public const string STAFF_BRIEFED = 'staffBriefed';
 
     public function __construct(
         private GuestRepository $guestRepository,
+        private StaffMemberRepository $staffMemberRepository,
         private ClockInterface $clock,
     ) {
     }
@@ -40,11 +43,16 @@ final readonly class DeleteRefusal
             EventPhase::Draft, EventPhase::Finished => false,
         });
         $invited = $this->guestRepository->eventsWithInvited($open);
+        $briefed = $this->staffMemberRepository->eventsWithBriefed($open);
 
         $refusals = [];
         foreach ($events as $event) {
             $id = $event->getId()->toRfc4122();
-            $refusals[$id] = isset($invited[$id]) ? self::GUESTS_INVITED : null;
+            $refusals[$id] = match (true) {
+                isset($invited[$id]) => self::GUESTS_INVITED,
+                isset($briefed[$id]) => self::STAFF_BRIEFED,
+                default => null,
+            };
         }
 
         return $refusals;

@@ -18,9 +18,14 @@ import {
   type GestureResponderEvent,
   type LayoutChangeEvent,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  type ScrollViewProps,
   StyleSheet,
   View,
 } from 'react-native';
@@ -30,6 +35,7 @@ import {
   sheetDragCloses,
   sheetDragSpeed,
   sheetDragStarts,
+  sheetTouchHolds,
   sheetKeysCover,
   sheetPadding,
   sheetUnderKeys,
@@ -157,7 +163,16 @@ function SheetFrame({
     height,
   );
   const drags = phone && scrimLabel != null;
-  const drag = useSheetDrag({ shift, fade, reduced, held, keysCover, onClose });
+  const [stripHeld, setStripHeld] = useState(false);
+  const drag = useSheetDrag({
+    shift,
+    fade,
+    reduced,
+    held,
+    keysCover,
+    onClose,
+    holdStrip: setStripHeld,
+  });
   const { shown, gone } = useWindowTurn(useModalOpen(present));
   const unnamed = useUnnamedWindow(
     Platform.OS === 'android' && headingTakesFocus && shown,
@@ -241,7 +256,13 @@ function SheetFrame({
             {...(drags ? drag.handlers : {})}
             testID={testID}
           >
-            <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+            <Drags.Provider value={drags}>
+              <StripHeld.Provider value={drags && stripHeld}>
+                <ScrolledAway.Provider value={drag.scrolledAway}>
+                  <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+                </ScrolledAway.Provider>
+              </StripHeld.Provider>
+            </Drags.Provider>
             {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
             {phone && !underKeys && (
@@ -344,6 +365,8 @@ type SheetDragNow = {
   held: boolean;
   keysCover: number | null;
   onClose: () => void;
+  /** True while a finger that landed in the strip is down, so the content's scroll leaves its drag alone. */
+  holdStrip: (held: boolean) => void;
 };
 
 type SheetTouch = {
@@ -360,6 +383,7 @@ function sheetDrag(first: SheetDragNow) {
   // The scrim fills the modal's window from its top, so the frame's y there is where a touch's pageY meets it.
   let frame = { top: 0, height: 0 };
   let touch: SheetTouch | null = null;
+  let away = false;
   const back = () => {
     const { shift, fade, reduced } = now;
     if (!reduced) {
@@ -383,16 +407,18 @@ function sheetDrag(first: SheetDragNow) {
       onTouchStart: ({ nativeEvent }: GestureResponderEvent) => {
         const { pageX, pageY, timestamp, touches } = nativeEvent;
         if (touch?.dragging) back();
-        touch =
-          touches.length === 1
-            ? {
-                from: pageY - frame.top,
-                x0: pageX,
-                y0: pageY,
-                samples: [{ y: pageY, t: timestamp }],
-                dragging: false,
-              }
-            : null;
+        const from = pageY - frame.top;
+        const holds = sheetTouchHolds({ from, touches: touches.length, scrolled: away });
+        now.holdStrip(holds);
+        touch = holds
+          ? {
+              from,
+              x0: pageX,
+              y0: pageY,
+              samples: [{ y: pageY, t: timestamp }],
+              dragging: false,
+            }
+          : null;
       },
       onTouchMove: ({ nativeEvent }: GestureResponderEvent) => {
         if (touch == null) return;
@@ -406,6 +432,7 @@ function sheetDrag(first: SheetDragNow) {
       onTouchEnd: ({ nativeEvent }: GestureResponderEvent) => {
         const ended = touch;
         touch = null;
+        now.holdStrip(false);
         if (!ended?.dragging) return;
         const closes = sheetDragCloses({
           dy: nativeEvent.pageY - ended.y0,
@@ -420,6 +447,7 @@ function sheetDrag(first: SheetDragNow) {
       onTouchCancel: () => {
         const cancelled = touch;
         touch = null;
+        now.holdStrip(false);
         if (cancelled?.dragging) back();
       },
     },
@@ -429,6 +457,9 @@ function sheetDrag(first: SheetDragNow) {
     },
     follow: (next: SheetDragNow) => {
       now = next;
+    },
+    scrolledAway: (scrolled: boolean) => {
+      away = scrolled;
     },
   };
 }
@@ -520,6 +551,77 @@ export function SilentWindowName() {
 
 const Revealed = createContext(true);
 
+const Drags = createContext(false);
+
+const StripHeld = createContext(false);
+
+const ScrolledAway = createContext<(scrolled: boolean) => void>(() => undefined);
+
+/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in, so a drag down there while scrolled takes the content back to its top (sc-95217). */
+export function SheetScrollView({
+  holdsHeading = false,
+  ...props
+}: ScrollViewProps & { holdsHeading?: boolean }) {
+  const drags = useContext(Drags);
+  const held = useContext(StripHeld);
+  const scrolledAway = useContext(ScrolledAway);
+  const [away, setAway] = useState(false);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const landed = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!holdsHeading) return;
+
+    return () => scrolledAway(false);
+  }, [holdsHeading, scrolledAway]);
+
+  const scroll = (
+    <ScrollView
+      {...props}
+      ref={scrollRef}
+      scrollEnabled={!held && props.scrollEnabled !== false}
+      {...(holdsHeading
+        ? {
+            scrollEventThrottle: 16,
+            onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const scrolled = event.nativeEvent.contentOffset.y > 0;
+              scrolledAway(scrolled);
+              setAway(scrolled);
+              props.onScroll?.(event);
+            },
+          }
+        : {})}
+    />
+  );
+  if (!holdsHeading || !drags) return scroll;
+
+  return (
+    <>
+      <View
+        style={[styles.strip, away && styles.stripScrolled]}
+        onTouchStart={({ nativeEvent }) => {
+          landed.current = { x: nativeEvent.pageX, y: nativeEvent.pageY };
+        }}
+        onTouchMove={({ nativeEvent }) => {
+          const from = landed.current;
+          if (from == null || !away) return;
+          const dy = nativeEvent.pageY - from.y;
+          if (dy <= 0 || !sheetDragStarts({ from: 0, dx: nativeEvent.pageX - from.x, dy })) return;
+          landed.current = null;
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }}
+        onTouchEnd={() => {
+          landed.current = null;
+        }}
+        onTouchCancel={() => {
+          landed.current = null;
+        }}
+      />
+      {scroll}
+    </>
+  );
+}
+
 /** False while a sheet that names no window hides its content, so a heading waits to take focus until it can (sc-11032). */
 export function useSheetRevealed(): boolean {
   return useContext(Revealed);
@@ -539,6 +641,11 @@ export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget
     return () => clearTimeout(focus);
   }, [open, opener]);
 }
+
+const GRABBER_HEIGHT = 5;
+
+/** The grabber's strip, as tall as the space above it, the grabber and the same space below. */
+export const SHEET_GRABBER_STRIP = tokens.spaceSm * 2 + GRABBER_HEIGHT;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
@@ -582,10 +689,18 @@ const styles = StyleSheet.create({
     top: tokens.spaceSm,
     alignSelf: 'center',
     width: 40,
-    height: 5,
+    height: GRABBER_HEIGHT,
     borderRadius: 2.5,
     backgroundColor: tokens.colorControlBorder,
   },
+  // Its hairline shows only while the content is scrolled from its top, so the cut reads as more above.
+  strip: {
+    height: SHEET_GRABBER_STRIP,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorCard,
+    backgroundColor: tokens.colorCard,
+  },
+  stripScrolled: { borderBottomColor: tokens.colorBorder },
   skirt: {
     position: 'absolute',
     top: '100%',

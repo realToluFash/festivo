@@ -20,6 +20,7 @@ export const PAGE_NEEDS = {
   guests: 'guests.read',
   menu: 'menu.read',
   seating: 'seating.read',
+  messages: 'messages.read',
   schedule: 'run_of_show.read',
   run: 'run_of_show.read',
   staff: 'staff.read',
@@ -40,6 +41,9 @@ export function handoffPage(pathname: string): HandoffPage | null {
   const roster = matchPath('/app/events/:eventId/staff/roster', pathname)?.params.eventId;
   if (roster != null)
     return { kind: 'event', eventId: roster, area: 'staff', needs: PAGE_NEEDS.staff };
+
+  const picks = matchPath('/app/events/:eventId/menu/picks', pathname)?.params.eventId;
+  if (picks != null) return { kind: 'event', eventId: picks, area: 'menu', needs: PAGE_NEEDS.menu };
 
   const part = matchPath('/app/events/:eventId/:part', pathname)?.params;
   const eventId = part?.eventId;
@@ -68,11 +72,11 @@ function shownAnyway(): boolean {
 }
 
 function rememberAnyway(): void {
-  anywayHere = true;
   try {
     window.sessionStorage.setItem(ANYWAY, '1');
   } catch {
     // Without storage it lasts until the page reloads.
+    anywayHere = true;
   }
 }
 

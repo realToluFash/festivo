@@ -54,3 +54,25 @@ export function todayRepliesOf(
     percent: sharePercent(figures.invited - figures.notReplied, figures.invited),
   };
 }
+
+/** Today's arrived figure (sc-29978): attended of expected once anyone has arrived, the door's count (sc-1454); with nobody Coming, attended alone. */
+export type TodayArrivals =
+  | { kind: 'of'; attended: number; expected: number; percent: number }
+  | { kind: 'alone'; attended: number };
+
+export function todayArrivalsOf(
+  figures: EventGuestFigures | null | undefined,
+): TodayArrivals | null {
+  if (figures == null || figures.attended === 0) return null;
+  if (figures.coming === 0) return { kind: 'alone', attended: figures.attended };
+
+  const { attended, expected } = figures;
+
+  // Rounded down, so the bar is full only when everyone Coming has arrived, and never empty once someone has.
+  return {
+    kind: 'of',
+    attended,
+    expected,
+    percent: Math.max(1, Math.floor((attended / expected) * 100)),
+  };
+}

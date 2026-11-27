@@ -19,6 +19,7 @@ import {
 import {
   ADD_PROMPT,
   addedToast,
+  isServiceLevel,
   EMPTY_LINE,
   EMPTY_TITLE,
   type EventPlace,
@@ -49,6 +50,7 @@ import {
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
+import { WholeAddress } from '../components/WholeAddress.tsx';
 import { Avatar, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
@@ -102,9 +104,11 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   const [load, setLoad] = useState<PeopleStart['load'] | 'retrying'>(start.load);
   const [members] = useState(start.members);
   const [onEvent, setOnEvent] = useState(start.onEvent);
-  const [opened, setOpened] = useState<Opened>(
-    door?.person == null ? null : { id: door.person, visit: 0 },
-  );
+  const [opened, setOpened] = useState<Opened>(() => {
+    const id = door?.person ?? start.open?.id;
+
+    return id == null ? null : { id, visit: 0 };
+  });
   const [adding, setAdding] = useState(start.adding != null);
   const [lit, setLit] = useState<{ id: string; held: boolean } | null>(
     door?.person == null ? null : { id: door.person, held: true },
@@ -261,6 +265,8 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             person={person}
             roleFails={start.roleFails}
             organisation={place.organisation}
+            asking={opened.visit === 0 && start.open?.asking === true}
+            french={start.french === true}
             removing={
               door == null
                 ? undefined
@@ -294,7 +300,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             onClose={() => setAdding(false)}
             onAdd={(added, finished) => {
               setOnEvent((was) => {
-                const next = withAdded(was, added.role, added.members);
+                const next = isServiceLevel(added.role)
+                  ? was
+                  : withAdded(was, added.role, added.members);
                 return added.outside == null
                   ? next
                   : withOutside(next, added.role, added.outside.address, added.outside.job);
@@ -362,7 +370,7 @@ function PersonRow({
         <Avatar initials={person.initials} tone={person.tone} />
       )}
       <RowWords
-        title={person.name}
+        title={<WholeAddress text={person.name} />}
         tag={person.outside && <Tag kind="now" word={outsideTag(organisation)} />}
         lines={[line]}
       />

@@ -1521,6 +1521,7 @@ describe('recovering a password', () => {
     expect(await client.checkResetLink('t1')).toEqual({
       email: 'folake@ire.events',
       twoFactor: false,
+      factors: { app: true, passkeys: false },
     });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
@@ -1796,13 +1797,33 @@ describe('the bell (sc-3980)', () => {
 
   test('reads the feed and leaves out an item it cannot read', async () => {
     const { client, sent } = answering({
-      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
+      items: [item, { id: 'n2', category: 'event_changes', createdAt: 'y' }],
       unreadCount: 1,
       next: 'n1',
     });
 
     expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
     expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
+  });
+
+  test('keeps an item of a category it does not know, with the category as sent', async () => {
+    const news = { ...item, id: 'n2', category: 'venue_news' };
+    const { client } = answering({ items: [news, item], unreadCount: 2, next: null });
+
+    expect(await client.notifications()).toEqual({
+      items: [news, item],
+      unreadCount: 2,
+      next: null,
+    });
+    expect(asNotificationArrival({ ...news, unreadCount: 3 })).toEqual({
+      item: news,
+      unreadCount: 3,
+    });
+    expect(asNotificationRead({ updated: news, unreadCount: 1 })).toEqual({
+      id: 'n2',
+      unreadCount: 1,
+      updated: news,
+    });
   });
 
   test('one switch is sent as category, channel and on', async () => {
@@ -1935,6 +1956,7 @@ const ACCOUNT = {
   colourScheme: null,
   waitingFor: null,
   outsideEvents: [],
+  signedOutAt: null,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
@@ -1969,6 +1991,7 @@ describe('who is signed in', () => {
       jobLabel: 'Kitchen',
       startsAt: '2030-11-14T16:00:00+01:00',
       endsAt: '2030-11-14T15:00:00+00:00',
+      timeZone: 'Europe/Lisbon',
     };
     const account = await client(
       json({ ...ACCOUNT, outsideEvents: [outside, { id: 'e2', role: 'lead' }] }),
@@ -2422,6 +2445,8 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
+      phone: null,
+      factors: { app: true, passkeys: false },
     });
     expect(tokens.saved).toBeNull();
   });
@@ -2663,6 +2688,9 @@ describe('invitations and members', () => {
     refusal: null,
     forYou: null,
     signedInAs: null,
+    signedInAsPhone: null,
+    needsEmail: false,
+    managed: null,
   };
 
   test('a link opens on who invited whom, to what, until when', async () => {
@@ -3067,7 +3095,7 @@ describe('events (sc-1486)', () => {
       action: null,
       done: false,
     };
-    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25, attended: 87, expected: 99 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
       json({
@@ -4021,6 +4049,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     },
     phase: 'live',
     started: false,
+    onTheDay: false,
     answersOpen: true,
   };
 
@@ -4047,6 +4076,13 @@ describe("the guest's calendar on their page (sc-3627)", () => {
 
   test('has none when the API gives none', async () => {
     expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test("reads the event's day as the API sends it, and an older API's silence as not the day", async () => {
+    const { onTheDay: _omitted, ...older } = PAGE;
+
+    expect((await answering({ ...PAGE, onTheDay: true }).guestPage('tok')).onTheDay).toBe(true);
+    expect((await answering(older).guestPage('tok')).onTheDay).toBe(false);
   });
 
   test('refuses a feed that is not a path', async () => {
@@ -4125,5 +4161,229 @@ describe('guest groups (sc-3775)', () => {
       ungrouped: counts,
     });
     expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
+  });
+});
+
+describe('door codes (sc-72)', () => {
+  const CARD = {
+    id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+    code: 'K7P2QX9M',
+    link: 'https://soirely.test/d/K7P2QX9M',
+    qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    role: 'can_check_in',
+    jobLabel: 'Bar',
+    useCap: 30,
+    used: 14,
+    status: 'working',
+    expiresAt: '2026-11-14T23:30:00+00:00',
+    stoppedAt: null,
+    createdAt: '2026-11-07T16:00:00+00:00',
+  };
+  const OPENED = {
+    role: 'can_view',
+    jobLabel: null,
+    event: {
+      id: 'e1',
+      name: 'Joana & Rui’s wedding',
+      startsAt: '2026-11-14T15:00:00+00:00',
+      endsAt: '2026-11-14T23:30:00+00:00',
+      timeZone: 'Europe/Lisbon',
+      organisation: 'Lumen Feiras',
+      country: 'PT',
+    },
+    standing: null,
+  };
+  const REDEEMED = {
+    eventId: 'e1',
+    name: 'João Pereira',
+    role: 'can_view',
+    jobLabel: null,
+    endsAt: '2026-11-14T23:30:00+00:00',
+    again: false,
+    shift: null,
+  };
+
+  function client(
+    response: Response,
+    tokens: TokenStore,
+    sent: { path: string; body: unknown; auth: string | null }[] = [],
+  ) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (url, init) => {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        sent.push({
+          path: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          auth: headers.Authorization ?? null,
+        });
+
+        return response;
+      },
+    });
+  }
+
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+  test('lists, makes and stops the cards People shows', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+
+    expect(
+      await client(json({ doorCodes: [CARD] }), store('live', null), sent).doorCodes('e1'),
+    ).toEqual([CARD]);
+    expect(
+      await client(json({ doorCode: CARD }, 201), store('live', null), sent).makeDoorCode('e1', {
+        role: 'can_check_in',
+        jobLabel: 'Bar',
+        useCap: 30,
+        expiresAt: CARD.expiresAt,
+      }),
+    ).toEqual(CARD);
+    await client(
+      json({ doorCode: { ...CARD, status: 'stopped', stoppedAt: CARD.createdAt } }),
+      store('live', null),
+      sent,
+    ).stopDoorCode('e1', CARD.id);
+
+    expect(sent.map((one) => one.path)).toEqual([
+      'GET /api/events/e1/door-codes',
+      'POST /api/events/e1/door-codes',
+      `POST /api/events/e1/door-codes/${CARD.id}/stop`,
+    ]);
+    expect(sent[1]?.body).toEqual({
+      role: 'can_check_in',
+      jobLabel: 'Bar',
+      useCap: 30,
+      expiresAt: CARD.expiresAt,
+    });
+  });
+
+  test('refuses a card in a shape it does not know', async () => {
+    await expect(
+      client(json({ doorCodes: [{ ...CARD, status: 'paused' }] }), store('live', null)).doorCodes(
+        'e1',
+      ),
+    ).rejects.toThrow(/DoorCodesController/);
+  });
+
+  test('opens a code before a name is asked for', async () => {
+    expect(await client(json(OPENED), store(null, null)).openDoorCode('K7P2QX9M')).toEqual(OPENED);
+  });
+
+  test('signed out, Send code sends the name and the number typed', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const answer = await client(
+      json({ handle: 'h1', cooldownSeconds: 60 }),
+      store(null, null),
+      sent,
+    ).sendDoorCodeSignIn('K7P2QX9M', 'João Pereira', 'PT', '912 344 512');
+
+    expect(answer).toEqual({ handle: 'h1', cooldownSeconds: 60 });
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in/send',
+      body: { name: 'João Pereira', countryCode: 'PT', number: '912 344 512' },
+      auth: null,
+    });
+  });
+
+  test('signed out, the right code keeps the session it answers with and You’re in', async () => {
+    const tokens = store(null, null);
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const signedIn = await client(
+      json({ accessToken: 'door', sessionId: 's1', account: ACCOUNT, ...REDEEMED }),
+      tokens,
+      sent,
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
+
+    expect(signedIn.redeemed).toEqual(REDEEMED);
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in',
+      body: { handle: 'h1', code: '123456', refreshTokenIn: 'cookie' },
+      auth: null,
+    });
+    expect((tokens.saved as IssuedTokens | null)?.accessToken).toBe('door');
+  });
+
+  test('signed out, two-factor comes before You’re in and names the masked number', async () => {
+    const signedIn = await client(
+      json(
+        {
+          twoFactorChallenge: 'c1',
+          challengeExpiresAt: '2026-11-25T20:00:00Z',
+          email: null,
+          phone: { countryCode: 'PT', lastDigits: '4512' },
+          factors: { app: true, passkeys: false },
+        },
+        202,
+      ),
+      store(null, null),
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
+
+    expect(signedIn.redeemed).toBeNull();
+    expect(signedIn.outcome).toMatchObject({
+      kind: 'twoFactor',
+      email: '',
+      phone: { countryCode: 'PT', lastDigits: '4512' },
+    });
+  });
+
+  test('signed in, redeeming is the account’s and lands on You’re in again', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const redeemed = await client(
+      json({ ...REDEEMED, again: true }),
+      store('live', null),
+      sent,
+    ).redeemDoorCode('K7P2QX9M');
+
+    expect(redeemed.again).toBe(true);
+    expect(sent[0]?.auth).toBe('Bearer live');
+  });
+
+  test('reads where a code naming a shift lands, and drops a shift it does not know (sc-234)', async () => {
+    const read = async (shift: unknown) =>
+      (
+        await client(json({ ...REDEEMED, shift }), store('live', null), []).redeemDoorCode(
+          'K7P2QX9M',
+        )
+      ).shift;
+
+    expect(await read({ landsOn: 'night' })).toEqual({ landsOn: 'night' });
+    expect(await read({ landsOn: 'in', notJoined: 'ended', job: 'Waiter' })).toEqual({
+      landsOn: 'in',
+      notJoined: 'ended',
+      job: 'Waiter',
+    });
+    expect(await read({ landsOn: 'in', notJoined: 'gone', job: 'Waiter' })).toBeNull();
+    expect(await read(undefined)).toBeNull();
+  });
+
+  test('reads the door code someone came in by on People', async () => {
+    const people = await client(
+      json({
+        people: [
+          {
+            id: 'p1',
+            membershipId: null,
+            user: { id: 'u1', name: 'João Pereira' },
+            role: 'can_view',
+            jobLabel: null,
+            outside: true,
+            address: null,
+            addressKind: null,
+            endsAt: '2026-11-14T23:30:00+00:00',
+            doorCode: 'K7P2QX9M',
+            joinedAt: '2026-11-14T13:31:00+00:00',
+          },
+        ],
+        owners: [],
+        admins: [],
+      }),
+      store('live', null),
+    ).eventPeople('e1');
+
+    expect(people.people[0]?.doorCode).toBe('K7P2QX9M');
+    expect(people.people[0]?.joinedAt).toBe('2026-11-14T13:31:00+00:00');
   });
 });

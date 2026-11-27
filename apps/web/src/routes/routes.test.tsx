@@ -35,6 +35,7 @@ const ADA_ACCOUNT: Account = {
   emailAddresses: [],
   phoneNumbers: [],
   outsideEvents: [],
+  signedOutAt: null,
 };
 
 const ADA: Session = {
@@ -400,6 +401,7 @@ describe('the application tree', () => {
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
           outsideEvents: [],
+          signedOutAt: null,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
@@ -572,16 +574,29 @@ describe('the application tree', () => {
       },
     );
 
-    it('names the person in the sidebar while a paused organisation stands in', () => {
-      __setSessionState({ status: 'signedIn', session: pausedSession() });
+    it.each([
+      ['alone', pausedSession],
+      [
+        'beside an organisation they own (sc-86077)',
+        () => {
+          const owned = membership({ id: 'org_4', name: 'Okonkwo Events' });
 
-      at('/app');
+          return { ...pausedSession(), organisation: owned, organisations: [owned] };
+        },
+      ],
+    ])(
+      'names the person in the sidebar with no role while a paused organisation stands in, %s',
+      (_, session) => {
+        __setSessionState({ status: 'signedIn', session: session() });
 
-      const person = document.querySelector<HTMLAnchorElement>('a.today-person');
-      expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
-      expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
-      expect(person?.querySelector('.today-person-role')).toBeNull();
-    });
+        at('/app');
+
+        const person = document.querySelector<HTMLAnchorElement>('a.today-person');
+        expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
+        expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
+        expect(person?.querySelector('.today-person-role')).toBeNull();
+      },
+    );
   });
 
   describe("at a phone's width, the menu (sc-13413)", () => {
@@ -872,15 +887,18 @@ describe('the application tree', () => {
     );
   });
 
-  it('lets Seating fill its card at a desk, as its demo does (sc-58064)', () => {
-    expect(cssRule('.shell-content.is-card:has(> .st)')).toMatch(/padding: 0;/u);
+  it('lets Seating and Messages fill their card at a desk, as their demos do (sc-58064, sc-3942)', () => {
+    expect(cssRule('.shell-content.is-card:has(> :is(.st, .ev-msgs))')).toMatch(/padding: 0;/u);
     expect(cssRule('.shell-content.is-card > .st .st-main')).toMatch(/min-height: 0;/u);
+    expect(cssRule('.shell-content.is-card > .ev-msgs')).toMatch(/min-height: 0;/u);
     expect(
       cssRule(
         [
-          '.shell-content.is-card:has(> .st)',
-          '    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),',
-          '  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st)',
+          '.shell-content.is-card:has(> :is(.st, .ev-msgs))',
+          '    > :not(.st, .ev-msgs):first-child:not(:has(> .visually-hidden:only-child)),',
+          '  .shell-content.is-card:has(> :is(.st, .ev-msgs))',
+          '    > :first-child:has(> .visually-hidden:only-child)',
+          '    + :not(.st, .ev-msgs)',
         ].join('\n'),
       ),
     ).toMatch(/margin-top: var\(--space3xl\);/u);
@@ -944,6 +962,7 @@ describe('the guest tree', () => {
           },
           phase: 'live',
           started: false,
+          onTheDay: false,
           answersOpen: true,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },

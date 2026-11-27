@@ -14,7 +14,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: 'Somebody else changed this event while you had it open.'
     timeout: 15000
-- assertVisible: "It's been called off. The page shows what it is now."
+- assertVisible: 'It’s been called off. The page shows what it is now.'
 - assertNotVisible: 'This event is already over.'
-- assertNotVisible: "It's finished now.*"
+- assertNotVisible: 'It’s finished now.*'
 - takeScreenshot: refused

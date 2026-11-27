@@ -13,6 +13,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
 import { OFFLINE_GLYPH } from '../team/TeamParts.tsx';
+import { type StationOpening, openedOn, stationIdOf, wayBackOf } from './wayInRoute.ts';
 import {
   CONFIRM_LEAD,
   EMPTY,
@@ -77,11 +78,20 @@ import {
   Times,
 } from './StationParts.tsx';
 
+/** ?from= for the way in it opened from (sc-95382): its ‹ names Overview or Your night; ?on= for the station it opens on. */
 export function StationRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; from?: string; on?: string }>();
   const state = stationStateOf(params.state);
+  const back = wayBackOf(params.from);
 
-  return <KitchenStation key={state} start={state} />;
+  return (
+    <KitchenStation
+      key={`${state}:${params.from ?? ''}:${params.on ?? ''}`}
+      start={state}
+      on={stationIdOf(params.on)}
+      back={back}
+    />
+  );
 }
 
 interface Sizes {
@@ -92,10 +102,18 @@ interface Sizes {
   item: number;
 }
 
-function KitchenStation({ start }: { start: StationStateName }) {
+function KitchenStation({
+  start,
+  on,
+  back,
+}: {
+  start: StationStateName;
+  on: StationOpening | null;
+  back: string | null;
+}) {
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
-  const [s, setS] = useState<StationState>(() => seed(start));
+  const [s, setS] = useState<StationState>(() => openedOn(seed(start), on));
   const opener = useRef<ViewInstance | null>(null);
   const runOutOpener = useRef<ViewInstance | null>(null);
   const [asked, setAsked] = useState<string | null>(null);
@@ -124,9 +142,25 @@ function KitchenStation({ start }: { start: StationStateName }) {
           style={[styles.back, { minHeight: side }]}
           testID="station.back"
         >
-          <Text size={15} weight="semibold" style={styles.accent}>
-            Back
-          </Text>
+          {back == null ? (
+            <Text size={15} weight="semibold" style={styles.accent}>
+              Back
+            </Text>
+          ) : (
+            <View style={styles.backTo}>
+              <Text
+                size={15}
+                weight="semibold"
+                style={styles.accent}
+                importantForAccessibility="no"
+              >
+                ‹
+              </Text>
+              <Text size={15} weight="semibold" style={styles.accent}>
+                {back}
+              </Text>
+            </View>
+          )}
         </Pressable>
         {children}
         <Switches s={s} setS={setS} start={start} />
@@ -542,138 +576,152 @@ function Left({
       ) : lines.length === 0 ? (
         <Empty words={EMPTY.noItem(st)} />
       ) : (
-        <View style={compact ? styles.leftStrip : styles.leftList}>
-          {lines.map((l) => {
-            const state = s.items[l.item];
-            const prep = state?.kind === 'preparing';
-            const out = state?.kind === 'runOut';
-            const offer = offers(s, l.item);
-            const ref = l.item === asked ? opener : undefined;
-            const sl = stateLine(s, l.item);
-            const chooserOpen = s.choosing === l.item || prep;
-            const words = [sl.word === 'Ready' ? '' : sl.line, sl.waiting].filter((x) => x !== '');
-            const u = s.undo[l.item];
-            return (
-              <View
-                key={l.item}
-                style={[styles.itemCard, compact && styles.itemCardStrip]}
-                testID={`station.left.${l.item}`}
-              >
-                <View style={styles.itemHead}>
-                  <View style={styles.grow}>
-                    <Text size={z.line + 1} weight="bold">
-                      {l.label}
-                    </Text>
-                    {(!out || sl.waiting !== '') && (
-                      <Text size={z.line} weight="semibold" style={styles.tabular}>
-                        {out ? sl.waiting : `${l.n} to dish`}
-                      </Text>
-                    )}
-                  </View>
-                  <Chip
-                    status={
-                      out
-                        ? 'runOut'
-                        : sl.word === 'Ready'
-                          ? 'ready'
-                          : sl.word === 'Held up'
-                            ? 'heldUp'
-                            : 'preparing'
-                    }
-                    words={out ? sl.line : undefined}
-                    big
-                  />
-                </View>
-                {!out && words.length > 0 && (
-                  <Text
-                    size={z.line - 2 < 15 ? 15 : z.line - 2}
-                    weight="semibold"
-                    style={sl.word === 'Held up' ? styles.broken : styles.attention}
-                  >
-                    {words.join(' · ')}
-                  </Text>
-                )}
-                {isKept(s, l.item) && <Chip status="kept" />}
-                {out ? (
-                  <SecondaryButton
-                    label="Mark available again"
-                    onPress={() => setS(markAvailable(s, l.item))}
-                    stacked
-                    accessibilityLabel={`${l.item}, Mark available again`}
-                    ref={ref}
-                    testID={`station.available.${l.item}`}
-                  />
-                ) : (
-                  <View style={styles.lineActions}>
-                    <View style={styles.segments}>
-                      <Segments
-                        item={l.item}
-                        preparing={prep || s.choosing === l.item}
-                        side={z.side}
-                        onReady={() => setS(prep ? markReady(s, l.item) : choose(s, null))}
-                        onPreparing={() => setS(choose(s, l.item))}
-                      />
-                    </View>
-                    {offer.runOut && (
-                      <DestructiveButton
-                        label="Run out…"
-                        onPress={() => onAsk(l.item)}
-                        stacked={false}
-                        accessibilityLabel={`${l.item}, Run out…`}
-                        ref={ref}
-                        testID={`station.runOut.${l.item}`}
-                      />
-                    )}
-                  </View>
-                )}
-                {!out && chooserOpen && (
-                  <Times
-                    item={l.item}
-                    chosen={prep ? state.eta : undefined}
-                    side={z.side}
-                    onPick={(eta) => setS(markPreparing(s, l.item, eta))}
-                  />
-                )}
-                {!out && u != null && canUndo(s, l.item) && (
-                  <View style={styles.undo}>
-                    <Text size={14} style={[styles.secondary, styles.grow]}>
-                      {undoLine(sl.word === 'Ready' ? 'Ready' : 'Preparing', u.at)}
-                    </Text>
-                    <Quiet
-                      label="Undo"
-                      side={z.side}
-                      onPress={() => setS(undo(s, l.item))}
-                      testID={`station.undo.${l.item}`}
-                    />
-                  </View>
-                )}
-                {s.notice?.item === l.item && (
+        <View style={styles.leftList}>
+          {(compact ? pairs(lines) : lines.map((l) => [l])).map((row) => (
+            <View key={row[0]?.item} style={compact ? styles.leftStrip : undefined}>
+              {row.map((l) => {
+                const state = s.items[l.item];
+                const prep = state?.kind === 'preparing';
+                const out = state?.kind === 'runOut';
+                const offer = offers(s, l.item);
+                const ref = l.item === asked ? opener : undefined;
+                const sl = stateLine(s, l.item);
+                const chooserOpen = s.choosing === l.item || prep;
+                const words = [sl.word === 'Ready' ? '' : sl.line, sl.waiting].filter(
+                  (x) => x !== '',
+                );
+                const u = s.undo[l.item];
+                return (
                   <View
-                    style={styles.notice}
-                    accessibilityRole="alert"
-                    testID={`station.notice.${l.item}`}
+                    key={l.item}
+                    style={[styles.itemCard, compact && styles.itemCardStrip]}
+                    testID={`station.left.${l.item}`}
                   >
-                    <View style={styles.noticeWords}>
-                      <Glyph paths={GLYPH.info} ink={tokens.colorInk} side={18} circle />
-                      <Text size={16} style={styles.grow}>
-                        {s.notice.line}
-                      </Text>
+                    <View style={styles.itemHead}>
+                      <View style={styles.grow}>
+                        <Text size={z.line + 1} weight="bold">
+                          {l.label}
+                        </Text>
+                        {(!out || sl.waiting !== '') && (
+                          <Text size={z.line} weight="semibold" style={styles.tabular}>
+                            {out ? sl.waiting : `${l.n} to dish`}
+                          </Text>
+                        )}
+                      </View>
+                      <Chip
+                        status={
+                          out
+                            ? 'runOut'
+                            : sl.word === 'Ready'
+                              ? 'ready'
+                              : sl.word === 'Held up'
+                                ? 'heldUp'
+                                : 'preparing'
+                        }
+                        words={out ? sl.line : undefined}
+                        big
+                      />
                     </View>
-                    <Quiet
-                      label="Got it"
-                      side={z.side}
-                      onPress={() => setS(dismissNotice(s))}
-                      testID={`station.notice.ok.${l.item}`}
-                    />
+                    {!out && words.length > 0 && (
+                      <Text
+                        size={z.line - 2 < 15 ? 15 : z.line - 2}
+                        weight="semibold"
+                        style={sl.word === 'Held up' ? styles.broken : styles.attention}
+                      >
+                        {words.join(' · ')}
+                      </Text>
+                    )}
+                    {isKept(s, l.item) && <Chip status="kept" />}
+                    {out ? (
+                      <SecondaryButton
+                        label="Mark available again"
+                        onPress={() => setS(markAvailable(s, l.item))}
+                        stacked
+                        accessibilityLabel={`${l.item}, Mark available again`}
+                        ref={ref}
+                        testID={`station.available.${l.item}`}
+                      />
+                    ) : (
+                      <View style={styles.lineActions}>
+                        <View style={styles.segments}>
+                          <Segments
+                            item={l.item}
+                            id={l.item}
+                            preparing={prep || s.choosing === l.item}
+                            side={z.side}
+                            onReady={() => setS(prep ? markReady(s, l.item) : choose(s, null))}
+                            onPreparing={() => setS(choose(s, l.item))}
+                          />
+                        </View>
+                        {offer.runOut && (
+                          <DestructiveButton
+                            label="Run out…"
+                            onPress={() => onAsk(l.item)}
+                            stacked={false}
+                            accessibilityLabel={`${l.item}, Run out…`}
+                            ref={ref}
+                            testID={`station.runOut.${l.item}`}
+                          />
+                        )}
+                      </View>
+                    )}
+                    {!out && chooserOpen && (
+                      <Times
+                        item={l.item}
+                        chosen={prep ? state.eta : undefined}
+                        side={z.side}
+                        onPick={(eta) => setS(markPreparing(s, l.item, eta))}
+                      />
+                    )}
+                    {!out && u != null && canUndo(s, l.item) && (
+                      <View style={styles.undo}>
+                        <Text size={14} style={[styles.secondary, styles.grow]}>
+                          {undoLine(sl.word === 'Ready' ? 'Ready' : 'Preparing', u.at)}
+                        </Text>
+                        <Quiet
+                          label="Undo"
+                          side={z.side}
+                          onPress={() => setS(undo(s, l.item))}
+                          testID={`station.undo.${l.item}`}
+                        />
+                      </View>
+                    )}
+                    {s.notice?.item === l.item && (
+                      <View
+                        style={styles.notice}
+                        accessibilityRole="alert"
+                        testID={`station.notice.${l.item}`}
+                      >
+                        <View style={styles.noticeWords}>
+                          <Glyph paths={GLYPH.info} ink={tokens.colorInk} side={18} circle />
+                          <Text size={16} style={styles.grow}>
+                            {s.notice.line}
+                          </Text>
+                        </View>
+                        <Quiet
+                          label="Got it"
+                          side={z.side}
+                          onPress={() => setS(dismissNotice(s))}
+                          testID={`station.notice.ok.${l.item}`}
+                        />
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
-            );
-          })}
+                );
+              })}
+              {compact && row.length === 1 && <View style={styles.itemCardStrip} />}
+            </View>
+          ))}
         </View>
       )}
     </Section>
   );
+}
+
+function pairs<T>(xs: readonly T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += 2) out.push(xs.slice(i, i + 2));
+  return out;
 }
 
 function Heading({ s, z }: { s: StationState; z: Sizes }) {
@@ -885,6 +933,7 @@ const styles = StyleSheet.create({
   bodyPhone: { padding: tokens.spaceXl, paddingBottom: 96 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
   broken: { color: tokens.colorBrokenText },
@@ -1009,7 +1058,7 @@ const styles = StyleSheet.create({
   headRow: { paddingVertical: tokens.spaceLg, gap: tokens.spaceXs },
   headTop: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  sheet: { gap: tokens.spaceMd, paddingBottom: tokens.spaceLg },
+  sheet: { flexShrink: 1, gap: tokens.spaceMd, padding: tokens.space3xl },
   refused: {
     padding: tokens.space3xl,
     gap: tokens.spaceSm,

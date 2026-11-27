@@ -194,7 +194,7 @@ describe('an event’s page at a phone’s width hands over to the app (sc-55397
     expect(window.sessionStorage.getItem('soirely.showPageAnyway')).toBe('1');
 
     await act(() => router.navigate('/app/events/ev_1/messages'));
-    expect(await screen.findByText('Messages for this event are coming.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Messages' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Show this page anyway' })).toBeNull();
   });
 
@@ -275,6 +275,7 @@ describe('which pages hand over', () => {
       { kind: 'event', eventId: 'e1', area: 'budget', needs: 'budget.read' },
     ],
     ['/app/events/e1/reports', { kind: 'event', eventId: 'e1', area: 'reports', needs: null }],
+    ['/app/events/e1/menu/kitchen', null],
     ['/app/events/e1/nothing', null],
     ['/app/events/e1/staff/nothing', null],
     ['/app/events', null],

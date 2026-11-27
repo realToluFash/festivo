@@ -1,9 +1,11 @@
 /** A person's own link on the roster (sc-3912): what Copy link, Mark as sent and Replace link do to a row, on sample data. */
-export type Delivered = 'opened' | 'sent' | 'copied' | 'none';
+export type Delivered = 'opened' | 'sent' | 'shared' | 'copied' | 'none';
 
 export interface Trail {
   by: string;
   at: string;
+  /** Sent by a text (sc-77904) rather than marked as sent by hand. */
+  via?: 'text';
 }
 
 export const YOU = 'Amara Nwosu';
@@ -32,7 +34,11 @@ export const LW = {
 export function trailLine(link: Delivered, trail: Trail | null): string | null {
   if (trail == null || link === 'none') return null;
   if (link === 'copied') return `Copied by ${trail.by} · ${trail.at} · not marked as sent`;
-  if (link === 'sent') return `Marked as sent by ${trail.by} · ${trail.at}`;
+  if (link === 'shared') return `Shared by ${trail.by} · ${trail.at} · not marked as sent`;
+  if (link === 'sent')
+    return trail.via === 'text'
+      ? `Sent by ${trail.by} · ${trail.at}`
+      : `Marked as sent by ${trail.by} · ${trail.at}`;
 
   return `Opened ${trail.at}`;
 }
@@ -55,43 +61,4 @@ export function afterReplace(): { link: Delivered; trail: null } {
   return { link: 'none', trail: null };
 }
 
-export type CopyOutcome =
-  { kind: 'copied'; url: string } | { kind: 'refused'; url: string } | { kind: 'notIssued' };
-
-interface Clip {
-  writeText: (text: string) => Promise<void>;
-  write?: (items: ClipboardItem[]) => Promise<void>;
-}
-
-/** Safari refuses a clipboard write made after the press has finished, so where a ClipboardItem can hold a promise the write starts inside the press. */
-export async function copyIssued(
-  issue: () => Promise<string>,
-  clip: Clip | null,
-  itemOf: ((text: Promise<string>) => ClipboardItem) | null,
-): Promise<CopyOutcome> {
-  const asked = issue();
-  let written: Promise<void>;
-  if (clip == null) written = Promise.reject(new Error('No clipboard'));
-  else if (itemOf != null && clip.write != null) written = clip.write([itemOf(asked)]);
-  else written = asked.then((url) => clip.writeText(url));
-  written.catch(() => {});
-
-  let url: string;
-  try {
-    url = await asked;
-  } catch {
-    return { kind: 'notIssued' };
-  }
-  try {
-    await written;
-    return { kind: 'copied', url };
-  } catch {
-    return { kind: 'refused', url };
-  }
-}
-
-export function plainItem(text: Promise<string>): ClipboardItem {
-  return new ClipboardItem({
-    'text/plain': text.then((one) => new Blob([one], { type: 'text/plain' })),
-  });
-}
+export { type CopyOutcome, copyIssued, plainItem } from '../copyIssued.ts';

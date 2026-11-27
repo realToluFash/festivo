@@ -22,9 +22,9 @@ use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Repository\EventRepository;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedActiveEventsLimit;
 use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Double\ScriptedEventAmounts;
+use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -38,6 +38,7 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class EventsTest extends ApiTestCase
@@ -709,8 +710,8 @@ final class EventsTest extends ApiTestCase
     public function aDraftIsMadeLiveAndAudited(): void
     {
         $id = $this->hosted($this->create('Owambe', self::AHEAD));
-        $limit = self::service(ScriptedActiveEventsLimit::class);
-        $asked = $limit->consulted;
+        $limit = self::service(ScriptedHardLimits::class);
+        $asked = $limit->asked('requireLiveRoom');
 
         $event = $this->event($this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live'));
 
@@ -719,7 +720,7 @@ final class EventsTest extends ApiTestCase
         self::assertNotNull($event['madeLiveAt']);
         self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), new DateTimeImmutable($event['madeLiveAt'])->getTimestamp(), 5);
         self::assertNotSame('', $this->tag());
-        self::assertSame($asked + 1, $limit->consulted, 'the plan limit was not consulted');
+        self::assertSame($asked + 1, $limit->asked('requireLiveRoom'), 'the plan limit was not consulted');
         self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE, 'subjectType' => 'Event']);
@@ -786,33 +787,28 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
-        self::assertSame("This event's end has passed, so it cannot be made live. Change its dates first.", $this->last()['detail'] ?? null);
+        self::assertSame('This event’s end has passed, so it cannot be made live. Change its dates first.', $this->last()['detail'] ?? null);
         $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
         self::assertSame(['draft', null], [$kept['status'], $kept['madeLiveAt']]);
     }
 
-    /** @return iterable<string, array{int, string}> */
-    public static function planLimits(): iterable
-    {
-        yield 'three' => [3, 'Not made live. Your Free plan allows 3 events to be live or paused at a time.'];
-        yield 'one' => [1, 'Not made live. Your Free plan allows 1 event to be live or paused at a time.'];
-    }
-
     #[Test]
-    #[DataProvider('planLimits')]
-    public function overThePlansLimitItStaysADraftAndSaysWhichLimit(int $limit, string $detail): void
+    public function overThePlansLimitItStaysADraftAndSaysWhichLimitAndWhichEventEndsFirst(): void
     {
+        $this->live(self::AHEAD, '2030-11-16T02:00');
+        $first = $this->live(self::AHEAD, '2030-11-15T23:00');
         $id = $this->hosted($this->create('Owambe', self::AHEAD));
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', $limit);
+        self::service(ScriptedHardLimits::class)->enforce();
 
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
 
         self::assertSame(403, $this->statusCode());
-        self::assertSame(ErrorCode::PlanLimit->type(), $this->last()['type'] ?? null);
-        self::assertSame(['Free', $limit], [$this->last()['plan'] ?? null, $this->last()['limit'] ?? null]);
-        self::assertSame($detail, $this->last()['detail'] ?? null);
+        self::assertSame(ErrorCode::PlanLimitReached->type(), $this->last()['type'] ?? null);
+        self::assertSame(['live_events', 'free', 2, 2], [$this->last()['limit'] ?? null, $this->last()['plan'] ?? null, $this->last()['used'] ?? null, $this->last()['allowed'] ?? null]);
+        self::assertSame(['id' => $first['id'], 'name' => $first['name'], 'endsAt' => $first['endsAt'], 'timeZone' => $first['timeZone']], $this->last()['event'] ?? null);
+        self::assertSame('Not made live. Your Free plan allows 2 events to be live or paused at a time.', $this->last()['detail'] ?? null);
         self::assertSame('draft', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
-        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE]));
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE, 'subjectId' => Uuid::fromString($id)]));
     }
 
     #[Test]
@@ -1166,15 +1162,16 @@ final class EventsTest extends ApiTestCase
     {
         $event = $this->live(self::AHEAD, '2030-11-15T02:00');
         $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/pause');
-        $limit = self::service(ScriptedActiveEventsLimit::class);
-        $limit->reach('Free', 1);
-        $asked = $limit->consulted;
+        $this->live(self::AHEAD, '2030-11-15T02:00');
+        $limit = self::service(ScriptedHardLimits::class);
+        $limit->enforce();
+        $asked = $limit->asked('requireLiveRoom');
 
         $resumed = $this->event($this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/resume'));
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame('live', $resumed['status']);
-        self::assertSame($asked, $limit->consulted, 'Resume consulted the plan limit');
+        self::assertSame($asked, $limit->asked('requireLiveRoom'), 'Resume consulted the plan limit');
     }
 
     /** Make live and End now work as before around a pause, and the guest list, seating and replies are another table's: nothing here touches them. */
@@ -1772,9 +1769,9 @@ final class EventsTest extends ApiTestCase
     public static function hostRefusals(): iterable
     {
         yield 'blank' => [['Funmi Adeyemi', " \n "], 'hosts[1]', 'Enter a name or remove this host.'];
-        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
-        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
-        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 1."];
+        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 1.'];
         yield 'a repeat, regardless of case' => [['Funmi Adeyemi', 'Tayo', ' funmi ADEYEMI'], 'hosts[2]', 'Funmi Adeyemi is already a host.'];
         yield 'a seventh' => [['A', 'B', 'C', 'D', 'E', 'F', 'G'], 'hosts', 'An event can have at most 6 hosts.'];
     }

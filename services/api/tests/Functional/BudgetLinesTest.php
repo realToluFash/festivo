@@ -275,7 +275,7 @@ final class BudgetLinesTest extends ApiTestCase
         $tester->execute([]);
         $tester->assertCommandIsSuccessful();
 
-        self::assertSame("Erased 1 removed budget lines.\n", $tester->getDisplay());
+        self::assertSame("Erased 1 removed budget lines.\nErased 0 removed payers.\n", $tester->getDisplay());
         self::assertSame([$recent['id']], Type\vec(Type\string())->coerce(self::em()->getConnection()->fetchFirstColumn('SELECT id FROM budget_lines')));
         $this->as($this->owner, 'DELETE', $this->removal($lapsed['id']));
         self::assertSame(404, $this->statusCode());
@@ -498,7 +498,7 @@ final class BudgetLinesTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         $payload = Str\split(Type\string()->coerce($body['token'] ?? null), '.')[1] ?? self::fail('not a token');
         $claims = Type\shape(['mercure' => Type\shape(['subscribe' => Type\vec(Type\string())], true)], true)->coerce(Json\decode((string) \base64_decode(Str\replace_every($payload, ['-' => '+', '_' => '/']), true)));
-        self::assertSame(['events/' . $this->eventId . '/budget', 'events/' . $this->eventId . '/budget/quotes', 'events/' . $this->eventId . '/headcount'], $claims['mercure']['subscribe']);
+        self::assertSame(['events/' . $this->eventId . '/budget', 'events/' . $this->eventId . '/budget/quotes', 'events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in'], $claims['mercure']['subscribe']);
     }
 
     /** @return iterable<string, array{SeededRole, ?EventRole}> */

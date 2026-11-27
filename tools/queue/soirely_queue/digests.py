@@ -101,6 +101,11 @@ def tester(p, db, stories):
 
 
 def designer(p, db, stories):
+    failed = [s for s in ordered(W.queued(p.role, stories, prs=store.prs(db)))
+              if s["state"] == "Failed QA"]
+    if failed:
+        p.add(f"Failed QA, demo only ({len(failed)}): fix the demo on a ux/ branch; once it "
+              "merges pm moves it to Ready For QA:", *[line(s) for s in failed], "")
     waiting = [s for s in ordered(stories) if s["state"] == "Needs Design"
                and "translation" not in s["labels"]]
     p.add(f"Needs Design ({len(waiting)}): draw each, link it, then move it to Ready For Dev:")
@@ -127,12 +132,33 @@ def designer(p, db, stories):
         p.add("", "AC changed since you designed them:", *[line(s) for s in changed])
 
 
+def stuck(p, every, epics):
+    found = W.stuck_blockers(every, epics)
+    if not found:
+        return
+    p.add("Stuck: held by a story nobody is working on")
+    for blocker, held in found:
+        holds = "holds " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in held)
+        epic = W.held_epic(blocker, epics)
+        if epic:
+            p.add(line(blocker, f"{holds} · waits on its epic, {epic['name']}, "
+                                f"to be in progress"))
+        elif blocker["state"] == R.WAITING:
+            p.add(line(blocker, f"{holds} · waits on the owner"))
+        elif blocker["state"] == "Backlog":
+            p.add(line(blocker, holds), f"    Next: {SQ} pm move sc-{blocker['id']} \"To Do\"")
+        else:
+            p.add(line(blocker, holds), f"    Next: {SQ} pm story sc-{blocker['id']}")
+    p.add("")
+
+
 def product_manager(p, db, stories):
+    every = store.stories(db)
+    stuck(p, every, store.get_meta(db, "epics"))
     todo = ordered([s for s in stories if s["state"] == "To Do"
                     and "translation" not in s["labels"]])
     p.add(f"To Do ({len(todo)}), next 10: give each its AC, then move it to Needs Design, "
           "or to Ready For Dev when it needs no new screens:")
-    every = store.stories(db)
     for story in todo[:10]:
         flags = [] if any(T.is_ac(h) for h in section_names(story)) else ["no AC"]
         holders = W.holding(story, every)

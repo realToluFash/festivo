@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { Navigate, Outlet, matchPath, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
@@ -83,7 +83,17 @@ export function OutsideShell({
 
   const areas = outsideAreas(event.role);
 
-  if (!atAccount && !gone && (held == null || routed == null || !areas.includes(routed.area))) {
+  const refusedHere =
+    held != null &&
+    ['/app/events/:eventId/staff', '/app/events/:eventId/staff/roster'].some(
+      (path) => matchPath(path, pathname) != null,
+    );
+
+  if (
+    !atAccount &&
+    !gone &&
+    (held == null || routed == null || (!areas.includes(routed.area) && !refusedHere))
+  ) {
     return <Navigate replace to={eventAreaPath(event.id, 'overview')} />;
   }
 
@@ -254,25 +264,27 @@ export function OutsideGone({ eventId }: { eventId: string }) {
   const back = others.find((one) => one.id === from) ?? outsideEventsInOrder(others, now)[0];
 
   return (
-    <div className="desk-column">
-      <section className="card oe-gone">
-        <h1 ref={heading} tabIndex={-1}>
-          {t('eventPage.notFound')}
-        </h1>
-        <button
-          type="button"
-          className="button"
-          onClick={() => {
-            void rereadOutsideEvents()
-              .catch(() => undefined)
-              .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
-          }}
-        >
-          {back == null
-            ? t('outsideEvent.continue')
-            : t('outsideEvent.backTo', { name: back.name })}
-        </button>
-      </section>
+    <div className="desk desk-page">
+      <div className="desk-column">
+        <section className="card oe-gone">
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              void rereadOutsideEvents()
+                .catch(() => undefined)
+                .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
+            }}
+          >
+            {back == null
+              ? t('outsideEvent.continue')
+              : t('outsideEvent.backTo', { name: back.name })}
+          </button>
+        </section>
+      </div>
     </div>
   );
 }

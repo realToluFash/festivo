@@ -59,6 +59,10 @@ class Subscription
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $externalRef = null;
 
+    /** The provider's time for the event it was last set from: an older event never overwrites it (sc-3933). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $providerUpdatedAt = null;
+
     public function __construct(
         Organisation $organisation,
         BillingAccount $billingAccount,
@@ -121,6 +125,12 @@ class Subscription
         return $this->periodStart;
     }
 
+    /** Only `SubscriptionChanger` calls this, so the move is recorded in the history. */
+    public function startPeriodAt(DateTimeImmutable $periodStart): void
+    {
+        $this->periodStart = $periodStart;
+    }
+
     public function getPeriodEnd(): ?DateTimeImmutable
     {
         return $this->periodEnd;
@@ -139,5 +149,34 @@ class Subscription
     public function getExternalRef(): ?string
     {
         return $this->externalRef;
+    }
+
+    /** Only `SubscriptionChanger` calls this. */
+    public function linkToProvider(SubscriptionSource $source, string $externalRef): void
+    {
+        $this->source = $source;
+        $this->externalRef = $externalRef;
+    }
+
+    /** Only `SubscriptionChanger` calls this. A renewal never moves the period start (sc-3929): only a change billed from a new date does. */
+    public function changePeriod(?DateTimeImmutable $periodEnd): void
+    {
+        $this->periodEnd = $periodEnd;
+    }
+
+    /** Only `SubscriptionChanger` calls this, so the change is recorded in the history. */
+    public function changeStatus(SubscriptionStatus $status): void
+    {
+        $this->status = $status;
+    }
+
+    public function getProviderUpdatedAt(): ?DateTimeImmutable
+    {
+        return $this->providerUpdatedAt;
+    }
+
+    public function setProviderUpdatedAt(DateTimeImmutable $at): void
+    {
+        $this->providerUpdatedAt = $at;
     }
 }

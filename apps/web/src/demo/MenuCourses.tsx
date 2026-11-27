@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { NotFound } from '../routes/public/NotFound.tsx';
@@ -34,6 +34,7 @@ import { AddVariantButton, RowLine, VariantFields, VariantInsets } from './DishV
 import {
   type Choice,
   type ChoiceAsk,
+  type ChoiceErrors,
   type ChoiceForm,
   type ChoiceMode,
   type OptionForm,
@@ -74,11 +75,27 @@ import {
   SeePicksLink,
   useHasPicks,
 } from './MenuPicks.tsx';
+import { KSW, sheetAt } from './kitchenSheet.ts';
 import { samplePicks } from './seePicks.ts';
+import {
+  type MenuChange,
+  addedAllergens,
+  afterChange,
+  asksAtFirstDish,
+  changeAsks,
+  MCW,
+  pickedWithAdded,
+} from './menuChange.ts';
+import { MenuChangeDialog } from './MenuChangeDialog.tsx';
+import { sampleEvent } from './events.ts';
+import { MENU_EVENT } from './menuServed.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
+import { JOINED } from './noOrg.ts';
+import { OutsideSide } from './NoOrgEvent.tsx';
+import { areasAt, wallClock, wallDay } from './outsideEvents.ts';
 import { type SampleEvent } from './events.ts';
 import { RETRY_MS } from './general.ts';
 import { Pill } from './GuestsParts.tsx';
@@ -168,6 +185,8 @@ import './menu.css';
 import './menuLibrary.css';
 import './menuCourses.css';
 
+const OUTSIDER = JOINED.joao;
+
 const SAMPLE_LIBRARY = SAMPLE_DISHES.filter((one) => !one.archived);
 
 /** sc-3902's event Menu (board Menu, page e32): its courses in order with the dishes on each, at a desk and down to a 320 px web window. */
@@ -190,15 +209,35 @@ export function CoursesAt({
       <EventsShell
         renderSide={(tell, covered) => (
           <div className={navOpen ? 'mc-nav is-open' : 'mc-nav'} id="mc-nav">
-            <EventSidebar
-              event={event}
-              area="menu"
-              now={clockOfKitchen()}
-              tell={tell}
-              inert={covered}
-              waiting={waitingLine(keptInbox())}
-              menuLine={menuReady}
-            />
+            {first.outside === true ? (
+              <OutsideSide
+                card={{
+                  name: event.name,
+                  when: `${wallDay(event.startsAt)} · ${wallClock(event.startsAt)}`,
+                  cover: event.mesh,
+                }}
+                areas={areasAt('Can edit')}
+                current="menu"
+                person={{
+                  name: OUTSIDER[0],
+                  initials: OUTSIDER[1],
+                  tone: OUTSIDER[2],
+                  role: 'Can edit',
+                }}
+                tell={tell}
+                inert={covered}
+              />
+            ) : (
+              <EventSidebar
+                event={event}
+                area="menu"
+                now={clockOfKitchen()}
+                tell={tell}
+                inert={covered}
+                waiting={waitingLine(keptInbox())}
+                menuLine={menuReady}
+              />
+            )}
           </div>
         )}
       >
@@ -212,6 +251,7 @@ export function CoursesAt({
                 navOpen={navOpen}
                 onNav={() => setNavOpen((now) => !now)}
                 withheld={first.system === 'noAccess'}
+                outside={first.outside === true}
               />
               <Body first={first} lang={lang} budget={budget} tell={tell} onReady={setMenuReady} />
             </div>
@@ -228,12 +268,15 @@ function Crumbs({
   navOpen,
   onNav,
   withheld,
+  outside,
 }: {
   event: SampleEvent;
   tell: Tell;
   navOpen: boolean;
   onNav: () => void;
   withheld: boolean;
+  /** sc-95116: held from outside, the page has no Events to go back to and no bell, as the product's outsider shell (sc-71). */
+  outside: boolean;
 }) {
   return (
     <div className="ev-crumb-row">
@@ -247,28 +290,30 @@ function Crumbs({
         <Glyph name={navOpen ? 'clear' : 'filter'} size={16} weight={2.4} />
         {navOpen ? CW.closeNavigation : CW.navigation}
       </button>
-      <nav className="ev-crumb" aria-label={CW.crumb}>
-        <ol>
-          <li className="ev-crumb-part">
-            <Link to="/demo/events">{CW.events}</Link>
-          </li>
-          {!withheld && (
-            <>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{CW.title}</span>
-              </li>
-            </>
-          )}
-        </ol>
-      </nav>
-      <DemoBell tell={tell} />
+      {!outside && (
+        <nav className="ev-crumb" aria-label={CW.crumb}>
+          <ol>
+            <li className="ev-crumb-part">
+              <Link to="/demo/events">{CW.events}</Link>
+            </li>
+            {!withheld && (
+              <>
+                <li className="ev-crumb-part">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
+                    {event.name}
+                  </Link>
+                </li>
+                <li className="ev-crumb-part" aria-current="page">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <span className="ev-crumb-name">{CW.title}</span>
+                </li>
+              </>
+            )}
+          </ol>
+        </nav>
+      )}
+      {!outside && <DemoBell tell={tell} />}
     </div>
   );
 }
@@ -492,10 +537,10 @@ function openOf(first: CoursesStart, lang: Lang): Open | null {
     return {
       kind: 'addDish',
       courseId: o.courseId,
-      tab: o.tab,
+      tab: first.outside === true ? 'new' : o.tab,
       q: o.q ?? '',
       form: { ...blankForm(ORG_CURRENCY), ...o.form },
-      onlyEvent: false,
+      onlyEvent: first.outside === true,
       pressed: o.press === true,
       failed: null,
       added: '',
@@ -537,7 +582,7 @@ function choiceOpen(o: Extract<CoursesStart['opened'], { kind: 'choice' }>, dish
   const options = Array.from({ length: Math.max(base.options.length, over.length) }, (_, at) => ({
     ...(base.options[at] ?? blankOption()),
     ...over[at],
-  }));
+  })).filter((_, at) => !(o.drop ?? []).includes(at));
   const form: ChoiceForm = { ...base, ...o.form, options };
   const pressed = o.press === true;
   const problem = pressed ? firstChoiceProblem(checkChoice(form, was), form, was) : null;
@@ -603,6 +648,16 @@ function firstFocus(
   );
 }
 
+/** Preview as guest (sc-3907): the guest's meal step for the host alone, coming back here on Close preview. */
+function previewAt(pathname: string, params: URLSearchParams): string {
+  const back = new URLSearchParams(params);
+  back.delete('told');
+  const query = back.toString();
+  const from = `${pathname}${query === '' ? '' : `?${query}`}`;
+
+  return `/demo/guest/meal?state=preview&from=${encodeURIComponent(from)}`;
+}
+
 function Courses({
   first,
   lang,
@@ -618,12 +673,26 @@ function Courses({
   const [open, setOpen] = useState<Open | null>(() => openOf(first, lang));
   const [asking, setAsking] = useState(first.asking);
   const [refused, setRefused] = useState(first.refused);
+  const [changing, setChanging] = useState<{ change: MenuChange; back: string | null } | null>(
+    first.changing == null ? null : { change: first.changing, back: first.changingBack ?? null },
+  );
+  const [changeRefused, setChangeRefused] = useState<string | null>(null);
+  const coming = useState(() => samplePicks().people.length)[0];
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const backFromPreview = params.get('told') === 'preview';
   const [said, setSaid] = useState<Told | null>(
-    first.said === '' ? null : { words: first.said, more: first.saidMore ?? null },
+    backFromPreview
+      ? { words: CW.nothingSaved, more: null }
+      : first.said === ''
+        ? null
+        : { words: first.said, more: first.saidMore ?? null },
   );
   const [dragging, setDragging] = useState<string | null>(null);
   const failing = useRef(first.failing);
-  const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget, first.picks));
+  const focusAfter = useRef<string | null>(
+    backFromPreview ? 'mc-preview' : firstFocus(open, first.courses, budget, first.picks),
+  );
   const library = first.library ?? SAMPLE_LIBRARY;
   const [libraryFailed, setLibraryFailed] = useState(first.libraryFailed === true);
   const [libraryRetrying, setLibraryRetrying] = useState(false);
@@ -679,6 +748,72 @@ function Courses({
   function settle() {
     setRefused(null);
     setAsking(null);
+  }
+
+  /** sc-3913: once it is built, a change that asks guests again opens the MenuChange dialog instead of sc-3902's refusal. */
+  function askChange(change: MenuChange) {
+    setChangeRefused(null);
+    setChanging({ change, back: null });
+  }
+
+  function cancelChange() {
+    setChanging(null);
+    setChangeRefused(null);
+  }
+
+  function makeChange() {
+    if (changing == null) return;
+    const { change } = changing;
+    const asks = changeAsks(change, courses, coming, lang);
+    if (asks == null) return;
+    if (first.pastDate === true) {
+      const event = sampleEvent(MENU_EVENT)?.name ?? '';
+      setChangeRefused(MCW.pastDate(event, dayWords(picks.start, lang)));
+      return;
+    }
+    const course = courses.find((one) => one.id === change.courseId);
+    if (course == null) return;
+    if (change.kind === 'dish') {
+      const { course: next } = withDishes(
+        course,
+        course.dishes.filter((one) => one.id !== change.dishId),
+      );
+      changeCourse(course.id, () => next);
+      if (open?.kind === 'editDish' && open.dishId === change.dishId) setOpen(null);
+    } else if (change.kind === 'variant') {
+      const dish = course.dishes.find((one) => one.id === change.dishId);
+      const variant =
+        dish == null ? null : variantsOf(dish).find((one) => one.id === change.variantId);
+      if (dish == null || variant == null) return;
+      const staying = variantsOf(dish).length > 2 ? null : stayingAfter(dish, variant);
+      if (staying == null) {
+        changeDish(course, removeVariant(dish, variant));
+      } else {
+        const folded = foldInto(dish, staying);
+        changeDish(course, { ...folded.dish, cost: folded.price, pickers: staying.pickers });
+      }
+      if (open?.kind === 'variants' && open.dishId === dish.id) setOpen(null);
+    } else if (change.kind === 'firstDish') {
+      const { course: next } = withDishes(course, [change.dish]);
+      changeCourse(course.id, () => next);
+      setOpen(null);
+    } else if (
+      change.kind === 'firstVariant' ||
+      change.kind === 'variantAllergen' ||
+      change.kind === 'choice'
+    ) {
+      const dish = course.dishes.find((one) => one.id === change.dishId);
+      if (dish == null) return;
+      changeDish(course, afterChange(change, dish));
+      setOpen(null);
+      setAsking(null);
+    } else {
+      changeDish(course, change.next);
+      setOpen(null);
+    }
+    setChanging(null);
+    setSaid({ words: asks.done, more: null });
+    focusAfter.current = `mc-c-${course.id}`;
   }
 
   function failsNow(): 'none' | 'network' | 'forbidden' {
@@ -754,10 +889,10 @@ function Courses({
     setOpen({
       kind: 'addDish',
       courseId: course.id,
-      tab: 'library',
+      tab: first.outside === true ? 'new' : 'library',
       q: '',
       form: blankForm(ORG_CURRENCY),
-      onlyEvent: false,
+      onlyEvent: first.outside === true,
       pressed: false,
       failed: null,
       added: '',
@@ -881,6 +1016,10 @@ function Courses({
     if (open?.kind !== 'addDish') return;
     const libDish = library.find((one) => one.id === libraryId);
     if (libDish == null) return;
+    if (first.asksAgain === true && asksAtFirstDish(courses, course)) {
+      askChange({ kind: 'firstDish', courseId: course.id, dish: copyOf(libDish) });
+      return;
+    }
     const { course: next, said: also } = withDishes(course, [...course.dishes, copyOf(libDish)]);
     changeCourse(course.id, () => next);
     setOpen({
@@ -913,6 +1052,10 @@ function Courses({
       return;
     }
     const dish = newDish(open.form, open.onlyEvent);
+    if (first.asksAgain === true && asksAtFirstDish(courses, openCourse)) {
+      askChange({ kind: 'firstDish', courseId: openCourse.id, dish });
+      return;
+    }
     const { course: next, said: also } = withDishes(openCourse, [...openCourse.dishes, dish]);
     changeCourse(openCourse.id, () => next);
     setOpen(null);
@@ -953,6 +1096,13 @@ function Courses({
       contains,
       diets: keeps ? dish.diets : open.form.diets.slice(),
     };
+    if (
+      first.asksAgain === true &&
+      pickedWithAdded(dish, addedAllergens(dish.contains, contains)).length > 0
+    ) {
+      askChange({ kind: 'allergen', courseId: openCourse.id, dishId: dish.id, next });
+      return;
+    }
     changeCourse(openCourse.id, (one) => ({
       ...one,
       dishes: one.dishes.map((d) => (d.id === dish.id ? next : d)),
@@ -972,7 +1122,7 @@ function Courses({
     settle();
     setSaid(null);
     const outcome = addOutcome(dish, isPicked(dish));
-    if (outcome !== 'open') {
+    if (outcome !== 'open' && !(outcome === 'picked' && first.asksAgain === true)) {
       setRefused({ kind: 'addVariant', dishId: dish.id, why: outcome });
       return;
     }
@@ -1032,6 +1182,26 @@ function Courses({
       return;
     }
     const saved = withSavedVariants(dish, open.mode, open.variantId, open.forms, how);
+    if (first.asksAgain === true) {
+      const change: MenuChange | null =
+        open.mode === 'addFirst'
+          ? { kind: 'firstVariant', courseId: openCourse.id, dishId: dish.id, next: saved.dish }
+          : open.mode === 'add'
+            ? { kind: 'variantAdded', courseId: openCourse.id, dishId: dish.id, next: saved.dish }
+            : open.mode === 'edit' && open.variantId != null
+              ? {
+                  kind: 'variantAllergen',
+                  courseId: openCourse.id,
+                  dishId: dish.id,
+                  variantId: open.variantId,
+                  next: saved.dish,
+                }
+              : null;
+      if (change != null && (changeAsks(change, courses, coming, lang)?.people ?? 0) > 0) {
+        askChange(change);
+        return;
+      }
+    }
     changeDish(openCourse, saved.dish);
     setOpen(null);
     tellDone(saved.said, saved.more);
@@ -1054,6 +1224,14 @@ function Courses({
       return;
     }
     const outcome = removeOutcome(dish, variant, 'event');
+    if (
+      first.asksAgain === true &&
+      outcome.kind === 'refused' &&
+      outcome.lines.every((line) => line === 'picked')
+    ) {
+      askChange({ kind: 'variant', courseId: course.id, dishId: dish.id, variantId: variant.id });
+      return;
+    }
     if (outcome.kind === 'refused') {
       setAsking({
         kind: 'variant',
@@ -1106,7 +1284,7 @@ function Courses({
     settle();
     setSaid(null);
     const outcome = addChoiceOutcome(dish);
-    if (outcome !== 'open') {
+    if (outcome !== 'open' && !(outcome === 'picked' && first.asksAgain === true)) {
       setRefused({ kind: 'addChoice', dishId: dish.id, why: outcome });
       return;
     }
@@ -1157,7 +1335,7 @@ function Courses({
     const saved = was?.options.find((one) => one.id === option?.id);
     const isDefault =
       openCourse != null && saved != null && isDefaultOption(openCourse, now.dishId, saved.id);
-    if (saved != null && (isDefault || optionPicked(saved))) {
+    if (saved != null && (isDefault || (optionPicked(saved) && first.asksAgain !== true))) {
       setOpen({ ...now, binRefused: key, optionsFull: false });
       focusAfter.current = `ch-${key}-bin`;
       return;
@@ -1188,7 +1366,7 @@ function Courses({
     const dish = openCourse.dishes.find((one) => one.id === open.dishId);
     if (dish == null) return;
     const was = wasChoice(dish, open.choiceId);
-    const errors = checkChoice(open.form, was);
+    const errors = asksFirst(checkChoice(open.form, was), first.asksAgain === true);
     if (hasProblem(errors)) {
       const problem = firstChoiceProblem(errors, open.form, was);
       setOpen({
@@ -1215,6 +1393,19 @@ function Courses({
       return;
     }
     const saved = withSavedChoice(dish, open.mode, open.choiceId, open.form, lang);
+    if (first.asksAgain === true) {
+      const change: MenuChange = {
+        kind: 'choice',
+        courseId: openCourse.id,
+        dishId: dish.id,
+        choiceId: open.mode === 'edit' ? open.choiceId : null,
+        next: saved.dish,
+      };
+      if ((changeAsks(change, courses, coming, lang)?.people ?? 0) > 0) {
+        askChange(change);
+        return;
+      }
+    }
     changeDish(openCourse, saved.dish);
     setOpen(null);
     tellDone(saved.said, saved.more);
@@ -1223,6 +1414,17 @@ function Courses({
   function pressRemoveChoice(dish: EvDish, choice: Choice) {
     settle();
     setSaid(null);
+    const course = courses.find((one) => one.dishes.some((d) => d.id === dish.id));
+    if (first.asksAgain === true && course != null && removeChoiceOutcome(choice) === 'answered') {
+      askChange({
+        kind: 'choice',
+        courseId: course.id,
+        dishId: dish.id,
+        choiceId: choice.id,
+        next: removeChoice(dish, choice),
+      });
+      return;
+    }
     const ask: ChoiceAsk = { choiceId: choice.id, kind: removeChoiceOutcome(choice) };
     setAsking({ kind: 'choice', dishId: dish.id, ask });
     if (ask.kind === 'ask') focusAfter.current = `mc-chask-${choice.id}`;
@@ -1267,7 +1469,9 @@ function Courses({
       return;
     }
     if (isPicked(dish)) {
-      setRefused({ kind: 'dish', dishId: dish.id });
+      if (first.asksAgain === true)
+        askChange({ kind: 'dish', courseId: course.id, dishId: dish.id });
+      else setRefused({ kind: 'dish', dishId: dish.id });
       return;
     }
     setAsking({ kind: 'dish', dishId: dish.id });
@@ -1306,6 +1510,8 @@ function Courses({
   const limitLine = (at: 'top' | 'end') =>
     refused?.kind === 'limit' && refused.at === at ? CW.atLimit : '';
 
+  const changingAsks = changing == null ? null : changeAsks(changing.change, courses, coming, lang);
+
   return (
     <>
       <DemoOffline on={first.system === 'offline'} />
@@ -1334,6 +1540,22 @@ function Courses({
             )}
           </p>
         </div>
+        {courses.some(asksGuests) && (
+          <Link
+            id="mc-preview"
+            className="gs-pill is-secondary mc-preview"
+            to={previewAt(location.pathname, params)}
+          >
+            <Glyph name="eye" size={16} weight={2.4} />
+            {CW.previewAsGuest}
+          </Link>
+        )}
+        {first.showPicks === true && (
+          <Link className="gs-pill is-secondary mc-preview" to={sheetAt()}>
+            <Glyph name="page" size={16} weight={2.4} />
+            {KSW.title}
+          </Link>
+        )}
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button
@@ -1561,6 +1783,7 @@ function Courses({
                   }}
                   onPatch={(next) => setOpen({ ...open, form: { ...open.form, ...next } })}
                   onOnlyEvent={(onlyEvent) => setOpen({ ...open, onlyEvent })}
+                  outside={first.outside === true}
                 />
               )}
               {open.kind === 'editDish' && openCourse != null && (
@@ -1616,7 +1839,12 @@ function Courses({
                 <ChoiceFields
                   form={open.form}
                   errors={
-                    open.pressed ? checkChoice(open.form, wasChoice(openDish, open.choiceId)) : null
+                    open.pressed
+                      ? asksFirst(
+                          checkChoice(open.form, wasChoice(openDish, open.choiceId)),
+                          first.asksAgain === true,
+                        )
+                      : null
                   }
                   draft={
                     savesAsDraft(open.form, wasChoice(openDish, open.choiceId))
@@ -1698,8 +1926,28 @@ function Courses({
       {open?.kind === 'editCourse' && open.move != null && (
         <MoveDialog move={open.move} lang={lang} onCancel={cancelMove} onMove={confirmMove} />
       )}
+      {changing != null && changingAsks != null && (
+        <MenuChangeDialog
+          asks={changingAsks}
+          refused={changeRefused}
+          back={changing.back}
+          onCancel={cancelChange}
+          onGo={makeChange}
+        />
+      )}
     </>
   );
+}
+
+/** sc-3913 built: changing how many to pick, or turning Required on, on an answered choice asks first instead of being refused. */
+function asksFirst(errors: ChoiceErrors, asks: boolean): ChoiceErrors {
+  if (!asks) return errors;
+
+  return {
+    ...errors,
+    pick: errors.pick === CHW.answered ? null : errors.pick,
+    required: errors.required === CHW.answered ? null : errors.required,
+  };
 }
 
 /** The bin on an option of the course's default says so; any other picked option keeps choices' own line. */
@@ -1731,9 +1979,7 @@ function panelTitle(open: Open, dish: EvDish | null): string {
     const name = dish?.name ?? '';
     if (open.mode === 'addFirst') return VW.addFirstTitle(name);
     if (open.mode === 'add') return VW.addTitle(name);
-    const variant = variantsOf(dish ?? { name, contains: null, diets: [] }).find(
-      (one) => one.id === open.variantId,
-    );
+    const variant = variantsOf(dish ?? {}).find((one) => one.id === open.variantId);
 
     return VW.editTitle(variant?.name ?? '');
   }
@@ -1915,7 +2161,9 @@ function CourseCard({
         )}
         <div className="mn-course-names">
           <p className="mn-eyebrow">{courseLine(index, all, course.servedAt)}</p>
-          <h2 id={`mc-c-${course.id}`}>{course.name}</h2>
+          <h2 id={`mc-c-${course.id}`} tabIndex={-1}>
+            {course.name}
+          </h2>
           <p className={ready ? 'mc-state is-ready' : 'mc-state is-empty'}>
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}

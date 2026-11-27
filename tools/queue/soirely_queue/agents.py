@@ -203,26 +203,61 @@ def up(db, home, platform, say=print, only=None):
     update.check(db, home, time.time(), say, force=True)
     platform.install(home / "sq" / "sq", machine.env_file(), sys.executable)
     names = [r for r in (only or ready) if r in ready]
-    runner.set_started(db, names, True)
     store.set_meta(db, "paused", None)
-    for role in names:
-        note = machine.price_note(role, ready[role]["model"], config)
-        if note:
-            say(f"note: {note}")
-    start_stacks(config, names, say)
+    start_roles(db, config, ready, names, say)
     platform.enable()
     say(f"started {', '.join(names) or 'no role'}; the first tick is within a minute")
     return 1 if only and set(only) - set(names) else 0
 
 
-def start(db, home, platform, names, say=print):
-    listed = list(machine.load().get("roles") or {})
-    unlisted = [name for name in names if name not in listed]
-    if unlisted:
-        say(f"error: {', '.join(unlisted)} not in {machine.path()}, so not started here; "
+def start_roles(db, config, ready, names, say):
+    runner.set_started(db, names, True)
+    for role in names:
+        note = machine.price_note(role, ready[role]["model"], config)
+        if note:
+            say(f"note: {note}")
+    start_stacks(config, names, say)
+
+
+def unlisted(config, names, say):
+    missing = [name for name in names if name not in (config.get("roles") or {})]
+    if missing:
+        say(f"error: {', '.join(missing)} not in {machine.path()}, so not started here; "
             "which roles a machine runs is the owner's choice")
+    return missing
+
+
+def start(db, home, platform, names, say=print):
+    if unlisted(machine.load(), names, say):
         return 1
     return up(db, home, platform, say, only=names or None)
+
+
+def start_here(db, platform, names, say=print, load=machine.load):
+    """`sq web`'s start: the roles and their stacks, with the manager left as it is. The page
+    is served by the manager's own unit, which installing it again may restart under it, and
+    a paused machine stays paused until it is resumed."""
+    config = load()
+    if unlisted(config, names, say):
+        return 1
+    errors, refused, ready = machine.check(config)
+    for error in errors:
+        say(f"error: {error}")
+    for role in [name for name in names if name in refused]:
+        say(f"error: {role} is refused here: {refused[role]}")
+    if errors or set(names) - set(ready):
+        return 1
+    start_roles(db, config, ready, names, say)
+    started = f"started {', '.join(names)}"
+    if runner.paused(db):
+        say(f"{started}; it ticks once this machine is resumed")
+    elif (store.get_meta(db, "shared_view") or {}).get("paused"):
+        say(f"{started}; it ticks once every machine is resumed")
+    elif not platform.timer_active():
+        say(f"{started}; the manager is not running here: just agents up")
+    else:
+        say(f"{started}; the first tick is within a minute")
+    return 0
 
 
 def stop(db, names, say=print):

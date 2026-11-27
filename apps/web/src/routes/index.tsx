@@ -22,6 +22,10 @@ import {
   EventRun,
   EventStaff,
   EventStations,
+  EventHoursWorked,
+  EventKitchenSheet,
+  EventMessages,
+  EventMenuPicks,
   EventView,
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
@@ -32,13 +36,21 @@ import { EmailDomains } from './app/settings/EmailDomains.tsx';
 import { ExportAllData } from './app/settings/ExportAllData.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
+import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { YourMessagesFromEmail, YourMessagesFromPage } from './guest/YourMessages.tsx';
+import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { DoorCheckInPage } from './public/DoorCheckIn.tsx';
+import { RedeemPage } from './public/Redeem.tsx';
+import { FloorPage } from './public/Floor.tsx';
+import { ShiftNightPage } from './public/ShiftNight.tsx';
+import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { ForgotPassword } from './public/ForgotPassword.tsx';
@@ -55,6 +67,7 @@ import { TwoFactorAgain } from './public/TwoFactorAgain.tsx';
 import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
+import { GuestReplyEmails } from './public/GuestReplyEmails.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -64,6 +77,7 @@ import { Status } from './public/Status.tsx';
  *   /app     the product — signed in, scoped to an organisation
  *   /i/:tok  a guest — reached by an invitation, will never install anything
  *   /s/:tok  a room screen — a TV or projector, shown what guests see (sc-3897)
+ *   /door/:id, /night/:id  the night in a staff account's browser: check-in and the shift page (sc-28230)
  *
  * Separated structurally because the alternative is one tree with conditions in
  * it, and a condition is something that can be forgotten on a new route. A
@@ -94,6 +108,8 @@ export const routes = [
       { path: '/complete-profile', element: <CompleteProfile /> },
       { path: '/status', element: <Status /> },
       { path: '/join/:token', element: <Join /> },
+      { path: '/unsubscribe/guest-replies', element: <GuestReplyEmails /> },
+      { path: '/your-messages', element: <YourMessagesFromEmail /> },
       {
         path: '/app',
         element: <AppLayout />,
@@ -110,7 +126,11 @@ export const routes = [
           { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
           { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
           { path: 'events/:eventId/staff/stations', element: <EventStations /> },
+          { path: 'events/:eventId/staff/hours', element: <EventHoursWorked /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
+          { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
+          { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
+          { path: 'events/:eventId/messages', element: <EventMessages /> },
           { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
@@ -127,6 +147,7 @@ export const routes = [
               { path: 'settings/members', element: <Members /> },
               { path: 'settings/sign-in-rules', element: <SignInRules /> },
               { path: 'settings/vendors', element: <Vendors /> },
+              { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
               { path: 'settings/data-and-control', element: <DataAndControl /> },
               { path: 'settings/data-and-control/export', element: <ExportAllData /> },
               { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },
@@ -136,11 +157,26 @@ export const routes = [
         ],
       },
       {
+        path: '/preview',
+        element: <AppLayout bare />,
+        children: [{ path: 'events/:eventId/meals', element: <MealPreview /> }],
+      },
+      {
         path: '/i/:token',
         element: <GuestLayout />,
-        children: [{ index: true, element: <Invitation /> }],
+        children: [
+          { index: true, element: <Invitation /> },
+          { path: 'messages', element: <YourMessagesFromPage /> },
+        ],
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
+      { path: '/w/:token', element: <StaffLinkPage /> },
+      { path: '/floor/:eventId', element: <FloorPage /> },
+      { path: '/d', element: <RedeemPage /> },
+      { path: '/d/:code', element: <RedeemPage /> },
+      { path: '/d/in/:eventId', element: <RedeemPage /> },
+      { path: '/door/:eventId', element: <DoorCheckInPage /> },
+      { path: '/night/:eventId', element: <ShiftNightPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

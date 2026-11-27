@@ -1158,6 +1158,13 @@ function TableFacts({
       t(isRoundShape(table.shape) ? 'seating.diameter' : 'seating.width'),
       tableSideWords(t, locale, table.widthCm, ctx.system),
     ],
+    ...(isRoundShape(table.shape)
+      ? []
+      : ([
+          [t('seating.length'), tableSideWords(t, locale, table.lengthCm, ctx.system)],
+          [t('seating.ends'), String(table.endSeats)],
+          [t('seating.rotation'), `${table.rotation}°`],
+        ] as [string, string][])),
   ];
 
   return (

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   FIGURE_OPENS,
@@ -65,7 +66,9 @@ import {
   summaryLine,
   withoutTab,
 } from './EventsModel.ts';
-import { CLOCKS, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { CLOCKS, DINER, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { liveOneDayClock, seedRunOfShow, stepless } from './LiveOneDay.ts';
+import { KeepsHeight } from './LiveOneDayParts.tsx';
 import { W, say } from './EventsWords.ts';
 import { NewEventScreen } from './NewEvent.tsx';
 import { isNewState } from './NewEventModel.ts';
@@ -79,6 +82,7 @@ import {
   SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
@@ -122,7 +126,11 @@ export function EventsList({
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const now = useMemo(() => new Date(CLOCKS.reader), []);
+  const shownLocale = dateLocale();
+  const now = useMemo(
+    () => (state === 'liveOneDay' ? liveOneDayClock(state) : new Date(CLOCKS.reader)),
+    [state],
+  );
   const start = useMemo(() => listStart(state), [state]);
   const [tab, setTab] = useState(start.tab);
   const [typed, setTyped] = useState(start.typed);
@@ -148,7 +156,8 @@ export function EventsList({
   const wide = shell.layout !== 'phone';
   const events = useMemo(() => {
     if (first) return [];
-    const all = EVENTS.filter(
+    seedRunOfShow(state);
+    const all = (state === 'liveOneDay' ? [...EVENTS, DINER] : EVENTS).filter(
       (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
     );
     const emptied = emptyTabOf(state);
@@ -173,8 +182,12 @@ export function EventsList({
     [looking, events, searched, filters, now, locale],
   );
   const hosts = useMemo(() => hostNames(EVENTS, locale), [locale]);
-  const filterWords = useFilterWords(filters, locale);
-  const calendar: Calendar = { today: wallDay(now, READER_ZONE), firstDay: 1, locale };
+  const filterWords = useFilterWords(filters, shownLocale);
+  const calendar: Calendar = {
+    today: wallDay(now, READER_ZONE),
+    firstDay: 1,
+    locale: shownLocale,
+  };
 
   useEffect(() => {
     if (typed === searched) return;
@@ -192,9 +205,7 @@ export function EventsList({
 
   useEffect(() => {
     if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
-    const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(filterRef, then), setMenuAt, MENU_AFTER_MS);
   }, [state]);
 
   const clearSearch = () => {
@@ -223,7 +234,7 @@ export function EventsList({
       <View>
         <Row
           title={event.name}
-          line={rowLine(event, locale)}
+          line={rowLine(event, shownLocale)}
           lead={<EventThumb event={event} />}
           tag={rowTag(event, everyPhase)}
           value={wide ? (howSoon(event, now) ?? undefined) : undefined}
@@ -303,6 +314,7 @@ export function EventsList({
               off
               open={false}
               onPress={() => undefined}
+              unseen
             />
           }
         />
@@ -341,7 +353,7 @@ export function EventsList({
         <>
           <EventsFilterMenu
             at={menuAt}
-            onClose={() => setMenuAt(null)}
+            onAt={setMenuAt}
             opener={filterRef}
             filters={filters}
             onFilters={setFilters}
@@ -405,16 +417,51 @@ export function EventsList({
           {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
             <View>
-              <EventCard
-                event={card}
-                now={now}
-                locale={locale}
-                wide={wide}
-                onOpen={() => openEvent(card.id)}
-                takes={() => true}
-                onStep={(step) => stepFrom(card, step, shell.tell)}
-                testID="events.card"
-              />
+              {stepless(card.phase, card.milestones ?? [], now, card.status === 'ended') ? (
+                <KeepsHeight
+                  footed={
+                    <EventCard
+                      event={{ ...card, phase: 'finished' }}
+                      now={now}
+                      locale={shownLocale}
+                      wide={wide}
+                      takes={() => true}
+                      onStep={() => undefined}
+                      testID="events.card.unseen"
+                    />
+                  }
+                >
+                  {(height) => (
+                    <EventCard
+                      event={{ ...card, milestones: null }}
+                      now={now}
+                      locale={shownLocale}
+                      wide={wide}
+                      {...(height != null && { height })}
+                      onOpen={() =>
+                        openEvent(
+                          card.id,
+                          card.id === DINER.id ? { state: 'liveOneDay' } : undefined,
+                        )
+                      }
+                      takes={() => true}
+                      onStep={(step) => stepFrom(card, step, shell.tell)}
+                      testID="events.card"
+                    />
+                  )}
+                </KeepsHeight>
+              ) : (
+                <EventCard
+                  event={card}
+                  now={now}
+                  locale={shownLocale}
+                  wide={wide}
+                  onOpen={() => openEvent(card.id)}
+                  takes={() => true}
+                  onStep={(step) => stepFrom(card, step, shell.tell)}
+                  testID="events.card"
+                />
+              )}
               {guestLine(card, 0)}
             </View>
           )}
@@ -444,7 +491,7 @@ export function EventsList({
             count: group.events.length,
             rows: <RowList items={group.events.map((event) => row(event, true))} />,
           }))}
-          locale={locale}
+          locale={shownLocale}
           onClearSearch={clearSearch}
           onClearFilters={() => setFilters(NO_FILTERS)}
         />
@@ -657,10 +704,16 @@ function GuestTile({
 }
 
 /** The product's band (sc-22586) over a sample Stale, its Try again clearing the demo's state and reaching no server. */
-export function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  at: clock = OFFLINE_AS_OF,
+}: {
+  onRetry: () => void;
+  at?: string;
+}) {
   const [at] = useState(() => {
     const day = new Date();
-    day.setHours(Number(OFFLINE_AS_OF.slice(0, 2)), Number(OFFLINE_AS_OF.slice(3)), 0, 0);
+    day.setHours(Number(clock.slice(0, 2)), Number(clock.slice(3)), 0, 0);
 
     return day;
   });

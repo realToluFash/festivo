@@ -508,7 +508,7 @@ function QuotesBody({
           {made != null && open != null && (
             <MadeDialog
               made={made}
-              quotes={budget.quotes}
+              budget={budget}
               onMade={setMade}
               onClose={() => setMade(null)}
               onSaved={(draft) => {
@@ -1065,20 +1065,26 @@ function ScheduleRow({
             !added
               ? paidLineOf(payment)
               : payment.paid.by === reader
-                ? PW.addedByYou(longDay(payment.paid.on))
-                : PW.addedBy(longDay(payment.paid.on), payment.paid.by),
+                ? (readOnly ? PW.addedByYouHeld : PW.addedByYou)(longDay(payment.paid.on))
+                : (readOnly ? PW.addedByHeld : PW.addedBy)(
+                    longDay(payment.paid.on),
+                    payment.paid.by,
+                  ),
+            ...(payment.paid.reference === '' ? [] : [PW.paidReference(payment.paid.reference)]),
           ]}
           lit={lit}
           end={
-            <>
-              {added && <Amount value={money(payment.paid.amount)} />}
-              {(lit || added) && !readOnly && (
-                <button type="button" className="desk-text" onClick={onUndo}>
-                  <Glyph name="undo" size={16} weight={2.4} />
-                  {BW.undo}
-                </button>
-              )}
-            </>
+            added || !readOnly ? (
+              <span className="bud-row-end">
+                {added && <Amount value={money(payment.paid.amount)} />}
+                {!readOnly && (
+                  <button type="button" className="desk-text" onClick={onUndo}>
+                    <Glyph name="undo" size={16} weight={2.4} />
+                    {BW.undo}
+                  </button>
+                )}
+              </span>
+            ) : undefined
           }
         />
       </li>

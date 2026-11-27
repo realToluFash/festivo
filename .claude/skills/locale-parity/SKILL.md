@@ -50,6 +50,13 @@ Languages have plural rules that are not "one versus everything else".
 It formats in the shown language, not the device region, and English copy is British, so
 "Ana, Ben and Cleo" has no serial comma.
 
+**A term shown mid-sentence comes from one shared helper, never a per-screen
+`toLocaleLowerCase`.** Allergen names are capitalised in the catalogue and lower-cased
+inside a sentence; on the web, `allergensInSentence` in `routes/app/events/allergenWords.ts`
+does that and joins the list. Two screens each lower-casing and joining on their own word
+the same allergy two ways the day one of them changes. Lower-case with the shown language
+(`toLocaleLowerCase(i18n.language)`), never with no argument.
+
 **Check for a key you are about to overwrite.** A namespace can hold both a count called
 `guests` and a heading called `Guests`. Overwriting is silent — the broken one renders as
 its own key path, and no test fails.
@@ -93,3 +100,8 @@ If that test does not exist yet in the surface you are working in, write it — 
 dozen lines and it catches the whole class permanently. The previous build added one only
 after a sweep missed eleven strings that happened to be wrapped across lines, which a
 single-line regex could not see.
+
+A key moved from one namespace to another moves its translations with it. Deleting
+`eventNeeds.dueToday` and pointing the screen at `today.dueToday` leaves es, fr and pt
+reading English on a screen that was translated yesterday, and no English-only test goes
+red. Copy the three languages' words across in the same commit.

@@ -1,10 +1,15 @@
 import {
   type AddableMember,
   ApiError,
+  type DoorCodeCard,
+  EVENT_LEVELS,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
+  isServiceLevel,
+  SERVICE_LEVELS,
   type OrganisationEvent,
+  type StaffLinkHolder,
 } from '@soirely/api-client';
 import { firstName, initials, listFormat, numberFormat } from '@soirely/domain';
 import {
@@ -17,6 +22,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -25,7 +31,6 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import {
   Ask,
   Avatar,
-  Choices,
   Dialog,
   Field,
   Head,
@@ -35,12 +40,17 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { AddressIn, WholeAddress } from '../../../components/WholeAddress.tsx';
+import { useServerNow } from '../../../serverNow.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
+import { DoorCodes } from './DoorCodes.tsx';
+import { atWords, shownCode } from './doorCodes.ts';
 import { faceOf, outsideView, shownAddress } from './outside.ts';
+import { clockWords, wallOf } from './staffTimes.ts';
 import './people.css';
 
 /** `addable` is null for whoever may not change People: the API refuses them that list. */
@@ -52,7 +62,11 @@ type Load =
       people: EventPerson[];
       owners: string[];
       admins: string[];
+      /** Absent from a list kept before staff links (sc-3912). */
+      staffLinks?: StaffLinkHolder[];
       addable: AddableMember[] | null;
+      /** Null for whoever may not change People, and absent from a list kept before door codes (sc-72); oldest first. */
+      doorCodes?: DoorCodeCard[] | null;
     };
 
 type Open = { kind: 'person'; id: string; visit: number } | { kind: 'add' } | null;
@@ -63,6 +77,8 @@ const SETTLE_MS = 600;
 const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const LABEL_MOST = 60;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
 
 /** People on an event (sc-29915), as the People demo draws it at a desk, on its own title under the crumb (sc-69635): who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
@@ -92,8 +108,9 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       (async () => {
         const read = await api.eventPeople(event.id);
         const addable = manages ? await api.addableEventMembers(event.id) : null;
+        const doorCodes = manages ? (await api.doorCodes(event.id)).reverse() : null;
 
-        return { ...read, addable };
+        return { ...read, addable, doorCodes };
       })(),
     ).then(
       (loaded) => current && setLoad({ kind: 'loaded', ...loaded }),
@@ -104,6 +121,45 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, manages, answeredAgain]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let current = true;
+    let timer = 0;
+    const next = () => {
+      timer = window.setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (document.hidden) return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? (await api.doorCodes(event.id)).reverse() : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!current) return;
+          // A change made on the page while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => current && next(),
+      );
+    };
+    next();
+
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
 
   const shown = useMemo(() => {
     if (load.kind !== 'loaded') return null;
@@ -163,6 +219,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const own = people.find((person) => person.user?.id === userId);
   const addable = loaded.addable;
   const managers = [...loaded.owners, ...loaded.admins];
+  const staffLinks = loaded.staffLinks ?? [];
   const list = listFormat(currentLocale(), { type: 'conjunction' });
   const count = numberFormat(currentLocale());
   const adds = manages && addable != null;
@@ -194,7 +251,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
           {opened != null && open?.kind === 'person' && (
             <RoleDialog
               key={open.visit}
-              eventId={event.id}
+              event={event}
               person={opened}
               tone={people.indexOf(opened)}
               organisationName={organisationName}
@@ -208,7 +265,11 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                       ? addable
                       : [
                           ...addable,
-                          { membershipId: opened.membershipId, name: nameOf(opened, t) },
+                          {
+                            membershipId: opened.membershipId,
+                            name: nameOf(opened, t),
+                            role: null,
+                          },
                         ],
                 });
                 setOpen(null);
@@ -259,7 +320,21 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
         </button>
       )}
 
-      {people.length === 0 ? (
+      {manages && loaded.doorCodes != null && (
+        <DoorCodes
+          event={event}
+          organisationName={organisationName}
+          codes={loaded.doorCodes}
+          onCodes={(change) =>
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, doorCodes: change(was.doorCodes ?? []) } : was,
+            )
+          }
+          tell={(words) => setToast(words)}
+        />
+      )}
+
+      {people.length + staffLinks.length === 0 ? (
         <div className="people-nobody">
           <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
           <p className="desk-line">{t('eventPeople.nobodyLine')}</p>
@@ -267,7 +342,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       ) : (
         <section className="desk-block" aria-labelledby="event-people-on">
           <Head title={<span id="event-people-on">{t('eventPeople.onEvent')}</span>}>
-            <span className="people-count">{count.format(people.length)}</span>
+            <span className="people-count">{count.format(people.length + staffLinks.length)}</span>
           </Head>
           <ul className="desk-rows has-lead people-rows">
             {people.map((person, tone) => {
@@ -283,7 +358,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                     </span>
                   )}
                   <RowWords
-                    title={nameOf(person, t)}
+                    title={<WholeAddress text={nameOf(person, t)} />}
                     tag={
                       person.outside && (
                         <Tag
@@ -296,6 +371,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                       [
                         t(`eventPeople.role.${person.role}`),
                         ...(person.jobLabel == null ? [] : [person.jobLabel]),
+                        ...(person.doorCode == null ? [] : [t('doorCodes.tag')]),
                         ...(yours ? [t('eventPeople.you')] : []),
                       ].join(' · '),
                     ]}
@@ -329,6 +405,11 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                 </li>
               );
             })}
+            {staffLinks.map((holder) => (
+              <li key={`staff-link-${holder.id}`}>
+                <StaffLinkRow holder={holder} event={event} />
+              </li>
+            ))}
           </ul>
         </section>
       )}
@@ -398,7 +479,7 @@ function refusal(error: unknown, fallback: string): string {
 function inListOrder(people: readonly EventPerson[]): EventPerson[] {
   return [...people].sort(
     (a, b) =>
-      EVENT_ROLES.indexOf(a.role) - EVENT_ROLES.indexOf(b.role) ||
+      EVENT_LEVELS.indexOf(a.role) - EVENT_LEVELS.indexOf(b.role) ||
       (a.user?.name ?? a.address ?? '').localeCompare(
         b.user?.name ?? b.address ?? '',
         currentLocale(),
@@ -440,7 +521,7 @@ function SavingTag({ saving }: { saving: Saving }) {
 
 /** A role saves as it is picked and the dialog stays open, so a pick never changes the context by itself (WCAG 3.2.2). */
 function RoleDialog({
-  eventId,
+  event,
   person,
   tone,
   organisationName,
@@ -448,7 +529,7 @@ function RoleDialog({
   onRemoved,
   onClose,
 }: {
-  eventId: string;
+  event: OrganisationEvent;
   person: EventPerson;
   tone: number;
   organisationName: string;
@@ -457,6 +538,8 @@ function RoleDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const now = useServerNow();
+  const eventId = event.id;
   const radios = useId();
   const pickedRadio = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<EventRole>(person.role);
@@ -560,6 +643,40 @@ function RoleDialog({
     }
   }
 
+  function row(role: EventRole) {
+    const off = person.outside && role === 'lead';
+    const rowClass = ['desk-row', role === picked && 'is-picked', off && 'is-off'];
+
+    return (
+      <li key={role}>
+        <label className={rowClass.filter(Boolean).join(' ')}>
+          <RowWords
+            title={t(`eventPeople.role.${role}`)}
+            tag={role === picked && <SavingTag saving={saving} />}
+            lines={[
+              off
+                ? t('eventPeople.leadOff', { organisation: organisationName })
+                : t(`eventPeople.roleMeans.${role}`),
+            ]}
+          />
+          <input
+            ref={role === picked ? pickedRadio : undefined}
+            type="radio"
+            className="desk-radio"
+            name={radios}
+            value={role}
+            disabled={off}
+            checked={role === picked}
+            onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
+              byArrow.current = ARROWS.has(key.key);
+            }}
+            onChange={() => pick(role)}
+          />
+        </label>
+      </li>
+    );
+  }
+
   return (
     <>
       <Dialog
@@ -573,7 +690,7 @@ function RoleDialog({
         <div className="people-who">
           <Avatar initials={initials(name)} tone={tone} size="face" />
           <RowWords
-            title={name}
+            title={<WholeAddress text={name} />}
             lines={[
               [
                 t(person.outside ? 'eventPeople.fromOutside' : 'eventPeople.memberOf', {
@@ -584,45 +701,39 @@ function RoleDialog({
             ]}
           />
         </div>
-        {person.outside && <p className="desk-line people-ends">{t('eventPeople.outsideEnds')}</p>}
+        {person.doorCode != null && person.joinedAt != null ? (
+          <div className="people-ends dc-door-lines">
+            <p className="desk-line">
+              {t('doorCodes.joinedWith', {
+                code: shownCode(person.doorCode),
+                time: atWords(
+                  person.joinedAt,
+                  {
+                    endsAt: event.endsAt,
+                    timeZone: event.timeZone,
+                    locale: dateLocale(),
+                    now,
+                  },
+                  t,
+                ),
+              })}
+            </p>
+            <p className="desk-line">{t('eventPeople.outsideEnds')}</p>
+          </div>
+        ) : (
+          person.outside && <p className="desk-line people-ends">{t('eventPeople.outsideEnds')}</p>
+        )}
         {failed != null && <Lost words={failed} />}
         <fieldset className="desk-choices">
           <legend className="desk-unseen">{t('eventPeople.roleFor', { name })}</legend>
-          <ul className="desk-rows">
-            {EVENT_ROLES.map((role) => {
-              const off = person.outside && role === 'lead';
-              const rowClass = ['desk-row', role === picked && 'is-picked', off && 'is-off'];
-
-              return (
-                <li key={role}>
-                  <label className={rowClass.filter(Boolean).join(' ')}>
-                    <RowWords
-                      title={t(`eventPeople.role.${role}`)}
-                      tag={role === picked && <SavingTag saving={saving} />}
-                      lines={[
-                        off
-                          ? t('eventPeople.leadOff', { organisation: organisationName })
-                          : t(`eventPeople.roleMeans.${role}`),
-                      ]}
-                    />
-                    <input
-                      ref={role === picked ? pickedRadio : undefined}
-                      type="radio"
-                      className="desk-radio"
-                      name={radios}
-                      value={role}
-                      disabled={off}
-                      checked={role === picked}
-                      onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
-                        byArrow.current = ARROWS.has(key.key);
-                      }}
-                      onChange={() => pick(role)}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="desk-rows">{EVENT_ROLES.map(row)}</ul>
+          {person.outside && (
+            <>
+              <p className="desk-legend">{t('eventPeople.serviceHead')}</p>
+              <ul className="desk-rows">{SERVICE_LEVELS.map(row)}</ul>
+              <p className="desk-line">{t('eventPeople.serviceClosing')}</p>
+            </>
+          )}
         </fieldset>
         <p className="desk-unseen" role="status">
           {saving === 'saving'
@@ -639,13 +750,22 @@ function RoleDialog({
       </Dialog>
       {removing && (
         <Ask
-          title={t('eventPeople.removeTitle', { name })}
+          title={
+            <AddressIn
+              text={name}
+              words={(address) => t('eventPeople.removeTitle', { name: address })}
+            />
+          }
           line={
             person.outside
               ? t('eventPeople.removeOutsideLine')
               : t('eventPeople.removeLine', { organisation: organisationName })
           }
-          keep={t('eventPeople.keep', { name: firstName(name) })}
+          keep={
+            person.user == null
+              ? t('eventPeople.keepThem')
+              : t('eventPeople.keep', { name: firstName(name) })
+          }
           go={t('eventPeople.removeConfirm')}
           busy={removingNow ? t('eventPeople.removing') : undefined}
           failed={refused ?? undefined}
@@ -704,8 +824,34 @@ function AddDialog({
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
   const touched = ticked.length > 0 || role !== 'can_view' || sendsOutside;
+  const forService = isServiceLevel(role);
+  const radios = useId();
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
   const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
+
+  function roleRow(level: EventRole, off: boolean) {
+    const rowClass = ['desk-row', level === role && 'is-picked', off && 'is-off'];
+
+    return (
+      <li key={level}>
+        <label className={rowClass.filter(Boolean).join(' ')}>
+          <RowWords
+            title={t(`eventPeople.role.${level}`)}
+            lines={[off ? t('eventPeople.serviceNotMembers') : t(`eventPeople.roleMeans.${level}`)]}
+          />
+          <input
+            type="radio"
+            className="desk-radio"
+            name={radios}
+            value={level}
+            checked={level === role}
+            disabled={off || busy}
+            onChange={() => setRole(level)}
+          />
+        </label>
+      </li>
+    );
+  }
 
   async function add(): Promise<void> {
     if (busy || (ticked.length === 0 && !sendsOutside)) return;
@@ -751,17 +897,19 @@ function AddDialog({
       >
         <div className="people-add-body">
           {failed != null && <Lost words={failed} />}
-          <Choices
-            legend={t('eventPeople.theirRole')}
-            choices={EVENT_ROLES.map((one) => ({
-              name: t(`eventPeople.role.${one}`),
-              line: t(`eventPeople.roleMeans.${one}`),
-            }))}
-            picked={t(`eventPeople.role.${role}`)}
-            onPick={(word) =>
-              setRole(EVENT_ROLES.find((one) => t(`eventPeople.role.${one}`) === word) ?? role)
-            }
-          />
+          <fieldset className="desk-choices">
+            <legend className="desk-legend">{t('eventPeople.theirRole')}</legend>
+            <ul className="desk-rows">{EVENT_ROLES.map((one) => roleRow(one, false))}</ul>
+            {(sendsOutside || forService) && (
+              <>
+                <p className="desk-legend">{t('eventPeople.serviceHead')}</p>
+                <ul className="desk-rows">
+                  {SERVICE_LEVELS.map((one) => roleRow(one, ticked.length > 0))}
+                </ul>
+                <p className="desk-line">{t('eventPeople.serviceClosing')}</p>
+              </>
+            )}
+          </fieldset>
           <Field
             label={t(role === 'lead' ? 'eventPeople.find' : 'eventPeople.findAny')}
             value={typed}
@@ -774,6 +922,9 @@ function AddDialog({
           />
           <section className="desk-block" aria-label={inOrganisation}>
             <Head title={inOrganisation} level={3} />
+            {forService && shown.length > 0 && (
+              <p className="desk-line">{t('eventPeople.membersNotService')}</p>
+            )}
             {shown.length > 0 && (
               <ul className="desk-rows has-lead">
                 {shown.map((member, tone) => {
@@ -781,14 +932,18 @@ function AddDialog({
 
                   return (
                     <li key={member.membershipId}>
-                      <label className={on ? 'desk-row is-picked' : 'desk-row'}>
+                      <label
+                        className={['desk-row', on && 'is-picked', forService && 'is-off']
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
                         <Avatar initials={initials(member.name)} tone={tone} />
                         <RowWords title={member.name} lines={[]} />
                         <input
                           type="checkbox"
                           className="people-check"
                           checked={on}
-                          disabled={busy}
+                          disabled={busy || forService}
                           onChange={(change) =>
                             setTicked(
                               change.target.checked
@@ -878,4 +1033,50 @@ function AddDialog({
       )}
     </>
   );
+}
+
+/** In by their own link from the roster (sc-3912): one row a person, however many links they were given, and it opens nothing, since a link is changed on the roster. */
+function StaffLinkRow({ holder, event }: { holder: StaffLinkHolder; event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  const time = endsWords(holder.endsAt, event, t);
+
+  return (
+    <div className="desk-row">
+      <span className="people-outside-face" aria-hidden="true">
+        <Glyph name="link" size={18} />
+      </span>
+      <RowWords
+        title={
+          holder.job == null
+            ? t('eventPeople.staffLinkNoJob', { name: holder.name, time })
+            : t('eventPeople.staffLink', { name: holder.name, job: holder.job, time })
+        }
+        tag={
+          !holder.signedIn && (
+            <span className="desk-tag people-not-signed">
+              <span className="people-not-signed-mark" aria-hidden="true" />
+              {t('eventPeople.notSignedIn')}
+            </span>
+          )
+        }
+        lines={holder.access == null ? [] : [t(`jobs.access.${holder.access}`)]}
+      />
+    </div>
+  );
+}
+
+/** "03:00", or "03:00 on Sunday 25 Oct" when the link ends on a later day than the event starts. */
+function endsWords(endsAt: string, event: OrganisationEvent, t: TFunction): string {
+  const times = { long: false, timeZone: event.timeZone, locale: dateLocale() };
+  const time = clockWords(endsAt, times);
+  if (wallOf(endsAt, event.timeZone).date === wallOf(event.startsAt, event.timeZone).date)
+    return time;
+  const date = new Intl.DateTimeFormat(times.locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone: event.timeZone,
+  }).format(new Date(endsAt));
+
+  return t('eventPeople.endsOn', { time, date });
 }

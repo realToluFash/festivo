@@ -4,7 +4,9 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import type { Tell } from '../components/SettingsParts.tsx';
+import { Dialog, type Tell } from '../components/SettingsParts.tsx';
+import { BriefingRefused, useBriefing } from './Briefing.tsx';
+import { BW, briefingRosterStart } from './briefing.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
@@ -37,6 +39,7 @@ import {
   memberOf,
   nextLine,
   problemsOf,
+  rosterIn,
   rosterStart,
   sharesNumber,
   shiftLines,
@@ -60,7 +63,20 @@ import {
   useRosterWords,
 } from './rosterWords.ts';
 import { STATIONS_EVENT } from './stations.ts';
+import {
+  QUIET_ENDS,
+  SENT_MS,
+  TEXT_WORDS,
+  bounced,
+  bulkCheck,
+  checkOf,
+  owed,
+  reported,
+  textSome,
+  textable,
+} from './staffText.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
+import { staffLangOf } from './staffTabs.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -69,19 +85,32 @@ import './roster.css';
 
 const FIELD_IDS = { name: 'rs-f-name', number: 'rs-f-number', email: 'rs-f-email' } as const;
 
-/** /demo/events/evt-wed-4/staff/roster (sc-3906): the Roster on the event's Staff page at 1280 × 800, by ?state=. */
+/** /demo/events/evt-wed-4/staff/roster (sc-3906): the Roster on the event's Staff page at 1280 × 800, by ?state=; the briefing's states add its card and column (sc-3917). */
 export function RosterPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const locale = params.get('locale');
   useSwitcherStart();
 
-  return <RosterAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+  return (
+    <RosterAt key={`${id ?? ''}|${raw ?? ''}|${locale ?? ''}`} id={id} raw={raw} locale={locale} />
+  );
 }
 
-function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
+function RosterAt({
+  id,
+  raw,
+  locale,
+}: {
+  id: string | undefined;
+  raw: string | null;
+  locale: string | null;
+}) {
   const [event] = useState(() => sampleEvent(id));
-  const [first] = useState(() => rosterStart(raw));
+  const [first] = useState(() =>
+    rosterIn(briefingRosterStart(raw) ?? rosterStart(raw), staffLangOf(locale)),
+  );
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== STATIONS_EVENT)
@@ -107,7 +136,11 @@ function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
       >
         {(tell) => (
           <RosterWordsContext value={ROSTER_WORDS[first.lang]}>
-            <RosterView first={first} event={event} tell={tell} />
+            {first.briefing?.access === 'none' ? (
+              <BriefingRefused event={event} />
+            ) : (
+              <RosterView first={first} event={event} tell={tell} />
+            )}
           </RosterWordsContext>
         )}
       </EventsShell>
@@ -124,7 +157,8 @@ function RosterView({
   event: SampleEvent;
   tell: Tell;
 }) {
-  const { rw: RW, lw: LW, tabs, events, crumb } = useRosterWords();
+  const { rw: RW, lw: LW, events, crumb, lang } = useRosterWords();
+  const TW = TEXT_WORDS[lang];
   const [entries, setEntries] = useState<Entry[]>(first.entries);
   const [panel, setPanel] = useState<Panel>(first.panel);
   const [draft, setDraft] = useState<Draft>(first.draft);
@@ -137,8 +171,30 @@ function RosterView({
   const [held, setHeld] = useState(first.held);
   const [missed, setMissed] = useState(first.missed);
   const [replacing, setReplacing] = useState(first.replacing);
+  const [sms, setSms] = useState(first.sms);
+  const [checking, setChecking] = useState(first.checking);
+  const [pressing, setPressing] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(first.checkFailed);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
+  const bf = useBriefing({
+    first: first.briefing,
+    entries,
+    setEntries,
+    focus: (id) => {
+      focusAfter.current = id;
+    },
+    announce,
+    credits: sms?.credits ?? first.briefing?.balance ?? 0,
+    spend: (used) => setSms((was) => (was == null ? was : { ...was, credits: was.credits - used })),
+    tell,
+    event,
+    onSide: () => {
+      setPanel(null);
+      setWarning(null);
+      setFailed(null);
+    },
+  });
 
   useEffect(() => {
     if (first.held != null) {
@@ -189,6 +245,7 @@ function RosterView({
   const lit = panel != null && panel.kind !== 'add' ? panel.id : null;
 
   function open(next: Panel) {
+    bf.dismiss();
     setPressed(false);
     setWarning(null);
     setFailed(null);
@@ -232,7 +289,7 @@ function RosterView({
       return;
     }
 
-    const made = entryFrom(draft, editing);
+    const made = bf.adopt(entryFrom(draft, editing), editing);
     setPressed(false);
     setWarning(null);
     setFailed(null);
@@ -269,9 +326,10 @@ function RosterView({
       entries.map((one) =>
         one.id !== id
           ? one
-          : station === ''
-            ? { ...one, station: null }
-            : withoutGone({ ...one, station }),
+          : bf.adopt(
+              station === '' ? { ...one, station: null } : withoutGone({ ...one, station }),
+              one,
+            ),
       ),
     );
     say([
@@ -326,14 +384,14 @@ function RosterView({
   }
 
   function mark(id: string) {
-    relink(id, afterMark);
+    relink(id, (one) => ({ ...afterMark(), ...withdrawn(one) }));
     if (held?.id === id) setHeld(null);
     say([LW.marked(shown(id).name)]);
     focusAfter.current = `rs-copy-${id}`;
   }
 
   function replace(id: string) {
-    relink(id, afterReplace);
+    relink(id, (one) => ({ ...afterReplace(), ...withdrawn(one) }));
     if (held?.id === id) setHeld(null);
     if (missed === id) setMissed(null);
     setReplacing(null);
@@ -341,11 +399,68 @@ function RosterView({
     focusAfter.current = 'sn-panel-title';
   }
 
-  const acts = manage && !finished && !erased;
-  const next = nextLine(entries, finished, RW);
+  function ask(target: string) {
+    setCheckFailed(false);
+    setChecking(target);
+  }
+
+  function closeCheck() {
+    focusAfter.current = checking === 'all' ? 'rs-bulk' : `rs-text-${checking ?? ''}`;
+    setChecking(null);
+    setCheckFailed(false);
+  }
+
+  function textNow() {
+    if (sms == null || checking == null || pressing) return;
+    const target = checking;
+    setPressing(true);
+    window.setTimeout(() => {
+      setPressing(false);
+      if (sms.refused) {
+        setCheckFailed(true);
+        announce(LW.notIssued);
+        return;
+      }
+      const ids = target === 'all' ? entries.filter(owed).map((one) => one.id) : [target];
+      const pressed = textSome(entries, ids, sms);
+      setEntries(pressed.entries);
+      setSms({ ...sms, credits: pressed.credits });
+      setChecking(null);
+      const lone = pressed.entries.find((one) => one.id === target);
+      say(
+        target === 'all'
+          ? TW.result(pressed.result)
+          : lone?.pending === 'held'
+            ? [`${TW.held}.`]
+            : lone?.pending === 'waits'
+              ? [`${TW.waits(pressed.result.time)}.`]
+              : [TW.sendingTo(shown(target).name)],
+      );
+      focusAfter.current = target === 'all' ? 'rs-roster' : `rs-copy-${target}`;
+      window.setTimeout(() => {
+        setEntries((was) => was.map((one) => reported(one, sms)));
+        if (sms.undelivered)
+          window.setTimeout(() => setEntries((was) => was.map(bounced)), SENT_MS);
+      }, SENT_MS);
+    }, ISSUE_MS);
+  }
+
+  const acts = manage && !finished && !erased && !bf.concluded;
+  const texts = sms != null && acts;
+  const bulk = sms == null ? null : bulkCheck(entries, sms);
+  const check =
+    sms == null || checking == null
+      ? null
+      : checking === 'all'
+        ? bulk
+        : checkOf([shown(checking)], [], sms);
+  const n = bulk?.n ?? 0;
+  const next = texts && n === 0 && rows.length > 0 ? TW.allSent : nextLine(entries, finished, RW);
 
   return (
-    <div className="desk-page ev-page gs mn sn rs">
+    <div
+      className={`desk-page ev-page gs mn sn rs${bf.on ? ' bf' : ''}${bf.side ? ' is-side' : ''}`}
+    >
       <div className="ev-wide mn-page">
         <KeptHere />
         <div className="ev-crumb-row">
@@ -374,7 +489,7 @@ function RosterView({
             <p className="mn-sub">{RW.sub}</p>
           </div>
         </header>
-        <StaffTabs on="Roster" eventId={event.id} tell={tell} words={tabs} />
+        <StaffTabs on="Roster" eventId={event.id} tell={tell} lang={lang} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />
@@ -386,6 +501,7 @@ function RosterView({
         </p>
         <div className="mn-split">
           <div className="mn-list">
+            {bf.card}
             <section className="sn-card">
               <div className="sn-card-top">
                 <div className="sn-card-names">
@@ -394,6 +510,18 @@ function RosterView({
                   </h2>
                   {next != null && rows.length > 0 && <p className="mn-sub">{next}</p>}
                 </div>
+                {texts && n > 0 && (
+                  <button
+                    id="rs-bulk"
+                    type="button"
+                    className="desk-text"
+                    aria-haspopup="dialog"
+                    onClick={() => ask('all')}
+                  >
+                    <Glyph name="sms" size={17} weight={2.3} />
+                    {TW.bulk(n)}
+                  </button>
+                )}
                 {manage && rows.length > 0 && (
                   <button
                     id="rs-add"
@@ -425,13 +553,17 @@ function RosterView({
               ) : (
                 // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
                 <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
-                  <table className="rs-table" aria-labelledby="rs-roster">
+                  <table
+                    className={bf.on ? 'rs-table bf-table' : 'rs-table'}
+                    aria-labelledby="rs-roster"
+                  >
                     <thead>
                       <tr>
                         <th scope="col">{RW.person}</th>
                         <th scope="col">{RW.job}</th>
                         <th scope="col">{RW.station}</th>
                         <th scope="col">{RW.shift}</th>
+                        {bf.on && <th scope="col">{BW.column}</th>}
                         <th scope="col">{RW.link}</th>
                       </tr>
                     </thead>
@@ -461,11 +593,12 @@ function RosterView({
                               )}
                             </td>
                             <td className={one.shift == null ? 'rs-no-shift rs-quiet' : 'rs-shift'}>
-                              {one.shift ?? first.noShift}
+                              {one.shift == null ? first.noShift : shiftBreaks(one.shift)}
                               {one.more.length > 0 && (
                                 <span className="rs-more">{RW.more(one.more.length)}</span>
                               )}
                             </td>
+                            {bf.on && <td>{bf.cell(one)}</td>}
                             <td>
                               <LinkCell
                                 entry={one}
@@ -475,20 +608,24 @@ function RosterView({
                                 missed={missed === one.id}
                                 onCopy={() => void copy(one.id)}
                                 onMark={() => mark(one.id)}
+                                texts={texts}
+                                onText={() => ask(one.id)}
                               />
                             </td>
                           </tr>
                           {held?.id === one.id && (
                             <tr className="rs-held-row">
-                              <td colSpan={5}>
+                              <td colSpan={bf.on ? 6 : 5}>
                                 <HeldLink entry={one} url={held.url} />
                               </td>
                             </tr>
                           )}
+                          {bf.held(one, bf.on ? 6 : 5)}
                         </Fragment>
                       ))}
                     </tbody>
                   </table>
+                  {bf.footnote != null && <p className="sv-footnote">{bf.footnote}</p>}
                 </div>
               )}
             </section>
@@ -511,6 +648,7 @@ function RosterView({
               {panel.kind === 'remove' && (
                 <RemoveAsk
                   entry={shown(panel.id)}
+                  told={bf.removal(shown(panel.id))}
                   onKeep={() => {
                     setPanel({ kind: 'details', id: panel.id });
                     focusAfter.current = 'rs-remove';
@@ -540,8 +678,68 @@ function RosterView({
               )}
             </aside>
           )}
+          {bf.panel}
         </div>
       </div>
+      {check != null && checking != null && texts && sms != null && (
+        <Dialog
+          title={checking === 'all' ? TW.checkMany(check.n) : TW.checkOne(shown(checking).name)}
+          verb={checking === 'all' ? TW.bulk(check.n) : TW.text}
+          dismiss={TW.cancel}
+          on={!pressing}
+          locked={pressing}
+          onDismiss={closeCheck}
+          onConfirm={textNow}
+        >
+          <div className="rs-check" aria-busy={pressing || undefined}>
+            {checking === 'all' && <p>{TW.checkLine}</p>}
+            {check.m > 0 && <p className="rs-check-hint">{TW.noMobile(check.m)}</p>}
+            {check.k > 0 && <p className="rs-check-hint">{TW.stoppedCount(check.k)}</p>}
+            <div className="rs-check-cost">
+              {check.uses > 0 && (
+                <p className="rs-check-credits">
+                  {checking === 'all' ? TW.textsUse(check.uses) : TW.thisTextUses(check.uses)}
+                  {check.wait === 0 && (
+                    <>
+                      <br />
+                      {TW.after(check.after)}
+                    </>
+                  )}
+                </p>
+              )}
+              {check.wait > 0 && (
+                <div className="rs-check-short">
+                  <p className="rs-check-wait">
+                    <Glyph name="clock" size={15} weight={2.2} />
+                    {TW.smsWaits(check.wait)}
+                  </p>
+                  <button
+                    type="button"
+                    className="desk-text"
+                    onClick={() =>
+                      tell(
+                        `${sms.billing ? TW.addCredits : TW.askOwner} has its own design (sc-3963).`,
+                      )
+                    }
+                  >
+                    {sms.billing ? TW.addCredits : TW.askOwner}
+                  </button>
+                </div>
+              )}
+              {sms.quiet && check.n > 0 && (
+                <p className="rs-check-hint">{TW.quiet(check.n, QUIET_ENDS)}</p>
+              )}
+            </div>
+            {checkFailed && (
+              <p className="rs-missed" role="alert">
+                <Glyph name="alert" size={15} weight={2.2} />
+                {LW.notIssued}
+              </p>
+            )}
+          </div>
+        </Dialog>
+      )}
+      {bf.check}
       {replacing != null && (
         <ConfirmDialog
           id="rs-replace"
@@ -573,6 +771,7 @@ function RosterView({
 }
 
 function firstSaid(first: RosterStart, LW: RosterWords['lw']): string {
+  if (first.briefing?.said != null) return first.briefing.said;
   if (first.held != null) return LW.refused;
   if (first.missed != null) return LW.notIssued;
 
@@ -591,6 +790,11 @@ export function LinkWord({ state }: { state: LinkState }) {
       {links[state]}
     </span>
   );
+}
+
+/** Mark as sent and Replace link withdraw a waiting text: it never goes and uses no credits. */
+function withdrawn(one: Entry): Partial<Entry> {
+  return one.pending === 'held' || one.pending === 'waits' ? { pending: undefined } : {};
 }
 
 function withoutGone({ gone: _gone, ...one }: Entry): Entry {
@@ -750,6 +954,8 @@ function LinkCell({
   missed,
   onCopy,
   onMark,
+  texts,
+  onText,
 }: {
   entry: Entry;
   erased: boolean;
@@ -758,16 +964,45 @@ function LinkCell({
   missed: boolean;
   onCopy: () => void;
   onMark: () => void;
+  texts: boolean;
+  onText: () => void;
 }) {
-  const { lw: LW, trail: trailLine } = useRosterWords();
+  const { lw: LW, trail: trailLine, lang } = useRosterWords();
+  const TW = TEXT_WORDS[lang];
   const state = linkOf(entry, erased);
   const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
   const offered = acts && entry.mobile != null;
+  const pendingLine =
+    !texts || entry.mobile == null
+      ? null
+      : entry.pending === 'sending'
+        ? TW.sending
+        : entry.pending === 'held'
+          ? TW.held
+          : entry.pending === 'waits'
+            ? TW.waits(QUIET_ENDS)
+            : entry.undelivered != null
+              ? TW.notDelivered(entry.undelivered)
+              : null;
 
   return (
     <div className="rs-link-cell">
       <LinkWord state={state} />
       {trail != null && <span className="rs-trail">{trail}</span>}
+      {pendingLine != null && (
+        <span
+          className={
+            entry.undelivered != null && entry.pending == null ? 'rs-note is-broken' : 'rs-note'
+          }
+        >
+          {entry.pending === 'sending' ? (
+            <span className="pending-spinner desk-turning" aria-hidden="true" />
+          ) : (
+            <Glyph name={entry.pending == null ? 'alert' : 'clock'} size={15} weight={2.2} />
+          )}
+          {pendingLine}
+        </span>
+      )}
       {missed && (
         <span className="rs-missed">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -776,6 +1011,24 @@ function LinkCell({
       )}
       {offered && (
         <span className="rs-link-acts">
+          {texts && textable(entry) && (
+            <button
+              id={`rs-text-${entry.id}`}
+              type="button"
+              className="desk-text"
+              aria-label={`${TW.text}: ${entry.name}`}
+              aria-haspopup="dialog"
+              onClick={onText}
+            >
+              {TW.text}
+            </button>
+          )}
+          {texts && entry.stopped === true && (
+            <span className="rs-note is-stopped">
+              <Glyph name="slash" size={15} weight={2.2} />
+              {TW.stopped}
+            </span>
+          )}
           <button
             id={`rs-copy-${entry.id}`}
             type="button"
@@ -788,7 +1041,7 @@ function LinkCell({
             {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
             {LW.copy}
           </button>
-          {entry.link === 'copied' && (
+          {(entry.link === 'copied' || entry.link === 'shared') && (
             <button
               type="button"
               className="desk-text"
@@ -832,10 +1085,12 @@ function HeldLink({ entry, url }: { entry: Entry; url: string }) {
 
 function RemoveAsk({
   entry,
+  told,
   onKeep,
   onRemove,
 }: {
   entry: Entry;
+  told: string | null;
   onKeep: () => void;
   onRemove: () => void;
 }) {
@@ -859,6 +1114,7 @@ function RemoveAsk({
           ))}
         </ul>
         <p className="mn-quiet">{RW.stopsWorking}</p>
+        {told != null && <p className="mn-quiet">{told}</p>}
       </div>
       <div className="mn-panel-foot">
         <div className="mn-panel-acts">
@@ -1086,5 +1342,17 @@ function PersonForm({
         onCancel={onCancel}
       />
     </>
+  );
+}
+
+function shiftBreaks(text: string): string {
+  const words = text.split(' ');
+  const start = words.findIndex((word) => /^\d{1,2}:\d{2}$/.test(word));
+  return words.reduce(
+    (line, word, i) =>
+      i === 0
+        ? word
+        : `${line}${words[i - 1]?.endsWith(',') === true || (start >= 0 && i === start + 2) ? ' ' : '\u00a0'}${word}`,
+    '',
   );
 }

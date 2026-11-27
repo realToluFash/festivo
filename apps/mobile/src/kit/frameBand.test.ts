@@ -10,17 +10,21 @@ describe('phonePillAlone', () => {
     expect(phonePillAlone(false, false, false)).toBe(false);
   });
 
-  it('keeps the pill while a screen stands in, where the screen had a primary or on Home', () => {
+  it('keeps the pill on every screen a page stands in for, Settings and Calendar among them', () => {
     expect(phonePillAlone(false, true, true)).toBe(true);
     expect(phonePillAlone(true, true, true)).toBe(true);
     expect(phonePillAlone(true, false, true)).toBe(true);
-    expect(phonePillAlone(false, false, true)).toBe(false);
+    expect(phonePillAlone(false, false, true)).toBe(true);
   });
 });
 
 describe('pillBesideTabs', () => {
   it('stops the pill 12 short of the centred tabs', () => {
     expect(pillBesideTabs(1000, 470)).toEqual({ maxWidth: 253 });
+  });
+
+  it('stops whatever stands there the gap it is given short of them', () => {
+    expect(pillBesideTabs(1000, 470, 40)).toEqual({ maxWidth: 225 });
   });
 
   it('leaves under 120 on an upright iPad mini, where the pill is its tile', () => {

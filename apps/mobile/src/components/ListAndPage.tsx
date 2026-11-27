@@ -56,6 +56,8 @@ export interface ListAndPageProps<Item = never> {
   page: ReactNode;
   /** In the page's place while none is open, filling the pane without the column's padding or scroll, as the demo's pane holds it. */
   nothingOpen?: ReactNode;
+  /** The page brings its own padding and scroll, so it fills the pane as `nothingOpen` does. */
+  pageFills?: boolean;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
@@ -112,6 +114,7 @@ export function ListAndPage<Item = never>({
   listRows,
   page,
   nothingOpen,
+  pageFills = false,
   pageKey,
   pageInFront,
   pageless = false,
@@ -182,8 +185,8 @@ export function ListAndPage<Item = never>({
             swipe.taking && { transform: [{ translateX: swipe.shift }] },
           ]}
         >
-          {page == null && nothingOpen != null ? (
-            <View style={styles.fill}>{nothingOpen}</View>
+          {pageFills || (page == null && nothingOpen != null) ? (
+            <View style={styles.fill}>{pageFills ? page : nothingOpen}</View>
           ) : (
             <ScrollColumn
               key={pageKey}

@@ -29,6 +29,7 @@ import {
   turn,
   usable,
 } from './seating.ts';
+import { roomCaption, textWidth, useFontsArrived } from './seatingText.ts';
 import type { Outline, Rect } from './selection.ts';
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -75,17 +76,9 @@ const SEC_CLASS: Record<string, string> = {
   Teal: 'is-teal',
 };
 
-let measure: CanvasRenderingContext2D | null | undefined;
-
-/** The name goes inside the table when it fits, else under it (seating_dir_kit's rule); measured in a browser, estimated in tests. */
+/** The name goes inside the table when it fits, else under it (seating_dir_kit's rule). */
 function fits(name: string, width: number): boolean {
-  if (measure === undefined)
-    measure = navigator.userAgent.includes('jsdom')
-      ? null
-      : document.createElement('canvas').getContext('2d');
-  if (measure == null) return name.length * 6.2 <= width - 3;
-  measure.font = '600 12px "Instrument Sans", sans-serif';
-  return measure.measureText(name).width <= width - 3;
+  return textWidth(name, '600 12px "Instrument Sans", sans-serif', 6.2) <= width - 3;
 }
 
 function f(value: number): number {
@@ -125,6 +118,24 @@ export function ChairMark({
     );
   const edge = near ? ' is-near' : '';
 
+  if (chair.state === 'proposed' || ('proposed' in chair && chair.proposed != null))
+    return (
+      <>
+        {shape(`st-chair is-proposed${edge}`)}
+        {(r >= 11 || near) && (
+          <text
+            className="st-chair-q"
+            x={f(x)}
+            y={f(y)}
+            fontSize={f(Math.max(12, r * 1.1))}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            ?
+          </text>
+        )}
+      </>
+    );
   switch (chair.state) {
     case 'taken':
       return (
@@ -153,8 +164,6 @@ export function ChairMark({
           />
         </>
       );
-    case 'proposed':
-      return shape(`st-chair is-proposed${edge}`);
     case 'unusable': {
       const k = r * 0.45;
 
@@ -908,6 +917,7 @@ export function RoomDrawing({
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
   onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
+  useFontsArrived();
   const room = plan.room;
 
   if (room == null) return null;
@@ -942,6 +952,13 @@ export function RoomDrawing({
   }
   const ordered = readingOrder(items.filter((item) => !look.faint.has(item.id)));
   const faint = items.filter((item) => look.faint.has(item.id));
+  const caption = roomCaption(
+    room.name,
+    lengthOf(room.w, units),
+    lengthOf(room.l, units),
+    ox,
+    width,
+  );
 
   return (
     <svg
@@ -963,16 +980,12 @@ export function RoomDrawing({
       <rect className="st-walls" x={f(ox)} y={f(oy)} width={f(rw)} height={f(rl)} />
       <text
         className="st-room-line"
-        x={f(ox)}
+        x={f(caption.x)}
         y={f(oy - 14)}
         dominantBaseline="central"
         aria-hidden="true"
       >
-        {say(SW.roomLine, {
-          name: room.name,
-          width: lengthOf(room.w, units),
-          length: lengthOf(room.l, units),
-        })}
+        {caption.text}
       </text>
       {shrinkTo != null && (
         <line

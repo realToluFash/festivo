@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\AuditLog;
 
+use App\Domain\Organisation\Plan\PlanChanger;
 use App\Domain\Organisation\Roles\SeededRoleLabels;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\AuditEntry;
@@ -15,6 +16,8 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use IntlDateFormatter;
+use IntlDatePatternGenerator;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
@@ -26,11 +29,25 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class AuditEntryView
 {
-    private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId', 'organisation', 'user', 'claimant', 'duplicatedFrom'];
+    /** Ids, coordinates, file keys and internal stamps: recorded for the trail, never a change a reader is shown (sc-611, #74875). */
+    public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo', 'protocol', 'test'];
+
+    /** What an entry records beside any change, each a row of its own and in this order: an export's format, filters and count, a plan change's reason (sc-76228). */
+    private const array RECORDED = [
+        AuditType::EXPORTED => ['format', 'filters', 'rows'],
+        PlanChanger::CHANGED => ['reason'],
+    ];
+
+    /** The filters in the order their menu buttons stand. */
+    private const array FILTERS = ['person', 'type', 'event'];
+
+    private const string DAY = '/^\\d{4}-\\d{2}-\\d{2}$/';
+
+    private const array FORMATS = ['csv', 'jsonl'];
 
     private const array ROLE_FIELDS = ['role', 'roleId'];
 
-    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan'];
+    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan', 'requestLink', 'onlyOurs', 'outcome', 'path'];
 
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
@@ -86,7 +103,13 @@ final readonly class AuditEntryView
                     $on['gone'] => $this->translator->trans('audit.gone', ['name' => $on['name']], 'messages', $locale),
                     default => $on['name'],
                 },
-                'changes' => Str\join(Type\vec(Type\string())->coerce($facts['changes']), '; '),
+                'changes' => Str\join([
+                    ...Type\vec(Type\string())->coerce($facts['changes']),
+                    ...Vec\map(
+                        Type\vec(Type\shape(['label' => Type\string(), 'value' => Type\string()]))->coerce($facts['recorded']),
+                        fn (array $row): string => $this->translator->trans('audit.filter.pair', ['field' => $row['label'], 'value' => $row['value']], 'messages', $locale),
+                    ),
+                ], '; '),
                 'network_address' => Type\nullable(Type\string())->coerce($facts['address']),
                 'device' => Type\nullable(Type\string())->coerce($facts['device']),
                 'reference' => Type\string()->coerce($facts['reference']),
@@ -141,6 +164,7 @@ final readonly class AuditEntryView
                 'gone' => !Iter\contains_key($context['live'], $eventId),
             ],
             'changes' => $this->changes($entry, $context['roles'], $locale, $reader),
+            'recorded' => $this->recorded($entry, $locale),
             'type' => $type->value,
             'action' => $entry->getAction(),
             'address' => $whereFrom ? $entry->getIp() : null,
@@ -152,14 +176,22 @@ final readonly class AuditEntryView
     /**
      * @param array<string, string> $roles role id => the role it was seeded as
      *
-     * @return list<string> "Everyone needs two-factor: Off → On", one per field a reader can make sense of and that changed
+     * @return list<string> "Everyone needs two-factor: Off → On", one per shown field that changed and has a name in audit.field.*
      */
     private function changes(AuditEntry $entry, array $roles, string $locale, ?User $reader): array
     {
+        if (Iter\contains(AuditType::CREATES_OR_REMOVES, $entry->getAction())) {
+            return [];
+        }
+
         $lines = [];
 
+        $recorded = self::RECORDED[$entry->getAction()] ?? [];
+
         foreach ($entry->getChanges() as $field => [$before, $after]) {
-            if (Iter\contains(self::UNSHOWN_FIELDS, $field)) {
+            $name = Iter\contains(self::UNSHOWN_FIELDS, $field) || Iter\contains($recorded, $field) ? null : $this->fieldName($field, $locale);
+
+            if (null === $name) {
                 continue;
             }
 
@@ -171,7 +203,7 @@ final readonly class AuditEntryView
             }
 
             $lines[] = $this->translator->trans('audit.change', [
-                'field' => $this->fieldName($field, $locale),
+                'field' => $name,
                 'before' => $was,
                 'after' => $now,
             ], 'messages', $locale);
@@ -180,16 +212,92 @@ final readonly class AuditEntryView
         return $lines;
     }
 
-    private function fieldName(string $field, string $locale): string
+    private function fieldName(string $field, string $locale): ?string
     {
         $key = 'audit.field.' . $field;
         $named = $this->translator->trans($key, [], 'messages', $locale);
 
-        if ($named !== $key) {
-            return $named;
+        return $named !== $key ? $named : null;
+    }
+
+    /** @return list<array{label: string, value: string}> */
+    private function recorded(AuditEntry $entry, string $locale): array
+    {
+        $changes = $entry->getChanges();
+        $rows = [];
+
+        foreach (self::RECORDED[$entry->getAction()] ?? [] as $field) {
+            if (!Iter\contains_key($changes, $field)) {
+                continue;
+            }
+
+            $value = $changes[$field][1] ?? null;
+            $words = match ($field) {
+                'format' => \is_string($value) ? $this->format($value, $locale) : null,
+                'filters' => $this->filters(\is_array($value) ? $value : [], $locale),
+                'rows' => \is_int($value) ? $this->translator->trans('audit.entries', ['count' => $value], 'messages', $locale) : null,
+                default => \is_string($value) && '' !== Str\trim($value) ? $value : null,
+            };
+
+            if (null !== $words) {
+                $rows[] = ['label' => $this->fieldName($field, $locale) ?? $field, 'value' => $words];
+            }
         }
 
-        return Str\capitalize(Str\lowercase(Regex\replace($field, '/(?<=[a-z0-9])([A-Z])/', ' $1')));
+        return $rows;
+    }
+
+    /** CSV or JSON Lines, as the export dialog names them; a format it does not offer reads as recorded. */
+    private function format(string $format, string $locale): string
+    {
+        return Iter\contains(self::FORMATS, $format) ? $this->translator->trans('audit.format.' . $format, [], 'messages', $locale) : $format;
+    }
+
+    /** @param array<array-key, mixed> $filters as an export recorded them: "Person: Priya Shah · Type: Event access · Dates: Nov 1 to …", or None */
+    private function filters(array $filters, string $locale): string
+    {
+        $pair = fn (string $filter, string $value): string => $this->translator->trans('audit.filter.pair', [
+            'field' => $this->translator->trans('audit.filter.' . $filter, [], 'messages', $locale),
+            'value' => $value,
+        ], 'messages', $locale);
+        $words = [];
+
+        foreach (self::FILTERS as $filter) {
+            $value = $filters[$filter] ?? null;
+
+            if (\is_string($value) && '' !== $value) {
+                $words[] = $pair($filter, 'type' === $filter && null !== AuditType::tryFrom($value) ? $this->translator->trans('audit.type.' . $value, [], 'messages', $locale) : $value);
+            }
+        }
+
+        $from = $filters['from'] ?? null;
+        $to = $filters['to'] ?? null;
+
+        if ((\is_string($from) && '' !== $from) || (\is_string($to) && '' !== $to)) {
+            $words[] = $pair('dates', $this->translator->trans('audit.filter.range', [
+                'from' => $this->day($from, $locale),
+                'to' => $this->day($to, $locale),
+            ], 'messages', $locale));
+        }
+
+        return [] === $words ? $this->translator->trans('audit.value.none', [], 'messages', $locale) : Str\join($words, ' · ');
+    }
+
+    /** "Nov 1", as the Dates button shows a day in the reader's language, so English is not en_GB's "1 Nov"; an open end reads "…". */
+    private function day(mixed $day, string $locale): string
+    {
+        if (!\is_string($day) || '' === $day) {
+            return $this->translator->trans('audit.filter.open_end', [], 'messages', $locale);
+        }
+
+        if (!Regex\matches($day, self::DAY)) {
+            return $day;
+        }
+
+        $dates = Str\replace($locale, '-', '_');
+        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('MMMd') ?: 'MMM d';
+
+        return IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'UTC', null, $pattern)?->format(new DateTimeImmutable($day . 'T12:00:00Z')) ?: $day;
     }
 
     /**

@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
@@ -32,6 +32,8 @@ import { Switched as ProductSwitched } from '../components/Switched.tsx';
 import { ManagedBanner } from './managed.tsx';
 import { OutsideSwitcher } from './OutsideSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
+import { HELD_STEPS, heldStepPath } from './security.ts';
+import { viewerOf } from './settings.ts';
 import {
   BLUEBIRD,
   OFFER,
@@ -52,6 +54,7 @@ import {
   openerLabel,
   openingOf,
   switchTo,
+  untilOf,
   useWhere,
   waiting,
 } from './switcher.ts';
@@ -140,6 +143,13 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   }, [open]);
 
   useLayoutEffect(() => {
+    const shown = menu.current;
+    if (!open || !into || shown == null || shown.querySelector('[role="option"]') != null) return;
+
+    shown.querySelector<HTMLElement>('.sw-cell.is-create')?.focus();
+  }, [open, into]);
+
+  useLayoutEffect(() => {
     if (open || !back.current) return;
 
     back.current = false;
@@ -176,7 +186,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   }, [open, close]);
 
   function pick(place: Place): void {
-    const stays = where.paused ? place.id === PAUSED.id : place.id === where.current;
+    const stays = !where.paused && place.id === where.current;
 
     close(true);
     if (stays) return;
@@ -205,7 +215,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
         ref={button}
         id={current.id}
         name={current.name}
-        label={openerLabel(current, count)}
+        label={openerLabel(current, count, where.paused)}
         waiting={count > 0 ? invitationsLine(count) : null}
         open={open}
         overTile={
@@ -337,7 +347,7 @@ function Menu({
       <InvitationAnswer
         name={invitation.name}
         line={`Invitation from ${invitation.inviter} · ${invitation.role}`}
-        until={`Works until ${dayOf(invitation.until)}`}
+        until={`Works until ${untilOf(invitation.until)}`}
       >
         {said === 'managed' ? (
           <ManagedBanner level={3} />
@@ -432,16 +442,49 @@ const PAUSED_SAMPLE: PausedOrganisation = {
 };
 
 /** The product's AccessPaused, standing in for the page while access to the organisation is paused. */
-export function AccessPaused() {
+function AccessPaused() {
   const where = useWhere();
-
   return (
     <ProductAccessPaused
       paused={PAUSED_SAMPLE}
-      others={where.places.filter((place) => place.id !== PAUSED.id)}
+      others={where.places}
       account="/demo/settings/account"
       onSwitch={askToOpen}
       onChoose={askToOpen}
     />
   );
+}
+
+/** The product's TwoFactorOverdue card, its links the demo's: the product's signs out against the API (sc-609). */
+function TwoFactorOverdue() {
+  const { t } = useTranslation();
+  const where = useWhere();
+  const alone = where.places.every((place) => place.id === where.current);
+  const [params] = useSearchParams();
+  const turnOn = heldStepPath(HELD_STEPS.turnOn, viewerOf(params.get('as')));
+
+  return (
+    <section className="card two-factor-overdue" aria-labelledby="overdue-title">
+      <h1 id="overdue-title">{t('signInRules.overdueTitle')}</h1>
+      <p className="two-factor-overdue-reason">
+        {t('signInRules.overdueBody', { organisation: currentPlace(where).name })}
+      </p>
+      <p className="muted">
+        {t(alone ? 'signInRules.overdueSingleEvents' : 'signInRules.overdueElsewhere')}
+      </p>
+      <div className="two-factor-overdue-actions">
+        <Link className="button button-primary" to={turnOn}>
+          {t('signInRules.overdueTurnOn')}
+        </Link>
+        <Link className="button" to="/demo/sign-in">
+          {t('signInRules.overdueSignOut')}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** What stands in for the organisation's pages while it holds the account: paused access or two-factor overdue. */
+export function HeldStandIn() {
+  return useWhere().overdue ? <TwoFactorOverdue /> : <AccessPaused />;
 }

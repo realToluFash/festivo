@@ -236,7 +236,7 @@ class SsoProvider
         return $this->oidcTokenEndpoint;
     }
 
-    public function setOidcTokenEndpoint(?string $oidcTokenEndpoint): void
+    public function setOidcTokenEndpoint(#[SensitiveParameter] ?string $oidcTokenEndpoint): void
     {
         $this->oidcTokenEndpoint = $oidcTokenEndpoint;
     }

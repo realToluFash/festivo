@@ -67,7 +67,7 @@ final readonly class SamlMetadataReader
             }
         }
 
-        $certificates = Vec\values(\array_unique($certificates));
+        $certificates = Vec\unique($certificates);
 
         if ([] === $certificates) {
             return null;

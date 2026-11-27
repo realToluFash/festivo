@@ -6,6 +6,7 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import {
+  GREET_AS_MAXIMUM,
   GUEST_NAME_MAXIMUM,
   MOST_COMPANIONS,
   NO_NEEDS,
@@ -14,7 +15,11 @@ import {
   type NeedsTyped,
   type Problem,
   type Problems,
+  type LimitRefusal,
   firstProblem,
+  limitRefusalOf,
+  roleHolds,
+  greetAsLength,
   needsFailingCount,
   needsProblemsOf,
   needsViolations,
@@ -38,6 +43,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
+import { DoneLine } from './FormLayers.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
 import { type CountedGroup, GroupField, GroupPicker, pickProblemLine } from './GuestGroup.tsx';
@@ -45,16 +51,20 @@ import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
 import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { FocusedScreen } from './SummaryOverlays.tsx';
+import { ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
+import { LimitRefusalLayer } from './LimitRefusal.tsx';
+import { dateLocale } from '../i18n/index.ts';
+import { useSignedIn } from '../signedIn.ts';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
-import { type Values, addOf, editOf, typedOf, valuesOf } from './guestValues.ts';
+import { useLeaveAsk } from './useLeaveAsk.ts';
+import { type Values, addOf, discardNameOf, editOf, typedOf, valuesOf } from './guestValues.ts';
 
 export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGuest };
 
 type Ask = 'duplicate' | 'discard' | null;
 
-type Refusal = 'offline' | 'notSaved' | null;
+type Refusal = 'offline' | 'notSaved' | { said: string } | null;
 
 /** Group's refusal on Save in the API's words, said as taken once the list read again has a group of the name made. */
 type GroupRefusal = { made: string | null; line: string } | null;
@@ -93,6 +103,8 @@ export function GuestForm({
   const [refusal, setRefusal] = useState<Refusal>(null);
   const [theirs, setTheirs] = useState<GuestDetails | null>(null);
   const [sending, setSending] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
+  const { organisation } = useSignedIn();
   const [choosing, setChoosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const [typedGroup, setTypedGroup] = useState('');
@@ -105,11 +117,13 @@ export function GuestForm({
   const needsRefs = useNeedsRefs();
   const wide = useShellLayout() === 'landscape';
   const nameField = useRef<TextInputInstance>(null);
+  const greetAsField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const numberField = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
   const companionFields = useRef(new Map<number, TextInputInstance>());
   const changed = JSON.stringify(values) !== JSON.stringify(first);
+  const leaves = useLeaveAsk(open && changed && !sending, () => setAsk('discard'), onClose);
   const chose = editing?.guest.chosenLanguage ?? null;
   const count = values.companions.length;
 
@@ -182,7 +196,7 @@ export function GuestForm({
       return field == null ? null : `needs:${who}:${field}`;
     };
     const order = [
-      ...['fullName', 'email', 'mobile'].map((key) => (found[key] == null ? null : key)),
+      ...['fullName', 'greetAs', 'email', 'mobile'].map((key) => (found[key] == null ? null : key)),
       needsAt('guest'),
       ...values.companions.flatMap((_, at) => [
         found[`companion-${at}`] == null ? null : `companion-${at}`,
@@ -211,6 +225,7 @@ export function GuestForm({
 
   function focus(key: string) {
     if (key === 'fullName') focusRefused(nameField);
+    else if (key === 'greetAs') focusRefused(greetAsField);
     else if (key === 'email') focusRefused(emailField);
     else if (key === 'mobile') focusRefused(numberField);
     else {
@@ -227,6 +242,8 @@ export function GuestForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -270,7 +287,12 @@ export function GuestForm({
         onSaved({ guest: tagged.guest, tagged });
       }
     } catch (error) {
-      if (error instanceof ApiUnreachableError) setRefusal('offline');
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiUnreachableError) setRefusal('offline');
+      else if (error instanceof ApiError && error.code === 'guest_arrived')
+        setRefusal(error.problem.detail == null ? 'notSaved' : { said: error.problem.detail });
       else if (error instanceof ApiError && error.code === 'guest_already_listed')
         setAsk('duplicate');
       else if (error instanceof ApiError && error.status === 412 && editing != null) {
@@ -306,8 +328,13 @@ export function GuestForm({
   const clash = groupRefusal?.made == null ? null : sameGroup(groups, groupRefusal.made);
   const madeProblem =
     groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
-  const cancel = () => (changed ? setAsk('discard') : onClose());
+  const cancel = () => leaves.leave();
+  const backFromLimit = () => {
+    setLimited(null);
+    focus('fullName');
+  };
   const adding = editing == null;
+  const discardName = discardNameOf(first, values);
 
   return (
     <FocusedScreen
@@ -327,15 +354,25 @@ export function GuestForm({
         ask === 'discard'
           ? {
               title: t('guestList.discardTitle'),
-              line: t('guestList.discardLine', { name: first.fullName || values.fullName }),
+              line:
+                discardName == null
+                  ? t('eventEdit.discardLine')
+                  : t('guestList.discardLine', { name: discardName }),
               keep: { label: t('guestList.keepEditing'), testID: 'guest.form.keepEditing' },
               confirm: {
                 label: t('guestList.discard'),
                 removes: true,
                 testID: 'guest.form.discard',
               },
-              onKeep: () => setAsk(null),
-              onConfirm: onClose,
+              onKeep: () => {
+                setAsk(null);
+                leaves.keep();
+              },
+              onConfirm: () => {
+                setAsk(null);
+                leaves.discard();
+              },
+              width: ASK_WIDTH,
             }
           : ask === 'duplicate'
             ? {
@@ -355,44 +392,60 @@ export function GuestForm({
             : null
       }
       over={
-        picking
+        limited != null
           ? {
               layer: (
-                <GroupPicker
-                  guestName={values.fullName.trim() === '' ? null : values.fullName.trim()}
-                  groups={groups}
-                  pick={values.group}
-                  typed={typedGroup}
-                  problem={shownProblem(groups, typedGroup, returned)}
-                  onTyped={(text) => {
-                    setTypedGroup(text);
-                    setReturned(null);
+                <LimitRefusalLayer
+                  refusal={limited}
+                  billing={organisation != null && roleHolds(organisation, 'billing.manage')}
+                  onGuestList={() => {
+                    setLimited(null);
+                    cancel();
                   }}
-                  onReturn={(text) => {
-                    setTypedGroup(text);
-                    const result = returnPick(groups, text);
-                    if ('problem' in result) setReturned(result.problem);
-                    else pickGroup(result.pick);
-                  }}
-                  onPick={pickGroup}
-                  onClose={closePicker}
+                  onBack={backFromLimit}
+                  testID="guest.form.limit"
                 />
               ),
-              onClose: closePicker,
+              onClose: backFromLimit,
             }
-          : choosing
-            ? languageOver(
-                t('language.label'),
-                t('guestList.cancel'),
-                t('guestList.languageNotSet'),
-                values.language,
-                (code) => {
-                  set({ language: code });
-                  setChoosing(false);
-                },
-                () => setChoosing(false),
-              )
-            : null
+          : picking
+            ? {
+                layer: (
+                  <GroupPicker
+                    guestName={values.fullName.trim() === '' ? null : values.fullName.trim()}
+                    groups={groups}
+                    pick={values.group}
+                    typed={typedGroup}
+                    problem={shownProblem(groups, typedGroup, returned)}
+                    onTyped={(text) => {
+                      setTypedGroup(text);
+                      setReturned(null);
+                    }}
+                    onReturn={(text) => {
+                      setTypedGroup(text);
+                      const result = returnPick(groups, text);
+                      if ('problem' in result) setReturned(result.problem);
+                      else pickGroup(result.pick);
+                    }}
+                    onPick={pickGroup}
+                    onClose={closePicker}
+                  />
+                ),
+                onClose: closePicker,
+              }
+            : choosing
+              ? languageOver(
+                  t('language.label'),
+                  t('guestList.cancel'),
+                  t('guestList.languageNotSet'),
+                  values.language,
+                  (code) => {
+                    set({ language: code });
+                    setChoosing(false);
+                  },
+                  () => setChoosing(false),
+                )
+              : null
       }
       testID="guest.form"
     >
@@ -407,6 +460,7 @@ export function GuestForm({
       {refusal === 'notSaved' && (
         <AlertLine text={adding ? t('guestList.notAdded') : t('guestList.notSaved')} />
       )}
+      {refusal != null && typeof refusal === 'object' && <AlertLine text={refusal.said} />}
       {theirs != null && (
         <View style={styles.conflict} testID="guest.form.conflict">
           <AlertLine text={t('guestList.conflict')} />
@@ -446,6 +500,32 @@ export function GuestForm({
           testID="guest.form.fullName"
         />
       </Field>
+      <View style={styles.greetAs}>
+        <Field
+          label={t('guestList.greetAs')}
+          pill={t('eventForm.optional')}
+          error={words('greetAs')}
+          help={t('guestList.greetAsHint')}
+        >
+          <TextField
+            ref={greetAsField}
+            accessibilityLabel={t('guestList.greetAs')}
+            value={values.greetAs}
+            onChangeText={(greetAs) => set({ greetAs })}
+            wrong={problems.greetAs != null}
+            submitting={sending}
+            autoCapitalize="words"
+            autoCorrect={false}
+            testID="guest.form.greetAs"
+          />
+        </Field>
+        <Text size={13.5} weight="medium" style={styles.greetAsCount}>
+          {t('guestList.greetAsCounter', {
+            count: greetAsLength(values.greetAs),
+            max: GREET_AS_MAXIMUM,
+          })}
+        </Text>
+      </View>
       <GroupField
         value={pickName(groups, values.group)}
         isNew={values.group != null && 'name' in values.group}
@@ -522,6 +602,16 @@ export function GuestForm({
         </View>
         {values.companions.map((one, at) => {
           const host = values.fullName.trim();
+          const placeholder =
+            host === ''
+              ? ''
+              : at === 0
+                ? t('guestList.guestOf', { host })
+                : t('guestList.guestOfNth', { host, nth: at + 1 });
+          const arrived =
+            one.id != null &&
+            (editing?.guest.companions.some((was) => was.id === one.id && was.arrival != null) ??
+              false);
 
           return (
             <View key={one.id ?? `new-${at}`} style={styles.companionBlock}>
@@ -538,13 +628,7 @@ export function GuestForm({
                     style={styles.grow}
                     accessibilityLabel={t('guestList.companionName', { nth: at + 1, total: count })}
                     value={one.name}
-                    placeholder={
-                      host === ''
-                        ? ''
-                        : at === 0
-                          ? t('guestList.guestOf', { host })
-                          : t('guestList.guestOfNth', { host, nth: at + 1 })
-                    }
+                    placeholder={placeholder}
                     onChangeText={(name) =>
                       set({
                         companions: values.companions.map((was, here) =>
@@ -556,17 +640,28 @@ export function GuestForm({
                     submitting={sending}
                     testID={`guest.form.companion.${at}`}
                   />
-                  <TextAction
-                    label={t('guestList.remove')}
-                    onPress={() => {
-                      set({ companions: values.companions.filter((_, here) => here !== at) });
-                      setNeedsProblems({});
-                      setOpened((was) => new Set([...was].filter((who) => !who.startsWith('c'))));
-                    }}
-                    testID={`guest.form.companion.${at}.remove`}
-                  />
+                  {!arrived && (
+                    <TextAction
+                      label={t('guestList.remove')}
+                      onPress={() => {
+                        set({ companions: values.companions.filter((_, here) => here !== at) });
+                        setNeedsProblems({});
+                        setOpened((was) => new Set([...was].filter((who) => !who.startsWith('c'))));
+                      }}
+                      testID={`guest.form.companion.${at}.remove`}
+                    />
+                  )}
                 </View>
               </Field>
+              {arrived && (
+                <DoneLine
+                  text={t('guestList.companionStays', {
+                    name: one.name.trim() === '' ? placeholder : one.name.trim(),
+                  })}
+                  size={14}
+                  reads={false}
+                />
+              )}
               <NeedsSection
                 title={t('guestNeeds.theirNeeds')}
                 needs={one.needs}
@@ -604,6 +699,12 @@ export function GuestForm({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  greetAs: { gap: 6 },
+  greetAsCount: {
+    color: tokens.colorInkSecondary,
+    lineHeight: 13.5 * 1.4,
+    fontVariant: ['tabular-nums'],
+  },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
   refusal: { gap: tokens.spaceXs },

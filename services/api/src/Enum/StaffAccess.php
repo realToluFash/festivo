@@ -12,4 +12,16 @@ enum StaffAccess: string
     case Floor = 'floor';
     case Pass = 'pass';
     case Run = 'run';
+
+    /** The level a staff link's sign-in holds on the event (sc-4235): the job's own level (sc-4002), never Can edit or above. */
+    public function eventRole(): EventRole
+    {
+        return match ($this) {
+            self::View => EventRole::CanView,
+            self::CheckIn => EventRole::CanCheckIn,
+            self::Floor => EventRole::CanWorkFloor,
+            self::Pass => EventRole::CanWorkPass,
+            self::Run => EventRole::CanRunFloor,
+        };
+    }
 }

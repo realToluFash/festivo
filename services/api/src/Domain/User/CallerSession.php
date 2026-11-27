@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Entity\User;
+use App\Repository\RefreshTokenRepository;
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\Authenticator\Token\JWTPostAuthenticationToken;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -15,6 +18,8 @@ final readonly class CallerSession
     public function __construct(
         private Security $security,
         private JWTTokenManagerInterface $jwtTokenManager,
+        private RefreshTokenRepository $refreshTokenRepository,
+        private TokenIssuer $tokenIssuer,
     ) {
     }
 
@@ -29,5 +34,13 @@ final readonly class CallerSession
         $session = $this->jwtTokenManager->parse($token->getCredentials())[TokenIssuer::SESSION_CLAIM] ?? null;
 
         return \is_string($session) && Uuid::isValid($session) ? Uuid::fromString($session) : null;
+    }
+
+    /** When the caller's session ends, if it is one that ends with its account's grants (sc-4235). */
+    public function endsAt(User $user): ?DateTimeImmutable
+    {
+        $chain = $this->chain();
+
+        return $this->tokenIssuer->endsAt(null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]), $user);
     }
 }

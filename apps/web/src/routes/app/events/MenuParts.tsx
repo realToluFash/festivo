@@ -1,5 +1,6 @@
 import {
   CHOICES_PER_DISH_MAXIMUM,
+  type CourseDefault,
   type Dish,
   type DishDiet,
   MENU_COURSE_NAME_MAXIMUM,
@@ -8,9 +9,12 @@ import {
   type MenuDish,
   type MenuDishChoice,
   type PicksClose,
+  type PicksCourse,
   VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
+import type { TFunction } from 'i18next';
 import {
+  defaultedOn,
   type DishForm,
   type DishProblems,
   type MoneyLanguage,
@@ -40,7 +44,9 @@ import {
 } from '../menu/VariantParts.tsx';
 import { shownVariants } from '../menu/variants.ts';
 import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
+import { dayWords, pickWords } from './courseDefault.ts';
 import { describedBy } from './eventFieldOrder.ts';
+import { DishPicks, SeePicksLink, WhoHasntLink, useCanChoose, useMenuPicks } from './menuPicks.tsx';
 import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
 import {
   type CourseForm,
@@ -58,7 +64,7 @@ export interface VariantHandlers {
   prices: boolean;
   language: MoneyLanguage;
   ask: VariantAsk | null;
-  addRefused: { dishId: string; outcome: 'limit' | 'picked' } | null;
+  addRefused: { dishId: string; outcome: 'limit' | 'picked' | 'default' } | null;
   lit: string | null;
   onAdd: (dish: MenuDish) => void;
   onEdit: (dish: MenuDish, variant: ShownVariant) => void;
@@ -154,6 +160,22 @@ function Grip() {
   );
 }
 
+function defaultLine(
+  t: TFunction,
+  course: MenuCourse,
+  pick: CourseDefault,
+  closed: boolean,
+  counted: PicksCourse | null,
+): string {
+  const words = { pick: pickWords(course, pick), date: dayWords(pick.chooseBy, dateLocale()) };
+  if (!closed || counted == null) return t('courseDefault.line', words);
+  const count = defaultedOn(counted);
+
+  return count === 0
+    ? t('courseDefault.lineNobody', words)
+    : t('courseDefault.lineGiven', { ...words, count });
+}
+
 function Refused({ words }: { words: string }) {
   return (
     <p className="mc-refused" role="status">
@@ -192,19 +214,31 @@ function Tags({ dish }: { dish: { name: string; diets: readonly DishDiet[] } }) 
 }
 
 /** sc-3905: the course's close as a shape with a word, and beside it where the date comes from, for the host only. */
-function CloseLine({ close, timeZone }: { close: PicksClose; timeZone: string }) {
+function CloseLine({
+  close,
+  course,
+  timeZone,
+}: {
+  close: PicksClose;
+  course: string;
+  timeZone: string;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const date = closeDay(close.at, timeZone, locale);
   const by = { time: closeTime(close.at, timeZone, locale), zone: zoneCity(timeZone) };
   const source =
-    close.source === 'replyBy'
+    close.source === 'chooseBy'
       ? close.closed
-        ? t('eventMenu.picksByReplyByClosed', by)
-        : t('eventMenu.picksByReplyBy', by)
-      : close.closed
-        ? t('eventMenu.picksByStartClosed', by)
-        : t('eventMenu.picksByStart', by);
+        ? t('eventMenu.picksByOwnClosed', { ...by, course })
+        : t('eventMenu.picksByOwn', { ...by, course })
+      : close.source === 'replyBy'
+        ? close.closed
+          ? t('eventMenu.picksByReplyByClosed', by)
+          : t('eventMenu.picksByReplyBy', by)
+        : close.closed
+          ? t('eventMenu.picksByStartClosed', by)
+          : t('eventMenu.picksByStart', by);
 
   return (
     <p className="mc-close">
@@ -228,6 +262,7 @@ export function CourseCard({
   asking,
   askFailed,
   refused,
+  defaultRefused,
   dragging,
   onDragStart,
   onDragEnd,
@@ -256,6 +291,8 @@ export function CourseCard({
   asking: 'course' | string | null;
   askFailed: string | null;
   refused: 'course' | string | null;
+  /** The dish whose Remove… was refused because it is the course's default (sc-1362). */
+  defaultRefused: string | null;
   dragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -288,6 +325,9 @@ export function CourseCard({
   const sameOk = canSame(course);
   const name = course.name;
   const close = course.picksClose;
+  const shown = useMenuPicks();
+  const picked = shown != null;
+  const canChoose = useCanChoose();
   const line =
     course.servedAt == null
       ? t('eventMenu.courseOf', { n: index + 1, count: all })
@@ -326,7 +366,9 @@ export function CourseCard({
         )}
         <div className="mn-course-names">
           <p className="mn-eyebrow">{line}</p>
-          <h2 id={`mc-c-${course.id}`}>{name}</h2>
+          <h2 id={`mc-c-${course.id}`} tabIndex={-1}>
+            {name}
+          </h2>
           <p className={ready ? 'mc-state is-ready' : 'mc-state is-empty'}>
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}
@@ -337,7 +379,18 @@ export function CourseCard({
                 ? t('dishChoices.noFinishedDish')
                 : t('eventMenu.emptyTag')}
           </p>
-          {close != null && <CloseLine close={close} timeZone={timeZone} />}
+          {close != null && <CloseLine close={close} course={name} timeZone={timeZone} />}
+          {close != null && course.default != null && (
+            <p className="mc-def-line">
+              {defaultLine(
+                t,
+                course,
+                course.default,
+                close.closed,
+                shown?.picks.courses.find((one) => one.id === course.id) ?? null,
+              )}
+            </p>
+          )}
         </div>
         {manage && (
           <div
@@ -394,8 +447,10 @@ export function CourseCard({
               {t('eventMenu.picksClosedCourse', {
                 course: name,
               })}
+              {canChoose && ` ${t('seePicks.stillChoose')}`}
             </span>
           </p>
+          <WhoHasntLink courseId={course.id} course={name} />
         </div>
       )}
       <OwnItemsFacts course={course} />
@@ -435,7 +490,13 @@ export function CourseCard({
               lit={litDish === dish.id}
               asking={asking === dish.id}
               askFailed={askFailed}
-              refused={refused === dish.id}
+              refused={
+                defaultRefused === dish.id
+                  ? t('courseDefault.refuseDish', { dish: dish.name, course: name })
+                  : refused === dish.id
+                    ? t('eventMenu.dishPicked')
+                    : null
+              }
               onEdit={() => onEditDish(dish)}
               onAskRemove={() => onAskRemove(dish)}
               onKeep={() => onKeep(`mc-remove-${dish.id}`)}
@@ -512,17 +573,20 @@ export function CourseCard({
           {course.skippable && <li>{t('eventMenu.skip')}</li>}
         </ul>
       )}
-      {manage && (
+      {(manage || picked) && (
         <div className="mn-course-foot">
-          <button
-            id={`mc-add-dish-${course.id}`}
-            type="button"
-            className="mn-add-dish"
-            onClick={onAddDish}
-          >
-            <Glyph name="plus" size={16} weight={2.4} />
-            {t('eventMenu.addDish')}
-          </button>
+          {manage && (
+            <button
+              id={`mc-add-dish-${course.id}`}
+              type="button"
+              className="mn-add-dish"
+              onClick={onAddDish}
+            >
+              <Glyph name="plus" size={16} weight={2.4} />
+              {t('eventMenu.addDish')}
+            </button>
+          )}
+          <SeePicksLink courseId={course.id} course={name} />
         </div>
       )}
     </li>
@@ -550,7 +614,7 @@ function DishRow({
   lit: boolean;
   asking: boolean;
   askFailed: string | null;
-  refused: boolean;
+  refused: string | null;
   onEdit: () => void;
   onAskRemove: () => void;
   onKeep: () => void;
@@ -581,6 +645,7 @@ function DishRow({
               {ways ? t('dishChoices.plusVariantOptions') : t('dishChoices.plusOptions')}
             </p>
           )}
+          <DishPicks id={dish.id} />
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={t('eventMenu.actionsFor', { name })}>
@@ -621,7 +686,9 @@ function DishRow({
           words={[
             addRefused === 'limit'
               ? t('dishVariants.limit', { most: VARIANTS_PER_DISH_MAXIMUM })
-              : t('dishVariants.dishPicked'),
+              : addRefused === 'default'
+                ? t('courseDefault.refuseDish', { dish: name, course: course.name })
+                : t('dishVariants.dishPicked'),
           ]}
         />
       )}
@@ -667,7 +734,7 @@ function DishRow({
           onConfirm={(choice) => choices.onConfirm(dish, choice)}
         />
       )}
-      {refused && <Refused words={t('eventMenu.dishPicked')} />}
+      {refused != null && <Refused words={refused} />}
       {asking && (
         <div className="mn-ask">
           <p id={`mc-ask-${dish.id}`} tabIndex={-1}>
@@ -817,6 +884,7 @@ export function AddDishPanel({
   onStartNew,
   onPatch,
   onOnlyEvent,
+  outside,
 }: {
   tab: 'library' | 'new';
   query: string;
@@ -837,10 +905,32 @@ export function AddDishPanel({
   onStartNew: (name: string) => void;
   onPatch: (next: Partial<DishForm>) => void;
   onOnlyEvent: (onlyEvent: boolean) => void;
+  /** sc-95116: held from outside, so the library is neither read nor added to. */
+  outside: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const shown = shownDishes(library, query, [], i18n.language);
   const looking = query.trim() !== '';
+
+  if (outside)
+    return (
+      <DishFields
+        form={form}
+        problems={problems}
+        notStated={false}
+        editing={null}
+        prices={false}
+        language={language}
+        onPatch={onPatch}
+        beforePrice={
+          <div className="desk-field mc-only">
+            <p id="mc-only-help" className="desk-help">
+              {t('eventMenu.notLibrary')}
+            </p>
+          </div>
+        }
+      />
+    );
 
   return (
     <>

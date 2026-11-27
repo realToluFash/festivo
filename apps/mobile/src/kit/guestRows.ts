@@ -10,20 +10,21 @@ import {
 import type { TFunction } from 'i18next';
 
 import type { InvitationOffer } from '../components/GuestInvitation.tsx';
-import type { ReplyKind } from '../components/ReplyMark.tsx';
+import type { MarkKind } from '../components/ReplyMark.tsx';
 import { type CardTag, type Shown, cardTags } from './eventsList.ts';
 import { draftRowOf } from './makeLive.ts';
 
-const MARK: Record<ReplyWord, ReplyKind> = {
+const MARK: Record<ReplyWord, MarkKind> = {
   coming: 'coming',
   maybe: 'maybe',
   notComing: 'notcoming',
   noReply: 'noreply',
   held: 'held',
   notYetInvited: 'notyet',
+  walkIn: 'walkin',
 };
 
-export function markOf(reply: ReplyWord): ReplyKind {
+export function markOf(reply: ReplyWord): MarkKind {
   return MARK[reply];
 }
 
@@ -32,7 +33,9 @@ export function filterChoices(
   counts: Readonly<Record<Choice, number>>,
   chosen: Choice,
 ): readonly Choice[] {
-  return CHOICES.filter((key) => key !== 'notYetInvited' || counts[key] > 0 || key === chosen);
+  return CHOICES.filter(
+    (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0 || key === chosen,
+  );
 }
 
 export interface PhaseCard {

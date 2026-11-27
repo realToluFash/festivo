@@ -53,7 +53,7 @@ final readonly class EventDeleter
         return $this->deleteRefusal->of($event);
     }
 
-    /** Refused 409 `event_call_off_first` while a guest is invited and it is not Finished, before the name typed is read (sc-14445). */
+    /** Refused 409 `event_call_off_first` while a guest is invited or a briefing went and it is not Finished, before the name typed is read (sc-14445, sc-4333). */
     public function delete(Event $event, User $by, ?string $typedName): DateTimeImmutable
     {
         if (null !== $this->refusedBecause($event)) {

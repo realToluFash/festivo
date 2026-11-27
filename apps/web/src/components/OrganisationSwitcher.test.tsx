@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { rememberedEntry, rememberedFor } from '@soirely/domain';
 import { join } from 'node:path';
 
 import type { Membership } from '@soirely/api-client';
@@ -138,7 +139,7 @@ describe('switching organisation', () => {
     expect(
       screen.getByRole('button', { name: /Organisation: Okafor Family, your role Member/ }),
     ).toBeDefined();
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_2');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'u1')).toBe('org_2');
   });
 
   it('takes Close this notice on a sign-in rules notice above it to "Now working in"', () => {
@@ -175,7 +176,7 @@ describe('switching organisation', () => {
   });
 
   it('opens on the organisation this device chose last time', async () => {
-    window.localStorage.setItem('soirely.organisation', 'org_2');
+    window.localStorage.setItem('soirely.organisation', rememberedEntry('acc_1', 'org_2'));
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ organisations: [IRE, OKAFOR] }), { status: 200 }),
     );
@@ -199,6 +200,7 @@ describe('switching organisation', () => {
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
       outsideEvents: [],
+      signedOutAt: null,
     });
     at('/app');
 
@@ -218,65 +220,56 @@ describe('switching organisation', () => {
   });
 });
 
-describe('switching away from a paused organisation (sc-564)', () => {
-  function pausedInLagos(organisations: Membership[]): void {
-    const {
-      id,
-      name,
-      countryCode,
-      currency,
-      timezone,
-      contactAddress,
-      locale,
-      plan,
-      subscription,
-    } = membership({
+function pausedIn(organisations: Membership[]): void {
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
       id: 'org_3',
       name: 'Lagos Weddings',
     });
-    __setSessionState({
-      status: 'signedIn',
-      session: {
-        name: 'Folake Adeyemi',
-        email: 'folake@ire.events',
-        verified: true,
-        complete: true,
-        awaiting: null,
-        providers: [],
-        userId: 'u1',
-        needsOrganisation: false,
-        hasPassword: true,
-        organisation: IRE,
-        organisations,
-        organisationCountry: null,
-        timezone: null,
-        waitingFor: null,
-        pausedIn: {
-          id,
-          name,
-          countryCode,
-          currency,
-          timezone,
-          contactAddress,
-          plan,
-          subscription,
-          locale,
-          suspension: {
-            reason: 'address_gone',
-            domain: 'lagosweddings.ng',
-            since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
-            removesAt: null,
-            onlyOwner: false,
-          },
-          ownerClaim: null,
+  __setSessionState({
+    status: 'signedIn',
+    session: {
+      name: 'Folake Adeyemi',
+      email: 'folake@ire.events',
+      verified: true,
+      complete: true,
+      awaiting: null,
+      providers: [],
+      userId: 'u1',
+      needsOrganisation: false,
+      hasPassword: true,
+      organisation: organisations[0] ?? null,
+      organisations,
+      organisationCountry: null,
+      timezone: null,
+      waitingFor: null,
+      pausedIn: {
+        id,
+        name,
+        countryCode,
+        currency,
+        timezone,
+        contactAddress,
+        plan,
+        subscription,
+        locale,
+        suspension: {
+          reason: 'address_gone',
+          domain: 'lagosweddings.ng',
+          since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+          removesAt: null,
+          onlyOwner: false,
         },
+        ownerClaim: null,
       },
-    });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
-  }
+    },
+  });
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+}
 
+describe('switching away from a paused organisation (sc-564)', () => {
   it('opens the switcher with nothing marked current, then works in the one chosen', () => {
-    pausedInLagos([IRE, OKAFOR]);
+    pausedIn([IRE, OKAFOR]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -296,7 +289,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
   });
 
   it('with one other organisation, works in it and takes focus to the line that says so', () => {
-    pausedInLagos([IRE]);
+    pausedIn([IRE]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -304,6 +297,135 @@ describe('switching away from a paused organisation (sc-564)', () => {
     const switched = screen.getByText('Now working in Ìrè Events.');
     expect(document.activeElement).toBe(switched.closest('.sw-notice'));
     expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe("a paused member's pill (sc-85513)", () => {
+  const PAUSED_PILL = 'Organisation: Lagos Weddings, access paused. Switch organisation';
+
+  function pill(): HTMLElement {
+    return screen.getByRole('button', { name: PAUSED_PILL });
+  }
+
+  it.each(['/app', '/app/events', '/app/calendar', '/app/settings', '/app/account'])(
+    'names the paused organisation, not the one the session falls back on, at %s',
+    (path) => {
+      pausedIn([IRE, OKAFOR]);
+      at(path);
+
+      expect(pill().textContent).toContain('Lagos Weddings');
+      expect(screen.queryByRole('button', { name: /Organisation: Ìrè Events/ })).toBeNull();
+    },
+  );
+
+  it('opens on Down arrow without listing the paused organisation, none current, and works in the one chosen', async () => {
+    pausedIn([IRE, OKAFOR]);
+    at('/app');
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+
+    const options = within(
+      screen.getByRole('listbox', { name: 'Your organisations' }),
+    ).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      expect.stringContaining('Ìrè Events'),
+      expect.stringContaining('Okafor Family'),
+    ]);
+    expect(options.map((option) => option.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'false',
+    ]);
+
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+
+    expect(screen.getByRole('status').textContent).toMatch(/Now working in Okafor Family\./);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Organisation: Okafor Family, your role Member/ }),
+      ).toBeDefined(),
+    );
+  });
+
+  it('with nowhere else to go, still draws the pill, and the switcher lists none and ends with Create an organisation', async () => {
+    pausedIn([]);
+    at('/app');
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    const create = screen.getByRole('button', { name: 'Create an organisation' });
+    expect(document.activeElement).toBe(create);
+
+    fireEvent.click(create);
+    expect(await screen.findByRole('dialog', { name: 'Create an organisation' })).toBeDefined();
+  });
+
+  it('with nowhere else to go, creating an organisation leaves the paused page for the new one', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    const created = membership({ id: 'org_9', name: 'Lagos Supper Club' });
+    pausedIn([]);
+    creating(() => json({ organisation: created }, 201));
+    const { container } = at('/app');
+    expect(container.querySelector('.access-paused')).not.toBeNull();
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+    const walk = await screen.findByRole('dialog', { name: 'Create an organisation' });
+    fireEvent.change(within(walk).getByLabelText('Organisation name'), {
+      target: { value: 'Lagos Supper Club' },
+    });
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+
+    expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
+    expect(container.querySelector('.access-paused')).toBeNull();
+    expect(screen.queryByRole('button', { name: PAUSED_PILL })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
+    ).toBeDefined();
+  });
+
+  it('opens the same switcher from the card’s Switch organisation', () => {
+    pausedIn([IRE, OKAFOR]);
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    expect(pill().getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('listbox', { name: 'Your organisations' })).toBeDefined();
+  });
+
+  it.each([
+    [1, `${PAUSED_PILL}. 1 invitation waiting`],
+    [2, `${PAUSED_PILL}. 2 invitations waiting`],
+  ])('with %i invitations waiting, ends its label with them', (count, label) => {
+    const invitation = (n: number) => ({
+      id: `inv_${n}`,
+      organisation: { id: `org_i${n}`, name: `Invited ${n}` },
+      role: null,
+    });
+    const waiting = {
+      invitations: Array.from({ length: count }, (_, n) => invitation(n)),
+      outcomes: {},
+      firstJoined: null,
+      answer: vi.fn(),
+    } as unknown as WaitingInvitations;
+
+    render(
+      <MemoryRouter>
+        <OrganisationSwitcher
+          current={IRE}
+          paused={{ id: 'org_3', name: 'Lagos Weddings' }}
+          organisations={[IRE]}
+          waiting={waiting}
+          onSwitch={() => {}}
+          onCreate={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: label })).toBeDefined();
   });
 });
 
@@ -363,6 +485,10 @@ describe('a 100-character name (sc-486)', () => {
 
   it("keeps the name and its line free of a paragraph's margins (sc-29066)", () => {
     expect(cssRule('.org-name,\n.org-role')).toMatch(/margin: 0;/u);
+  });
+
+  it("keeps the menu's own lines free of a paragraph's margins, outside Today's page too (sc-563)", () => {
+    expect(MENU_STYLES).toMatch(/:where\(\.sw-menu\) :is\(h2, h3, p\) \{\s*margin: 0;/u);
   });
 
   it('never lets the frame grow past the viewport, nor the open list', () => {
@@ -469,7 +595,7 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
     );
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'u1')).toBe('org_9');
   });
 
   it('keeps Tab and Shift+Tab inside the walk', async () => {
@@ -938,6 +1064,42 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     ).toBeDefined();
   });
 
+  it('refuses a join when every team seat is in use, and keeps Accept on offer (sc-3930)', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/accept'
+        ? new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/plan_limit_reached',
+              title: 'Full.',
+              status: 403,
+              limit: 'team_seats',
+              plan: 'free',
+              used: 3,
+              allowed: 3,
+              organisation: 'Adunni Weddings',
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'Every team seat at Adunni Weddings is in use',
+    });
+    expect(within(refused).getByText('Your invitation stays open. Nothing is lost.')).toBeDefined();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Not now' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
+    ).toBeDefined();
+  });
+
   it('reads a managed refusal in the panel, and keeps it in the next menu (sc-563)', async () => {
     const message =
       'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
@@ -955,15 +1117,17 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
           )
         : null,
     );
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
     inTwo();
     at('/app');
 
     const panel = await openInvitation();
     fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(
-      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
-    ).toBeDefined();
+    const title = await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' });
+    expect(document.activeElement).toBe(title);
+    expect(scrolled).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }));
+    expect(within(panel).queryByRole('alert')).toBeNull();
     expect(within(panel).getByText(message)).toBeDefined();
     expect(within(panel).getByText('Access to a single event still works.')).toBeDefined();
     expect(
@@ -977,6 +1141,47 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     expect(
       await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
     ).toBeDefined();
+  });
+
+  it('never counts one the API lists as managed, and opens it on the banner with no answers (sc-73668)', async () => {
+    const message =
+      'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/invitations'
+        ? json(
+            {
+              invitations: [
+                {
+                  ...INVITATION,
+                  managed: {
+                    domain: 'ire.events',
+                    organisation: { id: 'org_1', name: 'Ìrè Events' },
+                    message,
+                  },
+                },
+              ],
+            },
+            200,
+          )
+        : json({}, 404),
+    );
+    inTwo();
+    at('/app');
+
+    const button = await screen.findByRole('button', { name: /Switch organisation/ });
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    expect(button.textContent).not.toMatch(/invitation/);
+    expect(button.getAttribute('aria-label') ?? button.textContent).not.toMatch(/invitation/);
+
+    const panel = await openInvitation();
+
+    expect(
+      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
+    ).toBeDefined();
+    expect(within(panel).getByText(message)).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: /^Decline/ })).toBeNull();
   });
 
   it('says when the answer did not reach us, and keeps both answers', async () => {
@@ -1109,6 +1314,7 @@ describe('events from outside in the switcher (sc-68438)', () => {
       jobLabel: null,
       startsAt: '2099-11-21T19:30:00+01:00',
       endsAt: '2099-11-22T01:00:00+01:00',
+      timeZone: 'Europe/Lisbon',
     };
     const congress = {
       ...gala,
@@ -1117,6 +1323,7 @@ describe('events from outside in the switcher (sc-68438)', () => {
       organisationName: 'Congressos',
       startsAt: '2020-11-07T08:30:00+00:00',
       endsAt: '2099-11-07T19:00:00+00:00',
+      timeZone: 'Europe/Lisbon',
     };
     render(
       <MemoryRouter>

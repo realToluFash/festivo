@@ -13,9 +13,9 @@ import {
   haventCountOf,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
-import { useSaveAnswer } from '../components/saveAnswer.ts';
-import { SaveNotice } from '../components/SaveNotice.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
+import { DemoSaveNotice } from './DemoSaveNotice.tsx';
+import { useDemoAnswer } from './saveAnswer.ts';
 
 const GUEST_WORDS = wordsFor('en');
 const LOCALE = 'en-US';
@@ -27,6 +27,7 @@ function typedFor(state: EditState | null, was: string | null): string {
       return '2026-11-05';
     case 'replyBySooner':
     case 'replyByForbidden':
+    case 'replyByGone':
       return '2026-11-03';
     case 'replyByNow':
       return '2026-11-02';
@@ -64,7 +65,7 @@ export function ReplyByPart({
   const [tried, setTried] = useState(state === 'replyByError');
   const [asking, setAsking] = useState<ReplyByCheck | null>(askedFor(state));
   const [askedFirst] = useState(asking != null);
-  const forbidden = useSaveAnswer();
+  const refused = useDemoAnswer();
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
@@ -86,8 +87,8 @@ export function ReplyByPart({
   }, [askedFirst]);
 
   function commit(): void {
-    if (state === 'replyByForbidden') {
-      forbidden.give('forbidden');
+    if (state === 'replyByForbidden' || state === 'replyByGone') {
+      refused.give(state === 'replyByGone' ? 'eventGone' : 'forbidden');
       return;
     }
     onSave(next);
@@ -124,7 +125,7 @@ export function ReplyByPart({
           onChange={(change) => {
             setTyped(change.target.value);
             setTried(false);
-            forbidden.clear();
+            refused.clear();
           }}
         />
         {wrong && (
@@ -142,7 +143,7 @@ export function ReplyByPart({
             onClick={() => {
               setTyped('');
               setTried(false);
-              forbidden.clear();
+              refused.clear();
               field.current?.focus();
             }}
           />
@@ -167,7 +168,7 @@ export function ReplyByPart({
           <p>{asking === 'sooner' ? R.soonerLine : R.nowLine}</p>
         </Ask>
       )}
-      <SaveNotice answered={forbidden} />
+      <DemoSaveNotice answered={refused} />
     </Opened>
   );
 }

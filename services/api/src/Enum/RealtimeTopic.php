@@ -14,13 +14,19 @@ enum RealtimeTopic: string
     case EventSeatingChoices = 'events/{id}/seating/choices';
     case EventGuests = 'events/{id}/guests';
     case EventHeadcount = 'events/{id}/headcount';
+    case EventCheckIn = 'events/{id}/check-in';
     case EventStaff = 'events/{id}/staff';
+    case EventWhosHere = 'events/{id}/whos-here';
     case EventSchedule = 'events/{id}/schedule';
     case EventMenu = 'events/{id}/menu';
+    case EventService = 'events/{id}/service';
     case EventScreens = 'events/{id}/screens';
     case EventGuestPages = 'events/{id}/guest-pages';
+    case EventMessages = 'events/{id}/messages';
     case EventBudget = 'events/{id}/budget';
+    case EventBudgetMargin = 'events/{id}/budget/margin';
     case EventQuotes = 'events/{id}/budget/quotes';
+    case OrganisationUsage = 'orgs/{id}/usage';
 
     public function for(string $id): string
     {

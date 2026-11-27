@@ -165,16 +165,18 @@ export function PreviewAsControl({
 
 function AsChoices({
   shown,
+  people,
   inSheet,
   shownRef,
   onPick,
 }: {
   shown: PreviewKey;
+  people: readonly PreviewPerson[];
   inSheet: boolean;
   shownRef: Ref<ViewInstance>;
   onPick: (who: PreviewKey) => void;
 }) {
-  return PREVIEW_AS.map((person) => {
+  return people.map((person) => {
     const on = person.key === shown;
 
     return (
@@ -208,6 +210,7 @@ export function PreviewAsChooser({
   phone,
   at,
   shown,
+  people = PREVIEW_AS,
   opener,
   onPick,
   onClose,
@@ -216,6 +219,7 @@ export function PreviewAsChooser({
   phone: boolean;
   at: Anchor | null;
   shown: PreviewKey;
+  people?: readonly PreviewPerson[];
   opener: Opener;
   onPick: (who: PreviewKey) => void;
   onClose: () => void;
@@ -240,7 +244,7 @@ export function PreviewAsChooser({
       >
         <SheetBody title={PW.previewAs} close={W.cancel} onClose={onClose}>
           <View>
-            <AsChoices shown={shown} inSheet shownRef={shownRef} onPick={onPick} />
+            <AsChoices shown={shown} people={people} inSheet shownRef={shownRef} onPick={onPick} />
           </View>
         </SheetBody>
       </Sheet>
@@ -255,7 +259,13 @@ export function PreviewAsChooser({
       align="start"
       testID="messages.previewAsMenu"
     >
-      <AsChoices shown={shown} inSheet={false} shownRef={shownRef} onPick={onPick} />
+      <AsChoices
+        shown={shown}
+        people={people}
+        inSheet={false}
+        shownRef={shownRef}
+        onPick={onPick}
+      />
     </AnchoredMenu>
   );
 }

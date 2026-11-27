@@ -304,7 +304,7 @@ function EventsOf({
     <LayersContext value={layers}>
       <div className="desk ev">
         <div className="ev-column" inert={covered}>
-          {desk.offline}
+          {desk.above}
           <div>
             <EventsTop
               title={title}
@@ -617,7 +617,10 @@ function useLiveGuestFigures(
   };
 
   useHubTopics(
-    eventIds.map((id) => realtimeTopic('EventHeadcount', id)),
+    eventIds.flatMap((id) => [
+      realtimeTopic('EventHeadcount', id),
+      realtimeTopic('EventCheckIn', id),
+    ]),
     () => api.headcountsSubscription(organisationId, eventIds),
     recount,
     recount,

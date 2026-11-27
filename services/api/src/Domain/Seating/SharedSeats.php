@@ -6,8 +6,6 @@ namespace App\Domain\Seating;
 
 use App\Entity\Guest;
 use App\Entity\SeatAssignment;
-use App\Entity\SeatingRow;
-use App\Entity\SeatingTable;
 use App\Enum\GuestReply;
 use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -56,23 +54,10 @@ final readonly class SharedSeats
             $theirs = $assignments[$companion->getId()->toRfc4122()] ?? null;
 
             if (null !== $theirs && !$theirs->getPlaceId()->equals($own->getPlaceId())) {
-                $elsewhere[] = ['name' => $companion->getFullName(), 'seat' => self::seat($theirs)];
+                $elsewhere[] = ['name' => $companion->getFullName(), 'seat' => SeatPlace::of($theirs)];
             }
         }
 
-        return ['seat' => self::seat($own), 'elsewhere' => $elsewhere];
-    }
-
-    /** @return array<string, mixed> a table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name or null */
-    private static function seat(SeatAssignment $assignment): array
-    {
-        $place = $assignment->getPlace();
-        $section = $place->getSection()?->getName();
-
-        return match (true) {
-            $place instanceof SeatingTable => ['kind' => 'table', 'name' => $place->getName(), 'section' => $section],
-            $place instanceof SeatingRow => ['kind' => 'row', 'name' => $place->getLabel(), 'seat' => $assignment->getSeat(), 'section' => $section],
-            default => ['kind' => 'seat', 'name' => $place->getName(), 'section' => $section],
-        };
+        return ['seat' => SeatPlace::of($own), 'elsewhere' => $elsewhere];
     }
 }

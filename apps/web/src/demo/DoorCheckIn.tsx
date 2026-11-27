@@ -7,6 +7,7 @@ import { StaleBand } from '../components/OfflineBand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { useDialogKeys } from '../dialogFocus.ts';
 import { DOOR_EVENT } from './doorCode.ts';
+import { MyNightAt } from './MyNight.tsx';
 import {
   type CheckInStart,
   type DoorPerson,
@@ -14,18 +15,17 @@ import {
   type Holder,
   type Seating,
   CW,
-  JOB,
   NOW,
   OFFLINE_SINCE,
   OPENS_AT,
   OTHER,
-  SHIFT_NAME,
   addWalkIn,
   arrive,
   backOf,
   checkInStart,
   checkInStateOf,
   countOf,
+  doorNight,
   holderOf,
   jobOf,
   meOf,
@@ -38,7 +38,10 @@ import {
   undo,
 } from './doorCheckIn.ts';
 import { ReplyMark } from './GuestsParts.tsx';
+import { SignOutLine } from './Redeem.tsx';
+import { R } from './redeem.ts';
 import './doorCheckIn.css';
+import './redeem.css';
 
 const LIVE_AFTER = 2500;
 
@@ -226,12 +229,8 @@ function CheckInPage({
       </div>
       {start.phase !== 'open' && (
         <div className="ci-notice">
-          <p className="ci-notice-title">
-            {start.phase === 'before' ? CW.opensAt(OPENS_AT) : CW.ended}
-          </p>
-          {people.length > 0 && (
-            <p>{start.phase === 'before' ? CW.opensBody(OPENS_AT) : CW.endedBody}</p>
-          )}
+          <p className="ci-notice-title">{CW.opensAt(OPENS_AT)}</p>
+          {people.length > 0 && <p>{CW.opensBody(OPENS_AT)}</p>}
         </div>
       )}
       {people.length === 0 ? (
@@ -579,12 +578,26 @@ function LinkPage({ gone }: { gone: Exclude<Gone, 'level_view'> }) {
   );
 }
 
-/** Check-in's address in a browser that is not signed in: it names no guest, event or person. */
-function NotSignedIn() {
+/** Check-in's address, or the shift page's, in a browser that is not signed in: it names no guest, event or person. Right after the shift page's Sign out it says "Signed out." above its heading, and a reload drops it (pm, 26 Nov, #95183). */
+function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
+  const title = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (signedOut) title.current?.focus();
+  }, [signedOut]);
+
   return (
     <Page back={null}>
       <div className="ci-card">
-        <h1 className="ci-title">{CW.notSignedIn.title}</h1>
+        {signedOut && (
+          <p className="rd-signed-out" role="status">
+            <SignOutLine size={26} />
+            {R.signedOut}
+          </p>
+        )}
+        <h1 ref={title} className="ci-title" tabIndex={-1}>
+          {CW.notSignedIn.title}
+        </h1>
         <p>{CW.notSignedIn.body}</p>
         <Link className="ci-primary" to="/demo/redeem?state=enter">
           {CW.notSignedIn.cta}
@@ -594,42 +607,20 @@ function NotSignedIn() {
   );
 }
 
-/** The shift page as far as sc-28230 draws it (CheckIn.dc.html, Reaching it): Check-in under the clock card at Can check guests in, none at Can view. */
+/** The shift page as sc-3915's Your night, with Check-in under the clock card at Can check guests in and none at Can view (sc-28230). Its Sign out stays on this address (pm, 26 Nov, #95183). */
 export function ShiftPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const view = params.get('level') === 'view';
-  const [told, setTold] = useState<string | null>(null);
+  const [signedOut, setSignedOut] = useState(params.get('state') === 'signed_out');
 
-  return (
-    <Page back={null}>
-      <p className="ci-only">{CW.shift.only}</p>
-      <h1 className="ci-title">{CW.shift.hello}</h1>
-      <p className="ci-event">{`${DOOR_EVENT} · ${JOB}`}</p>
-      <div className="ci-card">
-        <p className="ci-label">{CW.shift.yourShift}</p>
-        <p className="ci-name">{CW.shift.times}</p>
-        <p className="ci-here">
-          <Glyph name="tick" size={16} weight={3} />
-          {CW.shift.clocked}
-        </p>
-      </div>
-      {!view && (
-        <Link className="ci-primary" to="/demo/check-in?state=list">
-          {CW.title}
-        </Link>
-      )}
-      <div className="ci-you">
-        <p>{CW.shift.signedInAs(SHIFT_NAME)}</p>
-        <p>{CW.shift.signedOutAt}</p>
-        <button
-          type="button"
-          className="ci-secondary"
-          onClick={() => setTold(CW.shift.signOutLater)}
-        >
-          {CW.shift.signOut}
-        </button>
-      </div>
-      {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
-    </Page>
-  );
+  if (signedOut || params.get('state') === 'not_signed_in') {
+    return <NotSignedIn signedOut={signedOut} />;
+  }
+
+  function signOut(): void {
+    setSignedOut(true);
+    setParams({ state: 'not_signed_in' }, { replace: true });
+  }
+
+  return <MyNightAt first={doorNight()} checkIn={!view} onSignOut={signOut} />;
 }

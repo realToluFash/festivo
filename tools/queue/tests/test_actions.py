@@ -7,7 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import actions, cli, github, roles, store, sync
+from soirely_queue import actions, cli, github, roles, store, sync, text
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog", "9": "Done",
@@ -401,6 +401,10 @@ class DemoFirst(Base):
         self.assertEqual(self.state(1), "Ready For Dev")
         self.assertEqual(self.labels(1), set())
 
+    def refused_with_the_way_back(self, pattern, live=None):
+        self.refused(rf"(?s){pattern}.*Nothing claimed\. Send it back for one:.*"
+                     r"move sc-1 \"Needs Design\".*comment sc-1 --to ux", live)
+
     def test_a_drawn_story_with_no_demo_line_is_refused_with_the_way_back(self):
         self.drawn("**Status:** drawn, not by the designer.")
         self.refused(r"(?s)no Demo: line\. Nothing claimed.*move sc-1 \"Needs Design\".*"
@@ -408,18 +412,31 @@ class DemoFirst(Base):
 
     def test_a_demo_still_being_built_is_refused(self):
         self.drawn("**Demo:** being built.")
-        self.refused("says the demo is not built")
+        self.refused_with_the_way_back("says the demo is not built")
 
     def test_a_demo_whose_pull_request_is_open_is_refused(self):
         self.drawn("**Demo:** `It` in the app's demo (`/demo/it`) · PR #1386")
         self.refused("#1386 is not merged yet",
                      mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
 
-    def test_a_demo_github_cannot_read_is_refused(self):
+    def test_an_open_demo_is_waited_for_not_sent_back(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
-        self.refused("GitHub did not answer for #1386",
-                     mock.patch("soirely_queue.github.live",
-                                side_effect=github.GitHubError("gh api: 502")))
+        with mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("wait for the merge", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_a_demo_github_cannot_read_is_waited_for_not_sent_back(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        with mock.patch("soirely_queue.github.live",
+                        side_effect=github.GitHubError("gh api: 502")), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("GitHub did not answer for #1386", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_a_comment_cited_on_the_demo_line_is_skipped(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
@@ -434,9 +451,10 @@ class DemoFirst(Base):
 
     def test_a_demo_line_citing_only_comments_names_no_pull_request(self):
         self.drawn("**Demo:** `It` in the app's demo (pm, #55333)")
-        self.refused("names no pull request",
-                     mock.patch("soirely_queue.github.live",
-                                side_effect=github.GitHubError("gh api: Not Found (HTTP 404)")))
+        self.refused_with_the_way_back(
+            "names no pull request",
+            mock.patch("soirely_queue.github.live",
+                       side_effect=github.GitHubError("gh api: Not Found (HTTP 404)")))
 
     def test_a_merged_demo_is_claimed(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386, superseding #1300")
@@ -460,8 +478,19 @@ class DemoFirst(Base):
 
     def test_a_demo_only_ever_closed_is_refused(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
-        self.refused("#1386 was closed without merging",
-                     mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
+        self.refused_with_the_way_back(
+            "#1386 was closed without merging",
+            mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
+
+    def test_a_demo_closed_without_merging_beside_a_comment_is_sent_back(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
+
+        def live(number):
+            if number == 55333:
+                raise github.GitHubError("gh api repos/o/r/pulls/55333: Not Found (HTTP 404)")
+            return {"state": "CLOSED"}
+        self.refused_with_the_way_back("#1386 was closed without merging",
+                                       mock.patch("soirely_queue.github.live", side_effect=live))
 
     def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
         self.fake.add(1, "Ready For Dev")
@@ -1395,6 +1424,15 @@ class Merging(Base):
             actions.merge(self.as_("l10n"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD, delete_branch=True)
 
+    def test_the_linguist_merges_the_apps_permission_strings(self):
+        store.put_pr(self.db, pr())
+        files = [(f"apps/mobile/locales/{locale}.json", 1, 0) for locale in ("es", "fr", "pt")]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=files), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            actions.merge(self.as_("l10n"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD, delete_branch=True)
+
     def test_the_linguist_merges_no_code(self):
         store.put_pr(self.db, pr())
         files = [("apps/web/src/i18n/locales/fr.json", 1, 0), ("apps/web/src/App.tsx", 1, 0)]
@@ -2026,6 +2064,60 @@ class EditingABody(Base):
         self.edited.assert_called_once_with(
             9, BODY.replace("- the old one", "- sc-1 and sc\u201128982"))
         self.assertIn("1 mention of other stories", said)
+
+    def add(self, body, section, text="New."):
+        self.fake.add(1, "In Review", ["dev2"])
+        live = dict(self.live(), body=body)
+        with mock.patch("soirely_queue.github.live", return_value=live):
+            said = actions.pr_edit(self.as_("dev2"), args(pr=9, section=section, text=text))
+        return said, self.edited.call_args[0][1]
+
+    def test_an_empty_body_fills_in_house_order(self):
+        body = ""
+        for name in ("Next steps", "Risks", "Description"):
+            said, body = self.add(body, name)
+        self.assertIn("added Description", said)
+        self.assertEqual(body, "# Description\n\nNew.\n\n# Risks\n\nNew.\n\n# Next Steps\n\nNew.\n")
+
+    def test_a_section_goes_after_the_nearest_earlier_one_and_keeps_every_byte(self):
+        body = "Top.\r\n\r\n# Description\r\n\r\nDid.\r\n\r\n## Sub\r\n\r\nx\r\n\r\n# Next Steps\r\n\r\nNone."
+        said, new = self.add(body, "Evidence")
+        self.assertIn("added Evidence of work", said)
+        self.assertEqual(new, "Top.\r\n\r\n# Description\r\n\r\nDid.\r\n\r\n## Sub\r\n\r\nx\r\n\r\n"
+                              "# Evidence of work\r\n\r\nNew.\r\n\r\n# Next Steps\r\n\r\nNone.")
+
+    def test_with_none_before_it_the_section_precedes_the_first_heading(self):
+        _, new = self.add("Top.\n# Next Steps\n\nNone.\n", "Risks")
+        self.assertEqual(new, "Top.\n\n# Risks\n\nNew.\n\n# Next Steps\n\nNone.\n")
+
+    def test_a_body_with_text_and_no_headings_gets_it_after(self):
+        _, new = self.add("Just text.", "Description")
+        self.assertEqual(new, "Just text.\n\n# Description\n\nNew.\n")
+
+    def test_names_that_cannot_be_added_are_refused(self):
+        for body, section, why in (
+                ("", "Summary", "no heading matches Summary; the body has: no headings; pr-edit "
+                                "can add Description, Risks, References, Evidence of work or "
+                                "Next Steps"),
+                ("", "R", "R matches Risks and References"),
+                ("#### Risks\n\nx\n", "Risks", "Risks is at level 4")):
+            with self.assertRaisesRegex(actions.Refused, why):
+                self.add(body, section)
+        self.edited.assert_not_called()
+
+    def test_a_heading_already_in_the_body_is_replaced_not_added(self):
+        said, new = self.add("# Risks long\n\nold\n", "Risks")
+        self.assertIn("replaced Risks long", said)
+        self.assertEqual(new, "# Risks long\n\nNew.\n")
+
+    def test_an_added_section_reads_back_at_once(self):
+        without = BODY.replace("## Risks\n\n- the old one\n\n", "")
+        store.put_pr(self.db, dict(pr("pass"), body=without))
+        _, new = self.add(without, "Risks")
+        stored = store.pr(self.db, 9)
+        self.assertEqual(stored["body"], new)
+        self.assertEqual(text.find(stored["body"], "Risks")[2], "New.")
+        self.assertEqual(stored["lead"], pr("pass")["lead"])
 
     def test_one_section_changes_and_reads_back_at_once(self):
         self.fake.add(1, "In Review", ["dev2"])

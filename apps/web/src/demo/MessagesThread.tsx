@@ -10,6 +10,7 @@ import {
   type Draft,
   type GuestId,
   type MessagesState,
+  type Out,
   type Sched,
   ANSWERS,
   RECEIPTS,
@@ -18,6 +19,7 @@ import {
   MW,
   NOW,
   PARKING,
+  PARKING_OF,
   READER,
   TICKS,
   UNKNOWN,
@@ -39,6 +41,7 @@ import {
   many,
   noticeOf,
   noticePrice,
+  outReach,
   outTitle,
   outsIn,
   toLine,
@@ -48,7 +51,7 @@ import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
 import { NoManage, SentToThread } from './MessagesSentTo.tsx';
 import { INVITE_WORLD } from './messagesInvite.ts';
 import { InviteCompose } from './MessagesInvite.tsx';
-import { type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
+import { type Group, type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
 import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
@@ -67,6 +70,7 @@ import {
 import { NoticeExtras, RefusedNotice, WindowClosed } from './MessagesNotice.tsx';
 import {
   DayRule,
+  FollowLine,
   GuestBubble,
   HostBubble,
   LeadMark,
@@ -91,8 +95,9 @@ import {
 import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { TapLines } from './MessagesTap.tsx';
-import { MessagesBell } from './MessagesTell.tsx';
+import { MessagesBell } from './MessagesBell.tsx';
 import { AskOwner } from './MessagesWaits.tsx';
+import { newestInView } from './newestInView.ts';
 
 const SHARERS = [
   { name: 'Kwame Mensah', line: SHARED_NUMBER },
@@ -155,11 +160,13 @@ export function MiniComposer({
   placeholder,
   thread,
   world,
+  follows,
 }: {
   to: Audience;
   placeholder: string;
   thread: ConvoId;
   world?: World;
+  follows?: number | undefined;
 }) {
   const { act, focus, inbox, whyOff, to: event } = useInbox();
 
@@ -173,6 +180,7 @@ export function MiniComposer({
         body: text === '' ? [] : [{ kind: 'text', text }],
         seed: (inbox.draft?.seed ?? 0) + 1,
         openTo: toPick,
+        follows,
       },
     });
     if (!toPick) focus('body');
@@ -180,21 +188,23 @@ export function MiniComposer({
 
   return (
     <div className="mg-mini">
-      <div className="mg-mini-to">
-        <span>{MW.to}</span>
-        <button
-          type="button"
-          className="mg-to-chip"
-          aria-haspopup="dialog"
-          aria-expanded="false"
-          aria-describedby={whyOff}
-          onClick={() => open('', true)}
-          {...offButton(whyOff != null)}
-        >
-          {chipWords(to, event.book, world)}
-          <Glyph name="chevdown" size={14} weight={2.6} />
-        </button>
-      </div>
+      {follows == null && (
+        <div className="mg-mini-to">
+          <span>{MW.to}</span>
+          <button
+            type="button"
+            className="mg-to-chip"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-describedby={whyOff}
+            onClick={() => open('', true)}
+            {...offButton(whyOff != null)}
+          >
+            {chipWords(to, event.book, world)}
+            <Glyph name="chevdown" size={14} weight={2.6} />
+          </button>
+        </div>
+      )}
       <div className="mg-mini-row">
         <input
           className="mg-mini-field"
@@ -216,6 +226,7 @@ export function MiniComposer({
           <Glyph name="send" size={20} weight={2.4} />
         </button>
       </div>
+      {follows != null && <FollowLine count={follows} />}
     </div>
   );
 }
@@ -406,7 +417,7 @@ function GuestThread({
         }
       />
       {stop.inset}
-      <ol className="mg-stream" role="log" aria-label={name}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={name}>
         {id === 'ines' && (
           <>
             <DayRule>Oct 12</DayRule>
@@ -737,10 +748,21 @@ function AnswerBox({
   );
 }
 
+function followsOf(
+  first: Out | undefined,
+  fixed: boolean,
+  groups: readonly Group[],
+): number | undefined {
+  if (first != null) return outReach(first, groups).count;
+
+  return fixed ? PARKING_OF : undefined;
+}
+
 function ManyThread({ id }: { id: ConvoId }) {
   const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
   const resending = inbox.resend?.thread === id;
+  const toThem = id === 'invite' || first?.invite != null;
   const fixed = id === 'parking' || id === 'invite' || id === 'receipts';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
   const world = first?.invite == null ? MESSAGES_WORLD : INVITE_WORLD;
@@ -769,7 +791,7 @@ function ManyThread({ id }: { id: ConvoId }) {
   return (
     <div className="mg-in">
       <Head lead={<LeadMark lead={{ kind: 'many' }} size={44} />} title={title} line={line} />
-      <ol className="mg-stream" role="log" aria-label={title}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={title}>
         <StreamItems thread={id} />
         {resending && (
           <li className="mg-said is-host">
@@ -780,9 +802,10 @@ function ManyThread({ id }: { id: ConvoId }) {
       {!resending && (
         <MiniComposer
           to={to}
-          placeholder={id === 'invite' || first?.invite != null ? MW.writeToThem : MW.writeFollowUp}
+          placeholder={toThem ? MW.writeToThem : MW.writeFollowUp}
           thread={id}
           world={world}
+          follows={toThem ? undefined : followsOf(first, fixed, event.book.groups)}
         />
       )}
     </div>
@@ -837,7 +860,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
         title={title}
         line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
-      <ol className="mg-stream" role="log" aria-label={title}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={title}>
         <DayRule>{sched.day === CLOCK.slice(0, 10) ? NW.today : when.date}</DayRule>
         <HostBubble
           subject={sched.subject}

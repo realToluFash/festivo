@@ -23,6 +23,12 @@ class Organisation implements SoftDeletableInterface
     use SoftDeletable;
     use Timestampable;
 
+    public const int PAYMENT_REMINDER_DAYS = 3;
+
+    public const int PAYMENT_REMINDER_DAYS_MINIMUM = 1;
+
+    public const int PAYMENT_REMINDER_DAYS_MAXIMUM = 30;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -76,6 +82,10 @@ class Organisation implements SoftDeletableInterface
     /** When the people who manage members were last emailed about requests to join (sc-392): at most once a day. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $joinRequestsNoticedAt = null;
+
+    /** How many days before a scheduled payment falls due its reminder goes (sc-95). */
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => self::PAYMENT_REMINDER_DAYS])]
+    private int $paymentReminderDays = self::PAYMENT_REMINDER_DAYS;
 
     public function __construct(
         string $name,
@@ -167,6 +177,16 @@ class Organisation implements SoftDeletableInterface
     public function setProviderSignInOnly(bool $providerSignInOnly): void
     {
         $this->providerSignInOnly = $providerSignInOnly;
+    }
+
+    public function getPaymentReminderDays(): int
+    {
+        return $this->paymentReminderDays;
+    }
+
+    public function setPaymentReminderDays(int $paymentReminderDays): void
+    {
+        $this->paymentReminderDays = $paymentReminderDays;
     }
 
     public function getInactivityTimeoutDays(): ?int

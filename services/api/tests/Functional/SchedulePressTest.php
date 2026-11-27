@@ -30,6 +30,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
@@ -86,6 +87,27 @@ final class SchedulePressTest extends ApiTestCase
             ['2027-03-06T19:00:00+01:00', '2027-03-06T19:12:40+01:00', '2027-03-06T19:47:05+01:00', false],
             [$item['startsAt'], $item['startedAt'], $item['endedAt'], $item['skipped']],
         );
+    }
+
+    #[Test]
+    public function aPressWhileTheHubIsDownIsKeptAndAnsweredAsUsualAndItsReplayAnswersTheSameAndPublishesNothing(): void
+    {
+        $id = $this->add('Speeches', '2027-03-06T19:00');
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+        $hub->failuresLeft = 2;
+
+        $first = $this->press($this->owner, $id, 'start', '2027-03-06T19:12:40+01:00', 'hub-down');
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        self::assertSame(0, $hub->failuresLeft);
+        $again = $this->press($this->owner, $id, 'start', '2027-03-06T19:12:40+01:00', 'hub-down');
+        self::assertSame(200, $this->statusCode(), Json\encode($again));
+
+        self::assertSame($first, $again);
+        self::assertSame([], $hub->published);
+
+        self::assertSame('2027-03-06T19:12:40+01:00', $this->item($id)['startedAt']);
+        self::assertCount(1, self::em()->getRepository(SchedulePress::class)->findAll());
     }
 
     #[Test]
@@ -205,15 +227,67 @@ final class SchedulePressTest extends ApiTestCase
     #[Test]
     public function theSameKeySentAgainAnswersAsTheFirstTimeAndChangesNothing(): void
     {
+        $drinks = $this->add('Drinks', '2027-03-06T18:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T18:00:00+01:00');
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T19:00:00+01:00');
         $id = $this->add('Speeches', '2027-03-06T19:00');
+        $hub = self::service(RecordingHub::class);
 
-        $this->press($this->owner, $id, 'start', '2027-03-06T19:10:00+01:00', 'press-1');
+        $first = $this->press($this->owner, $id, 'start', '2027-03-06T19:10:00+01:00', 'press-1');
         self::assertSame(200, $this->statusCode());
-        $this->press($this->owner, $id, 'start', '2027-03-06T19:10:00+01:00', 'press-1');
+        $published = $hub->published;
+        self::assertCount(1, $this->cards());
+        $again = $this->press($this->owner, $id, 'start', '2027-03-06T19:10:00+01:00', 'press-1');
         self::assertSame(200, $this->statusCode());
 
-        self::assertCount(1, self::em()->getRepository(SchedulePress::class)->findAll());
+        self::assertSame($first, $again);
+        self::assertSame(2, $this->item($id)['version']);
+        self::assertSame(3, $this->item($drinks)['version']);
+        self::assertSame($published, $hub->published);
+        self::assertSame([], $this->cards());
+        self::assertCount(3, self::em()->getRepository(SchedulePress::class)->findAll());
+        self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => ScheduleEditor::PRESSED['start'], 'subjectId' => $id]));
         self::assertSame('2027-03-06T19:10:00+01:00', $this->item($id)['startedAt']);
+    }
+
+    #[Test]
+    public function theSameKeySentAgainAfterItWasSetAsideIsRefusedAgainAndPublishesNothing(): void
+    {
+        $drinks = $this->add('Drinks', '2027-03-06T17:00', 'Garden');
+        $dance = $this->add('First dance', '2027-03-06T18:00', 'Garden');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T17:05:00+01:00');
+        $first = $this->press($this->colleague, $dance, 'start', '2027-03-06T17:10:00+01:00', 'busy-1');
+        self::assertSame(409, $this->statusCode(), Json\encode($first));
+        $hub = self::service(RecordingHub::class);
+        $published = $hub->published;
+
+        $again = $this->press($this->colleague, $dance, 'start', '2027-03-06T17:10:00+01:00', 'busy-1');
+
+        self::assertSame(409, $this->statusCode());
+        $answered = static fn (array $problem): array => Dict\filter_keys($problem, static fn (int|string $member): bool => 'correlationId' !== $member);
+        self::assertSame($answered($first), $answered($again));
+        self::assertSame($published, $hub->published);
+    }
+
+    #[Test]
+    public function aPressChangesTheVersionOfOnlyTheItemsItChanges(): void
+    {
+        $drinks = $this->add('Drinks', '2027-03-06T18:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T18:00:00+01:00');
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T19:00:00+01:00');
+        self::assertSame(3, $this->item($drinks)['version']);
+        $speeches = $this->add('Speeches', '2027-03-06T19:00');
+        self::assertSame(1, $this->item($speeches)['version']);
+
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:10:00+01:00');
+
+        self::assertSame(3, $this->item($drinks)['version']);
+        self::assertSame(2, $this->item($speeches)['version']);
+        $this->as($this->owner, 'PUT', $this->items($drinks), ['title' => 'Welcome drinks', 'startsAt' => '2027-03-06T18:00'], ifMatch: '"3"');
+        self::assertSame(200, $this->statusCode());
+        $refused = $this->as($this->owner, 'PUT', $this->items($speeches), ['title' => 'Toasts', 'startsAt' => '2027-03-06T19:00'], ifMatch: '"1"');
+        self::assertSame(412, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/precondition_failed', $refused['type'] ?? null);
     }
 
     #[Test]
@@ -260,6 +334,31 @@ final class SchedulePressTest extends ApiTestCase
         $refused = $this->press($this->colleague, $speeches, 'start', '2027-03-06T19:05:00+01:00', 'tunde-1');
         self::assertSame(409, $this->statusCode());
         self::assertSame(['name' => 'Ifeoma Nduka', 'at' => '2027-03-06T19:02:00+01:00'], $refused['superseded_by'] ?? null);
+    }
+
+    #[Test]
+    public function aPressOverturnedSinceIsRefusedWhenSentAgainAndChangesAndPublishesNothing(): void
+    {
+        $drinks = $this->add('Drinks', '2027-03-06T18:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T18:00:00+01:00');
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T19:00:00+01:00');
+        $speeches = $this->add('Speeches', '2027-03-06T19:00');
+        $first = $this->press($this->colleague, $speeches, 'start', '2027-03-06T19:05:00+01:00', 'tunde-1');
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:02:00+01:00', 'ifeoma-1');
+        self::assertSame(200, $this->statusCode());
+        $versions = [$this->item($drinks)['version'], $this->item($speeches)['version']];
+        $hub = self::service(RecordingHub::class);
+        $published = $hub->published;
+
+        $refused = $this->press($this->colleague, $speeches, 'start', '2027-03-06T19:05:00+01:00', 'tunde-1');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/item_started', $refused['type'] ?? null);
+        self::assertSame(['name' => 'Ifeoma Nduka', 'at' => '2027-03-06T19:02:00+01:00'], $refused['superseded_by'] ?? null);
+        self::assertSame($versions, [$this->item($drinks)['version'], $this->item($speeches)['version']]);
+        self::assertSame($published, $hub->published);
+        self::assertSame('2027-03-06T19:02:00+01:00', $this->item($speeches)['startedAt']);
     }
 
     #[Test]
@@ -559,14 +658,14 @@ final class SchedulePressTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null, ?string $key = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $key = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ] + (null === $key ? [] : ['HTTP_IDEMPOTENCY_KEY' => $key]), content: null === $body ? null : Json\encode($body));
+        ] + (null === $key ? [] : ['HTTP_IDEMPOTENCY_KEY' => $key]) + (null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch]), content: null === $body ? null : Json\encode($body));
 
         $raw = (string) $this->client->getResponse()->getContent();
 

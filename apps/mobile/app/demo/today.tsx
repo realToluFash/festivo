@@ -12,10 +12,10 @@ import { useLayout } from '../../src/layout/useLayout.ts';
 import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
+import { noOrgBoardOf } from '../../src/demo/settings/fromNone.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { isNeedsState, MOMENTS, momentOf, planGuests, sayIn } from '../../src/demo/today.ts';
-import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
   type ArrivedState,
@@ -28,6 +28,8 @@ import {
 } from '../../src/demo/today/arrived.ts';
 import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
 import { PlanTodayLandscape } from '../../src/demo/today/PlanToday.tsx';
+import { useTodayRead, WaitingTodayScreen } from '../../src/demo/today/WaitingToday.tsx';
+import { readEnds, waitingCover, waitingOf } from '../../src/demo/today/waiting.ts';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import { isReadsState, useNowReads } from '../../src/demo/today/nowReads.tsx';
@@ -38,6 +40,7 @@ import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
 import { TodayShellProvider } from '../../src/components/todayShell.ts';
 import { demoShell } from '../../src/demo/demoShell.ts';
 import { openEvent } from '../../src/demo/events/openEvent.ts';
+import { openedOver } from '../../src/demo/events/opener.ts';
 import { openSearch } from '../../src/demo/search/SearchHeader.tsx';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
@@ -97,6 +100,8 @@ function DemoTodayScreen() {
     starts?: string;
     reads?: string;
     state?: string;
+    load?: string;
+    retry?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -147,6 +152,9 @@ function DemoTodayScreen() {
     [name, arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
+  // Today's events loading, or refused (sc-87600): `?load=`, and `?retry=fails` keeps refusing.
+  const read = useTodayRead(waitingOf(params.load), readEnds(params.retry), place?.id);
+  const cover = useMemo(() => waitingCover(moment), [moment]);
   const [told, setTold] = useState(params.toast);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const shell = useMemo(
@@ -154,7 +162,7 @@ function DemoTodayScreen() {
       demoShell(tell, {
         events: toEvents,
         calendar: toCalendar,
-        event: (key) => openEvent(EVENT_OF_KEY[key]),
+        event: (key) => openEvent(EVENT_OF_KEY[key], openedOver('today')),
         search: openSearch,
       }),
     [tell],
@@ -192,21 +200,31 @@ function DemoTodayScreen() {
   return (
     <OrgSwitcherProvider
       // A deep link to another state starts it afresh, as opening it from the index does.
-      key={[params.switcher, params.create, params.orgs, params.state].join('|')}
+      key={[params.switcher, params.create, params.orgs, params.state, params.load].join('|')}
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}
+      invited={params.state === 'invitations'}
       statusBar={bar}
       tell={tell}
     >
       <TodayShellProvider value={shell}>
         <View style={styles.fill}>
           {place == null ? (
-            <NoOrganisation tell={tell} managed={params.state === 'managed'} />
+            <NoOrganisation tell={tell} board={noOrgBoardOf(params.state)} />
+          ) : read.shown !== 'loaded' ? (
+            <WaitingTodayScreen
+              moment={cover}
+              waiting={read.shown}
+              onTab={onTab}
+              onRetry={read.retry}
+              switched={read.switched}
+              notices={notices}
+            />
           ) : shownRun != null ? (
             <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
-            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+            <TodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : drawn.needs != null ? (
             <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (

@@ -1,5 +1,6 @@
 import datetime
 import unittest
+from unittest import mock
 
 from soirely_queue import roles, work
 from soirely_queue import text as T
@@ -1165,6 +1166,50 @@ class DemoOnlyStories(unittest.TestCase):
                 self.assertEqual([r for i in offered for r in i["roles"] if work.builds(r)],
                                  [], (state, prs))
 
+    def woken(self, stories, prs, role="ux"):
+        return [(i["reason"], i["priority"]) for i in work.derive(stories, prs)
+                if i["kind"] == "story" and role in i["roles"]]
+
+    def test_in_failed_qa_ux_who_built_it_is_woken_without_a_tag(self):
+        failed = self.on("Failed QA", moved_at="2026-10-19T09:00:00Z")
+        for prs in ([self.demo()], []):
+            self.assertEqual([reason for reason, _ in self.woken([failed], prs)],
+                             ["sc-1 moved to Failed QA"], prs)
+        drawing = dict(self.on("Needs Design"), id=2)
+        (_, rework), (_, draw) = sorted(
+            self.woken([failed, drawing], [self.demo()]), key=lambda x: x[0])
+        self.assertLess(rework, draw)
+
+    def test_ux_is_not_offered_a_failed_story_a_developer_built(self):
+        own, later = pr(41, 1, state="merged"), "2026-10-19T09:00:00Z"
+        for stories, prs in (([self.on("Failed QA", ("dev2",), moved_at=later)], [self.demo()]),
+                             ([self.on("Failed QA", moved_at=later)], [self.demo(), own])):
+            self.assertEqual(self.woken(stories, prs), [], (stories, prs))
+            self.assertEqual(work.queued("ux", stories, prs=prs), [])
+            self.assertIn("dev2", self.builders(stories, prs))
+
+    def test_uxs_hold_ends_while_its_fix_is_open_and_once_it_merges_after_the_failure(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        before = self.demo(merged_at="2026-10-18T09:00:00Z")
+        self.assertEqual(len(work.queued("ux", [failed], prs=[before])), 1)
+        fixing = self.demo(41, state="open")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixing]), [])
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixed]), [])
+        self.assertEqual([i["roles"] for i in self.pm_items([failed], [before, fixed])],
+                         [["pm"]])
+
+    def test_uxs_hold_ends_only_where_pms_item_begins(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        with mock.patch.object(work, "demo_items", return_value=[]):
+            self.assertEqual(len(work.queued("ux", [failed], prs=[fixed])), 1)
+        self.assertEqual(work.queued("ux", [failed], prs=[fixed]), [])
+
+    def test_ux_is_offered_it_only_in_failed_qa(self):
+        for state in self.WAITING + self.LATER:
+            self.assertEqual(work.queued("ux", [self.on(state)], prs=[self.demo()]), [], state)
+
     def test_the_lead_is_not_told_it_has_no_pull_request(self):
         items = work.review_items([self.on("In Review")], [self.demo()])
         self.assertEqual(items, [])
@@ -1409,3 +1454,36 @@ class People(unittest.TestCase):
         self.assertEqual(roles.last_tester(s), "qa2")
         self.assertIsNone(roles.planner(s))
         self.assertFalse(roles.kept_for_person(s, TESTERS))
+
+
+class DemoNotMerged(unittest.TestCase):
+    DRAWN = "# AC\n- shows it\n\n# Design\n**Artboard:** `It.dc.html`\n\n"
+
+    def drawn(self, demo_line, state="Ready For Dev"):
+        return dict(story(1, state), description=self.DRAWN + demo_line)
+
+    def offered(self, stories, prs, role="dev"):
+        return [s["id"] for s in work.queued(role, stories, prs=prs)]
+
+    def test_a_story_whose_demo_is_open_is_offered_to_no_builder(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        for role in roles.ROLES:
+            if work.builds(role):
+                self.assertEqual(self.offered(stories, [pr(40, state="open")], role), [], role)
+
+    def test_a_story_whose_demo_merged_is_offered(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged")]), [1])
+
+    def test_a_demo_half_merged_across_the_clients_still_holds_it(self):
+        stories = [self.drawn("**Demo:** app PR #40 · web PR #41")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged"), pr(41, state="open")]),
+                         [])
+
+    def test_a_demo_line_reading_none_is_offered_whatever_it_cites(self):
+        stories = [self.drawn("**Demo:** none: copy only, see #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])
+
+    def test_rework_is_offered_whatever_its_demo_line_says(self):
+        stories = [self.drawn("**Demo:** PR #40", state="Failed QA")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])

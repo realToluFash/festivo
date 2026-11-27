@@ -1,0 +1,38 @@
+# sc-29914: as a Member: Events, the event's Overview, its People (own row), another event's link, Settings and the Organisation page.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: events
+- runFlow: sc29914-member-open.yaml
+- takeScreenshot: overview
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- takeScreenshot: overview-down
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people' }, timeout: 10000 }
+- takeScreenshot: more
+- tapOn: { id: 'event.nav.more.people' }
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.onEvent}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: people
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: people-foot
+- openLink: ${METRO_URL}/--/events/${OTHER_EV}
+- waitForAnimationToEnd: { timeout: 10000 }
+- takeScreenshot: other
+- runFlow: ../open-settings.yaml
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- takeScreenshot: settings-down
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil: { visible: '{{t:settings.organisation}}', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: org
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: org-down
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: org-down2

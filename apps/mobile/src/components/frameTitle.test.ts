@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const EVENT_SCREEN = join('src', 'components', 'EventScreen.tsx');
 const MEMBERS_SCREEN = join('app', 'settings', 'members.tsx');
+const CHECK_IN_SCREEN = join('app', 'events', '[id]', 'check-in.tsx');
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -30,11 +31,11 @@ describe('a phone’s header title inside an event (sc-30413)', () => {
     expect(frame).not.toMatch(/untitled:\s*inEvent/u);
   });
 
-  it('stays on All dates, Edit details and every framed screen but the event’s Overview and a member’s page', () => {
+  it('stays on All dates, Edit details and every framed screen but the event’s Overview, a member’s page and Check-in, whose title scrolls with its list on a tablet', () => {
     const untitled = framed.filter((file) => frames(file).some((tag) => /\buntitled\b/u.test(tag)));
 
     expect(framed).toContain(join('app', 'events', '[id]', 'dates.tsx'));
-    expect(untitled.sort()).toEqual([MEMBERS_SCREEN, EVENT_SCREEN].sort());
+    expect(untitled.sort()).toEqual([MEMBERS_SCREEN, EVENT_SCREEN, CHECK_IN_SCREEN].sort());
   });
 
   it('on the Overview, hands the card’s name the focus the frame’s title had', () => {

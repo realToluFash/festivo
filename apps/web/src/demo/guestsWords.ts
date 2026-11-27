@@ -47,6 +47,7 @@ export const GW = {
   changedSince: 'Changed since you looked',
   nothingChanged: 'Nothing has changed since you last looked.',
   showAllGuests: 'Show all guests',
+  changedFailed: 'We could not load what changed.',
   repliedAt: (time: string) => `Replied at ${time}`,
   repliedDay: (date: string) => `Replied ${date}`,
   changedAt: (time: string) => `Changed at ${time}`,
@@ -63,6 +64,7 @@ export const GW = {
   retry: 'Try again',
 
   repliedOn: (date: string) => `replied ${date}`,
+  emailLink: 'from the email link',
   askedOn: (date: string) => `asked to decide by ${date}`,
   willBeAskedAgain: (date: string) => `will be asked again ${date}`,
   askedAgain: (date: string) => `asked again ${date}`,
@@ -173,6 +175,8 @@ export const GW = {
   namedOf: (named: number, places: number) => `${figure(named)} of ${figure(places)} named`,
   placesRefused: (name: string, named: number) =>
     `${name} already has ${figure(named)} named. Remove some first.`,
+  placesRefusedArrived: (name: string, held: number) =>
+    `${name} already has ${figure(held)} named or arrived. Arrived companions stay on the list.`,
   thisGuest: 'This guest',
   namedByGuest: 'Named by the guest',
   ofMost: (count: number, most: number) => `${figure(count)} of ${figure(most)}`,

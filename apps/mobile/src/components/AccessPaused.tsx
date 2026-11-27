@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useAnyNotOverdue } from '../twoFactorStanding.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
@@ -35,6 +36,7 @@ export function AccessPaused({
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
   const addressGone = suspension.reason === 'address_gone';
   const switchTo = pausedSwitch(others);
+  const othersUnaffected = useAnyNotOverdue(others);
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
@@ -55,7 +57,9 @@ export function AccessPaused({
           {t('accessPaused.since', { when: suspension.since.written })}
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
-        <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t(othersUnaffected ? 'accessPaused.untouched' : 'accessPaused.untouchedSingleEvents')}
+        </Text>
         {suspension.onlyOwner ? (
           <Notice
             tone="quiet"

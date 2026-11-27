@@ -16,6 +16,8 @@ import {
   timezoneLabel,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import i18next from 'i18next';
+import { I18nextProvider } from 'react-i18next';
 
 import {
   type Currency,
@@ -39,6 +41,13 @@ import { writtenTime } from './clock.ts';
 import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './arrivalNote.ts';
 import './arrivalNote.css';
 import {
+  CREDIT_TYPED,
+  type CreditLanguage,
+  FRENCH_CREDIT,
+  creditLanguageOf,
+  isCreditState,
+} from './addressCredit.ts';
+import {
   REPLY_BY_WORDS,
   datesAsk,
   haventCountOf,
@@ -46,7 +55,8 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
-import { saveAnswerOf } from './saveAnswer.ts';
+import { DemoSaveNotice } from './DemoSaveNotice.tsx';
+import { saveAnswerOf, useDemoAnswer } from './saveAnswer.ts';
 import { useSaveAnswer } from '../components/saveAnswer.ts';
 import { SaveNotice } from '../components/SaveNotice.tsx';
 import {
@@ -340,6 +350,7 @@ export function VenueFields({
   addressRef,
   off = false,
   onPicked,
+  credit = 'en',
 }: {
   name: string;
   onName: (name: string) => void;
@@ -362,6 +373,7 @@ export function VenueFields({
   addressRef?: RefObject<HTMLInputElement | null>;
   off?: boolean;
   onPicked?: (venue: SampleVenue | null) => void;
+  credit?: CreditLanguage;
 }) {
   const made = useId();
   const own = useRef<HTMLInputElement>(null);
@@ -370,12 +382,13 @@ export function VenueFields({
   const [offer, setOffer] = useState<string | null>(offering);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const shown = down || !listOpen || off ? [] : suggestionsFor(address);
+  const words = useCreditWords(credit);
 
   useEffect(() => {
     if (focus) field.current?.focus();
   }, [focus, field]);
 
-  return (
+  const fields = (
     <VenueFieldsView
       venue={{ name, address, addressId: null, note }}
       errors={{
@@ -387,7 +400,11 @@ export function VenueFields({
       ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
       {...(nameRef == null ? {} : { nameRef })}
       addressRef={field}
-      suggestions={shown.map((one) => ({ id: one.name, text: one.name, secondaryText: one.line }))}
+      suggestions={shown.map((one) => ({
+        id: one.name,
+        text: one.name,
+        secondaryText: one.line,
+      }))}
       down={down}
       offer={offer == null ? null : { zone: offer, keep: zone }}
       zoneSet={zoneSet}
@@ -420,22 +437,37 @@ export function VenueFields({
       onKeepZone={() => setOffer(null)}
     />
   );
+
+  return words == null ? fields : <I18nextProvider i18n={words}>{fields}</I18nextProvider>;
+}
+
+/** sc-80918: the French state shows the field in French, with the credit in OpenStreetMap's own French wording until the linguist's lands. */
+function useCreditWords(language: CreditLanguage) {
+  const [words] = useState(() => {
+    if (language === 'en') return null;
+    const local = i18next.cloneInstance({ lng: language, forkResourceStore: true });
+    local.addResource(language, 'translation', 'eventForm.creditOsm', FRENCH_CREDIT);
+    return local;
+  });
+  return words;
 }
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
 export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const typing = state === 'venueSuggestions' || state === 'venueDown';
+  const typing = state === 'venueSuggestions' || state === 'venueDown' || isCreditState(state);
   const [name, setName] = useState(
     typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
   );
   const [address, setAddress] = useState(
-    state === 'venueSuggestions'
-      ? 'Eko Hot'
-      : state === 'venueDown'
-        ? '12 Rua'
-        : state === 'venueZone'
-          ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
-          : (event.venue?.address ?? ''),
+    isCreditState(state)
+      ? CREDIT_TYPED[state]
+      : state === 'venueSuggestions'
+        ? 'Eko Hot'
+        : state === 'venueDown'
+          ? '12 Rua'
+          : state === 'venueZone'
+            ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
+            : (event.venue?.address ?? ''),
   );
   const [picked, setPicked] = useState<SampleVenue | null>(null);
   const [zone, setZone] = useState(event.timeZone);
@@ -506,7 +538,8 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         zone={zone}
         onZone={setZone}
         down={down}
-        listing={state === 'venueSuggestions'}
+        listing={state === 'venueSuggestions' || isCreditState(state)}
+        credit={creditLanguageOf(state)}
         offering={state === 'venueZone' ? 'Africa/Lagos' : null}
         focus={typing}
         note={note}
@@ -696,7 +729,7 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
   );
   const [refused, setRefused] = useState(refusing ? 0 : null);
   const [pending, setPending] = useState(answers);
-  const answered = useSaveAnswer();
+  const answered = useDemoAnswer();
   const notice = useRef<HTMLDivElement>(null);
   const changed = picked !== event.currency;
 
@@ -726,7 +759,7 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
         </Broken>
       )}
       <Radios legend={W.currency} choices={CURRENCY_CHOICES} picked={picked} onPick={setPicked} />
-      <SaveNotice
+      <DemoSaveNotice
         answered={answered}
         onLatest={() => {
           const latest = latestOf(event);
@@ -747,7 +780,7 @@ export function NamePart({ event, state, onDirty, onClose, onSave, onLatest }: P
     state === 'nameBlank' ? '' : answers == null ? event.name : `${event.name}, the reception`,
   );
   const [pending, setPending] = useState(answers);
-  const answered = useSaveAnswer();
+  const answered = useDemoAnswer();
   const [tried, setTried] = useState(state === 'nameBlank');
   const field = useRef<HTMLInputElement>(null);
   const length = eventNameLength(name);
@@ -784,7 +817,7 @@ export function NamePart({ event, state, onDirty, onClose, onSave, onLatest }: P
         onChange={setName}
       />
       <OnceSaved />
-      <SaveNotice
+      <DemoSaveNotice
         answered={answered}
         onLatest={() => {
           const latest = latestOf(event);

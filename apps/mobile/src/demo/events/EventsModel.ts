@@ -36,12 +36,20 @@ import {
 } from '../../kit/eventOverview.ts';
 import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { DUPLICATE_STATES } from './Duplicate.ts';
-import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
+import {
+  CLOCKS,
+  DINER,
+  READER_ZONE,
+  SUGGESTIONS,
+  type SampleEvent,
+  type Suggestion,
+} from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 import { NEW_STATES } from './NewEventModel.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
 import { MAKE_LIVE_STATES } from './MakeLive.ts';
+import { LIVE_ONE_DAY_STATES, dinerDates, liveOneDayClock, liveOneDayOf } from './LiveOneDay.ts';
 import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
@@ -64,6 +72,7 @@ export function shownEvent(event: SampleEvent, now: Date): Shown {
       {
         ...event,
         place: event.venue?.place ?? null,
+        city: null,
         photo: event.photo ? 'standIn' : null,
         milestones: datesOf(event, now),
       },
@@ -170,6 +179,7 @@ export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Mi
 
 /** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
 export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
+  if (event.id === DINER.id) return dinerDates(event, say.starts(event.name));
   const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
 
   return [
@@ -218,6 +228,11 @@ const SAMPLE_FIRST_DAY = 1;
 
 export function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en').replace(/[‘’]/g, "'");
+}
+
+export function suggestionsFor(address: string): readonly Suggestion[] {
+  if (folded(address).length < 3) return [];
+  return SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)));
 }
 
 /** The sample's stand-in for the API's search: any part of the event's or the venue's name, accents ignored. */
@@ -335,6 +350,7 @@ export const LIST_STATES = [
   'eventsFirst',
   'eventsZero',
   'eventsOffline',
+  'liveOneDay',
   ...NEW_STATES,
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
@@ -441,10 +457,15 @@ export const EVENT_STATES = [
   'replyByNow',
   'replyBySaved',
   'replyByRemoved',
+  'replyByGone',
   'venue',
   'venueSuggestions',
   'venueZone',
   'venueDown',
+  'venueOne',
+  'venueShort',
+  'venueNoMatch',
+  'venueFrench',
   'venueNote',
   'venueNoteTooLong',
   'venueNoteRefused',
@@ -460,6 +481,7 @@ export const EVENT_STATES = [
   'currencyRefused',
   'name',
   'nameBlank',
+  'nameGone',
   'cover',
   'coverRefused',
   'coverPhoto',
@@ -492,6 +514,7 @@ export const EVENT_STATES = [
   ...FINAL_NUMBERS_STATES,
   ...CHANGES_STATES,
   ...MAKE_LIVE_STATES,
+  ...LIVE_ONE_DAY_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
@@ -499,8 +522,18 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
   return EVENT_STATES.find((state) => state === value) ?? null;
 }
 
+/** The event page's ?state=, unless the open area took it as its own: Messages' loading is not the event's. */
+export function eventStateBeside(
+  value: string | undefined,
+  areaState: string | null,
+): EventDemoState | null {
+  return areaState == null ? eventStateOf(value) : null;
+}
+
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
+  const liveOneDay = liveOneDayOf(state);
+  if (liveOneDay != null) return liveOneDayClock(liveOneDay);
   if (
     state === 'now' ||
     state === 'endNow' ||
@@ -532,11 +565,16 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByGone':
       return 'replyBy';
     case 'venue':
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':
@@ -554,6 +592,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameGone':
       return 'name';
     case 'cover':
     case 'coverRefused':

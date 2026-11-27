@@ -133,13 +133,16 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame([
             'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'needs' => ['allergies' => [], 'diet' => [], 'access' => [], 'otherAllergy' => null, 'otherDiet' => null, 'otherAccess' => null, 'changed' => null], 'places' => 0, 'companions' => [], 'unnamed' => []],
             'language' => ['chosen' => null, 'host' => null, 'organisation' => 'en'],
-            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'thankYou' => null, 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null, 'arrivalNote' => null, 'replyBy' => null],
+            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'organisation' => 'Ìrè Events', 'thankYou' => null, 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null, 'arrivalNote' => null, 'replyBy' => null],
             'phase' => 'live',
             'started' => false,
+            'onTheDay' => false,
             'answersOpen' => true,
             'answersClosedOn' => null,
             'calendarFeed' => null,
+            'checkInCode' => null,
             'programme' => [],
+            'meals' => ['you' => $guest, 'courses' => [], 'answers' => [], 'excluded' => []],
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());
@@ -176,6 +179,22 @@ final class GuestLinksTest extends ApiTestCase
 
         $this->choose(Str\repeat('x', 43), 'fr');
         self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function replacingEndsTheCheckInCodeTheOldLinksPageShowed(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $old = $this->checkInCode($guest);
+
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
+        self::assertSame(204, $this->statusCode());
+        $new = $this->checkInCode($guest);
+        $door = Json\encode($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/check-in'));
+
+        self::assertNotSame($old, $new);
+        self::assertStringNotContainsString(\hash('sha256', $old), $door);
+        self::assertStringContainsString(\hash('sha256', $new), $door);
     }
 
     #[Test]
@@ -427,6 +446,11 @@ final class GuestLinksTest extends ApiTestCase
     private function token(string $guest, ?string $eventId = null): string
     {
         return Str\after(Type\string()->coerce($this->link($guest, $eventId)), '/i/') ?? self::fail('no token');
+    }
+
+    private function checkInCode(string $guest): string
+    {
+        return Type\string()->coerce(self::em()->getConnection()->fetchOne('SELECT check_in_code FROM guests WHERE id = :id', ['id' => $guest]));
     }
 
     private function flagged(string $guest): bool

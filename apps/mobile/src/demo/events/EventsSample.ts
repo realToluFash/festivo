@@ -351,8 +351,42 @@ export const REUNION: SampleEvent = {
   photo: false,
 };
 
+/** Not one of the twenty either: the door code's event, Lumen Feiras's in Portugal, which People draws in its event's frame (sc-72). */
+export const DOOR_WEDDING: SampleEvent = {
+  id: 'evt-joana-rui',
+  name: 'Joana & Rui’s wedding',
+  type: 'wedding',
+  venue: venue('Quinta do Torneiro', 'Oeiras, Portugal', 'Oeiras'),
+  arrivalNote: null,
+  timeZone: LISBON,
+  startsAt: '2026-11-14T15:00:00Z',
+  endsAt: '2026-11-14T23:30:00Z',
+  hosts: ['Joana & Rui'],
+  currency: 'EUR',
+  status: 'live',
+  concludedAt: null,
+  photo: false,
+};
+
+/** Not one of the twenty: the one-day event happening tonight, 19:00 to 23:30 on the reader's day (sc-93858). */
+export const DINER: SampleEvent = {
+  id: 'evt-diner-1',
+  name: 'Dîner en direct',
+  type: 'party',
+  venue: venue('The Clerk’s House', '235 Shoreditch High Street, London E1 6PJ', 'London'),
+  arrivalNote: null,
+  timeZone: LONDON,
+  startsAt: '2026-11-03T19:00:00Z',
+  endsAt: '2026-11-03T23:30:00Z',
+  hosts: ['Ire Events'],
+  currency: 'GBP',
+  status: 'live',
+  concludedAt: null,
+  photo: false,
+};
+
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return [...EVENTS, REUNION].find((event) => event.id === id) ?? null;
+  return [...EVENTS, REUNION, DOOR_WEDDING, DINER].find((event) => event.id === id) ?? null;
 }
 
 export const TYPE_WORDS: Record<EventType, string> = {

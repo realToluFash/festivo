@@ -1,11 +1,12 @@
-import { router } from 'expo-router';
 import { type ReactNode, type Ref, createContext, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useUnread } from '../notificationsUnread.ts';
+import { useBellOpens } from './BellOpens.tsx';
 import { RoundButton } from './SettingsParts.tsx';
 import { tokens } from '../theme/tokens.ts';
+import { useWayBackToNone } from './wayBackToNone.ts';
 
 /** The bell as the demos draw it: round and grey, a dot while anything is unread, and the exact count in its name. */
 export function Bell({
@@ -35,11 +36,25 @@ export function Bell({
   );
 }
 
-/** The bell in the frame (sc-3980), opening Notifications. */
+/** The bell in the frame (sc-3980), opening Notifications on a phone and its popover on a tablet (sc-83081). */
 export function BellButton() {
-  const unread = useUnread();
+  const fromNone = useWayBackToNone();
 
-  return <Bell unread={unread} onPress={() => router.push('/notifications')} testID="frame.bell" />;
+  if (fromNone != null) return null;
+
+  return <OpensBell />;
+}
+
+function OpensBell() {
+  const unread = useUnread();
+  const { ref, open, popover } = useBellOpens();
+
+  return (
+    <>
+      <Bell ref={ref} unread={unread} onPress={open} testID="frame.bell" />
+      {popover}
+    </>
+  );
 }
 
 /** On an iPad on its side, where the frame draws no title and so no bell, the pane's own title row ends with the bell (sc-68052). */

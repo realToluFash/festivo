@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,8 @@ async function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, SLOW);
+  if (!path.includes('state=payers_loading'))
+    await waitFor(() => expect(document.querySelector('.bt-loading')).toBeNull(), SLOW);
 
   return router;
 }
@@ -137,27 +139,74 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     expect(screen.queryByText('This would take the event over its ceiling.')).toBeNull();
   });
 
-  it(
-    'shows a fee at £0 with no margin figure, and refuses a markup that is not a number',
-    SLOW,
-    async () => {
-      await open(at('margin_zero_price'));
-      expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
-      cleanup();
+  it('prices a fee from its row, and refuses a markup that is not a number', SLOW, async () => {
+    await open(at('margin_zero_price'));
+    const card = () => screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
+    expect(card()).toContain('Client total£22,296 to £26,292');
+    expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
+    const openFee = () =>
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+    const fee = () => screen.getByLabelText('Charged at');
+    const save = () =>
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+    openFee();
+    expect(screen.getByText('Cost £0.00. Leave it empty to charge by the markup.')).toBeTruthy();
+    fireEvent.change(fee(), { target: { value: '' } });
+    save();
+    expect(screen.getByText('Price removed.')).toBeTruthy();
+    expect(section('Costs').textContent).toContain(
+      'Planning feeCost £0.00 · Charged at £0.00 · 20% markup, the event’sNo figure',
+    );
+    expect(section('Markup').textContent).not.toContain('Planning fee');
+    expect(card()).toContain('Client total£22,296 to £26,292');
+    openFee();
+    expect(screen.queryByText('Cost £0.00. Leave it empty to charge by the markup.')).toBeNull();
+    fireEvent.change(fee(), { target: { value: '' } });
+    save();
+    expect(screen.getByText('Enter a price of 0 or more, in numbers only.')).toBeTruthy();
+    fireEvent.change(fee(), { target: { value: '3000' } });
+    save();
+    expect(section('Markup').textContent).toContain('Planning fee');
+    expect(section('Costs').textContent).toContain('Charged at £3,000.00 · its own price100.0%');
+    expect(card()).toContain('Client total£25,296 to £29,292');
+    expect(card()).toContain('Margin£5,566 to £6,232');
+    const feeRow = () =>
+      within(section('Costs'))
+        .getByRole('button', { name: /^Planning fee/ })
+        .closest('li');
+    expect(within(feeRow() as HTMLElement).getByRole('status').textContent).toBe('Saved.');
+    openFee();
+    expect((fee() as HTMLInputElement).value).toBe('3,000.00');
+    expect(screen.queryByText('Saved.')).toBeNull();
+    fireEvent.change(fee(), { target: { value: '' } });
+    save();
+    expect(within(feeRow() as HTMLElement).getByRole('status').textContent).toBe('Price removed.');
+    expect(document.querySelector('.toast')).toBeNull();
+    const djRow = () =>
+      within(section('Costs')).getByRole('button', { name: /^DJ/ }).closest('li') as HTMLElement;
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '1000' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Saved.');
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    expect((screen.getByLabelText('Charged at') as HTMLInputElement).value).toBe('1,000.00');
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Price removed.');
+    cleanup();
 
-      await open(at('markup_nan'));
-      const dialog = await screen.findByRole('dialog', { name: 'Markup' }, SLOW);
-      expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
-      cleanup();
+    await open(at('markup_nan'));
+    const dialog = await screen.findByRole('dialog', { name: 'Markup' }, SLOW);
+    expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
+    cleanup();
 
-      await open(at('margin_live'));
-      expect(
-        screen.getByText(
-          'Julien Moreau changed Photography’s markup to 25%, so the margin went up by £240.',
-        ),
-      ).toBeTruthy();
-    },
-  );
+    await open(at('margin_live'));
+    expect(
+      screen.getByText(
+        'Julien Moreau changed Photography’s markup to 25%, so the margin went up by £240.',
+      ),
+    ).toBeTruthy();
+  });
 
   it('opens on the plain Budget and turns to the margin face with See margin', SLOW, async () => {
     await open(at('populated'));
@@ -224,6 +273,17 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
       expect(screen.queryByText('Markup removed.')).toBeNull();
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(within(markup()).getByRole('button', { name: /^Whole event/ }));
+      dialog = screen.getByRole('dialog', { name: 'Markup' });
+      fireEvent.change(within(dialog).getByLabelText('Markup'), { target: { value: '0' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      expect(within(markup()).getByRole('button', { name: /^Whole event/ }).textContent).toContain(
+        'At cost, chosen',
+      );
+      expect(section('Costs').textContent).toContain('at cost, chosen');
+      expect(section('Costs').textContent).not.toContain('no markup set');
+      cleanup();
+      await open(at('margin_unset'));
       expect(screen.queryByRole('dialog', { name: 'Markup' })).toBeNull();
       expect(markup().textContent).toContain('No markup set');
       expect(section('Costs').textContent).toContain('no markup set0.0%');
@@ -284,7 +344,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(schedule.textContent).toContain(
         'Paid Saturday, October 31. Added by Julien Moreau as already paid, so Undo deletes it.',
       );
-      expect(within(schedule).getAllByRole('button', { name: 'Undo' })).toHaveLength(2);
+      expect(within(schedule).getAllByRole('button', { name: 'Undo' })).toHaveLength(3);
       cleanup();
 
       await open(at('added_deleted', '&vendor=v3'));
@@ -298,6 +358,10 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       await open(at('payments_read_only', '&vendor=v3&plan=downgraded'));
       expect(section('Schedule').textContent).toContain('Due Fri, Oct 30 · No longer chased.');
       expect(within(section('Schedule')).queryByRole('button', { name: 'Mark paid' })).toBeNull();
+      expect(section('Schedule').textContent).toContain(
+        'Paid Saturday, October 31. Added by Julien Moreau as already paid.',
+      );
+      expect(section('Schedule').textContent).not.toContain('Undo');
     },
   );
 
@@ -333,8 +397,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       cleanup();
 
       await open(at('payers_live'));
-      const live =
-        'Julien Moreau changed who pays for Room hire, so Mr and Mrs Obi’s share went down by £3,150.00.';
+      const live = 'Mr and Mrs Obi’s share went down by £3,150.00.';
       expect(screen.getByText(live)).toBeTruthy();
       fireEvent.click(
         within(screen.getByRole('region', { name: 'Has a payer' })).getByRole('button', {
@@ -342,6 +405,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
         }),
       );
       fireEvent.click(screen.getByRole('button', { name: 'Leave with no payer' }));
+      await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW);
       expect(screen.queryByText(live)).toBeNull();
       expect(document.querySelector('.is-washed')).toBeNull();
       cleanup();
@@ -566,7 +630,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
 
       for (const state of ['choose_fixed_blank', 'choose_fixed_decimals']) {
         await open(at(state));
-        expect(screen.getByText('Enter an amount in pounds, like 400 or 400.50.')).toBeTruthy();
+        expect(screen.getByText('Enter an amount above 0, like 400.50.')).toBeTruthy();
         cleanup();
       }
 
@@ -576,6 +640,92 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
           'The fixed amounts come to £6,800.00, more than £6,528.00, the least this can cost. Lower them so they fit.',
         ),
       ).toBeTruthy();
+    },
+  );
+
+  it(
+    'reads a fee line at 0 with its own price as priced on the plain Budget (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const fee = (): HTMLElement => {
+        const row = main().querySelector<HTMLElement>('[data-line="fee"]');
+        if (row == null) throw new Error('the Planning fee is not drawn');
+
+        return row;
+      };
+      expect(within(fee()).getByText('Planning fee')).toBeTruthy();
+      expect(within(fee()).getAllByText('£0.00').length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+      expect(within(main()).queryByRole('button', { name: 'Add a price' })).toBeNull();
+      cleanup();
+
+      await open(at('fee_beside_not_priced'));
+      expect(within(main()).getAllByText(/1 cost not priced yet/).length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      const arch = main().querySelector<HTMLElement>('[data-line="arch"]');
+      expect(arch == null ? null : within(arch).getByText('Not priced')).toBeTruthy();
+    },
+  );
+
+  it(
+    'draws the fee line once on See margin, and turns it Not priced when its price is emptied (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const times = (text: string, name: string) =>
+        (section(name).textContent ?? '').split(text).length - 1;
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      expect(times('Planning fee', 'Costs')).toBe(1);
+      expect(section('Costs').textContent).toContain(
+        'Planning feeCost £0.00 · Charged at £3,000.00 · its own price100.0%',
+      );
+      expect(times('Planning fee', 'Markup')).toBe(1);
+
+      const priceFee = (value: string) => {
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+        fireEvent.change(screen.getByLabelText('Charged at'), { target: { value } });
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      };
+      priceFee('');
+      expect(section('Costs').textContent).toContain('Charged at £0.00 · 20% markup, the event’s');
+      expect(times('Planning fee', 'Markup')).toBe(0);
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      const fee = main().querySelector<HTMLElement>('[data-line="fee"]');
+      expect(fee == null ? null : within(fee).getByText('Not priced')).toBeTruthy();
+      expect(within(main()).getAllByText(/1 cost not priced yet/).length).toBeGreaterThan(0);
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('3000');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+    },
+  );
+
+  it(
+    'keeps a fee line at 0 through Remove and Undo, so pricing it again takes it off the count (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const priceFee = (value: string) => {
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+        fireEvent.change(screen.getByLabelText('Charged at'), { target: { value } });
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      };
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('3000');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      const fee = main().querySelector<HTMLElement>('[data-line="fee"]');
+      expect(fee == null ? null : within(fee).queryByText('Not priced')).toBeNull();
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
     },
   );
 });

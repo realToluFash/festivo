@@ -61,14 +61,7 @@ import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { NewEventScreen } from './NewEvent.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
-import {
-  type Anchor,
-  LoadingBlock,
-  SunkTabs,
-  PageToast,
-  anchorUnder,
-  useAnchorFollowsTurn,
-} from './Summary.tsx';
+import { type Anchor, LoadingBlock, SunkTabs, PageToast, anchorUnder } from './Summary.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -144,7 +137,6 @@ export function EventsScreen({
   const [searchAttempt, setSearchAttempt] = useState(0);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
-  useAnchorFollowsTurn(filterRef, menuAt != null, setMenuAt);
   const filterWords = useFilterWords(filters, locale);
   if (lookIn !== organisationId) {
     setLookIn(organisationId);
@@ -324,7 +316,7 @@ export function EventsScreen({
         () => undefined,
       );
     const stop = followReadingAgain(
-      ids.map((id) => realtimeTopic('EventHeadcount', id)),
+      ids.flatMap((id) => [realtimeTopic('EventHeadcount', id), realtimeTopic('EventCheckIn', id)]),
       () => api.headcountsSubscription(organisationId, ids),
       () => void readFigures(),
       FIGURES_AGAIN_MS,
@@ -387,7 +379,7 @@ export function EventsScreen({
     router.push(guestsHref(id, filter));
   };
 
-  const searchRow = (off: boolean) => (
+  const searchRow = (off: boolean, filterUnseen = false) => (
     <SearchRow
       offline={searchOff}
       field={
@@ -408,6 +400,7 @@ export function EventsScreen({
           off={off}
           open={menuAt != null}
           onPress={() => anchorUnder(filterRef, setMenuAt)}
+          unseen={filterUnseen}
         />
       }
     />
@@ -440,7 +433,7 @@ export function EventsScreen({
 
   const list = !reads ? null : load.kind === 'loading' ? (
     <View style={styles.loading}>
-      {searchRow(true)}
+      {searchRow(true, true)}
       <SunkTabs />
       <LoadingBlock words={t('eventsScreen.loading')} />
     </View>
@@ -490,7 +483,7 @@ export function EventsScreen({
       )}
       <EventsFilterMenu
         at={menuAt}
-        onClose={() => setMenuAt(null)}
+        onAt={setMenuAt}
         opener={filterRef}
         filters={filters}
         onFilters={setFilters}

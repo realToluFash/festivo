@@ -8,7 +8,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { demoOpens } from './gate.ts';
+import { PASSKEY_WORDS as P } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
+import { readAddressesInline } from '../components/wholeAddressTesting.ts';
 
 const tested = config();
 
@@ -551,6 +553,16 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(screen.getByRole('link', { name: /This link has already been used/ })).toBeDefined();
   });
 
+  it('names the passkeys and the app in the lost link at the code step after a passkey (sc-86885)', async () => {
+    await page('?page=code&state=has-passkey', 'Enter your code');
+
+    expect(
+      screen.getByRole('link', {
+        name: 'Lost your passkeys, your authenticator and your recovery codes?',
+      }),
+    ).toBeDefined();
+  });
+
   it('opens from sign-in with the email typed there, and Back returns to that sign-in', async () => {
     await signInBoard('signed-out');
     type('Email', 'ade@ire.events');
@@ -865,6 +877,52 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     ).toBeNull();
   });
 
+  it.each([
+    ['?page=recovery&state=passkeys-only', 'Lost your passkeys and your recovery codes?'],
+    [
+      '?page=recovery&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+  ])('names the factors the member has in the lost link, at %s (sc-86885)', async (query, lost) => {
+    await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+
+    expect(screen.getByRole('link', { name: lost })).toBeDefined();
+  });
+
+  it.each([
+    [
+      '?page=recovery&state=passkeys-only',
+      'Lost your passkeys and your recovery codes?',
+      'Get back in without your passkeys',
+      'For when you have lost your passkeys and your recovery codes.',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+      'Get back in without your passkeys or authenticator',
+      'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+    ],
+    [
+      '?page=code',
+      'Lost your authenticator and your recovery codes?',
+      'Get back in without your authenticator',
+      'For when you have lost your authenticator app and your recovery codes.',
+    ],
+  ])(
+    'opens the lost page named for the factors the link named, from %s (sc-86885, #87331)',
+    async (query, lost, title, line) => {
+      await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+      fireEvent.click(screen.getByRole('link', { name: lost }));
+
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+      expect(screen.getByText(line)).toBeDefined();
+    },
+  );
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
@@ -1041,6 +1099,28 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+
+  it('says a refused passkey until Use a passkey, and pauses after the fifth with a code still offered (sc-86885)', async () => {
+    await page('?page=passkey&state=refused', P.waitTitle);
+    expect(screen.getByText(P.refused).closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+    expect(screen.queryByText(P.refused)).toBeNull();
+
+    for (let refusal = 2; refusal <= TRIES; refusal += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Demo: a passkey that does not work' }));
+      if (refusal < TRIES) {
+        expect(screen.getByText(P.refused)).toBeDefined();
+        fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+      }
+    }
+
+    expect(screen.getByText(P.pausedTitle)).toBeDefined();
+    expect(screen.queryByText(P.refused)).toBeNull();
+    expect(screen.getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
   });
 });
 
@@ -1478,6 +1558,22 @@ describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
     fireEvent.click(screen.getByRole(role, { name }));
     expect(await screen.findByRole('heading', TODAY)).toBeDefined();
     expect(screen.queryByText('New to Soirely?')).toBeNull();
+  });
+
+  it('refuses an invitation to a phone-only account until it adds the email (sc-4235)', async () => {
+    await open('/demo/ways-in?page=invitation&state=no-email', 'Add your email address first');
+
+    expect(
+      screen.getByText(
+        `This invitation is for ${SAMPLE.email}. Add that address to your account and verify it, then accept the invitation.`,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('+44 ••• ••• 3456')).toBeDefined();
+    expect(screen.queryByText(SAMPLE.email, { selector: 'span' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Add an email address' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
   });
 
   it('lands A few details saved with no number on Today', async () => {
@@ -1991,6 +2087,8 @@ describe('Settings at a desk (sc-29708)', () => {
 });
 
 describe('People on an event at a desk (sc-29915)', () => {
+  readAddressesInline();
+
   beforeEach(() => inEnvironment('development'));
 
   async function people(state?: string) {
@@ -2260,5 +2358,59 @@ describe('People on an event at a desk (sc-29915)', () => {
     fireEvent.click(add.getByRole('button', { name: 'Add' }));
     expect(add.getByText('That person is already a member of this organisation.')).toBeDefined();
     expect(screen.getByRole('dialog', { name: 'Add people' })).toBeDefined();
+  });
+
+  it('gives someone from outside a service level from Add people (sc-4002, #93365)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByText('For the service')).toBeDefined();
+    expect(
+      (add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('bisi@lagoslights.example can work the floor now.')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /^bisi@lagoslights\.example.*Can work the floor/u }),
+    ).toBeDefined();
+  });
+
+  it('offers the service levels only while it sends outside, never to a ticked member (sc-4002)', async () => {
+    await people('addOutside');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByRole('radio', { name: /^Can run the floor/u })).toBeDefined();
+    const field = add.getByLabelText('Name, email or mobile number');
+    fireEvent.change(field, { target: { value: '' } });
+    expect(add.queryByText('For the service')).toBeNull();
+    const [member] = add.getAllByRole('checkbox');
+    if (member == null) throw new Error('no member offered');
+    fireEvent.click(member);
+    fireEvent.change(field, { target: { value: 'bisi@lagoslights.example' } });
+
+    const floor = add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement;
+    expect(floor.disabled).toBe(true);
+    expect(
+      add.getAllByText('For someone from outside only. Untick the members to give it.'),
+    ).toHaveLength(3);
+  });
+
+  it('keeps members off while a service level is picked (sc-4002)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), {
+      target: { value: '' },
+    });
+    expect(
+      add.getByText('Members take one of the four roles above. Pick one to add them as well.'),
+    ).toBeDefined();
+    for (const box of add.getAllByRole('checkbox')) {
+      expect((box as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(add.getByRole('radio', { name: /^Can view/u }));
+    expect(add.queryByText('For the service')).toBeNull();
   });
 });

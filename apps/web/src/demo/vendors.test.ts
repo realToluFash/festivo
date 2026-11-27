@@ -5,6 +5,8 @@ import {
   BLANK,
   CATEGORIES,
   NOT_LOOKING,
+  LONGEST_EVENT_NAME,
+  ONE_WORD_EVENT_NAME,
   PAGE_SIZE,
   SAVOUR,
   VENDORS_PAGES,
@@ -261,6 +263,17 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(STATES.filter((state) => !named.includes(state))).toEqual([]);
     expect(named).not.toContain('read_only');
     expect(named).toContain('archive_refused');
+    expect(named).toContain('archive_refused_long');
+    expect(named).toContain('archive_refused_one_word');
+    expect([...LONGEST_EVENT_NAME]).toHaveLength(120);
+    expect(ONE_WORD_EVENT_NAME).toMatch(/^\p{L}{60}$/u);
+    expect(vendorsStart('archive_refused_long').dialog).toMatchObject({
+      kind: 'edit',
+      id: 'v3',
+      refused: true,
+      owing: [{ id: 'evt-wed-4', name: LONGEST_EVENT_NAME }, { id: 'evt-ireti-2' }],
+    });
+    expect(vendorsStart('archive_refused').dialog).not.toHaveProperty('owing');
     expect(vendorsStart('archive_refused').dialog).toMatchObject({
       kind: 'edit',
       id: 'v3',

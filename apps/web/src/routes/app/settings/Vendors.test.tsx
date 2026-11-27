@@ -83,6 +83,8 @@ function signedIn(organisation: Membership): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+let reminders = { days: 3, inForce: true };
+
 type Sent = { method: string; path: string; search: string; body: unknown };
 
 function answering(
@@ -99,6 +101,8 @@ function answering(
     const one = { method, path: url.pathname, search: url.search, body };
     sent.push(one);
 
+    if (method === 'GET' && url.pathname.endsWith('/payment-reminders'))
+      return new Response(JSON.stringify(reminders), { status: 200 });
     if (method === 'GET') return new Response(JSON.stringify(read(url.search)), { status: 200 });
 
     return write(one);
@@ -115,6 +119,7 @@ function open(at = '/app/settings/vendors') {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  reminders = { days: 3, inForce: true };
 });
 
 describe('Settings › Vendors at a desk (sc-82)', () => {
@@ -180,7 +185,7 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     fireEvent.click(form.getByRole('button', { name: 'Add' }));
 
     expect(form.getByText('2 fields need fixing, so nothing was sent.')).toBeDefined();
-    expect(form.getByText("Enter the vendor's name.")).toBeDefined();
+    expect(form.getByText('Enter the vendor’s name.')).toBeDefined();
     expect(form.getByText('Choose the category.')).toBeDefined();
     expect(sent.filter(({ method }) => method !== 'GET')).toEqual([]);
   });
@@ -394,7 +399,13 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
       target: { value: 'tulip' },
     });
-    const again = await screen.findByRole('button', { name: 'Try again' });
+    const again = await waitFor(() => {
+      const rows = screen
+        .getAllByRole('button', { name: 'Try again' })
+        .find((one) => one.closest('.offline-box') == null);
+      expect(rows).toBeDefined();
+      return rows!;
+    });
     reachable = true;
     fireEvent.click(again);
 
@@ -561,5 +572,43 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     const row = document.getElementById('vendor-v7')!;
     expect(row.classList.contains('is-on')).toBe(true);
     await waitFor(() => expect(document.activeElement).toBe(row));
+  });
+});
+
+describe('the way into Payment reminders, on Settings › Vendors (sc-95)', () => {
+  it('shows the organisation’s days under the directory’s card, empty or not, and opens the setting', async () => {
+    signedIn(membership());
+    answering(() => pageOf([]));
+    const router = open();
+
+    const row = await screen.findByRole('link', { name: /^Payment reminders/ });
+    expect(row.textContent).toBe(
+      'Payment reminders3 days before a payment is due, and once the day after, then silence.',
+    );
+    fireEvent.click(row);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/app/settings/vendors/payment-reminders'),
+    );
+  });
+
+  it('says the reminders are off after a downgrade, and still opens the setting', async () => {
+    reminders = { days: 3, inForce: false };
+    signedIn(membership());
+    answering(() => pageOf([BLOOM]));
+    open();
+
+    const row = await screen.findByRole('link', { name: /^Payment reminders are off/ });
+    expect(row.getAttribute('href')).toBe('/app/settings/vendors/payment-reminders');
+  });
+
+  it('is not there for someone who cannot change the setting, nor while the directory loads', async () => {
+    signedIn(membership({ permissions: ['vendors.read'] }));
+    const sent = answering(() => pageOf([BLOOM]));
+    open();
+
+    expect(screen.queryByRole('link', { name: /^Payment reminders/ })).toBeNull();
+    await screen.findByText('Bloom & Co');
+    expect(screen.queryByRole('link', { name: /^Payment reminders/ })).toBeNull();
+    expect(sent.some((one) => one.path.endsWith('/payment-reminders'))).toBe(false);
   });
 });

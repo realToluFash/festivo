@@ -1,7 +1,7 @@
 import type { CalendarFeedLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
-import { type RefObject, useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import { type ReactNode, type RefObject, useEffect, useState } from 'react';
+import { Linking, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -12,7 +12,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
@@ -78,6 +78,7 @@ export function CalendarFeed({
       source={source}
       start={start}
       wide={!phone}
+      sheet={phone}
       onResetting={setResetting}
       onClose={close}
     />
@@ -94,9 +95,7 @@ export function CalendarFeed({
         headingTakesFocus
         testID="calendarFeed.sheet"
       >
-        <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
-          {panel}
-        </ScrollView>
+        {panel}
       </Sheet>
     );
 
@@ -176,6 +175,7 @@ export function SubscribePanel({
   source,
   start,
   wide,
+  sheet = false,
   onResetting,
   onClose,
 }: {
@@ -183,6 +183,8 @@ export function SubscribePanel({
   source: FeedSource;
   start: FeedStart;
   wide: boolean;
+  /** In a phone sheet its head stays above the scroll, so a drag in the sheet's strip never reaches Android's ScrollView (sc-27948). */
+  sheet?: boolean;
   onResetting: (resetting: boolean) => void;
   onClose: () => void;
 }) {
@@ -262,11 +264,25 @@ export function SubscribePanel({
   };
 
   const head = (title: string) => (
-    <View style={styles.head}>
+    <View style={[styles.head, sheet && styles.sheetSides]}>
       <Text size={20} weight="bold" accessibilityRole="header" style={[styles.grow, styles.title]}>
         {title}
       </Text>
       <Close onClose={onClose} />
+    </View>
+  );
+
+  const framed = (testID: string, title: string, body: ReactNode) => (
+    <View style={sheet ? styles.sheetPanel : styles.panel} testID={testID}>
+      {said != null && <Said words={said.words} answer={said.at} />}
+      {head(title)}
+      {sheet ? (
+        <SheetScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          <View style={styles.panel}>{body}</View>
+        </SheetScrollView>
+      ) : (
+        body
+      )}
     </View>
   );
 
@@ -282,10 +298,10 @@ export function SubscribePanel({
       />
     );
 
-    return (
-      <View style={styles.panel} testID="calendarFeed.confirm">
-        {said != null && <Said words={said.words} answer={said.at} />}
-        {head(t('calendarFeed.confirmTitle'))}
+    return framed(
+      'calendarFeed.confirm',
+      t('calendarFeed.confirmTitle'),
+      <>
         <Text size={15} weight="medium" style={styles.body}>
           {t('calendarFeed.confirmBody')}
         </Text>
@@ -310,7 +326,7 @@ export function SubscribePanel({
           />
           {!wide && keepPill}
         </View>
-      </View>
+      </>,
     );
   }
 
@@ -338,10 +354,10 @@ export function SubscribePanel({
           />,
         ];
 
-  return (
-    <View style={styles.panel} testID="calendarFeed.panel">
-      {said != null && <Said words={said.words} answer={said.at} />}
-      {head(t('calendarFeed.title'))}
+  return framed(
+    'calendarFeed.panel',
+    t('calendarFeed.title'),
+    <>
       <Text size={15} weight="medium" style={[styles.secondary, styles.body]}>
         {t('calendarFeed.intro', { organisation: organisationName })}
       </Text>
@@ -465,7 +481,7 @@ export function SubscribePanel({
           </View>
         </>
       )}
-    </View>
+    </>,
   );
 }
 
@@ -486,8 +502,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
+  sheetPanel: { flexShrink: 1, paddingTop: tokens.spaceXl, gap: tokens.spacePillEnd },
+  sheetSides: { paddingHorizontal: tokens.spaceXxl },
   sheetBody: {
-    paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceSm,
   },

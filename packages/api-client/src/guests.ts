@@ -127,6 +127,15 @@ export interface Companion {
   needs?: GuestNeeds | null;
   /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
   seat?: CompanionSeat | null;
+  /** Has a meal answer stored other than skipped (sc-3907), so removing them in Edit asks first. */
+  meal?: boolean;
+  /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
+  arrival?: Arrival | null;
+}
+
+export interface Arrival {
+  at: string;
+  by: string | null;
 }
 
 export interface CompanionSeat {
@@ -184,6 +193,8 @@ export const GUEST_GROUPS_MOST = 50;
 export interface Guest {
   id: string;
   fullName: string;
+  /** How messages greet them (sc-3960), null for none; sent to every reader, unlike the contact details. */
+  greetAs: string | null;
   /** Null for none; a companion is in their host's. */
   group: GuestGroup | null;
   /** Null for none, and for anyone without guests.manage, whom the API never sends it (sc-3773). */
@@ -208,6 +219,10 @@ export interface Guest {
   repliesReopened?: { by: string; at: string } | null;
   /** A reply a host recorded for them (sc-3787): who, and how the guest told them; null for the guest's own, and absent reads as null. */
   replyRecorded?: GuestReplyRecorded | null;
+  /** Added at the door with a name and nothing else (sc-1454): their reply reads Walk-in. */
+  walkIn?: boolean;
+  /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
+  arrival?: Arrival | null;
 }
 
 /** How a guest told the host who recorded their reply (sc-3787). */
@@ -267,6 +282,8 @@ export interface NewGuest {
   companions?: { fullName?: string | null; needs?: NeedsInput }[];
   /** The host's Language for them, null for Not set. Left out of an edit, it stays as it was. */
   language?: string | null;
+  /** Trimmed by the API, blank saved as none; left out of an edit, it stays as it was. */
+  greetAs?: string | null;
   /** Left out of an edit, they stay as they were; so does a kept companion's. */
   needs?: NeedsInput;
   group?: GroupChoice;
@@ -279,6 +296,14 @@ export interface GuestDetails extends Guest {
   added: { at: string; by: string | null };
   /** What Not set falls back to; null as `email` is. */
   organisationLanguage: string | null;
+  /** When the address now on each row was opted out for this organisation (sc-3969), null while it is not; absent without guests.manage. */
+  optOuts?: GuestOptOuts;
+}
+
+export interface GuestOptOuts {
+  email: string | null;
+  texts: string | null;
+  whatsApp: string | null;
 }
 
 /** The whole guest as Edit saves it: each companion kept by `id`, one with no id added, one left out removed. */
@@ -328,6 +353,8 @@ export interface GuestPage {
     hosts: string[];
     /** The hosts' own words, never translated; only once it is Finished (sc-6476). */
     thankYou: string | null;
+    /** The organisation's display name, which Your messages' way in names (sc-3969); empty from an API without it. */
+    organisation: string;
     /** With the event's own offset. */
     startsAt: string;
     timeZone: string;
@@ -344,6 +371,8 @@ export interface GuestPage {
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
   started: boolean;
+  /** From 00:00 on the start date until the end, both in the event's zone, by the server's clock (sc-24381). */
+  onTheDay: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
@@ -352,6 +381,96 @@ export interface GuestPage {
   programme: GuestProgrammeItem[];
   /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
   seating: GuestSeating | null;
+  /** What the guest shows at the door (sc-1301), only while they are Coming: the code, and its QR as an SVG. */
+  checkInCode: { code: string; qrSvg: string } | null;
+  /** The courses that ask guests anything, and each person's answers (sc-3907); no courses is no meal step. */
+  meals: GuestMeals;
+}
+
+/** As a guest is offered it (sc-3907): only Everyone variants, finished choices, and no costs. */
+export interface MealOption {
+  id: string;
+  name: string;
+  allergens: string[];
+}
+
+export interface MealChoice {
+  id: string;
+  question: string;
+  pick: number;
+  required: boolean;
+  options: MealOption[];
+}
+
+export interface MealVariant {
+  id: string;
+  name: string;
+  allergens: string[];
+  diets: string[];
+}
+
+export interface MealDish {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Null is Allergens not stated, empty is none of the 14. A dish with variants takes each variant's. */
+  allergens: string[] | null;
+  diets: string[];
+  variants: MealVariant[];
+  choices: MealChoice[];
+}
+
+export interface MealCourse {
+  id: string;
+  name: string;
+  /** `same` is Everyone gets the same: its one dish asks its way or a choice. */
+  answer: 'choose' | 'same';
+  skippable: boolean;
+  picksClose: { at: string; source: string; closed: boolean };
+  /** Given at `chooseBy` to each person coming with no answer whom it can't harm (sc-1362). */
+  default: { dish: string; variant: string | null; options: string[]; chooseBy: string } | null;
+  dishes: MealDish[];
+}
+
+/** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
+export type MealAnswerKind =
+  'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted' | 'menuChanged';
+
+/** Why a menu change asked a person again (sc-3913), and the dish they had picked. */
+export interface MealChanged {
+  picked: string;
+  why: 'removed' | 'ways' | 'choices' | 'allergen';
+  ways: number | null;
+  /** On `allergen`: the added allergens this person has recorded, in Annex II order. */
+  allergens: string[];
+}
+
+export interface MealAnswer {
+  course: string;
+  /** As served: a chosen pick holding an allergen recorded since is `needsHost`, and still names the pick. */
+  answer: MealAnswerKind;
+  dish: string | null;
+  variant: string | null;
+  options: string[];
+  changed: MealChanged | null;
+}
+
+export interface GuestMeals {
+  /** The guest's own id, the person their picks and answers go by; companions go by theirs. */
+  you: string;
+  courses: MealCourse[];
+  answers: Record<string, MealAnswer[]>;
+  /** By person: the courses whose default they are never given (sc-1362), each with `allergy` or the unmet diet's code. */
+  excluded: Record<string, { course: string; reason: string }[]>;
+}
+
+export interface MealPick {
+  person: string;
+  course: string;
+  answer: Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
+  dish?: string | null;
+  variant?: string | null;
+  options?: string[];
 }
 
 /** A table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name. */
@@ -468,12 +587,36 @@ export interface MovedTogether {
   gone: number;
 }
 
-/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. */
+/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. `stayed` names each guest left because they or a companion arrived (sc-1454). */
 export interface RemovedTogether {
   removal: string | null;
   guests: number;
   companions: number;
   gone: number;
+  stayed: StayedGuest[];
+}
+
+export interface StayedGuest {
+  id: string;
+  fullName: string | null;
+  why: 'arrived' | 'companionArrived';
+}
+
+function asStayed(value: unknown): StayedGuest | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  if (id == null || (row.why !== 'arrived' && row.why !== 'companionArrived')) return null;
+
+  return { id, fullName: text(row.fullName), why: row.why };
+}
+
+/** The guests a 409 `guest_arrived` names (sc-1454), from its problem body. */
+export function stayedOf(problem: unknown): StayedGuest[] {
+  if (typeof problem !== 'object' || problem == null) return [];
+  const stayed = (problem as Record<string, unknown>).stayed;
+
+  return Array.isArray(stayed) ? stayed.map(asStayed).filter((one) => one != null) : [];
 }
 
 function whole(value: unknown): number | null {
@@ -521,7 +664,7 @@ export function asRemovedTogether(value: unknown): RemovedTogether | null {
   if (guests == null || companions == null || gone == null) return null;
   if (removal == null && body.removal !== null) return null;
 
-  return { removal, guests, companions, gone };
+  return { removal, guests, companions, gone, stayed: stayedOf(body) };
 }
 
 function asCounts(value: unknown): GuestCounts | null {
@@ -553,7 +696,17 @@ function asCompanion(value: unknown): Companion | null {
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
     seat: asCompanionSeat(row.seat),
+    meal: row.meal === true,
+    arrival: asArrival(row.arrival),
   };
+}
+
+export function asArrival(value: unknown): Arrival | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const at = text(row.at);
+
+  return at == null ? null : { at, by: text(row.by) };
 }
 
 function asCompanionSeat(value: unknown): CompanionSeat | null {
@@ -640,6 +793,7 @@ export function asGuest(value: unknown): Guest | null {
   return {
     id,
     fullName,
+    greetAs: text(row.greetAs),
     group,
     email: text(row.email),
     mobile: text(row.mobile),
@@ -653,6 +807,8 @@ export function asGuest(value: unknown): Guest | null {
     companions: companions as Companion[],
     repliesReopened: asReopened(row.repliesReopened),
     replyRecorded: reply === 'noReply' ? null : asRecorded(row.replyRecorded),
+    walkIn: row.walkIn === true,
+    arrival: asArrival(row.arrival),
   };
 }
 
@@ -709,9 +865,12 @@ const HEADCOUNT_COUNTS = [
   'awaitingReply',
   'held',
   'declined',
+  'walkIns',
+  'attended',
+  'expected',
 ] as const;
 
-/** People (sc-99). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
+/** People (sc-99). `attended` is everyone arrived, walk-ins included; `expected` is accepted plus everyone attended who is not in it (sc-1454). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
 export type HeadcountCounts = Record<(typeof HEADCOUNT_COUNTS)[number], number> & {
   heldBy: { hostNoReply: number; hostMaybe: number; hostNotComing: number };
 };
@@ -804,5 +963,123 @@ export function asGuestDetails(value: unknown): GuestDetails | null {
     ...guest,
     added: { at, by: text(added?.by) },
     organisationLanguage: text((value as { organisationLanguage?: unknown }).organisationLanguage),
+    ...optOutsOf((value as { optOuts?: unknown }).optOuts),
+  };
+}
+
+function optOutsOf(value: unknown): { optOuts?: GuestOptOuts } {
+  if (typeof value !== 'object' || value == null) return {};
+  const said = value as Record<string, unknown>;
+
+  return {
+    optOuts: { email: text(said.email), texts: text(said.texts), whatsApp: text(said.whatsApp) },
+  };
+}
+
+export type CheckInState = 'before_open' | 'open' | 'ended';
+
+export interface CheckInCompanion {
+  id: string;
+  fullName: string | null;
+  state: CompanionState;
+  arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
+}
+
+/** A guest on the door's list: names, replies, arrivals and their own seat, never a contact, need, group or tablemate. */
+export interface CheckInGuest {
+  id: string;
+  fullName: string;
+  reply: GuestReply;
+  /** When the reply was recorded, in the event's zone. */
+  repliedAt: string | null;
+  /** The SHA-256, in hex, of the guest's check-in code (sc-1301); null for a walk-in. */
+  code: string | null;
+  walkIn: boolean;
+  arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
+  companions: CheckInCompanion[];
+}
+
+export interface CheckIn {
+  state: CheckInState;
+  opensAt: string;
+  timeZone: string;
+  /** Whether anybody on the list has a taken seat: until then the door shows no seat line, and after it a person with none reads "No seat yet" (sc-60684). */
+  seated: boolean;
+  count: { attended: number; expected: number };
+  guests: CheckInGuest[];
+}
+
+const CHECK_IN_STATES: readonly CheckInState[] = ['before_open', 'open', 'ended'];
+
+function asCheckInCompanion(value: unknown): CheckInCompanion | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const state = COMPANION_STATES.find((known) => known === row.state);
+
+  return id == null || state == null
+    ? null
+    : {
+        id,
+        fullName: text(row.fullName),
+        state,
+        arrival: asArrival(row.arrival),
+        seat: asGuestSeat(row.seat),
+      };
+}
+
+function asCheckInGuest(value: unknown): CheckInGuest | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const fullName = text(row.fullName);
+  const reply = REPLIES.find((known) => known === row.reply);
+  if (id == null || fullName == null || reply == null || !Array.isArray(row.companions))
+    return null;
+  const companions = row.companions.map(asCheckInCompanion);
+  if (companions.some((one) => one == null)) return null;
+
+  return {
+    id,
+    fullName,
+    reply,
+    repliedAt: text(row.repliedAt),
+    code: text(row.code),
+    walkIn: row.walkIn === true,
+    arrival: asArrival(row.arrival),
+    seat: asGuestSeat(row.seat),
+    companions: companions as CheckInCompanion[],
+  };
+}
+
+export function asCheckIn(value: unknown): CheckIn | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const door = body.checkIn as Record<string, unknown> | null | undefined;
+  const count = body.count as Record<string, unknown> | null | undefined;
+  if (typeof door !== 'object' || door == null || typeof count !== 'object' || count == null)
+    return null;
+  const state = CHECK_IN_STATES.find((known) => known === door.state);
+  const opensAt = text(door.opensAt);
+  const timeZone = text(door.timeZone);
+  const attended = whole(count.attended);
+  const expected = whole(count.expected);
+  if (state == null || opensAt == null || timeZone == null || attended == null || expected == null)
+    return null;
+  if (!Array.isArray(body.guests)) return null;
+  const guests = body.guests.map(asCheckInGuest);
+  if (guests.some((one) => one == null)) return null;
+
+  return {
+    state,
+    opensAt,
+    timeZone,
+    seated: body.seated === true,
+    count: { attended, expected },
+    guests: guests as CheckInGuest[],
   };
 }

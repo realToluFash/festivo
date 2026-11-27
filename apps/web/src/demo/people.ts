@@ -14,6 +14,19 @@ export const EVENT = 'Adaeze & Tunde’s wedding';
 export const EVENT_ROLES = ['Lead', 'Can edit', 'Can view', 'Can check guests in'] as const;
 export type EventRole = (typeof EVENT_ROLES)[number];
 export const FIRST_ROLE: EventRole = 'Can view';
+/** sc-4002: the levels a join code or someone from outside may hold beside the event roles; never offered to a member. */
+export const SERVICE_LEVELS = [
+  'Can work the floor',
+  'Can work the pass',
+  'Can run the floor',
+] as const;
+export type ServiceLevel = (typeof SERVICE_LEVELS)[number];
+export const SERVICE_LINES: Record<ServiceLevel, string> = {
+  'Can work the floor': 'Marks plates and requests at their own tables.',
+  'Can work the pass': 'Marks plates at the pass and the kitchen stations.',
+  'Can run the floor':
+    'Starts service, fires courses and acts on any table. Nothing else of the event.',
+};
 
 export const ROLE_LINES: Record<EventRole, string> = {
   Lead: 'Everything on this event, including its budget and who’s on it.',
@@ -22,7 +35,24 @@ export const ROLE_LINES: Record<EventRole, string> = {
   'Can check guests in': 'Checks guests in on the day. Names only, no contact details.',
 };
 
-const NOW_CAN: Record<EventRole, { one: string; several: string }> = {
+export type Level = EventRole | ServiceLevel;
+export const LEVEL_LINES: Record<Level, string> = { ...ROLE_LINES, ...SERVICE_LINES };
+export const SERVICE_HEAD = 'For the service';
+export const SERVICE_CLOSING =
+  'The service levels open only the service. None of them sees contact details or the budget.';
+/** sc-4002, #93365: on Add people a service level goes only to the address from outside, never to a ticked member. */
+export const SERVICE_NOT_MEMBERS = 'For someone from outside only. Untick the members to give it.';
+export const MEMBERS_NOT_SERVICE =
+  'Members take one of the four roles above. Pick one to add them as well.';
+
+export function isServiceLevel(level: Level): level is ServiceLevel {
+  return SERVICE_LEVELS.some((one) => one === level);
+}
+
+const NOW_CAN: Record<Level, { one: string; several: string }> = {
+  'Can work the floor': { one: 'can work the floor now.', several: 'can work the floor now.' },
+  'Can work the pass': { one: 'can work the pass now.', several: 'can work the pass now.' },
+  'Can run the floor': { one: 'can run the floor now.', several: 'can run the floor now.' },
   Lead: { one: 'leads this event now.', several: 'lead this event now.' },
   'Can edit': { one: 'can edit now.', several: 'can edit now.' },
   'Can view': { one: 'can view now.', several: 'can view now.' },
@@ -71,7 +101,7 @@ export interface OnEvent {
   name: string;
   initials: string;
   tone: number;
-  role: EventRole;
+  role: Level;
   outside: boolean;
   label: string | null;
   /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
@@ -165,13 +195,16 @@ function onEventAs(id: string, role: EventRole): OnEvent {
   return { id, name, initials, tone, role, outside: false, label: null };
 }
 
+/** Joined from outside, so her account name is cut to its first word on a button. */
+const KEMI = 'kemi.okafor@example.com';
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
     onEventAs(ANA, 'Can edit'),
     onEventAs(TOM, 'Can check guests in'),
     {
-      id: 'kemi.okafor@example.com',
+      id: KEMI,
       name: 'Kemi Okafor',
       initials: 'KO',
       tone: 3,
@@ -204,10 +237,12 @@ export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnE
       );
 }
 
+const LISTED_ORDER: readonly Level[] = [...EVENT_ROLES, ...SERVICE_LEVELS];
+
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
   return [...onEvent].sort(
     (one, other) =>
-      EVENT_ROLES.indexOf(one.role) - EVENT_ROLES.indexOf(other.role) ||
+      LISTED_ORDER.indexOf(one.role) - LISTED_ORDER.indexOf(other.role) ||
       one.name.localeCompare(other.name, 'en'),
   );
 }
@@ -263,12 +298,27 @@ export function firstName(person: Pick<OnEvent, 'name'>): string {
   return person.name.split(' ')[0] ?? person.name;
 }
 
+/** Added by an address or a number and not joined: the API has no account name, only what they were added by (sc-91678). */
+export function unnamed(person: Pick<OnEvent, 'outside' | 'initials'>): boolean {
+  return person.outside && person.initials === '';
+}
+
+/** Only an account name is cut to its first word; nobody else is named on a button (sc-91678). */
+export function keepWords(person: Pick<OnEvent, 'name' | 'outside' | 'initials'>): string {
+  return unnamed(person) ? 'Keep them' : `Keep ${firstName(person)}`;
+}
+
+/** In a sentence, someone with no account name is their whole address or number (sc-91678). */
+export function calledIn(person: Pick<OnEvent, 'name' | 'outside' | 'initials'>): string {
+  return unnamed(person) ? person.name : firstName(person);
+}
+
 export function rolesOff(person: Pick<OnEvent, 'outside'>): EventRole[] {
   return person.outside ? ['Lead'] : [];
 }
 
-export function removeTitle(person: OnEvent): string {
-  return `Remove ${person.name} from this event?`;
+export function removeTitle(name: string): string {
+  return `Remove ${name} from this event?`;
 }
 
 export function removeLine(person: Pick<OnEvent, 'outside'>, org: string = ORGANISATION): string {
@@ -277,19 +327,51 @@ export function removeLine(person: Pick<OnEvent, 'outside'>, org: string = ORGAN
     : `They lose this event on their next request. They stay in ${org}.`;
 }
 
-export function savedWords(person: OnEvent, role: EventRole): string {
+export function savedWords(person: OnEvent, role: Level): string {
   return `Saved. ${person.name} ${NOW_CAN[role].one}`;
 }
 
+export interface AskWords {
+  title: (name: string) => string;
+  line: string;
+  keep: string;
+  go: string;
+}
+
+/** The Remove ask in English, or in French from the product's fr strings for People (sc-91678). */
+export function askWords(
+  person: OnEvent,
+  french: boolean,
+  organisation: string = ORGANISATION,
+): AskWords {
+  if (!french) {
+    return {
+      title: removeTitle,
+      line: removeLine(person, organisation),
+      keep: keepWords(person),
+      go: 'Remove',
+    };
+  }
+
+  return {
+    title: (name) => `Retirer ${name} de cet événement\u00A0?`,
+    line: person.outside
+      ? 'Cette personne perdra l’accès à sa prochaine action.'
+      : `Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans ${organisation}.`,
+    keep: unnamed(person) ? 'Ne pas retirer' : `Garder ${firstName(person)}`,
+    go: 'Retirer',
+  };
+}
+
 export function notChangedLine(person: OnEvent): string {
-  return `We couldn’t change ${firstName(person)}’s role, so it’s still ${person.role}. Check your connection and pick again.`;
+  return `We couldn’t change ${calledIn(person)}’s role, so it’s still ${person.role}. Check your connection and pick again.`;
 }
 
 export function removedToast(person: OnEvent): string {
   return `${person.name} is off this event.`;
 }
 
-export function addedToast(names: readonly string[], role: EventRole): string {
+export function addedToast(names: readonly string[], role: Level): string {
   return names.length === 1
     ? `${names[0] ?? ''} ${NOW_CAN[role].one}`
     : `${names.length} people ${NOW_CAN[role].several}`;
@@ -355,7 +437,7 @@ function readAddress(text: string, country: string): Address | 'name' | 'unusabl
 export function outsideView(
   typed: string,
   country: string,
-  role: EventRole,
+  role: Level,
   onEvent: readonly OnEvent[] = [],
 ): OutsideView {
   const read = readAddress(typed.trim(), country);
@@ -380,7 +462,7 @@ export function outsideRefusal(address: Address, members: readonly OrgMember[]):
 
 export function withOutside(
   onEvent: readonly OnEvent[],
-  role: EventRole,
+  role: Level,
   address: Address,
   job: string,
 ): OnEvent[] {
@@ -400,7 +482,7 @@ export function withOutside(
   ];
 }
 
-export function withRole(onEvent: readonly OnEvent[], id: string, role: EventRole): OnEvent[] {
+export function withRole(onEvent: readonly OnEvent[], id: string, role: Level): OnEvent[] {
   return onEvent.map((one) => (one.id === id ? { ...one, role } : one));
 }
 
@@ -438,9 +520,18 @@ export const PEOPLE_STATES = [
   'addUnusable',
   'addLeadOutside',
   'addMemberAddress',
+  'addServiceLevel',
   'loading',
   'failed',
   'staffLinks',
+  'addressShort',
+  'addressDots',
+  'addressUnbroken',
+  'addressRemove',
+  'mobileRemove',
+  'joinedRemove',
+  'mobileRoleFails',
+  'addressRemoveFr',
 ] as const;
 
 export type PeopleState = (typeof PEOPLE_STATES)[number];
@@ -459,7 +550,11 @@ export interface PeopleStart {
   load: 'loaded' | 'loading' | 'failed';
   place: EventPlace;
   members: OrgMember[];
-  adding?: { typed: string; role: EventRole };
+  adding?: { typed: string; role: Level };
+  /** The row whose role dialog is open, and whether its Remove ask is too. */
+  open?: { id: string; asking: boolean };
+  /** The Remove ask in French, to see it fit at 320 CSS px (sc-91678). */
+  french?: boolean;
 }
 
 export function peopleStateOf(name: string | null): PeopleState {
@@ -478,6 +573,34 @@ export const BISI_ON: OnEvent = {
   outside: true,
   label: 'Lighting',
 };
+
+/** sc-91529's three addresses, added from outside and not joined, so each stands for its name. */
+export const LONG_ADDRESSES = {
+  addressShort: 'amaka.outside@soirely.test',
+  addressDots: 'fundacao.comunitaria.de.oyo.e.artes@soirely.test',
+  addressUnbroken: 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test',
+} as const;
+
+/** An outsider added by mobile number, whose groups stay whole. */
+const MOBILE_ON: OnEvent = {
+  id: '+2348031234567',
+  name: '+234 803 123 4567',
+  initials: '',
+  tone: 6,
+  role: 'Can view',
+  outside: true,
+  label: null,
+};
+
+function withAddress(start: PeopleStart, address: string, asking: boolean): PeopleStart {
+  const outsider: OnEvent = { ...BISI_ON, id: address, name: address, label: null };
+
+  return {
+    ...start,
+    onEvent: [...start.onEvent, outsider, MOBILE_ON],
+    open: { id: address, asking },
+  };
+}
 
 export function peopleStart(state: PeopleState): PeopleStart {
   const start: PeopleStart = {
@@ -506,8 +629,31 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...start, adding: { typed: BISI, role: 'Lead' } };
     case 'addMemberAddress':
       return { ...start, adding: { typed: 'kofi@ire.events', role: FIRST_ROLE } };
+    case 'addServiceLevel':
+      return { ...start, adding: { typed: BISI, role: 'Can work the floor' } };
     case 'staffLinks':
       return { ...start, onEvent: [...start.onEvent, ...STAFF_LINKS] };
+    case 'addressShort':
+    case 'addressDots':
+    case 'addressUnbroken':
+      return withAddress(start, LONG_ADDRESSES[state], false);
+    case 'addressRemove':
+      return withAddress(start, LONG_ADDRESSES.addressUnbroken, true);
+    case 'mobileRemove':
+      return {
+        ...withAddress(start, LONG_ADDRESSES.addressShort, false),
+        open: { id: MOBILE_ON.id, asking: true },
+      };
+    case 'joinedRemove':
+      return { ...start, open: { id: KEMI, asking: true } };
+    case 'mobileRoleFails':
+      return {
+        ...withAddress(start, LONG_ADDRESSES.addressShort, false),
+        roleFails: true,
+        open: { id: MOBILE_ON.id, asking: false },
+      };
+    case 'addressRemoveFr':
+      return { ...withAddress(start, LONG_ADDRESSES.addressShort, true), french: true };
     default:
       return start;
   }
@@ -532,9 +678,18 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('addUnusable', 'Half an address'),
       people('addLeadOutside', 'An address under Lead'),
       people('addMemberAddress', 'A member’s own address, refused by the server'),
+      people('addServiceLevel', 'Someone from outside at a service level (sc-4002)'),
       people('loading', 'Loading'),
       people('failed', 'Failed'),
       people('staffLinks', 'Staff links from the roster, one signed in and one not yet (sc-3912)'),
+      people('addressShort', 'An outsider’s address, broken after its @ (sc-91529)'),
+      people('addressDots', 'An address wider than a line, broken before its dots'),
+      people('addressUnbroken', 'An address with no dot before its @, cut at the line’s end'),
+      people('addressRemove', 'Remove asked for that address'),
+      people('mobileRemove', 'Remove asked for a mobile number not joined: Keep them (sc-91678)'),
+      people('joinedRemove', 'Remove asked for Kemi, joined from outside: Keep Kemi'),
+      people('mobileRoleFails', 'A mobile number’s role change that does not save, named whole'),
+      people('addressRemoveFr', 'Remove asked for an address, in French: Ne pas retirer'),
     ],
   },
 ];

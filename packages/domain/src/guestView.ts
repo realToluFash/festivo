@@ -5,7 +5,8 @@ import { nameKey } from './nameKey.ts';
 import { phoneMatches } from './phone.ts';
 
 /** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
-export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
+export type Standing =
+  'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing' | 'walkIn';
 
 /** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. All and Invited are totals, set apart from the replies below them, which add up to All; Invited is the five replies together (sc-3786). */
 export const CHOICES = [
@@ -17,12 +18,14 @@ export const CHOICES = [
   'held',
   'notComing',
   'notYetInvited',
+  'walkIn',
 ] as const;
 export type Choice = (typeof CHOICES)[number];
 
 /** On All, the groups in the menu's order. A held companion is always under their guest, so Held has no group. */
 const GROUPS: readonly (Standing & Choice)[] = [
   'coming',
+  'walkIn',
   'maybe',
   'noReply',
   'notComing',
@@ -90,6 +93,7 @@ export function countsOf(headcount: HeadcountCounts): Counts {
     held: headcount.held,
     notComing: headcount.declined,
     notYetInvited: headcount.notYetInvited,
+    walkIn: headcount.walkIns,
     invited: headcount.invited,
     havent: headcount.awaitingReply + headcount.heldBy.hostNoReply,
     haventGuests: headcount.awaitingReply,
@@ -129,13 +133,13 @@ function keysOf(person: Person): { name: string | null; email: string | null } {
   return made;
 }
 
-/** sc-3775's chips: a group's id, or No group; a companion is in their guest's. */
+/** sc-3775's chips: a group's id, or No group; a companion is in their guest's. None on keeps everyone, several keep anyone in one of them (sc-90684). */
 export const NO_GROUP = 'none';
 
-export function inGroup(person: Person, group: string | null): boolean {
-  if (group == null) return true;
+export function inGroup(person: Person, groups: readonly string[]): boolean {
+  const id = person.guest.group?.id ?? NO_GROUP;
 
-  return group === NO_GROUP ? person.guest.group == null : person.guest.group?.id === group;
+  return groups.length === 0 || groups.includes(id);
 }
 
 export interface ViewRow {
@@ -153,21 +157,26 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** Whether the choice, the search, Dietary notes and the group chip all keep this person. */
+/** Whether the choice, the search, Dietary notes and the group chips all keep this person. */
 function inView(
   one: Person,
   choice: Choice,
   q: string,
   dietaryOnly: boolean,
-  group: string | null,
+  groups: readonly string[],
 ): boolean {
   return (
     (choice === 'all' ||
-      (choice === 'invited' ? one.standing !== 'notYetInvited' : one.standing === choice)) &&
+      (choice === 'invited' ? invited(one.standing) : one.standing === choice)) &&
     matches(one, q) &&
-    inGroup(one, group) &&
+    inGroup(one, groups) &&
     (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs))
   );
+}
+
+/** Invited is the five replies together: not the not yet invited, and not a walk-in, who was never invited (sc-1454). */
+function invited(standing: Standing): boolean {
+  return standing !== 'notYetInvited' && standing !== 'walkIn';
 }
 
 /** sc-3784's This view: everyone the list keeps, collapsed groups included, in its order, each companion straight after their guest. */
@@ -176,12 +185,12 @@ export function peopleInView(
   choice: Choice,
   q: string,
   dietaryOnly = false,
-  group: string | null = null,
+  groups: readonly string[] = [],
 ): readonly Person[] {
-  return peopleOf(guests).filter((one) => inView(one, choice, q, dietaryOnly, group));
+  return peopleOf(guests).filter((one) => inView(one, choice, q, dietaryOnly, groups));
 }
 
-/** On All or Invited with no search, no Dietary notes and no group chip, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
+/** On All or Invited with no search, no Dietary notes and no group chip on, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
@@ -189,14 +198,14 @@ export function viewOf(
   q: string,
   expanded: ReadonlySet<Standing>,
   dietaryOnly = false,
-  group: string | null = null,
+  chips: readonly string[] = [],
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
   const totals = choice === 'all' || choice === 'invited';
 
-  if (!totals || q.trim() !== '' || dietaryOnly || group != null) {
-    const found = people.filter((one) => inView(one, choice, q, dietaryOnly, group));
+  if (!totals || q.trim() !== '' || dietaryOnly || chips.length > 0) {
+    const found = people.filter((one) => inView(one, choice, q, dietaryOnly, chips));
     const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));
 
     return {
@@ -211,7 +220,7 @@ export function viewOf(
     };
   }
 
-  const groups = GROUPS.filter((standing) => choice === 'all' || standing !== 'notYetInvited')
+  const groups = GROUPS.filter((standing) => choice === 'all' || invited(standing))
     .map((standing) => {
       const heads = people.filter((one) => one.companion == null && one.standing === standing);
       const open = expanded.has(standing) || heads.length <= FIRST_ROWS;

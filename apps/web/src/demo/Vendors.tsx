@@ -13,8 +13,12 @@ import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
-import { AlertInset } from './BudgetParts.tsx';
+import { AlertInset, BudgetRow, Rows } from './BudgetParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
+import { DemoRuleNotices } from './RuleNotices.tsx';
+import { REMINDER_DAYS, remindersPath } from './payments.ts';
+import { PW } from './paymentsWords.ts';
 import { owedBy, usedOn } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
@@ -67,6 +71,24 @@ import '../routes/app/settings/vendors.css';
 
 const BUSY_MS = 900;
 const RETRY_MS = 1200;
+
+function RemindersRow() {
+  const [params] = useSearchParams();
+  const plan = params.get('plan');
+  const off = plan === 'downgraded';
+
+  return (
+    <Rows>
+      <li>
+        <BudgetRow
+          title={off ? PW.remindersOff : PW.paymentReminders}
+          lines={[off ? PW.remindersOffLine : PW.whenReminded(REMINDER_DAYS)]}
+          to={remindersPath(off ? 'reminders_plan_lost' : 'reminders', params.get('as'), plan)}
+        />
+      </li>
+    </Rows>
+  );
+}
 
 /** The old address keeps working: Vendors is a section of Settings now (A · Summary first). */
 export function VendorsMoved() {
@@ -135,6 +157,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
   if (load !== 'loaded')
     return (
       <Page>
+        <DemoRuleNotices />
         <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
@@ -154,6 +177,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
 
   return (
     <Page>
+      <DemoOffline />
       <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
       <Card>
         {card.tags.length > 0 && (
@@ -171,6 +195,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
         </div>
         <CardStep label={VW.add} onClick={adding} />
       </Card>
+      <RemindersRow />
       {vendors.length > 0 && (
         <>
           <div className="vd-tools">
@@ -575,10 +600,10 @@ function VendorForm({
           {vendor != null && dialog.kind === 'edit' && dialog.refused === true && (
             <div className="bud vd-owing">
               <AlertInset>{QW.archiveRefused(vendor.name)}</AlertInset>
-              {owedBy(vendor.id).map((event) => (
+              {(dialog.owing ?? owedBy(vendor.id)).map((event) => (
                 <Link
                   key={event.id}
-                  className="desk-text"
+                  className="desk-text is-wraps"
                   to={`/demo/events/${event.id}?area=budget&vendor=${vendor.id}`}
                 >
                   {QW.owingLink(vendor.name, event.name)}

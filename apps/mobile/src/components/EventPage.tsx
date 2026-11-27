@@ -2,8 +2,16 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import { type Choice, changedWords, takesThankYou } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { AccessibilityInfo, Keyboard, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -23,6 +31,7 @@ import {
 import { type CardStep, type StepAction, listEventOf, shownEvent } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { replyByRow } from '../kit/replyBy.ts';
+import { type SavedRowFocus, savedRowFocus } from '../kit/savedRowFocus.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -49,11 +58,19 @@ import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { BellRow } from './BellButton.tsx';
+import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { SETTLED_MS, bringIntoView, keepInsideEnd, restOverToast, whenLanded } from './intoView.ts';
+import { ScreenScroll, type ScreenScrollView } from './Screen.tsx';
+import { useKeysUp } from './keyboardWatch.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
-import { TextAction } from './Summary.tsx';
-import { ComingUp, useTimeline } from './Timeline.tsx';
+import { RowList, TextAction } from './Summary.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
+import { ComingUp, type Watched, useTimeline } from './Timeline.tsx';
+import { useFloorRowItem } from './FloorWayIn.tsx';
+import { useStationRowItem } from './StationWayIn.tsx';
+import { useYourNightItem } from './YourNight.tsx';
 
 /** An event's Overview as the design demo draws it (sc-30413): its card, then Details, Coming up, Name and cover, Just for you and Manage. */
 export function EventPage({
@@ -65,6 +82,9 @@ export function EventPage({
   onChange,
   onEdit,
   partRef,
+  closedOnto = null,
+  toast = null,
+  toastClosed = null,
   onDuplicate,
   onDeleted,
   onGuests,
@@ -73,9 +93,13 @@ export function EventPage({
   opensEndNow = false,
   onEndNowOpened,
   notice,
+  moved = null,
+  watched,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  /** The screen's reloads, the band's Try again among them, each a read of the dates beside the event's, and whether its band is up (sc-98386). */
+  watched: Watched;
   /** Guests, on the choice a count on the Guests card opens (sc-3786). */
   onGuests: (choice: Choice) => void;
   /** The event's People, from the People card (sc-68607). */
@@ -90,6 +114,12 @@ export function EventPage({
   onEdit?: ((part: EditPart, opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Each part's row, which its edit returns focus to. */
   partRef: (part: EditPart) => RefObject<ViewInstance | null>;
+  /** A new one each time an edit closes, naming where its focus goes back to. */
+  closedOnto?: Closed | null;
+  /** The toast over the page's foot, where its top shows in the window and the close by Save it says. */
+  toast?: { top: number; over: Closed | null } | null;
+  /** A new one each time × closes a saved toast, naming the Save it said. */
+  toastClosed?: { of: Closed } | null;
   /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -101,13 +131,18 @@ export function EventPage({
   onEndNowOpened?: () => void;
   /** A notice about the event as it was saved, first under its card. */
   notice?: ReactNode;
+  /** Now working in, at the head of the body, once the event's link has moved the account into its organisation (sc-80863). */
+  moved?: { words: string } | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const now = useServerNow();
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
-  const timeline = useTimeline(event.id, now, event);
+  const timeline = useTimeline(event.id, now, event, watched);
+  const night = useYourNightItem(event.id);
+  const station = useStationRowItem(event);
+  const floor = useFloorRowItem(event);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
@@ -141,6 +176,7 @@ export function EventPage({
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
+  const toastRoom = useOpenerInSight(closedOnto, toast, toastClosed);
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
   useEffect(() => {
@@ -196,7 +232,7 @@ export function EventPage({
             .join(' ')
         : null;
 
-  const card = (
+  const eventCard = (
     <View style={styles.card}>
       <EventCard
         event={shown}
@@ -214,6 +250,15 @@ export function EventPage({
       {resumeSays != null && <AlertLine text={resumeSays} />}
     </View>
   );
+  const card =
+    moved == null ? (
+      eventCard
+    ) : (
+      <View style={styles.headed}>
+        <SwitchedNotice said={moved} />
+        {eventCard}
+      </View>
+    );
   const details = (
     <PartsSection
       title={t('eventPage.details')}
@@ -280,6 +325,7 @@ export function EventPage({
       onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
     />
   );
+  const needsYou = <EventNeeds event={event} timeline={timeline} />;
   const nameCover = (
     <PartsSection
       title={t('eventPage.nameAndCover')}
@@ -305,6 +351,8 @@ export function EventPage({
       onOpen={() => setThanking(true)}
     />
   );
+  const tonight = [night, station, floor].filter((item) => item != null);
+  const yourNight = tonight.length === 0 ? null : <RowList items={tonight} />;
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const people = <EventPeopleCard event={event} onOpen={onPeople} />;
   const forYou = (
@@ -355,7 +403,11 @@ export function EventPage({
     );
 
   return (
-    <View style={styles.page} testID="events.page">
+    <View
+      style={[styles.page, toastRoom.room > 0 && { paddingBottom: toastRoom.room }]}
+      onLayout={toastRoom.onLayout}
+      testID="events.page"
+    >
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
         card={<BellRow>{card}</BellRow>}
@@ -364,12 +416,14 @@ export function EventPage({
             {notice}
             {thankYou}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
           </>
         }
         right={
           <>
+            {yourNight}
             {numbers}
             {people}
             {forYou}
@@ -380,9 +434,11 @@ export function EventPage({
           <>
             {notice}
             {thankYou}
+            {yourNight}
             {numbers}
             {people}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
             {forYou}
@@ -445,8 +501,211 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
   }),
 };
 
+/** The latest focus goes back to a saved row, however its rest went. */
+const SAVED_FOCUS_LATEST_MS = SETTLED_MS * 3;
+
+interface Closed {
+  opener: RefObject<ScreenReaderTarget | null>;
+  saved?: boolean;
+}
+
+/** How long the saved toast's top holds still, with the keys down, before the row rests above it: a Save made with the keys up lays the toast out over them first, and it moves down only as the window grows back (sc-86228). */
+const TOAST_STILL_MS = 150;
+
+/** Brings the row an edit closes onto into sight before focus goes back to it, and after Save rests it 12pt above the saved toast; focus must not move before the edit's window has gone, or TalkBack puts it on the header's back button (sc-48600, sc-86228). */
+function useOpenerInSight(
+  closed: Closed | null,
+  toast: { top: number; over: Closed | null } | null,
+  toastClosed: { of: Closed } | null,
+): { room: number; onLayout: () => void } {
+  const scroll = useContext(ScreenScroll);
+  const keysUp = useKeysUp();
+  const seen = useRef(closed);
+  const [room, setRoom] = useState(0);
+  const roomNow = useRef(0);
+  const laidOut = useRef<(() => void) | null>(null);
+  const roomGoing = useRef(false);
+  const roomGone = useRef<(() => void) | null>(null);
+  const closedSeen = useRef(toastClosed);
+  const over = toast != null && closed?.saved === true && toast.over === closed ? toast.top : null;
+  const overNow = useRef(over);
+  const shows = toast != null;
+  const focus = useRef<{ of: Closed; timing: SavedRowFocus } | null>(null);
+
+  useEffect(() => {
+    overNow.current = over;
+  }, [over]);
+
+  /** Brings `row` wholly into sight by the least scroll, then calls `then`. */
+  const bringInto = useRef<(row: Closed, then: () => void) => void>(() => {});
+  /** Rests `row` 12pt above the toast's `top`, giving the foot the room it needs, then says whether it could be measured. */
+  const restAbove = useRef<(row: Closed, top: number, then: (rested: boolean) => void) => void>(
+    () => {},
+  );
+
+  useEffect(() => {
+    bringInto.current = (row, then) =>
+      bringIntoView(scroll, row.opener.current, false, {}, (found) =>
+        found == null || scroll == null ? then() : landedOr(scroll, found.to, then),
+      );
+    restAbove.current = (row, top, then) =>
+      restOverToast(scroll, row.opener.current, top, roomNow.current, (rest) => {
+        if (rest == null || scroll == null) return then(false);
+        const go = () => {
+          if (rest.to != null) scroll.ref.current?.scrollTo({ y: rest.to, animated: false });
+          landedOr(scroll, rest.to, () => then(true));
+        };
+        const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);
+        if (wanted === roomNow.current) return go();
+        roomNow.current = wanted;
+        laidOut.current = go;
+        setRoom(wanted);
+      });
+  }, [scroll]);
+
+  useEffect(() => {
+    if (closed?.saved !== true) return;
+    const timing = savedRowFocus({
+      settledMs: SETTLED_MS,
+      latestMs: SAVED_FOCUS_LATEST_MS,
+      move: () => moveScreenReaderFocus(closed.opener.current),
+      bringIntoSight: (rested) => {
+        void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+          if (!on) return rested();
+          const top = overNow.current;
+          const restedBefore = seen.current === closed;
+          seen.current = closed;
+          if (restedBefore || top == null || Keyboard.isVisible())
+            return bringInto.current(closed, rested);
+          restAbove.current(closed, top, (measured) =>
+            measured ? rested() : bringInto.current(closed, rested),
+          );
+        });
+      },
+    });
+    focus.current = { of: closed, timing };
+
+    return () => {
+      timing.stop();
+      if (focus.current?.timing === timing) focus.current = null;
+    };
+  }, [closed, scroll]);
+
+  const toastShown = over != null;
+  useEffect(() => {
+    if (toastShown && closed != null && focus.current?.of === closed)
+      focus.current.timing.toastLaidOut();
+  }, [closed, toastShown]);
+
+  useEffect(() => {
+    if (closed == null || closed === seen.current || closed.saved === true) return;
+    seen.current = closed;
+
+    let gone = false;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (on && !gone) bringIntoView(scroll, closed.opener.current, false);
+    });
+
+    return () => {
+      gone = true;
+    };
+  }, [closed, scroll]);
+
+  useEffect(() => {
+    if (over == null || closed == null || closed === seen.current || keysUp) return;
+
+    const still = setTimeout(() => {
+      if (closed === seen.current) return;
+      seen.current = closed;
+      const current = () => seen.current === closed;
+      const rested = () => {
+        if (current() && focus.current?.of === closed) focus.current.timing.rested();
+      };
+      void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+        if (!on || !current()) return;
+        restAbove.current(closed, over, (measured) => {
+          if (!current()) return;
+          if (measured) rested();
+          else bringInto.current(closed, rested);
+        });
+      });
+    }, TOAST_STILL_MS);
+
+    return () => clearTimeout(still);
+  }, [closed, over, keysUp]);
+
+  useEffect(() => {
+    if (shows || roomNow.current === 0) return;
+    roomNow.current = 0;
+    roomGoing.current = true;
+    laidOut.current = () =>
+      keepInsideEnd(scroll, (to) => {
+        const gone = () => {
+          roomGoing.current = false;
+          const then = roomGone.current;
+          roomGone.current = null;
+          then?.();
+        };
+        if (to == null || scroll == null) gone();
+        else landedOr(scroll, to, gone);
+      });
+    setRoom(0);
+  }, [shows, scroll]);
+
+  useEffect(() => {
+    if (toastClosed == null || toastClosed === closedSeen.current) return;
+    closedSeen.current = toastClosed;
+
+    let gone = false;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const row = toastClosed.of;
+    const back = () => {
+      if (gone) return;
+      bringInto.current(row, () => {
+        // TalkBack puts its own focus on the header as × goes, and a move asked before that is lost.
+        if (!gone) settle = setTimeout(() => moveScreenReaderFocus(row.opener.current), SETTLED_MS);
+      });
+    };
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!on || gone) return;
+      if (roomGoing.current) roomGone.current = back;
+      else back();
+    });
+
+    return () => {
+      gone = true;
+      clearTimeout(settle);
+    };
+  }, [toastClosed]);
+
+  return {
+    room,
+    onLayout: () => {
+      const then = laidOut.current;
+      laidOut.current = null;
+      then?.();
+    },
+  };
+}
+
+/** Calls `then` once, as the scroll lands on `to` or after SETTLED_MS, whichever comes first, so a scroll that stops short still lets focus go. */
+function landedOr(scroll: ScreenScrollView, to: number | null, then: () => void): void {
+  let done = false;
+  let stop = () => {};
+  const once = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(late);
+    stop();
+    then();
+  };
+  const late = setTimeout(once, SETTLED_MS);
+  stop = whenLanded(scroll, to, once);
+}
+
 const styles = StyleSheet.create({
   page: { gap: 18 },
+  headed: { gap: 18 },
   card: { gap: tokens.spaceSm },
   manage: { gap: tokens.spaceSm },
 });

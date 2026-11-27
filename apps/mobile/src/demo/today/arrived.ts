@@ -1,4 +1,4 @@
-import type { EventCard, Moment } from '../../kit/today.ts';
+import type { ArrivedFigure, EventCard, Moment } from '../../kit/today.ts';
 import { repliesOf } from '../today.ts';
 
 export const ARRIVED_STATES = ['some', 'nobodyComing', 'thousands', 'none', 'live'] as const;
@@ -15,16 +15,6 @@ export interface Counts {
   coming: number;
   expected: number;
 }
-
-/** Now's figure: "87/99" over "arrived" beside a ring, or "37" over "arrived" with none. */
-export interface Figure {
-  count: string;
-  of: string | null;
-  share: number | null;
-  spoken: string;
-}
-
-export type ArrivedMoment = Moment & { figure: Figure | null };
 
 export const COUNTS: Record<Exclude<ArrivedState, 'live'>, Counts> = {
   // Day 2 of 3, as Guests A's door reads it: the 96 Coming and 3 let in who were not.
@@ -53,12 +43,13 @@ export const LIVE: readonly Counts[] = [
   door(0, 96),
 ];
 
-export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | null {
+export function figureOf(counts: Counts, numbers: Intl.NumberFormat): ArrivedFigure | null {
   if (counts.arrived === 0) return null;
 
   const count = numbers.format(counts.arrived);
 
-  if (counts.coming === 0) return { count, of: null, share: null, spoken: `${count} arrived` };
+  if (counts.coming === 0)
+    return { count, of: null, share: null, label: 'arrived', spoken: `${count} arrived` };
 
   const of = numbers.format(counts.expected);
 
@@ -66,6 +57,7 @@ export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | n
     count,
     of,
     share: counts.arrived / counts.expected,
+    label: 'arrived',
     spoken: `${count} of ${of} arrived`,
   };
 }
@@ -89,18 +81,13 @@ const OTHERS: Partial<Record<string, EventCard['ready']>> = {
 };
 
 /** The built Now without Next, with sc-29881's lines on the cards and the wedding's arrivals on both. */
-export function withArrived(
-  moment: Moment,
-  counts: Counts,
-  numbers: Intl.NumberFormat,
-): ArrivedMoment {
+export function withArrived(moment: Moment, counts: Counts, numbers: Intl.NumberFormat): Moment {
   return {
     ...moment,
-    full: true,
     events: moment.events.map((card) => ({
       ...card,
       ready: card.event.id === 'wed' ? readyOf(counts, numbers) : (OTHERS[card.event.id] ?? null),
     })),
-    figure: figureOf(counts, numbers),
+    now: moment.now == null ? null : { ...moment.now, arrived: figureOf(counts, numbers) },
   };
 }

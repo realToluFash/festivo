@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest\Model;
 
-/** A guest as GuestRules accepted them: trimmed, the mobile number in E.164, a blank companion name null, the Language one of SupportedLocales::ALL or null, needs as GuestNeeds says. */
+/** A guest as GuestRules accepted them: trimmed, the mobile number in E.164, a blank companion name and Greet as null, the Language one of SupportedLocales::ALL or null, needs as GuestNeeds says. */
 final readonly class NewGuest
 {
     /**
@@ -23,6 +23,7 @@ final readonly class NewGuest
         public ?GuestNeeds $needs = null,
         public array $companionNeeds = [],
         public ?GroupChoice $group = null,
+        public ?string $greetAs = null,
     ) {
     }
 }

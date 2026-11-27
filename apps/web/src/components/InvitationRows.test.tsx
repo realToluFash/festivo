@@ -1,4 +1,5 @@
 import type { Membership } from '@soirely/api-client';
+import { rememberedFor } from '@soirely/domain';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -154,7 +155,7 @@ describe('an invitation in the organisation switcher', () => {
     fireEvent.click(within(joined).getByRole('button', { name: 'Open Adunni Weddings' }));
 
     expect(screen.getByText('Now working in Adunni Weddings.')).toBeDefined();
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'u1')).toBe('org_7');
   });
 
   it('cuts a long name in Open with an ellipsis, keeping Open in view (sc-15414)', () => {

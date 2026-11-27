@@ -9,6 +9,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\InvitationStatus;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -31,6 +32,21 @@ final class InvitationRepository extends ServiceEntityRepository
     public function findWithOrganisation(Uuid $id): ?Invitation
     {
         return $this->withOrganisation()->andWhere('i.id = :id')->setParameter('id', $id, 'uuid')->getQuery()->getOneOrNullResult();
+    }
+
+    /** Pending and not yet lapsed: each holds a team seat until it is answered (sc-3930). */
+    public function countPendingIn(Organisation $organisation, DateTimeImmutable $now): int
+    {
+        return Type\int()->coerce($this->createQueryBuilder('i')
+            ->select('COUNT(i.id)')
+            ->andWhere('i.organisation = :organisation')
+            ->andWhere('i.status = :pending')
+            ->andWhere('i.expiresAt > :now')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('pending', InvitationStatus::Pending)
+            ->setParameter('now', $now, 'datetime_immutable')
+            ->getQuery()
+            ->getSingleScalarResult());
     }
 
     /** The one row the partial index allows, lapsed or not. */

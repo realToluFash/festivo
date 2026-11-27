@@ -51,7 +51,10 @@ export const SETTINGS_PAGE = StyleSheet.create({
   },
 }) satisfies Record<LayoutKind, object>;
 
-/** On its side: the grey ground the sidebar sits on, and the white card the screen sits in. */
+/** A Settings page's title in the pane on its side: 14 above it and 16 under it, as the demo's `SummaryPage` draws it, so it stands 40 from the pane's top and its first block 34 under it (sc-39471, "Decided, 24 Nov"). */
+export const PANE_TITLE_ROW = { paddingTop: 14, paddingBottom: tokens.spaceXl } as const;
+
+/** On its side: the grey ground the sidebar sits on, the white card the screen sits in, and the card's margin when no sidebar sits beside it. */
 export function useSideFrame() {
   const insets = useSafeAreaInsets();
 
@@ -59,6 +62,7 @@ export function useSideFrame() {
     () => ({
       chrome: [styles.chrome, { paddingTop: insets.top }],
       card: [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
+      alone: styles.alone,
     }),
     [insets.top, insets.bottom],
   );
@@ -74,4 +78,5 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
     overflow: 'hidden',
   },
+  alone: { marginLeft: tokens.spaceMd },
 });

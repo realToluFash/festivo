@@ -75,6 +75,7 @@ import {
   turns,
   usable,
 } from './seating.ts';
+import { tidied } from './autoSeat.ts';
 import { SeatingContext, type SeatingApi, useSeating } from './seatingContext.ts';
 import {
   MOVING,
@@ -396,6 +397,13 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
+/** A guest seated by hand leaves Auto-seat's proposal, and a proposal with nothing left in it is gone (sc-4019). */
+function withTidyProposal(ui: Ui): Ui {
+  const next = tidied(ui.plan, ui.tray, ui.auto);
+
+  return next.plan === ui.plan && next.auto === ui.auto ? ui : { ...ui, ...next };
+}
+
 /** A seated guest picked and a table or chair tapped (sc-4013): they move, and only they; a taken chair asks Swap with; their own chair drops the pick. */
 function moveTo(now: Ui, tableId: string, chair?: number): Ui {
   const from = now.moving;
@@ -490,7 +498,10 @@ function Seating({
   const ox = ui.camera == null ? fit.ox : size.w / 2 - ui.camera.cx * s;
   const oy = ui.camera == null ? fit.oy : size.h / 2 - ui.camera.cy * s;
   const detail = detailOf(s);
-  const set = useCallback((change: (now: Ui) => Ui) => setUi(change), []);
+  const set = useCallback(
+    (change: (now: Ui) => Ui) => setUi((now) => withTidyProposal(change(now))),
+    [],
+  );
   const placeCanvas = useCallback(
     (node: HTMLDivElement | null) => {
       canvas.current = node;
@@ -2009,7 +2020,7 @@ function Seating({
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
-              <SaveLine />
+              {!ui.readOnly && <SaveLine />}
               {room != null && (
                 <button
                   type="button"
@@ -2036,7 +2047,10 @@ function Seating({
           )}
           {ui.view === 'plan' && room != null && (
             <div className="st-float st-under-views" ref={setFloat}>
-              {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
+              {!ui.readOnly &&
+                ui.plan.items.length > 0 &&
+                ui.placing == null &&
+                ui.picked == null && <ChooseBar />}
               {ui.bar != null && ui.bar.at !== 'floor' && (
                 <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
               )}
@@ -2429,6 +2443,7 @@ function MessageBar({
                         ...now,
                         plan: now.undo.plan,
                         tray: now.undo.tray,
+                        auto: now.undo.auto ?? now.auto,
                         chosen: now.undo.chosen ?? now.chosen,
                         undo: null,
                         bar: null,

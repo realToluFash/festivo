@@ -81,6 +81,9 @@ services:
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
+    # The first thing that makes PDFs (sc-3911); WeasyPrint is on the image's PATH (sc-5821).
+    App\Pdf\Interfaces\PdfMakerInterface: '@App\Pdf\WeasyPrint'
+
     # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
     App\Integrations\Dns\DnsOverHttpsTxtLookup:
         arguments:
@@ -126,14 +129,20 @@ services:
         arguments:
             $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
             $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
-    App\Domain\Organisation\Members\TeamSeats:
-        arguments:
-            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
     # Basic-auth credentials as user:password, and the provider's published ranges, comma-separated (sc-4332).
     App\Domain\Messaging\Controller\MailWebhookController:
         arguments:
             $secret: '%env(MAIL_WEBHOOK_SECRET)%'
             $allowedRanges: '%env(MAIL_WEBHOOK_ALLOWED_RANGES)%'
+    # Paddle's sandbox until epic 552 sets production keys; an empty secret refuses every webhook (sc-3933).
+    App\Integrations\Paddle\PaddleApi:
+        arguments:
+            $apiBase: '%env(PADDLE_API_BASE)%'
+            $apiKey: '%env(PADDLE_API_KEY)%'
+    App\Domain\Billing\Interfaces\PaymentProviderInterface: '@App\Integrations\Paddle\PaddleApi'
+    App\Integrations\Paddle\PaddleWebhookController:
+        arguments:
+            $secret: '%env(PADDLE_WEBHOOK_SECRET)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -151,6 +160,12 @@ services:
             $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
             $appleIssuers: '%env(OAUTH_APPLE_ISSUERS)%'
             $appleClientIds: '%env(OAUTH_APPLE_CLIENT_IDS)%'
+    App\Integrations\OpenIdConnect\AppleClientSecret:
+        arguments:
+            $privateKey: '%env(OAUTH_APPLE_WEB_PRIVATE_KEY)%'
+            $keyId: '%env(OAUTH_APPLE_WEB_KEY_ID)%'
+            $teamId: '%env(OAUTH_APPLE_TEAM_ID)%'
+            $clientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
     App\Integrations\OpenIdConnect\HttpCodeRedeemer:
         arguments:
             $googleRedemptionEndpoint: '%env(OAUTH_GOOGLE_TOKEN_URI)%'
@@ -158,7 +173,6 @@ services:
             $googleWebClientSecret: '%env(OAUTH_GOOGLE_WEB_CLIENT_SECRET)%'
             $appleRedemptionEndpoint: '%env(OAUTH_APPLE_TOKEN_URI)%'
             $appleWebClientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
-            $appleWebClientSecret: '%env(OAUTH_APPLE_WEB_CLIENT_SECRET)%'
     App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
     App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
     App\Domain\User\Controller\AppleReturnController:
@@ -171,6 +185,13 @@ services:
     App\Domain\User\Registration\RegistrationMail:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Passkey\PasskeyProviders:
+        arguments:
+            $listFile: '%kernel.project_dir%/config/passkey-providers.json'
+    App\WebAuthn\RelyingParty:
+        arguments:
+            $relyingPartyId: '%env(WEBAUTHN_RP_ID)%'
+            $origin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Recovery\RecoveryMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -184,6 +205,15 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Guest\Link\InvitationLinks:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Guest\Link\LinkCard:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Staff\Link\StaffLinks:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Event\DoorCode\DoorCodeLink:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\Members\JoinRequestMailer:
@@ -220,6 +250,9 @@ services:
     App\Http\LinkTokens:
         arguments:
             $secret: '%kernel.secret%'
+    App\Domain\Messaging\EmailAddressHash:
+        arguments:
+            $key: '%env(GUEST_COMPLAINT_KEY)%'
     App\Domain\Guest\Calendar\GuestCalendarWriter:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -252,9 +285,10 @@ services:
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
     App\Http\Access\Interfaces\PlanFeaturesInterface: '@App\Domain\Billing\PlanFeatures'
 
-    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+    App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Domain\Billing\HardLimits'
 
-    App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\UnpickedMenu'
+    App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\Pick\StoredMenuPicks'
+    App\Domain\Menu\Interfaces\ServingStationsInterface: '@App\Domain\Staff\Station\ServingStations'
 
     App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
 
@@ -456,15 +490,16 @@ when@test:
             public: true
             autoconfigure: true
 
-        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
-        App\Tests\Double\ScriptedActiveEventsLimit:
+        # Off unless a test turns the plan's hard limits on, so a suite seeded on Free can make what it needs (sc-3930).
+        App\Tests\Double\ScriptedHardLimits:
             public: true
-        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+            arguments: ['@App\Domain\Billing\HardLimits']
+        App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Tests\Double\ScriptedHardLimits'
 
-        # Guests cannot pick yet (sc-3907); a test seeds who picked a dish here.
-        App\Tests\Double\ScriptedMenuPicks:
+        # What guests picked (sc-3907).
+        App\Domain\Menu\Pick\StoredMenuPicks:
             public: true
-        App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Tests\Double\ScriptedMenuPicks'
+            autowire: true
 
         # A test takes a permission away here, for a holder no seeded role makes (sc-3656).
         App\Tests\Double\WithholdingMembershipDirectory:
@@ -475,6 +510,12 @@ when@test:
         App\Tests\Double\ScriptedAddressProvider:
             public: true
         App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
+
+        # WeasyPrint itself, unless a test takes it down or answers for it (sc-3911).
+        App\Tests\Double\ScriptedPdfMaker:
+            public: true
+            arguments: ['@App\Pdf\WeasyPrint']
+        App\Pdf\Interfaces\PdfMakerInterface: '@App\Tests\Double\ScriptedPdfMaker'
 
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is
@@ -501,13 +542,6 @@ when@test:
         App\Domain\User\Verification\RecordingWhatsAppSender:
             public: true
         App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
-        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
-        App\Domain\Organisation\Members\TeamSeats:
-            public: true
-            autowire: true
-            arguments:
-                $teamSeatLimit: ''
-
         # Pinned off, as the container's environment wins over .env.test: codes are texted in the
         # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
         App\Domain\User\Verification\PhoneCodeChannels:

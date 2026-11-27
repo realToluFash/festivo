@@ -110,7 +110,7 @@ function PhoneNotificationSettings() {
       </div>
 
       {grid.status === 'loading' && (
-        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} />
+        <Skeleton words={t('notificationSettings.loading')} shape="rows" rowHeight={56} />
       )}
 
       {grid.status === 'failed' && (

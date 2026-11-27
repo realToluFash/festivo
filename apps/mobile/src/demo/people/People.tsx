@@ -2,10 +2,11 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Animated, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -15,6 +16,7 @@ import { useLoad } from '../settings/MembersLoading.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
+import { TagLineCheck, WholeWordsTag } from './PeopleTag.tsx';
 import {
   ADD_PROMPT,
   addedToast,
@@ -84,6 +86,9 @@ function openedAtStart(start: PeopleStart): Opened | null {
 
 function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
   const { load, retry } = useLoad(start.load);
+  const { fontScale } = useWindowDimensions();
+  const tagWhole = atAccessibilitySizes(fontScale);
+  const [tagBreaks, setTagBreaks] = useState<Readonly<Record<string, boolean>>>({});
   const viewer = start.viewer;
   const [world] = useState(() => start.world ?? ireWorld());
   const members = world.members;
@@ -210,6 +215,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                 const isLit = lit?.id === one.id;
                 const opensRow = opens(one, viewer, onEvent);
                 const line = rowLine(one, viewer);
+                const tag = one.outside ? outsideTag(world.organisation) : null;
+                const tagChecked = tag != null && tagWhole;
+                const tagUnder = tagChecked && tagBreaks[one.id] === true;
 
                 return {
                   key: one.id,
@@ -229,12 +237,36 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                           else rows.current.set(one.id, node);
                         }}
                         title={one.name}
-                        line={line}
+                        titleMayBeAddress
+                        line={tagUnder ? undefined : line}
+                        below={
+                          tagChecked ? (
+                            <>
+                              <TagLineCheck
+                                word={tag}
+                                onBreaks={(breaks) =>
+                                  setTagBreaks((now) =>
+                                    now[one.id] === breaks ? now : { ...now, [one.id]: breaks },
+                                  )
+                                }
+                              />
+                              {tagUnder && <WholeWordsTag word={tag} />}
+                              {tagUnder && line != null && (
+                                <Text
+                                  size={14}
+                                  weight="medium"
+                                  accessible={false}
+                                  style={styles.rowLine}
+                                >
+                                  {line}
+                                </Text>
+                              )}
+                            </>
+                          ) : undefined
+                        }
                         lead={<Face person={one} side={40} />}
                         tag={
-                          one.outside
-                            ? { kind: 'now', word: outsideTag(world.organisation), wraps: true }
-                            : null
+                          tag == null || tagUnder ? null : { kind: 'now', word: tag, wraps: true }
                         }
                         trail={
                           opensRow ? (
@@ -248,11 +280,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                         }
                         accent={isLit}
                         onPress={opensRow ? () => openRole(one) : undefined}
-                        accessibilityLabel={[
-                          one.name,
-                          one.outside ? outsideTag(world.organisation) : null,
-                          line,
-                        ]
+                        accessibilityLabel={[one.name, tag, line]
                           .filter((part) => part != null)
                           .join('. ')}
                         testID={`people.row.${one.id}`}
@@ -320,6 +348,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
 
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
+  rowLine: { color: tokens.colorInkSecondary, lineHeight: 14 * 1.4 },
   count: { fontVariant: ['tabular-nums'] },
   nobody: { gap: tokens.spaceXs },
   lit: {

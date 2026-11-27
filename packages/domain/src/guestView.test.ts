@@ -7,6 +7,7 @@ function guest(id: string, fullName: string, more: Partial<Guest> = {}): Guest {
   return {
     id,
     fullName,
+    greetAs: null,
     group: null,
     email: null,
     mobile: null,
@@ -47,6 +48,9 @@ const HEADCOUNT: HeadcountCounts = {
   held: 1,
   heldBy: { hostNoReply: 1, hostMaybe: 0, hostNotComing: 0 },
   declined: 1,
+  walkIns: 0,
+  attended: 0,
+  expected: 2,
 };
 const COUNTS = countsOf(HEADCOUNT);
 
@@ -78,7 +82,7 @@ describe('the counts above the list (sc-3772)', () => {
   it('opens on All for anything the address does not know', () => {
     expect(choiceOf(null)).toBe('all');
     expect(choiceOf('held')).toBe('held');
-    expect(choiceOf('walkIn')).toBe('all');
+    expect(choiceOf('arrived')).toBe('all');
   });
 });
 
@@ -218,6 +222,23 @@ describe('peopleInView (sc-3784)', () => {
     expect(ids(LIST, 'coming', '')).toEqual(['g_1', 'c_1']);
     expect(ids(LIST, 'all', 'obi')).toEqual(['c_1']);
     expect(ids(LIST, 'invited', 'ben')).toEqual(['g_3']);
+  });
+
+  it('keeps anyone in one of the group chips on, with their companions, and the search narrows that (sc-90684)', () => {
+    const family = { id: 'gr_1', name: "Bride's family" };
+    const work = { id: 'gr_2', name: 'Work' };
+    const list = [
+      { ...ADAEZE, group: family },
+      { ...JOSE, group: work },
+      { ...BEN, group: { id: 'gr_3', name: 'Church' } },
+      CLEO,
+    ];
+
+    expect(ids(list, 'all', '', false, [])).toHaveLength(6);
+    expect(ids(list, 'all', '', false, ['gr_1', 'gr_2'])).toEqual(['g_1', 'c_1', 'g_2', 'c_2']);
+    expect(ids(list, 'all', '', false, ['none', 'gr_2'])).toEqual(['g_4', 'g_2', 'c_2']);
+    expect(ids(list, 'all', 'obi', false, ['gr_1', 'gr_2'])).toEqual(['c_1']);
+    expect(viewOf(list, COUNTS, 'all', '', new Set(), false, ['gr_1', 'gr_2']).shown).toBe(4);
   });
 
   it('is never more people than the list shows for the same choice and search', () => {

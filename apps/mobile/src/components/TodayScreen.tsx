@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { WORDS_GO, restingPlaces, wordsGoFrom } from '../layout/todayFold.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import type { Moment } from '../kit/today.ts';
@@ -27,12 +28,12 @@ import {
   tabBarFoot,
 } from './TodayCover.tsx';
 import { sidePadding } from './bodyEdges.ts';
+import { TitleCap } from './Text.tsx';
 import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
 export const TAB_BAR = 64;
 const BELOW_HEAD = 28;
-const WORDS_GO = 96;
 
 /** Today, drawn for the device: a cover the sheet rises over on a phone and an upright iPad, a sidebar and a banner on its side. */
 export function TodayScreen({
@@ -107,8 +108,20 @@ function Scrolled({
   const scroller = useRef<ScrollViewInstance>(null);
   // The cover grows past the board's height when its words wrap, so the fold follows what it measures.
   const [body, setBody] = useState(() => coverBody(moment, layout));
-  const foldAt = body - bandBody(moment, layout) - SHEET_RISE;
+  // At the accessibility sizes the tablet's band grows past its body to keep the live line whole, so the fold follows what the band measures.
+  const [bandHeight, setBandHeight] = useState(() => bandBody(moment, layout));
+  // The scroller's own height, not the window's: on an edge-to-edge Android tablet the window leaves out the system bars, and a short page would stop before it folds.
+  const [height, setHeight] = useState(() => Dimensions.get('window').height);
+  const fold = {
+    coverFoot: insets.top + body,
+    sheetRise: SHEET_RISE,
+    bandFoot: insets.top + bandHeight,
+    screen: height,
+  };
+  const foldAt = body - bandHeight - SHEET_RISE;
   const bandFrom = foldAt - tokens.space3xl;
+  const places = phone ? restingPlaces(fold) : [0, foldAt];
+  const wordsFrom = phone ? wordsGoFrom(fold) : Math.max(0, bandFrom - WORDS_GO);
   const band = offset.interpolate({
     inputRange: [bandFrom, foldAt],
     outputRange: [0, 1],
@@ -116,12 +129,10 @@ function Scrolled({
   });
   // The words are gone before the band comes, so the two never show through each other.
   const words = offset.interpolate({
-    inputRange: [Math.max(0, bandFrom - WORDS_GO), bandFrom],
+    inputRange: [wordsFrom, bandFrom],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
-  // The scroller's own height, not the window's: on an edge-to-edge Android tablet the window leaves out the system bars, and a short page would stop before it folds.
-  const [height, setHeight] = useState(() => Dimensions.get('window').height);
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: offset } } }], {
@@ -139,17 +150,18 @@ function Scrolled({
     [onTab],
   );
   const foot = tabBarFoot(insets.bottom);
+  const [greeting, setGreeting] = useState<number | null>(null);
 
   return (
     <View style={styles.page}>
-      {/* Like a large title, the cover is open or folded: a scroll that stops between snaps to one, and a short page still has the room to fold. */}
+      {/* Like a large title, the cover is open or folded: a scroll that stops between snaps to one, and a short page still has the room to fold. A phone cover taller than the screen also rests with Open the event above the tabs. */}
       <Animated.ScrollView
         ref={scroller}
         onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        snapToOffsets={[0, foldAt]}
+        snapToOffsets={places}
         snapToEnd={false}
         contentContainerStyle={{
           minHeight: height + foldAt,
@@ -161,9 +173,9 @@ function Scrolled({
             moment={moment}
             layout={layout}
             top={insets.top}
-
             onTab={tabs}
             words={words}
+            onGreeting={setGreeting}
           />
         </View>
         <View
@@ -173,11 +185,14 @@ function Scrolled({
           ]}
         >
           {notices}
-          <Body moment={moment} wide={!phone} />
+          <TitleCap.Provider value={greeting}>
+            <Body moment={moment} wide={!phone} />
+          </TitleCap.Provider>
         </View>
       </Animated.ScrollView>
       <Animated.View
         style={[styles.band, { opacity: band }]}
+        onLayout={(event) => setBandHeight(event.nativeEvent.layout.height - insets.top)}
         pointerEvents={folded ? 'box-none' : 'none'}
         accessibilityElementsHidden={!folded}
         importantForAccessibility={folded ? 'auto' : 'no-hide-descendants'}
@@ -206,29 +221,38 @@ function Landscape({
   const insets = useSafeAreaInsets();
   const events = moment.events.map(({ event }) => event);
   const below = moment.needs == null ? 0 : BELOW_HEAD;
+  const [greeting, setGreeting] = useState<number | null>(null);
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
       <TodaySidebar events={events} onTab={onTab} />
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
-          <TodayCover moment={moment} layout="landscape" top={0} onTab={onTab} />
+          <TodayCover
+            moment={moment}
+            layout="landscape"
+            top={0}
+            onTab={onTab}
+            onGreeting={setGreeting}
+          />
           {notices}
-          {moment.kind === 'first' ? (
-            <View style={styles.firstPad}>
-              <FirstRun wide />
-            </View>
-          ) : (
-            <View style={styles.columns}>
-              <View style={styles.grow}>
-                <NeedsYou moment={moment} wide top={0} />
-                <ThisWeek moment={moment} wide top={below} />
+          <TitleCap.Provider value={greeting}>
+            {moment.kind === 'first' ? (
+              <View style={styles.firstPad}>
+                <FirstRun wide />
               </View>
-              <View style={styles.events}>
-                <YourEvents moment={moment} layout="list" top={0} />
+            ) : (
+              <View style={styles.columns}>
+                <View style={styles.grow}>
+                  <NeedsYou moment={moment} wide top={0} />
+                  <ThisWeek moment={moment} wide top={below} />
+                </View>
+                <View style={styles.events}>
+                  <YourEvents moment={moment} layout="list" top={0} />
+                </View>
               </View>
-            </View>
-          )}
+            )}
+          </TitleCap.Provider>
         </ScrollView>
       </View>
     </View>

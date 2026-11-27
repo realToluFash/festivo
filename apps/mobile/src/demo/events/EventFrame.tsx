@@ -28,7 +28,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { tabBarSides } from '../../components/bodyEdges.ts';
+import { tabBarFit } from '../../components/bodyEdges.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
 import { statusFits } from '../../layout/titleFit.ts';
@@ -43,6 +43,7 @@ import {
 } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
+import { stripRest } from '../../components/stripRest.ts';
 import { demoShell } from '../demoShell.ts';
 import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
@@ -95,6 +96,13 @@ export function BellRow({ children }: { children: ReactNode }) {
   );
 }
 
+/** The bell an event's page lends to every area's frame on an iPad, so an area drawn by its own screen, as Guests, opens it too (sc-84453). A frame given its own `onBell`, as Messages', keeps that. */
+export const EventBellAt = createContext<{
+  onBell?: (() => void) | undefined;
+  bellRef?: Ref<ViewInstance> | undefined;
+  place: ReactNode;
+} | null>(null);
+
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
 export interface AreaBadge {
   count: number;
@@ -119,6 +127,7 @@ export function EventFrame({
   bellRef,
   back: pushed,
   phoneBack,
+  behind,
   besideBack,
   without,
   loading = false,
@@ -142,7 +151,9 @@ export function EventFrame({
   back?: { label: string; onPress: () => void } | null;
   /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
-  /** On the phone, a status beside Back, as Guests' Refreshing…; told whether it had room there (sc-71821). */
+  /** On Overview, ‹ and the screen the event was opened over, in place of Events (sc-83008). */
+  behind?: { label: string; onPress: () => void } | undefined;
+  /** A status beside Back, as Guests' Refreshing… and Overview's; pass it on a phone or upright only, since landscape has no ‹ to sit beside. Told whether it had room there (sc-71821, sc-83008). */
   besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
@@ -153,6 +164,11 @@ export function EventFrame({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const large = useAccessibilitySizes();
+  const lent = useContext(EventBellAt);
+  const ownBell = onBell != null;
+  const bellPress = ownBell ? onBell : lent?.onBell;
+  const bellAt = ownBell ? bellRef : lent?.bellRef;
+  const bellPlace = ownBell ? null : lent?.place;
   const phone = shell.layout === 'phone';
   const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
   // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
@@ -198,12 +214,13 @@ export function EventFrame({
         overlay={
           <>
             {overlay}
+            {bellPlace}
             {told}
           </>
         }
       >
         <PaneBellAt.Provider
-          value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
+          value={{ bell: <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} /> }}
         >
           {capped(
             fill ? (
@@ -230,7 +247,7 @@ export function EventFrame({
       ? phoneBack
       : phone && area !== 'overview'
         ? { label: W.overview, onPress: () => onArea('overview') }
-        : { label: W.backToEvents, onPress: backToEvents });
+        : (behind ?? { label: W.backToEvents, onPress: backToEvents }));
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (
@@ -243,10 +260,10 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <BackSlot beside={phone ? besideBack : undefined} capped={capped}>
+        <BackSlot beside={besideBack} capped={capped}>
           <Back label={back.label} onPress={back.onPress} />
         </BackSlot>
-        <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
+        <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
       {capped(
@@ -295,6 +312,7 @@ export function EventFrame({
         </>
       )}
       {overlay}
+      {bellPlace}
       {told}
     </View>
   );
@@ -453,7 +471,7 @@ function EventBar({
   onTab: (area: AreaKey | null) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [slot, setSlot] = useState(0);
   const start = eventBarStart(fontScale);
@@ -463,7 +481,7 @@ function EventBar({
   const size = eventBarLabelSize(fontScale, widest, slot);
 
   return (
-    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
+    <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
       <MeasuredWords
         words={words}
         size={start}
@@ -537,13 +555,19 @@ function AreaPills({
   without: AreaKey | undefined;
 }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const ends = useRef<Partial<Record<AreaKey, number>>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
   const reveal = (one: AreaKey) => {
-    const x = starts.current[one];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = ends.current[one];
+    if (end != null && shown.current > 0 && content.current > 0)
+      strip.current?.scrollTo({
+        x: stripRest(end, shown.current, content.current),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge, and the strip
+  // moves no further than that, so it opens at Overview wherever the chosen pill fits (sc-31370).
   useEffect(() => reveal(area), [area]);
 
   return (
@@ -552,9 +576,17 @@ function AreaPills({
         ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.pillsBar}
-        contentContainerStyle={styles.pills}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
+        onLayout={(event: LayoutChangeEvent) => {
+          shown.current = event.nativeEvent.layout.width;
+          reveal(area);
+        }}
+        onContentSizeChange={(width: number) => {
+          content.current = width;
+          reveal(area);
+        }}
       >
         {AREAS.filter((one) => one !== without).map((one) => {
           const on = one === area;
@@ -566,10 +598,10 @@ function AreaPills({
               key={one}
               onPress={() => onArea(one)}
               onLayout={(event: LayoutChangeEvent) => {
-                starts.current[one] = event.nativeEvent.layout.x;
+                ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
-              style={[styles.pill, on && styles.pillOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={counted ? badge.name : AREA_WORDS[one]}
@@ -704,10 +736,13 @@ export function AreaPage({
   area,
   event,
   locale,
+  children,
 }: {
   area: Exclude<AreaKey, 'overview' | 'people'>;
   event: Shown;
   locale: string;
+  /** The area's own content in place of the card that says it is coming. */
+  children?: ReactNode;
 }) {
   const { layout } = useShell();
   return (
@@ -733,32 +768,34 @@ export function AreaPage({
           </Text>
         </View>
       </View>
-      <View style={styles.coming} testID={`event.coming.${area}`}>
-        <Text size={17} weight="semibold" style={styles.comingTitle}>
-          {AREA_WORDS[area]}
-        </Text>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
-          {COMING[area]}
-        </Text>
-        {area === 'schedule' && event.id === RUN_EVENT && (
-          <View style={styles.comingAct}>
-            {nightWayIn(event) && (
+      {children ?? (
+        <View style={styles.coming} testID={`event.coming.${area}`}>
+          <Text size={17} weight="semibold" style={styles.comingTitle}>
+            {AREA_WORDS[area]}
+          </Text>
+          <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
+            {COMING[area]}
+          </Text>
+          {area === 'schedule' && event.id === RUN_EVENT && (
+            <View style={styles.comingAct}>
+              {nightWayIn(event) && (
+                <SecondaryButton
+                  label={NW.title}
+                  link
+                  onPress={() => router.push('/demo/night')}
+                  testID="event.schedule.night"
+                />
+              )}
               <SecondaryButton
-                label={NW.title}
+                label={RUN_WORDS.openRun}
                 link
-                onPress={() => router.push('/demo/night')}
-                testID="event.schedule.night"
+                onPress={() => router.push('/demo/run-view')}
+                testID="event.schedule.run"
               />
-            )}
-            <SecondaryButton
-              label={RUN_WORDS.openRun}
-              link
-              onPress={() => router.push('/demo/run-view')}
-              testID="event.schedule.run"
-            />
-          </View>
-        )}
-      </View>
+            </View>
+          )}
+        </View>
+      )}
     </>
   );
 }
@@ -771,19 +808,38 @@ const AREA_TITLE = {
   landscape: {},
 };
 
+export const areaTrack = StyleSheet.create({
+  bar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
+  row: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+  },
+  tab: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 14,
+    paddingRight: tokens.spaceXl,
+    borderRadius: 22,
+  },
+  on: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+});
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   figures: { fontVariant: ['tabular-nums'] },
   tabBar: {
     position: 'absolute',
     height: PHONE_TAB_BAR,
-    padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
-    gap: tokens.spaceHair,
     ...tokens.elevationNative.raised.ios,
     elevation: tokens.elevationNative.raised.android.elevation,
   },
@@ -861,23 +917,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
-  pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
-  pills: {
-    minHeight: 52,
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-  },
-  pill: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 14,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 22,
-  },
-  pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,

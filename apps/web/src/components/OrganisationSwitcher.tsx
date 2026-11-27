@@ -1,5 +1,11 @@
-import type { InvitationPreview, Membership, OutsideEvent } from '@soirely/api-client';
+import type {
+  InvitationPreview,
+  Membership,
+  Organisation,
+  OutsideEvent,
+} from '@soirely/api-client';
 import {
+  type InvitationOutcome,
   formatDay,
   invitationWording,
   isWaiting,
@@ -28,6 +34,7 @@ import {
   type PanelTools,
 } from './OrgMenu.tsx';
 import { OrgPill } from './OrgPill.tsx';
+import { SeatsFullRefusal } from './LimitRefusal.tsx';
 
 export function OrganisationSwitcher({
   current,
@@ -35,20 +42,20 @@ export function OrganisationSwitcher({
   waiting,
   offer = null,
   email = '',
-  paused = false,
+  paused = null,
   opened = 0,
   outside = [],
   onSwitch,
   onOutside = () => undefined,
   onCreate,
 }: {
-  current: Membership;
+  current: Membership | null;
   organisations: readonly Membership[];
   waiting: WaitingInvitations;
   offer?: DomainOffer | null;
   email?: string;
-  /** While the account's access is paused, the organisation the session falls back on is not the one on screen. */
-  paused?: boolean;
+  /** In use while the account's access to it is paused: the pill names it on every page, and the menu marks none current (sc-85513). */
+  paused?: Pick<Organisation, 'id' | 'name'> | null;
   /** Each change opens the menu from outside it: the paused screen's Switch organisation (sc-564). */
   opened?: number;
   /** The events the account holds on other organisations' events, each opening at its level (sc-68438). */
@@ -63,7 +70,8 @@ export function OrganisationSwitcher({
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const role = roleName(t, current.role);
+  const named = paused ?? current;
+  const namedId = named?.id ?? null;
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
   const [seen, setSeen] = useState(opened);
@@ -91,7 +99,7 @@ export function OrganisationSwitcher({
   }
 
   useLayoutEffect(() => {
-    if (open || returnTo.current !== current.id) return;
+    if (open || returnTo.current !== namedId) return;
 
     returnTo.current = null;
     focusStep(button.current);
@@ -130,7 +138,7 @@ export function OrganisationSwitcher({
           ? event.key === 'Escape'
           : !container.current?.contains(event.target as Node)
       ) {
-        closeTo(event instanceof KeyboardEvent ? current.id : null);
+        closeTo(event instanceof KeyboardEvent ? namedId : null);
       }
     };
 
@@ -141,11 +149,11 @@ export function OrganisationSwitcher({
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
     };
-  }, [open, current.id]);
+  }, [open, namedId]);
 
   function pick(id: string): void {
     const organisation = organisations.find((one) => one.id === id);
-    const stays = !paused && id === current.id;
+    const stays = paused == null && id === current?.id;
 
     closeTo(id);
     if (organisation != null && !stays) onSwitch(organisation);
@@ -198,10 +206,29 @@ export function OrganisationSwitcher({
 
     return (
       invitation != null && (
-        <InvitationPanel invitation={invitation} waiting={waiting} tools={tools} />
+        <InvitationPanel
+          invitation={invitation}
+          waiting={waiting}
+          onAnswered={(answered) => {
+            if (answered.kind === 'accepted') tools.show(answered.organisationId);
+            if (answered.kind !== 'failed') tools.land('panel');
+          }}
+        />
       )
     );
   }
+
+  if (named == null) return null;
+
+  const role = paused == null && current != null ? roleName(t, current.role) : null;
+  const label =
+    role == null
+      ? count > 0
+        ? t('switcher.labelPausedWaiting', { name: named.name, count })
+        : t('switcher.labelPaused', { name: named.name })
+      : count > 0
+        ? t('switcher.labelSwitchWaiting', { name: named.name, role, count })
+        : t('switcher.labelSwitch', { name: named.name, role });
 
   return (
     <div
@@ -214,13 +241,9 @@ export function OrganisationSwitcher({
     >
       <OrgPill
         ref={button}
-        id={current.id}
-        name={current.name}
-        label={
-          count > 0
-            ? t('switcher.labelSwitchWaiting', { name: current.name, role, count })
-            : t('switcher.labelSwitch', { name: current.name, role })
-        }
+        id={named.id}
+        name={named.name}
+        label={label}
         waiting={count > 0 ? t('invitations.count', { count }) : null}
         open={open}
         onClick={() => {
@@ -242,7 +265,7 @@ export function OrganisationSwitcher({
           menu={menu}
           anchor={button}
           places={places}
-          current={paused ? null : current.id}
+          current={paused != null ? null : namedId}
           others={others}
           into={into}
           answer={answer}
@@ -264,16 +287,20 @@ export function OrganisationSwitcher({
   );
 }
 
-/** An invitation's panel, answered through the API; a join moves the panel to the place it made. */
-function InvitationPanel({
+/** An invitation's panel, answered through the API: the switcher's, and You are not in an organisation's, which keeps a joined one with its Open (sc-75471). */
+export function InvitationPanel({
   invitation,
   waiting,
-  tools,
+  onAnswered = () => undefined,
+  onOpen,
 }: {
   invitation: InvitationPreview;
   waiting: WaitingInvitations;
-  tools: PanelTools;
+  onAnswered?: (answered: InvitationOutcome) => void;
+  /** On the page, a joined one stays with its Open, and what each answer says takes focus. */
+  onOpen?: (organisationId: string) => void;
 }) {
+  const onPage = onOpen != null;
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
   const keys = invitationWording(invitation);
@@ -282,10 +309,7 @@ function InvitationPanel({
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
 
   async function reply(choice: 'accept' | 'decline'): Promise<void> {
-    const answered = await waiting.answer(invitation, choice);
-
-    if (answered.kind === 'accepted') tools.show(answered.organisationId);
-    if (answered.kind !== 'failed') tools.land('panel');
+    onAnswered(await waiting.answer(invitation, choice));
   }
 
   return (
@@ -297,6 +321,7 @@ function InvitationPanel({
         email: invitation.email,
       })}
     >
+      <SeatsFullRefusal outcome={outcome} />
       {isWaiting(outcome) ? (
         <InvitationActions
           name={organisation}
@@ -306,13 +331,21 @@ function InvitationPanel({
           onAccept={() => void reply('accept')}
           onDecline={() => void reply('decline')}
         />
+      ) : outcome?.kind === 'accepted' && onOpen != null ? (
+        <JoinedAnswer
+          name={organisation}
+          role={role}
+          takesFocus
+          onOpen={() => onOpen(outcome.organisationId)}
+        />
       ) : outcome?.kind === 'managed' ? (
         <ManagedBanner
           managed={{ organisation: { name: outcome.organisation }, message: outcome.message }}
           level={3}
+          takesFocus
         />
       ) : outcome?.kind === 'declined' ? (
-        <Notice kind="quiet" lands>
+        <Notice kind="quiet" lands={!onPage} takesFocus={onPage}>
           {t(keys.declined, { inviter })}
         </Notice>
       ) : outcome?.kind === 'refused' ? (
@@ -322,6 +355,7 @@ function InvitationPanel({
           organisation={organisation}
           email={invitation.email}
           signedInAs={invitation.signedInAs ?? ''}
+          takesFocus={onPage}
         />
       ) : null}
     </InvitationAnswer>

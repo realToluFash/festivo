@@ -23,11 +23,13 @@ import { api, meAtLaunch } from '../../src/api.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { OneHeight } from '../../src/components/OneHeight.tsx';
 import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { ProviderButtons } from '../../src/components/ProviderSignIn.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { AnswerInView } from '../../src/components/Screen.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, TitleCap } from '../../src/components/Text.tsx';
+import { Title, useTitleCap } from '../../src/components/Title.tsx';
 import { PageFrame } from '../../src/components/Welcome.tsx';
 import { holdLink } from '../../src/heldLink.ts';
 import { dateLocale } from '../../src/i18n/index.ts';
@@ -135,6 +137,7 @@ function Dead({ answer }: { answer?: object | undefined }) {
 function SignedOut({ token, organisation }: { token: string; organisation: string }) {
   const { t } = useTranslation();
   const size = useStepTitleSize();
+  const titleCap = useTitleCap(`join|${organisation}`, size);
   // A failed Google or Apple sign-in stays on the link rather than going to welcome (sc-29070).
   const [failed, setFailed] = useState<{ provider: string } | null>(null);
 
@@ -145,78 +148,88 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
   }
 
   return (
-    <PageFrame
-      top={
-        <View style={styles.grow}>
-          <NavBar left="close" onLeft={close} testID="requestToJoin" />
-        </View>
-      }
-      brand={
-        <View style={styles.brand}>
-          <OrgTile name={organisation} size="card" />
-          <Text
-            size={size}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.centre, stepTitle(size)]}
-          >
-            {t('requestToJoin.title', { organisation })}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size} style={[styles.centre, styles.secondary]}>
-            {t('requestToJoin.signedOutLine')}
-          </Text>
-        </View>
-      }
-      choices={
-        <View style={styles.choices}>
-          {failed != null && (
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              title={t('signIn.providerFailedTitle', { provider: failed.provider })}
-              body={t('signIn.providerFailedBody', { provider: failed.provider })}
-              answer={failed}
-              takesFocus
-            />
-          )}
-          <View style={styles.buttons}>
-            <PrimaryButton
-              label={t('welcome.withEmail')}
-              onPress={() => void go('/sign-in')}
-              testID="requestToJoin.signIn"
-            />
-            <ProviderButtons
-              before={() => holdLink(token)}
-              onFailed={(provider) => setFailed({ provider })}
+    <TitleCap.Provider value={titleCap.cap}>
+      <PageFrame
+        top={
+          <View style={styles.grow}>
+            <NavBar left="close" onLeft={close} testID="requestToJoin" />
+          </View>
+        }
+        brand={
+          <View style={styles.brand}>
+            <OrgTile name={organisation} size="card" />
+            <Title
+              size={size}
+              accessibilityRole="header"
+              style={[styles.centre, stepTitle(size)]}
+              onDrawn={titleCap.onDrawn}
+            >
+              {t('requestToJoin.title', { organisation })}
+            </Title>
+            <Text size={tokens.typeBodyPhone.size} style={[styles.centre, styles.secondary]}>
+              {t('requestToJoin.signedOutLine')}
+            </Text>
+          </View>
+        }
+        choices={
+          <View style={styles.choices}>
+            {failed != null && (
+              <Notice
+                tone="broken"
+                mark={tokens.marks.broken.glyph}
+                title={t('signIn.providerFailedTitle', { provider: failed.provider })}
+                body={t('signIn.providerFailedBody', { provider: failed.provider })}
+                answer={failed}
+                takesFocus
+              />
+            )}
+            <OneHeight style={styles.buttons}>
+              <PrimaryButton
+                label={t('welcome.withEmail')}
+                onPress={() => void go('/sign-in')}
+                testID="requestToJoin.signIn"
+              />
+              <ProviderButtons
+                before={() => holdLink(token)}
+                onFailed={(provider) => setFailed({ provider })}
+              />
+            </OneHeight>
+            <QuietButton
+              label={t('signIn.createAccount')}
+              onPress={() => void go('/register')}
+              testID="requestToJoin.register"
             />
           </View>
-          <QuietButton
-            label={t('signIn.createAccount')}
-            onPress={() => void go('/register')}
-            testID="requestToJoin.register"
-          />
-        </View>
-      }
-    />
+        }
+      />
+    </TitleCap.Provider>
   );
 }
 
-/** Signed in: one screen, the tile and its title over whatever the link has to say. */
-function Asking({
-  token,
-  view,
-  onChange,
-}: {
+type AskingProps = {
   token: string;
   view: Exclude<Shown, { kind: 'loading' | 'dead' }>;
   onChange: (next: Shown) => void;
-}) {
+};
+
+/** Signed in: one screen, the tile and its title over whatever the link has to say. */
+function Asking(props: AskingProps) {
+  const organisation = props.view.preview.organisation.name;
+  const titleCap = useTitleCap(`join|${organisation}`, tokens.typeTitlePhone.size);
+
+  return (
+    <TitleCap.Provider value={titleCap.cap}>
+      <AskingPage {...props} top={<Top organisation={organisation} onDrawn={titleCap.onDrawn} />} />
+    </TitleCap.Provider>
+  );
+}
+
+function AskingPage({ token, view, onChange, top }: AskingProps & { top: ReactNode }) {
   const { t } = useTranslation();
   const { preview } = view;
   const organisation = preview.organisation.name;
   // Where the person stood as the link opened was not an answer to Ask to join, so it is not read out.
   const [opened] = useState(view);
-  const top = <Top organisation={organisation} />;
 
   if (view.kind === 'open' && preview.managed != null) {
     return (
@@ -305,21 +318,20 @@ function Asking({
   );
 }
 
-function Top({ organisation }: { organisation: string }) {
+function Top({ organisation, onDrawn }: { organisation: string; onDrawn: (size: number) => void }) {
   const { t } = useTranslation();
-  const size = useStepTitleSize();
 
   return (
     <View style={styles.top}>
       <OrgTile name={organisation} size="card" />
-      <Text
-        size={size}
-        weight="bold"
+      <Title
+        size={tokens.typeTitlePhone.size}
         accessibilityRole="header"
-        style={[styles.title, stepTitle(size)]}
+        style={styles.title}
+        onDrawn={onDrawn}
       >
         {t('requestToJoin.title', { organisation })}
-      </Text>
+      </Title>
     </View>
   );
 }
@@ -536,6 +548,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
-  title: { flex: 1 },
+  title: { flex: 1, letterSpacing: -0.5 },
   below: { marginTop: tokens.space3xl },
 });

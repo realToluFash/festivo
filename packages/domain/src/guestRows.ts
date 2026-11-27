@@ -1,4 +1,10 @@
-import { ApiError, GUEST_ANSWERS, type Guest, type GuestAnswer } from '@soirely/api-client';
+import {
+  ApiError,
+  GUEST_ANSWERS,
+  type Guest,
+  type GuestAnswer,
+  type GuestDetails,
+} from '@soirely/api-client';
 import { type Translate } from './eventWords.ts';
 import { type ReplyWord, blank, namedCount, shownReply } from './guestForm.ts';
 import { type Person } from './guestView.ts';
@@ -11,12 +17,43 @@ export const REPLY_KEY: Record<ReplyWord, string> = {
   noReply: 'guestList.reply.noReply',
   held: 'guestList.reply.held',
   notYetInvited: 'guestList.reply.notYetInvited',
+  walkIn: 'guestList.reply.walkIn',
 };
 
 export function replyDate(repliedAt: string, timeZone: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone }).format(
     new Date(repliedAt),
   );
+}
+
+/** One opt-out line under a contact row (sc-3969); `closes` puts Only the guest can change this. under it, once per row. */
+export interface OptOutLine {
+  at: string;
+  closes: boolean;
+}
+
+export interface OptOutLines {
+  email: OptOutLine | null;
+  texts: OptOutLine | null;
+  /** The WhatsApp row in its opted-out reading, which always closes its contact row. */
+  whatsApp: string | null;
+}
+
+/** Only under a row that has an address, so a row that reads None has none; without guests.manage there is nothing to show. */
+export function optOutLines(
+  guest: Pick<GuestDetails, 'email' | 'mobile' | 'optOuts'>,
+): OptOutLines {
+  const said = guest.optOuts;
+  const whatsApp = guest.mobile == null ? null : (said?.whatsApp ?? null);
+
+  return {
+    email: guest.email == null || said?.email == null ? null : { at: said.email, closes: true },
+    texts:
+      guest.mobile == null || said?.texts == null
+        ? null
+        : { at: said.texts, closes: whatsApp == null },
+    whatsApp,
+  };
 }
 
 /** What a 409 `guest_replied` on Mark as not invited names: the reply that keeps them invited and when (sc-3788). */

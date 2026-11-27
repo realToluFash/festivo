@@ -1,0 +1,14 @@
+# sc-92728: sc-92314's Today demo at AX2 and AX1 in English, QA Organisation with one invitation, for the regression row. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today-size?size=ax2&lang=en&org=qa&invite=one
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: ax2
+- openLink: ${METRO_URL}/--/demo/today-size?size=ax1&lang=en&org=qa&invite=one
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: ax1

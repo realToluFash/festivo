@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +17,8 @@ import {
   refusalOf,
   toldOf,
 } from './makeLive.ts';
+import { LIVE, W, sayLive } from '../demo/events/EventsWords.ts';
+import en from '../i18n/locales/en.json';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
@@ -85,14 +90,6 @@ describe('refusalOf', () => {
     expect(refusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
-  it('reads a 403 plan_limit with its plan and limit', () => {
-    expect(refusalOf(problem('plan_limit', { status: 403, plan: 'Free', limit: 3 }))).toEqual({
-      kind: 'planLimit',
-      plan: 'Free',
-      limit: 3,
-    });
-  });
-
   it.each([new Error('offline'), problem('internal_error', { status: 500 })])(
     'reads anything else as failed',
     (error) => {
@@ -117,7 +114,7 @@ describe('endRefusalOf', () => {
     expect(endRefusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
-  it.each([new Error('offline'), problem('plan_limit', { status: 403 })])(
+  it.each([new Error('offline'), problem('plan_limit_reached', { status: 403 })])(
     'reads anything else as failed',
     (error) => {
       expect(endRefusalOf(error)).toEqual({ kind: 'failed' });
@@ -152,22 +149,6 @@ describe('Make live’s alert (sc-48601)', () => {
     pending: false,
     failed: false,
   };
-
-  it('opens makeLivePlanLimit on a 403 plan_limit, with its plan and limit and Close alone', () => {
-    const told = toldOf(
-      refusalOf(problem('plan_limit', { status: 403, plan: 'Pro', limit: 7 })),
-      t,
-    );
-
-    expect(liveAlertOf(told, event, t, true)).toMatchObject({
-      turn: 'told',
-      title: 'eventLive.planLimit {"plan":"Pro","count":7}',
-      line: 'eventLive.planLimitStays',
-      alert: true,
-      keep: { label: 'eventLive.close' },
-      confirm: null,
-    });
-  });
 
   it('opens makeLiveEndPassed on event_concluded, with Change dates for somebody who can edit', () => {
     const told = toldOf(refusalOf(problem('event_concluded')), t);
@@ -212,5 +193,45 @@ describe('Make live’s alert (sc-48601)', () => {
       host: null,
       hostsNow: { line: 'eventLive.hostsNow', names: ['Bisi Akindele', 'Kola Mensah'] },
     });
+  });
+});
+
+describe('Make live’s words are the demo’s (sc-48601)', () => {
+  const DEMO: Record<string, string> = {
+    guestsBlocked: W.guestsBlocked,
+    makeLive: LIVE.makeLive,
+    endPassed: W.endPassed,
+    changeDates: W.changeDates,
+    confirmTitle: sayLive.confirmTitle('{{name}}'),
+    confirmLine: LIVE.confirmLine,
+    notYet: LIVE.notYet,
+    madeLive: LIVE.madeLive,
+    failed: LIVE.failed,
+    changedElsewhere: LIVE.changedTitle,
+    nowState_live: LIVE.nowLive,
+    notMadeLive: LIVE.notMadeLive,
+    close: LIVE.close,
+    hostExplainer: LIVE.hostExplainer,
+    notSavedChanged: LIVE.notSavedChanged,
+    hostsNow: LIVE.hostsNow,
+    making: LIVE.making,
+  };
+
+  it.each(Object.entries(DEMO))('eventLive.%s reads as the demo has it', (key, demo) => {
+    expect(en.eventLive[key as keyof typeof en.eventLive]).toBe(demo);
+  });
+
+  it('writes every eventLive apostrophe curled, as the demo does', () => {
+    const straight = Object.entries(en.eventLive).filter(([, words]) => words.includes("'"));
+
+    expect(straight).toEqual([]);
+  });
+});
+
+describe('the event page (sc-48601)', () => {
+  it('keys EventScreen by the event’s id, so a link to another event starts its page afresh', () => {
+    const page = readFileSync(join(__dirname, '../../app/events/[id]/index.tsx'), 'utf8');
+
+    expect(page).toMatch(/<EventScreen\s+key=\{id\}\s+eventId=\{id\}/);
   });
 });

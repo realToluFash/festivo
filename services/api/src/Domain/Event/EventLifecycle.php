@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
-use App\Domain\Event\Interfaces\ActiveEventsLimitInterface;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Event\Interfaces\EventEndedInterface;
 use App\Domain\Event\Model\EventTransition;
 use App\Domain\Messaging\EventChanges\EventChangeRecorder;
@@ -41,7 +41,7 @@ final readonly class EventLifecycle
     /** @param iterable<EventEndedInterface> $endedListeners */
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private ActiveEventsLimitInterface $activeEventsLimit,
+        private HardLimitsInterface $hardLimits,
         private Auditor $auditor,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
@@ -135,13 +135,7 @@ final readonly class EventLifecycle
                 ? null
                 : throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.host_required')),
             EventGuard::PhaseAllows => $this->phaseOf($event, $now)->allows($action) ? null : throw $this->stateInvalid($event, $now),
-            EventGuard::PlanLimit => null === ($limit = $this->activeEventsLimit->reachedBy($event->getOrganisation()))
-                ? null
-                : throw new ApiException(
-                    ErrorCode::PlanLimit,
-                    $this->translator->trans('event.plan_limit', ['plan' => $limit->plan, 'limit' => $limit->limit]),
-                    members: ['plan' => $limit->plan, 'limit' => $limit->limit],
-                ),
+            EventGuard::PlanLimit => $this->hardLimits->requireLiveRoom($event->getOrganisation()),
         };
     }
 

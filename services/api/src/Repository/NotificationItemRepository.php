@@ -58,4 +58,9 @@ final class NotificationItemRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['id' => $id, 'user' => $user]);
     }
+
+    public function findUnreadInThread(User $user, string $thread): ?NotificationItem
+    {
+        return $this->findOneBy(['user' => $user, 'thread' => $thread, 'readAt' => null]);
+    }
 }

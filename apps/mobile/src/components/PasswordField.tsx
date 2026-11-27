@@ -1,7 +1,6 @@
-import { useFocusEffect } from 'expo-router';
-import { type Ref, useCallback, useEffect, useState } from 'react';
+import { type Ref } from 'react';
 import {
-  AppState,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -19,11 +18,14 @@ import {
   fieldStyles,
   focusEdge,
   refusedField,
+  useOpenedFocus,
   useFieldLabel,
   useFocusEdge,
   useHeld,
   useRefused,
+  useRevealed,
 } from './Field.tsx';
+import { bothRefs } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** Room for "Show" or "Hide", so typed text never runs under the control. */
@@ -47,37 +49,23 @@ export function PasswordField({
 }) {
   const { t } = useTranslation();
   const refused = useRefused(wrong);
-  const [revealed, setRevealed] = useState(false);
-  const [wasSubmitting, setWasSubmitting] = useState(submitting);
-
-  // Hidden again the moment the form is submitted, adjusted while rendering rather than in an effect.
-  if (submitting !== wasSubmitting) {
-    setWasSubmitting(submitting);
-    if (submitting) setRevealed(false);
-  }
-
-  useEffect(() => {
-    const listener = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') setRevealed(false);
-    });
-
-    return () => listener.remove();
-  }, []);
-
-  useFocusEffect(useCallback(() => () => setRevealed(false), [setRevealed]));
+  const [revealed, setRevealed] = useRevealed(submitting);
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <View>
       <TextInput
         {...rest}
+        autoFocus={opened.autoFocus}
+        onPressIn={opened.onPressIn}
         {...refusedField(refused, rest, labelID)}
-        {...passwordProps(revealed)}
+        {...passwordProps(Platform.OS, revealed)}
         {...holding}
-        ref={ref}
+        ref={bothRefs(opened.input, ref)}
         {...edging}
         style={inputFaced(
           [

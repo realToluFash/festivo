@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -14,12 +14,12 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
-import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
+import { FocusEdge, useHeld, useRevealed } from '../components/Field.tsx';
+import { fieldFocused, fieldLeft, focusOwed } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import {
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   passwordProps,
   refusedHint,
@@ -73,7 +73,7 @@ export function InsideField({
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
   const bold = useBoldText();
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useRevealed(submitting);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const raised = focused || (value ?? typed) !== '';
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
@@ -82,7 +82,12 @@ export function InsideField({
     onChangeText?.(text);
   });
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
+  const [labelHeight, setLabelHeight] = useState(LABEL_LARGE * 1.3 * fontScale);
+  const restingHeight = Math.max(HEIGHT - 2, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
+  const [focusesItself] = useState(rest.autoFocus === true);
+
+  useLayoutEffect(() => (focusesItself ? focusOwed(box.current) : undefined), [focusesItself]);
 
   useEffect(() => {
     const mounted = box.current;
@@ -103,7 +108,7 @@ export function InsideField({
   });
   const translateY = lift.interpolate({
     inputRange: [0, 1],
-    outputRange: [(HEIGHT - 2 - LABEL_LARGE * 1.3 * fontScale) / 2, tokens.spaceSm],
+    outputRange: [(restingHeight - labelHeight) / 2, tokens.spaceSm],
   });
 
   return (
@@ -114,8 +119,8 @@ export function InsideField({
       style={[styles.box, state === 'blank' && styles.blank]}
     >
       <TextInput
-        {...FIELD_DEFAULTS}
-        {...(password && passwordProps(revealed))}
+        {...fieldDefaults(Platform.OS)}
+        {...(password && passwordProps(Platform.OS, revealed))}
         {...rest}
         {...refusedName(Platform.OS, fieldName(Platform.OS, label, { labelID }), refused, label)}
         accessibilityHint={refusedHint(refused, rest.accessibilityHint)}
@@ -132,7 +137,11 @@ export function InsideField({
         style={inputFaced(
           [
             styles.input,
-            { paddingTop: tokens.spaceSm + labelLine },
+            {
+              minHeight: restingHeight,
+              paddingTop:
+                tokens.spaceSm + Math.max(labelLine, (labelHeight * LABEL_SMALL) / LABEL_LARGE),
+            },
             password && styles.inputBeside,
           ],
           'sans',
@@ -152,7 +161,7 @@ export function InsideField({
           nativeID={labelID}
           size={LABEL_LARGE}
           weight="medium"
-          numberOfLines={1}
+          onLayout={(event) => setLabelHeight(event.nativeEvent.layout.height)}
           style={state === 'blank' ? styles.labelBlank : styles.labelText}
           accessible={false}
         >
@@ -161,7 +170,7 @@ export function InsideField({
       </Animated.View>
       {password && (
         <Pressable
-          style={styles.eye}
+          style={[styles.eye, { top: (restingHeight - tokens.sizeHit) / 2 }]}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
           accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
@@ -253,7 +262,6 @@ const styles = StyleSheet.create({
   eye: {
     position: 'absolute',
     right: tokens.spaceXxs,
-    top: (HEIGHT - 2 - tokens.sizeHit) / 2,
     width: tokens.sizeHit,
     height: tokens.sizeHit,
     alignItems: 'center',

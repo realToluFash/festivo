@@ -87,7 +87,7 @@ describe('each state’s walk', () => {
     );
     expect(walkOf('name-refused', t)).toMatchObject({
       name: 'Lumen Feiras',
-      nameRefused: "Enter the organisation's name.",
+      nameRefused: 'Enter the organisation’s name.',
     });
     expect(walkOf('country-search', t)).toMatchObject({ step: 2, query: 'bra', country: 'PT' });
     expect(walkOf('country-nomatch', t)).toMatchObject({

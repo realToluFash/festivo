@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
+import { useAnyNotOverdue } from '../twoFactorStanding.ts';
 import { Notice } from './Notice.tsx';
 import { PausedOwnerClaim } from './PausedOwnerClaim.tsx';
 import './desk.css';
 
-type Other = Pick<Membership, 'id' | 'name'>;
+type Other = Pick<Membership, 'id' | 'name'> & Partial<Pick<Membership, 'twoFactorDue'>>;
 
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
 export function AccessPaused<T extends Other>({
@@ -29,6 +30,7 @@ export function AccessPaused<T extends Other>({
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
   const addressGone = suspension.reason === 'address_gone';
   const switchTo = pausedSwitch(others);
+  const othersUnaffected = useAnyNotOverdue(others);
 
   usePageTitle(pageTitle(t, [t('accessPaused.badge'), paused.name]));
 
@@ -40,7 +42,7 @@ export function AccessPaused<T extends Other>({
         {t('accessPaused.since', { when: suspension.since.written })}
       </p>
       <p>{t('accessPaused.kept', named)}</p>
-      <p>{t('accessPaused.untouched')}</p>
+      <p>{t(othersUnaffected ? 'accessPaused.untouched' : 'accessPaused.untouchedSingleEvents')}</p>
       {suspension.onlyOwner ? (
         <Notice kind="quiet" standing>
           {t('accessPaused.stillOnlyOwner', named)}

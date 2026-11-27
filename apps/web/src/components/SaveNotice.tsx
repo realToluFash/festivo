@@ -8,6 +8,7 @@ import { Ask, TextAction } from './SettingsParts.tsx';
 const SAID = {
   notSaved: 'eventEdit.notSaved',
   forbidden: 'eventEdit.forbidden',
+  eventGone: 'eventEdit.eventGone',
   changedElsewhere: 'eventEdit.changedElsewhere',
 } as const satisfies Record<SaveAnswer, string>;
 
@@ -30,8 +31,8 @@ export function SaveNotice({
     const notice = box.current;
 
     if (notice == null || times === 0) return;
-    notice.nextElementSibling?.scrollIntoView({ block: 'nearest' });
     notice.scrollIntoView({ block: 'nearest' });
+    notice.nextElementSibling?.scrollIntoView({ block: 'nearest' });
   }, [answer, times]);
 
   if (answer == null) return null;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
@@ -19,6 +20,7 @@ use App\Locale\NameNormaliser;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 
 /** Locks the event so two adds of one name queue (sc-1468). The audit holds who and when only: no name outlives the purge. */
 final readonly class GuestAdder
@@ -32,10 +34,11 @@ final readonly class GuestAdder
         private GuestListPublisher $guestListPublisher,
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestGroupEditor $guestGroupEditor,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
-    /** Refused 409 `guest_already_listed`, naming the guest already there, unless `allowDuplicate`. */
+    /** Refused 409 `guest_already_listed`, naming the guest already there, unless `allowDuplicate`; 403 past the plan's people per event or the ceiling (sc-3930). */
     public function add(Event $event, NewGuest $new, User $by, bool $allowDuplicate): Guest
     {
         $guest = $this->entityManager->wrapInTransaction(function () use ($event, $new, $by, $allowDuplicate): Guest {
@@ -45,8 +48,10 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
-            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
+            $this->hardLimits->requirePeopleRoom($event, 1 + Iter\count($new->companions));
+            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token(), InvitationLinks::token());
             $guest->setLanguage($new->language);
+            $guest->setGreetAs($new->greetAs);
             $guest->setGroup(null === $new->group ? null : $this->guestGroupEditor->settle($event, $new->group, $by));
             $this->entityManager->persist($guest);
             self::recordAdded($this->auditor, $guest, $by);

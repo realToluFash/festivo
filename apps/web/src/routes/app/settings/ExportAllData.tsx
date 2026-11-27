@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { PageLoading, StatusLine } from '../../../components/DataControlParts.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   BackRow,
   Card,
@@ -47,7 +48,8 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
   const desk = useDeskTop();
   const { layers } = useDeskLayers();
   const [search, setSearch] = useSearchParams();
-  const { load, show, reload } = useOrganisationExport(organisation.id);
+  const title = useRef<HTMLHeadingElement>(null);
+  const { load, show, reload, refreshing } = useOrganisationExport(organisation.id, title);
   const [told, setTold] = useState<Told>(null);
   const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
@@ -55,16 +57,12 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
 
   const back = () => void navigate(DATA_AND_CONTROL);
 
-  async function download(exportId: string, askedAt: string): Promise<void> {
+  async function download(exportId: string): Promise<void> {
     setBusy(true);
     setTold(null);
 
     try {
-      saveArchive(
-        await api.downloadOrganisationExport(organisation.id, exportId),
-        organisation.name,
-        askedAt,
-      );
+      saveArchive(await api.downloadOrganisationExport(organisation.id, exportId));
     } catch (error) {
       if (error instanceof ApiError && error.is('export_used')) setTold({ kind: 'usedLink' });
     } finally {
@@ -76,7 +74,7 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
 
   const followLink = useEffectEvent((exportId: string) => {
     setSearch({}, { replace: true });
-    void download(exportId, new Date().toISOString());
+    void download(exportId);
   });
 
   useEffect(() => {
@@ -104,15 +102,16 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
 
   const onStep = (page: OrganisationExportPage, step: ExportStep) => {
     const exported = page.export;
-    if (step === 'download' && exported != null) void download(exported.id, exported.askedAt);
+    if (step === 'download' && exported != null) void download(exported.id);
     else void ask();
   };
 
   return (
     <DeskPage layers={layers}>
       <div className="desk-column">
+        {refreshing && <Refreshing />}
         <BackRow to={t('dataControl.title')} onBack={back} bell={desk.bell} />
-        <TitleRow title={t('exportAllData.title')} underBack />
+        <TitleRow title={t('exportAllData.title')} titleRef={title} underBack />
         {load.kind === 'loading' && <PageLoading words={t('exportAllData.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role="alert">

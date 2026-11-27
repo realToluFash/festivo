@@ -59,6 +59,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         $this->publishGoogle();
         $this->signIn($owner);
 
+        /** @mago-expect lint:no-literal-password */
         $page = $this->send('PUT', $this->path($organisation, 'provider'), [
             'protocol' => 'oidc',
             'name' => ' Google Workspace ',
@@ -114,6 +115,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         $this->send('PUT', $this->path($organisation, 'provider'), ['protocol' => 'saml', 'name' => 'Okta', 'metadataXml' => '<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]>' . self::metadata()]);
         self::assertSame([['metadata', 'sso_metadata_unreadable']], $this->violations(), 'a document type is never read');
 
+        /** @mago-expect lint:no-literal-password */
         $body = $this->send('PUT', $this->path($organisation, 'provider'), ['protocol' => 'oidc', 'name' => 'Google', 'issuer' => 'https://accounts.google.com/bad', 'clientId' => 'id', 'clientSecret' => 'secret']);
         self::assertSame([['issuer', 'sso_discovery_failed']], $this->violations());
         self::assertStringContainsString('https://accounts.google.com/bad/.well-known/openid-configuration', Json\encode($body));
@@ -254,6 +256,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
     /** @return array<string, string> */
     private function google(): array
     {
+        /** @mago-expect lint:no-literal-password */
         return ['protocol' => 'oidc', 'name' => 'Google Workspace', 'issuer' => self::GOOGLE, 'clientId' => '48120-ire.apps.googleusercontent.com', 'clientSecret' => 'gw-7Hq2xL9vR4mK8pT1'];
     }
 
@@ -268,14 +271,14 @@ final class SingleSignOnSettingsTest extends ApiTestCase
     private function testWorked(Organisation $organisation, User $owner): void
     {
         $settings = self::service(SingleSignOnSettings::class);
-        $settings->testWorked($settings->current($this->fresh($organisation)) ?? self::fail('nothing saved'), $this->freshUser($owner), 'folake@ire.events', 'Folake Adeyemi');
+        $settings->testWorked($settings->current($this->fresh($organisation)) ?? static::fail('nothing saved'), $this->freshUser($owner), 'folake@ire.events', 'Folake Adeyemi');
         $this->signIn($owner);
     }
 
     private function testFailed(Organisation $organisation, User $owner, string $said): void
     {
         $settings = self::service(SingleSignOnSettings::class);
-        $settings->testFailed($settings->current($this->fresh($organisation)) ?? self::fail('nothing saved'), $this->freshUser($owner), $said);
+        $settings->testFailed($settings->current($this->fresh($organisation)) ?? static::fail('nothing saved'), $this->freshUser($owner), $said);
         $this->signIn($owner);
     }
 
@@ -311,7 +314,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $this->moveTo($organisation, Plan::Enterprise);
         $entityManager = self::service(EntityManagerInterface::class);
-        $domain = new EmailDomain($entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone'), 'ire.events', SecureRandom\string(32), new DateTimeImmutable());
+        $domain = new EmailDomain($entityManager->find(Organisation::class, $organisation->getId()) ?? static::fail('gone'), 'ire.events', SecureRandom\string(32), new DateTimeImmutable());
         $entityManager->persist($domain);
         $entityManager->flush();
         ScriptedTxtRecordLookup::publish(EmailDomains::recordName('ire.events'), $domain->getRecordValue());
@@ -340,12 +343,12 @@ final class SingleSignOnSettingsTest extends ApiTestCase
 
     private function fresh(Organisation $organisation): Organisation
     {
-        return self::service(EntityManagerInterface::class)->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
+        return self::service(EntityManagerInterface::class)->find(Organisation::class, $organisation->getId()) ?? static::fail('gone');
     }
 
     private function freshUser(User $user): User
     {
-        return self::service(EntityManagerInterface::class)->find(User::class, $user->getId()) ?? self::fail('gone');
+        return self::service(EntityManagerInterface::class)->find(User::class, $user->getId()) ?? static::fail('gone');
     }
 
     private function member(string $address, string $name): User

@@ -6,7 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import github, roles, store, work
-from .shortcut import OutOfTime, Shortcut, ShortcutError, slim
+from .shortcut import OutOfTime, Shortcut, ShortcutError, history_moves, history_vcs, slim
 
 FRESH_SECONDS = 60
 FULL_EVERY_SECONDS = 15 * 60
@@ -23,6 +23,9 @@ EPICS_EVERY_SECONDS = 60
 # The timer fires every minute and skips a fire while a tick still runs, so a sync stops
 # here and the roles are ticked from the last whole one.
 BUDGET_SECONDS = 25
+# A demo-only story's demo that merged before the sync's window of 15 merges is found by
+# search, and searched for again this often while the story waits on it.
+DEMO_SEARCH_SECONDS = 24 * 60 * 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
 SLIM_VERSION = 3
 
@@ -75,8 +78,10 @@ def sync_shortcut(db, shortcut, now, full=False):
             found.update({s["id"]: s for s in hits})
         stale = [story_id for story_id, hit in found.items()
                  if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
-        for raw in pool.map(shortcut.story, stale):
+        raws = list(pool.map(shortcut.story, stale))
+        for raw in raws:
             store.put_story(db, slim(raw, states, epics))
+    undo_design_branch_moves(db, shortcut, raws, states, epics)
     fetched = len(stale) + sync_blockers(db, shortcut, states, epics)
     store.set_meta(db, "shortcut_at", now)
     if full:
@@ -84,6 +89,107 @@ def sync_shortcut(db, shortcut, now, full=False):
     if ready:
         store.set_meta(db, "ready_at", now)
     return fetched
+
+
+UNKNOWN_PULL_REQUEST = object()
+
+
+def design_branch_move(history, states, branches):
+    """The ux/ branch or pull request whose push moved a story from Needs Design to Ready For
+    Dev, if its last move was that one; UNKNOWN_PULL_REQUEST if that move names a pull
+    request `branches` does not hold yet; otherwise None. `branches` names each pull request's branch, by number."""
+    for entry in reversed(history):
+        moves = history_moves(entry)
+        if not moves:
+            continue
+        if (states.get(str(moves[0].get("old"))), states.get(str(moves[0].get("new")))) \
+                != ("Needs Design", "Ready For Dev"):
+            return None
+        for thing in history_vcs(entry):
+            kind = thing["entity_type"]
+            name = thing.get("name") if kind == "branch" else \
+                branches.get(thing.get("number")) if kind == "pull-request" else None
+            if roles.is_design_branch(name):
+                return name
+        if any(thing["entity_type"] == "pull-request" and thing.get("number") not in branches
+               for thing in history_vcs(entry)):
+            return UNKNOWN_PULL_REQUEST
+        return None
+    return None
+
+
+def design_pull_requests(raw, prs):
+    """Each ux/ branch naming a story, with its pull requests by number, each True once merged
+    or closed. Shortcut's record and sq's GitHub view are both read, and either seeing a pull
+    request finished settles it, since the other may not have caught up with the merge."""
+    found = {}
+
+    def see(branch, number, finished):
+        if not roles.is_design_branch(branch):
+            return
+        pulls = found.setdefault(branch, {})
+        if number is not None:
+            pulls[number] = pulls.get(number, False) or bool(finished)
+
+    for branch in raw.get("branches") or []:
+        see(branch.get("name"), None, False)
+        for pr in branch.get("pull_requests") or []:
+            see(branch.get("name"), pr.get("number"), pr.get("merged") or pr.get("closed"))
+    for pr in raw.get("pull_requests") or []:
+        see(pr.get("branch_name"), pr.get("number"), pr.get("merged") or pr.get("closed"))
+    for pr in prs:
+        if pr.get("story_id") == raw["id"] or pr.get("branch") in found:
+            see(pr.get("branch"), pr["number"], pr.get("state") in ("merged", "closed"))
+    return found
+
+
+def pull_request_branches(raw, prs):
+    """Each pull request's branch, by number, from sq's GitHub view and the story's own
+    record, so a move naming one GitHub no longer lists is still placed."""
+    branches = {pr["number"]: pr.get("branch") for pr in prs}
+    for branch in raw.get("branches") or []:
+        for pr in branch.get("pull_requests") or []:
+            if pr.get("number") is not None:
+                branches[pr["number"]] = branch.get("name")
+    for pr in raw.get("pull_requests") or []:
+        if pr.get("number") is not None and pr.get("branch_name"):
+            branches[pr["number"]] = pr["branch_name"]
+    return branches
+
+
+def demo_unmerged(pulls):
+    """A ux/ branch with an open pull request, or with none sq can match, is demo work still
+    to merge."""
+    return any(not numbers or not all(numbers.values()) for numbers in pulls.values())
+
+
+def undo_design_branch_moves(db, shortcut, raws, states, epics):
+    """Shortcut's GitHub integration moves a story to Ready For Dev when a branch naming it is
+    pushed, a designer's ux/ branch too, while its demo is still under review. Ready For Dev
+    means a merged demo, so the move is undone while a ux/ branch naming the story has not
+    merged, and stands once every one has: the integration makes the same move on the merge.
+    A story Shortcut fails on, or whose move names a pull request neither sq's GitHub view nor
+    the story's record holds yet, is stored without its `updated_at`, so the next sync tries again."""
+    ids = {name: int(state_id) for state_id, name in states.items()}
+    if "Needs Design" not in ids:
+        return
+    prs = store.prs(db)
+    for raw in raws:
+        if states.get(str(raw.get("workflow_state_id"))) != "Ready For Dev":
+            continue
+        pulls = design_pull_requests(raw, prs)
+        if not demo_unmerged(pulls):
+            continue
+        branches = pull_request_branches(raw, prs)
+        try:
+            found = design_branch_move(shortcut.history(raw["id"]), states, branches)
+            if found is UNKNOWN_PULL_REQUEST:
+                store.put_story(db, dict(slim(raw, states, epics), updated_at=None))
+            elif found:
+                moved = shortcut.update(raw["id"], workflow_state_id=ids["Needs Design"])
+                store.put_story(db, slim(moved or shortcut.story(raw["id"]), states, epics))
+        except ShortcutError:
+            store.put_story(db, dict(slim(raw, states, epics), updated_at=None))
 
 
 def sync_blockers(db, shortcut, states, epics):
@@ -174,6 +280,35 @@ def sync_github(db):
     store.set_meta(db, "main_run", runs[0] if runs else None)
 
 
+def demo_prs(db, now):
+    """The merged pull requests of each demo-only story waiting on its build that the sync's
+    window no longer holds, stored beside it, so the product manager is still told to move
+    the story on. Each story is searched once a day; a failed search keeps what it found."""
+    stored = store.prs(db)
+    seen = {pr["story_id"] for pr in stored if pr.get("story_id")}
+    found, kept = store.get_meta(db, "demo_prs") or {}, {}
+    for story in store.stories(db):
+        if roles.DEMO_ONLY not in story["labels"] or story["state"] not in work.DEMO_WAITING \
+                or story["done"] or story.get("archived") or story["id"] in seen:
+            continue
+        key, entry = str(story["id"]), found.get(str(story["id"]))
+        if not entry or now - entry["at"] >= DEMO_SEARCH_SECONDS:
+            try:
+                entry = {"at": now, "prs": github.merged_for_story(story["id"])}
+            except github.OutOfTime:
+                raise
+            except github.GitHubError:
+                pass
+        if entry:
+            kept[key] = entry
+    store.set_meta(db, "demo_prs", kept)
+    numbers = {pr["number"] for pr in stored}
+    extra = {pr["number"]: pr for entry in kept.values() for pr in entry["prs"]
+             if pr["number"] not in numbers}
+    if extra:
+        store.put_prs(db, stored + list(extra.values()))
+
+
 def sync(db, now=None, force=False, full=False, budget=BUDGET_SECONDS, clock=time.monotonic,
          client=Shortcut):
     """Syncs unless another tick did within the last minute. Returns the errors, if any.
@@ -205,6 +340,8 @@ def sync(db, now=None, force=False, full=False, budget=BUDGET_SECONDS, clock=tim
     part("shortcut", lambda: sync_shortcut(db, shortcut, now, full))
     with github.deadline(deadline, clock) if deadline else contextlib.nullcontext():
         part("github", lambda: sync_github(db))
+        if "github" not in cut and not errors:
+            part("demo prs", lambda: demo_prs(db, now))
     if not errors and not cut:
         part("pr stories", lambda: pr_stories(db, shortcut, now))
     store.set_meta(db, "sync_errors", errors)

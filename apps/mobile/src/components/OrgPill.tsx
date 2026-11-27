@@ -1,15 +1,18 @@
-import type { Ref } from 'react';
+import { type ReactNode, type Ref, useState } from 'react';
 import {
   Platform,
   Pressable,
+  type StyleProp,
   StyleSheet,
   View,
   type ViewInstance,
+  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 
+import { waitingRoomUnder, wholeTileAlone } from '../layout/pillFit.ts';
 import { ROOMS, rowPad } from '../layout/sidebarSize.ts';
-
+import { piecesIn, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { OrgMark } from './OrgMark.tsx';
@@ -17,8 +20,12 @@ import { Text } from './Text.tsx';
 import { pressOnDoubleTap } from './screenReaderFocus.ts';
 import { useSideFit } from './sideFit.tsx';
 import { titleWithInkRoom } from './titleWidth.ts';
+import { CappedWholeWords, useMeasuredAt } from './Title.tsx';
 
+const NAME = 15;
+const WAITING = 12.5;
 const NAME_LINE = 1.25;
+const WAITING_LINE = 1.3;
 
 export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
@@ -31,6 +38,7 @@ export function OpenerWords({
   wrap = false,
   lines,
   size,
+  waitingSize,
 }: {
   name: string;
   /** How many invitations wait, in words, or null when none do. */
@@ -42,21 +50,65 @@ export function OpenerWords({
   lines?: number | undefined;
   /** The name's size as iPad landscape's sidebar fits it, which the text size no longer grows (sc-68441). */
   size?: number | undefined;
+  /** The invitation line's size as the sidebar fits it on its own, apart from the name's (sc-79559). */
+  waitingSize?: number | undefined;
 }) {
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
   return (
-    <View style={[styles.words, grow && styles.grow]}>
-      <Text
-        size={size ?? 15}
-        weight="semibold"
-        numberOfLines={lines ?? (wrap ? undefined : 1)}
-        allowFontScaling={size == null}
-        accessible={false}
-        style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
-      >
-        {titleWithInkRoom(name, Platform.OS)}
-      </Text>
+    <OpenerColumn
+      onDark={onDark}
+      style={grow && styles.grow}
+      name={
+        <Text
+          size={size ?? NAME}
+          weight="semibold"
+          numberOfLines={lines ?? (wrap ? undefined : 1)}
+          allowFontScaling={size == null}
+          accessible={false}
+          style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </Text>
+      }
+      waiting={
+        waiting == null ? null : (
+          <Text
+            size={waitingSize ?? WAITING}
+            weight="semibold"
+            numberOfLines={wrap ? undefined : 1}
+            allowFontScaling={waitingSize == null}
+            accessible={false}
+            style={[
+              styles.waitingWords,
+              waitingSize != null && { lineHeight: waitingSize * WAITING_LINE },
+              ink,
+            ]}
+          >
+            {waiting}
+          </Text>
+        )
+      }
+    />
+  );
+}
+
+/** The opener's column, whatever draws its words: the name, and under it the ring before the invitation line. */
+export function OpenerColumn({
+  name,
+  waiting,
+  onDark,
+  style,
+}: {
+  name: ReactNode;
+  /** The invitation line, or null when no invitation waits. */
+  waiting: ReactNode | null;
+  onDark: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.words, style]}>
+      {name}
       {waiting != null && (
         <View style={styles.waitingLine}>
           <View
@@ -65,22 +117,103 @@ export function OpenerWords({
               { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
             ]}
           />
-          <Text
-            size={12.5}
-            weight="semibold"
-            numberOfLines={wrap ? undefined : 1}
-            accessible={false}
-            style={[styles.waitingWords, ink]}
-          >
-            {waiting}
-          </Text>
+          {waiting}
         </View>
       )}
     </View>
   );
 }
 
-/** The opener's words at the head of iPad landscape's sidebar: the name on one line, stepped down until it fits whole there (sc-68441). */
+/** From AX1, where the pill is given its name's line: the name and the invitation line each step down alone rather than break a word, never under their default sizes, the invitation line never larger than the name; hidden until measured (sc-92247, sc-92464). */
+export function WholeOpenerWords({
+  name,
+  waiting,
+  room,
+  hidden,
+  onDark = false,
+}: {
+  name: string;
+  waiting: string | null;
+  room: number;
+  hidden: boolean;
+  onDark?: boolean;
+}) {
+  const [named, setNamed] = useState<number>();
+  const [line, setLine] = useState<number>();
+  const given = room > 0 ? room : undefined;
+  const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
+
+  return (
+    <OpenerColumn
+      onDark={onDark}
+      style={hidden && styles.hidden}
+      name={
+        <CappedWholeWords
+          size={NAME}
+          weight="semibold"
+          accessible={false}
+          room={given}
+          breakAfterHyphens
+          onDrawn={setNamed}
+          style={[ink, named != null && { lineHeight: wholeLineHeight(NAME, named, NAME_LINE) }]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </CappedWholeWords>
+      }
+      waiting={
+        waiting == null ? null : (
+          <View style={styles.grow}>
+            <CappedWholeWords
+              size={WAITING}
+              weight="semibold"
+              accessible={false}
+              under={named}
+              room={given == null ? undefined : waitingRoomUnder(given)}
+              onDrawn={setLine}
+              style={[
+                ink,
+                line != null && { lineHeight: wholeLineHeight(WAITING, line, WAITING_LINE) },
+              ]}
+            >
+              {waiting}
+            </CappedWholeWords>
+          </View>
+        )
+      }
+    />
+  );
+}
+
+/** Whether the whole-words pill is its tile alone, its name's widest word at the default size wider than its line, or the invitation line's at its own wider than the room under the name, and whether that is known yet; `room` undefined where the pill is not given its name's line (sc-38149, sc-92247, sc-92464, sc-92314). */
+export function useWholeTile(name: string, waiting: string | null, room: number | undefined) {
+  const whole = room != null;
+  const named = useMeasuredAt(NAME, whole ? piecesIn([name]) : []);
+  const line = useMeasuredAt(WAITING, whole && waiting != null ? wordsIn([waiting]) : []);
+  const widths = [...named.widths, ...line.widths];
+  const known = named.widths.length > 0 && widths.every((width) => width != null);
+  const tileAlone =
+    whole &&
+    known &&
+    wholeTileAlone(
+      Math.max(...named.widths.map(Number)),
+      room,
+      Math.max(0, ...line.widths.map(Number)),
+    );
+
+  return {
+    whole,
+    known,
+    tileAlone,
+    measure: whole && (
+      <>
+        {named.measure}
+        {line.measure}
+      </>
+    ),
+  };
+}
+
+/** The opener's words at the head of iPad landscape's sidebar: the name and the invitation line each on one line, each stepped down alone until it fits whole there (sc-68441, sc-79559). */
 function SidebarOpenerWords({
   name,
   waiting,
@@ -94,11 +227,21 @@ function SidebarOpenerWords({
 }) {
   const { fontScale } = useWindowDimensions();
   const { size, measure } = useSideFit(name, ROOMS.org, fontScale, 'semibold', 'line');
+  const line = useSideFit(waiting ?? '', ROOMS.waiting, fontScale, 'semibold', 'line');
 
   return (
     <>
       {measure}
-      <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} size={size} grow />
+      {waiting != null && line.measure}
+      <OpenerWords
+        name={name}
+        waiting={waiting}
+        wrap={wrap}
+        lines={lines}
+        size={size}
+        waitingSize={waiting == null ? undefined : line.size}
+        grow
+      />
     </>
   );
 }
@@ -115,6 +258,7 @@ export function OrgPill({
   wrap = false,
   sidebar = false,
   tileAlone = false,
+  nameRoom,
   lines,
   testID,
   ref,
@@ -131,11 +275,15 @@ export function OrgPill({
   sidebar?: boolean;
   /** Where the room runs out the pill is its tile, its name kept for the screen reader and the switcher. */
   tileAlone?: boolean;
+  /** On a phone from AX1, the name's line, 0 until the row is measured: the words stay whole and the pill is its tile only where a word cannot fit at its default size (sc-92464). */
+  nameRoom?: number | undefined;
   lines?: number | undefined;
   testID?: string;
   ref?: Ref<ViewInstance> | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
+  const whole = useWholeTile(name, waiting, sidebar ? undefined : nameRoom);
+  const tile = tileAlone || whole.tileAlone;
 
   return (
     <Pressable
@@ -153,7 +301,7 @@ export function OrgPill({
           : [
               styles.org,
               (waiting != null || wrap) && styles.orgWaiting,
-              tileAlone && styles.orgTile,
+              tile && styles.orgTile,
               pressed && styles.orgPressed,
             ]
       }
@@ -163,7 +311,8 @@ export function OrgPill({
       {...quietTap(onPress, expanded)}
       testID={testID}
     >
-      {tileAlone ? (
+      {whole.measure}
+      {tile ? (
         <View>
           <OrgMark id={id} name={name} side={28} />
           {waiting != null && (
@@ -175,15 +324,20 @@ export function OrgPill({
       ) : (
         !bare && <OrgMark id={id} name={name} side={28} />
       )}
-      {!tileAlone &&
+      {!tile &&
         (sidebar ? (
           <SidebarOpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
+        ) : whole.whole ? (
+          <WholeOpenerWords
+            name={name}
+            waiting={waiting}
+            room={nameRoom ?? 0}
+            hidden={!whole.known || !nameRoom}
+          />
         ) : (
           <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
         ))}
-      {onPress != null && !tileAlone && (
-        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-      )}
+      {onPress != null && !tile && <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />}
     </Pressable>
   );
 }
@@ -197,6 +351,7 @@ export function quietTap(onPress: (() => void) | undefined, expanded: boolean | 
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  hidden: { opacity: 0 },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   name: { lineHeight: 15 * NAME_LINE },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
@@ -209,7 +364,7 @@ const styles = StyleSheet.create({
     borderRadius: 7.5,
     backgroundColor: tokens.colorInset,
   },
-  waitingWords: { lineHeight: 12.5 * 1.3 },
+  waitingWords: { lineHeight: 12.5 * WAITING_LINE },
   org: {
     minHeight: OPENER.rest,
     flexShrink: 1,

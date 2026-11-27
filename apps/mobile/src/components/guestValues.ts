@@ -18,6 +18,7 @@ interface Companion {
 
 export interface Values {
   fullName: string;
+  greetAs: string;
   email: string;
   country: string;
   number: string;
@@ -33,6 +34,7 @@ export function valuesOf(guest: GuestDetails | null, startCountry: string): Valu
 
   return {
     fullName: guest?.fullName ?? '',
+    greetAs: guest?.greetAs ?? '',
     email: guest?.email ?? '',
     country: phone?.country ?? startCountry,
     number: phone?.number ?? '',
@@ -50,6 +52,7 @@ export function valuesOf(guest: GuestDetails | null, startCountry: string): Valu
 export function typedOf(values: Values): Typed {
   return {
     fullName: values.fullName,
+    greetAs: values.greetAs,
     email: values.email,
     country: values.country,
     number: values.number,
@@ -96,4 +99,9 @@ export function editOf(
     needs: needsInputOf(values.needs),
     ...(groupChanged(current, group) ? { group } : {}),
   };
+}
+
+/** The name the discard ask can use: the saved one, else the typed one; null when both are blank. */
+export function discardNameOf(first: Values, values: Values): string | null {
+  return first.fullName.trim() || values.fullName.trim() || null;
 }

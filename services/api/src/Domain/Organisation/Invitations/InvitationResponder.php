@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Invitations;
 
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\EmailAddressNormaliser;
@@ -39,6 +40,7 @@ final readonly class InvitationResponder
         private UserRegistrar $userRegistrar,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -131,9 +133,19 @@ final readonly class InvitationResponder
         });
     }
 
-    /** Whose it is first: somebody else is told it is not theirs, not what became of it. */
+    /** A phone-only account (sc-4235) joins an organisation only once it holds the invited address, verified. */
+    public function needsEmail(User $user): bool
+    {
+        return !$user->hasVerifiedEmailAddress() && true === $user->getPrimaryPhoneNumber()?->isVerified();
+    }
+
+    /** A phone-only account is asked for the address before anything, as it can match no invitation yet; then whose it is: somebody else is told it is not theirs, not what became of it. */
     private function refuseUnless(Invitation $invitation, User $user): void
     {
+        if ($this->needsEmail($user)) {
+            throw new ApiException(ErrorCode::InvitationNeedsEmail, $this->translator->trans('invitations.needs_email'));
+        }
+
         if (!$this->isFor($invitation, $user)) {
             throw new ApiException(ErrorCode::InvitationNotYours, $this->translator->trans('invitations.not_yours'));
         }
@@ -160,6 +172,7 @@ final readonly class InvitationResponder
     {
         $organisation = Type\instance_of(Organisation::class)->coerce($invitation->getOrganisation());
         $role = Type\instance_of(Role::class)->coerce($invitation->getRole());
+        $this->hardLimits->requireSeatToAccept($organisation);
 
         $membership = $this->membershipMachine->join($organisation, $user, $role, MembershipStatus::Active, MembershipChannel::Invitation, $user);
         $invitation->setStatus(InvitationStatus::Accepted);

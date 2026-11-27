@@ -9,9 +9,13 @@ import {
   holderOf,
   cardFacts,
   cardWords,
+  firstNameOf,
   inListOrder,
+  keepWord,
   managesPeople,
+  notChangedLine,
   nowCan,
+  offerLine,
   offered,
   opensRow,
   outsideView,
@@ -40,6 +44,8 @@ function person(id: string, name: string, role: EventRole, jobLabel: string | nu
     address: null,
     addressKind: null,
     endsAt: null,
+    doorCode: null,
+    joinedAt: null,
   } satisfies EventPerson;
 }
 
@@ -58,6 +64,8 @@ function fromOutside(
     address,
     addressKind,
     endsAt: '2026-12-12T23:00:00+01:00',
+    doorCode: null,
+    joinedAt: null,
   };
 }
 
@@ -76,6 +84,18 @@ describe('People on an event', () => {
     ]);
   });
 
+  it('lists the service levels after the event roles, and names them (sc-4002)', () => {
+    const waiter = { ...person('kemi', 'Kemi Okafor', 'can_work_floor'), outside: true };
+    const runner = { ...person('ade', 'Ade Bello', 'can_run_floor'), outside: true };
+
+    expect(inListOrder([runner, waiter, TOM], 'en').map((one) => one.id)).toEqual([
+      'tom',
+      'kemi',
+      'ade',
+    ]);
+    expect(rowLine(t, waiter, 'u_priya')).toBe('Can work the floor');
+  });
+
   it('is changed by whoever the event gives people.manage', () => {
     expect(managesPeople({ permissions: ['events.read', 'people.manage'] })).toBe(true);
     expect(managesPeople({ permissions: ['events.read'] })).toBe(false);
@@ -90,6 +110,12 @@ describe('People on an event', () => {
   it('lines a row with its role, then any job label, then You', () => {
     expect(rowLine(t, TOM, 'u_priya')).toBe('Can check guests in · Door');
     expect(rowLine(t, PRIYA, 'u_priya')).toBe('Lead · You');
+  });
+
+  it('ends the line of someone who came in by a door code with Door code', () => {
+    const joined = { ...TOM, doorCode: 'K7P2QX9M', joinedAt: '2026-11-14T13:31:00+00:00' };
+
+    expect(rowLine(t, joined, 'u_priya')).toBe('Can check guests in · Door · Door code');
   });
 
   it('names the owners and admins who see every event', () => {
@@ -114,13 +140,30 @@ describe('People on an event', () => {
 
   it('finds members by name, ignoring accents and case', () => {
     const addable = [
-      { membershipId: 'm1', name: 'Lucía Pérez' },
-      { membershipId: 'm2', name: 'Kofi Mensah' },
+      { membershipId: 'm1', name: 'Lucía Pérez', role: 'member' },
+      { membershipId: 'm2', name: 'Kofi Mensah', role: 'member' },
     ];
 
     expect(offered(addable, 'lucia').map((one) => one.membershipId)).toEqual(['m1']);
     expect(offered(addable, '  ')).toHaveLength(2);
     expect(offered(addable, 'zed')).toEqual([]);
+  });
+
+  it('offers members before the owners and admins, each with their role', () => {
+    const addable = [
+      { membershipId: 'm1', name: 'Folake Adeyemi', role: 'owner' },
+      { membershipId: 'm2', name: 'Julien Moreau', role: 'administrator' },
+      { membershipId: 'm3', name: 'Kofi Mensah', role: 'member' },
+    ];
+    const shown = offered(addable, '');
+
+    expect(shown.map((one) => one.membershipId)).toEqual(['m3', 'm1', 'm2']);
+    expect(shown.map((one) => offerLine(t, one))).toEqual([
+      'Member',
+      'Owner · sees every event',
+      'Admin · sees every event',
+    ]);
+    expect(offerLine(t, { membershipId: 'm4', name: 'Ada', role: null })).toBeUndefined();
   });
 });
 
@@ -225,6 +268,24 @@ describe('Someone from outside the organisation', () => {
     });
     expect(personShown(WITHHELD)).toEqual({ kind: 'notJoined' });
     expect(personShown(PRIYA)).toEqual({ kind: 'named', name: 'Priya Shah', userId: 'u_priya' });
+  });
+
+  it('cuts only an account name to its first word, never an address or a number (sc-91678)', () => {
+    expect(firstNameOf(PRIYA)).toBe('Priya');
+    expect(firstNameOf(BISI)).toBeNull();
+    expect(firstNameOf(PHONE)).toBeNull();
+    expect(firstNameOf(WITHHELD)).toBeNull();
+  });
+
+  it('keeps them by first name, or as them, and names a number whole when a change fails (sc-91678)', () => {
+    expect(keepWord(t, PRIYA)).toBe('Keep Priya');
+    expect(keepWord(t, PHONE)).toBe('Keep them');
+    expect(keepWord(t, BISI)).toBe('Keep them');
+    expect(keepWord(t, WITHHELD)).toBe('Keep them');
+    expect(notChangedLine(t, PHONE, '+234 803 555 0142', 'can_view')).toContain(
+      'change +234 803 555 0142’s role',
+    );
+    expect(notChangedLine(t, PRIYA, 'Priya Shah', 'lead')).toContain('change Priya’s role');
   });
 
   it('opens a row with no account yet, and lines it with role and job label', () => {

@@ -196,7 +196,7 @@ function Header({ s }: { s: QueueState }) {
           {!s.online
             ? 'No connection · as of 20:41'
             : s.started
-              ? 'Connected · up to date 20:41'
+              ? 'Connected · up to date at 20:41'
               : 'Not started yet'}
         </Text>
       </View>

@@ -1,10 +1,20 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Provider } from '@soirely/api-client';
+import Svg, { Path } from 'react-native-svg';
+import {
+  Platform,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../components/Buttons.tsx';
+import { OneHeight } from '../../components/OneHeight.tsx';
+import { ProviderButton } from '../../components/ProviderSignIn.tsx';
 import { focusChecked } from '../../components/Field.tsx';
 import { focusPicker } from '../../components/CountryPicker.tsx';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
@@ -14,14 +24,18 @@ import { useLineSize, WelcomeBrand } from '../../components/Welcome.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { CodeBoxes, type CodeBoxesHandle } from '../../steps/CodeBoxes.tsx';
 import { InsideField } from '../../steps/InsideField.tsx';
-import { Heading, Says } from '../../steps/Lines.tsx';
+import { Heading, Says, stepTitle, useStepTitleSize } from '../../steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../steps/rules.ts';
 import { useCountdown } from '../../steps/useCountdown.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
 import { DemoScreen, NavBar } from '../DemoScreen.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
+import { FieldsAboveSend } from '../../components/FieldsAboveSend.tsx';
+import { SETTLED_MS } from '../../components/intoView.ts';
+import { useKeyboardTop } from '../../components/keyboardWatch.ts';
 import { HELD_MS } from '../people/PeopleSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SelectRow } from '../SelectRow.tsx';
@@ -41,6 +55,8 @@ import {
 import {
   joinAs,
   memberTitle,
+  providerOnlyLine,
+  providerOnlyTitle,
   resendIn,
   sentTo,
   tryAgainAt,
@@ -49,15 +65,19 @@ import {
   youreIn,
 } from './DoorCodeWords.ts';
 import { SEND_MS } from './HoldItUp.tsx';
+import { TurningButton } from './TurningButton.tsx';
 import { InsideEvent, You } from './Inside.tsx';
 import {
   afterPhoneCode,
+  BISI,
   type Flow,
   flowAt,
   freshFlow,
   phoneTitle,
+  PROVIDER_ORG,
   redeemStateOf,
   refusalOf,
+  signedOut,
 } from './RedeemModel.ts';
 
 type Go = (next: Partial<Flow>) => void;
@@ -65,7 +85,7 @@ type Go = (next: Partial<Flow>) => void;
 const PORTUGAL = COUNTRIES.find((one) => one.code === EVENT.country) ?? null;
 const NEXT_STEP_MS = 500;
 
-/** Joining with a door code (sc-72, sc-4235): the welcome or the camera, the code, the event, a phone code, then inside the event. */
+/** Joining with a door code (sc-72, sc-4235): the welcome or the camera, the code, the event and a name, then inside the event; the number and phone code wait for sc-4235. */
 export function RedeemRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = redeemStateOf(state);
@@ -78,17 +98,17 @@ function RedeemFlow({ start }: { start: Flow }) {
   const [visit, setVisit] = useState(0);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const go = useCallback<Go>((next) => {
-    setFlow((now) => ({ ...now, held: false, more: false, ...next }));
+    setFlow((now) => ({ ...now, held: false, more: false, signedOut: false, ...next }));
     setVisit((now) => now + 1);
   }, []);
-  const signOut = () => go(freshFlow());
+  const signOut = () => go(signedOut());
   const step = `${flow.step}-${visit}`;
 
   switch (flow.step) {
     case 'welcome':
       return <Welcome onJoinCode={() => go({ step: 'enter', typed: '', said: null })} />;
     case 'camera':
-      return <CameraStandIn onChip={() => go({ step: 'event', code: flow.code })} />;
+      return <CameraStandIn onChip={() => go({ step: 'named', code: flow.code })} />;
     case 'enter':
       return <EnterStep key={step} flow={flow} go={go} />;
     case 'tooMany':
@@ -97,6 +117,8 @@ function RedeemFlow({ start }: { start: Flow }) {
           <Heading title={W.tooMany} intro={tryAgainAt(TRY_AT)} answer={flow.step} />
         </DemoScreen>
       );
+    case 'named':
+      return <NameStep key={step} flow={flow} go={go} locale={locale} />;
     case 'event':
       return <EventStep key={step} flow={flow} go={go} locale={locale} />;
     case 'joinAs':
@@ -112,7 +134,7 @@ function RedeemFlow({ start }: { start: Flow }) {
               />
               <QuietButton
                 label={W.signOut}
-                onPress={() => go({ ...freshFlow('event'), code: flow.code })}
+                onPress={() => go({ ...freshFlow('named'), code: flow.code })}
                 testID="redeem.joinAs.signOut"
               />
             </>
@@ -140,6 +162,8 @@ function RedeemFlow({ start }: { start: Flow }) {
       );
     case 'code':
       return <PhoneCodeStep key={step} flow={flow} go={go} />;
+    case 'providerOnly':
+      return <ProviderOnlyStep key={step} flow={flow} go={go} />;
     case 'in':
       return (
         <DemoScreen
@@ -253,7 +277,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
         const found = redeemed(typed.current);
         if (found != null) {
           go({
-            step: 'event',
+            step: 'named',
             code: found,
             role: found.role,
             typed: typed.current,
@@ -292,7 +316,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
     <DemoScreen
       nav={<NavBar onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.continue}
           busy={sending}
           onPress={send}
@@ -300,6 +324,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
         />
       }
     >
+      {flow.signedOut && <SignedOutLine />}
       <Heading title={W.enterCode} />
       <View style={styles.fields}>
         <InsideField
@@ -330,10 +355,105 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
   );
 }
 
+/** Signed out, the device-held grant asks a name and nothing else (sc-72, until sc-4235). */
+function NameStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) {
+  const field = useRef<TextInputInstance>(null);
+  const name = useRef(flow.name);
+  const held = useRef(flow.held);
+  const [said, setSaid] = useState(flow.nameSaid);
+  const [joining, setJoining] = useState(flow.held);
+  const [refusals, setRefusals] = useState(flow.usedUp ? 1 : 0);
+
+  useEffect(() => {
+    if (!joining) return;
+    const answer = setTimeout(
+      () => {
+        if (flow.usedUp) {
+          setJoining(false);
+          setRefusals((now) => now + 1);
+          return;
+        }
+        const who = name.current.trim();
+        go({ step: 'in', name: who, who });
+      },
+      held.current ? HELD_MS : SEND_MS,
+    );
+    held.current = false;
+
+    return () => clearTimeout(answer);
+  }, [joining, flow.usedUp, go]);
+
+  function join(): void {
+    if (joining) return;
+    const problem = nameProblem(name.current);
+    setSaid(problem);
+    if (problem != null) {
+      focusChecked(field);
+      return;
+    }
+    setJoining(true);
+  }
+
+  return (
+    <DemoScreen
+      nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
+      foot={
+        <TurningButton
+          label={joining ? W.joining : W.join}
+          busy={joining}
+          onPress={join}
+          testID="redeem.name.join"
+        />
+      }
+    >
+      <EventTile />
+      <Heading title={EVENT.name} intro={eventLine(flow.code, locale)} answer={flow.step} />
+      <View style={styles.fields}>
+        {refusals > 0 && <Refused key={refusals} words={W.refused} />}
+        <View>
+          <InsideField
+            ref={field}
+            label={W.yourName}
+            defaultValue={flow.name}
+            onChangeText={(text) => {
+              name.current = text;
+              if (said != null) setSaid(null);
+            }}
+            state={said == null ? 'plain' : 'blank'}
+            line={said}
+            submitting={joining}
+            autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="go"
+            submitBehavior="submit"
+            onSubmitEditing={join}
+            autoFocus={flow.name === '' && !flow.usedUp}
+            testID="redeem.name.field"
+          />
+          {said != null && <Says words={said} />}
+        </View>
+      </View>
+    </DemoScreen>
+  );
+}
+
+/** sc-4235's name and number; with the keys up, both stay above Send code whenever they fit, the refusal with them (sc-97734). */
 function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) {
   const nameField = useRef<TextInputInstance>(null);
   const numberField = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
+  const refusalBlock = useRef<ViewInstance>(null);
+  const nameBlock = useRef<ViewInstance>(null);
+  const numberBlock = useRef<ViewInstance>(null);
+  const blocks = useMemo(
+    () => ({ refusal: refusalBlock, name: nameBlock, number: numberBlock }),
+    [],
+  );
+  const refusal = flow.usedUp ? W.refused : flow.failed ? W.failedBody : null;
+  const nameFirst = flow.keys != null || (flow.name === '' && !flow.usedUp);
+  const keysUp = useKeyboardTop() != null;
+  const toNumber = useRef(flow.keys === 'number');
   const name = useRef(flow.name);
   const number = useRef(flow.number);
   const held = useRef(flow.held);
@@ -341,6 +461,18 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
   const [nameSaid, setNameSaid] = useState(flow.nameSaid);
   const [numberSaid, setNumberSaid] = useState(flow.numberSaid);
   const [sending, setSending] = useState(flow.held);
+  const over = useAccessibilitySizes();
+
+  // Mobile number is reached as the product reaches it, Next from Your name once the keys have settled: focused as the step mounts, the dock and the lift measured it half arrived (qa #98882).
+  useEffect(() => {
+    if (!keysUp || !toNumber.current) return undefined;
+    const next = setTimeout(() => {
+      toNumber.current = false;
+      numberField.current?.focus();
+    }, SETTLED_MS);
+
+    return () => clearTimeout(next);
+  }, [keysUp]);
 
   useEffect(() => {
     if (!sending) return;
@@ -353,6 +485,8 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
           digits: '',
           phone: 'entering',
           texted: false,
+          failed: false,
+          keys: null,
         }),
       held.current ? HELD_MS : SEND_MS,
     );
@@ -383,7 +517,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     <DemoScreen
       nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.sendCode}
           busy={sending}
           onPress={send}
@@ -393,9 +527,13 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     >
       <EventTile />
       <Heading title={EVENT.name} intro={eventLine(flow.code, locale)} answer={flow.step} />
-      <View style={styles.fields}>
-        {flow.usedUp && <Refused words={W.refused} />}
-        <View>
+      <FieldsAboveSend refs={blocks} style={styles.fields}>
+        {refusal != null && (
+          <View ref={refusalBlock}>
+            <Refused words={refusal} />
+          </View>
+        )}
+        <View ref={nameBlock}>
           <InsideField
             ref={nameField}
             label={W.yourName}
@@ -413,13 +551,14 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
             returnKeyType="next"
             submitBehavior="submit"
             onSubmitEditing={() => numberField.current?.focus()}
-            autoFocus={flow.name === '' && !flow.usedUp}
+            autoFocus={nameFirst}
             testID="redeem.event.name"
           />
           {nameSaid != null && <Says words={nameSaid} />}
         </View>
-        <View>
-          <View style={styles.phoneRow}>
+        <View ref={numberBlock}>
+          {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
+          <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
             <SelectRow
               label={W.countryCode}
               country={country}
@@ -428,7 +567,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
               pickerRef={picker}
               testID="redeem.event.country"
             />
-            <View style={styles.grow}>
+            <View style={over ? undefined : styles.grow}>
               <InsideField
                 ref={numberField}
                 label={W.mobileNumber}
@@ -452,7 +591,62 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
           </View>
           {numberSaid != null && <Says words={numberSaid} />}
         </View>
-      </View>
+      </FieldsAboveSend>
+    </DemoScreen>
+  );
+}
+
+// Apple then Google on iPhone, Google then Apple on Android (sc-29076), whatever order the account lists them in.
+const IOS_ORDER: readonly Provider[] = ['apple', 'google'];
+const ANDROID_ORDER: readonly Provider[] = ['google', 'apple'];
+
+const PROVIDER_LABELS: Record<Provider, string> = {
+  google: 'Continue with Google',
+  apple: 'Continue with Apple',
+};
+
+/** The right phone code refused, as sc-69 refuses a password (sc-94849): each linked provider and no other, in the platform's order (sc-29076). Signed in, the door code's page is back and Join as admits her. */
+function ProviderOnlyStep({ flow, go }: { flow: Flow; go: Go }) {
+  const [busy, setBusy] = useState(false);
+  const providers = flow.providers ?? [];
+  const ordered = (Platform.OS === 'android' ? ANDROID_ORDER : IOS_ORDER).filter((provider) =>
+    providers.includes(provider),
+  );
+
+  useEffect(() => {
+    if (!busy) return;
+    const next = setTimeout(
+      () => go({ step: 'joinAs', who: BISI.account, providers: null }),
+      NEXT_STEP_MS,
+    );
+
+    return () => clearTimeout(next);
+  }, [busy, go]);
+
+  return (
+    <DemoScreen
+      nav={<NavBar left="close" onLeft={() => go(freshFlow())} />}
+      foot={
+        <OneHeight style={styles.providers}>
+          {ordered.map((provider) => (
+            <ProviderButton
+              key={provider}
+              provider={provider}
+              label={PROVIDER_LABELS[provider]}
+              onPress={() => setBusy(true)}
+              busy={busy}
+              testID={`redeem.providerOnly.${provider}`}
+            />
+          ))}
+        </OneHeight>
+      }
+    >
+      <EventTile />
+      <Heading
+        title={providerOnlyTitle(PROVIDER_ORG)}
+        intro={providerOnlyLine(PROVIDER_ORG, providers)}
+        answer={flow.step}
+      />
     </DemoScreen>
   );
 }
@@ -559,13 +753,50 @@ function Refusal({ title, body }: { title: string; body: string }) {
   );
 }
 
+/** "Signed out." as a status above the page's own heading, said without focus moving (sc-4235, Decided 12 Nov). */
+function SignedOutLine() {
+  const size = useStepTitleSize();
+  useReadOut(W.signedOut);
+
+  return (
+    <View style={styles.signedOut} testID="redeem.signedOut">
+      <Svg
+        width={26}
+        height={26}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={tokens.colorInkSecondary}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <Path d="m16 17 5-5-5-5" />
+        <Path d="M21 12H9" />
+      </Svg>
+      <Text size={size} weight="bold" style={[styles.grow, stepTitle(size)]}>
+        {W.signedOut}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  signedOut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    marginBottom: tokens.spaceLg,
+  },
   onCover: { color: tokens.colorInkOnDark },
   secondary: { color: tokens.colorInkSecondary },
   tile: { marginTop: tokens.spaceLg },
   fields: { marginTop: tokens.space3xl, gap: tokens.spaceLg },
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  phoneOver: { gap: tokens.spaceSm },
   refused: { color: tokens.colorBrokenText },
   refusal: { marginTop: tokens.space3xl },
   refusalWords: { gap: tokens.spaceXxs },
@@ -573,4 +804,5 @@ const styles = StyleSheet.create({
   boxes: { marginTop: tokens.space3xl },
   ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
   inFoot: { gap: tokens.spaceXl },
+  providers: { gap: tokens.spaceLg },
 });

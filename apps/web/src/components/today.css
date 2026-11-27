@@ -108,7 +108,7 @@
 }
 
 :is(.today, .today-page, .cal-page, .today-side-events) .is-party {
-  --todayEvent: var(--coverAccent, var(--colorAccent));
+  --todayEvent: var(--coverParty);
 }
 
 :is(.today, .today-page, .cal-page, .today-side-events) .is-draft {
@@ -126,6 +126,8 @@
 
 .today-banner,
 .today-now {
+  --noticeRing: var(--colorInkOnDark);
+
   position: relative;
   flex: none;
   overflow: hidden;
@@ -1309,4 +1311,50 @@
   border: 1px solid var(--colorBorder);
   border-radius: var(--radiusCheckbox);
   font: 500 12px/1.2 var(--fontFamily);
+}
+
+/* 44 to a finger, 34 to the eye. */
+.today-act {
+  display: flex;
+  align-items: center;
+  height: var(--sizeHit);
+  padding: 0;
+  text-decoration: none;
+}
+
+.today-act:focus-visible {
+  outline: none;
+}
+
+.today-act-pill {
+  display: flex;
+  align-items: center;
+  height: var(--todayActPill);
+  padding: 0 var(--spacePillEnd);
+  border-radius: var(--radiusPill);
+  background: var(--todayActSoft, var(--colorCard));
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.today-act:hover {
+  --todayActSoft: var(--colorNeutralFill);
+}
+
+.today-act:focus-visible .today-act-pill {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.today-tick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeAvatar);
+  height: var(--sizeAvatar);
+  border-radius: 50%;
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
 }

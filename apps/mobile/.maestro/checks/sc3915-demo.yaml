@@ -1,0 +1,19 @@
+# sc-3915: the app demo's event with Your night on Overview, and the night page it opens, for the side-by-side. P prefixes the screenshots. LAND=1 turns the tablet to landscape first. Needs ${METRO_URL}, ${P}, ${PT} (the Your night row as a point, 50%,34% on a phone).
+appId: host.exp.Exponent
+---
+- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/my-night?state=app_event
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${P}-overview-demo
+- tapOn:
+    point: ${PT}
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${P}-night-demo
+- scroll
+- takeScreenshot: ${P}-night-2-demo
+- scroll
+- takeScreenshot: ${P}-night-3-demo

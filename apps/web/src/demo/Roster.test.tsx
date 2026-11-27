@@ -302,6 +302,71 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
+  it('keeps whole words in the Roster at every desk width, Link at 168 px (sc-75033)', () => {
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(
+      cssRule('.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *', desk),
+    ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', desk)).toContain(
+      'min-width: 168px;',
+    );
+    expect(desk).not.toMatch(/th:nth-child\([23]\)/u);
+  });
+
+  it('leaves the Link column whole with the person open at 1280 × 800 (sc-3912, #78267)', async () => {
+    await open('longEvent');
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(cssRule('.rs .mn-panel', desk)).toContain('width: 360px;');
+    expect(cssRule('.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift', desk)).toContain(
+      'white-space: normal;',
+    );
+    expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    const cell = within(screen.getByRole('table')).getByText(
+      'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00',
+    );
+    expect(cell.textContent).toBe('Fri\u00a06\u00a0Nov, 16:00\u00a0to Sat\u00a07\u00a0Nov, 01:00');
+  });
+
+  it.each([
+    ['populatedFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['erasedListFrench', 'Liste du personnel', 'Coordonnées effacées après l’événement'],
+    ['erasedList', 'Roster', 'Contact details removed after the event'],
+    ['populatedSpanish', 'Lista del personal', 'Aún sin enlace'],
+    ['erasedDetailsSpanish', 'Lista del personal', 'Datos de contacto eliminados tras el evento'],
+    ['populatedPortuguese', 'Lista da equipa', 'Ainda sem ligação'],
+    ['erasedDetailsPortuguese', 'Lista da equipa', 'Contactos apagados depois do evento'],
+  ])('shows the Link words of %s in the Roster (sc-75033)', async (state, roster, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    const table = await screen.findByRole('table', { name: roster }, { timeout: 8000 });
+    expect(within(table).getAllByText(words).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['populatedSpanish', 'Siguiente paso: enviar un enlace a quien aún no lo haya recibido.'],
+    [
+      'erasedListSpanish',
+      'Siguiente paso: revisar las horas en «Horas trabajadas» antes de que se cierre el presupuesto.',
+    ],
+    [
+      'erasedListPortuguese',
+      'Próximo passo: verificar as horas em «Horas trabalhadas» antes de o orçamento fechar.',
+    ],
+    ['detailsNoLinkSpanish', 'Copiar enlace'],
+    ['detailsNoLinkPortuguese', 'Copiar ligação'],
+  ])('reads %s in the product’s words, not English (sc-75033)', async (state, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    expect((await screen.findAllByText(words, {}, { timeout: 8000 })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Next: /u)).toBeNull();
+    expect(screen.queryByText('Copy link')).toBeNull();
+  });
+
   it.each([
     ['nobodyOnShift', 'Not on a shift yet'],
     ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],
@@ -361,6 +426,25 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     await screen.findByText('Copied by Amara Nwosu · 19:12 · not marked as sent', {}, SLOW);
     expect(writeText).toHaveBeenCalledWith('https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c');
     expect(live()?.textContent).toBe('Link copied.');
+    press('Mark as sent: Emeka Obi');
+    expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
+    expect(button('Mark as sent: Emeka Obi')).toBeNull();
+  });
+
+  it('reads Shared for a person shared in the app, with Copied’s ring and Mark as sent (sc-77903)', async () => {
+    await open('linkShared');
+    const table = screen.getByRole('table', { name: 'Roster' });
+    expect(within(table).getByText('Shared')).toBeTruthy();
+    expect(
+      within(table).getByText('Shared by Kemi Adeyemi · 19:12 · not marked as sent'),
+    ).toBeTruthy();
+    expect(table.querySelector('.rs-mark.is-shared')).toBeTruthy();
+    expect(cssRule('.rs-mark.is-shared', ROSTER_CSS)).toContain('linear-gradient');
+    expect(
+      screen.getByText(
+        '[Next: once you have sent them the link shared in the app, mark it as sent.]',
+      ),
+    ).toBeTruthy();
     press('Mark as sent: Emeka Obi');
     expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
     expect(button('Mark as sent: Emeka Obi')).toBeNull();

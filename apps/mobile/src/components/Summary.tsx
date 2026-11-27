@@ -1,6 +1,16 @@
-import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type DimensionValue,
+  Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -86,15 +96,58 @@ const hidden = {
 
 export interface PageToastProps {
   words: string;
+  /** Tells this toast from an earlier one with the same words, so its box is laid out again. */
+  id?: string | undefined;
   action?: ToastAction | null | undefined;
   onClose: () => void;
 }
 
-export function PageToast({ words, action, onClose, bottom }: PageToastProps & { bottom: number }) {
+/** Where a page's toast shows: the top of its box in the window, for the toast it shows. */
+export interface ToastAt {
+  words: string;
+  id?: string | undefined;
+  top: number;
+}
+
+export function PageToast({
+  words,
+  id,
+  action,
+  onClose,
+  bottom,
+  onAt,
+}: PageToastProps & {
+  bottom: number;
+  /** Called as each words' toast is laid out, and with null as the toast goes. */
+  onAt?: ((at: ToastAt | null) => void) | undefined;
+}) {
+  const box = useRef<ViewInstance>(null);
+  const at = useRef(onAt);
+
+  useEffect(() => {
+    at.current = onAt;
+  }, [onAt]);
+
+  useEffect(() => () => at.current?.(null), []);
+
+  const measure = useCallback(
+    () => box.current?.measureInWindow((_x, top) => at.current?.({ words, id, top })),
+    [words, id],
+  );
+
+  // A toast laid out over the keys moves down with its place as the window grows back, and its own box is not laid out again (sc-86228).
+  useEffect(() => {
+    const hidden = Keyboard.addListener('keyboardDidHide', () => requestAnimationFrame(measure));
+
+    return () => hidden.remove();
+  }, [measure]);
+
   return (
     <TitleCap.Provider value={null}>
-      <View style={[styles.toast, { bottom }]}>
-        <Toast key={words} words={words} action={action} onClose={onClose} />
+      <View style={[styles.toast, { bottom }]} onLayout={measure}>
+        <View key={id ?? words} ref={box} onLayout={measure}>
+          <Toast words={words} action={action} onClose={onClose} />
+        </View>
       </View>
     </TitleCap.Provider>
   );
@@ -281,14 +334,19 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  besideGlyph = false,
   accessible,
   ref,
+  testID,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  /** Beside a card's glyph, where the words' column already bounds the line. */
+  besideGlyph?: boolean;
   accessible?: boolean | undefined;
   ref?: Ref<TextHandle> | undefined;
+  testID?: string | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
 
@@ -300,9 +358,10 @@ export function CardSays({
       start={size * fontScale}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
+      testID={testID}
       style={[
         styles.white,
-        styles.says,
+        !besideGlyph && styles.says,
         { lineHeight: Math.round(size * 1.15), letterSpacing: size * -0.015 },
       ]}
     >

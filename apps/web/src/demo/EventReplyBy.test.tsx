@@ -39,6 +39,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       'replyBySooner',
       'replyByNow',
       'replyByForbidden',
+      'replyByGone',
       'replyBySaved',
       'replyByRemoved',
     ]);

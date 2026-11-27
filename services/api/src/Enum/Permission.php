@@ -15,6 +15,7 @@ enum Permission: string
     case EventsCreate = 'events.create';
     case GuestsRead = 'guests.read';
     case GuestsManage = 'guests.manage';
+    case GuestsCheckIn = 'guests.check_in';
     case SeatingRead = 'seating.read';
     case SeatingManage = 'seating.manage';
     case MenuRead = 'menu.read';
@@ -39,6 +40,8 @@ enum Permission: string
     case OrganisationManage = 'organisation.manage';
     case PeopleRead = 'people.read';
     case PeopleManage = 'people.manage';
+    case ServiceWork = 'service.work';
+    case ServiceManage = 'service.manage';
 
     public function area(): PermissionArea
     {
@@ -51,10 +54,10 @@ enum Permission: string
         return Iter\contains([PermissionArea::Members, PermissionArea::Billing, PermissionArea::Organisation], $this->area());
     }
 
-    /** A `.manage` permission or Create events: what the read-only rule for an unlinked member keeps back (sc-69). */
+    /** A `.manage` permission, Create events, Check guests in or Work the service: what the read-only rule for an unlinked member keeps back (sc-69). */
     public function isChange(): bool
     {
-        return self::EventsCreate === $this || Str\ends_with($this->value, '.manage');
+        return Iter\contains([self::EventsCreate, self::GuestsCheckIn, self::ServiceWork], $this) || Str\ends_with($this->value, '.manage');
     }
 
     /** @return list<SeededRole> the organisation roles holding it everywhere: a Member holds nothing but what their roles on events give (sc-29912) */

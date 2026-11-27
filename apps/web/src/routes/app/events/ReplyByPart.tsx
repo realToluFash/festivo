@@ -1,5 +1,11 @@
 import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
-import { type ReplyByCheck, formatWallDay, replyByCheck, wallDay } from '@soirely/domain';
+import {
+  type ReplyByCheck,
+  eventSaveStopped,
+  formatWallDay,
+  replyByCheck,
+  wallDay,
+} from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -106,6 +112,8 @@ export function ReplyByPart({
       setBusy(false);
       if (error instanceof ApiError && error.status === 412)
         return outcome.give('changedElsewhere');
+      const stopped = eventSaveStopped(error);
+      if (stopped != null) return outcome.give(stopped === 'gone' ? 'eventGone' : 'forbidden');
       if (
         error instanceof ApiError &&
         error.status === 422 &&
@@ -118,6 +126,13 @@ export function ReplyByPart({
       }
       outcome.give('notSaved');
     }
+  }
+
+  function retyped(value: string): void {
+    setTyped(value);
+    setTried(false);
+    setRefusedHere(false);
+    if (outcome.answer === 'forbidden' || outcome.answer === 'eventGone') outcome.clear();
   }
 
   function save(): void {
@@ -154,11 +169,7 @@ export function ReplyByPart({
           value={typed}
           aria-invalid={wrong}
           aria-describedby={told}
-          onChange={(change) => {
-            setTyped(change.target.value);
-            setTried(false);
-            setRefusedHere(false);
-          }}
+          onChange={(change) => retyped(change.target.value)}
         />
         {wrong && (
           <p id={`${id}-error`} className="desk-error" role="alert">
@@ -173,9 +184,7 @@ export function ReplyByPart({
           <TextAction
             label={t('eventReplyBy.remove')}
             onClick={() => {
-              setTyped('');
-              setTried(false);
-              setRefusedHere(false);
+              retyped('');
               field.current?.focus();
             }}
           />

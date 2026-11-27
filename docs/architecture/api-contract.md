@@ -93,10 +93,14 @@ English, never the account's saved one. The two-factor recovery's
 (`POST /api/auth/two-factor/recovery`) names it in the account's zone ("Try again Sunday,
 Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `retryAt`
 member, because **Get back in without your authenticator** quotes them. A client quotes
-`retryAt` as it is, and falls back to `Retry-After` only when it is absent. Only the
-recovery carries `retryAt`. Any other such limit names it in UTC ("Try again Monday 26 Oct
-at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoever reads a
-raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. A door code's
+open and redeem (`/api/door-codes/{code}`, sc-72) carry `retryAt` too, in UTC ("Tuesday
+24 Nov at 13:32 UTC"), for API callers; the redeem page's **Too many tries** does not
+quote it, but writes the minute `Retry-After` gives on the reader's clock ("Try again at
+13:32."), with the day before it only when that is not today. Any
+other such limit names it in UTC ("Try again Monday 26 Oct at 16:32 UTC."), in its `detail`
+only (sc-12379): no screen quotes it, and whoever reads a raw `detail` reads it from
+anywhere. `Retry-After` stays in seconds either way (RFC 9110
 §10.2.3).
 
 | Endpoint                                            | Budget                                                                        | Spent by                 |
@@ -173,6 +177,77 @@ The details screen (`PATCH /api/auth/complete-profile`) takes the same number as
 optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty number means
 no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
 alongside the screen's other fields, and nothing is saved or texted until all of them pass.
+
+## Signing in by phone code
+
+Staff sign in with one code to a mobile number (sc-4235): no password and no email. The
+code is a phone verification's (sc-62, sc-750), with its length, expiry, cooldown and
+attempt limit, and it is never charged to the organisation's message credits. The number
+signing in sits on a `PhoneSignIn` row, so **no account exists until the code is right.**
+
+- Two ways in send it. A personal link (`POST /api/staff-links/sign-in/send`, `token`)
+  sends to the number on the roster entry, which the page shows only as
+  `{countryCode, lastDigits}`. A door code signed out (`POST
+/api/door-codes/{code}/sign-in/send`, `name`, `countryCode`, `number`) sends to the
+  number typed, with the name and number checked as registration and `PUT
+/api/auth/phone` check them. Either answers `{handle, cooldownSeconds}`, the same
+  whether or not the number has an account.
+- The code step is shared, by `handle` in the body: `POST
+/api/auth/phone-sign-in/state`, `…/resend` and `…/text-instead`.
+- `POST /api/staff-links/sign-in` and `POST /api/door-codes/{code}/sign-in` take
+  `handle`, `code` and `refreshTokenIn`, and answer as sign-in does: the tokens and
+  `account`, or `202` with a two-factor challenge. That challenge names `email`, or `phone`
+  as `{countryCode, lastDigits}` on an account with no email, and an account with no email
+  labels its authenticator entry with its number in E.164. A personal link's roster entry is
+  linked, and the sign-in audited, only once the session is issued: after two-factor when
+  it is on.
+- **Only the verified primary signs in.** A number that is one makes no second account; a
+  new number makes a staff account with the name alone. A verified alternative is
+  `409 phone_alternative` after the right code, with nothing made, released or granted,
+  and an unverified number on another account is released.
+- **A door code's use cap counts people.** A full code still opens. After the right code,
+  an account already on its event, by it or another way in, is signed in with
+  `again: true` and takes no use, and any other number gets the one
+  `404 door_code_invalid`, with no account made. With two-factor
+  on, nothing is granted until it is passed; the signed-in `POST
+/api/door-codes/{code}/redeem` then takes the use. Signed out, that route is
+  `401 unauthenticated`: the device-held account is no longer made.
+- Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
+  an hour per code, on top of the number's cooldown: `429` with `Retry-After`, the code's
+  `Retry-After` being when its oldest send in the hour leaves it.
+- The name typed at a door code is forgotten once the code is right, whether it signs in
+  or is refused. A `PhoneSignIn` lives 24 hours: `app:prune-phone-sign-ins` then deletes
+  it, with its number and its codes.
+- In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
+  account's last live grant, checked on each refresh; with none live yet (a door code
+  behind two-factor) the access token keeps its usual life for the signed-in redeem. In the
+  app it keeps the usual life. A link read by the entry's own account names `signedOutAt`
+  and the event's `timeZone`, `signedOutAt` null for a session that does not end so.
+  Every read of the account names `signedOutAt` the same way, for the session it is read
+  in (the one a sign-in has just begun, else the caller's), whatever addresses it holds.
+- A phone-only account is refused an invitation with `409 invitation_needs_email` until
+  the invited address is on it and verified. The invitation's preview carries
+  `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.
+
+## A staff member's own night
+
+A person on the roster reads their whole night (sc-3915) as their own account alone: at
+their link with `POST /api/staff-links/night` (`token` in the body), and in the app with
+`GET /api/events/{eventId}/my-night`. Both answer only inside the link's window, to the
+account the roster entry is linked to; every other caller, the organiser included, gets the
+one `404 not_found` a link that does not exist gets.
+
+- It answers `event` (`name`, `timeZone`), `endsAt` (the window's end), `station`, `job`,
+  `shift` (the one under way, else the next, else the last), `later` (the shift after it),
+  `lead`, `timing`, `doorsAt` and `tables`, every time in the event's offset.
+- `lead` is the station's lead, else the floor lead with `floor: true`, never the person
+  themself, with `phone` in E.164 or null; null with neither.
+- `timing` is the run of show's moments not skipped, at their planned times, each `for`
+  `guests` when shown to guests and `staff` otherwise.
+- `doorsAt` is the event's start. `tables` is null with no section station, empty until
+  then, and after it each table in the section with its guests' `name`, `allergens`,
+  `diets`, `otherAllergy` and `otherDiet` alone: never a contact detail, never another
+  table.
 
 ## Alternative addresses and numbers
 
@@ -373,15 +448,20 @@ reading included. Entries are recorded on every plan.
 events, preparing}`: 50 entries a page, newest first, from the last 365 days. Each entry
   carries `at` (UTC), `day` (`YYYY-MM-DD`) and `time` (`HH:mm`) in the caller's zone, `who`
   (`{kind: person|support|system, name, email}`), `what` in words, `on` (`{name, eventId,
-gone}`, `eventId` null once the event is gone), `changes`, `type`, `action` (sc-73's code),
-  and `address` and `device` on Sign-in and security entries only. A start after the end is
-  `422` on `to`, `dates_backwards`.
+gone}`, `eventId` null once the event is gone), `changes`, `recorded`, `type`, `action`
+  (sc-73's code), and `address` and `device` on Sign-in and security entries only.
+  `recorded` (sc-76228) is `[{label, value}]` in the reader's words: what an entry records
+  beside a change, an export's Format, Filters and Entries and a plan change's Reason, which
+  no longer come in `changes`; `[]` on every other entry. A start after the end is `422` on
+  `to`, `dates_backwards`.
 - `POST …/audit-log/views` records the log being opened (`204`); the client sends it once per
   opening, not per filter or page.
 - `POST …/audit-log/exports` with `{format: csv|jsonl}` and the filters: up to 10,000 entries
   answer the file (`200`); up to 1,000,000 answer `202 {id, count, email}`, prepared after the
   response and emailed (`audit_export_ready`) to the person who asked only; more is `422
-audit_export_too_many` before anything starts. Each export is an entry of its own.
+audit_export_too_many` before anything starts. Each export is an entry of its own. The
+  file keeps its twelve columns; its `changes` column joins an entry's `changes` and then its
+  `recorded`, `; ` between.
 - `POST …/audit-log/exports/{exportId}/download` hands the prepared file to the person who
   asked, signed in, for 24 hours from its being ready: `404` for anyone else, `410
 export_expired` after.
@@ -455,6 +535,12 @@ build a topic only with `realtimeTopic()` from `@soirely/api-client`, whose
   test fails when anything else in `src/` reaches the Mercure component. A plain
   controller's command publishes this way too, since `mercure: true` only covers a
   resource's own writes.
+- **A refused publish never fails the write** (sc-81423). The database is the record and
+  an update is only a nudge to look again, so `publish()` logs a warning naming the topic,
+  with none of the update's data, and the request answers as it would with the hub up.
+  Clients catch up on their next fetch or reconnect. Only a caller that retries on a
+  refusal uses `publishOrFail()`: the bell's delivery, so the worker tries it again on the
+  notification backoff (sc-3980).
 - **Subscribing:** `POST /api/realtime/subscriptions` gives the signed-in member a
   15-minute token, signed with the hub's subscriber key, naming only their own topics. A
   private update reaches no other token. A screen that adds a topic adds it to the enum

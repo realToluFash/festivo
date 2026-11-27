@@ -1,0 +1,5 @@
+# sc-563: sc563-confirm-product with the tablet on its side, in one check so the batch's reset cannot turn it back. Takes the same variables.
+appId: host.exp.Exponent
+---
+- runFlow: sc563-landscape.yaml
+- runFlow: sc563-confirm-product.yaml
