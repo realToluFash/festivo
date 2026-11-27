@@ -739,9 +739,19 @@ def main_items(main_run):
 def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None,
                     testers=None, prs=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
-    role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
+    role with `sweepEvery` picks too, and sweeps once that long has passed since its last.
+    A role with `sweepOverdue` never goes longer than that without a sweep: once it is
+    overdue the sweep is offered though the role is busy, ahead of its comments, and stays
+    the same work until a sweep is finished."""
     items = []
     for role, config in R.ROLES.items():
+        overdue = config.get("sweepOverdue")
+        last_sweep = (last_sweeps or {}).get(role)
+        if overdue and not (last_sweep and now - last_sweep < overdue * 60):
+            items.append(_item(f"{role}:sweep:overdue:{int(last_sweep or 0)}", role, [role],
+                               "sweep", f"your sweep, overdue: none for {overdue} minutes",
+                               INBOX - 1))
+            continue
         if role in busy_roles:
             continue
         period = config["heartbeat"] * 60
