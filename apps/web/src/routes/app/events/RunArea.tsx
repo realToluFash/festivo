@@ -294,35 +294,32 @@ function TrackTable({
           <span>{said(t, collisionWords(before, fixed, locale))}</span>
         </p>
       ))}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1). */}
-      <div className="rv-frame" tabIndex={0} role="region" aria-labelledby={headingId}>
-        <table className="rv-table" aria-labelledby={headingId}>
-          <thead>
-            <tr>
-              <th scope="col">{t('schedule.starts')}</th>
-              <th scope="col">{t('schedule.lasts')}</th>
-              <th scope="col">{t('schedule.item')}</th>
-              <th scope="col">{t('schedule.owner')}</th>
-              {manage && (
-                <th scope="col" className="rv-act-col">
-                  <span className="visually-hidden">{t('runView.mark')}</span>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {view.track.rows.map((row) => (
-              <RunRowView
-                key={row.item.id}
-                row={row}
-                manage={manage}
-                busy={busy === row.item.id}
-                onMark={onMark}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <table className="rv-table" aria-labelledby={headingId}>
+        <thead>
+          <tr>
+            <th scope="col">{t('schedule.starts')}</th>
+            <th scope="col">{t('schedule.lasts')}</th>
+            <th scope="col">{t('schedule.item')}</th>
+            <th scope="col">{t('schedule.owner')}</th>
+            {manage && (
+              <th scope="col" className="rv-act-col">
+                <span className="visually-hidden">{t('runView.mark')}</span>
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {view.track.rows.map((row) => (
+            <RunRowView
+              key={row.item.id}
+              row={row}
+              manage={manage}
+              busy={busy === row.item.id}
+              onMark={onMark}
+            />
+          ))}
+        </tbody>
+      </table>
       <p className="rv-next">
         {said(t, nextWords(view.track, locale))}
         {asksNextStep(view.track, manage) && ` ${t('runView.nextStep')}`}
