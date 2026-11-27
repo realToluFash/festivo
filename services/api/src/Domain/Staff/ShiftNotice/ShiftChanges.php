@@ -74,18 +74,20 @@ final readonly class ShiftChanges
     {
         $told = $toldOf->shifts;
         $now = $nowOf->shifts;
+        [$off, $on] = self::unpaired(Vec\values(Dict\diff_by_key($told, $now)), Vec\values(Dict\diff_by_key($now, $told)));
         $removed = Vec\map(
-            Dict\diff_by_key($told, $now),
+            $off,
             static fn (array $times): ShiftChange => ShiftChange::shift(ShiftChangeKind::ShiftRemoved, ShiftTold::wall($times[0]), ShiftTold::wall($times[1])),
         );
-        $others = [];
+        $others = Vec\map(
+            $on,
+            static fn (array $times): ShiftChange => ShiftChange::shift(ShiftChangeKind::ShiftAdded, ShiftTold::wall($times[0]), ShiftTold::wall($times[1])),
+        );
 
         foreach ($now as $id => $times) {
             $before = $told[$id] ?? null;
 
-            if (null === $before) {
-                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftAdded, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]));
-            } elseif ($before !== $times) {
+            if (null !== $before && $before !== $times) {
                 $others[] = ShiftChange::shift(ShiftChangeKind::ShiftRetimed, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]), ShiftTold::wall($before[0]), ShiftTold::wall($before[1]), self::isDatedMove(ShiftTold::wall($before[0]), ShiftTold::wall($times[0])));
             }
         }
@@ -105,6 +107,31 @@ final readonly class ShiftChanges
         }
 
         return $lines;
+    }
+
+    /**
+     * Pairs off, one for one, a shift they came off with one they went onto at the same start and end.
+     *
+     * @param list<array{0: string, 1: string}> $off
+     * @param list<array{0: string, 1: string}> $on
+     *
+     * @return array{list<array{0: string, 1: string}>, list<array{0: string, 1: string}>} those left of each
+     */
+    private static function unpaired(array $off, array $on): array
+    {
+        $left = [];
+
+        foreach ($off as $times) {
+            $partner = Iter\search(Vec\keys($on), static fn (int $key): bool => $on[$key] === $times);
+
+            if (null === $partner) {
+                $left[] = $times;
+            } else {
+                $on = Dict\filter_keys($on, static fn (int $key): bool => $key !== $partner);
+            }
+        }
+
+        return [$left, Vec\values($on)];
     }
 
     /** A week or more on, a weekday alone could read as the day it left. */

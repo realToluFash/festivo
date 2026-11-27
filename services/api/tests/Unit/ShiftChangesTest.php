@@ -196,6 +196,37 @@ final class ShiftChangesTest extends TestCase
     }
 
     #[Test]
+    public function amongSeveralShiftsOneOffAndOneOnAtTheSameHoursPairOffOneForOne(): void
+    {
+        $saturday = ['2027-03-06 17:00', '2027-03-06 23:00'];
+        $sunday = ['2027-03-07 17:00', '2027-03-07 23:00'];
+        $told = self::told(['a' => $saturday, 'b' => $sunday]);
+
+        self::assertSame([], self::read($told, self::told(['c' => $saturday, 'd' => $sunday])));
+        self::assertSame(
+            [['job', null, null]],
+            self::read($told, new ShiftTold(['c' => $saturday, 'd' => $sunday], ['job-runner', 'Runner'], $told->date, $told->venue)),
+        );
+        self::assertSame(
+            [['shift_added', '2027-03-06 17:00', '2027-03-06 23:00']],
+            self::read($told, self::told(['b' => $sunday, 'c' => $saturday, 'd' => $saturday])),
+        );
+    }
+
+    #[Test]
+    public function aPairNamedNowhereTakesNoneOfTheThreeLines(): void
+    {
+        $told = self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00'], 'b' => ['2027-03-07 17:00', '2027-03-07 23:00']]);
+        $now = self::told([
+            'c' => ['2027-03-06 17:00', '2027-03-06 23:00'],
+            'd' => ['2027-03-07 17:00', '2027-03-07 23:00'],
+            'e' => ['2027-03-08 10:00', '2027-03-08 14:00'],
+        ]);
+
+        self::assertSame([['shift_added', '2027-03-08 10:00', '2027-03-08 14:00']], self::read($told, $now));
+    }
+
+    #[Test]
     public function theDateLineLeadsTheShiftsAndTheVenueFollowsThem(): void
     {
         $told = self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00']]);
