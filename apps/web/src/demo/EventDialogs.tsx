@@ -10,6 +10,7 @@ import { copyStart } from '../copyStart.ts';
 import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
+import { AskOwner } from './LimitAsk.tsx';
 import { Ask, Dialog } from '../components/SettingsParts.tsx';
 import {
   type Refusal,
@@ -435,14 +436,14 @@ function Refusal({
           {DW.changePlan}
         </button>
       )}
-      {plan != null && !billing && !asked && (
-        <button type="button" className="button" onClick={onAsk}>
-          {DW.askOwner}
-        </button>
+      {plan != null && !billing && (
+        <AskOwner
+          start={asked ? { now: 'sent', owners: 'several' } : { now: 'ready' }}
+          offline={false}
+          owners="several"
+          onSent={onAsk}
+        />
       )}
-      <p className="desk-note" role="status">
-        {plan != null && !billing && asked ? DW.asked : ''}
-      </p>
     </Dialog>
   );
 }

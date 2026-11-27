@@ -207,11 +207,11 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
       const refused = dialog('Your plan allows 100 people per event');
 
       fireEvent.click(within(refused).getByRole('button', { name: 'Ask an owner' }));
-      expect(within(refused).getByText(DW.asked)).toBeDefined();
+      expect(await within(refused).findByText(DW.asked, {}, { timeout: 3000 })).toBeDefined();
       cleanup();
 
       await at('duplicateOverCeiling');
-      const ceiling = dialog('An event can hold 10,000 people');
+      const ceiling = dialog('An event can have up to 10,000 people');
 
       expect(within(ceiling).getByText('10,214 people · companions count as people')).toBeDefined();
       expect(within(ceiling).queryByRole('button', { name: 'Change plan' })).toBeNull();
