@@ -67,6 +67,12 @@ describe('an event’s Needs you rows', () => {
     expect(rows(own, '2026-11-10T09:00:00Z', ['menu.read'])).toEqual([]);
   });
 
+  it('leaves out a You milestone its area returns done', () => {
+    const done = [milestone('2026-11-10T22:59:00Z', { area: 'seating', done: true })];
+
+    expect(rows(done, '2026-11-12T09:00:00Z', ['seating.manage'])).toEqual([]);
+  });
+
   it('leaves out Automatic and Event milestones', () => {
     expect(
       rows(
