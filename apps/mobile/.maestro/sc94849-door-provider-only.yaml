@@ -1,0 +1,52 @@
+# sc-94849: a door code's right phone code, for a linked member of a Google-or-Apple-only organisation, is refused under its heading with only the linked providers' buttons. CODE (a door code), NUMBER (national number), COUNTRY (NG), COUNTRY_NAME (in the app's language), DIGITS (the number's last digits). Signs the app out first.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- runFlow: batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.number'
+    timeout: 30000
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: 'Bisi'
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: ${COUNTRY_NAME}
+- tapOn:
+    id: 'redeem.event.country.${COUNTRY}'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- hideKeyboard:
+    optional: true
+- takeScreenshot: 01-number
+- tapOn:
+    id: 'redeem.event.send'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.text'
+    timeout: 20000
+- runScript: scripts/latest-sms-code.js
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible: '.*{{t:any:signIn.providerOnlyTitle}}.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 02-refused
