@@ -12,6 +12,7 @@ import {
   inFloorOrder,
   owesSentBack,
   sectionsMoved,
+  stageLeftBy,
   withKeptTaps,
 } from './serviceFloor.ts';
 import type { PlateStage } from './serviceStages.ts';
@@ -345,5 +346,12 @@ describe('withKeptTaps', () => {
       at(withKeptTaps(sent, [undo('p2', { kind: 'sendBack', was: 'toFollow' })])).owed,
     ).toMatchObject([{ id: 'p2', stage: 'served', owedReason: 'toFollow', sentBack: [] }]);
     expect(at(withKeptTaps(sent, [undo('p1', { kind: 'choice', was: null })])).choice).toBeNull();
+  });
+});
+
+describe('stageLeftBy', () => {
+  it('is To serve after a send-back, and the unmoved stage after a choice', () => {
+    expect(stageLeftBy(order('served'), { kind: 'sendBack', was: null })).toBe('toServe');
+    expect(stageLeftBy(order('dishing'), { kind: 'choice', was: null })).toBe('dishing');
   });
 });

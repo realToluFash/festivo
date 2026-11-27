@@ -23,6 +23,7 @@ import {
   refusalKey,
   roomCourse,
   sectionsMoved,
+  stageLeftBy,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -229,7 +230,7 @@ function Floor({ eventId }: { eventId: string }) {
       if (!ok) return;
       setUndo({
         subject: plate.id,
-        stage: reverses.kind === 'sendBack' ? 'toServe' : plate.stage,
+        stage: stageLeftBy(plate, reverses),
         reverses,
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),

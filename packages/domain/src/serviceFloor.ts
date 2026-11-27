@@ -283,6 +283,14 @@ export function floorGroups(floor: FloorRead, locale: string): FloorGroup[] {
 export type FloorReversed =
   { kind: 'sendBack'; was: OwedReason | null } | { kind: 'choice'; was: HeldChoice | null };
 
+/** The stage the step left its plate at, which its Undo sends as expected: a send-back moves it, a choice does not. */
+export function stageLeftBy(
+  plate: Pick<ServicePlateRead, 'stage'>,
+  reverses: FloorReversed,
+): PlateStage {
+  return reverses.kind === 'sendBack' ? 'toServe' : plate.stage;
+}
+
 export interface FloorKeptTap {
   key: string;
   kind: string;

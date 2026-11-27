@@ -23,6 +23,7 @@ import {
   refusalKey,
   roomCourse,
   sectionsMoved,
+  stageLeftBy,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -247,7 +248,7 @@ export function FloorScreen({
       setUndo({
         subject: plate.id,
         reverses,
-        stage: reverses.kind === 'sendBack' ? 'toServe' : plate.stage,
+        stage: stageLeftBy(plate, reverses),
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
       });
