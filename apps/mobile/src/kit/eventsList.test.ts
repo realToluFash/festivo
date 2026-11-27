@@ -8,12 +8,19 @@ import {
   dayTiles,
   daysWords,
   listEventOf,
+  placeWords,
+  rowLine,
   rowTag,
   shownEvent,
   tabsFit,
 } from './eventsList.ts';
 
-const t = ((key: string) => key) as unknown as TFunction;
+const t = ((key: string, o?: Record<string, string>) =>
+  key === 'search.line.venueCity'
+    ? `${o?.venue}, ${o?.city}`
+    : key === 'todayScreen.dayAndPlace'
+      ? `${o?.day} · ${o?.place}`
+      : key) as unknown as TFunction;
 
 const EVENT = {
   id: 'ev-1',
@@ -28,6 +35,35 @@ const EVENT = {
   cover: null,
   milestones: [],
 } as unknown as ListedEvent;
+
+describe('placeWords', () => {
+  it('writes the venue, a comma and its city, as Search does', () => {
+    const of = (name: string | null, city: string | null) =>
+      placeWords(
+        listEventOf({
+          ...EVENT,
+          venue: { name, address: { formatted: 'Calle 1', city } },
+        } as unknown as ListedEvent),
+        t,
+      );
+
+    expect(of('Finca Pilar', 'Toledo')).toBe('Finca Pilar, Toledo');
+    expect(of('Finca Pilar', null)).toBe('Finca Pilar');
+    expect(of(null, 'Toledo')).toBe('Calle 1');
+    expect(placeWords(listEventOf(EVENT), t)).toBe('eventPage.venueToBeConfirmed');
+  });
+
+  it("is the place in the row's line", () => {
+    const event = listEventOf({
+      ...EVENT,
+      venue: { name: 'Finca Pilar', address: { formatted: 'Calle 1', city: 'Toledo' } },
+    } as unknown as ListedEvent);
+
+    expect(rowLine(shownEvent(event, 'live' as never), new Date('2026-11-01'), 'en', t)).toContain(
+      'Finca Pilar, Toledo',
+    );
+  });
+});
 
 describe('listEventOf', () => {
   it('has no place and no photo until the event has a venue and a cover', () => {

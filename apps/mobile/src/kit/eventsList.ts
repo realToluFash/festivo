@@ -14,6 +14,7 @@ import {
   numberFormat,
   shownDays,
   stepAwaitsMilestones,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -46,7 +47,7 @@ export interface ListEvent {
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
   /** The venue's city, only when its name is the place: the line writes them together. */
-  city?: string | null | undefined;
+  city: string | null;
   photo: CardPhoto | null;
   /** Null while they are still being read: an event's page reads them apart from the event. */
   milestones: readonly Milestone[] | null;
@@ -64,17 +65,12 @@ export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
   return { ...event, phase, calledOff: calledOff(event), mesh: meshFor(event.id) };
 }
 
-function cityOf(venue: OrganisationEvent['venue']): string | null {
-  const city = venue?.address?.city;
-  return venue?.name == null || city == null || city === '' ? null : city;
-}
-
 /** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
 export function listEventOf(event: OrganisationEvent & Pick<ListEvent, 'milestones'>): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
-    city: cityOf(event.venue),
+    city: venueCity(event.venue),
     photo: event.cover == null ? null : { cover: event.cover, type: event.type },
   };
 }
@@ -99,6 +95,15 @@ export function daysWords(
   }
 }
 
+/** The place an event's card and its page both write: the venue and its city, the venue alone, or that it is to be confirmed. */
+export function placeWords(event: Pick<ListEvent, 'place' | 'city'>, t: TFunction): string {
+  return event.place == null
+    ? t('eventPage.venueToBeConfirmed')
+    : event.city == null
+      ? event.place
+      : t('search.line.venueCity', { venue: event.place, city: event.city });
+}
+
 export function rowLine(
   event: Shown,
   now: Date,
@@ -108,12 +113,7 @@ export function rowLine(
 ): string {
   return t('todayScreen.dayAndPlace', {
     day: daysWords(event, now, locale, list, t),
-    place:
-      event.place == null
-        ? t('eventPage.venueToBeConfirmed')
-        : event.city == null
-          ? event.place
-          : t('search.line.venueCity', { venue: event.place, city: event.city }),
+    place: placeWords(event, t),
   });
 }
 

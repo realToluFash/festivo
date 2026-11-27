@@ -152,6 +152,14 @@ export function searchTotal(groups: readonly SearchGroup[]): number {
   return groups.reduce((total, group) => total + group.total, 0);
 }
 
+/** A venue's city, only when its name is the place: every line that names a venue writes the two together. */
+export function venueCity(
+  venue: { name?: string | null; address?: { city?: string | null } | null } | null | undefined,
+): string | null {
+  const city = venue?.address?.city;
+  return venue?.name == null || city == null || city === '' ? null : city;
+}
+
 function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): string {
   const days = eventDayWords(event, now, locale, { day: formatEventDate });
   const dates =
@@ -161,9 +169,9 @@ function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): st
         ? word('search.line.days', { first: days.first, last: days.last })
         : word('search.line.calledOffOn', { date: days.date });
   const venue = event.venue?.name ?? null;
-  const city = event.venue?.address?.city ?? null;
+  const city = venueCity(event.venue);
   const place =
-    venue != null && city != null && city !== ''
+    venue != null && city != null
       ? word('search.line.venueCity', { venue, city })
       : (venue ?? word('search.line.venueToBeConfirmed'));
 

@@ -12,6 +12,7 @@ import {
   milestoneMoment,
   numberFormat,
   shownDays,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -31,7 +32,7 @@ export interface ListEvent {
   concludedAt: string | null;
   place: string | null;
   /** The venue's city, only when its name is the place: the line writes them together. */
-  city?: string | null | undefined;
+  city: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }
@@ -51,14 +52,9 @@ export function listEventOf(event: ListedEvent): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
-    city: cityOf(event.venue),
+    city: venueCity(event.venue),
     photo: event.cover,
   };
-}
-
-function cityOf(venue: ListedEvent['venue']): string | null {
-  const city = venue?.address?.city;
-  return venue?.name == null || city == null || city === '' ? null : city;
 }
 
 /** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */

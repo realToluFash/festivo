@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { EditPart } from '../kit/eventNav.ts';
+import { listEventOf, placeWords } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -128,7 +129,7 @@ export function EventTop({
         })}
       </Text>
       <Text size={tokens.typeBody.size} muted>
-        {venuePlace(event) ?? t('eventPage.venueToBeConfirmed')}
+        {placeWords(listEventOf({ ...event, milestones: [] }), t)}
       </Text>
       <Placeholder label={t('eventPage.invited')} />
       {onChange != null && (
@@ -154,10 +155,6 @@ export function EventTop({
       )}
     </View>
   );
-}
-
-function venuePlace(event: OrganisationEvent): string | null {
-  return event.venue?.name ?? event.venue?.address?.formatted ?? null;
 }
 
 /** The same for an event in another organisation and one that does not exist, so it says nothing of which. */
