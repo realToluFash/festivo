@@ -1,0 +1,17 @@
+# sc-28230: on a tablet in landscape, Check-in opened from My night draws no back (ux #97400), and the demo route draws none either.
+# Needs ${METRO_URL}, ${EV}. Expo Go on the iPad, signed in, in English, as a staff account at Can check guests in on EV.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EV}/my-night
+- extendedWaitUntil: { visible: { id: 'myNight.checkIn' }, timeout: 30000 }
+- tapOn: { id: 'myNight.checkIn' }
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertNotVisible: { text: '.*Your night' }
+- takeScreenshot: check-in-from-night-landscape
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=door&from=night
+- waitForAnimationToEnd: { timeout: 5000 }
+- extendedWaitUntil: { visible: { text: '.*Check-in.*' }, timeout: 30000 }
+- takeScreenshot: demo-check-in-from-night-landscape
+- setOrientation: PORTRAIT

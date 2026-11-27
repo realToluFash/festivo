@@ -1,0 +1,12 @@
+# sc-28230: the app demo's check-in opened from Your night (‹ Your night) and from Guests (‹ Guests), for side-by-side with the product (ux #97628).
+# Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=door&from=night
+- waitForAnimationToEnd: { timeout: 5000 }
+- extendedWaitUntil: { visible: { text: '.*Check-in.*' }, timeout: 30000 }
+- takeScreenshot: demo-check-in-from-night
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=door
+- waitForAnimationToEnd: { timeout: 5000 }
+- extendedWaitUntil: { visible: { text: '.*Check-in.*' }, timeout: 30000 }
+- takeScreenshot: demo-check-in-from-guests
