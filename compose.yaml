@@ -262,9 +262,11 @@ services:
     environment:
       SERVICES: s3
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       PERSISTENCE: 1
+      # Checked, so a URL signed for one host and sent to another is refused here as it is on S3 (sc-1055).
+      S3_SKIP_SIGNATURE_VALIDATION: 0
     ports:
       - '${STORAGE_PORT:-4566}:4566'
     volumes:
@@ -294,8 +296,8 @@ services:
     environment:
       BUCKET_PRIVATE: ${STORAGE_BUCKET_PRIVATE:-soirely-private}
       BUCKET_PUBLIC: ${STORAGE_BUCKET_PUBLIC:-soirely-public}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
       # The api's own default, so the bucket and the api never admit different origins.
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}

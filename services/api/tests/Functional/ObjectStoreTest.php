@@ -49,7 +49,18 @@ final class ObjectStoreTest extends FunctionalTestCase
         $signed = $this->store->signUpload(UploadPurpose::EventCover, 'image/png', 'cover.png');
 
         self::assertStringNotContainsString('storage:4566', $signed->url);
-        self::assertStringContainsString('localhost', $signed->url);
+        self::assertMatchesRegularExpression('#^https?://(localhost|127\.0\.0\.1)(:\d+)?/#', $signed->url);
+    }
+
+    #[Test]
+    public function anUploadSentToAnotherHostThanItWasSignedForIsRefused(): void
+    {
+        $signed = $this->store->signUpload(UploadPurpose::GuestImport, 'text/csv', 'moved.csv');
+
+        $put = $this->put($signed->url, "x\n", 'text/csv', 'elsewhere.example:4566');
+
+        self::assertSame(403, $put);
+        self::assertFalse($this->store->exists($signed->bucket, $signed->key));
     }
 
     #[Test]
@@ -103,7 +114,7 @@ final class ObjectStoreTest extends FunctionalTestCase
         $signed = $this->store->signUpload(UploadPurpose::GuestImport, 'text/csv', 'private.csv');
         $this->put($signed->url, "secret\n", 'text/csv');
 
-        self::assertSame(200, $this->headStatus($this->store->urlFor($signed->bucket, $signed->key)));
+        self::assertSame(200, $this->getStatus($this->store->urlFor($signed->bucket, $signed->key)));
     }
 
     /**
@@ -144,29 +155,16 @@ final class ObjectStoreTest extends FunctionalTestCase
         self::assertFalse($this->store->exists($signed->bucket, $signed->key));
     }
 
-    /**
-     * The signed URL names the host a BROWSER reaches the store at, which is
-     * not the host this test reaches it at — the test runs inside the container
-     * network and the browser does not.
-     *
-     * Swapped back for the request only. The signature covers the path and
-     * query, not the host, so this exercises exactly the signature a browser
-     * would present.
-     */
-    private function asSeenFromInsideTheNetwork(string $url): string
+    private function put(string $url, string $body, string $contentType, ?string $host = null): int
     {
-        return \str_replace('localhost:4566', 'storage:4566', $url);
-    }
-
-    private function put(string $url, string $body, string $contentType): int
-    {
-        $url = $this->asSeenFromInsideTheNetwork($url);
+        $hostHeader = null === $host ? [] : ['Host: ' . $host];
 
         $handle = \curl_init($url);
         \curl_setopt_array($handle, [
+            \CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $body,
-            \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
+            \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType, ...$hostHeader],
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);
@@ -175,13 +173,11 @@ final class ObjectStoreTest extends FunctionalTestCase
         return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
     }
 
-    private function headStatus(string $url): int
+    private function getStatus(string $url): int
     {
-        $url = $this->asSeenFromInsideTheNetwork($url);
-
         $handle = \curl_init($url);
         \curl_setopt_array($handle, [
-            \CURLOPT_NOBODY => true,
+            \CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);

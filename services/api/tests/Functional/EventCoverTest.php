@@ -511,7 +511,7 @@ final class EventCoverTest extends ApiTestCase
         $upload = Type\shape(['url' => Type\string(), 'key' => Type\string()], true)->coerce($body['upload'] ?? null);
 
         $handle = \curl_init(self::insideTheNetwork($upload['url']));
-        \curl_setopt_array($handle, [
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $bytes,
             \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
@@ -527,7 +527,7 @@ final class EventCoverTest extends ApiTestCase
     private function fetch(string $url): string
     {
         $handle = \curl_init(self::insideTheNetwork($url));
-        \curl_setopt_array($handle, [\CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         $body = \curl_exec($handle);
         self::assertSame(200, \curl_getinfo($handle, \CURLINFO_HTTP_CODE));
 
@@ -537,18 +537,16 @@ final class EventCoverTest extends ApiTestCase
     private function statusOf(string $url): int
     {
         $handle = \curl_init(self::insideTheNetwork($url));
-        \curl_setopt_array($handle, [\CURLOPT_NOBODY => true, \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_NOBODY => true, \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         \curl_exec($handle);
 
         return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
     }
 
-    /** A URL names the store as a browser reaches it; this test reaches it inside the compose network. */
+    /** A URL names the store as a browser reaches it, and is signed for that host; the request keeps it and connects to the store inside the compose network. */
     private static function insideTheNetwork(string $url): string
     {
-        $parts = Type\shape(['path' => Type\string(), 'query' => Type\optional(Type\string())], true)->coerce(\parse_url($url));
-
-        return 'http://storage:4566' . $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        return $url;
     }
 
     private static function halves(int $width, int $height): string
