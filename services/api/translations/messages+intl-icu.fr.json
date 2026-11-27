@@ -545,6 +545,7 @@
     "guest_message.notice.link": "{label} : {url}",
     "guest_message.notice.from": "{organisation} via Soirely",
     "guest_message.notice.footer": "Pour répondre à {hosts}, passez par votre page. Cet e-mail ne peut pas recevoir de réponse.",
+    "guest_message.notice.unsubscribe_label": "Stop emails from {organisation}",
     "validation.guest_message_required": "Saisissez un message.",
     "validation.guest_message_subject_too_long": "Raccourcissez l’objet à {count, number, ::group-auto} caractères maximum.",
     "validation.guest_message_too_long": "Raccourcissez le message à {count, number, ::group-auto} caractères maximum.",
