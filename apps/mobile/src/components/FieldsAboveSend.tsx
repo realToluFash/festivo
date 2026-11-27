@@ -57,8 +57,7 @@ async function measure(
   const view = scroll.ref.current;
   const content = view?.getInnerViewRef();
   const host = view?.getNativeScrollRef();
-  const keys = keyboardTopNow(scroll.origin.current);
-  if (content == null || host == null || keys == null || scroll.answeringNow()) return null;
+  if (content == null || host == null) return null;
 
   const [refusal, name, number, focus, frame] = await Promise.all([
     placed(refs.refusal.current, content),
@@ -71,16 +70,21 @@ async function measure(
   // The Country code list takes no input focus: coming back from it, the row it sits in keeps it.
   if (focus != null) last.current = focus.contentY >= number.contentY ? 'number' : 'name';
   fieldUnderToast(focus == null ? null : { top: frame.top, height: focus.height });
+  const fields = { refusal, name, number, focus: last.current };
+  // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3). It is reported before the answering bail-out below, so a measure an answer cut short still tells the dock what the field needs (sc-97734).
+  const keys = keyboardTopNow(scroll.origin.current);
+  if (keys != null && focus != null) {
+    scroll.focusedGroup.forEach((needs) => needs(focusedBlock(fields).height));
+  }
+  if (keys == null || scroll.answeringNow()) return null;
+
   // The landing toast over a step covers what is under it as the keys do (sc-37983).
   const shown = Math.min(
     shownEnd(keys, { y: frame.top, height: frame.height }),
     landingToastTop() ?? Infinity,
   );
   const room = shown - frame.top;
-  const fields = { refusal, name, number, focus: last.current };
   const y = offsetAboveSend({ ...fields, room, offset: from, margin: tokens.spaceLg });
-  // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3).
-  if (focus != null) scroll.focusedGroup.forEach((needs) => needs(focusedBlock(fields).height));
 
   return y ?? 'stays';
 }

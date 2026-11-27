@@ -30,6 +30,7 @@ describe('the event step keeps Your name and the number row above Send code with
     expect(fields).toMatch(
       /scroll\.focusedGroup\.forEach\(\(needs\) => needs\(focusedBlock\(fields\)\.height\)\)/u,
     );
+    expect(fields.indexOf('focusedGroup.forEach')).toBeLessThan(fields.indexOf('answeringNow()'));
     expect(fields).not.toMatch(/needs\(kept/u);
   });
 
