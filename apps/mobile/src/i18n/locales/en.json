@@ -3674,6 +3674,7 @@
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",
+      "chefsChoiceInSentence": "chef’s choice",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "Floor opens with Can work the floor",

@@ -282,6 +282,28 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('writes an unnamed dish in sentence case only inside a sentence', async () => {
+    const floor = structuredClone(FLOOR);
+    for (const one of floor.courses[0]!.tables.flatMap((t) => t.guests)) {
+      for (const item of one.order?.items ?? []) item.name = null;
+    }
+    open(floor);
+    fireEvent.click(await screen.findByRole('button', { name: /^Table 10,/ }));
+    expect(screen.getAllByText('Chef’s choice').length).toBeGreaterThan(0);
+    press('Send back');
+
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByRole('heading', { name: /chef’s choice/ }).textContent).not.toContain(
+      'Chef’s',
+    );
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
+
+    expect(
+      (await screen.findAllByText('Sent back: Ada Obi’s chef’s choice · Dropped')).length,
+    ).toBeGreaterThan(0);
+  });
+
   it('draws no action at a table the person may not write at', async () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: /^Table 3,/ }));
