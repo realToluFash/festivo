@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { StateMark } from '../routes/app/events/kitchenMarks.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -614,31 +615,7 @@ function Page({
   );
 }
 
-/** Each state a shape with its word: Needs the host a triangle, Skipped a circle with a minus, not chosen a dashed circle. Drawn in the demo, not added to the product's icon set. */
-export function StateMark({ kind }: { kind: Exclude<Cell['kind'], 'dish'> }) {
-  if (kind === 'host')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M8 2 14.5 13.5h-13Z" />
-      </svg>
-    );
-  if (kind === 'skipped')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" />
-        <path d="M5 8h6" />
-      </svg>
-    );
-  if (kind === 'notYet' || kind === 'never')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" className="is-dashed" />
-      </svg>
-    );
-
-  return null;
-}
-
+/** Download and Print are drawn here, in the demo, not added to the product’s icon set. */
 function DownloadMark() {
   return (
     <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">

@@ -1,143 +1,9 @@
-/* sc-3911's kitchen sheet, as its demo draws it: allergies first, in a card with a 2 px black border; each course one table. */
-.ks-top {
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--spaceLg);
-}
-
-.ks-head {
-  flex: 1 1 260px;
-  min-width: 0;
-}
-
-.ks-event,
-.ks-as-of {
-  margin: var(--spaceXxs) 0 0;
-  color: var(--colorInkSecondary);
-  font: 500 15px/1.4 var(--fontFamily);
-}
-
-.ks-acts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm);
-}
-
+/* sc-3911's printout and PDF page: black ink on white, each course one table. The screen is kitchenScreen.css. */
 .ks-act {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceXs);
   min-height: var(--sizeHit);
-}
-
-.ks-act[aria-disabled='true'] {
-  cursor: progress;
-}
-
-.ks-mark {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ks-mark.is-act {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2.2;
-}
-
-.ks-mark .is-dashed {
-  stroke-dasharray: 2.6 2.2;
-}
-
-.ks-spin {
-  flex: none;
-  box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  border: 2px solid currentcolor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: ks-turn 0.8s linear infinite;
-}
-
-@keyframes ks-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ks-spin {
-    animation: none;
-  }
-}
-
-.ks-said,
-.ks-failed {
-  margin-top: var(--spaceMd);
-}
-
-.ks-said:empty {
-  display: none;
-}
-
-.ks-failed {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceSm) var(--spaceLg);
-}
-
-.ks-failed p {
-  display: flex;
-  flex: 1 1 280px;
-  align-items: flex-start;
-  gap: var(--spaceXs);
-  margin: 0;
-  color: var(--colorBroken);
-  font: 600 15px/1.4 var(--fontFamily);
-}
-
-.ks-failed p svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.ks-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-  margin-top: var(--spaceLg);
-}
-
-.ks-summary {
-  margin: 0;
-  color: var(--colorInk);
-  font: 600 15px/1.4 var(--fontFamily);
-}
-
-.ks-card-head {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  margin: 0 0 var(--spaceSm);
-  color: var(--colorInk);
-  font: 700 17px/1.3 var(--fontFamily);
-}
-
-.ks-allergies {
-  box-shadow: inset 0 0 0 2px var(--colorPrintInk);
-}
-
-.ks-allergy-mark {
-  display: inline-flex;
-  color: var(--colorPrintInk);
 }
 
 .ks-table {
@@ -258,38 +124,7 @@
   white-space: nowrap;
 }
 
-.ks-loading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-  margin-top: var(--spaceLg);
-}
-
-.ks-loading p {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: 500 15px/1.4 var(--fontFamily);
-}
-
-.ks-bone {
-  height: 160px;
-  border-radius: var(--radiusRow);
-  background: var(--colorInset);
-}
-
-.ks-refused {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceMd);
-  margin-top: var(--spaceLg);
-}
-
-.ks-lock {
-  display: inline-flex;
-  color: var(--colorInkSecondary);
-}
-
+/* The 403's way back is a link. */
 .ks-go {
   display: inline-flex;
   align-items: center;
@@ -297,7 +132,7 @@
   text-decoration: none;
 }
 
-/* From 320 px: the people table reads as one block per person, each cell under its heading. */
+/* From 320 px the shell and the page give up their margins (WCAG 2.2 1.4.10). */
 @media (width <= 640px) {
   .shell-content:has(.ks.desk-page) {
     padding-inline: var(--spaceSm);
@@ -307,11 +142,6 @@
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
   }
 
-  /* Final numbers stands under the sheet, one column (WCAG 2.2 1.4.10). */
-  .ks .ev-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .ks .ev-crumb ol,
   .ks .ev-opened-actions {
     flex-wrap: wrap;
@@ -319,33 +149,6 @@
 
   .ks .ev-opened {
     margin-left: 0;
-  }
-
-  .ks-people thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .ks-people tr {
-    display: block;
-    padding: var(--spaceSm) 0;
-    border-bottom: 1px solid var(--colorBorder);
-  }
-
-  .ks-people th,
-  .ks-people td {
-    display: block;
-    padding: var(--spaceXxs) 0;
-    border-bottom: none;
-  }
-
-  .ks-people td::before {
-    content: attr(data-head) ': ';
-    color: var(--colorInkSecondary);
-    font-weight: 600;
   }
 }
 
@@ -539,79 +342,4 @@
   .ks-foot-page {
     display: none;
   }
-}
-
-.ks-columns {
-  margin-top: var(--spaceLg);
-}
-
-.ks-columns > .ks-body {
-  margin-top: 0;
-}
-
-.ks-final-said:empty {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.ks-none .desk-row-name {
-  color: var(--colorInkSecondary);
-}
-
-.ks-picks {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: -4px 0 var(--spaceSm) 40px;
-  color: var(--colorInkSecondary);
-  font: 500 14px/1.45 var(--fontFamily);
-}
-
-.ks-final .ks-picks svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.ks-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.ks-clear {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--sizeHit);
-  height: var(--sizeHit);
-  margin-right: calc(-1 * var(--spaceMd));
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--colorCard);
-  cursor: pointer;
-}
-
-.ks-final .ks-clear svg {
-  box-sizing: content-box;
-  padding: 5px;
-  border-radius: 50%;
-  background: var(--colorInkTertiary);
-}
-
-.ks-give {
-  margin-top: var(--spaceMd);
-}
-
-/* sc-30692: a dish name runs to 120 characters and stays whole, so a line breaks anywhere rather than overflows. */
-.ks-changes .desk-row-name {
-  overflow-wrap: anywhere;
-}
-
-.ks-changes > .desk-text {
-  margin-top: var(--spaceSm);
 }

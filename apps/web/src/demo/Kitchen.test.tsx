@@ -367,7 +367,8 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
       `Renamed: ${LONG_NAMES.dish} · ${LONG_NAMES.sideWas}, now ${LONG_NAMES.side}`,
     ]);
     expect(lines().join('')).not.toContain('…');
-    expect(readFileSync(join(import.meta.dirname, 'kitchen.css'), 'utf8')).toMatch(
+    const css = join(import.meta.dirname, '../routes/app/events/kitchenScreen.css');
+    expect(readFileSync(css, 'utf8')).toMatch(
       /\.kitchen-changes \.desk-row-name \{\s*overflow-wrap: anywhere;\s*\}/u,
     );
   });
@@ -605,7 +606,10 @@ describe('the sheet’s own states in A (sc-99611)', () => {
   });
 
   it('reflows to one column at 320 px, every text action free to wrap', () => {
-    const css = readFileSync(join(import.meta.dirname, 'kitchen.css'), 'utf8');
+    const css = readFileSync(
+      join(import.meta.dirname, '../routes/app/events/kitchenScreen.css'),
+      'utf8',
+    );
 
     expect(css).toMatch(
       /@media \(width <= 720px\) \{\s*\.kitchen \.ev-columns \{\s*grid-template-columns: minmax\(0, 1fr\);/u,

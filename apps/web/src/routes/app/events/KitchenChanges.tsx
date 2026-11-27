@@ -27,7 +27,7 @@ export function KitchenChanges({
   const { t } = useTranslation();
 
   return (
-    <section className="desk-block ks-card ks-changes" aria-labelledby="ks-since">
+    <section className="desk-block kitchen-changes" aria-labelledby="ks-since">
       <Head title={<span id="ks-since">{sinceLine(t, changes, timeZone, dateLocale())}</span>} />
       {changes.lines.length > 0 && (
         <ul className="desk-rows">

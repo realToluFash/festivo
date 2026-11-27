@@ -158,43 +158,91 @@ afterEach(() => {
 
 const onScreen = { ignore: '[hidden] *, script, style' };
 
+const ALLERGIES = { name: /^Allergies · \d+$/u };
+
+/** The row holding these words, on the screen rather than the hidden paper. */
+function rowOf(within_: HTMLElement, words: string): HTMLElement {
+  return within(within_).getByText(words).closest('li') as HTMLElement;
+}
+
 describe('The kitchen sheet (sc-3911)', () => {
   it('puts allergies first, by person, then diets, then each course with its counts', async () => {
     onSheet({ [SHEET]: () => json(sheetOf()) });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Kitchen sheet' })).toBeDefined();
-    expect(screen.getByText(/^As of Sunday.* · 19:42$/, onScreen)).toBeDefined();
+    const band = screen.getByRole('region', { name: '4 coming' });
     expect(
-      screen.getByText('4 coming · 2 people with allergies · 1 course', onScreen),
+      within(band).getByText(/^2 people with allergies · 1 course · As of Sunday.* · 19:42$/),
     ).toBeDefined();
+    expect(within(band).getByRole('button', { name: 'Give final numbers…' })).toBeDefined();
     const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
-    const at = ['Allergies', 'Diets', 'Main'].map((name) => headings.indexOf(name));
+    const at = ['Allergies · 2', 'Diets', 'Main'].map((name) => headings.indexOf(name));
     expect(at.every((index) => index >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
 
-    const allergies = screen.getByRole('region', { name: 'Allergies' });
-    const rows = within(allergies).getAllByRole('row');
-    expect(within(rows[1] as HTMLElement).getByRole('rowheader').textContent).toBe('Ada Obi');
-    expect(within(rows[1] as HTMLElement).getByText('Milk, Kiwi (other)')).toBeDefined();
-    expect(within(rows[1] as HTMLElement).getByText('Skipped')).toBeDefined();
-    expect(within(rows[2] as HTMLElement).getByText('Egusi')).toBeDefined();
+    const allergies = screen.getByRole('region', ALLERGIES);
+    const ada = rowOf(allergies, 'Ada Obi');
+    expect(within(ada).getByText('Milk, Kiwi (other)')).toBeDefined();
+    expect(within(ada).getByText('Skipped')).toBeDefined();
+    expect(within(rowOf(allergies, 'Kwame Mensah')).getByText('Egusi')).toBeDefined();
     expect(within(allergies).getByText('Milk 1 · Celery 1 · Other allergy 1')).toBeDefined();
 
     const diets = screen.getByRole('region', { name: 'Diets' });
-    expect(within(diets).getByRole('rowheader', { name: 'Vegan' })).toBeDefined();
+    expect(rowOf(diets, 'Vegan').textContent).toBe('Vegan1');
 
     const main = screen.getByRole('region', { name: 'Main' });
-    expect(within(main).getByRole('rowheader', { name: 'Variant · Plate' })).toBeDefined();
-    expect(within(main).getByRole('rowheader', { name: '1 not chosen yet' })).toBeDefined();
-    expect(within(main).getByRole('rowheader', { name: 'The room' })).toBeDefined();
+    expect(rowOf(main, 'Variant · Plate').className).toBe('desk-row kitchen-under');
+    expect(rowOf(main, '1 not chosen yet').textContent).toBe('1 not chosen yet1');
+    expect(
+      within(main)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      'Jollof rice2',
+      'Variant · Plate2',
+      'Egusi0',
+      'Kitchen’s choice1',
+      'Skipped0',
+      '1 not chosen yet1',
+      'The room4',
+    ]);
+  });
+
+  it('lists every person with an allergy at once, however many there are', async () => {
+    const many = Array.from({ length: 12 }, (_, at) => ({
+      id: `g_${at}`,
+      name: `Guest ${at}`,
+      allergens: ['milk'],
+      otherAllergy: null,
+      diets: [],
+      otherDiet: null,
+      cells: [{ kind: 'kitchen' }],
+    }));
+    onSheet({ [SHEET]: () => json(sheetOf({ allergicCount: 12, allergic: many })) });
+
+    const allergies = await screen.findByRole('region', { name: 'Allergies · 12' });
+    expect(within(allergies).getAllByRole('listitem')).toHaveLength(12);
+    expect(within(allergies).queryByRole('button')).toBeNull();
+  });
+
+  it('offers Give final numbers… in the band only with Menu manage', async () => {
+    const permissions = OWNER_PERMISSIONS.filter((one) => one !== 'menu.manage');
+    onSheet({
+      [SHEET]: () => json(sheetOf()),
+      'GET /api/events/ev_1': () => json({ event: { ...EVENT, permissions } }),
+    });
+
+    const band = await screen.findByRole('region', { name: '4 coming' });
+    expect(within(band).queryByRole('button')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDefined();
   });
 
   it('counts allergies with no names without Guests manage', async () => {
     onSheet({ [SHEET]: () => json(sheetOf({ names: false, allergic: null })) });
 
     expect(await screen.findByText('Names need Guests manage.', onScreen)).toBeDefined();
-    const allergies = screen.getByRole('region', { name: 'Allergies' });
-    expect(within(allergies).getByRole('rowheader', { name: 'Celery' })).toBeDefined();
+    const allergies = screen.getByRole('region', ALLERGIES);
+    expect(rowOf(allergies, 'Celery').textContent).toBe('Celery1');
     expect(screen.queryByText('Ada Obi')).toBeNull();
   });
 
@@ -219,9 +267,7 @@ describe('The kitchen sheet (sc-3911)', () => {
     });
 
     const main = await screen.findByRole('region', { name: 'Main' });
-    expect(
-      within(main).getByRole('rowheader', { name: '1 not chosen, never given the default' }),
-    ).toBeDefined();
+    expect(rowOf(main, '1 not chosen, never given the default')).toBeDefined();
     expect(
       within(main).getByText(
         '2 given the default, Jollof rice, Plate, when picks closed. They are in its count.',
@@ -262,15 +308,16 @@ describe('The kitchen sheet (sc-3911)', () => {
     expect(
       await screen.findByText('No allergies recorded for anyone coming.', onScreen),
     ).toBeDefined();
-    const row = (name: string) => screen.getByRole('rowheader', { name }).closest('tr')!;
+    const allergies = screen.getByRole('region', { name: 'Allergies · 0' });
+    const row = (name: string) => rowOf(allergies, name);
     expect(within(row('Bea Mensah')).getByText('No allergy · Vegan')).toBeDefined();
     expect(within(row('Nadia Petrova')).getByText('No allergy · No garlic (other)')).toBeDefined();
     expect(within(row('Ola Ade')).getByText('No allergy · Other diet')).toBeDefined();
     expect(
       within(row('Bea Mensah')).getByText('Not chosen, never given the default'),
     ).toBeDefined();
-    expect(screen.getByText(/0 people with allergies/, onScreen)).toBeDefined();
-    expect(screen.getByRole('rowheader', { name: 'Other diet' })).toBeDefined();
+    expect(screen.getByText(/^0 people with allergies · 1 course/, onScreen)).toBeDefined();
+    expect(rowOf(screen.getByRole('region', { name: 'Diets' }), 'Other diet')).toBeDefined();
   });
 
   it('makes the PDF when pressed and names the file the server gave', async () => {
@@ -312,7 +359,7 @@ describe('The kitchen sheet (sc-3911)', () => {
         'The PDF could not be made. The sheet on this page is unchanged, and Print still works.',
       ),
     ).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Allergies' })).toBeDefined();
+    expect(screen.getByRole('region', ALLERGIES)).toBeDefined();
     fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(tries).toBe(2));
   });
@@ -398,10 +445,10 @@ describe('By station on the kitchen sheet (sc-34244)', () => {
       within(pass)
         .getAllByRole('listitem')
         .map((one) => one.textContent),
-    ).toEqual(['Pepper sauce · 4', 'Chef’s choice · 2']);
+    ).toEqual(['Pepper sauce4', 'Chef’s choice2']);
     const kitchen = within(main).getByRole('list', { name: 'Kitchen' });
     expect(within(kitchen).getByText('Fried yam')).toBeDefined();
-    expect(within(main).getByRole('rowheader', { name: 'The room' })).toBeDefined();
+    expect(within(main).getByText('The room')).toBeDefined();
 
     const starter = screen.getByRole('region', { name: 'Starter' });
     expect(within(starter).queryByRole('heading', { name: 'By station' })).toBeNull();

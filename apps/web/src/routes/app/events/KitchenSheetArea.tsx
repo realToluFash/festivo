@@ -1,6 +1,5 @@
 import {
   ApiError,
-  type KitchenCell,
   type KitchenCourse,
   type KitchenSheet,
   type OrganisationEvent,
@@ -11,27 +10,36 @@ import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { CardStep, TextAction } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { daysWords } from '../../../eventsList.ts';
 import { canOn } from '../../../session.ts';
-import { DownloadMark, FinalNumbersBlock, type Giving } from './FinalNumbersBlock.tsx';
+import { FinalNumbersBlock, type Giving } from './FinalNumbersBlock.tsx';
 import { KitchenChanges } from './KitchenChanges.tsx';
+import { DownloadMark, PrintMark, StateMark } from './kitchenMarks.tsx';
+import { AllergyRows, CellWords, CourseRows, DietRows } from './KitchenSheetRows.tsx';
 import {
   allergenName,
   allergensOf,
   asOfLine,
+  bandLine,
   dietName,
   saveSheet,
+  stateRows,
   summaryLine,
 } from './kitchenSheet.ts';
+import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
+import '../../../components/EventsList.css';
 import '../../../components/eventPage.css';
 import './guests.css';
 import './kitchenSheet.css';
+import './kitchenScreen.css';
 
 type Load =
   | { kind: 'loading' }
@@ -43,6 +51,8 @@ type Pdf =
   { kind: 'rest' } | { kind: 'making' } | { kind: 'made'; file: string } | { kind: 'failed' };
 
 type Paper = 'a4' | 'letter';
+
+const PIECES = [1, 2, 3, 4, 5, 6];
 
 const sheetPath = (event: OrganisationEvent) =>
   `/app/events/${encodeURIComponent(event.id)}/menu/kitchen`;
@@ -83,38 +93,24 @@ export function KitchenSheetArea({ event }: { event: OrganisationEvent }) {
 
   return (
     <LayersContext value={layers}>
-      <div className="desk ev desk-page ev-page gs ks">
+      <div className="desk ev desk-page ev-page gs ks kitchen">
         <div className="ev-wide gs-page" inert={covered}>
           <Crumbs event={event} />
           {load.kind === 'loaded' ? (
             <SheetScreen event={event} sheet={load.sheet} />
           ) : (
             <>
-              <Top event={event} />
+              <Top />
               {load.kind === 'loading' ? (
-                <div className="ks-loading" aria-busy="true">
-                  <p role="status">{t('kitchenSheet.loading')}</p>
-                  {[0, 1, 2].map((one) => (
-                    <div key={one} className="ks-bone" aria-hidden="true" />
-                  ))}
-                </div>
+                <Bones />
               ) : (
-                <div className="ks-failed" role="alert">
-                  <p>
-                    <Glyph name="alert" size={17} weight={2.4} />
-                    {t('kitchenSheet.cannotReach')}
-                  </p>
-                  <button
-                    type="button"
-                    className="gs-pill is-secondary ks-act"
-                    onClick={() => {
-                      setLoad({ kind: 'loading' });
-                      setAttempt((n) => n + 1);
-                    }}
-                  >
-                    {t('kitchenSheet.retry')}
-                  </button>
-                </div>
+                <Failed
+                  words={t('kitchenSheet.cannotReach')}
+                  onRetry={() => {
+                    setLoad({ kind: 'loading' });
+                    setAttempt((n) => n + 1);
+                  }}
+                />
               )}
             </>
           )}
@@ -130,18 +126,16 @@ export function KitchenSheetRefused({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
 
   return (
-    <div className="desk ev desk-page ev-page gs ks">
+    <div className="desk ev desk-page ev-page gs ks kitchen">
       <div className="ev-wide gs-page">
         <Crumbs event={event} />
-        <section className="desk-block ks-refused" aria-labelledby="ks-refused">
-          <span className="ks-lock" aria-hidden="true">
-            <Glyph name="lock" size={28} weight={2.2} />
-          </span>
+        <section className="desk-failed kitchen-refused" aria-labelledby="ks-refused">
+          <Glyph name="lock" size={28} weight={2.2} />
           <h1 id="ks-refused" className="gs-title" tabIndex={-1}>
             {t('kitchenSheet.refused')}
           </h1>
           <Link
-            className="gs-pill is-primary ks-go"
+            className="gs-pill is-secondary ks-go"
             to={`/app/events/${encodeURIComponent(event.id)}`}
           >
             {t('kitchenSheet.back')}
@@ -187,31 +181,89 @@ function Crumbs({ event }: { event: OrganisationEvent }) {
   );
 }
 
-function Top({
+function Top({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation();
+
+  return (
+    <header className="gs-top kitchen-top">
+      <h1 className="gs-title kitchen-title" tabIndex={-1}>
+        {t('kitchenSheet.title')}
+      </h1>
+      {children}
+    </header>
+  );
+}
+
+function Failed({ words, onRetry }: { words: string; onRetry: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="desk-failed kitchen-failed" role="alert">
+      <p className="kitchen-failed-line">
+        <Glyph name="alert" size={17} weight={2.4} />
+        {words}
+      </p>
+      <TextAction label={t('kitchenSheet.retry')} onClick={onRetry} />
+    </div>
+  );
+}
+
+function Bones() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="desk-loading gs-bones" role="status" aria-busy="true">
+      <span className="desk-unseen">{t('kitchenSheet.loading')}</span>
+      <span className="desk-sunk gs-bone-card" aria-hidden="true" />
+      <ul className="desk-rows gs-rows" aria-hidden="true">
+        {[1, 2, 3, 4, 1].map((bone, index) => (
+          <li key={index} className="desk-row is-bones">
+            <span className="desk-sunk gs-bone-mark" />
+            <span className="desk-row-words">
+              <span className={`desk-sunk is-title b${bone}`} />
+              <span className={`desk-sunk is-line b${bone}`} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The band in the event's colours: how many are coming, and Give final numbers… as its one step. */
+function Band({
   event,
-  sheet = null,
-  children,
+  sheet,
+  onGive,
 }: {
   event: OrganisationEvent;
-  sheet?: KitchenSheet | null;
-  children?: ReactNode;
+  sheet: KitchenSheet;
+  /** Null without menu.manage. */
+  onGive: (() => void) | null;
 }) {
   const { t, i18n } = useTranslation();
 
   return (
-    <header className="gs-top ks-top">
-      <div className="ks-head">
-        <h1 className="gs-title" tabIndex={-1}>
-          {t('kitchenSheet.title')}
-        </h1>
-        <p className="ks-event">{event.name}</p>
-        <p className="ks-event">{daysWords(event, new Date(), i18n.language, t)}</p>
-        {sheet != null && (
-          <p className="ks-as-of">{asOfLine(t, sheet.asOf, event.timeZone, i18n.language)}</p>
+    <section
+      className={`ev-card today-cover is-${meshFor(event.id)} gs-card is-page`}
+      aria-labelledby="ks-says"
+    >
+      <span className="ev-scrim" aria-hidden="true" />
+      {PIECES.map((piece) => (
+        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
+      ))}
+      <div className="ev-card-inner gs-card-inner">
+        <p id="ks-says" className="gs-says">
+          {t('kitchenSheet.coming', { count: sheet.coming })}
+        </p>
+        <p className="desk-on-card">{bandLine(t, sheet, event.timeZone, i18n.language)}</p>
+        {onGive != null && (
+          <div className="ev-card-foot">
+            <CardStep label={t('kitchenSheet.give')} onClick={onGive} />
+          </div>
         )}
       </div>
-      {children}
-    </header>
+    </section>
   );
 }
 
@@ -221,6 +273,7 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
   const [final, setFinal] = useState(sheet.finalNumbers);
   const [told, setTold] = useState<string | null>(null);
   const [giving, setGiving] = useState<Giving | null>(null);
+  const [given, setGiven] = useState(false);
   const manage = canOn(event, 'menu.manage');
   const [openedAt] = useState(() => Date.now());
   const started = openedAt >= Date.parse(event.startsAt);
@@ -239,33 +292,36 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
 
   return (
     <>
-      <Top event={event} sheet={sheet}>
-        <div className="ks-acts">
+      <Top>
+        <div className="kitchen-acts">
           <button
             type="button"
-            className="gs-pill is-primary ks-act"
+            className="desk-text"
             aria-disabled={pdf.kind === 'making'}
             onClick={() => {
               if (pdf.kind !== 'making') make();
             }}
           >
             {pdf.kind === 'making' ? (
-              <span className="ks-spin" aria-hidden="true" />
+              <span className="kitchen-spin" aria-hidden="true" />
             ) : (
               <DownloadMark />
             )}
             {pdf.kind === 'making' ? t('kitchenSheet.making') : t('kitchenSheet.download')}
           </button>
-          <Link
-            className="gs-pill is-secondary ks-act"
-            to={`${sheetPath(event)}?paper=${sheet.paper}`}
-          >
+          <Link className="desk-text" to={`${sheetPath(event)}?paper=${sheet.paper}`}>
             <PrintMark />
             {t('kitchenSheet.print')}
           </Link>
         </div>
       </Top>
-      <div className="ks-said" role="status">
+      <div className="kitchen-said" role="status">
+        {given && (
+          <p className="gs-ok">
+            <Glyph name="tick" size={17} weight={2.6} />
+            {t('kitchenSheet.givenKitchen')}
+          </p>
+        )}
         {pdf.kind === 'made' && (
           <p className="gs-ok">
             <Glyph name="tick" size={17} weight={2.6} />
@@ -273,19 +329,10 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
           </p>
         )}
       </div>
-      {pdf.kind === 'failed' && (
-        <div className="ks-failed" role="alert">
-          <p>
-            <Glyph name="alert" size={17} weight={2.4} />
-            {t('kitchenSheet.failed')}
-          </p>
-          <button type="button" className="gs-pill is-secondary ks-act" onClick={make}>
-            {t('kitchenSheet.retry')}
-          </button>
-        </div>
-      )}
-      <div className="ev-columns ks-columns">
-        <div className="ks-body ev-left">
+      {pdf.kind === 'failed' && <Failed words={t('kitchenSheet.failed')} onRetry={make} />}
+      <Band event={event} sheet={sheet} onGive={manage ? () => setGiving('rest') : null} />
+      <div className="ev-columns">
+        <div className="ev-left">
           {final.changes != null && (
             <KitchenChanges
               changes={final.changes}
@@ -293,34 +340,10 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
               onGive={manage && !started ? () => setGiving('rest') : null}
             />
           )}
-          <p className="ks-summary">{summaryLine(t, sheet)}</p>
-          <section className="desk-block ks-card ks-allergies" aria-labelledby="ks-allergies">
-            <h2 id="ks-allergies" className="ks-card-head">
-              <span className="ks-allergy-mark" aria-hidden="true">
-                <Glyph name="alert" size={18} weight={2.4} />
-              </span>
-              {t('kitchenSheet.allergies')}
-            </h2>
-            <Allergies sheet={sheet} screen />
-          </section>
-          <section className="desk-block ks-card" aria-labelledby="ks-diets">
-            <h2 id="ks-diets" className="ks-card-head">
-              {t('kitchenSheet.diets')}
-            </h2>
-            <Diets sheet={sheet} />
-          </section>
+          <AllergyRows sheet={sheet} />
+          <DietRows sheet={sheet} />
           {sheet.courses.map((course) => (
-            <section
-              key={course.id}
-              className="desk-block ks-card"
-              aria-labelledby={`ks-${course.id}`}
-            >
-              <h2 id={`ks-${course.id}`} className="ks-card-head">
-                {course.name}
-              </h2>
-              <Course course={course} />
-              <ByStation course={course} at="ks" />
-            </section>
+            <CourseRows key={course.id} course={course} />
           ))}
         </div>
         <div className="ev-right">
@@ -330,6 +353,7 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
             manage={manage}
             giving={giving}
             onGiving={setGiving}
+            onGiven={() => setGiven(true)}
             onChange={setFinal}
             tell={setTold}
           />
@@ -343,7 +367,7 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
   );
 }
 
-function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: boolean }) {
+function Allergies({ sheet }: { sheet: KitchenSheet }) {
   const { t } = useTranslation();
 
   const none =
@@ -379,7 +403,7 @@ function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: bo
   return (
     <>
       {none}
-      <table className={screen ? 'ks-table ks-people' : 'ks-table'}>
+      <table className="ks-table">
         <thead>
           <tr>
             <th scope="col">{t('kitchenSheet.name')}</th>
@@ -395,10 +419,10 @@ function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: bo
           {sheet.allergic.map((person) => (
             <tr key={person.id}>
               <th scope="row">{person.name}</th>
-              <td data-head={t('kitchenSheet.allergicTo')}>{allergensOf(t, person)}</td>
+              <td>{allergensOf(t, person)}</td>
               {person.cells.map((cell, index) => (
-                <td key={sheet.courses[index]?.id ?? index} data-head={sheet.courses[index]?.name}>
-                  <CellWords cell={cell} />
+                <td key={sheet.courses[index]?.id ?? index}>
+                  <CellWords cell={cell} look="ks-state" />
                 </td>
               ))}
             </tr>
@@ -415,29 +439,6 @@ function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: bo
         </p>
       )}
     </>
-  );
-}
-
-type State = Exclude<KitchenCell['kind'], 'dish'>;
-
-const CELL_WORDS: Record<State, string> = {
-  kitchen: 'kitchenSheet.kitchen',
-  skipped: 'kitchenSheet.skipped',
-  host: 'kitchenSheet.needsHost',
-  changed: 'kitchenSheet.cellChanged',
-  notYet: 'kitchenSheet.cellNotYet',
-  never: 'kitchenSheet.cellNever',
-};
-
-function CellWords({ cell }: { cell: KitchenCell }) {
-  const { t } = useTranslation();
-  if (cell.kind === 'dish') return <>{cell.text}</>;
-
-  return (
-    <span className="ks-state">
-      <StateMark kind={cell.kind} />
-      {t(CELL_WORDS[cell.kind])}
-    </span>
   );
 }
 
@@ -467,51 +468,8 @@ function Diets({ sheet }: { sheet: KitchenSheet }) {
   );
 }
 
-interface StateRow {
-  key: string;
-  name: string;
-  count: number;
-  mark: State | null;
-}
-
 function Course({ course }: { course: KitchenCourse }) {
   const { t } = useTranslation();
-  const states: StateRow[] = [
-    { key: 'kitchen', name: t('kitchenSheet.kitchen'), count: course.kitchen, mark: null },
-    { key: 'skipped', name: t('kitchenSheet.skipped'), count: course.skipped, mark: 'skipped' },
-    ...(course.needsHost > 0
-      ? [
-          {
-            key: 'host',
-            name: t('kitchenSheet.needsHost'),
-            count: course.needsHost,
-            mark: 'host' as const,
-          },
-        ]
-      : []),
-    ...(course.menuChanged > 0
-      ? [
-          {
-            key: 'changed',
-            name: t('kitchenSheet.changed'),
-            count: course.menuChanged,
-            mark: null,
-          },
-        ]
-      : []),
-    ...(course.notChosen > 0
-      ? [
-          {
-            key: 'none',
-            name: t(course.never ? 'kitchenSheet.never' : 'kitchenSheet.notYet', {
-              count: course.notChosen,
-            }),
-            count: course.notChosen,
-            mark: course.never ? ('never' as const) : ('notYet' as const),
-          },
-        ]
-      : []),
-  ];
 
   return (
     <>
@@ -537,7 +495,7 @@ function Course({ course }: { course: KitchenCourse }) {
               <td className="ks-n">{row.count}</td>
             </tr>
           ))}
-          {states.map((row) => (
+          {stateRows(t, course).map((row) => (
             <tr key={row.key}>
               <th scope="row">
                 {row.mark == null ? (
@@ -746,39 +704,5 @@ function Page({
         <span className="ks-foot-page">{label}</span>
       </footer>
     </article>
-  );
-}
-
-/** Each state a shape with its word: Needs the host a triangle, Skipped a circle with a minus, not chosen a dashed circle. */
-function StateMark({ kind }: { kind: State }) {
-  if (kind === 'host')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M8 2 14.5 13.5h-13Z" />
-      </svg>
-    );
-  if (kind === 'skipped')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" />
-        <path d="M5 8h6" />
-      </svg>
-    );
-  if (kind === 'notYet' || kind === 'never')
-    return (
-      <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" className="is-dashed" />
-      </svg>
-    );
-
-  return null;
-}
-
-function PrintMark() {
-  return (
-    <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <rect x="6" y="14" width="12" height="8" rx="1" />
-    </svg>
   );
 }

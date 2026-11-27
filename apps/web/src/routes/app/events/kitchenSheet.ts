@@ -2,6 +2,7 @@ import type {
   KitchenAllergic,
   KitchenChange,
   KitchenChangesSince,
+  KitchenCourse,
   KitchenSheet,
 } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
@@ -27,6 +28,47 @@ export function summaryLine(t: TFunction, sheet: KitchenSheet): string {
     t('kitchenSheet.allergic', { count: sheet.allergicCount }),
     t('kitchenSheet.courses', { count: sheet.courses.length }),
   ].join(' · ');
+}
+
+/** The line under "{count} coming" in the band, as of the moment the sheet loaded. */
+export function bandLine(
+  t: TFunction,
+  sheet: KitchenSheet,
+  timeZone: string,
+  locale: string,
+): string {
+  return [
+    t('kitchenSheet.allergic', { count: sheet.allergicCount }),
+    t('kitchenSheet.courses', { count: sheet.courses.length }),
+    asOfLine(t, sheet.asOf, timeZone, locale),
+  ].join(' · ');
+}
+
+export interface StateRow {
+  key: string;
+  name: string;
+  count: number;
+  mark: 'skipped' | 'host' | 'notYet' | 'never' | null;
+}
+
+/** The rows after a course's dishes: Kitchen's choice and Skipped always, the others only when someone is in them. */
+export function stateRows(t: TFunction, course: KitchenCourse): StateRow[] {
+  const rows: StateRow[] = [
+    { key: 'kitchen', name: t('kitchenSheet.kitchen'), count: course.kitchen, mark: null },
+    { key: 'skipped', name: t('kitchenSheet.skipped'), count: course.skipped, mark: 'skipped' },
+    { key: 'host', name: t('kitchenSheet.needsHost'), count: course.needsHost, mark: 'host' },
+    { key: 'changed', name: t('kitchenSheet.changed'), count: course.menuChanged, mark: null },
+    {
+      key: 'none',
+      name: t(course.never ? 'kitchenSheet.never' : 'kitchenSheet.notYet', {
+        count: course.notChosen,
+      }),
+      count: course.notChosen,
+      mark: course.never ? 'never' : 'notYet',
+    },
+  ];
+
+  return rows.filter((row) => row.key === 'kitchen' || row.key === 'skipped' || row.count > 0);
 }
 
 /** An allergen as the guest record names it; Other reads as the guest typed it, "Kiwi (other)". */

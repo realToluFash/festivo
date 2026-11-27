@@ -2,8 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { DownloadMark, PrintMark, StateMark } from '../routes/app/events/kitchenMarks.tsx';
 import { Ask, CardStep, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
-import { StateMark } from './KitchenSheet.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { Opened } from '../components/EventPageParts.tsx';
@@ -68,6 +68,7 @@ import { keptInbox, waitingLine } from './messages.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './kitchen.css';
+import '../routes/app/events/kitchenScreen.css';
 
 const MAKE_MS = 900;
 const LOAD_MS = 900;
@@ -930,23 +931,5 @@ function CourseA({ course }: { course: SheetCourse }) {
         </div>
       )}
     </section>
-  );
-}
-
-/** Download and Print are drawn here, in the demo, not added to the product's icon set. */
-function DownloadMark() {
-  return (
-    <svg className="kitchen-mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-    </svg>
-  );
-}
-
-function PrintMark() {
-  return (
-    <svg className="kitchen-mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <rect x="6" y="14" width="12" height="8" rx="1" />
-    </svg>
   );
 }

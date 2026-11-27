@@ -1,0 +1,229 @@
+/* The kitchen sheet at a desk in A · Summary first (sc-99611). The web's design demo draws with this file too. */
+.kitchen-acts {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.kitchen-mark {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.3;
+}
+
+.ks-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ks-mark .is-dashed {
+  stroke-dasharray: 2.6 2.2;
+}
+
+.kitchen-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.kitchen-none .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.kitchen-picks {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -4px 0 var(--spaceSm) 40px;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.kitchen-picks svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.kitchen-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.kitchen-clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-right: calc(-1 * var(--spaceMd));
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorCard);
+  cursor: pointer;
+}
+
+.kitchen-clear svg {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--colorInkTertiary);
+}
+
+.kitchen-count {
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.kitchen-figure {
+  margin-left: auto;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+/* sc-30692: a dish name runs to 120 characters; both names stay whole, so a line breaks anywhere rather than overflows. */
+.kitchen-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.kitchen-changes > .desk-text {
+  margin-top: var(--spaceSm);
+}
+
+/* The sheet's own states in A (sc-99611): sc-3911's rows and sc-34244's By station. */
+.kitchen .desk-row-name,
+.kitchen .desk-row-line {
+  overflow-wrap: anywhere;
+}
+
+.kitchen-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kitchen-under {
+  padding-left: var(--spaceXl);
+}
+
+.kitchen-room .desk-row-name {
+  font-weight: 700;
+}
+
+.kitchen-stations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceMd);
+}
+
+.kitchen-sub {
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.kitchen-station-head {
+  margin: var(--spaceSm) 0 0;
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.kitchen-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+.kitchen-failed-line {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 15px/1.45 var(--fontFamily);
+}
+
+.kitchen-failed-line svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.kitchen-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.kitchen-spin {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: kitchen-spin 0.8s linear infinite;
+}
+
+@keyframes kitchen-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kitchen-spin {
+    animation: none;
+  }
+}
+
+/* At 720 px and under (400% zoom included) the sheet is one column: the top wraps its actions under the title, Final numbers follows the sheet, and a text action wraps rather than run past the page. */
+@media (width <= 720px) {
+  .kitchen .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kitchen-top {
+    flex-wrap: wrap;
+    gap: var(--spaceSm) var(--spaceLg);
+  }
+
+  .kitchen-top .kitchen-title {
+    flex-basis: 100%;
+  }
+
+  .kitchen-acts {
+    flex-wrap: wrap;
+    gap: var(--spaceXs) 22px;
+  }
+
+  .kitchen .desk-text {
+    max-width: 100%;
+    white-space: normal;
+    text-align: start;
+  }
+}
+
+.kitchen .gs-bones {
+  gap: 18px;
+}

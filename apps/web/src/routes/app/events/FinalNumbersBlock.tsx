@@ -8,26 +8,20 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { dayIn } from './courseDefault.ts';
+import { DownloadMark } from './kitchenMarks.tsx';
 import { copyLine, dueError, saveSheet, shortDay } from './kitchenSheet.ts';
-
-export function DownloadMark() {
-  return (
-    <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-    </svg>
-  );
-}
 
 /** Give final numbers…'s dialog, which Give the changes… on the sheet opens too (sc-30692). */
 export type Giving = 'rest' | 'making' | 'failed';
 
-/** Final numbers beside the kitchen sheet (sc-30812): the due day edited in place, Give final numbers…, then the copies given, newest first. */
+/** Final numbers beside the kitchen sheet (sc-30812): the due day edited in place, then the copies given, newest first, and Give final numbers…'s dialog. */
 export function FinalNumbersBlock({
   event,
   final,
   manage,
   giving,
   onGiving: setGiving,
+  onGiven,
   onChange,
   tell,
 }: {
@@ -36,12 +30,12 @@ export function FinalNumbersBlock({
   manage: boolean;
   giving: Giving | null;
   onGiving: (giving: Giving | null) => void;
+  onGiven: () => void;
   onChange: (final: FinalNumbers) => void;
   tell: (words: string) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [given, setGiven] = useState(false);
   const locale = dateLocale();
 
   const give = () => {
@@ -50,7 +44,7 @@ export function FinalNumbersBlock({
       ({ name, bytes }) => {
         saveSheet(bytes, name ?? `${t('kitchenSheet.title')}.pdf`);
         setGiving(null);
-        setGiven(true);
+        onGiven();
         api.kitchenSheet(event.id).then(
           (sheet) => onChange(sheet.finalNumbers),
           () => undefined,
@@ -68,16 +62,8 @@ export function FinalNumbersBlock({
   };
 
   return (
-    <section className="desk-block ks-final" aria-labelledby="ks-final">
+    <section className="desk-block" aria-labelledby="ks-final">
       <Head title={<span id="ks-final">{t('kitchenSheet.finalNumbers')}</span>} />
-      <div className="ks-final-said" role="status">
-        {given && (
-          <p className="gs-ok">
-            <Glyph name="tick" size={17} weight={2.6} />
-            {t('kitchenSheet.givenKitchen')}
-          </p>
-        )}
-      </div>
       <ul className="desk-rows ev-details">
         <DueRow
           event={event}
@@ -108,15 +94,6 @@ export function FinalNumbersBlock({
           </li>
         ))}
       </ul>
-      {manage && (
-        <button
-          type="button"
-          className="gs-pill is-primary ks-act ks-give"
-          onClick={() => setGiving('rest')}
-        >
-          {t('kitchenSheet.give')}
-        </button>
-      )}
       {giving != null && (
         <Ask
           title={t('kitchenSheet.giveTitle')}
@@ -155,7 +132,7 @@ function DueRow({
 }) {
   const { t } = useTranslation();
   const words = (
-    <span className={final.due == null ? 'ks-none' : undefined}>
+    <span className={final.due == null ? 'kitchen-none' : undefined}>
       <RowWords
         title={final.due == null ? t('kitchenSheet.none') : shortDay(final.due, locale)}
         lines={[t('kitchenSheet.due')]}
@@ -192,7 +169,7 @@ function DueRow({
         <DueEditor event={event} due={final.due} onClose={onClose} onSaved={onSaved} />
       ) : (
         until != null && (
-          <p className="ks-picks">
+          <p className="kitchen-picks">
             <Glyph name="info" size={15} weight={2.2} />
             {t('kitchenSheet.picksOpen', {
               date: shortDay(dayIn(new Date(until), event.timeZone), locale),
@@ -272,7 +249,7 @@ function DueEditor({
       onSave={save}
     >
       <div className="desk-field">
-        <div className="ks-label">
+        <div className="kitchen-label">
           <label htmlFor={id} className="desk-label">
             {t('kitchenSheet.due')}
           </label>
@@ -294,7 +271,7 @@ function DueEditor({
           {typed !== '' && (
             <button
               type="button"
-              className="ks-clear"
+              className="kitchen-clear"
               aria-label={t('kitchenSheet.clearDue')}
               onClick={() => {
                 setTyped('');
