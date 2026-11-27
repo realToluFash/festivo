@@ -1088,6 +1088,46 @@ class DesignPullRequests(unittest.TestCase):
         self.assertFalse(work.side_pr(ticket, self.design()))
         self.assertEqual(work.builder(ticket, self.design()), "ux")
 
+class OpsPullRequests(unittest.TestCase):
+    """Ops's pull request on another role's story, from an ops/ branch, is ops's to finish:
+    the story's developer is not woken for it, and the story keeps its state."""
+    passed = [verdict("pass", HEAD[:7])]
+
+    def ops(self, **kw):
+        return dict(pr(**kw), branch="ops/sc-1-two-checks")
+
+    def test_its_open_threads_and_its_merge_wake_ops_not_the_developer(self):
+        for state in ("In Progress", "In Review", "Failed QA", "Ready For QA"):
+            on = story(1, state, labels=["dev2"])
+            held = self.ops(lead=self.passed, threads=[thread("should: assert first")])
+            self.assertEqual([(i["kind"], i["roles"]) for i in work.developer_items([on], [held])],
+                             [("answer-threads", ["ops"])])
+            self.assertEqual([(i["kind"], i["roles"])
+                              for i in work.developer_items([on], [self.ops(lead=self.passed)])],
+                             [("merge", ["ops"])])
+            self.assertEqual(work.waits_on(on, self.ops(lead=self.passed)),
+                             ("ops", "ops to merge it"))
+
+    def test_it_never_moves_the_developers_story(self):
+        building = story(1, "In Progress", labels=["dev2"])
+        self.assertEqual(work.developer_items([building], [self.ops()]), [])
+        self.assertEqual(work.waits_on(building, self.ops()), ("lead", "lead to review it"))
+        merged = dict(self.ops(lead=self.passed), state="merged")
+        self.assertEqual(work.developer_items([story(1, "Passed Code Review", labels=["dev2"])],
+                                              [merged]), [])
+
+    def test_the_lead_reviews_it_in_any_state(self):
+        for state in ("In Progress", "Ready For QA"):
+            self.assertEqual(kinds(work.review_items([story(1, state, labels=["dev2"])],
+                                                     [self.ops()])), ["review"])
+
+    def test_an_ops_branch_on_ops_own_story_is_routed_as_before(self):
+        own = story(1, "In Progress", labels=["ops"])
+        self.assertFalse(work.ops_pr(own, self.ops()))
+        self.assertFalse(work.side_pr(own, self.ops()))
+        self.assertEqual(kinds(work.developer_items([own], [self.ops()])), ["to-review"])
+
+
 class DemoOnlyStories(unittest.TestCase):
     """A story labelled `demo only` with no pull request off ux/ is built once its demo
     merges: the product manager moves it to Ready For QA, and no developer is handed it."""
