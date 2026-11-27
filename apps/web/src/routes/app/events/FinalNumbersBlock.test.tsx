@@ -437,10 +437,22 @@ describe('Changes since the latest copy (sc-30692)', () => {
     ]);
   });
 
-  it('gives the changes through the same dialog', async () => {
+  it('gives the changes through the same dialog, then reads from the new copy', async () => {
+    let given = false;
     const sent = onSheet({
-      [SHEET]: () => json(withFinal({ ...NONE, copies: COPIES, changes: CHANGES })),
-      [GIVE]: () => pdf('sheet.pdf'),
+      [SHEET]: () =>
+        json(
+          withFinal({
+            ...NONE,
+            copies: COPIES,
+            changes: given ? { since: '2030-11-08T09:30:00+01:00', lines: [] } : CHANGES,
+          }),
+        ),
+      [GIVE]: () => {
+        given = true;
+
+        return pdf('sheet.pdf');
+      },
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Give the changes…' }));
@@ -448,7 +460,13 @@ describe('Changes since the latest copy (sc-30692)', () => {
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Download PDF' }),
     );
 
-    await waitFor(() => expect(sent).toContain(GIVE));
+    expect(
+      await screen.findByText('Given to the kitchen. A copy is kept on this page.'),
+    ).toBeDefined();
+    expect(
+      await screen.findByRole('region', { name: 'No changes since Friday, Nov 8 at 09:30.' }),
+    ).toBeDefined();
+    expect(sent).toContain(GIVE);
   });
 
   it('says when nothing has changed, with no action', async () => {
