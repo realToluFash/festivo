@@ -54,6 +54,8 @@ import { Chip, CloseX, MarkLine, PersonRow, StationTile } from './whosHere/WhosH
 
 /** Under the AC's ten seconds from a clock-in, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
+/** Under the 60 seconds from the event's scheduled end, which nothing publishes (sc-3918). */
+const READ_WHILE_LIVE_MS = 30_000;
 
 type Seen =
   | { kind: 'loading' }
@@ -174,6 +176,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
       () => api.whosHereSubscription(eventId),
       () => reader.current(),
       READ_AGAIN_MS,
+      READ_WHILE_LIVE_MS,
     );
 
     return () => {
