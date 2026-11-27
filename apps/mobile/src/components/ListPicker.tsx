@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   fieldWrong: { borderColor: tokens.colorBroken },
   value: { flex: 1, color: tokens.colorInk },
   // A growing value in a field with no width of its own takes the whole row on Android.
-  valueCompact: { flex: 0 },
+  valueCompact: { flex: 0, flexShrink: 0 },
   placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   page: { backgroundColor: tokens.colorPage },
