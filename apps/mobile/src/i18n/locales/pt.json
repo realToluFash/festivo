@@ -3946,7 +3946,7 @@
     "notYet": "Ainda sem entrada",
     "opensAt": "Abertura do ponto: {{time}}",
     "notOut": "Saída não registada · Contado até ao fim marcado ({{end}})",
-    "noAttendance": "Sem registo de ponto · 0 h contadas",
+    "noAttendance": "Sem registo de ponto · 0 h contadas",
     "removed": "Já não está na lista da equipa",
     "worked": "Horas trabalhadas",
     "of": "{{worked}} de {{scheduled}} marcadas",
