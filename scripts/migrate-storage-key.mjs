@@ -3,6 +3,8 @@
 // soirely / soirely-dev-secret, and .env wins over the compose defaults, so `just up` moves
 // that exact pair across. Any other pair is somebody's choice and stays.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function migrateStorageKey(env) {
   const key = /^STORAGE_KEY=soirely(\s*(#.*)?)$/m;
@@ -11,7 +13,11 @@ export function migrateStorageKey(env) {
   return env.replace(key, 'STORAGE_KEY=test$1').replace(secret, 'STORAGE_SECRET=test$1');
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname && existsSync('.env')) {
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url) &&
+  existsSync('.env')
+) {
   const before = readFileSync('.env', 'utf8');
   const after = migrateStorageKey(before);
   if (after !== before) {
