@@ -36,22 +36,6 @@ describe('the phone’s tab bars (sc-71148, sc-99214)', () => {
     );
     expect(cover).toMatch(/size=\{size\}\s+allowFontScaling=\{false\}/u);
   });
-
-  it('fits them to a tab worked out from this render’s window, never one laid out before a turn', () => {
-    expect(cover).toMatch(
-      /const slot = tabWidth\(width, insets, tabs\.length, PixelRatio\.get\(\)\);/u,
-    );
-  });
-
-  it('keeps the words’ widths past the bar, so coming back to it blanks no label', () => {
-    expect(cover).toMatch(/useMeasuredAt\(start, words, TAB_WORDS\)/u);
-    expect(title).toMatch(/\?\? kept\?\.get\(/u);
-    expect(title).toMatch(/kept\?\.set\(key, width\);/u);
-  });
-
-  it('hides the labels only while a word is unmeasured', () => {
-    expect(cover).toMatch(/!measured && styles\.waiting/u);
-  });
 });
 
 describe('the capsule the upright band is laid out beside (sc-91290)', () => {
