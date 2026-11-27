@@ -4,6 +4,7 @@ import {
   type EventDay,
   KS,
   type Where,
+  deviceZone,
   opensStations,
   readAt,
   rowLine,
@@ -24,6 +25,7 @@ const ROW_STATES = [
   'answering',
   'offline',
   'reconnects',
+  'refused',
   'past_midnight',
   'day_before',
   'finished',
@@ -57,11 +59,6 @@ export const MOVES_IN = 3000;
 
 export const LAST_READ = new Date('2026-11-28T18:38:00Z');
 
-/** {time} is the device's zone, not the event's (sc-98893's With no connection). */
-export function deviceZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
 interface Sample<Role = InsideLevel | 'Lead' | 'Admin'> {
   role: Role;
   who: string;
@@ -81,6 +78,8 @@ interface Sample<Role = InsideLevel | 'Lead' | 'Admin'> {
   /** Reads are failing: the row keeps its last line, "as of" this read. */
   lastRead?: Date;
   reconnects?: boolean;
+  /** The next read answers 403 or 404. */
+  refused?: boolean;
 }
 
 const SECTION_B: OnFloor = { sections: ['Section B'], manages: false, course: 'Mains' };
@@ -128,6 +127,7 @@ const ROWS: Record<RowState, Sample<InsideLevel>> = {
   answering: { ...GRACE, answering: true },
   offline: { ...GRACE, lastRead: LAST_READ },
   reconnects: { ...GRACE, lastRead: LAST_READ, reconnects: true },
+  refused: { ...GRACE, refused: true },
   past_midnight: { ...GRACE, now: new Date('2026-11-28T23:30:00Z') },
   day_before: { ...GRACE, now: DAY_BEFORE },
   finished: { ...GRACE, now: new Date('2026-11-29T01:10:00Z'), finished: true },
@@ -185,6 +185,7 @@ function floorLink(sample: Sample, zone: string): ServiceLink {
     return sample.reconnects === true ? { ...stale, moves: { line, in: MOVES_IN } } : stale;
   }
   if (sample.answering === true) return { line, href, answersIn: READ_ANSWERS_IN };
+  if (sample.refused === true) return { line, href, goesIn: MOVES_IN };
 
   return sample.movesTo == null
     ? { line, href }
@@ -260,6 +261,10 @@ const WHAT: Record<FloorWayInState, readonly [string, string]> = {
   reconnects: [
     'The connection comes back',
     'Floor · Section B · Mains · as of {time}, then the next read drops “as of” a few seconds in',
+  ],
+  refused: [
+    'The next read is refused',
+    'Floor · Section B · Mains, then a 403 or 404 lands a few seconds in and the row goes, with no motion and no “as of”',
   ],
   past_midnight: ['Past midnight', '00:30 on Sunday, before the end: the row stays'],
   day_before: ['23:59 the day before', 'Your night only: the row shows from 00:00 on the day'],

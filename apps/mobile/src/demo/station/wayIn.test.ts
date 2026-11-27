@@ -90,7 +90,10 @@ describe('the way in’s demo states (sc-95382)', () => {
 
   it('draws the row only where the rules show it', () => {
     const lines = Object.fromEntries(
-      WAY_IN_STATES.map((state) => [state, overviewOf(state).station?.line ?? null]),
+      WAY_IN_STATES.map((state) => [
+        state,
+        overviewOf(state, 'Africa/Lagos').station?.line ?? null,
+      ]),
     );
 
     expect(lines).toEqual({
@@ -120,6 +123,12 @@ describe('the way in’s demo states (sc-95382)', () => {
     expect(overviewOf('own_course').station?.answersIn).toBe(undefined);
     expect(overviewOf('offline').station?.answersIn).toBe(undefined);
     expect(readAt(new Date('2026-11-28T23:05:00Z'), 'Africa/Lagos')).toBe('00:05');
+  });
+
+  it('reads "as of" in the device’s zone, as the Floor row does', () => {
+    expect(overviewOf('offline', 'Europe/London').station?.line).toBe(
+      'Fryer · Mains · as of 18:38',
+    );
   });
 
   it('draws the organiser’s Overview under Your night, or in its place with no shift', () => {

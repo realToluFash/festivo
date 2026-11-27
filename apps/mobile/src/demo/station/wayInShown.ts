@@ -11,6 +11,8 @@ export interface ServiceLink {
   answersIn?: number;
   /** The line after a move or the next read that succeeds, and when it lands. */
   moves?: { line: string; in: number };
+  /** The next read is refused (403 or 404): the row goes when it lands. */
+  goesIn?: number;
 }
 
 interface Shown {

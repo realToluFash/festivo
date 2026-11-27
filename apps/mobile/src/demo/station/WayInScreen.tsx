@@ -33,11 +33,13 @@ function WayIn({ shown }: { shown: WayInOverview }) {
   );
 }
 
-/** No row until the read answers; then the line, and the next one when a move or a read lands. */
+/** No row until the read answers; then the line, the next one when a move or a read lands, and none once a read is refused. */
 function useLine(link: ServiceLink | null): string | null {
   const waits = link?.answersIn;
   const moves = link?.moves;
+  const goes = link?.goesIn;
   const [answered, setAnswered] = useState(waits == null);
+  const [gone, setGone] = useState(false);
   const [line, setLine] = useState(link?.line ?? null);
 
   useEffect(() => {
@@ -54,7 +56,14 @@ function useLine(link: ServiceLink | null): string | null {
     return () => clearTimeout(timer);
   }, [moves]);
 
-  return answered ? line : null;
+  useEffect(() => {
+    if (goes == null) return;
+    const timer = setTimeout(() => setGone(true), goes);
+
+    return () => clearTimeout(timer);
+  }, [goes]);
+
+  return answered && !gone ? line : null;
 }
 
 function row(link: ServiceLink | null, line: string | null) {

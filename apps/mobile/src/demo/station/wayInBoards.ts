@@ -5,6 +5,7 @@ import {
   type EventDay,
   KS,
   type Where,
+  deviceZone,
   opensStations,
   readAt,
   rowLine,
@@ -198,16 +199,16 @@ function linkOf(where: Where, stationState: string, opens: string): ServiceLink 
   };
 }
 
-function sampleLink(sample: Sample): ServiceLink {
+function sampleLink(sample: Sample, zone: string): ServiceLink {
   const link = linkOf(sample.where, sample.stationState, sample.opens);
   if (sample.lastRead != null) {
-    return { ...link, line: KS.asOf(link.line, readAt(sample.lastRead, DAY.timeZone)) };
+    return { ...link, line: KS.asOf(link.line, readAt(sample.lastRead, zone)) };
   }
 
   return sample.answering === true ? { ...link, answersIn: READ_ANSWERS_IN } : link;
 }
 
-export function overviewOf(state: WayInState): WayInOverview {
+export function overviewOf(state: WayInState, zone: string = deviceZone()): WayInOverview {
   if (isOrganiser(state)) {
     const organiser = ORGANISER[state];
     const today = rowShows(ORGANISER_DAY, organiser.now);
@@ -237,7 +238,7 @@ export function overviewOf(state: WayInState): WayInOverview {
     rostered: sample.rostered,
     night: sample.night,
     now: sample.now,
-    station: today && opensStations(sample.role) ? sampleLink(sample) : null,
+    station: today && opensStations(sample.role) ? sampleLink(sample, zone) : null,
     floor: today && opensFloor(sample.role) ? floorLinkOf(sample.floor, 'en') : null,
   };
 }
@@ -249,7 +250,10 @@ const WHAT: Record<WayInState, readonly [string, string]> = {
     'The stations read not yet answered',
     'No row and no placeholder, then Kitchen station · Fryer · Mains fades in over 200 ms; none under Reduce motion',
   ],
-  offline: ['No connection', 'Kitchen station · Fryer · Mains · as of 19:38, its last line kept'],
+  offline: [
+    'No connection',
+    'Kitchen station · Fryer · Mains · as of {time}, its last line kept; {time} in this device’s zone',
+  ],
   past_midnight: ['Past midnight', '00:30 on Sunday, before the end: the row stays'],
   last_pick: [
     'A join code, a last pick',

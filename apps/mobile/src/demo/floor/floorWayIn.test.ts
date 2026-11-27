@@ -137,6 +137,13 @@ describe('the Floor row with no connection (sc-98893)', () => {
     expect(floorOverviewOf('one_section').floor?.answersIn).toBe(undefined);
   });
 
+  it('goes once a read is refused, where no connection keeps it', () => {
+    const refused = floorOverviewOf('refused').floor;
+
+    expect([refused?.line, refused?.goesIn != null]).toEqual(['Section B · Mains', true]);
+    expect(floorOverviewOf('offline').floor?.goesIn).toBe(undefined);
+  });
+
   it('opens Floor even with no connection', () => {
     expect(floorOverviewOf('offline').floor?.href).toBe('/demo/floor?state=yours&from=overview');
   });
