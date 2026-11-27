@@ -48,7 +48,7 @@ final readonly class WhosHereController
     }
 
     #[Route('/api/events/{eventId}/whos-here', name: 'whos_here', methods: ['GET'])]
-    #[InEvent(Permission::EventsRead)]
+    #[InEvent(Permission::EventsRead, endedLink: 'whos_here.event_ended')]
     public function read(string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
@@ -58,7 +58,7 @@ final readonly class WhosHereController
 
     /** Someone's at the door. `url` is their link, answered once, when a mobile number was given; `station` is ignored for a station lead. */
     #[Route('/api/events/{eventId}/whos-here/walk-ons', name: 'whos_here_walk_on', methods: ['POST'])]
-    #[InEvent(Permission::EventsRead)]
+    #[InEvent(Permission::EventsRead, endedLink: 'whos_here.event_ended')]
     public function walkOn(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
@@ -76,7 +76,7 @@ final readonly class WhosHereController
 
     /** Add a mobile number, for staff.manage and for the lead who added that walk-on; answers their link to copy. */
     #[Route('/api/events/{eventId}/whos-here/people/{staffId}/mobile', name: 'whos_here_mobile', methods: ['PUT'])]
-    #[InEvent(Permission::EventsRead)]
+    #[InEvent(Permission::EventsRead, endedLink: 'whos_here.event_ended')]
     public function mobile(Request $request, #[InThisEvent('staffId')] StaffMember $person): JsonResponse
     {
         $body = Input::body($request, Type\shape(['mobile' => self::mobileShape()]));
@@ -93,7 +93,7 @@ final readonly class WhosHereController
 
     /** Cover {station}: the floor lead's and staff.manage's only. Refused `validation_failed` on `absent` for someone who is here, and on `mover` for someone not clocked in or already on that station. */
     #[Route('/api/events/{eventId}/whos-here/cover', name: 'whos_here_cover', methods: ['POST'])]
-    #[InEvent(Permission::EventsRead)]
+    #[InEvent(Permission::EventsRead, endedLink: 'whos_here.event_ended')]
     public function cover(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
@@ -122,7 +122,7 @@ final readonly class WhosHereController
 
     /** A hub token for Who's here's signal to read again, for anybody who may read it. */
     #[Route('/api/events/{eventId}/whos-here/subscriptions', name: 'whos_here_subscribe', methods: ['POST'])]
-    #[InEvent(Permission::EventsRead)]
+    #[InEvent(Permission::EventsRead, endedLink: 'whos_here.event_ended')]
     public function subscribe(string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
