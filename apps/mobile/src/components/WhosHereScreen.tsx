@@ -119,6 +119,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
   const [sheet, setSheet] = useState<Open | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [endedHere, setEndedHere] = useState(false);
+  const [concluded, setConcluded] = useState(false);
   const latest = useRef<WhosHere | null>(null);
   const ticket = useRef(0);
   const refs = useRef(new Map<string, ViewInstance>());
@@ -142,7 +143,8 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
       },
       (error: unknown) => {
         if (mine !== ticket.current) return;
-        if (latest.current != null) setStale(true);
+        if (error instanceof ApiError && error.is('event_concluded')) setConcluded(true);
+        else if (latest.current != null) setStale(true);
         else if (error instanceof ApiError && (error.status === 403 || error.status === 404))
           setSeen({ kind: 'notFound' });
         else setSeen({ kind: 'unreachable' });
@@ -179,6 +181,15 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
       stop();
     };
   }, [eventId, round]);
+
+  const leave = useRef(onBack);
+  useEffect(() => {
+    leave.current = onBack;
+  });
+
+  useEffect(() => {
+    if (concluded && sheet == null) leave.current();
+  }, [concluded, sheet]);
 
   useEffect(() => {
     if (toast != null && toast !== '') return readOut(toast);
@@ -393,7 +404,14 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
             close={close}
             shown={shown}
             reread={() => reader.current()}
-            onRefused={() => setEndedHere(true)}
+            onRefused={() => {
+              setEndedHere(true);
+              reader.current();
+            }}
+            onConcluded={() => {
+              setConcluded(true);
+              setSheet(null);
+            }}
             onMoved={(words) => setToast(words)}
             onAddMobile={(id, name) =>
               setSheet({
@@ -661,6 +679,7 @@ interface SheetProps {
   shown: (next: WhosHere) => void;
   reread: () => void;
   onRefused: () => void;
+  onConcluded: () => void;
   onMoved: (words: string) => void;
   onAddMobile: (id: string, name: string) => void;
 }
@@ -977,7 +996,13 @@ function Wrong({ words }: { words: string }) {
   );
 }
 
-function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileSheet }) {
+function MobileForm({
+  open,
+  eventId,
+  set,
+  reread,
+  onConcluded,
+}: SheetProps & { open: MobileSheet }) {
   const { t } = useTranslation();
   const numberField = useRef<TextInputInstance>(null);
   const problem = numberProblem(t, open.number, open.country, countryName(open.country), true);
@@ -1008,6 +1033,10 @@ function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileS
           });
         },
         (error: unknown) => {
+          if (error instanceof ApiError && error.is('event_concluded')) {
+            onConcluded();
+            return;
+          }
           const named =
             error instanceof ApiError && error.is('validation_failed') ? error.fieldErrors() : {};
           const refusal = named.mobile ?? named['mobile.number'] ?? null;
@@ -1066,6 +1095,7 @@ function CoverForm({
   close,
   shown,
   reread,
+  onConcluded,
   onMoved,
 }: SheetProps & {
   open: Extract<Open, { kind: 'cover' }>;
@@ -1094,7 +1124,11 @@ function CoverForm({
         close();
         onMoved(movedWords(t, next, chosen.id, from, locale));
       },
-      () => {
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_concluded')) {
+          onConcluded();
+          return;
+        }
         set({ ...open, busy: false, failed: true });
         reread();
       },
