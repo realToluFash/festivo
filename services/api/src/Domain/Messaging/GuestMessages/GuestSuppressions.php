@@ -21,9 +21,7 @@ use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The one list of addresses an organisation no longer reaches, per channel (sc-3969, epic 36 §7): a guest's complaint (RFC 6449 §4.3.1) and the guest's own opt-out. Each address is kept as a keyed hash (RFC 2104) from the moment it lands, so neither the guest's erasure nor the event's purge lifts it, and an import of the same address meets it again.
- */
+/** Keyed hashes (RFC 2104) of the addresses an organisation no longer reaches, so neither erasure nor purge lifts them (sc-3969). */
 final readonly class GuestSuppressions
 {
     public function __construct(
