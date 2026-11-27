@@ -299,6 +299,20 @@ export function StaffRoster({
     <View style={styles.page} testID={`staff.${state}`}>
       {brief?.card}
       {notices?.card}
+      <View style={styles.entries} testID="staff.entries">
+        <SecondaryButton
+          label={RW.hours}
+          link
+          onPress={() => router.push('/demo/staff-hours')}
+          testID="staff.hours"
+        />
+        <SecondaryButton
+          label={RW.whosHere}
+          link
+          onPress={() => router.push('/demo/whos-here')}
+          testID="staff.whosHere"
+        />
+      </View>
       <View style={styles.head}>
         <View
           ref={head}
@@ -523,6 +537,7 @@ function CheckBody({
 const styles = StyleSheet.create({
   page: { gap: tokens.spaceXl },
   head: { gap: tokens.spaceMd },
+  entries: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   bulkBeside: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceXs },
   check: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
