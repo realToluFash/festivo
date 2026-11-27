@@ -100,3 +100,8 @@ If that test does not exist yet in the surface you are working in, write it — 
 dozen lines and it catches the whole class permanently. The previous build added one only
 after a sweep missed eleven strings that happened to be wrapped across lines, which a
 single-line regex could not see.
+
+A key moved from one namespace to another moves its translations with it. Deleting
+`eventNeeds.dueToday` and pointing the screen at `today.dueToday` leaves es, fr and pt
+reading English on a screen that was translated yesterday, and no English-only test goes
+red. Copy the three languages' words across in the same commit.
