@@ -78,7 +78,6 @@ export interface FloorRead {
   manage: boolean;
 }
 
-/** A guest as the table's view draws them: the latest course's order, and the plates owed to them from every fired course. */
 export interface FloorGuest extends ServiceGuestRead {
   owed: ServicePlateRead[];
 }
@@ -132,7 +131,6 @@ function plates(guest: ServiceGuestRead): ServicePlateRead[] {
   return guest.order == null ? [] : [guest.order, ...guest.order.owed];
 }
 
-/** The order is not offered Send back while the plate it made is still owed. */
 export function owesSentBack(guest: FloorGuest): boolean {
   return guest.owed.some(
     (plate) =>
@@ -346,7 +344,6 @@ export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): F
   }, floor);
 }
 
-/** The sections a waiter is on now, named, once they differ from the ones they were on: empty when none is left. */
 export function sectionsMoved(was: readonly string[], now: FloorRead['yours']): string[] | null {
   const same = was.length === now.length && now.every((one) => was.includes(one.id));
 
