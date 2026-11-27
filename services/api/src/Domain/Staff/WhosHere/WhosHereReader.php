@@ -164,7 +164,7 @@ final readonly class WhosHereReader
         return ['id' => $station->getId()->toRfc4122(), 'name' => $station->getName()];
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, ShiftAttendance> by shift and person */
     private function attendances(Event $event): array
     {
         return Dict\reindex(
@@ -174,17 +174,13 @@ final readonly class WhosHereReader
     }
 
     /**
-     * @param list<StaffShift>     $shifts
-     * @param array<string, mixed> $attendances by shift and person
+     * @param list<StaffShift>               $shifts
+     * @param array<string, ShiftAttendance> $attendances by shift and person
      */
     private static function placeOf(StaffMember $person, array $shifts, array $attendances, DateTimeImmutable $now): ?WhosHerePlace
     {
         $theirs = Vec\filter($shifts, static fn (StaffShift $shift): bool => Iter\contains($shift->getPeople(), $person));
-        $of = static function (StaffShift $shift) use ($attendances, $person): ?ShiftAttendance {
-            $found = $attendances[$shift->getId()->toRfc4122() . ':' . $person->getId()->toRfc4122()] ?? null;
-
-            return $found instanceof ShiftAttendance ? $found : null;
-        };
+        $of = static fn (StaffShift $shift): ?ShiftAttendance => $attendances[$shift->getId()->toRfc4122() . ':' . $person->getId()->toRfc4122()] ?? null;
         $inAt = static fn (StaffShift $shift): int => $of($shift)?->countedIn()?->getTimestamp() ?? 0;
         $on = Iter\last(Vec\sort(
             Vec\filter($theirs, static fn (StaffShift $shift): bool => ClockWindow::stillOn($shift, $of($shift), $now)),
