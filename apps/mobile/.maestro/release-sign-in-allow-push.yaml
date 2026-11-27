@@ -1,0 +1,58 @@
+# Release build: signs in as EMAIL with PASSWORD and allows notifications from the bell, so `push` shows banners. sc-4333.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible: 'Email|Sign in with email'
+    timeout: 60000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'welcome.email'
+    commands:
+      - tapOn:
+          id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- waitForAnimationToEnd
+- tapOn:
+    id: 'signIn.password'
+    retryTapIfNoChange: true
+- waitForAnimationToEnd
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- extendedWaitUntil:
+    visible:
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
+    timeout: 30000
+- takeScreenshot: rel-signed-in
+- openLink: soirely://notifications
+- extendedWaitUntil:
+    visible:
+      id: '.*pushAsk\.turnOn'
+    timeout: 20000
+- takeScreenshot: rel-bell-ask
+- tapOn:
+    id: '.*pushAsk\.turnOn'
+- runFlow:
+    when:
+      visible: 'Allow'
+    commands:
+      - takeScreenshot: rel-os-alert
+      - tapOn: 'Allow'
+- takeScreenshot: rel-allowed
