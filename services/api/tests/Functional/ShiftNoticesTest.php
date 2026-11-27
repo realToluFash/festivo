@@ -524,17 +524,22 @@ final class ShiftNoticesTest extends ApiTestCase
         $chidi = $this->person('Chidi Eze', '0803 111 0011');
         $this->assign($this->newShift('2027-03-06T20:00', '2027-03-06T23:00'), $chidi);
         $this->signedIn($chidi, 'chidi@example.com', withPush: false);
+        $dayo = $this->person('Dayo Ade', '0803 111 0012');
+        $this->assign($this->newShift('2027-03-07T00:00', '2027-03-07T02:00'), $dayo);
         $this->briefed($this->ada);
         $this->briefed($chidi);
 
         self::assertSame(
-            ['on' => true, 'time' => '10:00', 'next' => ['date' => '2027-03-05', 'count' => 1], 'notBriefed' => 1, 'unreachable' => 1, 'sent' => null, 'concluded' => null],
+            ['on' => true, 'time' => '10:00', 'next' => ['date' => '2027-03-05', 'count' => 1], 'notBriefed' => 2, 'unreachable' => 1, 'sent' => null, 'concluded' => null],
             $this->as($this->owner, 'GET', $this->path('reminder')),
         );
 
         $this->at('2027-03-05T09:00:00Z');
+        self::assertSame(['next' => null, 'sent' => ['date' => '2027-03-05', 'count' => 1]], Dict\select_keys($this->as($this->owner, 'GET', $this->path('reminder')), ['next', 'sent']));
 
-        self::assertSame(['date' => '2027-03-05', 'count' => 1], $this->as($this->owner, 'GET', $this->path('reminder'))['sent'] ?? null);
+        $this->at('2027-03-06T09:30:00Z');
+
+        self::assertSame(['next' => null, 'sent' => ['date' => '2027-03-05', 'count' => 1]], Dict\select_keys($this->as($this->owner, 'GET', $this->path('reminder')), ['next', 'sent']));
     }
 
     #[Test]

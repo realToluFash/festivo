@@ -128,7 +128,7 @@ final readonly class ShiftReminders
         $this->staffRosterPublisher->publish($event);
     }
 
-    /** @return array<string, mixed> `next` and `sent` dated the day the reminder goes */
+    /** @return array<string, mixed> `next` and `sent` dated the day the reminder goes, `sent` the last that went to anyone */
     public function card(Event $event): array
     {
         $now = $this->clock->now();
@@ -136,12 +136,20 @@ final readonly class ShiftReminders
         $times = EventTimes::of($event);
         $shifts = Vec\filter($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): bool => [] !== $shift->getPeople());
         $days = Vec\sort(Vec\unique(Vec\map($shifts, static fn (StaffShift $shift): string => $shift->getStartsAt()->format('Y-m-d'))));
-        $last = Iter\last($days);
         $sent = null;
 
-        if (null !== $last && self::trigger($last)->dueAt($times) <= $now) {
-            $count = $this->sentOn($event, $last);
-            $sent = 0 === $count ? null : ['date' => self::dayBefore($last), 'count' => $count];
+        foreach (Vec\reverse($days) as $day) {
+            if (self::trigger($day)->dueAt($times) > $now) {
+                continue;
+            }
+
+            $count = $this->sentOn($event, $day);
+
+            if ($count > 0) {
+                $sent = ['date' => self::dayBefore($day), 'count' => $count];
+
+                break;
+            }
         }
 
         $reach = $this->reach(...self::people(...$shifts));
