@@ -69,7 +69,8 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
     await open('/demo/my-night?state=night');
 
     const card = screen.getByRole('region', { name: 'Clock out' });
-    expect(card.nextElementSibling?.textContent).toContain('Your shift');
+    expect(card.nextElementSibling?.textContent).toBe('Open Floor');
+    expect(card.nextElementSibling?.nextElementSibling?.textContent).toContain('Your shift');
     expect(screen.getByText('Clocked in at 16:58')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Clock out' }));
     expect(await screen.findByText(/8 h 44 min recorded/u, undefined, WAIT)).toBeDefined();
@@ -109,5 +110,68 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
     expect(screen.getAllByRole('button', { name: 'Sign out' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Signed in as Grace Okon').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Overview' })).toBeDefined();
+  });
+});
+
+describe('Open Floor on Your night in a browser (sc-98893)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(cleanup);
+
+  const buttons = () =>
+    screen
+      .getAllByRole('link')
+      .filter((link) => ['Check-in', 'Open Floor'].includes(link.textContent ?? ''))
+      .map((link) => [link.textContent, link.className.split(' ')[0]]);
+
+  it('is the page’s one primary button on a section, before doors too', SLOW, async () => {
+    for (const state of ['night', 'before_doors']) {
+      await open(`/demo/my-night?state=${state}`);
+      expect(buttons()).toEqual([['Open Floor', 'ci-primary']]);
+      cleanup();
+    }
+  });
+
+  it('is the secondary directly under Check-in when the job checks in', SLOW, async () => {
+    await open('/demo/my-night?state=section_checkin');
+
+    expect(buttons()).toEqual([
+      ['Check-in', 'ci-primary'],
+      ['Open Floor', 'ci-secondary'],
+    ]);
+  });
+
+  it(
+    'is not there for a kitchen station, no station or a level that does not open the floor',
+    SLOW,
+    async () => {
+      for (const state of ['kitchen', 'no_station', 'section_pass', 'section_view']) {
+        await open(`/demo/my-night?state=${state}`);
+        expect(buttons()).toEqual([]);
+        cleanup();
+      }
+      await open('/demo/my-night?state=section_door');
+      expect(buttons()).toEqual([['Check-in', 'ci-primary']]);
+    },
+  );
+
+  it(
+    'opens Floor in the same tab, whose way back returns to Your night signed in',
+    SLOW,
+    async () => {
+      await open('/demo/my-night?state=night');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Open Floor' }));
+      expect(await screen.findByRole('heading', { name: 'Floor' }, WAIT)).toBeDefined();
+      expect(screen.getByText(/Still signed in as Grace Okon, with no new sign-in/u)).toBeDefined();
+      fireEvent.click(screen.getByRole('link', { name: 'Your night' }));
+      expect(await screen.findByText('Your shift', undefined, WAIT)).toBeDefined();
+    },
+  );
+
+  it('stays after a section move', SLOW, async () => {
+    await open('/demo/my-night?state=night');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move Grace to Section C' }));
+    expect(buttons()).toEqual([['Open Floor', 'ci-primary']]);
   });
 });
