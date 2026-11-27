@@ -34,7 +34,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * @phpstan-import-type Since from KitchenSinceCopy
  *
  * @phpstan-type Given array{id: string, recordedAt: string, by: string}
- * @phpstan-type Final array{due: ?string, picksOpenUntil: ?string, copies: list<Given>, changes: ?Since}
+ * @phpstan-type Shown array{since: string, lines: list<array{kind: string, code: ?string, who: ?string, item: ?array{name: string, parent: ?string, state: ?string}, to: ?string, old: int, count: int}>}
+ * @phpstan-type Final array{due: ?string, picksOpenUntil: ?string, copies: list<Given>, changes: ?Shown}
  */
 final readonly class FinalNumbers
 {
@@ -59,6 +60,7 @@ final readonly class FinalNumbers
         $due = $this->kitchenFinalNumbersRepository->findOneForEvent($event)?->getDueOn();
         $zone = new DateTimeZone($event->getTimeZone());
         $lastClose = $this->lastClose($event);
+        $changes = $this->changes($event, $names, $now);
 
         return [
             'due' => $due?->format('Y-m-d'),
@@ -68,7 +70,10 @@ final readonly class FinalNumbers
                 'recordedAt' => $copy->getRecordedAt()->setTimezone($zone)->format(\DATE_ATOM),
                 'by' => $copy->getRecordedByName(),
             ]),
-            'changes' => $this->changes($event, $names, $now),
+            // A line's guest id is for erasure in a stored copy; no reader needs it.
+            'changes' => null === $changes ? null : ['since' => $changes['since'], 'lines' => Vec\map($changes['lines'], static fn (array $line): array => [
+                'kind' => $line['kind'], 'code' => $line['code'], 'who' => $line['who'], 'item' => $line['item'], 'to' => $line['to'], 'old' => $line['old'], 'count' => $line['count'],
+            ])],
         ];
     }
 
@@ -103,7 +108,7 @@ final readonly class FinalNumbers
     }
 
     /**
-     * @param Sheet  $sheet   the sheet with its names, whoever records it; a recorder without guests.manage keeps its rows with no name or words of theirs, so the next change is found person by person
+     * @param Sheet  $sheet   the sheet with its names, whoever records it; a recorder without guests.manage keeps its rows with no name, only what each eats, so the next change is found person by person
      * @param ?Since $changes the copy's changes page, under the recorder's names rule
      */
     public function record(Event $event, array $sheet, User $by, bool $names, ?array $changes): KitchenCopy
@@ -112,7 +117,7 @@ final readonly class FinalNumbers
         $held = [...$sheet, 'asOf' => $now->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM), 'paper' => $sheet['paper']->value];
 
         if (!$names) {
-            $held = [...$held, 'names' => false, 'allergic' => null, 'people' => Vec\map($sheet['allergic'] ?? [], static fn (array $one): array => ['id' => $one['id'], 'allergens' => $one['allergens'], 'diets' => $one['diets']])];
+            $held = [...$held, 'names' => false, 'allergic' => null, 'people' => Vec\map($sheet['allergic'] ?? [], static fn (array $one): array => ['id' => $one['id'], 'allergens' => $one['allergens'], 'otherAllergy' => $one['otherAllergy'], 'diets' => $one['diets'], 'otherDiet' => $one['otherDiet']])];
         }
 
         if (null !== $changes) {

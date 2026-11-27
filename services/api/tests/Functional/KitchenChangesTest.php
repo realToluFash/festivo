@@ -89,6 +89,7 @@ final class KitchenChangesTest extends ApiTestCase
 
         $this->records($this->personId('Chidi Okonkwo'), ['sesame']);
         self::assertSame(['allergyNew:Chidi Okonkwo:1'], $this->lines());
+        self::assertArrayNotHasKey('guest', Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce(Type\mixed_dict()->coerce($this->final()['changes'])['lines'] ?? null)[0]);
 
         self::service(WithholdingMembershipDirectory::class)->withhold(Permission::GuestsManage);
         self::assertSame(['allergyNew::1'], $this->lines());
@@ -110,6 +111,34 @@ final class KitchenChangesTest extends ApiTestCase
         $this->records($this->personId('Bisi Adewale'), ['peanuts']);
 
         self::assertSame(['allergyNew:Bisi Adewale:1', 'allergyGone:Chidi Okonkwo:1'], $this->lines());
+    }
+
+    #[Test]
+    public function anotherAllergyRewordedIsFoundAgainstACopyGivenWithoutGuestsManage(): void
+    {
+        $this->coming([['fullName' => 'Chidi Okonkwo']]);
+        $this->records($this->personId('Chidi Okonkwo'), ['other'], 'Kiwi');
+        $directory = self::service(WithholdingMembershipDirectory::class);
+        $directory->withhold(Permission::GuestsManage);
+        $this->give();
+        $directory->restore();
+
+        $this->records($this->personId('Chidi Okonkwo'), ['other'], 'Mango');
+
+        self::assertSame(['allergyNew:Chidi Okonkwo:1', 'allergyGone:Chidi Okonkwo:1'], $this->lines());
+    }
+
+    #[Test]
+    public function aCourseThatClosesIsSeenWhenTheEventsOwnTimelineIsReadAndNotByTheEventsList(): void
+    {
+        $this->coming([['fullName' => 'Chidi Okonkwo']]);
+        $this->give();
+        self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(sheet, \'{coming}\', \'99\')');
+
+        $this->as('GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events');
+        self::assertStringNotContainsString('Give the changes to the kitchen', (string) $this->client->getResponse()->getContent());
+
+        self::assertNotNull($this->changesMilestone());
     }
 
     #[Test]
@@ -326,11 +355,11 @@ final class KitchenChangesTest extends ApiTestCase
     }
 
     /** @param list<string> $allergies */
-    private function records(string $guestId, array $allergies): void
+    private function records(string $guestId, array $allergies, ?string $other = null): void
     {
         $person = self::em()->find(Guest::class, Uuid::fromString($guestId)) ?? self::fail('no guest');
         $none = GuestNeeds::none();
-        $needs = new GuestNeeds([...$none->codes, NeedKind::Allergen->value => $allergies], $none->others, null);
+        $needs = new GuestNeeds([...$none->codes, NeedKind::Allergen->value => $allergies], [...$none->others, NeedKind::Allergen->value => $other], null);
         self::service(GuestNeedsRecord::class)->write($person, $needs, $this->owner);
         self::em()->flush();
     }

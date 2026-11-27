@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Event\Timeline\Interfaces\TimelineOpenedInterface;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
@@ -13,6 +14,7 @@ use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Repository\EventRepository;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -23,6 +25,9 @@ final readonly class EventTimelineController
         private EventRepository $eventRepository,
         private MembershipDirectoryInterface $membershipDirectory,
         private MilestoneSerialiser $milestoneSerialiser,
+        /** @var iterable<TimelineOpenedInterface> */
+        #[AutowireIterator(TimelineOpenedInterface::TAG)]
+        private iterable $timelineOpened,
     ) {
     }
 
@@ -33,6 +38,10 @@ final readonly class EventTimelineController
     {
         $event = $this->eventRepository->find($eventId) ?? throw ApiException::notFound('access.not_found');
         $grants = $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId()) ?? throw ApiException::notFound('access.not_found');
+
+        foreach ($this->timelineOpened as $area) {
+            $area->opened($event);
+        }
 
         return new JsonResponse([
             'timeZone' => $event->getTimeZone(),

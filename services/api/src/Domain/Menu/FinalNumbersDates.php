@@ -8,7 +8,6 @@ use App\Domain\Event\Timeline\Interfaces\MilestoneSourceInterface;
 use App\Domain\Event\Timeline\Model\Milestone;
 use App\Domain\Event\Timeline\Model\MilestoneAction;
 use App\Domain\Menu\Kitchen\FinalNumbers;
-use App\Domain\Menu\Kitchen\KitchenUnsent;
 use App\Entity\Event;
 use App\Enum\MilestoneOwner;
 use App\Enum\PermissionArea;
@@ -29,7 +28,6 @@ final readonly class FinalNumbersDates implements MilestoneSourceInterface
     public function __construct(
         private KitchenFinalNumbersRepository $kitchenFinalNumbersRepository,
         private KitchenCopyRepository $kitchenCopyRepository,
-        private KitchenUnsent $kitchenUnsent,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
@@ -44,7 +42,7 @@ final readonly class FinalNumbersDates implements MilestoneSourceInterface
         $zone = new DateTimeZone($event->getTimeZone());
 
         if ($this->kitchenCopyRepository->anyForEvent($event)) {
-            $unsent = $this->kitchenUnsent->check($event, true);
+            $unsent = $this->kitchenFinalNumbersRepository->findOneForEvent($event);
             $since = $unsent?->getDiffersSince();
 
             if (null === $unsent || null === $since) {

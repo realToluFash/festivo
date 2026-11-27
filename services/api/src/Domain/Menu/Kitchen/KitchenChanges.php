@@ -36,19 +36,21 @@ final readonly class KitchenChanges
         $before = Dict\from_entries(Vec\map($copy['people'], static fn (array $one): array => [$one['id'], $one]));
         // Only a person the copy holds, or one with an allergy now, is compared by person: a diet alone is a count (GDPR Art. 5(1)(c)).
         $listed = Vec\filter($now['people'], static fn (array $one): bool => [] !== $one['allergens'] && !Iter\contains_key($before, $one['id']));
-        $after = Dict\from_entries(Vec\map($listed, static fn (array $one): array => [$one['id'], $one]));
+        $stayed = [];
 
         foreach (Vec\keys($before) as $id) {
             if (Iter\contains_key($room, $id)) {
-                $after[$id] = $room[$id];
+                $stayed[$id] = $room[$id];
             }
         }
 
-        // A diet that left the other-diets figure for a new named row was carried there, not recorded: the figure's own line says it.
-        $carried = [];
+        $after = Dict\merge(Dict\from_entries(Vec\map($listed, static fn (array $one): array => [$one['id'], $one])), $stayed);
+
+        // The copy does not say what a newly named person ate: their diet is news only where the sheet has more of it than the others explain.
+        $unexplained = [];
 
         foreach (NeedKind::Diet->codes() as $code) {
-            $carried[$code] = self::unnamed($copy['dietCounts'], $copy['people'], 'diets', $code) - self::unnamed($now['dietCounts'], $now['people'], 'diets', $code);
+            $unexplained[$code] = self::unnamed($now['dietCounts'], Vec\values($stayed), 'diets', $code) - self::unnamed($copy['dietCounts'], $copy['people'], 'diets', $code);
         }
 
         $lines = [];
@@ -65,10 +67,12 @@ final readonly class KitchenChanges
                 $moved = static fn (array $from, array $against): array => Vec\filter($from, static fn (string $code): bool => !Iter\contains($against, $code) || ($reworded && 'other' === $code));
 
                 foreach ($moved($has, $had) as $code) {
-                    if ('diet' === $family && null === $was && ($carried[$code] ?? 0) > 0) {
-                        --$carried[$code];
+                    if ('diet' === $family && null === $was) {
+                        if (($unexplained[$code] ?? 0) <= 0) {
+                            continue;
+                        }
 
-                        continue;
+                        --$unexplained[$code];
                     }
 
                     $lines[] = self::need($family . 'New', $code, $id, $who, 1);
@@ -80,9 +84,12 @@ final readonly class KitchenChanges
             }
         }
 
-        foreach (['allergy' => [NeedKind::Allergen, 'allergyCounts', 'allergens'], 'diet' => [NeedKind::Diet, 'dietCounts', 'diets']] as $family => [$kind, $counts, $field]) {
+        // What the figure moved by beyond the lines above: a diet that only moved between a named row and the figure is no change.
+        foreach (['allergy' => [NeedKind::Allergen, 'allergyCounts'], 'diet' => [NeedKind::Diet, 'dietCounts']] as $family => [$kind, $counts]) {
             foreach ($kind->codes() as $code) {
-                $change = self::unnamed($now[$counts], $now['people'], $field, $code) - self::unnamed($copy[$counts], $copy['people'], $field, $code);
+                $said = Iter\count(Vec\filter($lines, static fn (array $line): bool => $line['code'] === $code && $line['kind'] === $family . 'New'))
+                    - Iter\count(Vec\filter($lines, static fn (array $line): bool => $line['code'] === $code && $line['kind'] === $family . 'Gone'));
+                $change = self::total($now[$counts], $code) - self::total($copy[$counts], $code) - $said;
 
                 if (0 !== $change) {
                     $lines[] = self::need($family . ($change > 0 ? 'New' : 'Gone'), $code, null, null, Math\abs($change));
@@ -142,12 +149,17 @@ final readonly class KitchenChanges
 
     private static function unnamed(mixed $counts, mixed $people, string $field, string $code): int
     {
-        $counts = Type\vec(Type\shape(['code' => Type\string(), 'count' => Type\int()]))->coerce($counts);
         $people = Type\vec(Type\shape([$field => Type\vec(Type\string())], true))->coerce($people);
-        $total = Iter\search($counts, static fn (array $one): bool => $one['code'] === $code)['count'] ?? 0;
         $held = Iter\count(Vec\filter($people, static fn (array $person): bool => Iter\contains(Type\vec(Type\string())->coerce($person[$field] ?? []), $code)));
 
-        return Math\maxva($total - $held, 0);
+        return Math\maxva(self::total($counts, $code) - $held, 0);
+    }
+
+    private static function total(mixed $counts, string $code): int
+    {
+        $counts = Type\vec(Type\shape(['code' => Type\string(), 'count' => Type\int()]))->coerce($counts);
+
+        return Iter\search($counts, static fn (array $one): bool => $one['code'] === $code)['count'] ?? 0;
     }
 
     /** @return Line */

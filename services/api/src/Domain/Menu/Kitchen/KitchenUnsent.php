@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Kitchen;
 
+use App\Domain\Event\Timeline\Interfaces\TimelineOpenedInterface;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Entity\Event;
 use App\Entity\KitchenFinalNumbers;
@@ -15,8 +16,8 @@ use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
-/** Since when the sheet has held a change no copy has (sc-30692). Marked after every write that can move it, and checked again when the timeline is read, which is how a close that passes is seen. */
-final readonly class KitchenUnsent
+/** Since when the sheet has held a change no copy has (sc-30692). Marked after every write that can move it, and checked again when one event's timeline is read, which is how a close that passes is seen; the events list and the calendar feed only read what is stored. */
+final readonly class KitchenUnsent implements TimelineOpenedInterface
 {
     public function __construct(
         private KitchenFinalNumbersRepository $kitchenFinalNumbersRepository,
@@ -28,38 +29,42 @@ final readonly class KitchenUnsent
     ) {
     }
 
+    /** A course that has closed since the last write changed the sheet with nothing to announce it. */
+    public function opened(Event $event): void
+    {
+        $this->check($event, true);
+    }
+
     /**
      * ponytail: reads the whole sheet each time; keep a digest on the row if a timeline read gets slow.
      *
      * @param bool $onRead no write announced this change, so a course close passed since the copy is when it happened
      */
-    public function check(Event $event, bool $onRead): ?KitchenFinalNumbers
+    public function check(Event $event, bool $onRead): void
     {
         $now = $this->clock->now();
 
         if (null !== $event->getEndedAt() || $now >= $event->getStartsAt()) {
-            return null;
+            return;
         }
 
         $copy = $this->kitchenCopyRepository->findLatestForEvent($event);
 
         if (null === $copy) {
-            return null;
+            return;
         }
 
         $final = $this->kitchenFinalNumbersRepository->findOneForEvent($event) ?? new KitchenFinalNumbers($event);
         $differs = [] !== $this->kitchenSinceCopy->of($event, $copy)['lines'];
 
         if ($differs === (null !== $final->getDiffersSince())) {
-            return $differs ? $final : null;
+            return;
         }
 
         $from = $onRead ? $this->closedSince($event, $copy->getRecordedAt(), $now) ?? $now : $now;
         $final->setDiffersSince($differs ? $from : null);
         $this->entityManager->persist($final);
         $this->entityManager->flush();
-
-        return $differs ? $final : null;
     }
 
     private function closedSince(Event $event, DateTimeImmutable $since, DateTimeImmutable $now): ?DateTimeImmutable

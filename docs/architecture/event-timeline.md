@@ -55,6 +55,11 @@ and the timeline, the route and the clients do not change.
   change without the event's row changing has to give the feed another way to see it: a
   milestone's `revision`, added to the version, as `FinalNumbersDates` does (sc-30812).
 
+A source only reads. **Give the changes to the kitchen** reads the stored moment the sheet
+first differed: it is written after each write that can move the sheet, and when one event's
+timeline is read, which is how a course that has closed is seen. The events list and the
+calendar feed show what is stored (sc-30692).
+
 `EventDates` is the worked example: the start, titled "{name} starts", unless the event was
 called off, and the end, "{name} ends", only when `EventDayCount` says the event touches more
 than one date.

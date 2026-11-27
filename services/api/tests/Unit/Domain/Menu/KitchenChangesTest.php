@@ -79,18 +79,23 @@ final class KitchenChangesTest extends TestCase
     }
 
     #[Test]
-    public function aDietCarriedBetweenTheNamesAndTheOtherDietsIsSaidByTheFigureAlone(): void
+    public function aDietThatOnlyMovesBetweenTheNamesAndTheOtherDietsIsNoChange(): void
     {
         $ada = KitchenSides::person('a', 'Ada', [], ['vegan']);
         $copy = KitchenSides::side([$ada], diets: ['vegan' => 1]);
         $now = KitchenSides::side([], diets: ['vegan' => 1]);
 
-        self::assertSame(['dietNew:vegan::1'], self::saidBetween(KitchenChanges::between($copy, $now, ['a' => $ada]), true));
+        self::assertSame([], self::saidBetween(KitchenChanges::between($copy, $now, ['a' => $ada]), true));
+
+        $both = KitchenSides::person('a', 'Ada', ['sesame'], ['vegan']);
+        $copy = KitchenSides::side([$both], diets: ['vegan' => 1]);
+
+        self::assertSame(['allergyGone:sesame:Ada:1'], self::saidBetween(KitchenChanges::between($copy, $now, ['a' => $ada]), true));
 
         $quin = KitchenSides::person('q', 'Quin', ['sesame'], ['halal']);
         $copy = KitchenSides::side([], diets: ['halal' => 1]);
 
-        self::assertSame(['allergyNew:sesame:Quin:1', 'dietGone:halal::1'], self::said($copy, KitchenSides::side([$quin]), true));
+        self::assertSame(['allergyNew:sesame:Quin:1'], self::said($copy, KitchenSides::side([$quin]), true));
     }
 
     #[Test]
