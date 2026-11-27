@@ -346,4 +346,11 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     expect(narrow).toContain('left: 0;');
     expect(narrow).toContain('max-width: 100cqi;');
   });
+
+  it('keeps a Staff tab whole at every width, the current one too (sc-99786)', () => {
+    const tab = cssRule('.sn-tab', JOBS_CSS);
+    expect(tab).toContain('overflow-wrap: normal;');
+    expect(tab).toContain('flex: 1 0 auto;');
+    expect(cssRule('.sn-tabs', JOBS_CSS)).toContain('flex-wrap: wrap;');
+  });
 });
