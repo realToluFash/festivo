@@ -2,6 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/redeem?state=signed-out
-- waitForAnimationToEnd:
-    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.signedOut'
+    timeout: 10000
 - takeScreenshot: demo-signed-out
