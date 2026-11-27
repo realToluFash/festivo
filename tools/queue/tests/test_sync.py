@@ -166,7 +166,8 @@ class DesignBranchMoves(unittest.TestCase):
             sync.sync_shortcut(db, Pushed(), NOW + run * 60)
             store.put_prs(db, [*prs, *arriving])
         self.synced_at = store.get_meta(db, "shortcut_at")
-        return updates, store.story(db, 5)["state"]
+        self.stored = store.story(db, 5)
+        return updates, self.stored["state"]
 
     def test_a_ux_branch_push_out_of_needs_design_is_undone(self):
         updates, state = self.sync([self.move("To Do", "Needs Design"),
@@ -196,6 +197,13 @@ class DesignBranchMoves(unittest.TestCase):
         updates, _ = self.sync(opened, runs=2, arriving=[
             {"number": 4161, "story_id": 5, "branch": "feature/sc-5/pill"}])
         self.assertEqual(updates, [])
+
+    def test_a_feature_pull_request_only_shortcut_names_settles_at_once(self):
+        opened = [self.move("Needs Design", "Ready For Dev", references=[
+            {"entity_type": "pull-request", "id": 9, "number": 4161}])]
+        updates, _ = self.sync(opened, pulls=[{"number": 3888}], pull_requests=[
+            {"number": 4161, "branch_name": "feature/sc-5/pill", "closed": True}])
+        self.assertEqual((updates, self.stored["updated_at"]), ([], "t1"))
 
     def test_a_person_moving_it_is_left_alone(self):
         updates, state = self.sync([self.move("Needs Design", "Ready For Dev",
