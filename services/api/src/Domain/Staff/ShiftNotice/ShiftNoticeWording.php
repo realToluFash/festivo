@@ -17,7 +17,7 @@ use Psl\Iter;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** On an event over more than seven days, each weekday carries its date too (sc-4333, "English copy (l10n)"). */
+/** On an event over more than seven days, each weekday carries its date too (sc-4333, "English copy (l10n)"), and so does one on a shift's line moved a week or more (sc-100276). */
 final readonly class ShiftNoticeWording
 {
     private const int LONG_EVENT_DAYS = 7;
@@ -44,7 +44,12 @@ final readonly class ShiftNoticeWording
     {
         $long = self::isLong($event);
 
-        return Vec\map($changes, fn (ShiftChange $change): string => match ($change->kind) {
+        return Vec\map($changes, fn (ShiftChange $change): string => $this->line($event, $change, $long || $change->dated, $locale));
+    }
+
+    private function line(Event $event, ShiftChange $change, bool $long, string $locale): string
+    {
+        return match ($change->kind) {
             ShiftChangeKind::StartTime, ShiftChangeKind::EndTime => $this->trans('staff.shift_notice.' . $change->kind->value, [
                 'new' => $this->slot(self::given($change->start), $change->on, $long, $locale),
                 'old' => $this->slot(self::given($change->oldStart), $change->on, $long, $locale),
@@ -66,7 +71,7 @@ final readonly class ShiftNoticeWording
                 'new' => $this->day((string) $change->new, $locale),
                 'old' => $this->day((string) $change->old, $locale),
             ], $locale),
-        });
+        };
     }
 
     public function day(string $day, string $locale): string
@@ -85,7 +90,7 @@ final readonly class ShiftNoticeWording
         return $event->getEndsAt()->getTimestamp() - $event->getStartsAt()->getTimestamp() > self::LONG_EVENT_DAYS * 86_400;
     }
 
-    /** A wall-clock time with its weekday unless it falls on the day of the time before it. */
+    /** A wall-clock time with its weekday unless it falls on the day of `before`. */
     private function slot(DateTimeImmutable $wall, ?DateTimeImmutable $before, bool $long, string $locale): string
     {
         if (null !== $before && $before->format('Y-m-d') === $wall->format('Y-m-d')) {

@@ -14,6 +14,7 @@ import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { useOpenJoined, useStartOrganisation } from './AppFrame.tsx';
 import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { ManagedBanner } from './ManagedBanner.tsx';
+import { SeatsFullSheet } from './LimitRefusal.tsx';
 import { NoOrgInvitationList, NoOrgInvitationRow } from './NoOrgInvitations.tsx';
 import { NoOrgPage, NoOrgWayOn, SignedInWays, StartYourOwn } from './NoOrganisationParts.tsx';
 import type { TextHandle } from './Text.tsx';
@@ -100,26 +101,32 @@ function Waiting({
     ) : undefined;
 
   return (
-    <NoOrgInvitationRow
-      id={invitation.id}
-      organisation={organisation}
-      role={role}
-      line={t(keys.line, { inviter, role })}
-      until={t(keys.until, {
-        date: formatDay(invitation.expiresAt, dateLocale()),
-        email: invitation.email,
-      })}
-      note={t(keys.declineNote, { inviter })}
-      declined={t(keys.declined, { inviter })}
-      row={invitationRowOf(outcome)}
-      said={said}
-      answer={answer}
-      onAnswer={(yes) =>
-        void waiting.answer(invitation, yes ? 'accept' : 'decline').then(setAnswered)
-      }
-      onOpen={() => {
-        if (outcome?.kind === 'accepted') openJoined?.(outcome.organisationId);
-      }}
-    />
+    <>
+      <SeatsFullSheet
+        outcome={outcome}
+        testID={`noOrganisation.invitation.${invitation.id}.seatsFull`}
+      />
+      <NoOrgInvitationRow
+        id={invitation.id}
+        organisation={organisation}
+        role={role}
+        line={t(keys.line, { inviter, role })}
+        until={t(keys.until, {
+          date: formatDay(invitation.expiresAt, dateLocale()),
+          email: invitation.email,
+        })}
+        note={t(keys.declineNote, { inviter })}
+        declined={t(keys.declined, { inviter })}
+        row={invitationRowOf(outcome)}
+        said={said}
+        answer={answer}
+        onAnswer={(yes) =>
+          void waiting.answer(invitation, yes ? 'accept' : 'decline').then(setAnswered)
+        }
+        onOpen={() => {
+          if (outcome?.kind === 'accepted') openJoined?.(outcome.organisationId);
+        }}
+      />
+    </>
   );
 }

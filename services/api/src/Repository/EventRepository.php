@@ -102,6 +102,23 @@ final class EventRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /** Of those {@see countActiveIn} counts, the one that closes first: its end frees a place (sc-3930). */
+    public function findFirstToCloseIn(Organisation $organisation, DateTimeImmutable $now): ?Event
+    {
+        return $this->createQueryBuilder('e')
+            ->andWhere('e.organisation = :organisation')
+            ->andWhere('e.status IN (:active)')
+            ->andWhere('e.closesAt > :now')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', [EventStatus::Live->value, EventStatus::Paused->value])
+            ->setParameter('now', $now->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable')
+            ->orderBy('e.closesAt', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     private function phaseIn(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor): QueryBuilder
     {
         $over = 'e.status = :ended OR (e.status IN (:active) AND e.closesAt <= :now)';

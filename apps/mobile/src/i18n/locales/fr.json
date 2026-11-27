@@ -1285,9 +1285,6 @@
     "pickSomebody": "Choisissez une personne dans la liste pour l’afficher ici.",
     "suspendedBody": "Cette personne ne peut plus utiliser {{organisation}}. Son rôle, ses événements et son historique sont conservés.",
     "restoreAccess": "Rétablir l’accès",
-    "seatsInUse_one": "La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.",
-    "seatsInUse_other": "Les {{count, number}} places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
-    "seatsInUse_many": "Les {{count, number}} de places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
     "suspendedBecause": {
       "address_gone": "{{name}} n’a plus d’adresse {{domain}} sur son compte.",
       "domain_closed": "{{organisation}} n’accepte plus les adhésions via {{domain}}.",
@@ -1805,10 +1802,6 @@
     "nowState_finished": "Il est désormais terminé. La page affiche son état actuel.",
     "nowState_calledOff": "Il est désormais annulé. La page affiche son état actuel.",
     "notMadeLive": "Non publié.",
-    "planLimit_one": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événement publié ou en pause à la fois.",
-    "planLimit_other": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événements publiés ou en pause à la fois.",
-    "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} d’événements publiés ou en pause à la fois.",
-    "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
     "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
     "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
@@ -3832,7 +3825,7 @@
       "tryAgain": "Réessayer",
       "listBack": "Retour",
       "chefsChoice": "Au choix du chef",
-      "chefsChoiceInSentence": "chef’s choice",
+      "chefsChoiceInSentence": "l’assiette au choix du chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La salle s’ouvre avec « Peut servir en salle »",
@@ -4154,5 +4147,75 @@
     "areOn_one": "{{names}} est au poste {{station}}.",
     "areOn_many": "{{names}} sont au poste {{station}}.",
     "areOn_other": "{{names}} sont au poste {{station}}."
+  },
+  "limitReached": {
+    "title": {
+      "live_one": "Votre forfait permet {{count, number}} événement publié à la fois",
+      "live_other": "Votre forfait permet {{count, number}} événements publiés à la fois",
+      "live_many": "Votre forfait permet {{count, number}} d’événements publiés à la fois",
+      "people_one": "Votre forfait permet {{count, number}} personne par événement",
+      "people_other": "Votre forfait permet {{count, number}} personnes par événement",
+      "people_many": "Votre forfait permet {{count, number}} de personnes par événement",
+      "seats_one": "Votre forfait permet {{count, number}} place d’équipe",
+      "seats_other": "Votre forfait permet {{count, number}} places d’équipe",
+      "seats_many": "Votre forfait permet {{count, number}} de places d’équipe",
+      "accept": "Toutes les places d’équipe sont occupées chez {{organisation}}",
+      "ceiling": "Un événement peut compter jusqu’à {{ceiling, number}} personnes"
+    },
+    "figure": {
+      "live_one": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "live_other": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "live_many": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "people_one": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "people_other": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "people_many": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "seats_one": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "seats_other": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "seats_many": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "ceiling_one": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris",
+      "ceiling_other": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris",
+      "ceiling_many": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris"
+    },
+    "guestFull_one": "Cet événement compte déjà {{count, number}} personne.",
+    "guestFull_other": "Cet événement compte déjà {{count, number}} personnes.",
+    "guestFull_many": "Cet événement compte déjà {{count, number}} de personnes.",
+    "safe": {
+      "draft": "L’événement est conservé en brouillon, avec tout ce que vous avez saisi.",
+      "form": "Le formulaire est conservé tel que vous l’avez laissé.",
+      "invitation": "L’invitation est conservée telle que vous l’avez rédigée.",
+      "accept": "Votre invitation reste valable. Rien n’est perdu.",
+      "request": "La demande envoyée par {{name}} reste en attente. Rien n’est perdu.",
+      "restore": "L’accès reste suspendu pour {{name}}. Rien n’est perdu."
+    },
+    "goLive": "Vous pourrez publier un autre événement dès que {{event}} prendra fin, le {{date}} à {{time}}.",
+    "removeGuest": "Retirer un invité",
+    "removeGuestLine": "Retirer un invité libère sa place et celles de ses accompagnants.",
+    "toGuestList": "Aller à la liste des invités",
+    "withdraw": "Retirer une invitation",
+    "withdrawLine": "Une invitation pas encore acceptée occupe une place.",
+    "removeMember": "Retirer un membre",
+    "removeMemberLine": "Retirer un membre libère sa place.",
+    "inApp": "Le forfait ne peut pas être modifié dans l’application.",
+    "copy": {
+      "overPlan_one": "Non créé. La liste des invités compte {{count, number}} personne, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overPlan_other": "Non créé. La liste des invités compte {{count, number}} personnes, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overPlan_many": "Non créé. La liste des invités compte {{count, number}} de personnes, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overCeiling_one": "Non créé. La liste des invités compte {{count, number}} personne, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "overCeiling_other": "Non créé. La liste des invités compte {{count, number}} personnes, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "overCeiling_many": "Non créé. La liste des invités compte {{count, number}} de personnes, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "figurePlan_one": "{{count, number}} personne · accompagnants compris · forfait {{plan}}",
+      "figurePlan_other": "{{count, number}} personnes · accompagnants compris · forfait {{plan}}",
+      "figurePlan_many": "{{count, number}} de personnes · accompagnants compris · forfait {{plan}}",
+      "figureCeiling_one": "{{count, number}} personne · accompagnants compris",
+      "figureCeiling_other": "{{count, number}} personnes · accompagnants compris",
+      "figureCeiling_many": "{{count, number}} de personnes · accompagnants compris",
+      "untick": "Pour dupliquer sans les invités, décochez Copier aussi la liste des invités."
+    },
+    "back": {
+      "draft": "Retour au brouillon",
+      "form": "Retour au formulaire",
+      "invitation": "Retour à l’invitation",
+      "notNow": "Pas maintenant"
+    }
   }
 }

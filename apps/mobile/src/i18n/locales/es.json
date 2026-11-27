@@ -1285,9 +1285,6 @@
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",
     "suspendedBody": "Esta persona no puede usar {{organisation}}. Se conservan su rol, sus eventos y su historial.",
     "restoreAccess": "Restablecer el acceso",
-    "seatsInUse_one": "La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.",
-    "seatsInUse_other": "Están ocupadas las {{count, number}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
-    "seatsInUse_many": "Están ocupadas las {{count, number}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
     "suspendedBecause": {
       "address_gone": "{{name}} ya no tiene su dirección de {{domain}} en la cuenta.",
       "domain_closed": "{{organisation}} ya no permite unirse a través de {{domain}}.",
@@ -1805,10 +1802,6 @@
     "nowState_finished": "Ya ha finalizado. La página muestra su estado actual.",
     "nowState_calledOff": "Ya está cancelado. La página muestra su estado actual.",
     "notMadeLive": "No se ha publicado.",
-    "planLimit_one": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} evento publicado o en pausa a la vez.",
-    "planLimit_other": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} eventos publicados o en pausa a la vez.",
-    "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
-    "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
     "hostEmpty": "Indique el anfitrión para publicar este evento.",
     "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
@@ -3817,7 +3810,7 @@
       "undoUntil": "Se puede deshacer hasta esta hora: {{time}}",
       "undone": "Deshecho.",
       "step": {
-        "sentBack": "Devolución: {{items}} de {{guest}} · {{reason}}",
+        "sentBack": "Devolución de {{guest}}: {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "No se ha podido cargar la sala. Inténtelo de nuevo.",
@@ -3832,7 +3825,7 @@
       "tryAgain": "Reintentar",
       "listBack": "Volver",
       "chefsChoice": "A elección del chef",
-      "chefsChoiceInSentence": "chef’s choice",
+      "chefsChoiceInSentence": "el plato a elección del chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La sala se abre con «Puede atender en sala»",
@@ -4154,5 +4147,75 @@
     "areOn_one": "{{names}} está en la zona {{station}}.",
     "areOn_many": "{{names}} están en la zona {{station}}.",
     "areOn_other": "{{names}} están en la zona {{station}}."
+  },
+  "limitReached": {
+    "title": {
+      "live_one": "Su plan permite {{count, number}} evento publicado a la vez",
+      "live_other": "Su plan permite {{count, number}} eventos publicados a la vez",
+      "live_many": "Su plan permite {{count, number}} de eventos publicados a la vez",
+      "people_one": "Su plan permite {{count, number}} persona por evento",
+      "people_other": "Su plan permite {{count, number}} personas por evento",
+      "people_many": "Su plan permite {{count, number}} de personas por evento",
+      "seats_one": "Su plan permite {{count, number}} plaza de equipo",
+      "seats_other": "Su plan permite {{count, number}} plazas de equipo",
+      "seats_many": "Su plan permite {{count, number}} de plazas de equipo",
+      "accept": "Todas las plazas de equipo de {{organisation}} están ocupadas",
+      "ceiling": "Un evento puede tener hasta {{ceiling, number}} personas"
+    },
+    "figure": {
+      "live_one": "Eventos publicados: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "live_other": "Eventos publicados: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "live_many": "Eventos publicados: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "people_one": "Personas: {{count, number}} de {{allowed, number}} · acompañantes incluidos · plan {{plan}}",
+      "people_other": "Personas: {{count, number}} de {{allowed, number}} · acompañantes incluidos · plan {{plan}}",
+      "people_many": "Personas: {{count, number}} de {{allowed, number}} · acompañantes incluidos · plan {{plan}}",
+      "seats_one": "Plazas de equipo: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "seats_other": "Plazas de equipo: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "seats_many": "Plazas de equipo: {{count, number}} de {{allowed, number}} · plan {{plan}}",
+      "ceiling_one": "Personas: {{count, number}} de {{ceiling, number}} · acompañantes incluidos",
+      "ceiling_other": "Personas: {{count, number}} de {{ceiling, number}} · acompañantes incluidos",
+      "ceiling_many": "Personas: {{count, number}} de {{ceiling, number}} · acompañantes incluidos"
+    },
+    "guestFull_one": "Este evento ya tiene {{count, number}} persona.",
+    "guestFull_other": "Este evento ya tiene {{count, number}} personas.",
+    "guestFull_many": "Este evento ya tiene {{count, number}} de personas.",
+    "safe": {
+      "draft": "Se queda como borrador, con todo lo que ha introducido.",
+      "form": "El formulario se queda tal como lo ha dejado.",
+      "invitation": "La invitación se queda tal como la ha escrito.",
+      "accept": "Su invitación sigue abierta. No se pierde nada.",
+      "request": "La solicitud de {{name}} sigue en espera. No se pierde nada.",
+      "restore": "El acceso de {{name}} sigue suspendido. No se pierde nada."
+    },
+    "goLive": "Podrá publicar otro evento cuando termine {{event}}, el {{date}} a las {{time}}.",
+    "removeGuest": "Quitar a un invitado",
+    "removeGuestLine": "Cada invitado que quite deja sitio, junto con las plazas de sus acompañantes.",
+    "toGuestList": "Ir a la lista de invitados",
+    "withdraw": "Retirar una invitación",
+    "withdrawLine": "Una invitación que aún no se ha aceptado ocupa una plaza.",
+    "removeMember": "Quitar a un miembro",
+    "removeMemberLine": "Al quitar a un miembro, su plaza queda libre.",
+    "inApp": "El plan no se puede cambiar desde la aplicación.",
+    "copy": {
+      "overPlan_one": "No se ha creado. La lista de invitados tiene {{count, number}} persona, y su plan admite {{limit, number}} en un evento nuevo.",
+      "overPlan_other": "No se ha creado. La lista de invitados tiene {{count, number}} personas, y su plan admite {{limit, number}} en un evento nuevo.",
+      "overPlan_many": "No se ha creado. La lista de invitados tiene {{count, number}} de personas, y su plan admite {{limit, number}} en un evento nuevo.",
+      "overCeiling_one": "No se ha creado. La lista de invitados tiene {{count, number}} persona, más de las {{ceiling, number}} que admite un evento.",
+      "overCeiling_other": "No se ha creado. La lista de invitados tiene {{count, number}} personas, más de las {{ceiling, number}} que admite un evento.",
+      "overCeiling_many": "No se ha creado. La lista de invitados tiene {{count, number}} de personas, más de las {{ceiling, number}} que admite un evento.",
+      "figurePlan_one": "{{count, number}} persona · acompañantes incluidos · plan {{plan}}",
+      "figurePlan_other": "{{count, number}} personas · acompañantes incluidos · plan {{plan}}",
+      "figurePlan_many": "{{count, number}} de personas · acompañantes incluidos · plan {{plan}}",
+      "figureCeiling_one": "{{count, number}} persona · acompañantes incluidos",
+      "figureCeiling_other": "{{count, number}} personas · acompañantes incluidos",
+      "figureCeiling_many": "{{count, number}} de personas · acompañantes incluidos",
+      "untick": "Para duplicarlo sin invitados, desmarque Copiar también la lista de invitados."
+    },
+    "back": {
+      "draft": "Volver al borrador",
+      "form": "Volver al formulario",
+      "invitation": "Volver a la invitación",
+      "notNow": "Ahora no"
+    }
   }
 }

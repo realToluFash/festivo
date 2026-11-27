@@ -599,6 +599,62 @@ describe('Guests (sc-1468)', () => {
     expect(within(form()).queryByRole('heading', { name: /is already on the list$/u })).toBeNull();
   });
 
+  it('refuses a guest over the plan’s people per event and keeps the form (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'guests_per_event',
+          plan: 'free',
+          used: 100,
+          allowed: 100,
+          adding: 1,
+        }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'Your plan allows 100 people per event',
+    });
+    expect(within(refused).getByText('This event already has 100 people.')).toBeDefined();
+    expect(
+      within(refused).getByText('100 of 100 people · companions count as people · Free plan'),
+    ).toBeDefined();
+    expect(within(refused).getByText('The form is kept as you left it.')).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('link', { name: 'Go to the guest list' })).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(within(refused).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Back to the form' }));
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Your plan allows 100 people per event' }),
+    ).toBeNull();
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /^Full name/u }).value).toBe(
+      'Kwame Mensah',
+    );
+  });
+
+  it('refuses a guest past the ceiling with no plan named (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('event_capacity_reached', 403, { ceiling: 10000, onEvent: 10000, adding: 1 }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'An event can have up to 10,000 people',
+    });
+    expect(
+      within(refused).getByText('10,000 of 10,000 people · companions count as people'),
+    ).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('button', { name: 'Back to the form' })).toBeDefined();
+  });
+
   it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
     await opened({
       'POST /api/events/ev_1/guests': () =>

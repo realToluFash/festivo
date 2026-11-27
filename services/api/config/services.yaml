@@ -125,9 +125,6 @@ services:
         arguments:
             $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
             $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
-    App\Domain\Organisation\Members\TeamSeats:
-        arguments:
-            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
     # Basic-auth credentials as user:password, and the provider's published ranges, comma-separated (sc-4332).
     App\Domain\Messaging\Controller\MailWebhookController:
         arguments:
@@ -284,7 +281,7 @@ services:
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
     App\Http\Access\Interfaces\PlanFeaturesInterface: '@App\Domain\Billing\PlanFeatures'
 
-    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+    App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Domain\Billing\HardLimits'
 
     App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\Pick\StoredMenuPicks'
     App\Domain\Menu\Interfaces\ServingStationsInterface: '@App\Domain\Staff\Station\ServingStations'
@@ -489,10 +486,11 @@ when@test:
             public: true
             autoconfigure: true
 
-        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
-        App\Tests\Double\ScriptedActiveEventsLimit:
+        # Off unless a test turns the plan's hard limits on, so a suite seeded on Free can make what it needs (sc-3930).
+        App\Tests\Double\ScriptedHardLimits:
             public: true
-        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+            arguments: ['@App\Domain\Billing\HardLimits']
+        App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Tests\Double\ScriptedHardLimits'
 
         # What guests picked (sc-3907).
         App\Domain\Menu\Pick\StoredMenuPicks:
@@ -538,13 +536,6 @@ when@test:
         App\Domain\User\Verification\RecordingWhatsAppSender:
             public: true
         App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
-        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
-        App\Domain\Organisation\Members\TeamSeats:
-            public: true
-            autowire: true
-            arguments:
-                $teamSeatLimit: ''
-
         # Pinned off, as the container's environment wins over .env.test: codes are texted in the
         # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
         App\Domain\User\Verification\PhoneCodeChannels:

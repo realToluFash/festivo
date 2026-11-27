@@ -1285,9 +1285,6 @@
     "pickSomebody": "Escolha alguém na lista para ver aqui os dados.",
     "suspendedBody": "Esta pessoa não pode usar {{organisation}}. A função, os eventos e o histórico desta pessoa são mantidos.",
     "restoreAccess": "Repor o acesso",
-    "seatsInUse_one": "O único lugar de equipa do plano desta organização está ocupado, por isso nada mudou.",
-    "seatsInUse_other": "Os {{count, number}} lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
-    "seatsInUse_many": "Os {{count, number}} de lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
     "suspendedBecause": {
       "address_gone": "{{name}} já não tem o endereço de {{domain}} na conta.",
       "domain_closed": "{{organisation}} deixou de aceitar adesões através de {{domain}}.",
@@ -1805,10 +1802,6 @@
     "nowState_finished": "Já terminou. A página mostra o estado atual.",
     "nowState_calledOff": "Já está cancelado. A página mostra o estado atual.",
     "notMadeLive": "Não foi publicado.",
-    "planLimit_one": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} evento publicado ou em pausa de cada vez.",
-    "planLimit_other": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} eventos publicados ou em pausa de cada vez.",
-    "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} de eventos publicados ou em pausa de cada vez.",
-    "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar",
     "hostEmpty": "Indique o anfitrião para publicar este evento.",
     "hostExplainer": "Os convidados leem este nome no convite e na página do evento. Escreva-o tal como quer que o vejam.",
@@ -3817,7 +3810,7 @@
       "undoUntil": "Pode anular até esta hora: {{time}}",
       "undone": "Anulado.",
       "step": {
-        "sentBack": "Devolução: {{items}} de {{guest}} · {{reason}}",
+        "sentBack": "Devolução de {{guest}}: {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "Não foi possível carregar a sala. Tente novamente.",
@@ -3832,7 +3825,7 @@
       "tryAgain": "Tentar novamente",
       "listBack": "Voltar",
       "chefsChoice": "À escolha do chef",
-      "chefsChoiceInSentence": "chef’s choice",
+      "chefsChoiceInSentence": "o prato à escolha do chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "A sala abre com «Pode servir na sala»",
@@ -4154,5 +4147,75 @@
     "areOn_one": "{{names}} está no posto {{station}}.",
     "areOn_many": "{{names}} estão no posto {{station}}.",
     "areOn_other": "{{names}} estão no posto {{station}}."
+  },
+  "limitReached": {
+    "title": {
+      "live_one": "O seu plano permite {{count, number}} evento publicado de cada vez",
+      "live_other": "O seu plano permite {{count, number}} eventos publicados de cada vez",
+      "live_many": "O seu plano permite {{count, number}} de eventos publicados de cada vez",
+      "people_one": "O seu plano permite {{count, number}} pessoa por evento",
+      "people_other": "O seu plano permite {{count, number}} pessoas por evento",
+      "people_many": "O seu plano permite {{count, number}} de pessoas por evento",
+      "seats_one": "O seu plano permite {{count, number}} lugar de equipa",
+      "seats_other": "O seu plano permite {{count, number}} lugares de equipa",
+      "seats_many": "O seu plano permite {{count, number}} de lugares de equipa",
+      "accept": "Todos os lugares de equipa de {{organisation}} estão ocupados",
+      "ceiling": "Um evento pode ter até {{ceiling, number}} pessoas"
+    },
+    "figure": {
+      "live_one": "Eventos publicados: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "live_other": "Eventos publicados: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "live_many": "Eventos publicados: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "people_one": "Pessoas: {{count, number}} de {{allowed, number}} · acompanhantes incluídos · plano {{plan}}",
+      "people_other": "Pessoas: {{count, number}} de {{allowed, number}} · acompanhantes incluídos · plano {{plan}}",
+      "people_many": "Pessoas: {{count, number}} de {{allowed, number}} · acompanhantes incluídos · plano {{plan}}",
+      "seats_one": "Lugares de equipa: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "seats_other": "Lugares de equipa: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "seats_many": "Lugares de equipa: {{count, number}} de {{allowed, number}} · plano {{plan}}",
+      "ceiling_one": "Pessoas: {{count, number}} de {{ceiling, number}} · acompanhantes incluídos",
+      "ceiling_other": "Pessoas: {{count, number}} de {{ceiling, number}} · acompanhantes incluídos",
+      "ceiling_many": "Pessoas: {{count, number}} de {{ceiling, number}} · acompanhantes incluídos"
+    },
+    "guestFull_one": "Este evento já tem {{count, number}} pessoa.",
+    "guestFull_other": "Este evento já tem {{count, number}} pessoas.",
+    "guestFull_many": "Este evento já tem {{count, number}} de pessoas.",
+    "safe": {
+      "draft": "O evento fica em rascunho, com tudo o que preencheu.",
+      "form": "O formulário fica tal como o deixou.",
+      "invitation": "O convite fica tal como o escreveu.",
+      "accept": "O seu convite continua válido. Não se perde nada.",
+      "request": "O pedido de {{name}} continua em espera. Não se perde nada.",
+      "restore": "O acesso de {{name}} continua suspenso. Não se perde nada."
+    },
+    "goLive": "Poderá publicar outro evento quando {{event}} terminar: {{date}}, às {{time}}.",
+    "removeGuest": "Remover um convidado",
+    "removeGuestLine": "Cada convidado removido liberta espaço, com os lugares dos seus acompanhantes.",
+    "toGuestList": "Ir para a lista de convidados",
+    "withdraw": "Retirar um convite",
+    "withdrawLine": "Um convite ainda não aceite ocupa um lugar.",
+    "removeMember": "Remover um membro",
+    "removeMemberLine": "Remover um membro liberta o lugar que ocupava.",
+    "inApp": "Não é possível mudar de plano na aplicação.",
+    "copy": {
+      "overPlan_one": "Não foi criado. A lista de convidados tem {{count, number}} pessoa, e o seu plano permite {{limit, number}} num evento novo.",
+      "overPlan_other": "Não foi criado. A lista de convidados tem {{count, number}} pessoas, e o seu plano permite {{limit, number}} num evento novo.",
+      "overPlan_many": "Não foi criado. A lista de convidados tem {{count, number}} de pessoas, e o seu plano permite {{limit, number}} num evento novo.",
+      "overCeiling_one": "Não foi criado. A lista de convidados tem {{count, number}} pessoa, mais do que as {{ceiling, number}} que um evento pode ter.",
+      "overCeiling_other": "Não foi criado. A lista de convidados tem {{count, number}} pessoas, mais do que as {{ceiling, number}} que um evento pode ter.",
+      "overCeiling_many": "Não foi criado. A lista de convidados tem {{count, number}} de pessoas, mais do que as {{ceiling, number}} que um evento pode ter.",
+      "figurePlan_one": "{{count, number}} pessoa · acompanhantes incluídos · plano {{plan}}",
+      "figurePlan_other": "{{count, number}} pessoas · acompanhantes incluídos · plano {{plan}}",
+      "figurePlan_many": "{{count, number}} de pessoas · acompanhantes incluídos · plano {{plan}}",
+      "figureCeiling_one": "{{count, number}} pessoa · acompanhantes incluídos",
+      "figureCeiling_other": "{{count, number}} pessoas · acompanhantes incluídos",
+      "figureCeiling_many": "{{count, number}} de pessoas · acompanhantes incluídos",
+      "untick": "Para duplicar sem convidados, desmarque Copiar também a lista de convidados."
+    },
+    "back": {
+      "draft": "Voltar ao rascunho",
+      "form": "Voltar ao formulário",
+      "invitation": "Voltar ao convite",
+      "notNow": "Agora não"
+    }
   }
 }

@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 const screen = readFileSync(join('src', 'components', 'FloorScreen.tsx'), 'utf8');
 
 describe('an unnamed dish inside a sentence on the app’s Floor (sc-4021)', () => {
-  it('takes the in-sentence words', () => {
+  it('takes the in-sentence words, joined as the locale lists them', () => {
     expect(screen).toMatch(
-      /function itemsInSentence\([^}]*t\('service\.floor\.chefsChoiceInSentence'\)/u,
+      /function itemsInSentence\(.*\n\s*return listFormat\(dateLocale\(\), \{ type: 'conjunction' \}\)\.format\(\n.*t\('service\.floor\.chefsChoiceInSentence'\)/u,
     );
   });
 

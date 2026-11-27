@@ -47,15 +47,16 @@ export function dayWords(day: string, locale: string): string {
 
 /** The Waiting line for one change; the More changes line belongs to the message alone, as the roster's lines are not capped. */
 export function changeWords(change: StaffChange, clock: NoticeClock, t: TFunction): string | null {
+  const lineClock = change.dated ? { ...clock, long: true } : clock;
   const at = (moment: string | null, before: string | null) =>
-    moment == null ? '' : slotWords(moment, before, clock);
+    moment == null ? '' : slotWords(moment, before, lineClock);
 
   switch (change.kind) {
     case 'start_time':
     case 'end_time':
       return t(change.kind === 'start_time' ? 'notices.start' : 'notices.end', {
-        new: at(change.start, change.on ?? change.start),
-        old: at(change.oldStart, change.on ?? change.start),
+        new: at(change.start, change.on),
+        old: at(change.oldStart, change.on),
       });
     case 'shift_added':
     case 'shift_removed':

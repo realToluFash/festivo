@@ -19,6 +19,7 @@ use App\Enum\Permission;
 use App\Http\Exception\ApiException;
 use App\Repository\ShiftAttendanceRepository;
 use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use Psl\Str;
@@ -102,7 +103,9 @@ final readonly class AttendanceCorrector
             return;
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($shift, $person, $attendance, $in, $out, $by, $now): void {
+        $this->entityManager->wrapInTransaction(function () use ($event, $shift, $person, $attendance, $in, $out, $by, $now): void {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+
             if (null === $attendance) {
                 $attendance = new ShiftAttendance($shift, $person ?? throw new LogicException('A removed person always has their row.'));
                 $this->entityManager->persist($attendance);

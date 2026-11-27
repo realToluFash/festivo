@@ -86,6 +86,7 @@ describe('asStaffPlan', () => {
             old: null,
             count: 0,
             on: '2026-11-07T15:00:00+01:00',
+            dated: false,
           },
         ],
       },
@@ -109,7 +110,7 @@ describe('asStaffPlan', () => {
     expect(asStaffPlan(read)).toEqual(read);
   });
 
-  it('reads a change without the start it belongs to as none', () => {
+  it('reads a change without the day its times need not name as none, undated', () => {
     const change = {
       kind: 'job',
       start: null,
@@ -124,7 +125,7 @@ describe('asStaffPlan', () => {
 
     expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice }] })?.staff[0]?.notice).toEqual({
       ...notice,
-      changes: [{ ...change, on: null }],
+      changes: [{ ...change, on: null, dated: false }],
     });
   });
 

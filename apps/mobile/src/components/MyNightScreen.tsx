@@ -8,8 +8,8 @@ import {
   type ShiftClockCard as ClockCard,
 } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
-import { router } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,9 +109,11 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
   const { account } = useSignedIn();
   const { seen, again } = useMyNight(eventId);
 
-  useEffect(() => {
-    if (seen.kind === 'gone') onBack();
-  }, [seen.kind, onBack]);
+  useFocusEffect(
+    useCallback(() => {
+      if (seen.kind === 'gone') onBack();
+    }, [seen.kind, onBack]),
+  );
 
   useReadOut(
     seen.kind === 'shown' && seen.updated != null
@@ -259,11 +261,19 @@ function Night({
       </View>
       {clock}
       {nightButtonsOf(night).map(({ opens, kind }) => {
-        const Button = kind === 'primary' ? PrimaryButton : SecondaryButton;
         const { label, href, testID } = buttons[opens];
+        const press = () => router.push(href);
 
-        return (
-          <Button key={opens} label={label} onPress={() => router.push(href)} testID={testID} />
+        return kind === 'primary' ? (
+          <PrimaryButton key={opens} label={label} onPress={press} testID={testID} />
+        ) : (
+          <SecondaryButton
+            key={opens}
+            label={label}
+            onPress={press}
+            tall={opens === 'floor' && !wide}
+            testID={testID}
+          />
         );
       })}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
