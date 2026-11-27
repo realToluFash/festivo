@@ -22,8 +22,11 @@ import {
 } from './limitReached.ts';
 import { SIDEBAR_EVENTS } from './settings.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
-import { AskOwner } from './LimitAsk.tsx';
+import { AskOwner, AskSwitches } from './LimitAsk.tsx';
 import './limitReached.css';
+
+const GUESTS_AT = '/demo/guests';
+const MEMBERS_AT = '/demo/settings/members';
 
 /** sc-3930: the refusal, a dialog over the page it was met on at 1280, the web's sheet once reflowed under 40rem. */
 export function LimitReached() {
@@ -103,18 +106,9 @@ export function LimitRefusal({
 
   return (
     <Dialog title={refusal.title} verb={null} cancel={false} onDismiss={onBack} onConfirm={onBack}>
-      <div className="lr">
-        {(refusal.line != null || refusal.figure != null) && (
-          <div className="lr-what">
-            <span className="lr-hard" aria-hidden="true">
-              <Glyph name="clear" size={14} weight={2.6} />
-            </span>
-            <div className="lr-what-lines">
-              {refusal.line != null && <p className="desk-line is-ink">{refusal.line}</p>}
-              {refusal.figure != null && <p className="lr-figure">{refusal.figure}</p>}
-            </div>
-          </div>
-        )}
+      <div className="lr lr-hard-limit">
+        {refusal.line != null && <p className="desk-line is-ink">{refusal.line}</p>}
+        {refusal.figure != null && <p className="lr-figure">{refusal.figure}</p>}
         <p className="lr-safe">
           <Glyph name="shield" size={16} weight={2.2} />
           {refusal.safe}
@@ -149,25 +143,12 @@ export function LimitRefusal({
           </button>
         </div>
         {planWay === 'ask' && (
-          <div className="lr-demo-only">
-            <p>Stand-in for the server, in the demo only.</p>
-            <label className="lr-switch">
-              <input
-                type="checkbox"
-                checked={offline}
-                onChange={(event) => setOffline(event.target.checked)}
-              />
-              Offline: the next press is not sent
-            </label>
-            <label className="lr-switch">
-              <input
-                type="checkbox"
-                checked={owners === 'one'}
-                onChange={(event) => setOwners(event.target.checked ? 'one' : 'several')}
-              />
-              The organisation has one owner
-            </label>
-          </div>
+          <AskSwitches
+            offline={offline}
+            owners={owners}
+            onOffline={setOffline}
+            onOwners={setOwners}
+          />
         )}
       </div>
     </Dialog>
@@ -192,22 +173,28 @@ function WayPast({ way, tell }: { way: Way; tell: Tell }) {
             <p className="lr-row-title">{LW.removeGuest}</p>
             <p className="desk-line is-small">{LW.removeGuestLine}</p>
           </div>
-          <button
-            type="button"
+          <a
+            href={GUESTS_AT}
             className="desk-text"
-            onClick={() => tell('The guest list opens, with the form kept.')}
+            onClick={(click) => {
+              click.preventDefault();
+              tell('The guest list opens, with the form kept.');
+            }}
           >
             {LW.toGuestList}
-          </button>
+          </a>
         </div>
       );
     case 'withdraw':
     case 'removeMember':
       return (
-        <button
-          type="button"
+        <a
+          href={MEMBERS_AT}
           className="lr-row lr-row-link"
-          onClick={() => tell('Members opens, with the invitation kept.')}
+          onClick={(click) => {
+            click.preventDefault();
+            tell('Members opens, with the invitation kept.');
+          }}
         >
           <span className="lr-row-words">
             <span className="lr-row-title">
@@ -218,7 +205,7 @@ function WayPast({ way, tell }: { way: Way; tell: Tell }) {
             </span>
           </span>
           <Glyph name="chevron" size={16} weight={2.2} />
-        </button>
+        </a>
       );
   }
 }

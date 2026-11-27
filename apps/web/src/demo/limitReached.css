@@ -8,29 +8,31 @@
   margin: 0;
 }
 
-.lr-what {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spaceMd);
-}
-
-.lr-hard {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
+/* The hard limit's ✕ leads the title, as the app's title row does; the kit dialog's title takes words only */
+.desk-dialog:has(.lr-hard-limit) .desk-nav-title::before {
+  display: inline-block;
   width: 24px;
   height: 24px;
+  margin-inline-end: 10px;
   border-radius: 50%;
-  background: var(--colorInset);
-  color: var(--colorInk);
-}
-
-.lr-what-lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  min-width: 0;
+  background:
+    linear-gradient(
+        45deg,
+        transparent calc(50% - 1.3px),
+        var(--colorInk) 0 calc(50% + 1.3px),
+        transparent 0
+      )
+      center / 12px 12px no-repeat,
+    linear-gradient(
+        -45deg,
+        transparent calc(50% - 1.3px),
+        var(--colorInk) 0 calc(50% + 1.3px),
+        transparent 0
+      )
+      center / 12px 12px no-repeat,
+    var(--colorInset);
+  content: '';
+  vertical-align: -5px;
 }
 
 .lr-figure {
@@ -97,6 +99,7 @@
 
 .lr-row-link {
   flex-wrap: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 

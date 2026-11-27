@@ -70,7 +70,7 @@ describe('the refusal at a limit, on the web (sc-3930)', () => {
     await refused('ceilingImport');
     const dialog = screen.getByRole('dialog', { name: 'An event can have up to 10,000 people' });
 
-    expect(within(dialog).getByRole('button', { name: 'Go to the guest list' })).toBeDefined();
+    expect(within(dialog).getByRole('link', { name: 'Go to the guest list' })).toBeDefined();
     expect(within(dialog).queryByRole('button', { name: 'Change plan' })).toBeNull();
     expect(within(dialog).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
   });
@@ -79,7 +79,7 @@ describe('the refusal at a limit, on the web (sc-3930)', () => {
     await refused('inviteManage');
     const dialog = screen.getByRole('dialog', { name: 'Your plan allows 3 team seats' });
 
-    expect(within(dialog).getByRole('button', { name: /Withdraw an invitation/u })).toBeDefined();
+    expect(within(dialog).getByRole('link', { name: /Withdraw an invitation/u })).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to the invitation' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();

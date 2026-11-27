@@ -68,3 +68,38 @@ export function AskOwner({
     </div>
   );
 }
+
+/** The server's two answers Ask an owner cannot reach by itself, switched in the demo only. */
+export function AskSwitches({
+  offline,
+  owners,
+  onOffline,
+  onOwners,
+}: {
+  offline: boolean;
+  owners: Owners;
+  onOffline: (offline: boolean) => void;
+  onOwners: (owners: Owners) => void;
+}) {
+  return (
+    <div className="lr-demo-only">
+      <p>Stand-in for the server, in the demo only.</p>
+      <label className="lr-switch">
+        <input
+          type="checkbox"
+          checked={offline}
+          onChange={(event) => onOffline(event.target.checked)}
+        />
+        Offline: the next press is not sent
+      </label>
+      <label className="lr-switch">
+        <input
+          type="checkbox"
+          checked={owners === 'one'}
+          onChange={(event) => onOwners(event.target.checked ? 'one' : 'several')}
+        />
+        The organisation has one owner
+      </label>
+    </div>
+  );
+}

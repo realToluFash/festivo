@@ -218,4 +218,31 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
       expect(within(ceiling).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
     },
   );
+
+  it('reaches Not sent and the one-owner line on the copy’s Ask an owner', SLOW, async () => {
+    await at('duplicateOverPlanAsk');
+    const refused = dialog('Your plan allows 100 people per event');
+    const ask = () => within(refused).getByRole('button', { name: 'Ask an owner' });
+
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /Offline/u }));
+    fireEvent.click(ask());
+    await waitFor(
+      () =>
+        expect(within(refused).getByRole('alert').textContent).toBe(
+          'Not sent. Try again in a moment.',
+        ),
+      { timeout: 3000 },
+    );
+
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /Offline/u }));
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /one owner/u }));
+    fireEvent.click(ask());
+    expect(
+      await within(refused).findByText(
+        'The owner has been sent the link to Compare plans.',
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeDefined();
+  });
 });
