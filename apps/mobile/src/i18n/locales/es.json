@@ -3794,6 +3794,7 @@
       "yours": "Sus mesas · {{section}}",
       "other": "Otras mesas",
       "noSection": "Aún no tiene mesas. {{lead}} le asignará una zona.",
+      "seatRange": "Asientos {{first}} a {{last}}",
       "noSectionNoLead": "Aún no tiene mesas. El responsable de sala le asignará una zona.",
       "moved": "Ahora atiende {{section}}.",
       "header": "{{covers}} · {{section}}",
@@ -3831,7 +3832,7 @@
       "tryAgain": "Reintentar",
       "listBack": "Volver",
       "chefsChoice": "A elección del chef",
-      "chefsChoiceInline": "a elección del chef",
+      "chefsChoiceInSentence": "a elección del chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La sala se abre con «Puede atender en sala»",

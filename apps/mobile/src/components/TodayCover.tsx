@@ -1246,7 +1246,12 @@ function DefaultTabBar<T extends string>(props: TabBarProps<T>) {
       words={{
         measure: words.measure,
         room: words.room,
-        label: { size: TAB_LABEL, maxFontSizeMultiplier: words.maxFontSizeMultiplier },
+        label: {
+          size: TAB_LABEL,
+          maxFontSizeMultiplier: words.maxFontSizeMultiplier,
+          // Hidden until it is fitted, so no frame draws a word cut at its start size.
+          style: !words.fitted && styles.waiting,
+        },
       }}
     />
   );
@@ -1269,7 +1274,7 @@ function SteppedTabBar<T extends string>(props: TabBarProps<T>) {
         label: {
           size: eventBarLabelSize(fontScale, widest, slot),
           allowFontScaling: false,
-          style: styles.tabLabelCentred,
+          style: [styles.tabLabelCentred, (widest === 0 || slot === 0) && styles.waiting],
         },
       }}
     />

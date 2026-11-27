@@ -6965,6 +6965,7 @@
       "yours": "Yours · {{section}}",
       "other": "Other tables",
       "noSection": "No tables yet. {{lead}} will put you on a section.",
+      "seatRange": "Seats {{first}} to {{last}}",
       "noSectionNoLead": "No tables yet. The floor lead will put you on a section.",
       "moved": "You’re on {{section}} now.",
       "header": "{{covers}} · {{section}}",
@@ -6994,7 +6995,7 @@
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",
-      "chefsChoiceInline": "chef’s choice",
+      "chefsChoiceInSentence": "chef’s choice",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "Floor opens with Can work the floor",

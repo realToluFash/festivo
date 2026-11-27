@@ -23,6 +23,7 @@ import {
   refusalKey,
   roomCourse,
   sectionsMoved,
+  stageLeftBy,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -100,10 +101,20 @@ function seatName(t: TFunction, guest: ServiceGuestRead): string {
   return guest.name ?? t('service.floor.seat', { seat: guest.seat });
 }
 
-function itemsOf(plate: ServicePlateRead, t: TFunction, inSentence = false): string {
-  const unnamed = inSentence ? 'service.floor.chefsChoiceInline' : 'service.floor.chefsChoice';
+function itemsOf(plate: ServicePlateRead, t: TFunction): string {
+  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
+}
 
-  return plate.items.map((one) => one.name ?? t(unnamed)).join(', ');
+function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
+  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
+}
+
+function tableName(t: TFunction, { name, seats }: FloorTable): string {
+  if (name != null) return name;
+
+  return seats.length === 1
+    ? t('service.floor.seat', { seat: seats[0] })
+    : t('service.floor.seatRange', { first: seats[0], last: seats.at(-1) });
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
@@ -224,13 +235,9 @@ export function FloorScreen({
         ? t('eventNav.overview')
         : t('myNight.title');
   const pad = phone ? tokens.spaceXl : 28;
-  // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
+  // A kept Undo names its plate in the body.
   const keptOn = new Set(
-    floor.kept.flatMap((tap) => [
-      tap.path.split('/')[2],
-      tap.key,
-      tap.body.subject as string | undefined,
-    ]),
+    floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.body.subject as string | undefined]),
   );
 
   const made = (
@@ -245,7 +252,7 @@ export function FloorScreen({
       setUndo({
         subject: plate.id,
         reverses,
-        stage: plate.stage,
+        stage: stageLeftBy(plate, reverses),
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
       });
@@ -348,7 +355,7 @@ export function FloorScreen({
                 headingRef={headingRef}
                 onSendBack={(plate, guest, opener) => {
                   openerRef.current = opener;
-                  setSending({ plate, guest, table: shown.name, reason: null });
+                  setSending({ plate, guest, table: tableName(t, shown), reason: null });
                 }}
               />
             </ScrollView>
@@ -371,7 +378,7 @@ export function FloorScreen({
                   onPress={() => {
                     void floor.tap(
                       { kind: 'undo', subject: undo.subject, reverses: undo.reverses },
-                      {},
+                      { plates: { [undo.subject]: undo.stage } },
                     );
                     setUndo(null);
                     setHeard(t('service.floor.undone'));
@@ -409,10 +416,10 @@ export function FloorScreen({
                 sending.plate,
                 t('service.floor.step.sentBack', {
                   guest: sending.guest,
-                  items: itemsOf(sending.plate, t, true),
+                  items: itemsInSentence(sending.plate, t),
                   reason: t(`service.sentBack.${reason}`),
                 }),
-                { kind: 'sendBack' },
+                { kind: 'sendBack', was: sending.plate.owedReason },
               );
               openerRef.current = headingRef.current;
               setSending(null);
@@ -599,8 +606,9 @@ function Row({
   const { t } = useTranslation();
   const served = t('service.floor.servedCount', { n: table.served, count: table.ordered });
   const covers = t('service.floor.covers', { count: table.covers });
+  const name = tableName(t, table);
   const said = [
-    table.name,
+    name,
     wordSaid(t, table),
     served,
     covers,
@@ -622,12 +630,12 @@ function Row({
         current && styles.rowCurrent,
         pressed && styles.pressed,
       ]}
-      testID={`floor.row.${table.name}`}
+      testID={`floor.row.${name}`}
     >
       <View style={[styles.grow, styles.rowText]}>
         <View style={styles.wrap}>
           <Text size={17} weight="bold">
-            {table.name}
+            {name}
           </Text>
           {other && table.section != null && (
             <Text size={14} weight="medium" style={styles.secondary}>
@@ -677,7 +685,10 @@ function stageSaid(t: TFunction, guest: ServiceGuestRead): { shape: Shape; said:
       said: t(`service.stage.${guest.order.stage}`),
     };
 
-  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder ?? 'notHereYet'}`) };
+  // No order and no reason: they have arrived and nothing is fired for the table.
+  if (guest.noOrder == null) return { shape: 'grey', said: t('service.floor.word.notFiredYet') };
+
+  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder}`) };
 }
 
 function TableView({
@@ -730,7 +741,7 @@ function TableView({
         )}
         <View ref={headingRef}>
           <Text size={wide ? 28 : 30} weight="bold" accessibilityRole="header">
-            {table.name}
+            {tableName(t, table)}
           </Text>
         </View>
         <WordLine shape={SHAPE_OF_WORD[table.word]} said={wordSaid(t, table)} size={16} />
@@ -1004,9 +1015,7 @@ function SendBackSheet({
     <View style={styles.sheet} testID="floor.sendBack.sheet">
       <View style={styles.header}>
         <Text size={22} weight="bold" accessibilityRole="header">
-          {t('service.floor.sendBackTitle', {
-            items: itemsOf(sending.plate, t, true),
-          })}
+          {t('service.floor.sendBackTitle', { items: itemsInSentence(sending.plate, t) })}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
           {t('service.floor.sendBackWho', { guest: sending.guest, table: sending.table })}

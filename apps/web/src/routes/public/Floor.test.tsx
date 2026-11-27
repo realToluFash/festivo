@@ -45,7 +45,7 @@ function table(name: string, section: string, guests: ServiceGuestRead[]): Servi
     key: name,
     kind: 'table',
     name,
-    seats: guests.length,
+    seats: [],
     section: { id: section, name: `Section ${section}` },
     people: [{ id: 'staff', name: 'Bisi Lawal' }],
     firedAt: '2026-11-27T19:00:00Z',
@@ -282,18 +282,20 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('words an unnamed dish in lowercase inside the send-back title and step', async () => {
-    const unnamed: FloorRead = structuredClone(FLOOR);
-    const plate = unnamed.courses[0]?.tables[0]?.guests[0]?.order;
-    if (plate == null) throw new Error('fixture has no plate');
-    plate.items = [{ key: 'chef', name: null, state: 'preparing' }];
-
-    open(unnamed);
+  it('writes an unnamed dish in sentence case only inside a sentence', async () => {
+    const floor = structuredClone(FLOOR);
+    for (const one of floor.courses[0]!.tables.flatMap((t) => t.guests)) {
+      for (const item of one.order?.items ?? []) item.name = null;
+    }
+    open(floor);
     fireEvent.click(await screen.findByRole('button', { name: /^Table 10,/ }));
+    expect(screen.getAllByText('Chef’s choice').length).toBeGreaterThan(0);
     press('Send back');
 
     const sheet = screen.getByRole('dialog');
-    expect(within(sheet).getByText('Send back chef’s choice?')).toBeTruthy();
+    expect(within(sheet).getByRole('heading', { name: /chef’s choice/ }).textContent).not.toContain(
+      'Chef’s',
+    );
     fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
     fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
 
@@ -394,17 +396,11 @@ describe('Floor in the browser (sc-4021)', () => {
     const sheet = screen.getByRole('dialog');
     fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
     const floor = structuredClone(FLOOR);
-    const order = floor.courses[0]!.tables[0]!.guests[0]!.order!;
-    order.owed = [
-      {
-        ...order,
-        id: 'owed-a',
-        isOrder: false,
-        stage: 'toServe',
-        owedReason: 'sentBack',
-        sentBack: [{ reason: 'dropped', at: '2026-11-27T19:10:00Z', by: null }],
-      },
-    ];
+    Object.assign(floor.courses[0]!.tables[0]!.guests[0]!.order!, {
+      stage: 'toServe',
+      owedReason: 'sentBack',
+      sentBack: [{ reason: 'dropped', at: '2026-11-27T19:10:00Z', by: null }],
+    });
     now = floor;
     fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
     await waitFor(() => expect(sent).toHaveLength(1));
@@ -496,6 +492,64 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(
       screen.getAllByText('No tables yet. Ifeoma Nduka will put you on a section.'),
     ).toHaveLength(2);
+  });
+
+  it('names a block of single seats from its seats, after the tables', async () => {
+    const floor = structuredClone(FLOOR);
+    floor.courses[0]!.tables.unshift({
+      ...table('block', 'B', [guest('s', 1, 'Sade Ojo', 'served')]),
+      kind: 'block',
+      name: null,
+      seats: ['S1', 'S2'],
+    });
+    open(floor);
+    await screen.findByRole('heading', { name: 'Yours · Section B' });
+
+    expect(
+      screen.getAllByRole('button', { name: /, \d+ covers?/ })[2]!.getAttribute('aria-label'),
+    ).toBe('Seats S1 to S2, Served, 1 of 1 served, 1 cover');
+  });
+
+  it('shows a plate sent back under its guest, and Undo says what it saw', async () => {
+    open();
+    await screen.findByRole('button', { name: /^Table 10,/ });
+    heartbeat();
+    fireEvent.click(screen.getByRole('button', { name: /^Table 10,/ }));
+    press('Send back');
+    const sheet = screen.getByRole('dialog');
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Not right/ }));
+    const floor = structuredClone(FLOOR);
+    Object.assign(floor.courses[0]!.tables[0]!.guests[0]!.order!, {
+      stage: 'toServe',
+      owedReason: 'sentBack',
+      sentBack: [{ reason: 'notRight', at: '2026-11-27T19:10:00Z', by: null }],
+    });
+    now = floor;
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
+
+    expect(await screen.findByText('Sent back · Not right · Goat curry')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toBe(
+      '/api/events/e1/service/undo {"subject":"plate-a","expected":{"plates":{"plate-a":"toServe"}}}',
+    );
+  });
+
+  it('reads an arrived seat Not fired yet before the first fire, beside one not here yet', async () => {
+    const floor = structuredClone(FLOOR);
+    const unfired = table('Table 4', 'B', [
+      { ...guest('u', 1, 'Uche Obi', 'served'), order: null, noOrder: null },
+      { ...guest('d', 2, 'Dayo Ola', 'served'), order: null, noOrder: 'notHereYet' },
+    ]);
+    floor.courses[0]!.tables.push({ ...unfired, firedAt: null });
+    open(floor);
+    fireEvent.click(await screen.findByRole('button', { name: /^Table 4,/ }));
+    const seats = screen
+      .getAllByRole('listitem')
+      .map((seat) => seat.textContent)
+      .join('|');
+
+    expect(seats).toMatch(/Uche Obi.*Not fired yet.*\|.*Dayo Ola.*Not here yet/);
   });
 
   it('draws no tray step', async () => {
