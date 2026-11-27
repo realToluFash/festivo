@@ -2727,17 +2727,17 @@
     "key_automatic": "Soirely se encarga por usted"
   },
   "eventNeeds": {
-    "nothing": "Nothing needs you",
-    "headCount_one": "Needs you, {{count, number}} thing",
-    "headCount_other": "Needs you, {{count, number}} things",
-    "headCount_many": "Needs you, {{count, number}} things",
-    "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow",
-    "dueOn": "Due {{date}}",
-    "overdue": "Overdue",
-    "overdueDays_one": "{{count, number}} day overdue",
-    "overdueDays_other": "{{count, number}} days overdue",
-    "overdueDays_many": "{{count, number}} days overdue"
+    "nothing": "Nada pendiente",
+    "headCount_one": "Pendiente de usted, {{count, number}} tarea",
+    "headCount_other": "Pendiente de usted, {{count, number}} tareas",
+    "headCount_many": "Pendiente de usted, {{count, number}} de tareas",
+    "dueToday": "Para hoy",
+    "dueTomorrow": "Para mañana",
+    "dueOn": "Para el {{date}}",
+    "overdue": "Atrasado",
+    "overdueDays_one": "{{count, number}} día de retraso",
+    "overdueDays_other": "{{count, number}} días de retraso",
+    "overdueDays_many": "{{count, number}} de días de retraso"
   },
   "calendar": {
     "title": "Calendario",
