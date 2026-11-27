@@ -149,6 +149,11 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         $lines[] = '';
         $lines[] = $this->trans('guest_message.notice.footer', ['hosts' => $hosts], $locale);
 
+        if (null !== $guest) {
+            $lines[] = '';
+            $lines[] = $this->trans('guest_message.notice.unsubscribe', ['organisation' => $event->getOrganisation()->getName(), 'url' => $preview ? Str\trim_right($this->webOrigin, '/') . GuestEmailUnsubscribe::PAGE . '…' : $this->guestEmailUnsubscribe->url($guest)], $locale);
+        }
+
         return new RenderedNotification(
             $subject,
             Str\join($lines, "\n"),
