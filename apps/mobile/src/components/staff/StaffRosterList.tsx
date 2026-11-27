@@ -7,27 +7,59 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { BRIEFING_WORDS, noteOf } from '../../kit/staffBriefing.ts';
 import { linkWord, rowLine } from '../../kit/staffRoster.ts';
+import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SecondaryButton } from '../Buttons.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { Notice } from '../Notice.tsx';
+import { Sheet } from '../Sheet.tsx';
 import { Skeleton } from '../Skeleton.tsx';
 import { HeadCount, Row, RowList, SectionHead } from '../SummaryRows.tsx';
 import { Text } from '../Text.tsx';
 import { moveScreenReaderFocus } from '../screenReaderFocus.ts';
+import { BriefWord, BriefingCard } from './BriefingCard.tsx';
+import { BriefingPanel, type BriefingSide, PANEL_WIDTH } from './BriefingPanel.tsx';
 import { LinkMark } from './StaffParts.tsx';
 
 /** Under the AC's ten seconds from a change on the web, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
 const BACK_FOCUS_MS = 350;
 
-type Seen = { kind: 'loading' } | { kind: 'failed' } | { kind: 'shown'; staff: StaffEntry[] };
+type Seen =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'shown'; staff: StaffEntry[]; rules: string | null };
+
+/** The roster, with the house rules where the briefing shows them. */
+function readRoster(eventId: string, withRules: boolean) {
+  return withRules
+    ? api.staffPlan(eventId).then((plan) => ({ staff: plan.staff, rules: plan.rules }))
+    : api.staff(eventId).then((staff) => ({ staff, rules: null }));
+}
 
 /** The event's Staff in the app (sc-77903), as /demo/events/evt-wed-4?area=staff draws it: the roster to read, in the API's roster order, each person opening their own link. */
-export function StaffRosterList({ eventId, manages }: { eventId: string; manages: boolean }) {
+export function StaffRosterList({
+  eventId,
+  manages,
+  finished = false,
+}: {
+  eventId: string;
+  manages: boolean;
+  finished?: boolean;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
+  const { kind } = useLayout();
+  /** The briefing is the tablet's (sc-95654); the phone's Staff shows the roster alone. */
+  const briefs = kind !== 'phone';
+  const docked = kind === 'tabletLandscape';
+  const acts = manages && !finished;
+  const [side, setSide] = useState<BriefingSide | null>(null);
+  const copyOpener = useRef<ViewInstance | null>(null);
+  const rulesOpener = useRef<ViewInstance | null>(null);
+  const previewOpener = useRef<ViewInstance | null>(null);
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
   const [answer, setAnswer] = useState(0);
   const [round, setRound] = useState(0);
@@ -39,18 +71,18 @@ export function StaffRosterList({ eventId, manages }: { eventId: string; manages
 
   const read = useCallback(() => {
     const mine = ++ticket.current;
-    api.staff(eventId).then(
-      (staff) => {
+    readRoster(eventId, briefs).then(
+      ({ staff, rules }) => {
         if (mine !== ticket.current) return;
         held.current = staff;
-        setSeen({ kind: 'shown', staff });
+        setSeen({ kind: 'shown', staff, rules });
       },
       () => {
         if (mine !== ticket.current || held.current != null) return;
         setSeen({ kind: 'failed' });
       },
     );
-  }, [eventId]);
+  }, [eventId, briefs, setSeen]);
 
   useEffect(() => {
     read();
@@ -81,6 +113,23 @@ export function StaffRosterList({ eventId, manages }: { eventId: string; manages
   function open(entry: StaffEntry): void {
     opened.current = entry.id;
     router.push({ pathname: '/events/[id]/staff-link', params: { id: eventId, person: entry.id } });
+  }
+
+  function took(entry: StaffEntry): void {
+    setSeen((was) =>
+      was.kind !== 'shown'
+        ? was
+        : { ...was, staff: was.staff.map((one) => (one.id === entry.id ? entry : one)) },
+    );
+    if (held.current != null)
+      held.current = held.current.map((one) => (one.id === entry.id ? entry : one));
+  }
+
+  function closeSide(): void {
+    const was = side?.kind;
+    setSide(null);
+    const back = was === 'copy' ? copyOpener : was === 'preview' ? previewOpener : rulesOpener;
+    setTimeout(() => moveScreenReaderFocus(back.current ?? head.current), BACK_FOCUS_MS);
   }
 
   const staff = seen.kind === 'shown' ? seen.staff : null;
@@ -143,24 +192,36 @@ export function StaffRosterList({ eventId, manages }: { eventId: string; manages
                   title={entry.fullName}
                   line={line}
                   below={
-                    <View style={styles.status}>
-                      <LinkMark link={entry.link} side={14} />
-                      <Text
-                        size={14}
-                        weight="semibold"
-                        accessible={false}
-                        style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
-                      >
-                        {word}
-                      </Text>
-                    </View>
+                    <>
+                      {briefs && (
+                        <View style={styles.status} testID={`staff.briefing.${entry.id}`}>
+                          <BriefWord briefing={entry.briefing} />
+                          {noteOf(entry, t) != null && (
+                            <Text size={13} style={[styles.secondary, styles.shrink]}>
+                              {noteOf(entry, t)}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                      <View style={styles.status}>
+                        <LinkMark link={entry.link} side={14} />
+                        <Text
+                          size={14}
+                          weight="semibold"
+                          accessible={false}
+                          style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
+                        >
+                          {word}
+                        </Text>
+                      </View>
+                    </>
                   }
                   opens
                   onPress={() => open(entry)}
                   accessibilityLabel={t('staffRoster.rowLabel', {
                     name: entry.fullName,
                     line,
-                    status: word,
+                    status: briefs ? `${t(BRIEFING_WORDS[entry.briefing])}. ${word}` : word,
                   })}
                   testID={`staff.row.${entry.id}`}
                 />
@@ -171,8 +232,11 @@ export function StaffRosterList({ eventId, manages }: { eventId: string; manages
       </>
     );
 
-  return (
-    <View style={styles.head} testID="staff.roster">
+  const roster = (
+    <View
+      style={[styles.head, docked && side != null && styles.rosterBeside]}
+      testID="staff.roster"
+    >
       <View
         ref={head}
         accessible
@@ -190,9 +254,95 @@ export function StaffRosterList({ eventId, manages }: { eventId: string; manages
       {body}
     </View>
   );
+
+  if (!briefs || seen.kind !== 'shown') return roster;
+
+  const card = (
+    <BriefingCard
+      people={seen.staff}
+      acts={acts}
+      openCopy={() => setSide({ kind: 'copy' })}
+      openRules={() => setSide({ kind: 'rules', editing: false })}
+      openPreview={
+        seen.staff.length === 0
+          ? null
+          : () =>
+              setSide({
+                kind: 'preview',
+                id: (seen.staff.find((one) => one.shifts.length > 0) ?? seen.staff[0])!.id,
+              })
+      }
+      openCopyRef={copyOpener}
+      openRulesRef={rulesOpener}
+      openPreviewRef={previewOpener}
+    />
+  );
+  const panel =
+    side == null ? null : (
+      <BriefingPanel
+        eventId={eventId}
+        side={side}
+        people={seen.staff}
+        rules={seen.rules}
+        acts={acts}
+        onSide={setSide}
+        onEntry={took}
+        onRules={(rules) => setSeen((was) => (was.kind === 'shown' ? { ...was, rules } : was))}
+        onClose={closeSide}
+      />
+    );
+
+  if (docked)
+    return (
+      <View style={styles.beside}>
+        <View style={styles.main}>
+          {card}
+          {roster}
+        </View>
+        {panel != null && (
+          <View style={styles.dock} testID="briefing.dock">
+            {panel}
+          </View>
+        )}
+      </View>
+    );
+
+  return (
+    <View style={styles.head}>
+      {card}
+      {roster}
+      <Sheet
+        open={side != null}
+        onClose={closeSide}
+        scrimLabel={t('briefing.close')}
+        opener={
+          side?.kind === 'copy'
+            ? copyOpener
+            : side?.kind === 'preview'
+              ? previewOpener
+              : rulesOpener
+        }
+        testID="briefing.dialog"
+      >
+        <View style={styles.dialog}>{panel}</View>
+      </Sheet>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  rosterBeside: { flex: 1 },
+  beside: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
+  main: { flex: 1, minWidth: 0, gap: tokens.spaceLg },
+  dock: {
+    width: PANEL_WIDTH,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusCardPhone,
+    backgroundColor: tokens.colorCard,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+  },
+  dialog: { flexShrink: 1, maxHeight: 640, padding: tokens.space3xl },
   head: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
