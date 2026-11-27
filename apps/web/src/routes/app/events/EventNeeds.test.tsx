@@ -97,6 +97,15 @@ describe('an event’s Needs you card', () => {
     expect(screen.getByText('Nothing needs you')).toBeTruthy();
   });
 
+  it('lists no row for a You milestone its area returns done', () => {
+    show(read(loaded([milestone('2026-11-12T22:59:00Z', { area: 'seating', done: true })])), [
+      'seating.manage',
+    ]);
+
+    expect(screen.queryByRole('listitem')).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
+  });
+
   it('ticks a started event with no You milestone', () => {
     show(read(loaded([milestone('2026-11-12T10:00:00Z', { owner: 'event' })])));
 
