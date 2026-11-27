@@ -501,6 +501,17 @@ export const rosterWith = start;
 const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
 const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;
 const PORTUGUESE = { lang: 'pt', noShift: 'Ainda sem turno' } as const;
+const IN_LANG = {
+  en: { lang: 'en', noShift: RW.noShift },
+  fr: FRENCH,
+  es: SPANISH,
+  pt: PORTUGUESE,
+} as const;
+
+/** A state in the language ?locale= names, so a Staff tab opens the Roster in the language it came from (sc-99786). */
+export function rosterIn(first: RosterStart, lang: RosterStart['lang'] | null): RosterStart {
+  return lang == null ? first : { ...first, ...IN_LANG[lang] };
+}
 
 /** A name and an email of 40 characters with no space, the longest single word a cell may hold (sc-75033). */
 const LONG: Entry = entry(
