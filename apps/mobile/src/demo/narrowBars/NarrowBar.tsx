@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { PixelRatio, Pressable, StyleSheet, View } from 'react-native';
 
+import { TAB_BAR_BORDER, tabWidth } from '../../components/bodyEdges.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
@@ -8,7 +9,10 @@ import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 import { tabLabelStart } from '../../layout/tabLabel.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { barGeometry, eventLabelSize, tabWidth, todayLabelSize } from './narrowBarsRules.ts';
+import { barGeometry, eventLabelSize, todayLabelSize } from './narrowBarsRules.ts';
+
+/** The board's bar is drawn in a stage, with nothing taking a side. */
+const NO_INSETS = { left: 0, right: 0 };
 
 export interface NarrowTab {
   key: string;
@@ -37,7 +41,7 @@ export function NarrowBar({
   id: string;
 }) {
   const geometry = barGeometry(width);
-  const slot = tabWidth(width, tabs.length);
+  const slot = tabWidth(width, NO_INSETS, tabs.length, PixelRatio.get());
   const start = tabLabelStart(scale);
   const words = wordsIn(tabs.map((tab) => tab.label));
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
@@ -109,7 +113,7 @@ const styles = StyleSheet.create({
     height: PHONE_TAB_BAR,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
-    borderWidth: 1,
+    borderWidth: TAB_BAR_BORDER,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
     ...tokens.elevationNative.raised.ios,

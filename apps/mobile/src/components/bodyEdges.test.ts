@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { coverRowSides, sideInsets, sidePadding, tabBarFit } from './bodyEdges.ts';
+import { coverRowSides, sideInsets, sidePadding, tabBarFit, tabWidth } from './bodyEdges.ts';
 
 const BARS = { left: 48, right: 48 };
 
@@ -33,6 +33,20 @@ describe('tabBarFit', () => {
   it('moves its ends past a navigation bar on either side of a phone on its side (sc-54891)', () => {
     expect(tabBarFit(874, { left: 48, right: 0 })).toEqual({ left: 66, right: 18, ...main });
     expect(tabBarFit(874, { left: 0, right: 48 })).toEqual({ left: 18, right: 66, ...main });
+  });
+});
+
+describe('tabWidth', () => {
+  const upright = { left: 0, right: 0 };
+
+  it('gives the demo’s tabs at 320dp: 74 for four, 59.2 for five (sc-99214)', () => {
+    expect(tabWidth(320, upright, 4, 1)).toBe(74);
+    expect(tabWidth(320, upright, 5, 5)).toBe(59.2);
+  });
+
+  it('rounds down to a whole pixel, and takes the insets and gaps from the same bar', () => {
+    expect(tabWidth(320, upright, 5, 2)).toBe(59);
+    expect(tabWidth(874, { left: 48, right: 0 }, 5, 1)).toBe(154);
   });
 });
 
