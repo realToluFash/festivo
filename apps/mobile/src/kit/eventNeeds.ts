@@ -1,7 +1,7 @@
-import { type Milestone } from '@soirely/domain';
+import { type Milestone, isYours } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import { dueWords, isYours } from './todayNeeds.ts';
+import { dueWords } from './todayNeeds.ts';
 
 export interface EventNeed {
   key: string;
