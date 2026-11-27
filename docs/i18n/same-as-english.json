@@ -170,6 +170,7 @@
     "web:guestList.invitation",
     "web:guest.calendarApple",
     "web:guestList.how.whatsapp",
+    "web:yourMessages.whatsApp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.allergen.lupin",
     "web:guestNeeds.allergies",
