@@ -815,3 +815,12 @@ describe('the view’s wiring QA failed (sc-4015)', () => {
     expect(view()).toMatch(/\.waiting\(kept\.length\)/u);
   });
 });
+
+describe('the row’s as of reads the device’s time (sc-97945)', () => {
+  const row = readFileSync(new URL('../components/StationWayIn.tsx', import.meta.url), 'utf8');
+
+  it('passes no zone to stationAsOf and no longer imports formatEventClock', () => {
+    expect(row).toMatch(/asOf: \(at\) => stationAsOf\(at, dateLocale\(\)\)/u);
+    expect(row).not.toMatch(/formatEventClock/u);
+  });
+});
