@@ -462,7 +462,20 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(ring).toContain('outline-offset: 2px;');
   });
 
-  it('keeps whole words in the Roster table at every width, Link at 168 px, the frame scrolling instead (sc-70540, sc-75033)', () => {
+  it('keeps whole words in the Roster table at every width, Link at 168 px, the frame scrolling instead (sc-70540, sc-75033)', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Amaka Eze')],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+          rules: null,
+        }),
+    });
+    const link = await screen.findByRole('columnheader', { name: 'Link' });
+    expect(link.matches('.rs-frame > .rs-table thead th.rs-link-col')).toBe(true);
     const narrow = mediaBlock('(width <= 720px)', ROSTER_CSS);
     const everyWidth = ROSTER_CSS.replace(narrow, '');
     expect(
@@ -471,7 +484,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
         everyWidth,
       ),
     ).toContain('overflow-wrap: normal;');
-    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', everyWidth)).toContain(
+    expect(cssRule('.rs-frame > .rs-table thead th.rs-link-col', everyWidth)).toContain(
       'min-width: 168px;',
     );
     expect(everyWidth).not.toContain('min-width: 128px;');

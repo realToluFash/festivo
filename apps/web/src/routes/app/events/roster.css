@@ -259,7 +259,7 @@
 }
 
 /* Link's words run longest in every language, so it keeps 168 px at every width; Job, Station and Shift narrow only to their longest word. */
-.rs-frame > .rs-table thead th:nth-child(5) {
+.rs-frame > .rs-table thead th.rs-link-col {
   min-width: 168px;
 }
 
