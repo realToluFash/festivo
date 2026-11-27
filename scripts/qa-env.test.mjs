@@ -5029,6 +5029,14 @@ describe('push', () => {
     expect(expoPushes(history).map(({ title }) => title)).toEqual(['third', 'second', 'first']);
   });
 
+  it('finds no push in a history of other mocks', () => {
+    const history = [
+      { request: { method: 'GET', path: '/nominatim/search', body: '' } },
+      { request: { method: 'POST', path: '/twilio/messages', body: '{}' } },
+    ];
+    expect(expoPushes(history)).toEqual([]);
+  });
+
   it('takes a body Smocker already parsed', () => {
     const history = [
       { request: { method: 'POST', path: '/expo/--/api/v2/push/send', body: [{ title: 'a' }] } },
@@ -5066,5 +5074,6 @@ describe('push', () => {
   it('sends the newest unless a number picks another', () => {
     expect(pushPick(['--ipad'])).toBe(1);
     expect(pushPick(['3', '--se'])).toBe(3);
+    expect(pushPick(['0'])).toBe(1);
   });
 });

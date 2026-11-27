@@ -489,7 +489,7 @@ export function apnsPayload(message) {
 }
 
 export function pushPick(args) {
-  const picked = args.find((arg) => /^\d+$/.test(arg));
+  const picked = args.find((arg) => /^[1-9]\d*$/.test(arg));
   return picked === undefined ? 1 : Number(picked);
 }
 
@@ -1725,15 +1725,19 @@ QA environment, tester ${CONFIG.tester} — ${root}
   }
 }
 
-function simulatorId(name) {
+function simulatorDevice(name) {
   const list = JSON.parse(
     capture('xcrun', ['simctl', 'list', 'devices', 'available', '-j']) ?? '{}',
   );
   for (const devices of Object.values(list.devices ?? {})) {
     const found = devices.find((d) => d.name === name);
-    if (found) return found.udid;
+    if (found) return found;
   }
   return null;
+}
+
+function simulatorId(name) {
+  return simulatorDevice(name)?.udid ?? null;
 }
 
 // iOS offers to save a password after every sign-in, and on an iPad Maestro cannot see the
@@ -4726,8 +4730,14 @@ async function push(args) {
   const root = qaWorktree();
   const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const { open } = simulatorFor(args);
-  const udid = simulatorId(CONFIG.simulators[open].name);
-  if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  const device = simulatorDevice(CONFIG.simulators[open].name);
+  if (!device) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  if (device.state !== 'Booted') {
+    throw new Error(
+      `the ${open} simulator is shut: \`xcrun simctl boot ${device.udid}\` boots it, then push again`,
+    );
+  }
+  const { udid } = device;
   if (!capture('xcrun', ['simctl', 'get_app_container', udid, id])) {
     throw new Error(`${id} is not on the ${open}: \`release\` installs it`);
   }
