@@ -24,7 +24,7 @@ const course = (
       key: 't1',
       kind: 'table',
       name: 'Table 1',
-      seats: 2,
+      seats: [],
       section: { id: 'B', name: 'Section B' },
       people: [],
       firedAt,

@@ -3794,6 +3794,7 @@
       "yours": "Vos tables · {{section}}",
       "other": "Autres tables",
       "noSection": "Pas encore de tables. {{lead}} vous attribuera une zone.",
+      "seatRange": "Seats {{first}} to {{last}}",
       "noSectionNoLead": "Pas encore de tables. Le maître d’hôtel vous attribuera une zone.",
       "moved": "Vous servez désormais {{section}}.",
       "header": "{{covers}} · {{section}}",
