@@ -412,9 +412,11 @@ describe('an invitation, signed in', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join' }));
 
-    const refused = within(
-      await screen.findByRole('dialog', { name: 'Every team seat at Ìrè Events is in use' }),
-    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Every team seat at Ìrè Events is in use',
+    });
+    expect(dialog.closest('.desk')).not.toBeNull();
+    const refused = within(dialog);
     expect(refused.getByText('Your invitation stays open. Nothing is lost.')).toBeDefined();
     expect(refused.queryByText(/team seats ·/u)).toBeNull();
     expect(refused.queryByRole('link')).toBeNull();

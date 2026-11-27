@@ -617,7 +617,9 @@ function Answer({
         </div>
       </div>
       {limited != null && <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} />}
-      <div ref={setHost} className="desk-layers" />
+      <div className="desk">
+        <div ref={setHost} className="desk-layers" />
+      </div>
     </LayersContext>
   );
 }
