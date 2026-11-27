@@ -4309,7 +4309,6 @@
     "previewSearch": "Pesquisar na equipa",
     "previewBanner": "Apenas pré-visualização. Nada fica registado: nem a leitura, nem a abertura da ligação.",
     "previewNoShift": "Faz parte da equipa de {{day}}, ainda sem turno.",
-    "previewPage": "Página de {{name}}",
     "previewLoading": "A carregar a página…",
     "close": "Fechar"
   }

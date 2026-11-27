@@ -4118,7 +4118,6 @@
     "previewSearch": "Search the staff",
     "previewBanner": "Preview only. Nothing is recorded: no read and no link open.",
     "previewNoShift": "You are on the staff for {{day}}, with no shift yet.",
-    "previewPage": "{{name}}’s page",
     "previewLoading": "Loading their page…",
     "close": "Close"
   }

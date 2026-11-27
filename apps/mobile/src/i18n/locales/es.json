@@ -4309,7 +4309,6 @@
     "previewSearch": "Buscar en el personal",
     "previewBanner": "Solo es una vista previa. No se registra nada: ni la lectura ni la apertura del enlace.",
     "previewNoShift": "Forma parte del personal el {{day}}, pero aún no tiene turno.",
-    "previewPage": "Página de {{name}}",
     "previewLoading": "Cargando la página…",
     "close": "Cerrar"
   }

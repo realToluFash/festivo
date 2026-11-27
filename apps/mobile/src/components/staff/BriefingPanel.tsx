@@ -535,12 +535,7 @@ function Preview({
         </View>
       )}
       {shown?.kind === 'shown' && (
-        <View
-          style={styles.phone}
-          accessible
-          accessibilityLabel={t('briefing.previewPage', { name: one.fullName })}
-          testID="briefing.preview.page"
-        >
+        <View style={styles.phone} testID="briefing.preview.page">
           {shown.night.shift == null ? (
             <Text size={17} weight="semibold">
               {t('briefing.previewNoShift', {

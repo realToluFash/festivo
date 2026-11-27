@@ -39,7 +39,7 @@ export function withShifts(people: readonly StaffEntry[]): StaffEntry[] {
   return people.filter((one) => one.shifts.length > 0);
 }
 
-/** Copy link and Mark as sent are offered to staff.manage, with a mobile number, on an event not yet finished. */
+/** Copy link and Mark as sent are offered to staff.manage, with a mobile number who has not been erased. */
 export function copies(one: StaffEntry, manages: boolean): boolean {
   return manages && one.mobile != null && !one.contactsErased;
 }

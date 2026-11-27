@@ -4309,7 +4309,6 @@
     "previewSearch": "Rechercher dans l’équipe",
     "previewBanner": "Simple aperçu. Rien n’est enregistré : ni lecture, ni ouverture du lien.",
     "previewNoShift": "Vous êtes dans l’équipe du {{day}}, sans service pour l’instant.",
-    "previewPage": "Page de {{name}}",
     "previewLoading": "Chargement de la page…",
     "close": "Fermer"
   }
