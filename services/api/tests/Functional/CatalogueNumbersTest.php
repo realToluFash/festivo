@@ -57,6 +57,8 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         'Entity/StaffShift.php: public const int NEEDED_MAXIMUM = 50;',
         'WebAuthn/Cbor.php: private const int MAX_DEPTH = 8;',
         'WebAuthn/Cbor.php: if ($value > (\\PHP_INT_MAX >> 8)) {',
+        'Domain/Messaging/GuestMessages/GuestEmailUnsubscribe.php: && \\hash_equals($this->signature($guest->getId(), $guest->getEvent()->getOrganisation()->getId()), Str\\Byte\\slice($token, 22));',
+        'Entity/GuestSuppression.php: #[ORM\\Column(type: Types::STRING, length: 10, enumType: GuestChannel::class)]',
     ];
 
     #[Test]
