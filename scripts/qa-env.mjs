@@ -132,6 +132,7 @@ export function stackConfig(
     SOIRELY_GOOGLE_AUTHORIZE_URL: `${browser.oidc}/google/authorize`,
     SOIRELY_APPLE_AUTHORIZE_URL: `${browser.oidc}/apple/authorize`,
     OAUTH_APPLE_RETURN_URI: `${urls.api}/api/auth/oauth/apple/return`,
+    DEFAULT_URI: urls.api,
     SOIRELY_API_URL: browser.api,
     SOIRELY_MERCURE_URL: browser.mercure,
     CORS_WEB_ORIGIN: urls.web,

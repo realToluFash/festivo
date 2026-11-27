@@ -436,6 +436,7 @@ describe('the stack a person tests on', () => {
       expect(urls.api).toBe(address('API_PORT'));
       expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(address('STORAGE_PORT'));
       expect(overrides.OAUTH_APPLE_RETURN_URI).toMatch(new RegExp(`^${address('API_PORT')}/`));
+      expect(overrides.DEFAULT_URI).toBe(address('API_PORT'));
       expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(address('METRO_PORT'));
       for (const value of Object.values(app)) expect(value).not.toContain(host);
       expect(app).toEqual(qaConfig(tester).app);
