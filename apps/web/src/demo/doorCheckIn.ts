@@ -159,7 +159,7 @@ export const CW = {
   },
   notSignedIn: {
     title: 'Sign in from your link or code',
-    body: 'To check guests in, open the link we sent you, or enter your door code again.',
+    body: 'Open the link we sent you, or enter your door code again.',
     cta: 'Enter a door code',
   },
   connectionBack: 'Demo: the connection is back',
