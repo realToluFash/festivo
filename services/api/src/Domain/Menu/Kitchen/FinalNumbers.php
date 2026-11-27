@@ -51,6 +51,7 @@ final readonly class FinalNumbers
 
     /**
      * @param ?Sheet $now the sheet with its names, when the caller has it
+     *
      * @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone; `changes` the sheet now against the latest copy, null with none
      */
     public function of(Event $event, bool $names, ?array $now = null): array
@@ -120,7 +121,6 @@ final readonly class FinalNumbers
 
         $copy = new KitchenCopy($event, $now, $by, $names, $held);
         $final = $this->kitchenFinalNumbersRepository->findOneForEvent($event) ?? new KitchenFinalNumbers($event);
-        // This copy holds every change, so a difference that follows is a new one.
         $final->setDiffersSince(null);
         $this->entityManager->persist($final);
         $this->entityManager->persist($copy);
