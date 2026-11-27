@@ -7,8 +7,8 @@
   min-height: 0;
 }
 
-/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908, sc-3910). */
-.sn .gs-top {
+/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908, sc-3910), and a breadcrumb wrapped to three lines keeps its 44px row and runs under the title (sc-99786). */
+.sn :is(.ev-crumb-row, .gs-top) {
   flex: none;
 }
 
