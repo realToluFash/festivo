@@ -114,6 +114,19 @@ final class TableSharingTest extends ApiTestCase
     }
 
     #[Test]
+    public function aStartedEventListsNoShareTablesButKeepsTablesShared(): void
+    {
+        $this->share(['shareBy' => '2030-06-10']);
+        self::mockTime(new DateTimeImmutable('2030-06-12T17:00:00+01:00'));
+        self::assertSame([], $this->seatingMilestones());
+
+        self::mockTime(new DateTimeImmutable('2030-06-03T10:00:00+01:00'));
+        $this->share(['shared' => true]);
+        self::mockTime(new DateTimeImmutable('2030-06-12T17:00:00+01:00'));
+        self::assertSame([['Tables shared', '2030-06-03T10:00:00+01:00', 'you', 'seating', true]], $this->seatingMilestones());
+    }
+
+    #[Test]
     public function theTimelineShowsShareTablesByUntilSharedAndTablesSharedAfter(): void
     {
         self::assertSame([], $this->seatingMilestones(), 'no Share by, no milestone');
