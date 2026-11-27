@@ -14,6 +14,7 @@ import { Banner, type BannerActions, NowBanner } from '../../components/TodayBan
 import { RunNowBanner } from '../../components/TodayRunBanner.tsx';
 import { runNowOf } from '../../components/todayRun.ts';
 import { useRunSchedule } from '../../components/useRunSchedule.ts';
+import { NeedsYou } from '../../components/TodayNeeds.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
 import { useDeskTop } from '../../deskTop.ts';
 import { dateLocale } from '../../i18n/index.ts';
@@ -172,6 +173,7 @@ function Today({ organisationId }: { organisationId: string }) {
       ) : (
         <div className="today-columns">
           <div className="today-left">
+            <NeedsYou moment={moment} open={open} />
             <ThisWeek moment={moment} open={open} />
           </div>
           <div className="today-right">
