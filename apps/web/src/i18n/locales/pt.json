@@ -7320,6 +7320,7 @@
       "yours": "As suas mesas · {{section}}",
       "other": "Outras mesas",
       "noSection": "Ainda não tem mesas. {{lead}} vai atribuir-lhe uma zona.",
+      "seatRange": "Seats {{first}} to {{last}}",
       "noSectionNoLead": "Ainda não tem mesas. O chefe de sala vai atribuir-lhe uma zona.",
       "moved": "Passa a servir {{section}}.",
       "header": "{{covers}} · {{section}}",

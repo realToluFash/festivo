@@ -6931,6 +6931,7 @@
       "yours": "Yours · {{section}}",
       "other": "Other tables",
       "noSection": "No tables yet. {{lead}} will put you on a section.",
+      "seatRange": "Seats {{first}} to {{last}}",
       "noSectionNoLead": "No tables yet. The floor lead will put you on a section.",
       "moved": "You’re on {{section}} now.",
       "header": "{{covers}} · {{section}}",
