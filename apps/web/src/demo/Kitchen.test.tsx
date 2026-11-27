@@ -568,6 +568,15 @@ describe('the sheet’s own states in A (sc-99611)', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('reflows to one column at 320 px, every text action free to wrap', () => {
+    const css = readFileSync(join(import.meta.dirname, 'kitchen.css'), 'utf8');
+
+    expect(css).toMatch(
+      /@media \(width <= 720px\) \{\s*\.kitchen \.ev-columns \{\s*grid-template-columns: minmax\(0, 1fr\);/u,
+    );
+    expect(css).toMatch(/\.kitchen \.desk-text \{[^}]*white-space: normal;/u);
+  });
+
   it('links every state from the demo’s home', () => {
     const linked = SHEET_A_PAGES.flatMap((page) => page.states.map((one) => one.to));
 

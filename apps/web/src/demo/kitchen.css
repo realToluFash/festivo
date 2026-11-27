@@ -323,3 +323,30 @@
     animation: none;
   }
 }
+
+/* At 720 px and under (400% zoom included) the sheet is one column: the top wraps its actions under the title, Final numbers follows the sheet, and a text action wraps rather than run past the page. */
+@media (width <= 720px) {
+  .kitchen .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kitchen .gs-top {
+    flex-wrap: wrap;
+    gap: var(--spaceSm) var(--spaceLg);
+  }
+
+  .kitchen .gs-title {
+    flex-basis: 100%;
+  }
+
+  .kitchen-acts {
+    flex-wrap: wrap;
+    gap: var(--spaceXs) 22px;
+  }
+
+  .kitchen .desk-text {
+    max-width: 100%;
+    white-space: normal;
+    text-align: start;
+  }
+}
