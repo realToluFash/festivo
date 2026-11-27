@@ -3790,6 +3790,7 @@
       "yours": "Vos tables · {{section}}",
       "other": "Autres tables",
       "noSection": "Pas encore de tables. {{lead}} vous attribuera une zone.",
+      "seatRange": "Places {{first}} à {{last}}",
       "noSectionNoLead": "Pas encore de tables. Le maître d’hôtel vous attribuera une zone.",
       "moved": "Vous servez désormais {{section}}.",
       "header": "{{covers}} · {{section}}",
@@ -3827,6 +3828,7 @@
       "tryAgain": "Réessayer",
       "listBack": "Retour",
       "chefsChoice": "Au choix du chef",
+      "chefsChoiceInSentence": "l’assiette au choix du chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La salle s’ouvre avec « Peut servir en salle »",

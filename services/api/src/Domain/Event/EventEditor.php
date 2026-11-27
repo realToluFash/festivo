@@ -9,6 +9,7 @@ use App\Domain\Event\Model\ReplyDeadline;
 use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Domain\Messaging\Model\EventDetails;
 use App\Domain\Messaging\NotificationScheduler;
+use App\Domain\Staff\ShiftMover;
 use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
 use App\Entity\User;
@@ -51,6 +52,7 @@ final readonly class EventEditor
         private NotificationScheduler $notificationScheduler,
         private EventChangeRecorder $eventChangeRecorder,
         private ShiftNotices $shiftNotices,
+        private ShiftMover $shiftMover,
         private StaffMemberRepository $staffMemberRepository,
     ) {
     }
@@ -61,6 +63,7 @@ final readonly class EventEditor
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
      * `hosts` replaces the whole list, and an event made live keeps at least one (sc-6713).
      * A start moved onto or before Reply by moves Reply by to the day before it (sc-3780).
+     * A start moved to another day takes the shifts with it (sc-100276).
      *
      * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?string} $fields
      */
@@ -79,6 +82,7 @@ final readonly class EventEditor
 
             $before = self::recorded($event);
             $details = EventDetails::of($event);
+            $startedAt = $event->getStartsAt();
             $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
             $calledOff = EventPhase::calledOff($event->getEndedAt(), $event->getStartsAt());
             $checked = $this->eventRules->check([
@@ -143,6 +147,7 @@ final readonly class EventEditor
             if ([] !== $changes) {
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
                 $this->eventChangeRecorder->edited($event, $by, $details, EventDetails::of($event));
+                $this->shiftMover->move($event, $startedAt, $event->getStartsAt(), new DateTimeZone($before['timeZone']), $by);
                 $this->entityManager->flush();
 
                 if ([] !== Dict\select_keys($changes, self::TOLD_TO_STAFF)) {

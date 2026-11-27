@@ -12,6 +12,7 @@ import {
   inFloorOrder,
   owesSentBack,
   sectionsMoved,
+  stageLeftBy,
   withKeptTaps,
 } from './serviceFloor.ts';
 import type { PlateStage } from './serviceStages.ts';
@@ -62,7 +63,7 @@ function table(
     key: name,
     kind: 'table',
     name,
-    seats: guests.length,
+    seats: [],
     section: { id: 'A', name: 'Section A' },
     people: [{ id: 's1', name: 'Bisi Lawal' }],
     firedAt: guests.some((g) => g.order != null) ? '2027-03-06T19:00:00Z' : null,
@@ -120,16 +121,17 @@ describe('inFloorOrder', () => {
   it('puts Table 2 before Table 10, then rows, then single seats, whatever order they arrive in', () => {
     const names = inFloorOrder(
       [
-        { kind: 'seats' as const, name: 'Seats 1–10' },
-        { kind: 'table' as const, name: 'Table 10' },
-        { kind: 'row' as const, name: 'Row B' },
-        { kind: 'table' as const, name: 'Table 2' },
-        { kind: 'row' as const, name: 'Row A' },
+        { kind: 'block' as const, name: null, seats: ['S10', 'S11'] },
+        { kind: 'table' as const, name: 'Table 10', seats: [] },
+        { kind: 'row' as const, name: 'Row B', seats: [] },
+        { kind: 'block' as const, name: null, seats: ['S2', 'S9'] },
+        { kind: 'table' as const, name: 'Table 2', seats: [] },
+        { kind: 'row' as const, name: 'Row A', seats: [] },
       ],
       'en',
-    ).map((one) => one.name);
+    ).map((one) => one.name ?? one.seats[0]);
 
-    expect(names).toEqual(['Table 2', 'Table 10', 'Row A', 'Row B', 'Seats 1–10']);
+    expect(names).toEqual(['Table 2', 'Table 10', 'Row A', 'Row B', 'S2', 'S10']);
   });
 });
 
@@ -177,6 +179,20 @@ describe('floorTables', () => {
       served: 0,
       ordered: 10,
     });
+  });
+});
+
+describe('an order sent back', () => {
+  const at = (stage: PlateStage) =>
+    floorTables(
+      floor([
+        course('Mains', [table('Table 1', [guest(1, order(stage, { owedReason: 'sentBack' }))])]),
+      ]),
+    )[0]!.guests[0]!.owed;
+
+  it('is owed as itself until it is served again', () => {
+    expect(at('toServe')).toMatchObject([{ isOrder: true, owedReason: 'sentBack' }]);
+    expect(at('served')).toEqual([]);
   });
 });
 
@@ -292,34 +308,50 @@ describe('withKeptTaps', () => {
   const back = tap('sendBack', '/plates/p1/sent-back', { reason: 'dropped' });
   const at = (f: FloorRead) => f.courses[0]!.tables[0]!.guests[0]!.order!;
 
-  it('shows a kept choice and a kept sent-back plate as made', () => {
-    const made = at(withKeptTaps(read, [choice, back]));
-
-    expect(made.choice).toBe('waitForAll');
-    expect(made.owed).toMatchObject([
-      { id: 'sendBack-key', stage: 'toServe', owedReason: 'sentBack' },
-    ]);
+  it('shows a kept choice, then the order itself sent back', () => {
+    expect(at(withKeptTaps(read, [choice])).choice).toBe('waitForAll');
+    expect(at(withKeptTaps(read, [choice, back]))).toMatchObject({
+      id: 'p1',
+      stage: 'toServe',
+      choice: null,
+      owedReason: 'sentBack',
+      sentBack: [{ reason: 'dropped' }],
+      owed: [],
+    });
   });
 
   it('takes a kept step off again under a kept Undo', () => {
     const undone = at(withKeptTaps(read, [back, tap('undo', '/undo', { subject: 'p1' })]));
 
-    expect(undone.owed).toEqual([]);
+    expect(undone).toEqual(held);
   });
 
   it('shows a kept Undo of a step the server already has as made', () => {
-    const owed = order('toServe', { id: 'p2', owedReason: 'sentBack' });
+    const owed = order('toServe', {
+      id: 'p2',
+      owedReason: 'sentBack',
+      sentBack: [{ reason: 'dropped', at: '2027-03-06T19:00:00Z', by: null }],
+    });
     const sent = floor([
       course('Mains', [
         table('Table 1', [guest(1, { ...held, choice: 'waitForAll', owed: [owed] })]),
       ]),
     ]);
-    const undo = (reverses: FloorReversed) => ({
-      ...tap('undo', '/undo', { subject: 'p1' }),
+    const undo = (subject: string, reverses: FloorReversed) => ({
+      ...tap('undo', '/undo', { subject }),
       reverses,
     });
 
-    expect(at(withKeptTaps(sent, [undo({ kind: 'sendBack' })])).owed).toEqual([]);
-    expect(at(withKeptTaps(sent, [undo({ kind: 'choice', was: null })])).choice).toBeNull();
+    expect(
+      at(withKeptTaps(sent, [undo('p2', { kind: 'sendBack', was: 'toFollow' })])).owed,
+    ).toMatchObject([{ id: 'p2', stage: 'served', owedReason: 'toFollow', sentBack: [] }]);
+    expect(at(withKeptTaps(sent, [undo('p1', { kind: 'choice', was: null })])).choice).toBeNull();
+  });
+});
+
+describe('stageLeftBy', () => {
+  it('is To serve after a send-back, and the unmoved stage after a choice', () => {
+    expect(stageLeftBy(order('served'), { kind: 'sendBack', was: null })).toBe('toServe');
+    expect(stageLeftBy(order('dishing'), { kind: 'choice', was: null })).toBe('dishing');
   });
 });

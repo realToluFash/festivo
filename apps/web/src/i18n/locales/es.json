@@ -7321,6 +7321,7 @@
       "yours": "Sus mesas · {{section}}",
       "other": "Otras mesas",
       "noSection": "Aún no tiene mesas. {{lead}} le asignará una zona.",
+      "seatRange": "Asientos {{first}} a {{last}}",
       "noSectionNoLead": "Aún no tiene mesas. El responsable de sala le asignará una zona.",
       "moved": "Ahora atiende {{section}}.",
       "header": "{{covers}} · {{section}}",
@@ -7343,13 +7344,14 @@
       "undoUntil": "Se puede deshacer hasta esta hora: {{time}}",
       "undone": "Deshecho.",
       "step": {
-        "sentBack": "Devolución: {{items}} de {{guest}} · {{reason}}",
+        "sentBack": "Devolución de {{guest}}: {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "No se ha podido cargar la sala. Inténtelo de nuevo.",
       "tryAgain": "Reintentar",
       "listBack": "Volver",
       "chefsChoice": "A elección del chef",
+      "chefsChoiceInSentence": "el plato a elección del chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La sala se abre con «Puede atender en sala»",

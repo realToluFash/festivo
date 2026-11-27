@@ -1206,6 +1206,8 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
                 new: null,
                 old: null,
                 count: 0,
+                on: '2026-11-07T15:00:00+01:00',
+                dated: false,
               },
             ],
           },

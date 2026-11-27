@@ -1,11 +1,7 @@
-/* sc-3931: the usage warning's bell item and email. The popover is the product's (BellPanel.css); at 320 the desk reflows and it is capped at the window less 48. */
+/* sc-3931: the usage warning's bell item and email. The popover is the product's (BellPanel.css); at 320 the desk reflows. */
 
 .uw-bell-at {
   position: relative;
-}
-
-.uw-bell-at .bell-pop {
-  max-width: calc(100vw - 48px);
 }
 
 .uw {

@@ -13,7 +13,9 @@ use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\NotificationPreference;
 use App\Entity\Organisation;
+use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
+use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
@@ -23,7 +25,9 @@ use App\Tests\Double\Messaging\RecordingPushSender;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
@@ -99,6 +103,7 @@ final class ShiftNoticesTest extends ApiTestCase
                 'old' => null,
                 'count' => 0,
                 'on' => '2027-03-06T19:00:00+01:00',
+                'dated' => false,
             ]],
         ], $this->row($this->ada)['notice']);
 
@@ -206,6 +211,7 @@ final class ShiftNoticesTest extends ApiTestCase
     #[Test]
     public function aNewDateIsToldAsTheDayWithTheOld(): void
     {
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $this->evening . '/people/' . $this->ada));
         $this->briefed($this->ada);
         $this->editEvent(['startsAt' => '2027-03-13T16:00', 'endsAt' => '2027-03-14T02:00']);
         $this->at('2027-03-01T10:15:00Z');
@@ -687,6 +693,218 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => 'Owambe']);
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /**
+     * @param array<string, mixed>        $edit
+     * @param array{0: string, 1: string} $moved     the evening shift's times after
+     * @param array{0: string, 1: string} $overnight those of a shift over midnight
+     */
+    #[Test]
+    #[DataProvider('savedStarts')]
+    public function theShiftsMoveByTheDaysTheStartMoves(array $edit, array $moved, array $overnight): void
+    {
+        $night = $this->newShift('2027-03-06T22:00', '2027-03-07T02:00');
+        $this->editEvent($edit);
+
+        self::assertSame($moved, $this->timesOf($this->evening));
+        self::assertSame($overnight, $this->timesOf($night));
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, array{string, string}, array{string, string}}> */
+    public static function savedStarts(): iterable
+    {
+        $stayed = [['2027-03-06T18:00', '2027-03-06T23:00'], ['2027-03-06T22:00', '2027-03-07T02:00']];
+
+        yield 'a day later' => [
+            ['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00'],
+            ['2027-03-07T18:00', '2027-03-07T23:00'],
+            ['2027-03-07T22:00', '2027-03-08T02:00'],
+        ];
+        yield 'a day earlier' => [
+            ['startsAt' => '2027-03-05T16:00'],
+            ['2027-03-05T18:00', '2027-03-05T23:00'],
+            ['2027-03-05T22:00', '2027-03-06T02:00'],
+        ];
+        yield 'a later time on the same day' => [['startsAt' => '2027-03-06T20:00'], ...$stayed];
+        yield 'the end alone' => [['endsAt' => '2027-03-09T02:00'], ...$stayed];
+        yield 'the time zone alone' => [['timeZone' => 'Pacific/Auckland'], ...$stayed];
+        yield 'the venue and the reply-by day' => [['venue' => ['name' => 'Eko Hotel'], 'replyBy' => '2027-03-04'], ...$stayed];
+    }
+
+    #[Test]
+    public function aStartMovedAcrossMidnightMovesTheShiftsOneDay(): void
+    {
+        $this->editEvent(['startsAt' => '2027-03-06T23:30']);
+        $this->editEvent(['startsAt' => '2027-03-07T09:00', 'endsAt' => '2027-03-07T20:00']);
+
+        self::assertSame(['2027-03-07T18:00', '2027-03-07T23:00'], $this->timesOf($this->evening));
+    }
+
+    #[Test]
+    public function aShiftAlreadyStartedStaysAndOneItNowOverlapsIsSavedWithItsPeople(): void
+    {
+        $started = $this->newShift('2027-03-01T09:00', '2027-03-01T23:00');
+        $next = $this->newShift('2027-03-02T18:00', '2027-03-02T23:00');
+        $this->assign($started, $this->ada);
+        $this->assign($next, $this->ada);
+
+        $this->editEvent(['startsAt' => '2027-03-05T16:00']);
+
+        self::assertSame(['2027-03-01T09:00', '2027-03-01T23:00'], $this->timesOf($started));
+        self::assertSame(['2027-03-01T18:00', '2027-03-01T23:00'], $this->timesOf($next));
+        self::assertSame([$this->ada], Vec\map($this->shiftEntity($next)->getPeople(), static fn (StaffMember $one): string => $one->getId()->toRfc4122()));
+    }
+
+    #[Test]
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function aShiftNotYetStartedThatSomeoneClockedInOnStays(bool $corrected): void
+    {
+        $soon = $this->newShift('2027-03-01T11:30', '2027-03-01T15:00');
+        $this->assign($soon, $this->ada);
+        $shift = $this->shiftEntity($soon);
+        $attendance = new ShiftAttendance($shift, $shift->getPeople()[0]);
+        $at = new DateTimeImmutable('2027-03-01T10:00:00Z');
+
+        if ($corrected) {
+            $attendance->correctIn($at, 'Ifeoma Nduka', $at);
+        } else {
+            $attendance->clockIn($at);
+        }
+
+        self::em()->persist($attendance);
+        self::em()->flush();
+
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        self::assertSame(['2027-03-01T11:30', '2027-03-01T15:00'], $this->timesOf($soon));
+        self::assertSame(['2027-03-07T18:00', '2027-03-07T23:00'], $this->timesOf($this->evening));
+    }
+
+    #[Test]
+    public function aShiftMovedPastTheEventsNewEndKeepsItsPeopleCountAndJob(): void
+    {
+        $late = $this->newShift('2027-03-09T12:00', '2027-03-09T18:00');
+        $this->assign($late, $this->ada);
+
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        $shift = $this->shiftEntity($late);
+        self::assertSame(['2027-03-10T12:00', '2027-03-10T18:00'], $this->timesOf($late));
+        self::assertSame(
+            [[$this->ada], 2, $this->jobId],
+            [Vec\map($shift->getPeople(), static fn (StaffMember $one): string => $one->getId()->toRfc4122()), $shift->getNeeded(), $shift->getJob()->getId()->toRfc4122()],
+        );
+    }
+
+    #[Test]
+    public function aMovedShiftIsToldInOneMessageWithTheDateAsTheRosterShowsItWaiting(): void
+    {
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        self::assertSame([['date', null, false], ['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
+        self::assertSame('changed', $this->row($this->ada)['briefing']);
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([['Your shift has changed · Owambe', [
+            'The date is now Sunday 7 Mar (was Saturday 6 Mar).',
+            'Your start time is now Sunday 18:00 (was Saturday 18:00).',
+            'Your end time is now Sunday 23:00 (was Saturday 23:00).',
+        ], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
+        self::assertSame('sent', $this->row($this->ada)['briefing']);
+    }
+
+    #[Test]
+    public function aMovedShiftOverMidnightKeepsTheWeekdayOnItsOldEnd(): void
+    {
+        $this->editTimes($this->evening, '2027-03-06T22:00', '2027-03-07T02:00');
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        self::assertSame([['date', null, false], ['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([
+            'The date is now Sunday 7 Mar (was Saturday 6 Mar).',
+            'Your start time is now Sunday 22:00 (was Saturday 22:00).',
+            'Your end time is now Monday 02:00 (was Sunday 02:00).',
+        ], $this->pushes()[0][1]);
+    }
+
+    #[Test]
+    public function aShiftMovedToAnotherDayWithEditTimesNamesItsNewDay(): void
+    {
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-07T18:00', '2027-03-07T23:00');
+
+        self::assertSame([['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(
+            ['Your start time is now Sunday 18:00 (was Saturday 18:00).', 'Your end time is now Sunday 23:00 (was Saturday 23:00).'],
+            $this->pushes()[0][1],
+        );
+    }
+
+    #[Test]
+    public function aMoveOfSevenDaysGivesEachWeekdayItsDate(): void
+    {
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-13T16:00', 'endsAt' => '2027-03-14T02:00']);
+
+        self::assertSame([['date', null, false], ['start_time', null, true], ['end_time', null, true]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([
+            'The date is now Saturday 13 Mar (was Saturday 6 Mar).',
+            'Your start time is now Saturday 13 Mar, 18:00 (was Saturday 6 Mar, 18:00).',
+            'Your end time is now Saturday 13 Mar, 23:00 (was Saturday 6 Mar, 23:00).',
+        ], $this->pushes()[0][1]);
+    }
+
+    #[Test]
+    public function theReminderFollowsTheMovedShift(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        self::assertSame('2027-03-06', Type\shape(['next' => Type\shape(['date' => Type\string()], true)], true)->coerce($this->as($this->owner, 'GET', $this->path('reminder')))['next']['date']);
+
+        $this->at('2027-03-05T09:00:00Z');
+        self::assertSame([], $this->reminders());
+
+        $this->at('2027-03-06T09:00:00Z');
+        self::assertCount(1, $this->reminders());
+    }
+
+    /** @return list<array{string, ?string, bool}> each Waiting line's kind, the day a time need not name, and whether its weekdays are dated */
+    private function waitingLines(string $staffId): array
+    {
+        $notice = Type\shape(['changes' => Type\vec(Type\shape(['kind' => Type\string(), 'on' => Type\nullable(Type\string()), 'dated' => Type\bool()], true))], true)->coerce($this->row($staffId)['notice']);
+
+        return Vec\map($notice['changes'], static fn (array $change): array => [$change['kind'], $change['on'], $change['dated']]);
+    }
+
+    private function shiftEntity(string $shiftId): StaffShift
+    {
+        self::em()->clear();
+
+        return self::em()->find(StaffShift::class, $shiftId) ?? self::fail('no shift ' . $shiftId);
+    }
+
+    /** @return array{string, string} */
+    private function timesOf(string $shiftId): array
+    {
+        $shift = $this->shiftEntity($shiftId);
+
+        return [$shift->getStartsAt()->format('Y-m-d\TH:i'), $shift->getEndsAt()->format('Y-m-d\TH:i')];
     }
 
     private function live(): void

@@ -47,8 +47,10 @@ export interface StaffChange {
   end: string | null;
   oldStart: string | null;
   oldEnd: string | null;
-  /** The start of the shift a start or end time line belongs to, which a time on another day names. */
+  /** On a start or end time line, a time on another day than this one names its day; every time does when null. */
   on: string | null;
+  /** The shift moved a week or more, so each weekday on the line carries its date. */
+  dated: boolean;
   new: string | null;
   old: string | null;
   count: number;
@@ -226,6 +228,7 @@ function asChange(raw: unknown): StaffChange | null {
   if (!isRecord(raw)) return null;
   const { kind, start, end, oldStart, oldEnd, count } = raw;
   const on = raw.on ?? null;
+  const dated = raw.dated ?? false;
 
   return CHANGE_KINDS.includes(kind as StaffChangeKind) &&
     text(start) &&
@@ -235,7 +238,8 @@ function asChange(raw: unknown): StaffChange | null {
     text(raw.new) &&
     text(raw.old) &&
     text(on) &&
-    typeof count === 'number'
+    typeof count === 'number' &&
+    typeof dated === 'boolean'
     ? {
         kind: kind as StaffChangeKind,
         start,
@@ -246,6 +250,7 @@ function asChange(raw: unknown): StaffChange | null {
         old: raw.old,
         count,
         on,
+        dated,
       }
     : null;
 }
