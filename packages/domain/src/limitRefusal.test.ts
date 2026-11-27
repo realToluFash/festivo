@@ -71,6 +71,28 @@ describe('limitRefusalOf (sc-3930)', () => {
     });
   });
 
+  it('keeps an approval refused for a seat waiting, titled as an invitation sent, back by Not now', () => {
+    const refusal = limitRefusalOf(
+      refused('plan_limit_reached', { ...PLAN, limit: 'team_seats', used: 3, allowed: 3 }),
+      'seatApprove',
+      t,
+      'en-GB',
+      'Kemi',
+    );
+
+    expect(refusal).toEqual({
+      title: 'limitReached.title.seats {"count":3}',
+      line: null,
+      figure: 'limitReached.figure.seats {"count":3,"allowed":3,"plan":"Free"}',
+      safe: 'limitReached.safe.request {"name":"Kemi"}',
+      goLive: null,
+      ways: ['withdraw', 'removeMember'],
+      untick: null,
+      planLimit: true,
+      back: 'limitReached.back.notNow',
+    });
+  });
+
   it('gives the ceiling Remove a guest alone, and no plan line', () => {
     const refusal = limitRefusalOf(
       refused('event_capacity_reached', { ceiling: 10000, onEvent: 10000, adding: 1 }),

@@ -60,6 +60,13 @@ final class ScriptedHardLimits implements HardLimitsInterface
         }
     }
 
+    public function requireSeatToApprove(Organisation $organisation): void
+    {
+        if ($this->consult(__FUNCTION__)) {
+            $this->hardLimits->requireSeatToApprove($organisation);
+        }
+    }
+
     public function requireSeatToAccept(Organisation $organisation): void
     {
         if ($this->consult(__FUNCTION__)) {

@@ -7,12 +7,14 @@ namespace App\Tests\Functional;
 use App\Domain\Billing\HardLimits;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
+use App\Domain\Organisation\RequestLink\LinkRequester;
 use App\Domain\Service\ServiceSteps;
 use App\Domain\Service\ServingTables;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\Invitation;
+use App\Entity\Membership;
 use App\Entity\MenuCourse;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -23,6 +25,7 @@ use App\Entity\SeatingTable;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\InvitationStatus;
+use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SectionColour;
 use App\Enum\SeededRole;
@@ -239,6 +242,34 @@ final class HardLimitsTest extends ApiTestCase
         self::assertSame(1, $limits->asked('requireSeatToAccept'));
     }
 
+    #[Test]
+    public function approvingAJoinRequestIsRefusedOnceTheSeatsAreFullAndTheRequestWaitsAsItWas(): void
+    {
+        $kemi = self::service(UserRegistrar::class)->register('kemi@ire.events', 'Kemi Lawal', self::PASSWORD)->user;
+        self::onboard($kemi, withOrganisation: false);
+        self::service(LinkRequester::class)->ask($kemi, $this->organisation, null);
+        self::em()->flush();
+        $this->invite('ada@example.com');
+        $this->invite('ben@example.com');
+        self::assertSame(201, $this->statusCode(), 'a waiting request holds no seat');
+        $request = self::em()->getRepository(Membership::class)->findOneBy(['user' => $kemi, 'organisation' => $this->organisation]) ?? self::fail('no request');
+        [$role, $lapses] = [$request->getRole()->getId(), $request->getRequestExpiresAt()];
+        self::getMailerMessages();
+
+        $this->as('POST', Str\format('/api/orgs/%s/members/%s/approve', $this->organisation->getId()->toRfc4122(), $request->getId()->toRfc4122()), ['roleId' => $this->role(SeededRole::Member)->getId()->toRfc4122()]);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(ErrorCode::PlanLimitReached->type(), $this->last()['type'] ?? null);
+        self::assertSame(['limit' => 'team_seats', 'plan' => 'free', 'used' => 3, 'allowed' => 3], $this->members('limit', 'plan', 'used', 'allowed'));
+        self::assertSame('Not approved. Your Free plan allows 3 team seats.', $this->last()['detail'] ?? null);
+        self::em()->clear();
+        $kept = self::em()->find(Membership::class, $request->getId()) ?? self::fail('the request went');
+        self::assertSame(MembershipStatus::PendingApproval, $kept->getStatus());
+        self::assertTrue($role->equals($kept->getRole()->getId()));
+        self::assertEquals($lapses, $kept->getRequestExpiresAt());
+        self::assertEmailCount(0);
+    }
+
     private function event(bool $live = false): string
     {
         $body = $this->as('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', ['name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN']);
@@ -306,8 +337,13 @@ final class HardLimitsTest extends ApiTestCase
 
     private function invite(string $email): void
     {
-        $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Member]));
+        $role = $this->role(SeededRole::Member);
         $this->as('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/members/invite', ['email' => $email, 'roleId' => $role->getId()->toRfc4122()]);
+    }
+
+    private function role(SeededRole $as): Role
+    {
+        return Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $as]));
     }
 
     /** @return array<string, mixed> */

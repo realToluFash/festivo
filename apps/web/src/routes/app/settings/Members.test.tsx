@@ -338,6 +338,43 @@ describe('Members at a desk (sc-34200)', () => {
     expect(page().getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
   });
 
+  it('refuses an approval over the plan’s team seats and keeps the request waiting (sc-3930)', async () => {
+    signedIn();
+    const sent = answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/approve': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'team_seats',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: /^Ada Okeke/ }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Ada’s request' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Approve' }));
+
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'Your plan allows 3 team seats' }),
+    );
+    expect(refused.getByText('3 of 3 team seats · Free plan')).toBeDefined();
+    expect(refused.getByText('Ada’s request keeps waiting. Nothing is lost.')).toBeDefined();
+    const ways = refused.getAllByRole('link').map((one) => one.textContent);
+    expect(ways).toEqual([
+      'Withdraw an invitationAn invitation not yet accepted holds a seat.',
+      'Remove a memberA member removed frees their seat.',
+    ]);
+    expect(refused.queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(refused.queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(refused.getByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Your plan allows 3 team seats' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Ada’s request' })).toBeDefined();
+    expect(sent.filter((one) => one.line.endsWith('/turn-down'))).toEqual([]);
+  });
+
   it('turns a request down only once it is confirmed', async () => {
     signedIn();
     const sent = answering({

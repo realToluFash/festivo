@@ -89,19 +89,12 @@ final readonly class HardLimits implements HardLimitsInterface
 
     public function requireSeatToInvite(Organisation $organisation): void
     {
-        [$plan, $allowance] = $this->allowance($organisation, CatalogueLimit::TeamSeats);
+        $this->requireSeatToAdd($organisation, 'members.plan_limit_seats');
+    }
 
-        if ($allowance->isUnlimited()) {
-            return;
-        }
-
-        $used = $this->seatsTaken($organisation);
-
-        if ($allowance->covers($used + 1)) {
-            return;
-        }
-
-        throw $this->reached(CatalogueLimit::TeamSeats, $plan, $used, $allowance, 'members.plan_limit_seats');
+    public function requireSeatToApprove(Organisation $organisation): void
+    {
+        $this->requireSeatToAdd($organisation, 'members.approve_plan_limit_seats');
     }
 
     public function requireSeatToAccept(Organisation $organisation): void
@@ -143,6 +136,23 @@ final readonly class HardLimits implements HardLimitsInterface
         }
 
         throw $this->reached(CatalogueLimit::GuestsPerEvent, $plan, $people, $allowance, $overPlan, ['adding' => $adding]);
+    }
+
+    private function requireSeatToAdd(Organisation $organisation, string $key): void
+    {
+        [$plan, $allowance] = $this->allowance($organisation, CatalogueLimit::TeamSeats);
+
+        if ($allowance->isUnlimited()) {
+            return;
+        }
+
+        $used = $this->seatsTaken($organisation);
+
+        if ($allowance->covers($used + 1)) {
+            return;
+        }
+
+        throw $this->reached(CatalogueLimit::TeamSeats, $plan, $used, $allowance, $key);
     }
 
     /** Taken under a lock on the organisation, held to the end of the caller's transaction. */

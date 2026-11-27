@@ -21,5 +21,8 @@ interface HardLimitsInterface
     /** Refused 403 `plan_limit_reached` when active members and pending invitations fill the plan's team seats. */
     public function requireSeatToInvite(Organisation $organisation): void;
 
+    /** As an invitation sent: a request still awaiting approval holds no seat until it is approved. */
+    public function requireSeatToApprove(Organisation $organisation): void;
+
     public function requireSeatToAccept(Organisation $organisation): void;
 }

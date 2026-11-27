@@ -263,6 +263,7 @@ export function RequestDialog({
   const [ask, setAsk] = useState<'turnDown' | 'discard' | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
@@ -287,6 +288,10 @@ export function RequestDialog({
       }
     } catch (error) {
       setBusy(false);
+      const limit = approve
+        ? limitRefusalOf(error, 'seatApprove', t, dateLocale(), firstName(name))
+        : null;
+      if (limit != null) return setLimited(limit);
       setFailed(
         error instanceof ApiError
           ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
@@ -373,6 +378,9 @@ export function RequestDialog({
           onKeep={() => setAsk(null)}
           onGo={onClose}
         />
+      )}
+      {limited != null && (
+        <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} onWay={onClose} />
       )}
     </>
   );
