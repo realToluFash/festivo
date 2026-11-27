@@ -37,6 +37,8 @@ export interface Problem {
   /** On `event_capacity_reached`: the people per event no plan lifts, and how many are on the event. */
   ceiling?: number;
   onEvent?: number;
+  /** On `plan_limit_reached` for live events: among the events the limit counts, the one whose end comes first. */
+  event?: { id: string; name: string; endsAt: string; timeZone: string } | null;
   /** On `two_factor_required` straight after a Google or Apple sign-in: the address that sign-in vouched for. */
   providerEmail?: string;
   /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
