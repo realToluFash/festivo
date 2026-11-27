@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { tokens } from '../../theme/tokens.ts';
-import { type EventFields, keptInView, offsetAboveSend } from './KeysUpModel.ts';
+import { tokens } from '../theme/tokens.ts';
+import { type EventFields, keptInView, offsetAboveSend } from './fieldsAboveSend.ts';
 
 const MARGIN = tokens.spaceLg;
 // The tile and the heading take 0 to 180, the refusal 196 to 240, then the two fields spaceLg apart, as `styles.fields` gaps them.

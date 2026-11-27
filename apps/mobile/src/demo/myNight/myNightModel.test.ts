@@ -11,6 +11,7 @@ import {
   nightOf,
   rowLineOf,
   signedInUntil,
+  whosHereOf,
 } from './myNightModel.ts';
 
 describe('a staff member’s night (sc-3915)', () => {
@@ -86,5 +87,19 @@ describe('a staff member’s night (sc-3915)', () => {
     expect(rowLineOf(nightOf('app_event'))).toBe('Section B · 17:00 to 01:00');
     expect(rowLineOf({ ...nightOf('app_event'), station: null })).toBe('Waiter · 17:00 to 01:00');
     expect(nightOf('app_event').inApp).toBe(true);
+  });
+
+  it('offers Who’s here to the floor lead and a station lead, in the app only, after Check-in and Open {station} (sc-3918)', () => {
+    expect(whosHereOf(nightOf('floor_lead'))).toEqual({
+      label: 'Who’s here',
+      href: '/demo/whos-here?state=populated',
+      primary: true,
+    });
+    expect(whosHereOf(nightOf('station_lead'))?.href).toBe('/demo/whos-here?state=station_lead');
+    expect(whosHereOf(nightOf('station_lead_pass'))?.primary).toBe(false);
+    expect(whosHereOf(nightOf('floor_lead_browser'))).toBeNull();
+    expect(whosHereOf(nightOf('night'))).toBeNull();
+    expect(whosHereOf(nightOf('app'))).toBeNull();
+    expect(headingOf(nightOf('floor_lead'))).toBe('Floor lead');
   });
 });

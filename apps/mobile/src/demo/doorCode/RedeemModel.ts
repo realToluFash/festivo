@@ -3,7 +3,7 @@ import type { Provider } from '@soirely/api-client';
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
 import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
-import type { EventField } from './KeysUpModel.ts';
+import type { EventField } from '../../kit/fieldsAboveSend.ts';
 
 export const REDEEM_STATES = [
   'welcome',
