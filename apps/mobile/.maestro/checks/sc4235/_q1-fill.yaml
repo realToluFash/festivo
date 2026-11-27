@@ -1,0 +1,30 @@
+# sc-4235 subflow (qa1): on a door code's event step, close the keyboard, choose Nigeria, then NUMBER and NAME, Send code. Never hideKeyboard here: with no keyboard up it presses Back on Android.
+appId: host.exp.Exponent
+---
+- runFlow: _q1-dismiss.yaml
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: 'Nig'
+- tapOn:
+    id: 'redeem.event.country.NG'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- runFlow: _q1-dismiss.yaml
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: ${NAME}
+- tapOn:
+    id: 'redeem.event.send'

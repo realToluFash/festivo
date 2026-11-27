@@ -1,0 +1,21 @@
+# sc-4235 (qa1): on a signed-in event screen, scroll to and tap the Sign out with id OUT, then screenshot where it lands as SHOT.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: ${OUT}
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: ${SHOT}-before
+- tapOn:
+    id: ${OUT}
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-tapped
+- runFlow:
+    when:
+      visible:
+        id: 'redeem.enter.code'
+    commands:
+      - hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

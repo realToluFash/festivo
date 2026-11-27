@@ -1,0 +1,9 @@
+# sc-4235 subflow (qa1): on a door code's event step, fill NAME and NUMBER (Nigeria), then type the SMS code for DIGITS.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: _q1-fill.yaml
+    env: { NAME: '${NAME}', NUMBER: '${NUMBER}' }
+- runFlow:
+    file: code.yaml
+    env: { DIGITS: '${DIGITS}' }

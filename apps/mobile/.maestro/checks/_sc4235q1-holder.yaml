@@ -1,0 +1,50 @@
+# sc-4235 (qa1): a full code's holder (08034440721, already in at CAP) signs back in after Continue and lands on You're in; then a verified alternative number (08034440702) at CODE comes back to the event step with everything kept. Pass CODE, CAP.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/d/${CAP}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/_q1-signin.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721', DIGITS: '4440721' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 01-holder-back-in
+- runFlow:
+    file: sc4235/_q1-out.yaml
+    env: { SHOT: '02-signed-out' }
+- tapOn:
+    id: 'redeem.enter.code'
+- inputText: ${CODE}
+- hideKeyboard
+- tapOn:
+    id: 'redeem.enter.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 20000
+- runFlow:
+    file: sc4235/_q1-fill.yaml
+    env: { NAME: 'Rita Alt', NUMBER: '08034440702' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.resend'
+    timeout: 20000
+- runScript:
+    file: ../scripts/latest-sms-code.js
+    env:
+      DIGITS: '4440702'
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.number'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 03-alternative-keyboard
+- runFlow: sc4235/_q1-dismiss.yaml
+- takeScreenshot: 04-alternative

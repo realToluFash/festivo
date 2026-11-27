@@ -1,0 +1,35 @@
+# sc-4235 (qa1): a password account that joins an event by door code, then signs out from the event's More: lands on Welcome, not on the door code. Pass CODE.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.joinAs'
+    timeout: 30000
+- takeScreenshot: pw-join-as
+- tapOn:
+    id: 'redeem.joinAs'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- tapOn:
+    id: 'redeem.in.open'
+- extendedWaitUntil:
+    visible:
+      id: 'event.nav.more'
+    timeout: 30000
+- tapOn:
+    id: 'event.nav.more'
+- scrollUntilVisible:
+    element:
+      id: 'event.nav.more.signOut'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: pw-code-more
+- tapOn:
+    id: 'event.nav.more.signOut'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'redeem.enter.code'
+- takeScreenshot: pw-code-more-signed-out
