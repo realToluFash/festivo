@@ -19,6 +19,7 @@ appId: host.exp.Exponent
 - takeScreenshot: zw-picked
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: d-step3
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
@@ -52,6 +53,7 @@ appId: host.exp.Exponent
 - assertVisible: { text: '.*ZWG.*' }
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: d-step3-again
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd

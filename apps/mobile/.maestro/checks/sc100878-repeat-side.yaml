@@ -1,7 +1,9 @@
-# sc-100878 (tablet on its side): Zimbabwe stays in view and picked on Continue from step 1, three times running and after step 3 in between; then Create.
+# sc-100878 (tablet on its side, SIDE: LANDSCAPE_LEFT unless the tablet's natural orientation is landscape, then PORTRAIT): Zimbabwe stays in view and picked on Continue from step 1, three times running and after step 3 in between; then Create.
 appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
 ---
-- setOrientation: UPSIDE_DOWN # rotation 2: on its side on a tablet whose natural orientation is landscape (Soirely_QA2_Tablet)
+- setOrientation: ${SIDE}
 - waitForAnimationToEnd
 - runFlow: ../open-create-organisation.yaml
 - tapOn: { id: 'createWalk.name' }
@@ -15,6 +17,7 @@ appId: host.exp.Exponent
 - takeScreenshot: zw-picked
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: side-step3
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
@@ -48,6 +51,7 @@ appId: host.exp.Exponent
 - assertVisible: { text: '.*ZWG.*' }
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: side-step3-again
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
@@ -65,6 +69,7 @@ appId: host.exp.Exponent
 - assertVisible: { text: '.*ZWG.*' }
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: side-ready
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }

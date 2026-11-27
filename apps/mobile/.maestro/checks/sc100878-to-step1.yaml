@@ -10,9 +10,11 @@ appId: host.exp.Exponent
 - inputText: 'Zimbab'
 - tapOn: { id: 'createWalk.country.ZW' }
 - tapOn: { id: 'createWalk.primary' }
-- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whatTitle}}', timeout: 10000 }
+- assertVisible: { id: 'createWalk.name' }
 - takeScreenshot: r-step1

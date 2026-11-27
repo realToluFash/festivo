@@ -7,9 +7,14 @@ appId: host.exp.Exponent
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
 - waitForAnimationToEnd
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
 - takeScreenshot: f-fresh
 - tapOn: { id: 'createWalk.back' }
 - waitForAnimationToEnd
 - tapOn: { id: 'createWalk.primary' }
 - waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
 - takeScreenshot: f-forward-none
