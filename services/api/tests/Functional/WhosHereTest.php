@@ -250,6 +250,7 @@ final class WhosHereTest extends ApiTestCase
         $early = $this->person('Femi Ade', 'Door', '0803 111 0005');
         $this->onShift([$early], 'Door', '2027-03-06T17:00', '2027-03-06T18:00');
         $femi = $this->signedIn($early, '+2348031110005');
+        $dayo = $this->signedIn($this->dayo, '+2348031110001');
         $this->station($early, 'Door');
         $this->as($this->owner, 'PUT', $this->staff('stations/' . $this->places['Door'] . '/lead'), ['lead' => $early]);
         $this->as($femi, 'GET', $this->path());
@@ -258,6 +259,9 @@ final class WhosHereTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2027-03-07T01:30:00Z'));
         $this->as($femi, 'GET', $this->path());
         self::assertSame(404, $this->statusCode(), 'his link closed two hours after his shift, before the event ended: ' . Json\encode($this->last()));
+
+        $this->as($dayo, 'GET', $this->path());
+        self::assertSame([409, 'event_concluded'], [$this->statusCode(), $this->errorCode()], 'Dayo\'s link ran to the scheduled end, so the event\'s end closed it');
     }
 
     #[Test]
