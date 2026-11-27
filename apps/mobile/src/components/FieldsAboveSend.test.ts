@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { barFits } from '../kit/keyboard.ts';
+import { barFits, dockInline } from '../kit/keyboard.ts';
 
 const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
 const redeem = read('src', 'components', 'Redeem.tsx');
@@ -45,5 +45,22 @@ describe('the event step keeps Your name and the number row above Send code with
     expect(redeem).toMatch(/autoFocus=\{step\.typed == null\}/u);
     expect(redeem).toMatch(/\{!signedIn && \(\s*<View ref=\{nameBlock\}>/u);
     expect(redeem).toMatch(/\{!signedIn && \(\s*<View ref=\{numberBlock\}>/u);
+  });
+});
+
+describe('the dock gate reads the field group when the focused input measures 0 (sc-97734)', () => {
+  const step = read('src', 'steps', 'StepScreen.tsx');
+
+  it('reads the group, not the input alone', () => {
+    expect(step).toContain('dockInline({');
+    expect(step).not.toContain('sizes.field > 0');
+  });
+
+  it('undocks with the input measuring 0 and the group at the SE largest-text numbers QA logged', () => {
+    const sizes = { shown: 190.5, foot: 179.5, field: 0, group: 206 };
+    const gate = { keysUp: true, hasFoot: true, inline: false, margin: 12 };
+    expect(dockInline({ ...gate, sizes })).toBe(true);
+    expect(dockInline({ ...gate, sizes: { ...sizes, group: 0 } })).toBe(false);
+    expect(dockInline({ ...gate, keysUp: false, sizes })).toBe(false);
   });
 });

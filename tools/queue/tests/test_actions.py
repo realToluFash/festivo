@@ -1714,6 +1714,23 @@ class Merging(Base):
             self.assertIn(f"stays {state}", said)
             self.assertEqual(len(self.fake.comments), told)
 
+    def test_ops_merges_its_own_pr_on_a_developers_story_and_leaves_the_story(self):
+        for state in ("In Progress", "Failed QA", "Passed Code Review"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, dict(pr("pass"), branch="ops/sc-1-two-checks"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge") as merge, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                with self.assertRaisesRegex(actions.Refused, "PR #9 is ops's to merge"):
+                    actions.merge(self.as_("dev2"), args(pr=9, text=None))
+                said = actions.merge(self.as_("ops"), args(pr=9, text=None))
+            merge.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}", said)
+            self.assertNotIn("linguist", said)
+            self.assertEqual(len(self.fake.comments), told)
+
     def test_a_follow_up_pr_still_needs_a_pass_at_the_head(self):
         self.fake.add(1, "Ready For QA", ["dev2"])
         store.put_pr(self.db, pr("pass", at=OLD))
