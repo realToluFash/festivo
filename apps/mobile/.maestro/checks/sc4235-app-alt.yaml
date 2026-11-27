@@ -27,6 +27,5 @@ appId: host.exp.Exponent
     visible:
       id: 'redeem.event.number'
     timeout: 20000
-- hideKeyboard
 - waitForAnimationToEnd
 - takeScreenshot: 03-alternative
