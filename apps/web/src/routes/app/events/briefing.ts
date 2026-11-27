@@ -1,5 +1,10 @@
 import { STAFF_RULES_MAXIMUM, type StaffEntry } from '@soirely/api-client';
-import { briefingTally, fitRules as fitHouseRules, rulesCount } from '@soirely/domain';
+import {
+  briefingNote,
+  briefingTally,
+  fitRules as fitHouseRules,
+  rulesCount,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export function fitRules(before: string, typed: string): { text: string; cut: boolean } {
@@ -16,10 +21,9 @@ export function countLine(text: string, t: TFunction): { words: string; limit: b
 }
 
 export function noteOf(one: StaffEntry, t: TFunction): string | null {
-  if (one.shifts.length === 0) return t('briefing.noShift');
-  if (one.mobile == null) return t('briefing.noMobile');
+  const note = briefingNote(one);
 
-  return null;
+  return note == null ? null : t(`briefing.${note}`);
 }
 
 export const tallyOf = briefingTally;

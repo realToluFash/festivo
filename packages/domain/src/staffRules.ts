@@ -43,6 +43,17 @@ export function rulesCount(text: string, maximum: number): { n: number; limit: b
   return null;
 }
 
+/** Why a row has nothing to send, the order every client reads it in. */
+export function briefingNote(one: {
+  shifts: readonly unknown[];
+  mobile: unknown;
+}): 'noShift' | 'noMobile' | null {
+  if (one.shifts.length === 0) return 'noShift';
+  if (one.mobile == null) return 'noMobile';
+
+  return null;
+}
+
 export function briefingTally(
   people: readonly { briefing: StaffBriefingState }[],
 ): Record<StaffBriefingState, number> {

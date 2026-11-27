@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { briefingTally, codePoints, fitRules, rulesCount } from './staffRules.ts';
+import { briefingNote, briefingTally, codePoints, fitRules, rulesCount } from './staffRules.ts';
 
 const MAX = 2000;
 
@@ -56,5 +56,13 @@ describe('briefingTally', () => {
     }));
 
     expect(briefingTally(people)).toEqual({ read: 1, sent: 2, changed: 1, none: 1 });
+  });
+});
+
+describe('briefingNote', () => {
+  it('names no shift before no mobile, and nothing when both are there', () => {
+    expect(briefingNote({ shifts: [], mobile: null })).toBe('noShift');
+    expect(briefingNote({ shifts: [1], mobile: null })).toBe('noMobile');
+    expect(briefingNote({ shifts: [1], mobile: '+1' })).toBeNull();
   });
 });

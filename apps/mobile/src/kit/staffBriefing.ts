@@ -1,5 +1,10 @@
 import { STAFF_RULES_MAXIMUM, type StaffBriefing, type StaffEntry } from '@soirely/api-client';
-import { briefingTally, fitRules as fitHouseRules, rulesCount } from '@soirely/domain';
+import {
+  briefingNote,
+  briefingTally,
+  fitRules as fitHouseRules,
+  rulesCount,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export const BRIEFING_STATES: readonly StaffBriefing[] = ['read', 'sent', 'changed', 'none'];
@@ -26,10 +31,9 @@ export function countLine(text: string, t: TFunction): { words: string; limit: b
 
 /** Why there is nothing to send, where one applies: no shift first, then no number. */
 export function noteOf(one: StaffEntry, t: TFunction): string | null {
-  if (one.shifts.length === 0) return t('briefing.noShift');
-  if (one.mobile == null) return t('briefing.noMobile');
+  const note = briefingNote(one);
 
-  return null;
+  return note == null ? null : t(`briefing.${note}`);
 }
 
 export const tallyOf = briefingTally;
