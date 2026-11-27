@@ -33,7 +33,7 @@ appId: host.exp.Exponent
     when:
       platform: iOS
     commands:
-      - tapOn: '.*(Can check guests|Pode fazer|Puede registrar|Peut enregistrer).*'
+      - tapOn: '{{t:any:eventPeople.role.can_check_in}}'
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: keys-closed
