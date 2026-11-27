@@ -12,7 +12,7 @@ import { readPick } from '../kit/kitchenStation.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import {
   type StationRowRead,
-  afterFailedRead,
+  pollStationRow,
   readStationRow,
   stationRowShows,
 } from '../kit/stationWayIn.ts';
@@ -43,9 +43,9 @@ export interface ServiceRow {
   testID: string;
 }
 
-/** A service row under Your night on either Overview, on the event's day, for an account its read answers; null for anybody else, and Overview is as it was. The read is held in a ref so a new closure does not start the polling over. */
+/** A service row under Your night on either Overview, on the event's day, for an account its read answers; null for anybody else, and Overview is as it was. The read is held in a ref so a new closure does not start the polling over; a change of language does, so the line is reworded at once. */
 export function useServiceRowItem(event: OrganisationEvent, row: ServiceRow, ready: boolean) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
   const shows = ready && phase != null && stationRowShows(event, phase, now);
@@ -58,20 +58,9 @@ export function useServiceRowItem(event: OrganisationEvent, row: ServiceRow, rea
 
   useEffect(() => {
     if (!shows) return;
-    let current = true;
-    const load = () =>
-      reads.current().then(
-        (fresh) => current && setRead(fresh),
-        (error: unknown) => current && setRead((was) => afterFailedRead(was, error)),
-      );
-    void load();
-    const timer = setInterval(() => void load(), row.every);
 
-    return () => {
-      current = false;
-      clearInterval(timer);
-    };
-  }, [shows, event.id, row.every]);
+    return pollStationRow(() => reads.current(), row.every, setRead);
+  }, [shows, event.id, row.every, i18n.language]);
 
   if (!shows || read == null) return null;
 
