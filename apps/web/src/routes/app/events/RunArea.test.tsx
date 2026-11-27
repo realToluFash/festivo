@@ -8,6 +8,7 @@ import { routes } from '../../index.tsx';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
 const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
+const RUN_CSS = stylesheet(import.meta.dirname, 'runArea.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -158,6 +159,19 @@ describe('The run view (sc-1404)', () => {
     expect(
       screen.getByText('Next: Speeches at about 20:13. Next step: start it when it begins.'),
     ).toBeDefined();
+  });
+
+  it('scrolls a track’s table sideways in its own frame, never the page, when it is wider than the window (sc-98499)', async () => {
+    await onRun([DINNER, SPEECHES]);
+    const frame = screen.getByRole('table', { name: 'Main' }).parentElement;
+
+    expect(frame?.tabIndex).toBe(0);
+    expect(frame?.classList.contains('rv-frame')).toBe(true);
+    expect(frame?.getAttribute('role')).toBe('region');
+    expect(cssRule('.rv-frame', RUN_CSS)).toContain('overflow-x: auto;');
+    const ring = cssRule('.rv-frame:focus-visible', RUN_CSS);
+    expect(ring).toContain('outline: 2px solid var(--colorAccent);');
+    expect(ring).toContain('outline-offset: 2px;');
   });
 
   it('holds a fixed-time item at its planned time and says in words what would run into it', async () => {
