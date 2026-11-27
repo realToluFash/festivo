@@ -41,7 +41,7 @@ import {
   readPick,
   refusedAccess,
   rememberPick,
-  stationTime,
+  stationAsOf,
   stationView,
   topicMessage,
   undoCloses,
@@ -293,7 +293,7 @@ export function KitchenStationView({
 
   useEffect(() => (moved === '' ? undefined : readOut(moved)), [moved]);
 
-  const time = (at: Date | number | string) => stationTime(at, dateLocale());
+  const time = (at: Date | number | string) => stationAsOf(at, dateLocale());
 
   const pick = (id: string) => {
     setStation(id);
