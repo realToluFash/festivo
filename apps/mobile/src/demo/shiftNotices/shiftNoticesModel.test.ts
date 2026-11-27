@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { rowLine } from '../staffLink/StaffRosterModel.ts';
+
 import type { Person } from '../briefing/briefingModel.ts';
 import {
   type ShiftStart,
@@ -63,6 +65,18 @@ describe('the roster’s Briefing lines', () => {
       'Unassigned Saturday 18:00–Sunday 00:00',
       'No shift left, still on the staff',
     ]);
+  });
+
+  it('reads the earliest of several shifts with +1 more on the roster, as sc-3908 does', () => {
+    const row = (id: string) => {
+      const found = shiftStart('several_shifts').people.find((one) => one.id === id);
+      if (found == null) throw new Error(id);
+
+      return rowLine(found);
+    };
+
+    expect(row('dayo')).toBe('Floor lead · Floor · Saturday 15:00 to 23:00 +1 more');
+    expect(row('yusuf')).toMatch(/Not on a shift yet$/);
   });
 
   it('reminds nobody left with no shift', () => {

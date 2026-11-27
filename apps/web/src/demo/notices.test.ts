@@ -215,6 +215,13 @@ describe('several shifts', () => {
       .map((line) => line.words);
   };
 
+  it('reads the earliest shift with +1 more in the Shift column, as sc-3908 does', () => {
+    const grace = briefingStart('noticesSeveralShifts').people.find((p) => p.id === 'grace');
+
+    expect(grace?.shift).toBe('Saturday 15:00 to 23:00');
+    expect(grace?.more).toEqual(['Sunday 12:00 to 18:00']);
+  });
+
   it('reads a shift retimed, added, and the last taken off, one line per shift', () => {
     expect(lines('grace')).toEqual(['Shift Saturday 15:00–23:00 (was 17:00–23:00)']);
     expect(lines('tope')).toEqual(['Assigned Sunday 12:00–18:00']);

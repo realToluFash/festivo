@@ -20,7 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { NoticeLines, UnreachableMark, noticeWords } from '../shiftNotices/ShiftNotices.tsx';
 import { afterResend, stateWordOf } from '../shiftNotices/shiftNoticesModel.ts';
 import { StatusShape } from '../staffLink/StaffLinkScreen.tsx';
-import type { OnRoster } from '../staffLink/StaffRosterModel.ts';
+import { type OnRoster, shiftWithMore } from '../staffLink/StaffRosterModel.ts';
 import {
   type Brief,
   type BriefingStart,
@@ -663,7 +663,7 @@ function CopyRow({
       {brief && (
         <View style={styles.inline}>
           <Text size={14} style={[styles.secondary, styles.shrink]}>
-            {[one.job, one.shift, one.station].filter(Boolean).join(' · ')}
+            {[one.job, shiftWithMore(one), one.station].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.pill}>
             <Text size={12} weight="semibold" style={styles.secondary}>
