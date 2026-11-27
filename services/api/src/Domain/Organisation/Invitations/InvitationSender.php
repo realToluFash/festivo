@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Invitations;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -43,6 +44,7 @@ final readonly class InvitationSender
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -76,6 +78,7 @@ final readonly class InvitationSender
         $invitation = $this->invitationRepository->findPending($organisation, $address);
 
         if (null === $invitation) {
+            $this->hardLimits->requireSeatToInvite($organisation);
             $invitation = new Invitation($organisation, $address, $role, $by, TokenIssuer::hash($token), $expiresAt);
             $this->entityManager->persist($invitation);
         } else {

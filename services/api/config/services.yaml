@@ -284,7 +284,7 @@ services:
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
     App\Http\Access\Interfaces\PlanFeaturesInterface: '@App\Domain\Billing\PlanFeatures'
 
-    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+    App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Domain\Billing\HardLimits'
 
     App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\Pick\StoredMenuPicks'
     App\Domain\Menu\Interfaces\ServingStationsInterface: '@App\Domain\Staff\Station\ServingStations'
@@ -489,10 +489,11 @@ when@test:
             public: true
             autoconfigure: true
 
-        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
-        App\Tests\Double\ScriptedActiveEventsLimit:
+        # Off unless a test turns the plan's hard limits on, so a suite seeded on Free can make what it needs (sc-3930).
+        App\Tests\Double\ScriptedHardLimits:
             public: true
-        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+            arguments: ['@App\Domain\Billing\HardLimits']
+        App\Domain\Billing\Interfaces\HardLimitsInterface: '@App\Tests\Double\ScriptedHardLimits'
 
         # What guests picked (sc-3907).
         App\Domain\Menu\Pick\StoredMenuPicks:

@@ -190,7 +190,7 @@ export function MemberPage({
       await reload();
     } catch (error) {
       if (error instanceof ApiError && error.is('team_seats_in_use')) {
-        setRefusal({ kind: 'seats', limit: error.problem.limit ?? 0 });
+        setRefusal({ kind: 'seats', limit: Number(error.problem.limit ?? 0) });
       } else if (error instanceof ApiError && error.is('restore_needs_address')) {
         setRefusal({ kind: 'line', text: t('membersScreen.restoreNeedsAddress', named) });
       } else if (error instanceof ApiError && error.status === 409) {

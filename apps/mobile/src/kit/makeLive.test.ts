@@ -91,7 +91,17 @@ describe('refusalOf', () => {
   });
 
   it('reads a 403 plan_limit with its plan and limit', () => {
-    expect(refusalOf(problem('plan_limit', { status: 403, plan: 'Free', limit: 3 }))).toEqual({
+    expect(
+      refusalOf(
+        problem('plan_limit_reached', {
+          status: 403,
+          limit: 'live_events',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
+      ),
+    ).toEqual({
       kind: 'planLimit',
       plan: 'Free',
       limit: 3,
@@ -122,7 +132,7 @@ describe('endRefusalOf', () => {
     expect(endRefusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
-  it.each([new Error('offline'), problem('plan_limit', { status: 403 })])(
+  it.each([new Error('offline'), problem('plan_limit_reached', { status: 403 })])(
     'reads anything else as failed',
     (error) => {
       expect(endRefusalOf(error)).toEqual({ kind: 'failed' });
@@ -160,7 +170,15 @@ describe('Make live’s alert (sc-48601)', () => {
 
   it('opens makeLivePlanLimit on a 403 plan_limit, with its plan and limit and Close alone', () => {
     const told = toldOf(
-      refusalOf(problem('plan_limit', { status: 403, plan: 'Pro', limit: 7 })),
+      refusalOf(
+        problem('plan_limit_reached', {
+          status: 403,
+          limit: 'live_events',
+          plan: 'pro',
+          used: 7,
+          allowed: 7,
+        }),
+      ),
       t,
     );
 

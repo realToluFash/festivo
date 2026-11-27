@@ -130,7 +130,7 @@ export function PersonBody({
           error instanceof ApiError && error.is('restore_needs_address')
             ? t('membersScreen.restoreNeedsAddress', named)
             : error instanceof ApiError && error.is('team_seats_in_use')
-              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+              ? t('membersScreen.seatsInUse', { count: Number(error.problem.limit ?? 0) })
               : refusalTitle(error, t('membersScreen.actionFailed')),
       });
       return;

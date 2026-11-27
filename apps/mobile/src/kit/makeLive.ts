@@ -49,8 +49,14 @@ export type MakeLiveRefusal =
 export function refusalOf(error: unknown): MakeLiveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.is('event_concluded')) return { kind: 'concluded' };
-  if (error.is('plan_limit')) {
-    return { kind: 'planLimit', plan: error.problem.plan ?? '', limit: error.problem.limit ?? 0 };
+  if (error.is('plan_limit_reached')) {
+    const plan = error.problem.plan ?? '';
+
+    return {
+      kind: 'planLimit',
+      plan: plan.charAt(0).toUpperCase() + plan.slice(1),
+      limit: error.problem.allowed ?? 0,
+    };
   }
 
   return { kind: 'failed' };

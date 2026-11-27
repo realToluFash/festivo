@@ -39,6 +39,11 @@ interface Confirming {
   failed: boolean;
 }
 
+/** The plan's key as the refusal names it: `free` is the Free plan. */
+function planName(key: string): string {
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
 /** A refusal that ends the question: Close, and Change dates when the end has passed. */
 interface Told {
   kind: 'told';
@@ -139,12 +144,11 @@ export function useMakeLive({
 
     const problem = step.error instanceof ApiError ? step.error : null;
 
-    if (problem?.is('plan_limit') === true) {
+    if (problem?.is('plan_limit_reached') === true) {
       refused(
         t('eventLive.planLimit', {
-          plan: problem.problem.plan ?? '',
-          limit: problem.problem.limit ?? 0,
-          count: problem.problem.limit ?? 0,
+          plan: planName(problem.problem.plan ?? ''),
+          count: problem.problem.allowed ?? 0,
         }),
         t('eventLive.planLimitStays'),
       );

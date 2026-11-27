@@ -3114,7 +3114,12 @@ describe('Make live (sc-3584)', () => {
     signedIn();
     const { dialog } = await confirming({
       'POST /api/events/ev_1/make-live': () =>
-        problem(403, 'plan_limit', { plan: 'Free', limit: 3 }),
+        problem(403, 'plan_limit_reached', {
+          limit: 'live_events',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
     });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
@@ -5242,7 +5247,13 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     signedIn();
     const { sent, dialog, host } = await asking({
       [SAVE]: () => tagged({ event: event({ ...AHEAD, hosts: ['Funmi'] }) }, '"2"'),
-      [LIVE]: () => problem(403, 'plan_limit', { plan: 'Free', limit: 3 }),
+      [LIVE]: () =>
+        problem(403, 'plan_limit_reached', {
+          limit: 'live_events',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
     });
 
     fireEvent.change(host, { target: { value: 'Funmi' } });

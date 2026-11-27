@@ -54,7 +54,8 @@ enum ErrorCode: string
     case PayerCoversCosts = 'payer_covers_costs';
     case PaymentAlreadyPaid = 'payment_already_paid';
     case PaymentCancelled = 'payment_cancelled';
-    case PlanLimit = 'plan_limit';
+    case PlanLimitReached = 'plan_limit_reached';
+    case EventCapacityReached = 'event_capacity_reached';
     case PlanRequired = 'plan_required';
     case PlanSoldByContract = 'plan_sold_by_contract';
     case PlanNotPriced = 'plan_not_priced';
@@ -219,7 +220,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
-            self::PlanLimit, self::PlanRequired => 403,
+            self::PlanLimitReached, self::EventCapacityReached, self::PlanRequired => 403,
             self::PlanSoldByContract, self::PlanNotPriced, self::NothingPaidThroughProvider => 409,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::AudienceNameTaken, self::AudiencesFull, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffJobWorked, self::StaffShiftWorked, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,

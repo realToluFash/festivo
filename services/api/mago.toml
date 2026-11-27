@@ -344,9 +344,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_bi
 # through the guests' scope when asked (sc-3656). Search folds a member's name by the
 # shared rule (NameNormaliser) to match and rank it (sc-39534). A new event, and a
 # duplicate, starts with the suggested jobs through the staff scope (sc-3908).
+# Making one live, and a copy's guest list, are held to the plan's hard limits (sc-3930).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
+    "App\\Domain\\Billing\\Interfaces\\HardLimitsInterface",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -389,10 +391,12 @@ permit = [
 # and the items the hosts show to guests as the running order works them out (sc-3899),
 # and their table once the hosts share the tables (sc-4022), and the meal picks for
 # each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
-# event's members through messaging's Guest replies (sc-4331).
+# event's members through messaging's Guest replies (sc-4331). A guest added, or a
+# companion place given, is held to the plan's people per event and the ceiling (sc-3930).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
+    "App\\Domain\\Billing\\Interfaces\\HardLimitsInterface",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
