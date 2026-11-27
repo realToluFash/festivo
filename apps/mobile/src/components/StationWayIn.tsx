@@ -25,7 +25,7 @@ import { usePhaseOf } from './Events.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Row } from './Summary.tsx';
 
-/** The line follows a fire within this long. */
+/** Kitchen station's line follows a fire within this long. */
 const EVERY_MS = 30_000;
 
 /** A service row on Overview: Kitchen station (sc-95382) or Floor (sc-98893), the same row with its own words, read and destination. */
@@ -37,6 +37,8 @@ export interface ServiceRow {
   /** The line's time once it is stale, in the zone the row's story settled. */
   asOf: (at: string) => string;
   read: () => Promise<NonNullable<StationRowRead>>;
+  /** How often the line is read again. */
+  every: number;
   open: () => void;
   testID: string;
 }
@@ -63,13 +65,13 @@ export function useServiceRowItem(event: OrganisationEvent, row: ServiceRow, rea
         (error: unknown) => current && setRead((was) => afterFailedRead(was, error)),
       );
     void load();
-    const timer = setInterval(() => void load(), EVERY_MS);
+    const timer = setInterval(() => void load(), row.every);
 
     return () => {
       current = false;
       clearInterval(timer);
     };
-  }, [shows, event.id]);
+  }, [shows, event.id, row.every]);
 
   if (!shows || read == null) return null;
 
@@ -120,6 +122,7 @@ export function useStationRowItem(event: OrganisationEvent) {
           pathname: '/events/[id]/station',
           params: { id: event.id, from: 'overview' },
         }),
+      every: EVERY_MS,
       testID: 'events.station',
     },
     accountId != null,

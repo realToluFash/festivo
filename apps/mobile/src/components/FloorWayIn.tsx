@@ -9,6 +9,9 @@ import { stationTime } from '../kit/kitchenStation.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { useServiceRowItem } from './StationWayIn.tsx';
 
+/** A section change (Cover, Team) shows within 10 seconds, as Your night's do (sc-3915). */
+const EVERY_MS = 10_000;
+
 /** Floor (sc-98893): the row under Kitchen station, or Your night, on either Overview, for an account the floor read answers (sc-4002); its line from Floor's own read, its as of in the device's zone. */
 export function useFloorRowItem(event: OrganisationEvent) {
   const { t } = useTranslation();
@@ -28,6 +31,7 @@ export function useFloorRowItem(event: OrganisationEvent) {
           pathname: '/events/[id]/floor',
           params: { id: event.id, from: 'overview' },
         }),
+      every: EVERY_MS,
       testID: 'events.floor',
     },
     signedIn,
