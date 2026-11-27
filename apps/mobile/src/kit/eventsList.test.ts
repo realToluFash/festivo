@@ -42,6 +42,19 @@ describe('listEventOf', () => {
     expect(listEventOf(unnamed as unknown as ListedEvent).place).toBe('Calle 1');
   });
 
+  it("pairs the venue's name with its city only when the name is the place", () => {
+    const venue = (name: string | null, city: string | null) =>
+      listEventOf({
+        ...EVENT,
+        venue: { name, address: { formatted: 'Calle 1', city } },
+      } as unknown as ListedEvent).city;
+
+    expect(venue('Finca Pilar', 'Toledo')).toBe('Toledo');
+    expect(venue('Finca Pilar', null)).toBeNull();
+    expect(venue('Finca Pilar', '')).toBeNull();
+    expect(venue(null, 'Toledo')).toBeNull();
+  });
+
   it('carries the cover with the event type it is drawn for', () => {
     const cover = { url: 'https://example.test/c.jpg' };
     const listed = listEventOf({ ...EVENT, cover } as unknown as ListedEvent);

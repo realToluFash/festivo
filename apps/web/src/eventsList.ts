@@ -30,6 +30,8 @@ export interface ListEvent {
   status: EventState;
   concludedAt: string | null;
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }
@@ -49,15 +51,14 @@ export function listEventOf(event: ListedEvent): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: cityOf(event.venue),
     photo: event.cover,
   };
 }
 
-/** A venue as an event's strip names it (sc-98187): its name with its city when the address knows one, the name alone when typed by hand, and the address when it has no name. */
-export function venuePlace(venue: ListedEvent['venue'], t: TFunction): string | null {
-  if (venue?.name == null) return venue?.address?.formatted ?? null;
-  if (venue.address?.city == null) return venue.name;
-  return t('search.line.venueCity', { venue: venue.name, city: venue.address.city });
+function cityOf(venue: ListedEvent['venue']): string | null {
+  const city = venue?.address?.city;
+  return venue?.name == null || city == null || city === '' ? null : city;
 }
 
 /** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */
@@ -80,6 +81,13 @@ export function daysWords(
   }
 }
 
+function placeWords(event: Pick<ListEvent, 'place' | 'city'>, t: TFunction): string {
+  if (event.place == null) return t('eventPage.venueToBeConfirmed');
+  return event.city == null
+    ? event.place
+    : t('search.line.venueCity', { venue: event.place, city: event.city });
+}
+
 export function rowLine(
   event: Shown,
   now: Date,
@@ -89,7 +97,7 @@ export function rowLine(
 ): string {
   return t('events.daysAndPlace', {
     dates: daysWords(event, now, locale, t, keepDays),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place: placeWords(event, t),
   });
 }
 

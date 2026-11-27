@@ -45,6 +45,8 @@ export interface ListEvent {
   concludedAt: string | null;
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   /** Null while they are still being read: an event's page reads them apart from the event. */
   milestones: readonly Milestone[] | null;
@@ -62,11 +64,17 @@ export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
   return { ...event, phase, calledOff: calledOff(event), mesh: meshFor(event.id) };
 }
 
+function cityOf(venue: OrganisationEvent['venue']): string | null {
+  const city = venue?.address?.city;
+  return venue?.name == null || city == null || city === '' ? null : city;
+}
+
 /** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
 export function listEventOf(event: OrganisationEvent & Pick<ListEvent, 'milestones'>): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: cityOf(event.venue),
     photo: event.cover == null ? null : { cover: event.cover, type: event.type },
   };
 }
@@ -100,7 +108,12 @@ export function rowLine(
 ): string {
   return t('todayScreen.dayAndPlace', {
     day: daysWords(event, now, locale, list, t),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place:
+      event.place == null
+        ? t('eventPage.venueToBeConfirmed')
+        : event.city == null
+          ? event.place
+          : t('search.line.venueCity', { venue: event.place, city: event.city }),
   });
 }
 
