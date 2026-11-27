@@ -303,6 +303,9 @@ function actedOn(tap: KeptServiceTap): string[] {
   if (tap.kind === 'undo' && typeof tap.body.subject === 'string') {
     names.push(`plate:${tap.body.subject}`, `tray:${tap.body.subject}`);
   }
+  if (tap.kind === 'undo' && tap.expected.of != null) {
+    names.push(`item:${tap.expected.of.courseId}/${tap.expected.of.item}`);
+  }
 
   const tray = TRAY.exec(tap.path)?.[1];
 
@@ -311,6 +314,7 @@ function actedOn(tap: KeptServiceTap): string[] {
   return names;
 }
 
+/** A tray's name alone is not enough to rest on: a tray's step acts on every plate it saw, so a tap on one of them rests on the plate names, and only an undo names a tray by id. */
 function restsOn(tap: KeptServiceTap, touched: ReadonlySet<string>): boolean {
   if (tap.kind === 'undo') return actedOn(tap).some((name) => touched.has(name));
 

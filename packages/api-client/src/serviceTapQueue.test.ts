@@ -312,5 +312,67 @@ describe('sending kept taps', () => {
       expect(sentKeys).toEqual(['first', 'free']);
       expect(sent.refused).toHaveLength(1);
     });
+
+    const itemUndo = (key: string, name: string) =>
+      keptServiceTap(
+        'e1',
+        { kind: 'undo', subject: 'item-id-1' },
+        { item: 'ready', of: { courseId: 'c1', item: name } },
+        key,
+        AT,
+      );
+
+    it('drops an undo, named by the item id, of an item whose tap was refused', async () => {
+      const store = memoryServiceTapStore([
+        item('first', 'jollof'),
+        itemUndo('undo', 'jollof'),
+        item('other', 'chicken'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('first')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['undo']);
+      expect(sentKeys).toEqual(['first', 'other']);
+    });
+
+    it('drops a tap on an item whose kept undo was refused', async () => {
+      const store = memoryServiceTapStore([
+        itemUndo('undo', 'jollof'),
+        item('after', 'jollof'),
+        item('other', 'chicken'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('undo')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['after']);
+      expect(sentKeys).toEqual(['undo', 'other']);
+    });
+
+    it('drops the same after the kept taps were saved and read back', async () => {
+      const saved = JSON.stringify([
+        item('first', 'jollof'),
+        itemUndo('undo', 'jollof'),
+        onPlate('free', 'p7'),
+      ]);
+      const store = memoryServiceTapStore(asKeptServiceTaps(JSON.parse(saved)));
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('first')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['undo']);
+      expect(sentKeys).toEqual(['first', 'free']);
+      expect(await store.load()).toEqual([]);
+    });
   });
 });

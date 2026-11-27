@@ -569,7 +569,7 @@ describe('undo after a mark (sc-4015)', () => {
     expect(undoPlan(mark, [], [course('item-1')])).toEqual({
       kind: 'send',
       subject: 'item-1',
-      expected: { item: 'preparing' },
+      expected: { item: 'preparing', of: { courseId: mark.courseId, item: mark.key } },
     });
   });
 
@@ -577,7 +577,7 @@ describe('undo after a mark (sc-4015)', () => {
     expect(undoPlan({ ...mark, was: 'preparing', to: 'ready' }, [], [course('item-1')])).toEqual({
       kind: 'send',
       subject: 'item-1',
-      expected: { item: 'ready' },
+      expected: { item: 'ready', of: { courseId: mark.courseId, item: mark.key } },
     });
   });
 
@@ -595,7 +595,7 @@ describe('undo after a mark (sc-4015)', () => {
     expect(undoPlan(mark, [tap('other')], [course('item-1')])).toEqual({
       kind: 'send',
       subject: 'item-1',
-      expected: { item: 'preparing' },
+      expected: { item: 'preparing', of: { courseId: mark.courseId, item: mark.key } },
     });
   });
 
