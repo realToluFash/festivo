@@ -9,6 +9,7 @@ use App\Domain\Event\Model\ReplyDeadline;
 use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Domain\Messaging\Model\EventDetails;
 use App\Domain\Messaging\NotificationScheduler;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -18,11 +19,13 @@ use App\Enum\EventPhase;
 use App\Enum\EventStatus;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
+use App\Repository\StaffMemberRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
@@ -35,6 +38,9 @@ final readonly class EventEditor
 
     private const array SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
 
+    /** The recorded fields a shift notice tells the staff of (sc-4333): its day and its venue. Any other edit leaves their waiting notice's time alone. */
+    private const array TOLD_TO_STAFF = ['startsAt', 'timeZone', 'venueName'];
+
     public function __construct(
         private EventRules $eventRules,
         private EventAmounts $eventAmounts,
@@ -44,6 +50,8 @@ final readonly class EventEditor
         private TranslatorInterface $translator,
         private NotificationScheduler $notificationScheduler,
         private EventChangeRecorder $eventChangeRecorder,
+        private ShiftNotices $shiftNotices,
+        private StaffMemberRepository $staffMemberRepository,
     ) {
     }
 
@@ -136,6 +144,10 @@ final readonly class EventEditor
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
                 $this->eventChangeRecorder->edited($event, $by, $details, EventDetails::of($event));
                 $this->entityManager->flush();
+
+                if ([] !== Dict\select_keys($changes, self::TOLD_TO_STAFF)) {
+                    $this->shiftNotices->changed(...$this->staffMemberRepository->findOnEvent($event));
+                }
             }
 
             return $event;

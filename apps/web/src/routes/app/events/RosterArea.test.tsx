@@ -124,6 +124,8 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     briefing: 'none',
     briefingCopy: null,
     contactsErased: false,
+    notice: null,
+    inApp: false,
     ...more,
   };
 }
@@ -393,7 +395,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   });
 
   it('lets the card scroll the Roster, so the bar stays in view on a long roster (sc-3912)', () => {
-    expect(cssRule('.rs.desk-page', ROSTER_CSS)).toContain('overflow: visible;');
+    expect(cssRule('.shell-content .desk-page')).toContain('overflow: visible;');
     expect(cssRule('.rs-bar', ROSTER_CSS)).toContain('position: sticky;');
   });
 
@@ -1122,5 +1124,161 @@ describe('The briefing on the Roster (sc-3917)', () => {
     const bell = await screen.findByRole('button', { name: /^Notifications/ });
     expect(bell.closest('.ev-crumb-row')).not.toBeNull();
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+});
+
+describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
+  const SHIFT = {
+    id: 'sh_1',
+    startsAt: '2026-11-07T15:00:00+01:00',
+    endsAt: '2026-11-07T23:00:00+01:00',
+  };
+  const REMINDER = {
+    on: true,
+    time: '10:00',
+    next: { date: '2026-11-06', count: 2 },
+    notBriefed: 1,
+    unreachable: 1,
+    sent: null,
+    concluded: null,
+  };
+  const roster = (staff: unknown[]) => () =>
+    json({ staff, jobs: [], shifts: [], stations: NO_STATIONS, rules: null });
+
+  it('adds the last-message line to the removal question once their briefing went and a push reaches them', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': roster([
+        entry('st_1', 'Amaka Eze', { briefing: 'sent', inApp: true }),
+        entry('st_2', 'Bayo Ade', { briefing: 'sent', inApp: false }),
+      ]),
+    });
+    const line = 'gets one last message within 15 minutes to say so, and nothing after that.';
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Amaka Eze' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from the event' }));
+    expect(screen.getByText(`Amaka Eze ${line}`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep them' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Bayo Ade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from the event' }));
+    expect(screen.queryByText(`Bayo Ade ${line}`)).toBeNull();
+  });
+
+  it('shows a waiting change under Briefing, and Told once it went', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': roster([
+        entry('st_1', 'Amaka Eze', {
+          briefing: 'changed',
+          inApp: true,
+          shifts: [SHIFT],
+          notice: {
+            state: 'waiting',
+            goesAt: '2026-11-01T11:15:00+01:00',
+            changes: [
+              {
+                kind: 'start_time',
+                start: '2026-11-07T15:00:00+01:00',
+                end: null,
+                oldStart: '2026-11-07T17:00:00+01:00',
+                oldEnd: null,
+                new: null,
+                old: null,
+                count: 0,
+              },
+            ],
+          },
+        }),
+        entry('st_2', 'Bayo Ade', {
+          briefing: 'sent',
+          inApp: true,
+          shifts: [SHIFT],
+          notice: { state: 'told', at: '2026-11-01T11:15:00+01:00', channel: 'push', ending: null },
+        }),
+      ]),
+    });
+
+    expect(await screen.findByText('Goes at 11:15')).toBeDefined();
+    expect(screen.getByText('Start 15:00 (was 17:00)')).toBeDefined();
+    expect(screen.getByText('Edits before then go in the same message.')).toBeDefined();
+    expect(screen.getByText(/^Told on .* at 11:15, by push\.$/)).toBeDefined();
+  });
+
+  it('says the event is already over and reloads when Mark as sent is pressed on a page opened before it finished', async () => {
+    signedIn();
+    const copy = { by: 'Folake Adeyemi', at: '2026-11-01T10:12:00+01:00', marked: false };
+    let staffReads = 0;
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': () => {
+        staffReads += 1;
+        return roster([
+          entry('st_1', 'Amaka Eze', {
+            mobile: '+2348031110009',
+            link: 'copied',
+            briefing: 'changed',
+            briefingCopy: copy,
+            shifts: [SHIFT],
+          }),
+        ])();
+      },
+      'POST /api/events/ev_1/staff/st_1/briefing/sent': () => problem('event_concluded', 409),
+    });
+    const readsBefore = staffReads;
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById('sv-over')?.textContent).toBe('This event is already over.'),
+    );
+    expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+    await waitFor(() => expect(staffReads).toBeGreaterThan(readsBefore));
+    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/staff/st_1/briefing/sent');
+  });
+
+  it('shows the reminder card, and says the switch was not saved when it fails', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': roster([entry('st_1', 'Amaka Eze', { shifts: [SHIFT] })]),
+      'GET /api/events/ev_1/staff/reminder': () => json(REMINDER),
+      'PUT /api/events/ev_1/staff/reminder': () => problem('internal_error', 500),
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Reminder the day before' })).toBeDefined();
+    expect(screen.getByText(/^Next on .*, to 2 people as things stand\.$/)).toBeDefined();
+    expect(
+      screen.getByText('1 person has not had their briefing, so will not be reminded.'),
+    ).toBeDefined();
+    expect(screen.getByText('1 person can’t be reached.')).toBeDefined();
+
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Remind each person the day before their shift' }),
+    );
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Couldn’t save. The reminder is still on.',
+    );
+    expect(sent.find((one) => one.line === 'PUT /api/events/ev_1/staff/reminder')?.body).toEqual({
+      on: false,
+    });
+  });
+
+  it('shows only why no reminder goes once the event is called off', async () => {
+    signedIn();
+    await onRoster(
+      {
+        'GET /api/events/ev_1/staff': roster([entry('st_1', 'Amaka Eze', { shifts: [SHIFT] })]),
+        'GET /api/events/ev_1/staff/reminder': () =>
+          json({ ...REMINDER, next: null, concluded: 'called_off' }),
+      },
+      OWNER_PERMISSIONS,
+      'finished',
+    );
+
+    expect(
+      await screen.findByText('No reminder will be sent: the event has been called off.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('switch')).toBeNull();
   });
 });

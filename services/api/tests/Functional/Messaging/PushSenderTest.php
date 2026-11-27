@@ -82,6 +82,18 @@ final class PushSenderTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEventDayPushNotYetUrgentGoesAsAnOrdinaryOne(): void
+    {
+        $this->registerPhone();
+
+        $this->sender(['data' => [['status' => 'ok', 'id' => 'ticket-1']]])->send(...$this->message(null, NotificationCategory::EventDay, notYetUrgent: true));
+
+        $message = Type\shape([0 => Type\dict(Type\string(), Type\mixed())])->coerce(Json\decode(Type\string()->coerce($this->requests[0]['options']['body'])))[0];
+        self::assertArrayNotHasKey('channelId', $message);
+        self::assertArrayNotHasKey('interruptionLevel', $message);
+    }
+
+    #[Test]
     public function aSilentCardIsPassiveOnTheRunOfShowChannel(): void
     {
         $this->registerPhone();
@@ -174,13 +186,13 @@ final class PushSenderTest extends ApiTestCase
     }
 
     /** @return array{Uuid, Recipient, NotificationCategory, RenderedNotification, ?string} */
-    private function message(?string $collapseKey, NotificationCategory $category = NotificationCategory::EventChanges, bool $silent = false): array
+    private function message(?string $collapseKey, NotificationCategory $category = NotificationCategory::EventChanges, bool $silent = false, bool $notYetUrgent = false): array
     {
         return [
             Uuid::v7(),
             new Recipient(NotificationAudienceKind::Member, $this->member->getId(), 'Ada', 'en', null),
             $category,
-            new RenderedNotification('Ada replied', 'Going', [], '/events/1', silent: $silent),
+            new RenderedNotification('Ada replied', 'Going', [], '/events/1', silent: $silent, notYetUrgent: $notYetUrgent),
             $collapseKey,
         ];
     }

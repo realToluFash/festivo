@@ -112,6 +112,8 @@ function person(id: string, fullName: string, at: Ref | null, more: Record<strin
     briefing: 'none',
     briefingCopy: null,
     contactsErased: false,
+    notice: null,
+    inApp: false,
     ...more,
   };
 }
