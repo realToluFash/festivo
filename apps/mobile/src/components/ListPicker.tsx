@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
     borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,
