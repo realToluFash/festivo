@@ -15,6 +15,7 @@ import {
   type TapExpected,
   type TapRefusal,
   UNDO_MINUTES,
+  formatTimeOfDay,
   heldUpMinutes,
   refusalKey,
 } from '@soirely/domain';
@@ -421,6 +422,11 @@ export function stationTime(at: Date | number | string, locale: string): string 
     minute: '2-digit',
     hourCycle: 'h23',
   });
+}
+
+/** The row's as of, in the Offline band's own form and, unless a zone is given, the device's zone (sc-97945). */
+export function stationAsOf(at: Date | number | string, locale: string, timeZone?: string): string {
+  return formatTimeOfDay(new Date(at), locale, timeZone);
 }
 
 export function notSentLine(t: TFunction, line: TapRefusal, reads: readonly ServiceRead[]): string {
