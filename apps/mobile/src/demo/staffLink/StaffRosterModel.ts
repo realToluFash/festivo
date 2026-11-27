@@ -7,6 +7,8 @@ export interface OnRoster {
   station: string | null;
   /** Their first shift's times; the product sorts on sc-3908's full start. */
   shift: string | null;
+  /** sc-3908: their other shifts, read as "+{n} more" after the first. */
+  more?: number;
   mobile: string | null;
   status: LinkStatus;
   trail: Trail | null;
@@ -28,6 +30,7 @@ export const RW = {
   noJob: 'No job yet',
   noStation: 'No station yet',
   noShift: 'Not on a shift yet',
+  more: (n: number) => `+${n} more`,
 };
 
 const KEMI = 'Kemi Adeyemi';
@@ -142,9 +145,14 @@ export function firstName(name: string): string {
 }
 
 export function rowLine(person: OnRoster): string {
-  return [person.job ?? RW.noJob, person.station ?? RW.noStation, person.shift ?? RW.noShift].join(
-    ' · ',
-  );
+  const shift =
+    person.shift == null
+      ? RW.noShift
+      : person.more != null && person.more > 0
+        ? `${person.shift} ${RW.more(person.more)}`
+        : person.shift;
+
+  return [person.job ?? RW.noJob, person.station ?? RW.noStation, shift].join(' · ');
 }
 
 export const ROSTER_STATES = [
