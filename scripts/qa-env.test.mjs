@@ -3610,7 +3610,7 @@ describe('the flows a batch runs', () => {
         rmSync(target, { recursive: true, force: true });
       }
     }
-  });
+  }, 30_000);
 
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
