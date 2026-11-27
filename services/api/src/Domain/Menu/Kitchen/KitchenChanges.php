@@ -84,7 +84,6 @@ final readonly class KitchenChanges
             }
         }
 
-        // What the figure moved by beyond the lines above: a diet that only moved between a named row and the figure is no change.
         foreach (['allergy' => [NeedKind::Allergen, 'allergyCounts'], 'diet' => [NeedKind::Diet, 'dietCounts']] as $family => [$kind, $counts]) {
             foreach ($kind->codes() as $code) {
                 $said = Iter\count(Vec\filter($lines, static fn (array $line): bool => $line['code'] === $code && $line['kind'] === $family . 'New'))

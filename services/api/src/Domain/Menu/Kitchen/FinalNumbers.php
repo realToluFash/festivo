@@ -70,7 +70,6 @@ final readonly class FinalNumbers
                 'recordedAt' => $copy->getRecordedAt()->setTimezone($zone)->format(\DATE_ATOM),
                 'by' => $copy->getRecordedByName(),
             ]),
-            // A line's guest id is for erasure in a stored copy; no reader needs it.
             'changes' => null === $changes ? null : ['since' => $changes['since'], 'lines' => Vec\map($changes['lines'], static fn (array $line): array => [
                 'kind' => $line['kind'], 'code' => $line['code'], 'who' => $line['who'], 'item' => $line['item'], 'to' => $line['to'], 'old' => $line['old'], 'count' => $line['count'],
             ])],
