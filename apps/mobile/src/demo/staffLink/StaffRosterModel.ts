@@ -144,15 +144,20 @@ export function firstName(name: string): string {
   return name.split(' ')[0] ?? name;
 }
 
-export function rowLine(person: OnRoster): string {
-  const shift =
-    person.shift == null
-      ? RW.noShift
-      : person.more != null && person.more > 0
-        ? `${person.shift} ${RW.more(person.more)}`
-        : person.shift;
+export function shiftWithMore(person: Pick<OnRoster, 'shift' | 'more'>): string | null {
+  if (person.shift == null) return null;
 
-  return [person.job ?? RW.noJob, person.station ?? RW.noStation, shift].join(' · ');
+  return person.more != null && person.more > 0
+    ? `${person.shift} ${RW.more(person.more)}`
+    : person.shift;
+}
+
+export function rowLine(person: OnRoster): string {
+  return [
+    person.job ?? RW.noJob,
+    person.station ?? RW.noStation,
+    shiftWithMore(person) ?? RW.noShift,
+  ].join(' · ');
 }
 
 export const ROSTER_STATES = [
