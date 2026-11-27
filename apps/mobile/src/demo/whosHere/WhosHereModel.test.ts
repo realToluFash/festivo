@@ -192,8 +192,8 @@ describe('Someone’s at the door', () => {
     expect(showsDoor(closeSheet(ended))).toBe(false);
   });
 
-  it('keeps Someone’s at the door while only Here failed to load', () => {
-    expect(showsDoor(seed('part_failed'))).toBe(true);
+  it('leaves Someone’s at the door out when nothing loaded', () => {
+    expect(showsDoor(seed('stale'))).toBe(true);
     expect(showsDoor(seed('unreachable'))).toBe(false);
   });
 
@@ -207,6 +207,18 @@ describe('Someone’s at the door', () => {
 });
 
 describe('Add a mobile number', () => {
+  it('keeps the sheet and the number when saving fails, then saves', () => {
+    const s = { ...setMobile(seed('add_mobile'), { number: '803 555 0144' }), failNext: true };
+    const failed = mobileAnswer(s, '+234');
+
+    expect(failed.sheet).toMatchObject({
+      kind: 'mobile',
+      form: { failed: true, number: '803 555 0144' },
+    });
+    expect(failed.list.find((p) => p.id === WALK_ON_ID)?.phone).toBe('');
+    expect(mobileAnswer(failed, '+234').sheet).toMatchObject({ kind: 'hasLink' });
+  });
+
   it('writes the number to that person only, and Call takes the pill’s place', () => {
     const start = seed('row_add_mobile_walk_on_lead');
     const s = setMobile(openMobile(start, WALK_ON_ID, true), { number: '803 555 0144' });
@@ -235,6 +247,18 @@ describe('Cover', () => {
 
     expect(notHere(s).find((r) => r.p.id === 4)?.coveredBy).toBe('Grace Okon');
     expect(toastWords(s)).toBe('Grace Okon is on Section B · T7–T12. Nobody on Section A · T1–T6.');
+  });
+
+  it('keeps the sheet and the choice when the move fails, then moves', () => {
+    const chosen = choose(openCover(seed('populated'), 4), 5);
+    const failed = moveChosen({ ...chosen, failNext: true });
+
+    expect(failed.sheet).toMatchObject({ kind: 'cover', chosen: 5, failed: true });
+    expect(failed.list.find((p) => p.id === 5)?.station).toBe('Section A · T1–T6');
+    expect(W.coverFailed('Grace Okon')).toBe(
+      'Nothing was changed. Grace Okon was not moved. Try again.',
+    );
+    expect(moveChosen(failed).sheet).toBeNull();
   });
 });
 

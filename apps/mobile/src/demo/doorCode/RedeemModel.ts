@@ -3,6 +3,7 @@ import type { Provider } from '@soirely/api-client';
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
 import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
+import type { EventField } from '../../kit/fieldsAboveSend.ts';
 
 export const REDEEM_STATES = [
   'welcome',
@@ -31,6 +32,10 @@ export const REDEEM_STATES = [
   'code-exhausted',
   'code-failed',
   'used-up',
+  'event-keys',
+  'event-keys-number',
+  'event-keys-refused',
+  'event-keys-failed',
   'code-second-number',
   'second-number',
   'code-provider-only',
@@ -78,6 +83,10 @@ export interface Flow {
   /** The code filled up while they typed: the right phone code meets sc-72's one refusal (sc-4235). */
   full: boolean;
   usedUp: boolean;
+  /** Send code did not get through: "Something went wrong on the way." above the fields, as the app says it. */
+  failed: boolean;
+  /** The field the keys come up on as the event step opens, for a link to show the keys up (sc-97734); null leaves it to the step. */
+  keys: EventField | null;
   texted: boolean;
   digits: string;
   phone: PhoneStatus;
@@ -136,6 +145,8 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     numberSaid: null,
     full: false,
     usedUp: false,
+    failed: false,
+    keys: null,
     texted: false,
     digits: '',
     phone: 'entering',
@@ -227,6 +238,14 @@ export function flowAt(state: RedeemState): Flow {
         full: true,
         usedUp: true,
       };
+    case 'event-keys':
+      return { ...plain, step: 'event', keys: 'name' };
+    case 'event-keys-number':
+      return { ...plain, step: 'event', name: JOAO.name, keys: 'number' };
+    case 'event-keys-refused':
+      return { ...joao, step: 'event', usedUp: true, keys: 'name' };
+    case 'event-keys-failed':
+      return { ...joao, step: 'event', failed: true, keys: 'name' };
     case 'code-second-number':
       return { ...plain, ...RITA, step: 'code' };
     case 'second-number':

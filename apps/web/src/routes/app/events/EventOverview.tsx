@@ -66,6 +66,7 @@ import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
 import { ThankYouCard } from './ThankYou.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
@@ -321,6 +322,7 @@ export function Overview({
             shown={shown}
             onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
+            needsYou={<EventNeeds event={event} timeline={timeline} />}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
@@ -417,6 +419,7 @@ function Details({
   shown,
   onCover,
   onOpen,
+  needsYou,
   comingUp,
 }: {
   event: OrganisationEvent;
@@ -429,6 +432,7 @@ function Details({
   shown: number;
   onCover: (event: OrganisationEvent) => void;
   onOpen: (part: Part) => void;
+  needsYou: ReactNode;
   comingUp: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -575,6 +579,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needsYou}
       {comingUp}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{t('eventPage.nameAndCover')}</span>} />

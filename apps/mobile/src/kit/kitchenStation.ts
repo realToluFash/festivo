@@ -356,6 +356,11 @@ export function undoOpen(mark: StationMark, now: Date): boolean {
   return since >= 0 && since < UNDO_MINUTES * 60_000;
 }
 
+/** When each mark's Undo closes, for the clock that redraws the station as it does. */
+export function undoCloses(marks: Iterable<StationMark>): number[] {
+  return Array.from(marks, (mark) => mark.at + UNDO_MINUTES * 60_000);
+}
+
 export type UndoPlan =
   | { kind: 'drop'; tapKey: string }
   | { kind: 'send'; subject: string; expected: { item: ItemState } }

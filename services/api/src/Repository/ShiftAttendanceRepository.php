@@ -33,7 +33,11 @@ final class ShiftAttendanceRepository extends ServiceEntityRepository
         return Uuid::isValid($personId) ? $this->findOneBy(['shift' => $shift, 'personId' => Uuid::fromString($personId), 'staffMember' => null]) : null;
     }
 
-    /** Including the rows of people since removed from the roster. @return list<ShiftAttendance> */
+    /**
+     * Including the rows of people since removed from the roster.
+     *
+     * @return list<ShiftAttendance>
+     */
     public function findOnEvent(Event $event): array
     {
         /** @var list<ShiftAttendance> */

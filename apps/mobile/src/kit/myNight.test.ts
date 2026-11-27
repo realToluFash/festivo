@@ -12,6 +12,7 @@ import {
   rowLineOf,
   scanHrefOf,
   updatedAfter,
+  whosHereOf,
 } from './myNight.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
@@ -40,8 +41,26 @@ const NIGHT: MyNight = {
   tables: null,
   checksIn: false,
   dishes: false,
+  whosHere: false,
   rules: null,
 };
+
+describe('My night leads a lead to Who’s here (sc-3918)', () => {
+  it('as the only button, primary, when nothing comes before it', () => {
+    expect(whosHereOf({ ...NIGHT, whosHere: true }, null)).toEqual({ primary: true });
+  });
+
+  it('as a secondary button under Check-in or Open {station}', () => {
+    expect(whosHereOf({ ...NIGHT, whosHere: true, checksIn: true }, null)).toEqual({
+      primary: false,
+    });
+    expect(whosHereOf({ ...NIGHT, whosHere: true }, 'Pass')).toEqual({ primary: false });
+  });
+
+  it('nowhere for someone who leads nothing', () => {
+    expect(whosHereOf(NIGHT, 'Pass')).toBeNull();
+  });
+});
 
 describe('My night leads to check-in (sc-28230)', () => {
   it('to the event’s check-in for a job that checks guests in', () => {

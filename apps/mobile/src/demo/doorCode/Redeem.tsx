@@ -1,7 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Provider } from '@soirely/api-client';
 import Svg, { Path } from 'react-native-svg';
 import {
@@ -33,6 +33,7 @@ import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
 import { DemoScreen, NavBar } from '../DemoScreen.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
+import { FieldsAboveSend } from '../../components/FieldsAboveSend.tsx';
 import { HELD_MS } from '../people/PeopleSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SelectRow } from '../SelectRow.tsx';
@@ -435,10 +436,20 @@ function NameStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) 
   );
 }
 
+/** sc-4235's name and number; with the keys up, both stay above Send code whenever they fit, the refusal with them (sc-97734). */
 function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) {
   const nameField = useRef<TextInputInstance>(null);
   const numberField = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
+  const refusalBlock = useRef<ViewInstance>(null);
+  const nameBlock = useRef<ViewInstance>(null);
+  const numberBlock = useRef<ViewInstance>(null);
+  const blocks = useMemo(
+    () => ({ refusal: refusalBlock, name: nameBlock, number: numberBlock }),
+    [],
+  );
+  const refusal = flow.usedUp ? W.refused : flow.failed ? W.failedBody : null;
+  const nameFirst = flow.keys === 'name' || (flow.keys == null && flow.name === '' && !flow.usedUp);
   const name = useRef(flow.name);
   const number = useRef(flow.number);
   const held = useRef(flow.held);
@@ -459,6 +470,8 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
           digits: '',
           phone: 'entering',
           texted: false,
+          failed: false,
+          keys: null,
         }),
       held.current ? HELD_MS : SEND_MS,
     );
@@ -499,9 +512,13 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     >
       <EventTile />
       <Heading title={EVENT.name} intro={eventLine(flow.code, locale)} answer={flow.step} />
-      <View style={styles.fields}>
-        {flow.usedUp && <Refused words={W.refused} />}
-        <View>
+      <FieldsAboveSend refs={blocks} style={styles.fields}>
+        {refusal != null && (
+          <View ref={refusalBlock}>
+            <Refused words={refusal} />
+          </View>
+        )}
+        <View ref={nameBlock}>
           <InsideField
             ref={nameField}
             label={W.yourName}
@@ -519,12 +536,12 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
             returnKeyType="next"
             submitBehavior="submit"
             onSubmitEditing={() => numberField.current?.focus()}
-            autoFocus={flow.name === '' && !flow.usedUp}
+            autoFocus={nameFirst}
             testID="redeem.event.name"
           />
           {nameSaid != null && <Says words={nameSaid} />}
         </View>
-        <View>
+        <View ref={numberBlock}>
           {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
           <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
             <SelectRow
@@ -553,13 +570,14 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
                 returnKeyType="go"
                 submitBehavior="submit"
                 onSubmitEditing={send}
+                autoFocus={flow.keys === 'number'}
                 testID="redeem.event.number"
               />
             </View>
           </View>
           {numberSaid != null && <Says words={numberSaid} />}
         </View>
-      </View>
+      </FieldsAboveSend>
     </DemoScreen>
   );
 }

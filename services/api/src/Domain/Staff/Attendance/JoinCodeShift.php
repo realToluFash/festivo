@@ -29,24 +29,24 @@ final readonly class JoinCodeShift
     ) {
     }
 
-    /** Inside the redemption's transaction; an account already on the roster keeps its entry, and is clocked in only if that entry is on the shift. */
-    public function place(StaffShift $shift, User $user, User $issuer): void
+    /** Inside the redemption's transaction; an account already on the roster keeps its entry, and is clocked in only if that entry is on the shift. True when it clocked them in. */
+    public function place(StaffShift $shift, User $user, User $issuer): bool
     {
         $entry = $this->entryOf($shift, $user);
 
         if (null === $entry) {
             if (null !== self::notJoinable($shift, $this->clock->now())) {
-                return;
+                return false;
             }
 
             $event = $shift->getJob()->getEvent();
             $entry = $this->staffRoster->add($event, new StaffDetails($user->getName(), self::mobileOf($user), null), $shift->getJob(), $shift, $issuer, true);
             $entry->linkAccount($user);
         } elseif (!Iter\contains($shift->getPeople(), $entry)) {
-            return;
+            return false;
         }
 
-        $this->clocking->clockInOn($shift, $entry, $user);
+        return $this->clocking->clockInOn($shift, $entry, $user);
     }
 
     /**

@@ -297,6 +297,11 @@
   text-decoration: none;
 }
 
+/* The shell's card scrolls the page. The row that opens reaches 10 px past its block, and a page that scrolled itself would take that for sideways scroll. */
+.ks.desk-page {
+  overflow: visible;
+}
+
 /* From 320 px: the people table reads as one block per person, each cell under its heading. */
 @media (width <= 640px) {
   .shell-content:has(.ks.desk-page) {
@@ -305,7 +310,20 @@
 
   .ks.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
+  }
+
+  /* Final numbers stands under the sheet, one column (WCAG 2.2 1.4.10). */
+  .ks .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ks .ev-crumb ol,
+  .ks .ev-opened-actions {
+    flex-wrap: wrap;
+  }
+
+  .ks .ev-opened {
+    margin-left: 0;
   }
 
   .ks-people thead {
