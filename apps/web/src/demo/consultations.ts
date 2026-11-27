@@ -445,6 +445,7 @@ export const LIST_SAMPLE: Readonly<Record<string, readonly Consultation[]>> = {
   ],
   'enq-bisi': [{ ...SAMPLE.underWay, id: 'con-bisi', startsAt: AT('2026-11-12T15:00') }],
   'enq-ada': [{ ...SAMPLE.called, id: 'con-ada', startsAt: AT('2026-11-20T10:00') }],
+  'enq-kept': [{ ...SAMPLE.later, id: 'con-kept', startsAt: AT('2026-12-02T10:00') }],
 };
 
 export function nextFor(enquiry: Enquiry, now: string = NOW): Consultation | null {
