@@ -562,7 +562,7 @@
     "saved_audience.full": "Cet événement compte {most, number, ::group-auto} audiences enregistrées, le maximum possible. Supprimez-en une pour en enregistrer une autre.",
     "validation.guest_greet_as_too_long": "Raccourcissez l’appellation à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
     "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer.",
-    "validation.your_messages_no_address": "Nothing is on record to turn off on this channel.",
+    "validation.your_messages_no_address": "Aucune coordonnée n’est enregistrée pour ce canal : il n’y a rien à désactiver.",
     "usage_warning.drafts.heading_part": "{organisation} a utilisé {percent} de ses brouillons de l’assistant inclus",
     "usage_warning.drafts.heading_all": "{organisation} a utilisé tous ses brouillons de l’assistant inclus",
     "usage_warning.storage.heading_part": "{organisation} a utilisé {percent} de son stockage inclus",

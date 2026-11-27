@@ -3913,10 +3913,10 @@
     "greetAsTooLong": "Raccourcissez l’appellation à {{count, number}} caractères maximum.",
     "greetsThemAs": "Les messages l’appellent « {{greetAs}} ».",
     "greetsByFullName": "Les messages l’appellent par son nom complet.",
-    "optedOutEmail": "Unsubscribed from email on {{date}}",
-    "optedOutTexts": "Unsubscribed from texts on {{date}}",
-    "optedOutWhatsApp": "Unsubscribed from WhatsApp on {{date}}",
-    "onlyTheGuest": "Only the guest can change this."
+    "optedOutEmail": "Désabonnement des e-mails le {{date}}",
+    "optedOutTexts": "Désabonnement des SMS le {{date}}",
+    "optedOutWhatsApp": "Désabonnement de WhatsApp le {{date}}",
+    "onlyTheGuest": "Seule la personne invitée peut le modifier."
   },
   "guestNumbers": {
     "title": "Invités",
@@ -7187,7 +7187,7 @@
     "nobodyToPreview": "Aucun invité choisi pour l’instant : il n’y a personne pour la prévisualisation.",
     "whatSoirelySends": "Ce qu’envoie Soirely",
     "emailFrom": "E-mail · envoyé par {{organisation}} via Soirely",
-    "unsubscribed": "Unsubscribed"
+    "unsubscribed": "Désabonnement"
   },
   "service": {
     "stage": {
@@ -7464,33 +7464,33 @@
     "openJobs": "Ouvrir Fonctions et services"
   },
   "yourMessages": {
-    "title": "Your messages",
-    "intro": "Choose how {{organisation}} can reach you. This changes nothing for anyone else who uses Soirely.",
-    "email": "Email",
-    "texts": "Text messages",
+    "title": "Vos messages",
+    "intro": "Choisissez comment {{organisation}} peut vous joindre. Cela ne change rien pour les autres personnes qui utilisent Soirely.",
+    "email": "E-mail",
+    "texts": "SMS",
     "whatsApp": "WhatsApp",
-    "on": "On",
-    "off": "Off",
-    "noEmail": "{{organisation}} has no email address for you.",
-    "noPhone": "{{organisation}} has no phone number for you.",
-    "emailOn": "Emails from {{organisation}} are on again.",
-    "emailOff": "Emails from {{organisation}} are off.",
-    "textsOn": "Texts from {{organisation}} are on again.",
-    "textsOff": "Texts from {{organisation}} are off.",
-    "whatsAppOn": "WhatsApp messages from {{organisation}} are on.",
-    "whatsAppOff": "WhatsApp messages from {{organisation}} are off.",
-    "foot": "Only you can turn these back on. {{organisation}} can see which you have turned off, and when.",
-    "stopEmails": "Stop emails from {{organisation}}",
-    "stopped": "You won’t get emails from {{organisation}} any more.",
-    "undo": "Undo",
-    "saving": "Saving…",
-    "loading": "Loading…",
-    "failed": "Saving did not work. Nothing has changed.",
-    "tryAgain": "Try again",
-    "back": "Back",
-    "brokenTitle": "This link does not work",
-    "brokenBody": "Nothing has changed. Open the link again from the most recent email you were sent.",
-    "wayIn": "Choose how {{organisation}} can reach you"
+    "on": "Activé",
+    "off": "Désactivé",
+    "noEmail": "{{organisation}} n’a pas votre adresse e-mail.",
+    "noPhone": "{{organisation}} n’a pas votre numéro de téléphone.",
+    "emailOn": "{{organisation}} peut de nouveau vous écrire par e-mail.",
+    "emailOff": "{{organisation}} ne vous écrira plus par e-mail.",
+    "textsOn": "{{organisation}} peut de nouveau vous envoyer des SMS.",
+    "textsOff": "{{organisation}} ne vous enverra plus de SMS.",
+    "whatsAppOn": "{{organisation}} peut vous écrire sur WhatsApp.",
+    "whatsAppOff": "{{organisation}} ne vous écrira plus sur WhatsApp.",
+    "foot": "Personne d’autre que vous ne peut les réactiver. {{organisation}} peut voir ce que vous avez désactivé, et quand.",
+    "stopEmails": "Ne plus recevoir les e-mails envoyés par {{organisation}}",
+    "stopped": "Vous ne recevrez plus d’e-mails envoyés par {{organisation}}.",
+    "undo": "Annuler",
+    "saving": "Enregistrement…",
+    "loading": "Chargement…",
+    "failed": "L’enregistrement n’a pas abouti. Rien n’a changé.",
+    "tryAgain": "Réessayer",
+    "back": "Retour",
+    "brokenTitle": "Ce lien ne fonctionne pas",
+    "brokenBody": "Rien n’a changé. Rouvrez le lien depuis le dernier e-mail que vous avez reçu.",
+    "wayIn": "Choisissez comment {{organisation}} peut vous joindre"
   },
   "limitReached": {
     "title": {

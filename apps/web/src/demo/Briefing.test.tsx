@@ -183,6 +183,28 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
   });
 
+  it('offers no Copy link and no Edit the rules once the event is Finished, as a finished event (sc-4333)', async () => {
+    for (const state of [
+      'noticesCalledOff',
+      'noticesEventEnded',
+      'noticesFinishedSent',
+      'noticesFinishedSwitchOff',
+      'noticesFinishedRefused',
+    ] as const) {
+      await open(state);
+      expect(screen.queryByRole('button', { name: /Copy link/ })).toBeNull();
+      expect(button('Edit the rules')).toBeNull();
+      expect(button('House rules')).toBeTruthy();
+      expect(button('Preview as')).toBeTruthy();
+      cleanup();
+    }
+    await open('noticesFinishedRefusedBefore');
+    expect(screen.queryAllByRole('button', { name: /Copy link/ }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: /^Send/ })[0] as HTMLElement);
+    expect(screen.queryByRole('button', { name: /Copy link/ })).toBeNull();
+    expect(button('Edit the rules')).toBeNull();
+  });
+
   it('says under the roster that changes reach the briefed, until the event is Finished (sc-4333)', async () => {
     await open('noticesList');
     expect(screen.getByText(NW.footnote)).toBeTruthy();

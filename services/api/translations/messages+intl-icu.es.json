@@ -562,7 +562,7 @@
     "saved_audience.full": "Este evento tiene {most, number, ::group-auto} públicos guardados, el máximo posible. Elimine uno para guardar otro.",
     "validation.guest_greet_as_too_long": "Acorte el nombre en el saludo a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
     "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar.",
-    "validation.your_messages_no_address": "Nothing is on record to turn off on this channel.",
+    "validation.your_messages_no_address": "No hay nada registrado que desactivar en este canal.",
     "usage_warning.drafts.heading_part": "{organisation} ha usado el {percent} de sus borradores del asistente incluidos",
     "usage_warning.drafts.heading_all": "{organisation} ha usado todos sus borradores del asistente incluidos",
     "usage_warning.storage.heading_part": "{organisation} ha usado el {percent} de su almacenamiento incluido",
