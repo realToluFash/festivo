@@ -225,7 +225,8 @@ def conflict(p, pr, story, row):
               f"In your checkout, on {pr['branch']}: `git fetch origin && git merge origin/main`. "
               "Resolve each file so both changes survive: what main has is merged, and what "
               "the branch has is yours. Run the suites the files touch, commit the merge, and "
-              "push. Never rebase or force-push. "
+              "push. Bring main in by merging, not by rebasing. A branch of your own that you "
+              "have rewritten is pushed with `--force-with-lease`, never `--force`. "
               + ("The green checks on the new head wake you to merge." if p.role in R.LINGUISTS
                  else "A push after a pass voids it, and the lead reviews the new head."))
     next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
