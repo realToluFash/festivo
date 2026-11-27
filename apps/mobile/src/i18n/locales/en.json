@@ -3657,7 +3657,7 @@
         "sentBack": "Sent back: {{guest}}’s {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
-      "loadFailed": "Floor didn’t load. Try again.",
+      "loadFailed": "Floor did not load. Try again.",
       "wayIn": {
         "title": "Floor",
         "line": "{{where}} · {{course}}",

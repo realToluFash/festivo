@@ -6956,7 +6956,7 @@
         "sentBack": "Sent back: {{guest}}’s {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
-      "loadFailed": "Floor didn’t load. Try again.",
+      "loadFailed": "Floor did not load. Try again.",
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",
@@ -7008,7 +7008,7 @@
     "yourShift": "Your shift",
     "notSignedIn": {
       "title": "Sign in from your link or code",
-      "body": "To check guests in, open the link we sent you, or enter your door code again.",
+      "body": "Open the link we sent you, or enter your door code again.",
       "cta": "Enter a door code"
     }
   },
