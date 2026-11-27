@@ -273,6 +273,7 @@ export const say = {
   changedDay: (date: string) => `Changed ${date}`,
   group: (word: string, count: number) => `${word} · ${count}`,
   repliedOn: (when: string) => `replied ${when}`,
+  emailLink: 'from the email link',
   askedBy: (date: string) => `asked to decide by ${date}`,
   willBeAskedAgain: (date: string) => `will be asked again ${date}`,
   askedAgain: (date: string) => `asked again ${date}`,
