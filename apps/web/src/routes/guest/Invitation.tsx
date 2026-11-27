@@ -20,7 +20,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useOutletContext } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -1468,6 +1468,11 @@ export function Card({
           {page.answersOpen && (
             <>
               <p>{t('guest.noAccountNeeded')}</p>
+              {page.event.organisation !== '' && (
+                <Link className="gp-text" to="messages">
+                  <span>{t('yourMessages.wayIn', { organisation: page.event.organisation })}</span>
+                </Link>
+              )}
               <hr />
             </>
           )}

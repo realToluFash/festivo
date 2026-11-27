@@ -23,7 +23,7 @@ export const CW = {
   comingMore_other: '{{count}} more coming',
   comingFewer_one: '{{count}} fewer coming',
   comingFewer_other: '{{count}} fewer coming',
-  count: '{{dish}} {{old}} to {{new}}',
+  count: '{{dish}}: {{old}} to {{new}}',
   added: 'Added: {{dish}}, {{count}}',
   removed: 'Removed: {{dish}}, was {{count}}',
   renamed: 'Renamed: {{old}}, now {{new}}',

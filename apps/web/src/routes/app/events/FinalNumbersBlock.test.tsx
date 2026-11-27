@@ -429,11 +429,11 @@ describe('Changes since the latest copy (sc-30692)', () => {
       'Allergy removed: Peanuts (1 guest)',
       'New diet: Other diet (2 guests)',
       '1 fewer coming',
-      'Jollof rice · Fish 41 to 40',
+      'Jollof rice · Fish: 41 to 40',
       'Added: Sea bream, 6',
       'Removed: Fish, was 6',
       'Renamed: Jollof rice · Fish, now Sea bass',
-      'Not chosen yet 3 to 0',
+      'Not chosen yet: 3 to 0',
     ]);
   });
 

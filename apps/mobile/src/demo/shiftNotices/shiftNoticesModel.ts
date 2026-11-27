@@ -294,7 +294,7 @@ export function cardOf(input: CardInput): CardView {
   };
 }
 
-/** Once Finished no briefing goes (Decided, 27 Oct): the three sends are not offered; Copy link and Preview as stay. */
+/** Once Finished no briefing goes (Decided, 27 Oct): no send and no Copy link, as sc-3917's finished event (pm #100278); Preview as stays. */
 export function sendsOffered(finished: Finished | null): boolean {
   return finished == null;
 }
@@ -730,8 +730,7 @@ export function briefingFor(shift: ShiftStart): BriefingStart {
     side: null,
     access: shift.manage ? 'manage' : 'read',
     live: true,
-    finished: false,
-    concluded: !sendsOffered(shift.finished),
+    finished: !sendsOffered(shift.finished),
     anyLayout: true,
     rules: RULES,
     draft: null,

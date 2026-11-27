@@ -2131,6 +2131,78 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
   });
 });
 
+describe('A guest’s opt-outs in their details (sc-3969)', () => {
+  const ON = '2026-11-01T10:00:00+00:00';
+
+  function lines(): string[] {
+    return [...column().querySelectorAll('.desk-row')].map((row) => row.textContent ?? '');
+  }
+
+  it('says email under Email address with its closing sentence, and nothing else', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: ON, texts: null, whatsApp: null } }, '"1"'),
+    });
+
+    const shown = lines();
+    const email = shown.findIndex((one) => one.startsWith('ngozi@example.com'));
+    expect(shown[email + 1]).toBe(
+      'Unsubscribed from email on Nov 1Only the guest can change this.',
+    );
+    expect(shown.filter((one) => one.includes('Only the guest'))).toHaveLength(1);
+    expect(shown.some((one) => one.includes('WhatsApp'))).toBe(false);
+  });
+
+  it('says texts under Mobile number, then the WhatsApp row closing the row once, when both are stopped', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: null, texts: ON, whatsApp: ON } }, '"1"'),
+    });
+
+    const shown = lines();
+    const mobile = shown.findIndex((one) => one.endsWith('Mobile number'));
+    expect(shown.slice(mobile + 1, mobile + 3)).toEqual([
+      'Unsubscribed from texts on Nov 1',
+      'Unsubscribed from WhatsApp on Nov 1Only the guest can change this.',
+    ]);
+    expect(shown.filter((one) => one.includes('Only the guest'))).toHaveLength(1);
+  });
+
+  it('closes the texts line itself while WhatsApp is not stopped, with no WhatsApp row', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: null, texts: ON, whatsApp: null } }, '"1"'),
+    });
+
+    expect(lines()).toContain('Unsubscribed from texts on Nov 1Only the guest can change this.');
+    expect(lines().some((one) => one.includes('WhatsApp'))).toBe(false);
+  });
+
+  it('has no line under a row that reads None', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          { ...DETAILS, mobile: null, optOuts: { email: null, texts: ON, whatsApp: ON } },
+          '"1"',
+        ),
+    });
+
+    expect(lines().some((one) => one.startsWith('Unsubscribed'))).toBe(false);
+  });
+
+  it('offers no control to reverse an opt-out', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: ON, texts: ON, whatsApp: ON } }, '"1"'),
+    });
+
+    for (const row of column().querySelectorAll('.desk-row')) {
+      if (!(row.textContent ?? '').startsWith('Unsubscribed')) continue;
+      expect(row.querySelector('button, a')).toBeNull();
+    }
+  });
+});
+
 describe('A guest’s invitation link (sc-1526)', () => {
   const LINK = 'https://app.soirely.test/i/goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
 
