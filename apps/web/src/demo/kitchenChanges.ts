@@ -28,6 +28,7 @@ export const CW = {
   removed: 'Removed: {{dish}}, was {{count}}',
   renamed: 'Renamed: {{old}}, now {{new}}',
   named: '{{dish}} · {{name}}',
+  inCourse: '{{course}} · {{name}}',
 } as const;
 
 const { filled, many } = demoWords(CW);
@@ -185,7 +186,7 @@ function courseOrder(copy: Figures, now: Figures): Course[] {
   return [...now.courses, ...copy.courses.filter((course) => !kept.has(course.id))];
 }
 
-/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows. */
+/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows, each after its course's name. */
 function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
   const was = new Map(copy.items.map((item) => [item.id, item]));
   const here = new Set(now.items.map((item) => item.id));
@@ -193,9 +194,15 @@ function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
   const gone = copy.items.filter((item) => item.course === course.id && !here.has(item.id));
   const lines: Line[] = [];
 
+  function lineName(item: Item): string {
+    return item.kind === 'tail'
+      ? filled(CW.inCourse, { course: course.name, name: item.name })
+      : shownName(item, now.items);
+  }
+
   function rowLines(item: Item): void {
     const before = was.get(item.id);
-    const name = shownName(item, now.items);
+    const name = lineName(item);
 
     if (before == null) {
       if (item.count > 0)
@@ -404,7 +411,7 @@ const NGOZI_HALAL = need(
   ['halal'],
 );
 
-/** Yusuf records sesame; Ngozi (halal) and one more guest start coming; one guest moves from sea bass to jollof. */
+/** Yusuf records sesame; Ngozi (halal) and one more guest start coming; one guest moves from sea bass to jollof; one who had not chosen picks a starter and a dessert. */
 const NAMED_NOW: Figures = {
   ...BASE,
   needs: [...BASE_NEEDS, NGOZI_HALAL],
@@ -418,7 +425,7 @@ const NAMED_COPY: Figures = counted(
     needs: BASE_NEEDS.map((one) => (one.guest === 'g-yusuf' ? { ...one, allergies: [] } : one)),
     otherDiets: { halal: 17, vegetarian: 12, vegan: 4 },
   },
-  { 's-pepper': 50, 'm-jollof': 45, 'm-bass': 31, 'd-tart': 51 },
+  { 's-pepper': 49, 's-none': 4, 'm-jollof': 45, 'm-bass': 31, 'd-tart': 50, 'd-none': 4 },
 );
 
 const MENU_NOW: Figures = {

@@ -24,16 +24,22 @@ function withItems(items: readonly Item[]): Figures {
   return { ...BASE, items };
 }
 
+function counted(counts: Readonly<Record<string, number>>): Figures {
+  return withItems(BASE.items.map((one) => ({ ...one, count: counts[one.id] ?? one.count })));
+}
+
 describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
   it('names the person with guests.manage, allergies first, then diets, coming and each course', () => {
     expect(linesFor('named', false, true).map((line) => line.text)).toEqual([
       'New allergy: Sesame (Yusuf Ibrahim)',
       'New diet: Halal (Ngozi Eze)',
       '2 more coming',
-      'Pepper soup 50 to 52',
+      'Pepper soup 49 to 52',
+      'Starter · Not chosen yet 4 to 3',
       'Jollof rice with chicken 45 to 48',
       'Grilled sea bass 31 to 30',
-      'Chocolate tart 51 to 53',
+      'Chocolate tart 50 to 53',
+      'Dessert · Not chosen yet 4 to 3',
     ]);
   });
 
@@ -42,10 +48,12 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'New allergy: Sesame (1 guest)',
       'New diet: Halal (1 guest)',
       '2 more coming',
-      'Pepper soup 50 to 52',
+      'Pepper soup 49 to 52',
+      'Starter · Not chosen yet 4 to 3',
       'Jollof rice with chicken 45 to 48',
       'Grilled sea bass 31 to 30',
-      'Chocolate tart 51 to 53',
+      'Chocolate tart 50 to 53',
+      'Dessert · Not chosen yet 4 to 3',
     ]);
   });
 
@@ -56,7 +64,7 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'Renamed: Grilled sea bass, now Pan-seared sea bass',
       'Pan-seared sea bass 30 to 32',
       'Removed: Mushroom risotto, was 15',
-      'Not chosen yet 3 to 16',
+      'Main · Not chosen yet 3 to 16',
     ]);
   });
 
@@ -225,6 +233,28 @@ describe('Changes since: what counts as a change', () => {
       `Renamed: ${LONG_NAMES.dishWas}, now ${LONG_NAMES.dish}`,
       `Renamed: ${LONG_NAMES.dish} · ${LONG_NAMES.sideWas}, now ${LONG_NAMES.side}`,
     ]);
+  });
+
+  it('names the course before a course’s own figure, so two courses never read alike', () => {
+    const now = counted({ 's-none': 4, 'm-none': 2, 's-pepper': 51, 'm-bass': 31 });
+
+    expect(texts(BASE, now)).toEqual([
+      'Pepper soup 52 to 51',
+      'Starter · Not chosen yet 3 to 4',
+      'Grilled sea bass 30 to 31',
+      'Main · Not chosen yet 3 to 2',
+    ]);
+  });
+
+  it('names a course’s figure by the course’s name now', () => {
+    const now = {
+      ...counted({ 'd-none': 4, 'd-fruit': 39 }),
+      courses: BASE.courses.map((course) =>
+        course.id === 'd' ? { ...course, name: 'Pudding' } : course,
+      ),
+    };
+
+    expect(texts(BASE, now)).toEqual(['Fruit plate 40 to 39', 'Pudding · Not chosen yet 3 to 4']);
   });
 
   it('never counts a course’s name or order as a change', () => {
