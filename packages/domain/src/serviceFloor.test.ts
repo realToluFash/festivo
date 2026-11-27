@@ -9,6 +9,9 @@ import {
   floorTables,
   floorWord,
   inFloorOrder,
+  owesSentBack,
+  sectionsMoved,
+  withKeptTaps,
 } from './serviceFloor.ts';
 import type { PlateStage } from './serviceStages.ts';
 
@@ -72,7 +75,14 @@ function course(id: string, tables: ServiceTableRead[]): ServiceCourseRead {
 }
 
 function floor(courses: ServiceCourseRead[], extra: Partial<FloorRead> = {}): FloorRead {
-  return { courses, yours: [], floorLead: 'Ifeoma Nduka', manage: false, ...extra };
+  return {
+    event: 'Wedding',
+    courses,
+    yours: [],
+    floorLead: 'Ifeoma Nduka',
+    manage: false,
+    ...extra,
+  };
 }
 
 describe('floorWord', () => {
@@ -147,15 +157,15 @@ describe('floorTables', () => {
       earlierCourse: null,
       served: 1,
       ordered: 2,
-      flagged: 0,
+      flagged: [],
     });
     expect(two).toMatchObject({
       word: 'onATray',
       earlierCourse: 'Starter',
       served: 1,
       ordered: 2,
-      flagged: 1,
     });
+    expect(two!.flagged.map((g) => g.id)).toEqual(['g2']);
   });
 
   it('reads "0 of 10 served" before anything is fired, never "0 of 0"', () => {
@@ -214,5 +224,85 @@ describe('floorGroups', () => {
       ['Table 2', true],
       ['Table 3', true],
     ]);
+  });
+});
+
+describe('the table’s view across courses', () => {
+  const allergic = { ...NO_FLAGS, allergens: ['peanuts'] };
+  const plate = { ...order('toServe'), isOrder: false, courseId: 'Starter', trayId: 't1' };
+  const sentBack = { ...plate, id: 'owed', owedReason: 'sentBack' as const };
+  const starter = {
+    ...course('Starter', [
+      table('Table 4', [
+        guest(1, order('served', { courseId: 'Starter', owed: [sentBack] }), { flags: allergic }),
+      ]),
+    ]),
+    trays: [
+      {
+        id: 't1',
+        courseId: 'Starter',
+        table: 'Table 4',
+        waiter: { id: 's1', name: 'Bisi Lawal' },
+        plates: ['owed'],
+        done: false,
+      },
+    ],
+  };
+  const mains = course('Mains', [
+    table('Table 4', [guest(1, order('toServe', { courseId: 'Mains' }), { flags: allergic })]),
+  ]);
+  const [four] = floorTables(floor([starter, mains]));
+
+  it('keeps an owed plate from an earlier course under its guest, with its tray', () => {
+    expect(four!.guests[0]!.owed).toEqual([sentBack]);
+    expect(four!.trays).toEqual([{ id: 't1', waiter: 'Bisi Lawal', plates: 1, stage: 'toServe' }]);
+    // The mains order is not the plate that was sent back, so it can still be.
+    expect(owesSentBack(four!.guests[0]!)).toBe(false);
+  });
+
+  it('counts a flagged guest open on two courses once', () => {
+    expect(four!.flagged.map((g) => g.id)).toEqual(['g1']);
+  });
+});
+
+describe('sectionsMoved', () => {
+  const a = { id: 'A', name: 'Section A' };
+  const b = { id: 'B', name: 'Section B' };
+
+  it('names every section left or joined to, none when left on none, and nothing unchanged', () => {
+    expect(sectionsMoved(['A', 'B'], [a])).toEqual(['Section A']);
+    expect(sectionsMoved(['A'], [a, b])).toEqual(['Section A', 'Section B']);
+    expect(sectionsMoved(['A'], [])).toEqual([]);
+    expect(sectionsMoved(['B', 'A'], [a, b])).toBeNull();
+  });
+});
+
+describe('withKeptTaps', () => {
+  const held = order('toServe', { id: 'p1', held: true });
+  const read = floor([course('Mains', [table('Table 1', [guest(1, held)])])]);
+  const tap = (kind: string, path: string, body: object) => ({
+    key: `${kind}-key`,
+    kind,
+    path,
+    body,
+    tappedAt: '2027-03-06T19:00:00Z',
+  });
+  const choice = tap('choice', '/plates/p1/choice', { choice: 'waitForAll' });
+  const back = tap('sendBack', '/plates/p1/sent-back', { reason: 'dropped' });
+  const at = (f: FloorRead) => f.courses[0]!.tables[0]!.guests[0]!.order!;
+
+  it('shows a kept choice and a kept sent-back plate as made', () => {
+    const made = at(withKeptTaps(read, [choice, back]));
+
+    expect(made.choice).toBe('waitForAll');
+    expect(made.owed).toMatchObject([
+      { id: 'sendBack-key', stage: 'toServe', owedReason: 'sentBack' },
+    ]);
+  });
+
+  it('takes a kept step off again under a kept Undo', () => {
+    const undone = at(withKeptTaps(read, [back, tap('undo', '/undo', { subject: 'p1' })]));
+
+    expect(undone.owed).toEqual([]);
   });
 });
