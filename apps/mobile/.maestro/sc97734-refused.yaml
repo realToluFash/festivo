@@ -33,7 +33,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'redeem.event.send'
 - extendedWaitUntil:
-    visible: '.*(That code does not work|Something went wrong on the way).*'
+    visible: '.*(?:{{t:any:redeem.refused}}|{{t:any:redeem.line.failed}}).*'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 4000
