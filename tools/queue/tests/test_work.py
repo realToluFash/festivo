@@ -640,6 +640,20 @@ class Heartbeat(unittest.TestCase):
         # Not overdue, the quiet spell's sweep comes as before.
         self.assertEqual([k for k, _, _ in ux(now - 60, busy=(), ran=now - 121 * 60)], ["sweep"])
 
+    def test_the_product_manager_sweeps_once_overdue_though_busy(self):
+        now = 10_000_000
+        waiting = [story(state="Backlog")]
+
+        def pm(swept):
+            return [(i["kind"], i["priority"], i["fingerprint"])
+                    for i in work.heartbeat_items(waiting, {"pm": now - 60}, {"pm"}, now,
+                                                  last_sweeps={"pm": swept})
+                    if i["roles"] == ["pm"]]
+        self.assertEqual(pm(now - 239 * 60), [])
+        late = now - 241 * 60
+        self.assertEqual(pm(late), [("sweep", work.INBOX - 1, f"pm:sweep:overdue:{late}")])
+        self.assertEqual(pm(None), [("sweep", work.INBOX - 1, "pm:sweep:overdue:0")])
+
     def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
         items = work.heartbeat_items([], {}, set(), 10_000_000)
         self.assertNotIn("dev", [r for i in items for r in i["roles"]])
