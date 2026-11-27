@@ -82,7 +82,6 @@ describe('the event’s Staff in the app (sc-77903)', () => {
           {
             id: person.id,
             name: person.name,
-            first: person.name,
             job: '',
             shift: '',
             mobile: person.mobile,

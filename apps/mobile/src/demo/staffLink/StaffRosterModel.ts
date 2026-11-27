@@ -31,6 +31,8 @@ export const RW = {
   noStation: 'No station yet',
   noShift: 'Not on a shift yet',
   more: (n: number) => `+${n} more`,
+  hours: 'Hours',
+  whosHere: 'Who’s here',
 };
 
 const KEMI = 'Kemi Adeyemi';
@@ -138,10 +140,6 @@ export function rosterOrder(people: readonly OnRoster[]): OnRoster[] {
 
     return a.name.localeCompare(b.name);
   });
-}
-
-export function firstName(name: string): string {
-  return name.split(' ')[0] ?? name;
 }
 
 export function shiftWithMore(person: Pick<OnRoster, 'shift' | 'more'>): string | null {
