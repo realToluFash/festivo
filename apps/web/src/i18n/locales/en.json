@@ -2661,13 +2661,7 @@
   "eventNeeds": {
     "nothing": "Nothing needs you",
     "headCount_one": "Needs you, {{count, number}} thing",
-    "headCount_other": "Needs you, {{count, number}} things",
-    "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow",
-    "dueOn": "Due {{date}}",
-    "overdue": "Overdue",
-    "overdueDays_one": "{{count, number}} day overdue",
-    "overdueDays_other": "{{count, number}} days overdue"
+    "headCount_other": "Needs you, {{count, number}} things"
   },
   "calendar": {
     "title": "Calendar",

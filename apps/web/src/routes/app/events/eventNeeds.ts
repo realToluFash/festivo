@@ -1,12 +1,6 @@
-import {
-  type EventState,
-  type Milestone,
-  formatEventDate,
-  isNeed,
-  milestoneDistance,
-  notThisYear,
-} from '@soirely/domain';
+import { type EventState, type Milestone, formatEventDate, isNeed } from '@soirely/domain';
 import type { TFunction } from 'i18next';
+import { dueWords } from '../todayNeeds.ts';
 
 export interface NeedRow {
   key: string;
@@ -15,33 +9,16 @@ export interface NeedRow {
   late: boolean;
 }
 
-function dueWords(
-  at: string,
-  timeZone: string,
-  now: Date,
-  locale: string,
-  t: TFunction,
-): { due: string; late: boolean } {
-  const distance = milestoneDistance(at, timeZone, now);
+function due(at: string, timeZone: string, now: Date, locale: string, t: TFunction) {
+  const { words, late } = dueWords(
+    at,
+    timeZone,
+    now,
+    (_day, withYear) => formatEventDate(at, timeZone, locale, withYear),
+    t,
+  );
 
-  switch (distance.kind) {
-    case 'now':
-      return { due: t('eventNeeds.overdue'), late: true };
-    case 'daysAgo':
-      return { due: t('eventNeeds.overdueDays', { count: distance.count }), late: true };
-    case 'today':
-      return { due: t('eventNeeds.dueToday'), late: false };
-    case 'inDays':
-      return {
-        due:
-          distance.count === 1
-            ? t('eventNeeds.dueTomorrow')
-            : t('eventNeeds.dueOn', {
-                date: formatEventDate(at, timeZone, locale, notThisYear(timeZone, now, at)),
-              }),
-        late: false,
-      };
-  }
+  return { due: words, late };
 }
 
 /** The event's You milestones the reader's role changes, earliest first and a tie by title: the rows Today lists for this event (sc-29884, sc-32801). */
@@ -61,6 +38,6 @@ export function needRows(
     .map((milestone) => ({
       key: `${milestone.area}|${milestone.at}|${milestone.title}`,
       milestone,
-      ...dueWords(milestone.at, timeZone, now, locale, t),
+      ...due(milestone.at, timeZone, now, locale, t),
     }));
 }
