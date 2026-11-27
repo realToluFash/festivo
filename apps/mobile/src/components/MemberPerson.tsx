@@ -8,10 +8,13 @@ import {
 import {
   firstName,
   formatDay,
+  type LimitRefusal,
+  limitRefusalOf,
   type MemberStanding,
   memberChannelWords,
   memberStanding,
   memberStatusWord,
+  roleHolds,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type Ref, useRef, useState } from 'react';
@@ -24,6 +27,7 @@ import { membersAfterWrite, withRemoved, withRestored } from '../kit/membersAfte
 import { memberMark, memberRole, whenKey } from '../kit/membersSummary.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { FieldError } from './Field.tsx';
+import { LimitRefusalSheet } from './LimitRefusal.tsx';
 import { RoleScreen } from './MemberRole.tsx';
 import { readOut } from './ReadOut.tsx';
 import {
@@ -55,6 +59,7 @@ export function PersonBody({
   onChanged,
   onRemoved,
   onGoToOrganisation,
+  onMembers,
 }: {
   pane: boolean;
   organisation: Membership;
@@ -70,6 +75,8 @@ export function PersonBody({
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList, name: string) => void;
   onGoToOrganisation: () => void;
+  /** Withdraw an invitation and Remove a member, from a restore the seats refused. */
+  onMembers: () => void;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
@@ -92,6 +99,7 @@ export function PersonBody({
   const [removeBusy, setRemoveBusy] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [refused, setRefused] = useState<{ on: 'restore' | 'remove'; words: string } | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const stepRef = useRef<ViewInstance>(null);
   const removeRef = useRef<ViewInstance>(null);
   const named = {
@@ -124,14 +132,17 @@ export function PersonBody({
         changedElsewhere();
         return;
       }
+      const limit = limitRefusalOf(error, 'seatRestore', t, dateLocale(), name);
+      if (limit != null) {
+        setLimited(limit);
+        return;
+      }
       setRefused({
         on: 'restore',
         words:
           error instanceof ApiError && error.is('restore_needs_address')
             ? t('membersScreen.restoreNeedsAddress', named)
-            : error instanceof ApiError && error.is('team_seats_in_use')
-              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
-              : refusalTitle(error, t('membersScreen.actionFailed')),
+            : refusalTitle(error, t('membersScreen.actionFailed')),
       });
       return;
     }
@@ -306,6 +317,17 @@ export function PersonBody({
         }}
         onConfirm={() => void remove()}
         testID="members.remove.ask"
+      />
+      <LimitRefusalSheet
+        refusal={limited}
+        billing={roleHolds(organisation, 'billing.manage')}
+        opener={stepRef}
+        onMembers={() => {
+          setLimited(null);
+          onMembers();
+        }}
+        onBack={() => setLimited(null)}
+        testID="members.restore.limit"
       />
       {changes && (
         <RoleScreen

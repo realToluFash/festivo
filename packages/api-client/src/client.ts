@@ -5889,7 +5889,7 @@ export class ApiClient {
   }
 
   /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
-   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
+   * and 403 `plan_limit_reached` naming team seats while the plan's seats are taken (sc-3930). */
   async restoreMember(organisationId: string, membershipId: string): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,

@@ -362,10 +362,6 @@
     "nowState_finished": "Ya ha finalizado. La página muestra su estado actual.",
     "nowState_calledOff": "Ya está cancelado. La página muestra su estado actual.",
     "notMadeLive": "No se ha publicado.",
-    "planLimit_one": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} evento publicado o en pausa a la vez.",
-    "planLimit_other": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} eventos publicados o en pausa a la vez.",
-    "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
-    "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
     "hostEmpty": "Indique el anfitrión para publicar este evento.",
     "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
@@ -1784,12 +1780,6 @@
     "roleKeptWhileSuspended": "El rol se conserva mientras el acceso esté suspendido. Podrá cambiarlo cuando se restablezca.",
     "ownerNoSuspend": "No se puede suspender a alguien con el rol Propietario. Para suspender a {{name}}, cambie antes su rol.",
     "accessConflict": "Otra persona ha cambiado el acceso de {{name}} mientras esta página estaba abierta, así que su cambio no se ha aplicado. Este es el estado actual.",
-    "seatsInUse_one": "La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.",
-    "seatsInUse_other": "Están ocupadas las {{count, number}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
-    "seatsWayOwner": "Para restablecer el acceso de {{name}}, libere una plaza suspendiendo o quitando a alguien que ya no necesite acceso, o cambie de plan.",
-    "seatsWayAdmin": "Para restablecer el acceso de {{name}}, libere una plaza suspendiendo o quitando a alguien que ya no necesite acceso. Solo alguien con el rol Propietario puede cambiar de plan.",
-    "seatsOpenMembers": "Abrir Miembros ›",
-    "seatsSuspendedFree": "Quien tiene el acceso suspendido no ocupa plaza.",
     "removeTitle": "Quitar a {{name}}",
     "removeNameOpen": "Quitar a {{name}}…",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
@@ -1836,7 +1826,6 @@
       "turnedDownNext": "Ver Antiguos"
     },
     "proveOwner_many": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} de minutos.",
-    "seatsInUse_many": "Están ocupadas las {{count, number}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
     "failedTitle": "No se han podido cargar los miembros.",
     "failedLine": "Compruebe la conexión y vuelva a intentarlo.",
     "card": {
@@ -7496,5 +7485,74 @@
     "brokenTitle": "Este enlace no funciona",
     "brokenBody": "No ha cambiado nada. Vuelva a abrir el enlace desde el correo más reciente que ha recibido.",
     "wayIn": "Elija cómo puede contactarle {{organisation}}"
+  },
+  "limitReached": {
+    "title": {
+      "live_one": "Your plan allows {{count, number}} live event at once",
+      "live_other": "Your plan allows {{count, number}} live events at once",
+      "live_many": "Your plan allows {{count, number}} live events at once",
+      "people_one": "Your plan allows {{count, number}} person per event",
+      "people_other": "Your plan allows {{count, number}} people per event",
+      "people_many": "Your plan allows {{count, number}} people per event",
+      "seats_one": "Your plan allows {{count, number}} team seat",
+      "seats_other": "Your plan allows {{count, number}} team seats",
+      "seats_many": "Your plan allows {{count, number}} team seats",
+      "accept": "Every team seat at {{organisation}} is in use",
+      "ceiling": "An event can have up to {{ceiling, number}} people"
+    },
+    "figure": {
+      "live_one": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
+      "live_other": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
+      "live_many": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
+      "people_one": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
+      "people_other": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
+      "people_many": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
+      "seats_one": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
+      "seats_other": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
+      "seats_many": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
+      "ceiling_one": "{{count, number}} of {{ceiling, number}} people · companions count as people",
+      "ceiling_other": "{{count, number}} of {{ceiling, number}} people · companions count as people",
+      "ceiling_many": "{{count, number}} of {{ceiling, number}} people · companions count as people"
+    },
+    "guestFull_one": "This event already has {{count, number}} person.",
+    "guestFull_other": "This event already has {{count, number}} people.",
+    "guestFull_many": "This event already has {{count, number}} people.",
+    "safe": {
+      "draft": "Kept as a draft, with everything you entered.",
+      "form": "The form is kept as you left it.",
+      "invitation": "The invitation is kept as you wrote it.",
+      "accept": "Your invitation stays open. Nothing is lost.",
+      "request": "La solicitud de {{name}} sigue en espera. No se pierde nada.",
+      "restore": "El acceso de {{name}} sigue suspendido. No se pierde nada."
+    },
+    "goLive": "Another event can go live when {{event}} ends, on {{date}} at {{time}}.",
+    "removeGuest": "Remove a guest",
+    "removeGuestLine": "Each guest removed, with their companion places, makes room.",
+    "toGuestList": "Go to the guest list",
+    "withdraw": "Withdraw an invitation",
+    "withdrawLine": "An invitation not yet accepted holds a seat.",
+    "removeMember": "Remove a member",
+    "removeMemberLine": "A member removed frees their seat.",
+    "copy": {
+      "overPlan_one": "Not created. The guest list would bring {{count, number}} person, and your plan has room for {{limit, number}} in a new event.",
+      "overPlan_other": "Not created. The guest list would bring {{count, number}} people, and your plan has room for {{limit, number}} in a new event.",
+      "overPlan_many": "Not created. The guest list would bring {{count, number}} people, and your plan has room for {{limit, number}} in a new event.",
+      "overCeiling_one": "Not created. The guest list would bring {{count, number}} person, more than the {{ceiling, number}} an event can hold.",
+      "overCeiling_other": "Not created. The guest list would bring {{count, number}} people, more than the {{ceiling, number}} an event can hold.",
+      "overCeiling_many": "Not created. The guest list would bring {{count, number}} people, more than the {{ceiling, number}} an event can hold.",
+      "figurePlan_one": "{{count, number}} person · companions count as people · {{plan}} plan",
+      "figurePlan_other": "{{count, number}} people · companions count as people · {{plan}} plan",
+      "figurePlan_many": "{{count, number}} people · companions count as people · {{plan}} plan",
+      "figureCeiling_one": "{{count, number}} person · companions count as people",
+      "figureCeiling_other": "{{count, number}} people · companions count as people",
+      "figureCeiling_many": "{{count, number}} people · companions count as people",
+      "untick": "To duplicate without guests, untick Also copy the guest list."
+    },
+    "back": {
+      "draft": "Back to the draft",
+      "form": "Back to the form",
+      "invitation": "Back to the invitation",
+      "notNow": "Not now"
+    }
   }
 }

@@ -1,17 +1,22 @@
 import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
+  type LimitRefusal,
   changedWords,
+  limitRefusalOf,
   makeLiveHostError,
   makeLiveWithHost,
   needsHost,
   rereadOf,
+  roleHolds,
 } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type EditPart } from '../kit/eventNav.ts';
+import { useSignedIn } from '../signedIn.ts';
 import {
   type LiveAsking,
   type LiveQuestion,
@@ -23,6 +28,7 @@ import {
 } from '../kit/makeLive.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
+import { LimitRefusalSheet } from './LimitRefusal.tsx';
 import { MakeLiveAlert } from './MakeLiveAlert.tsx';
 import { readOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -91,6 +97,8 @@ export function useMakeLive({
   const host = useRef<TextInputInstance>(null);
   const read = useRef<Promise<TaggedEvent> | null>(null);
   const [asking, setAsking] = useState<LiveAsking | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
+  const { organisation } = useSignedIn();
   const pending = asking?.kind === 'confirm' && asking.pending;
 
   function close(): void {
@@ -177,6 +185,14 @@ export function useMakeLive({
 
     if (step.saved != null) changed(step.saved);
 
+    const limit = limitRefusalOf(step.error, 'makeLive', t, dateLocale());
+
+    if (limit != null) {
+      setAsking(null);
+      setLimited(limit);
+      return;
+    }
+
     const refusal = refusalOf(step.error);
     const told = toldOf(refusal, t);
 
@@ -217,21 +233,30 @@ export function useMakeLive({
   };
 
   const sheet = (
-    <MakeLiveAlert
-      alert={liveAlertOf(asking, event, t, onEdit != null)}
-      typed={asking?.kind === 'confirm' ? asking.typed : ''}
-      hostRef={host}
-      opener={opener}
-      onTyped={(typed) => {
-        if (asking?.kind === 'confirm') setAsking({ ...asking, typed, error: null });
-      }}
-      onKeep={close}
-      onConfirm={confirm}
-      testID="events.makeLive"
-    />
+    <>
+      <MakeLiveAlert
+        alert={liveAlertOf(asking, event, t, onEdit != null)}
+        typed={asking?.kind === 'confirm' ? asking.typed : ''}
+        hostRef={host}
+        opener={opener}
+        onTyped={(typed) => {
+          if (asking?.kind === 'confirm') setAsking({ ...asking, typed, error: null });
+        }}
+        onKeep={close}
+        onConfirm={confirm}
+        testID="events.makeLive"
+      />
+      <LimitRefusalSheet
+        refusal={limited}
+        billing={organisation != null && roleHolds(organisation, 'billing.manage')}
+        opener={opener}
+        onBack={() => setLimited(null)}
+        testID="events.makeLive.limit"
+      />
+    </>
   );
 
-  return { open: asking != null, start, sheet };
+  return { open: asking != null || limited != null, start, sheet };
 }
 
 const styles = StyleSheet.create({

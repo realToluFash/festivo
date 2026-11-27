@@ -15,6 +15,7 @@ import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
+import { SeatsFullSheet } from './LimitRefusal.tsx';
 import { OrgTile } from './OrgTile.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -87,6 +88,7 @@ function InvitationRow({
       {isWaiting(outcome) && (
         <View style={styles.answer}>
           {outcome?.kind === 'failed' && <InvitationFailedNotice answer={answer} />}
+          <SeatsFullSheet outcome={outcome} testID={`invitations.${invitation.id}.seatsFull`} />
           <View style={styles.buttons}>
             <PrimaryButton
               label={t('invitations.accept')}
