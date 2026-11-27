@@ -174,6 +174,11 @@ describe('who a need is for', () => {
     expect(isYours({ owner: 'event', area: 'menu' }, ['menu.manage'])).toBe(false);
     expect(isYours({ owner: 'automatic', area: 'menu' }, ['menu.manage'])).toBe(false);
   });
+
+  it('is not a milestone its area has already marked done', () => {
+    expect(isYours({ owner: 'you', area: 'seating', done: true }, ['seating.manage'])).toBe(false);
+    expect(isYours({ owner: 'you', area: 'seating', done: false }, ['seating.manage'])).toBe(true);
+  });
 });
 
 describe('the order of needs', () => {

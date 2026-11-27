@@ -71,6 +71,7 @@ export function needsOf(
       const { words, late } = dueWords(milestone.at, event.timeZone, now, day, t);
 
       return {
+        key: `${event.shown.id}|${milestone.area}|${milestone.at}|${milestone.title}`,
         event: event.shown,
         title: milestone.title,
         due: words,

@@ -87,7 +87,45 @@ describe('who a row is for', () => {
   });
 
   it('drops a row once its area stops returning it', () => {
-    expect(needsOf([event('Ireti at 40', { milestones: [] })], NOW, day)).toEqual([]);
+    const asked = (milestones: Milestone[]) =>
+      needsOf([event('Ireti at 40', { milestones })], NOW, day).map(({ title }) => title);
+
+    expect(asked([milestone('2026-11-20T23:59:00Z')])).toEqual([
+      'Give final numbers to the kitchen',
+    ]);
+    expect(asked([])).toEqual([]);
+  });
+
+  it('drops a You milestone its area has marked done', () => {
+    const shared = milestone('2026-11-01T09:00:00Z', {
+      area: 'seating',
+      title: 'Tables shared',
+      done: true,
+    });
+
+    expect(
+      needsOf(
+        [event('Ireti at 40', { milestones: [shared], permissions: ['seating.manage'] })],
+        NOW,
+        day,
+      ),
+    ).toEqual([]);
+  });
+
+  it('keys two milestones of one event with one title apart', () => {
+    const twin = (area: string) => milestone('2026-11-20T23:59:00Z', { area, title: 'Confirm' });
+    const rows = needsOf(
+      [
+        event('Ireti at 40', {
+          milestones: [twin('menu'), twin('budget')],
+          permissions: ['menu.manage', 'budget.manage'],
+        }),
+      ],
+      NOW,
+      day,
+    );
+
+    expect(new Set(rows.map(({ key }) => key)).size).toBe(2);
   });
 });
 

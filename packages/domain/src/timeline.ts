@@ -82,12 +82,12 @@ export function milestoneDistance(at: string, timeZone: string, now: Date): Mile
   return moment.getTime() <= now.getTime() ? { kind: 'now' } : { kind: 'today' };
 }
 
-/** The reader's own milestone, in an area their role changes on this event. */
+/** The reader's own milestone, still to do, in an area their role changes on this event. */
 export function isYours(
-  { owner, area }: Pick<Milestone, 'owner' | 'area'>,
+  { owner, area, done }: Pick<Milestone, 'owner' | 'area' | 'done'>,
   permissions: readonly string[],
 ): boolean {
-  return owner === 'you' && levelOf(permissions, area) === 'change';
+  return owner === 'you' && done !== true && levelOf(permissions, area) === 'change';
 }
 
 export interface NeedKey {

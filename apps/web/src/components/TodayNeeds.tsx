@@ -83,12 +83,7 @@ export function NeedsYou({ moment, open }: { moment: Moment; open: Open }) {
         ) : (
           <ul className="today-rows">
             {needs.map((need, index) => (
-              <NeedRow
-                key={`${need.event.id}|${need.title}`}
-                need={need}
-                first={index === 0}
-                open={open}
-              />
+              <NeedRow key={need.key} need={need} first={index === 0} open={open} />
             ))}
           </ul>
         )}

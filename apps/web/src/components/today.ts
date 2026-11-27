@@ -89,6 +89,8 @@ export interface Now {
 }
 
 export interface Need {
+  /** Unique among a list's rows: a milestone has no id, so its event, area, moment and title. */
+  key: string;
   event: ShownEvent;
   title: string;
   due: string;
