@@ -112,6 +112,7 @@ final class GuestMessagesTest extends ApiTestCase
         self::assertStringContainsString('/i/', $notice->body);
         self::assertSame('Ìrè Events via Soirely', $notice->senderName);
         self::assertStringContainsString('To answer Funmi Adeyemi, reply on your page. This email cannot take replies.', $notice->body);
+        self::assertNotNull($notice->unsubscribe);
         self::assertStringEndsWith('To stop these emails or choose how Ìrè Events can reach you: ' . $notice->unsubscribe, $notice->body);
         self::assertStringNotContainsString('Secret plans', $notice->subject . $notice->body);
         self::assertStringNotContainsString('cake', $notice->subject . $notice->body);
