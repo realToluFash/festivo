@@ -637,6 +637,7 @@ function DoorForm({
         label={W.country}
         country={country}
         onChange={(c) => apply(setDoor(s, { country: c.code }))}
+        withCallingCode
         testID="wh.door.country"
       />
       <Field label={W.mobile} pill={W.optional} error={shown.number}>
@@ -765,6 +766,7 @@ function MobileForm({ s, apply }: { s: WhState; apply: (next: WhState) => void }
         label={W.country}
         country={country}
         onChange={(c) => apply(setMobile(s, { country: c.code }))}
+        withCallingCode
         testID="wh.mobile.country"
       />
       <Field label={W.mobile} error={f.tried ? problem : null}>
