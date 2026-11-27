@@ -95,6 +95,10 @@ function itemsOf(t: TFunction, plate: ServicePlateRead): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
 }
 
+function itemsInSentence(t: TFunction, plate: ServicePlateRead): string {
+  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
+}
+
 function listLine(t: TFunction, read: FloorRead): string {
   const course = roomCourse(read)?.course.name;
 
@@ -329,7 +333,7 @@ function Floor({ eventId }: { eventId: string }) {
               sending.plate,
               t('service.floor.step.sentBack', {
                 guest: sending.guest,
-                items: itemsOf(t, sending.plate),
+                items: itemsInSentence(t, sending.plate),
                 reason: t(`service.sentBack.${reason}`),
               }),
               { kind: 'sendBack' },
@@ -790,7 +794,7 @@ function SendBackSheet({
         aria-labelledby="flr-sheet-title"
       >
         <h2 id="flr-sheet-title" ref={title} tabIndex={-1}>
-          {t('service.floor.sendBackTitle', { items: itemsOf(t, sending.plate) })}
+          {t('service.floor.sendBackTitle', { items: itemsInSentence(t, sending.plate) })}
         </h2>
         <p className="flr-quiet">
           {t('service.floor.sendBackWho', { guest: sending.guest, table: sending.table })}

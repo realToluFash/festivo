@@ -3827,6 +3827,7 @@
       "tryAgain": "Reintentar",
       "listBack": "Volver",
       "chefsChoice": "A elección del chef",
+      "chefsChoiceInSentence": "chef’s choice",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La sala se abre con «Puede atender en sala»",
