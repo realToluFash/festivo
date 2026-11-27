@@ -39,6 +39,7 @@ describe('one person’s link in the app (sc-3912)', () => {
     expect(s.status).toBe('sent');
     expect(s.asking).toBe(false);
     expect(trailLine(s.status, s.trail)).toBe(`Marked as sent by ${YOU} · ${NOW}`);
+    expect(s.toast).toBe('[Marked as sent to Ada Obi.]');
   });
 
   it('says Link copied. after a copy, and offers Mark as sent', () => {
@@ -95,6 +96,7 @@ describe('one person’s link in the app (sc-3912)', () => {
     expect(asked.replacing).toBe(true);
     const s = replace(asked);
     expect(s).toMatchObject({ status: 'none', trail: null, replacing: false });
+    expect(s.toast).toBe('[Ada Obi’s link is replaced. Share link gives them a new one.]');
     expect(offersReplace(s)).toBe(false);
     expect(offersReplace(seed('copied'))).toBe(true);
   });
