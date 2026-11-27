@@ -344,10 +344,10 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
         'New allergy: Sesame (Yusuf Ibrahim)',
         'New diet: Halal (Ngozi Eze)',
         '2 more coming',
-        'Pepper soup 50 to 52',
-        'Jollof rice with chicken 45 to 48',
-        'Grilled sea bass 31 to 30',
-        'Chocolate tart 51 to 53',
+        'Pepper soup: 50 to 52',
+        'Jollof rice with chicken: 45 to 48',
+        'Grilled sea bass: 31 to 30',
+        'Chocolate tart: 51 to 53',
       ]);
       expect(within(changes()).getByRole('button', { name: GIVE })).toBeDefined();
       expect(screen.getByRole('heading', { level: 2, name: /^Allergies/u }).textContent).toBe(

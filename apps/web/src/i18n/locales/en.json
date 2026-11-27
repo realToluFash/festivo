@@ -6481,7 +6481,7 @@
       "comingMore_other": "{{count, number}} more coming",
       "comingFewer_one": "{{count, number}} fewer coming",
       "comingFewer_other": "{{count, number}} fewer coming",
-      "count": "{{dish}} {{old, number}} to {{new, number}}",
+      "count": "{{dish}}: {{old, number}} to {{new, number}}",
       "added": "Added: {{dish}}, {{count, number}}",
       "removed": "Removed: {{dish}}, was {{count, number}}",
       "renamed": "Renamed: {{old}}, now {{new}}",

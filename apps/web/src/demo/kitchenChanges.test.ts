@@ -30,10 +30,10 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'New allergy: Sesame (Yusuf Ibrahim)',
       'New diet: Halal (Ngozi Eze)',
       '2 more coming',
-      'Pepper soup 50 to 52',
-      'Jollof rice with chicken 45 to 48',
-      'Grilled sea bass 31 to 30',
-      'Chocolate tart 51 to 53',
+      'Pepper soup: 50 to 52',
+      'Jollof rice with chicken: 45 to 48',
+      'Grilled sea bass: 31 to 30',
+      'Chocolate tart: 51 to 53',
     ]);
   });
 
@@ -42,30 +42,30 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'New allergy: Sesame (1 guest)',
       'New diet: Halal (1 guest)',
       '2 more coming',
-      'Pepper soup 50 to 52',
-      'Jollof rice with chicken 45 to 48',
-      'Grilled sea bass 31 to 30',
-      'Chocolate tart 51 to 53',
+      'Pepper soup: 50 to 52',
+      'Jollof rice with chicken: 45 to 48',
+      'Grilled sea bass: 31 to 30',
+      'Chocolate tart: 51 to 53',
     ]);
   });
 
   it('says a new, a removed and a renamed dish, the rename before its count, the removed after its course’s dishes', () => {
     expect(linesFor('menu', false, true).map((line) => line.text)).toEqual([
-      'Burrata with peaches 41 to 35',
+      'Burrata with peaches: 41 to 35',
       'Added: Moi moi, 6',
       'Renamed: Grilled sea bass, now Pan-seared sea bass',
-      'Pan-seared sea bass 30 to 32',
+      'Pan-seared sea bass: 30 to 32',
       'Removed: Mushroom risotto, was 15',
-      'Not chosen yet 3 to 16',
+      'Not chosen yet: 3 to 16',
     ]);
   });
 
   it('names a variant and a side after their dish, and Renamed names the dish once', () => {
     expect(linesFor('variantSide', false, true).map((line) => line.text)).toEqual([
-      'Jollof rice · Chicken 28 to 30',
+      'Jollof rice · Chicken: 28 to 30',
       'Renamed: Jollof rice · Fish, now Sea bass',
-      'Jollof rice · Sea bass 20 to 18',
-      'Jollof rice · Plantain 33 to 35',
+      'Jollof rice · Sea bass: 20 to 18',
+      'Jollof rice · Plantain: 33 to 35',
     ]);
   });
 
@@ -75,10 +75,10 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'Allergy removed: Peanuts (Inês Duarte)',
       'New diet: Vegetarian (Ngozi Eze)',
       'Diet removed: Halal (Inês Duarte)',
-      'Jollof rice with chicken 47 to 48',
-      'Grilled sea bass 31 to 30',
-      'Chocolate tart 54 to 53',
-      'Fruit plate 39 to 40',
+      'Jollof rice with chicken: 47 to 48',
+      'Grilled sea bass: 31 to 30',
+      'Chocolate tart: 54 to 53',
+      'Fruit plate: 39 to 40',
     ]);
     expect(
       linesFor('person', false, false)
@@ -141,9 +141,9 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
       'New allergy: Sesame (Yusuf Ibrahim)',
       'Allergy removed: Shellfish (1 guest)',
       '1 fewer coming',
-      'Burrata with peaches 42 to 41',
-      'Mushroom risotto 16 to 15',
-      'Chocolate tart 54 to 53',
+      'Burrata with peaches: 42 to 41',
+      'Mushroom risotto: 16 to 15',
+      'Chocolate tart: 54 to 53',
     ]);
     expect(linesFor('erased', false, true).some((line) => line.text.includes('Kwame'))).toBe(false);
   });
@@ -198,7 +198,7 @@ describe('Changes since: what counts as a change', () => {
     };
 
     expect(texts(BASE, now)).toEqual([
-      'Chocolate tart 53 to 54',
+      'Chocolate tart: 53 to 54',
       'Removed: Pepper soup, was 52',
       'Removed: Burrata with peaches, was 41',
     ]);
