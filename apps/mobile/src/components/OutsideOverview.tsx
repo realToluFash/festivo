@@ -44,10 +44,7 @@ export function OutsideOverview({
   const reads = !isServiceLevel(held.role);
   const onEvent = usePeopleCount(reads ? event.id : null);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
-  const placeLine =
-    place == null
-      ? t('eventPage.venueToBeConfirmed')
-      : placeWords(place, venueCity(event.venue), (key, values) => t(key, values ?? {}));
+  const placeLine = placeWords(place, venueCity(event.venue), (key, values) => t(key, values ?? {}));
   const night = useYourNightItem(event.id);
   const station = useStationRowItem(event);
   const rows = [

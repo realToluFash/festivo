@@ -640,10 +640,7 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
   const address = venue?.address ?? null;
   const { latitude, longitude } = address ?? { latitude: null, longitude: null };
   const place = venue?.name ?? address?.formatted ?? null;
-  const placeLine =
-    place == null
-      ? t('eventPage.venueToBeConfirmed')
-      : placeWords(place, venueCity(venue), (key, values) => t(key, values ?? {}));
+  const placeLine = placeWords(place, venueCity(venue), (key, values) => t(key, values ?? {}));
 
   return (
     <div className="event-top-venue" role="group" aria-label={t('eventPage.venue')}>
