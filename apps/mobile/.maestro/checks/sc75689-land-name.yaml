@@ -1,0 +1,50 @@
+# sc-75689: sc75689-name on a tablet in landscape, the row scrolled to without centring (the last row cannot be centred).
+appId: host.exp.Exponent
+---
+- evalScript: "${http.get(HELPER_URL + '/landscape').body}"
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' typed'
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: remove
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- assertVisible: '.* typed'
+- takeScreenshot: forbidden
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: forbidden-again
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add

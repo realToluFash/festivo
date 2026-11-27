@@ -15,7 +15,7 @@ import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
+import { Chevron, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
@@ -46,6 +46,7 @@ import {
   typedMinor,
   typedOf,
   unratedLine,
+  workedLine,
 } from './staffRatesArea.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -65,6 +66,9 @@ interface Draft {
 }
 
 const BLANK: Draft = { kind: 'hourly', typed: '', who: '' };
+
+const RULES = ['ruleHourly', 'ruleFlat', 'ruleOpen', 'ruleUnrated'] as const;
+const AFTER_RULES = ['afterScheduled', 'afterWorked', 'afterFlat', 'ruleUnrated'] as const;
 
 /** The Budget's one staff-time line (sc-101): no rate of its own, Staff rates' headline as its amount, and a way there. */
 export function StaffLine({
@@ -357,6 +361,8 @@ function StaffRatesPage({
     );
 
   const firstUnrated = biggestUnrated(head);
+  const after = rates.worked;
+  const unrated = unratedLine(t, head.unrated, locale);
   const typedNow = typedMinor(draft.typed, language, currency);
   const typedRate =
     rateProblem(t, draft.typed, draft.kind, language, currency) == null && typedNow != null
@@ -366,10 +372,29 @@ function StaffRatesPage({
   return (
     <>
       {!manages && <ReadOnly />}
-      <section className="srt-head" aria-label={t('staffRates.title')}>
-        <p className="srt-figure">{figure(head.total, currency, locale)}</p>
-        <p className="srt-line">{headlineLine(t, head, locale)}</p>
-      </section>
+      {after == null ? (
+        <section className="srt-head" aria-label={t('staffRates.title')}>
+          <p className="srt-figure">{figure(head.total, currency, locale)}</p>
+          <p className="srt-line">{headlineLine(t, head, locale)}</p>
+        </section>
+      ) : (
+        <section className="srt-head" aria-label={t('staffRates.title')}>
+          <p className="srt-figure">{figure(head.total, currency, locale)}</p>
+          <p className="srt-line">
+            {t('staffRates.afterLine', {
+              worked: hoursWords(t, after.minutes),
+              scheduled: hoursWords(t, after.scheduledMinutes),
+              cost: figure(after.total, currency, locale),
+            })}
+          </p>
+          {after.assumedMinutes > 0 && (
+            <p className="srt-line">
+              {t('staffRates.afterAssumed', { hours: hoursWords(t, after.assumedMinutes) })}
+            </p>
+          )}
+          {unrated != null && <p className="srt-line">{unrated}</p>}
+        </section>
+      )}
       {manages && firstUnrated != null && panel?.kind !== 'job' && (
         <div className="srt-strip">
           <span className="srt-open" aria-hidden="true" />
@@ -425,6 +450,17 @@ function StaffRatesPage({
                           )
                         }
                       />
+                    ) : job.worked != null ? (
+                      <AfterRow
+                        title={job.name}
+                        rate={rate == null ? null : rateWords}
+                        scheduled={source}
+                        scheduledCost={job.cost}
+                        worked={workedLine(t, job) ?? ''}
+                        workedCost={job.worked.cost}
+                        currency={currency}
+                        {...(manages ? { onOpen: () => open({ kind: 'job', job: job.id }) } : {})}
+                      />
                     ) : (
                       <BudgetRow
                         title={job.name}
@@ -455,7 +491,9 @@ function StaffRatesPage({
                 );
               })}
             </Rows>
-            <p className="desk-note">{t('staffRates.hoursSource')}</p>
+            <p className="desk-note">
+              {after == null ? t('staffRates.hoursSource') : t('staffRates.hoursFrom')}
+            </p>
           </Block>
         </div>
         <div className="ev-right">
@@ -555,7 +593,7 @@ function StaffRatesPage({
           </Block>
           <Block title={t('staffRates.howCounted')}>
             <ul className="srt-rules">
-              {(['ruleHourly', 'ruleFlat', 'ruleOpen', 'ruleUnrated'] as const).map((rule) => (
+              {(after == null ? RULES : AFTER_RULES).map((rule) => (
                 <li key={rule}>{t(`staffRates.${rule}`)}</li>
               ))}
             </ul>
@@ -588,6 +626,65 @@ function useKeys(box: RefObject<HTMLDivElement | null>, onCancel: () => void, on
 
     return () => node.removeEventListener('keydown', keys);
   }, [box]);
+}
+
+/** After the event (sc-234): Scheduled and Worked one above the other, each with its amount. */
+function AfterRow({
+  title,
+  rate,
+  scheduled,
+  scheduledCost,
+  worked,
+  workedCost,
+  currency,
+  onOpen,
+}: {
+  title: string;
+  rate: string | null;
+  scheduled: string;
+  scheduledCost: string | null;
+  worked: string;
+  workedCost: string | null;
+  currency: string;
+  onOpen?: () => void;
+}) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const amount = (cost: string | null) =>
+    cost == null ? (
+      <span className="bt-mark-word">
+        <span className="srt-open is-small" aria-hidden="true" />
+        {t('staffRates.notCounted')}
+      </span>
+    ) : (
+      <span className="srt-two-amount">{minorMoney(cost, currency, locale)}</span>
+    );
+  const inner = (
+    <span className="srt-after">
+      <span className="srt-after-top">
+        <span className="srt-name">{title}</span>
+        {rate == null ? <NoRateTag /> : <span className="srt-rate">{rate}</span>}
+      </span>
+      <span className="srt-two">
+        <span className="srt-two-label">{t('staffRates.scheduled')}</span>
+        <span className="srt-two-words">{scheduled}</span>
+        {amount(scheduledCost)}
+        <span className="srt-two-label">{t('staffRates.worked')}</span>
+        <span className="srt-two-words">{worked}</span>
+        {amount(workedCost)}
+      </span>
+    </span>
+  );
+
+  if (onOpen != null)
+    return (
+      <button type="button" className="desk-row bt-row" onClick={onOpen}>
+        {inner}
+        <Chevron />
+      </button>
+    );
+
+  return <div className="desk-row bt-row">{inner}</div>;
 }
 
 function ReadOnly() {

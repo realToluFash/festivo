@@ -9,7 +9,9 @@ import {
   moved,
   myNightStateOf,
   nightOf,
-  signedOutAt,
+  rowLineOf,
+  signedInUntil,
+  whosHereOf,
 } from './myNightModel.ts';
 
 describe('a staff member’s night (sc-3915)', () => {
@@ -30,8 +32,8 @@ describe('a staff member’s night (sc-3915)', () => {
     const night = nightOf('night');
 
     expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
-    expect(MN.yoursAlone(signedOutAt(night))).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
+    expect(MN.yoursAlone(signedInUntil(night))).toBe(
+      'This link is yours alone. You are signed in until Sun, Nov 29, 02:00. Nothing stays on this device.',
     );
   });
 
@@ -79,5 +81,25 @@ describe('a staff member’s night (sc-3915)', () => {
     expect(
       sparse.tables?.flatMap((table) => table.guests).every((guest) => guest.diet == null),
     ).toBe(true);
+  });
+
+  it('names where they are and the shift on the event’s Your night row, the job with no station', () => {
+    expect(rowLineOf(nightOf('app_event'))).toBe('Section B · 17:00 to 01:00');
+    expect(rowLineOf({ ...nightOf('app_event'), station: null })).toBe('Waiter · 17:00 to 01:00');
+    expect(nightOf('app_event').inApp).toBe(true);
+  });
+
+  it('offers Who’s here to the floor lead and a station lead, in the app only, after Check-in and Open {station} (sc-3918)', () => {
+    expect(whosHereOf(nightOf('floor_lead'))).toEqual({
+      label: 'Who’s here',
+      href: '/demo/whos-here?state=populated',
+      primary: true,
+    });
+    expect(whosHereOf(nightOf('station_lead'))?.href).toBe('/demo/whos-here?state=station_lead');
+    expect(whosHereOf(nightOf('station_lead_pass'))?.primary).toBe(false);
+    expect(whosHereOf(nightOf('floor_lead_browser'))).toBeNull();
+    expect(whosHereOf(nightOf('night'))).toBeNull();
+    expect(whosHereOf(nightOf('app'))).toBeNull();
+    expect(headingOf(nightOf('floor_lead'))).toBe('Floor lead');
   });
 });

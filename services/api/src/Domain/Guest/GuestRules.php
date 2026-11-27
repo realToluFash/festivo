@@ -49,8 +49,9 @@ final readonly class GuestRules
      * @param ?NeedsInput                                 $needs          null leaves them as they are
      * @param list<?NeedsInput>                           $companionNeeds beside `$companions`
      * @param ?GroupChoice                                $group          null leaves it as it is
+     * @param ?string                                     $greetAs        as typed; blank or only spaces is none
      */
-    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null, ?array $needs = null, array $companionNeeds = [], ?GroupChoice $group = null): NewGuest
+    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null, ?array $needs = null, array $companionNeeds = [], ?GroupChoice $group = null, ?string $greetAs = null): NewGuest
     {
         $violations = [];
         $name = Str\trim($fullName);
@@ -93,6 +94,16 @@ final readonly class GuestRules
             $named[] = '' === $companion ? null : $companion;
         }
 
+        $greetAs = null === $greetAs ? '' : VisibleText::trim($greetAs);
+
+        if (VisibleText::tooLong($greetAs, Guest::GREET_AS_MAXIMUM)) {
+            $violations[] = [
+                'propertyPath' => 'greetAs',
+                'message' => $this->translator->trans('validation.guest_greet_as_too_long', ['count' => Guest::GREET_AS_MAXIMUM]),
+                'code' => ErrorCode::ValidationFailed->value,
+            ];
+        }
+
         if (null !== $language && !Iter\contains(SupportedLocales::ALL, $language)) {
             $violations[] = $this->violation('language', 'validation.guest_language_unknown');
         }
@@ -113,7 +124,7 @@ final readonly class GuestRules
             throw ApiException::validation($violations);
         }
 
-        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language, $hostNeeds, $theirNeeds, $group);
+        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language, $hostNeeds, $theirNeeds, $group, '' === $greetAs ? null : $greetAs);
     }
 
     /**

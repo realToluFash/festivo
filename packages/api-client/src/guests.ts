@@ -193,6 +193,8 @@ export const GUEST_GROUPS_MOST = 50;
 export interface Guest {
   id: string;
   fullName: string;
+  /** How messages greet them (sc-3960), null for none; sent to every reader, unlike the contact details. */
+  greetAs: string | null;
   /** Null for none; a companion is in their host's. */
   group: GuestGroup | null;
   /** Null for none, and for anyone without guests.manage, whom the API never sends it (sc-3773). */
@@ -280,6 +282,8 @@ export interface NewGuest {
   companions?: { fullName?: string | null; needs?: NeedsInput }[];
   /** The host's Language for them, null for Not set. Left out of an edit, it stays as it was. */
   language?: string | null;
+  /** Trimmed by the API, blank saved as none; left out of an edit, it stays as it was. */
+  greetAs?: string | null;
   /** Left out of an edit, they stay as they were; so does a kept companion's. */
   needs?: NeedsInput;
   group?: GroupChoice;
@@ -789,6 +793,7 @@ export function asGuest(value: unknown): Guest | null {
   return {
     id,
     fullName,
+    greetAs: text(row.greetAs),
     group,
     email: text(row.email),
     mobile: text(row.mobile),
@@ -978,9 +983,11 @@ export interface CheckInCompanion {
   fullName: string | null;
   state: CompanionState;
   arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
 }
 
-/** A guest on the door's list: names, replies and arrivals, never a contact, need or group. */
+/** A guest on the door's list: names, replies, arrivals and their own seat, never a contact, need, group or tablemate. */
 export interface CheckInGuest {
   id: string;
   fullName: string;
@@ -991,6 +998,8 @@ export interface CheckInGuest {
   code: string | null;
   walkIn: boolean;
   arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
   companions: CheckInCompanion[];
 }
 
@@ -998,6 +1007,8 @@ export interface CheckIn {
   state: CheckInState;
   opensAt: string;
   timeZone: string;
+  /** Whether anybody on the list has a taken seat: until then the door shows no seat line, and after it a person with none reads "No seat yet" (sc-60684). */
+  seated: boolean;
   count: { attended: number; expected: number };
   guests: CheckInGuest[];
 }
@@ -1012,7 +1023,13 @@ function asCheckInCompanion(value: unknown): CheckInCompanion | null {
 
   return id == null || state == null
     ? null
-    : { id, fullName: text(row.fullName), state, arrival: asArrival(row.arrival) };
+    : {
+        id,
+        fullName: text(row.fullName),
+        state,
+        arrival: asArrival(row.arrival),
+        seat: asGuestSeat(row.seat),
+      };
 }
 
 function asCheckInGuest(value: unknown): CheckInGuest | null {
@@ -1034,6 +1051,7 @@ function asCheckInGuest(value: unknown): CheckInGuest | null {
     code: text(row.code),
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
+    seat: asGuestSeat(row.seat),
     companions: companions as CheckInCompanion[],
   };
 }
@@ -1060,6 +1078,7 @@ export function asCheckIn(value: unknown): CheckIn | null {
     state,
     opensAt,
     timeZone,
+    seated: body.seated === true,
     count: { attended, expected },
     guests: guests as CheckInGuest[],
   };

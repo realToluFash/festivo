@@ -20,6 +20,7 @@ export const DAYS = {
   sched: '2026-11-05',
   ends: '2026-11-07',
   tooLate: '2026-10-31',
+  nobodyDue: '2026-10-30',
 };
 
 export type Where = 'page' | ChannelKey;

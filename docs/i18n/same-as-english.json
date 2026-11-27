@@ -63,7 +63,15 @@
     "messagesCounts:audit.field.plan",
     "messagesCounts:guestReplies.push.title",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other",
+    "web:briefing.card",
+    "web:staffRates.minutes",
+    "mobile:shiftClock.minutes_one",
+    "mobile:shiftClock.minutes_other"
   ],
   "fr": [
     "web:staffRates.hoursMinutes",
@@ -236,7 +244,19 @@
     "web:kitchenSheet.allergies",
     "messagesCounts:kitchen_sheet.allergies",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "web:eventMessages.message",
+    "messagesCounts:guest_message.notice.from",
+    "web:eventMessages.token.date",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other",
+    "web:briefing.card",
+    "web:staffRates.minutes",
+    "mobile:shiftClock.minutes_one",
+    "mobile:shiftClock.minutes_other",
+    "mobile:staffHours.date"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
@@ -303,6 +323,15 @@
     "mobile:auditLog.jsonLines",
     "messagesCounts:guestReplies.push.title",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "messagesCounts:guest_message.notice.from",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other",
+    "web:briefing.card",
+    "web:staffRates.minutes",
+    "mobile:shiftClock.minutes_one",
+    "mobile:shiftClock.minutes_other"
   ]
 }

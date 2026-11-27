@@ -29,6 +29,7 @@ import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
 import { type MakeLiveState, MAKE_LIVE_EVENTS, MAKE_LIVE_STATES } from './makeLiveStates.ts';
+import { DINER_ID, type LiveOneDayState, isLiveOneDay, liveOneDayClock } from './liveOneDay.ts';
 
 export interface Venue {
   name: string;
@@ -374,6 +375,18 @@ export const REUNION: SampleEvent = sample(
   'GBP',
 );
 
+/** Not one of the 20: the one-day event happening tonight, 19:00 to 23:30 on the reader's day (sc-93858). */
+export const DINER: SampleEvent = sample(
+  DINER_ID,
+  'Dîner en direct',
+  'party',
+  'live',
+  ['2026-11-03T19:00:00Z', '2026-11-03T23:30:00Z', 'Europe/London'],
+  at('The Clerk’s House', 'London', '235 Shoreditch High Street, London E1 6PJ'),
+  ['Ire Events'],
+  'GBP',
+);
+
 /** What the demo changed since it opened: Pause, Delete and Duplicate carry back to the list until a state link or a reload opens the sample as drawn. */
 let changed: Map<string, SampleEvent | null> = new Map();
 let copies: SampleEvent[] = [];
@@ -390,7 +403,11 @@ export function sampleEvents(): SampleEvent[] {
 }
 
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return sampleEvents().find((event) => event.id === id) ?? (id === REUNION.id ? REUNION : null);
+  return (
+    sampleEvents().find((event) => event.id === id) ??
+    [REUNION, DINER].find((event) => event.id === id) ??
+    null
+  );
 }
 
 export function keepChange(event: SampleEvent): void {
@@ -1027,6 +1044,7 @@ export type ListState =
   | 'noMatch'
   | 'noGuests'
   | 'replyLands'
+  | 'liveOneDay'
   | 'noGuestsRead'
   | 'draftsReader'
   | 'tileInvited'
@@ -1054,6 +1072,7 @@ const LIST_STATES: readonly ListState[] = [
   'noMatch',
   'noGuests',
   'replyLands',
+  'liveOneDay',
   'noGuestsRead',
   'draftsReader',
   'tileInvited',
@@ -1087,6 +1106,8 @@ export interface ListStart {
   tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
+  /** Dîner en direct happening now leads Upcoming, at 20:40 on its day (sc-93858). */
+  liveOneDay: boolean;
 }
 
 /** More picks than Filter has room for at 1280, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
@@ -1116,11 +1137,14 @@ export function listStart(state: ListState | null): ListStart {
     tile: null,
     failed: false,
     moreFailed: false,
+    liveOneDay: false,
   };
 
   switch (state) {
     case null:
       return rest;
+    case 'liveOneDay':
+      return { ...rest, tab: 'upcoming', liveOneDay: true };
     case 'loading':
       return { ...rest, loading: true };
     case 'first':
@@ -1282,7 +1306,7 @@ export type LifeState =
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
 export type EventStateName =
-  PhaseState | EditState | LifeState | NeedsState | NoteState | MakeLiveState;
+  PhaseState | EditState | LifeState | NeedsState | NoteState | MakeLiveState | LiveOneDayState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1405,6 +1429,9 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   needsYouLoading: 'evt-wed-4',
   needsYouFailed: 'evt-wed-4',
   ...MAKE_LIVE_EVENTS,
+  liveOneDay: DINER_ID,
+  liveOneDaySpeeches: DINER_ID,
+  liveOneDayOver: DINER_ID,
 };
 
 /** sc-50996: the event's page as a Can view Member, who holds events.read without events.manage. */
@@ -1417,6 +1444,7 @@ export function eventStateOf(value: string | null): EventStateName | null {
 }
 
 export function clockOf(state: EventStateName | null): Date {
+  if (isLiveOneDay(state)) return liveOneDayClock(state);
   if (
     state === 'now' ||
     state === 'endNow' ||
@@ -1674,6 +1702,21 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('finished', 'Finished'),
       on('calledOff', 'Called off'),
       on('photo', 'Live, with a cover photo'),
+    ],
+  },
+  {
+    name: 'A one-day event happening now (sc-93858)',
+    states: [
+      on(
+        'liveOneDay',
+        'Dîner en direct at 20:40: no step on its card, Coming up says when it ends',
+      ),
+      on(
+        'liveOneDaySpeeches',
+        'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
+      ),
+      on('liveOneDayOver', 'At 23:45: every date has passed, with Duplicate, as on main'),
+      list('liveOneDay', 'Events: Dîner en direct leads Upcoming, no step on its card'),
     ],
   },
   {

@@ -305,7 +305,20 @@
 
   .ks.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
+  }
+
+  /* Final numbers stands under the sheet, one column (WCAG 2.2 1.4.10). */
+  .ks .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ks .ev-crumb ol,
+  .ks .ev-opened-actions {
+    flex-wrap: wrap;
+  }
+
+  .ks .ev-opened {
+    margin-left: 0;
   }
 
   .ks-people thead {
@@ -526,4 +539,79 @@
   .ks-foot-page {
     display: none;
   }
+}
+
+.ks-columns {
+  margin-top: var(--spaceLg);
+}
+
+.ks-columns > .ks-body {
+  margin-top: 0;
+}
+
+.ks-final-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.ks-none .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.ks-picks {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -4px 0 var(--spaceSm) 40px;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.ks-final .ks-picks svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ks-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.ks-clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-right: calc(-1 * var(--spaceMd));
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorCard);
+  cursor: pointer;
+}
+
+.ks-final .ks-clear svg {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--colorInkTertiary);
+}
+
+.ks-give {
+  margin-top: var(--spaceMd);
+}
+
+/* sc-30692: a dish name runs to 120 characters and stays whole, so a line breaks anywhere rather than overflows. */
+.ks-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.ks-changes > .desk-text {
+  margin-top: var(--spaceSm);
 }

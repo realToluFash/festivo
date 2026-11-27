@@ -25,9 +25,8 @@ import {
   TabBarFade,
   tabBarFoot,
 } from '../../components/TodayCover.tsx';
-import { ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
+import { NeedsYou, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
-import { NeedsYou } from './NeedsYou.tsx';
 
 const TAB_BAR = 64;
 const BELOW_HEAD = 28;

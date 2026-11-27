@@ -10,7 +10,7 @@ import {
   matching,
   pickable,
 } from './messagesChoose.ts';
-import { chipWords, countOf, BOOK } from './messagesTo.ts';
+import { chipWords, countOf, toLine, BOOK } from './messagesTo.ts';
 import { choseNobody } from './messagesRefusals.ts';
 
 const TICKS = { email: true, sms: false, whatsApp: false };
@@ -53,6 +53,13 @@ describe('Choose guests, one by one (sc-3942)', () => {
     expect(chipWords(choseAudience([]), BOOK)).toBe('Choose guests');
     expect(choseNobody(choseAudience([]))).toBe(true);
     expect(choseNobody(three)).toBe(false);
+  });
+
+  it('lists a message to chosen guests as To chosen guests, the product’s words (#93702)', () => {
+    const three = choseAudience(['Abena Mensah', 'Adwoa Rossi', 'Ama Owusu'].map(idOf));
+
+    expect(toLine(three, BOOK.groups)).toBe('To chosen guests');
+    expect(toLine(choseAudience([]), BOOK.groups)).toBe('To chosen guests');
   });
 
   it('tells email to the unflagged chosen only, and names the rest with why', () => {

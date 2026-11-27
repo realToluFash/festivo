@@ -194,6 +194,14 @@ describe('when a tray is here', () => {
     expect(hereLine(second, 'fryer')).toBe('Funmi Bakare · 3 plates · here since 19:40');
   });
 
+  it('owes the Pass three items in passThree, an earlier course last', () => {
+    expect(leftToDish(seed('passThree')).map((l) => l.label)).toEqual([
+      'Moin moin',
+      'Chef’s choice',
+      'Starter · Pepper soup',
+    ]);
+  });
+
   it('is here at the Pass as it starts', () => {
     const s = { ...fresh(), station: 'pass' as const };
     expect(labels(hereTrays(s))).toEqual(['Row B', 'Table 2']);
@@ -323,13 +331,13 @@ describe('offline, by sc-4028', () => {
     const s = seed('waitingToSend');
     expect(stateLine(s, 'Plantain').word).toBe('Preparing');
     expect(strip(s)).toBe('No connection · as of 19:40 · 1 tap waiting');
-    expect(strip(goOnline(s, true))).toBe('Connected · up to date 19:42');
+    expect(strip(goOnline(s, true))).toBe('Connected · up to date at 19:42');
   });
 
   it('drops a kept mark another disher beat, with its Not sent line, and holds theirs', () => {
     const s = seed('notSent');
     expect(s.notSent.map((r) => notSentLine(s, r))).toEqual([
-      'Plantain is preparing now, by Kemi Adebayo.',
+      'Plantain is now Preparing, marked by Kemi Adebayo.',
     ]);
     expect(stateLine(s, 'Plantain').line).toBe('ready in about 15 min');
   });
@@ -355,8 +363,8 @@ describe('picking a station', () => {
 
   it('says once that the station is open here and nobody’s station changed', () => {
     const s = pick(seed('pick'), 'grill');
-    expect(s.moved).toBe('Grill is open on this tablet. Nobody’s station changed.');
-    expect(pickedLine('pass')).toBe('Pass is open on this tablet. Nobody’s station changed.');
+    expect(s.moved).toBe('Grill is open on this device. Nobody’s station changed.');
+    expect(pickedLine('pass')).toBe('Pass is open on this device. Nobody’s station changed.');
   });
 
   it('follows a move by Team with one line', () => {

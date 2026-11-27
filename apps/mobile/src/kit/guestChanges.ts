@@ -10,11 +10,6 @@ export function filterMenuWidth(apart: boolean): number {
   return apart ? 300 : 230;
 }
 
-/** The zone a member reads when guests changed in: their account's (sc-868), else the device's, never the event's. */
-export function readerZoneOf(accountZone: string | null | undefined): string {
-  return accountZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
 export function changeLine(
   t: TFunction,
   change: GuestListChange,

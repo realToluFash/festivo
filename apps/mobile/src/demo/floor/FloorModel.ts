@@ -477,7 +477,10 @@ export function floorSeed(state: FloorState): Floor {
   if (state === 'notSent' && ada != null) {
     ada.held = null;
     ada.stage = 'Served';
-    f.notSent = ['Ada Obi is served now, by Tomi Ade.', 'Too late to undo: 2 minutes had passed.'];
+    f.notSent = [
+      'Ada Obi is now Served, marked by Tomi Ade.',
+      'Too late to undo: 2 minutes had passed.',
+    ];
   }
   return f;
 }
@@ -670,7 +673,7 @@ export function headerLine(p: Place): string {
 }
 
 export function stripLine(f: Floor): string {
-  if (f.online) return `Connected · up to date ${NOW}`;
+  if (f.online) return `Connected · up to date at ${NOW}`;
   return f.kept > 0
     ? `No connection · as of ${NOW} · ${tapsWaiting(f.kept)}`
     : `No connection · as of ${NOW}`;

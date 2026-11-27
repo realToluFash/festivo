@@ -24,6 +24,7 @@ function guest(id: string, fullName: string, more: Partial<Guest> = {}): Guest {
   return {
     id,
     fullName,
+    greetAs: null,
     group: null,
     email: null,
     mobile: null,

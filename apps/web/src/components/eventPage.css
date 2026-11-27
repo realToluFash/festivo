@@ -136,6 +136,13 @@
   color: var(--colorAccent);
 }
 
+/* The event's strip above an area that has left its top (sc-98187): its thumb beside its name and its line. */
+.ev-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
 .ev-lead {
   display: grid;
   flex: none;
@@ -492,4 +499,13 @@
   margin-top: -8px;
   color: var(--colorInkSecondary);
   font: 500 13px/1.3 var(--fontFamily);
+}
+
+.ev-card-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

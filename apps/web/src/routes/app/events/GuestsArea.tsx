@@ -61,6 +61,8 @@ import {
   changeAnswer,
   changeWhen,
   changedRows,
+  readerZoneOf,
+  GREET_AS_MAXIMUM,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -102,6 +104,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
+import { writingToNotReplied } from './messagesArea.ts';
 import { ExportDialog } from './GuestExport.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import {
@@ -128,6 +131,7 @@ import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
 import {
   CompanionField,
+  GreetAsField,
   GuestField,
   LanguageField,
   PhoneField,
@@ -252,7 +256,7 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
-  const readerZone = useSession().timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const readerZone = readerZoneOf(useSession().timezone);
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -973,13 +977,20 @@ export function GuestsArea({
         step: manages ? 'add' : null,
       };
 
-    return { says: comingOf, line: counts.invited === 0 ? null : haventLine(t, counts) };
+    return {
+      says: comingOf,
+      line: counts.invited === 0 ? null : haventLine(t, counts),
+      step: counts.havent > 0 && canOn(event, 'messages.manage') ? 'write' : null,
+    };
   }
 
   function onStep(step: CoverStep): void {
     if (step === 'add') startAdd();
     else if (step === 'makeLive') makeLive.start();
-    else {
+    else if (step === 'write') {
+      const write = writingToNotReplied(event.id);
+      void navigate(write.to, { state: write.state });
+    } else {
       const dates = inPlace(event.id, 'dates');
       void navigate(dates.to, { state: dates.state });
     }
@@ -1525,7 +1536,7 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-type CoverStep = 'add' | 'makeLive' | 'changeDates';
+type CoverStep = 'add' | 'makeLive' | 'changeDates' | 'write';
 
 interface Cover {
   tag?: { mark: 'draft' | 'paused' | null; word: string } | null;
@@ -1533,13 +1544,14 @@ interface Cover {
   line?: string | null;
   step?: CoverStep | null;
   /** sc-50409: Make live or Change dates beside an empty Draft's Add guest, quieter, as the app's card (sc-46879). */
-  also?: Exclude<CoverStep, 'add'> | null;
+  also?: Exclude<CoverStep, 'add' | 'write'> | null;
 }
 
 const STEP_KEY: Record<CoverStep, string> = {
   add: 'guestList.addGuest',
   makeLive: 'eventLive.makeLive',
   changeDates: 'eventLive.changeDates',
+  write: 'guestList.writeToThem',
 };
 
 /** How the room stands, in the event's colours, with the one step this page can take. */
@@ -1944,6 +1956,7 @@ const EMPTY: AddTyped = {
   number: '',
   companions: [],
   language: null,
+  greetAs: '',
   needs: NO_NEEDS,
 };
 
@@ -2013,6 +2026,8 @@ function AddForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -2154,6 +2169,11 @@ function AddForm({
           error={words('fullName')}
           focusKey="fullName"
           onChange={(fullName) => change({ fullName })}
+        />
+        <GreetAsField
+          value={typed.greetAs ?? ''}
+          error={words('greetAs')}
+          onChange={(greetAs) => change({ greetAs })}
         />
         <GuestField
           label={t('guestList.emailAddress')}

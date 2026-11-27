@@ -13,6 +13,7 @@ import {
   formatEventRange,
   formatEventShortDay,
   formatEventWeekday,
+  readerZoneOf,
   formatTimeOfDay,
   formatWallClock,
   formatWallDay,
@@ -349,5 +350,22 @@ describe('whether a moment falls on an earlier day', () => {
 
   it('turns over at the next local midnight', () => {
     expect(nextMidnight(new Date(2026, 9, 26, 23, 58))).toEqual(new Date(2026, 9, 27));
+  });
+});
+
+describe('the zone the bell reads in (sc-82298)', () => {
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  it("is the account's over the device's", () => {
+    expect(readerZoneOf('Asia/Tokyo')).toBe('Asia/Tokyo');
+  });
+
+  it("is the device's while the account has none", () => {
+    expect(readerZoneOf(null)).toBe(device);
+    expect(readerZoneOf(undefined)).toBe(device);
+  });
+
+  it("is the device's for an account zone the device cannot format", () => {
+    expect(readerZoneOf('Mars/Olympus_Mons')).toBe(device);
   });
 });

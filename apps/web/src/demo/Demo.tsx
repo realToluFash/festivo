@@ -12,9 +12,12 @@ import {
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
+import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { AllCredits } from './Credits.tsx';
+import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { Calendar } from './Calendar.tsx';
@@ -65,6 +68,7 @@ import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
 import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_LINK_PAGES } from './guestLink.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
@@ -101,6 +105,7 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
+import { BRIEFING_PAGES, NOTICE_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -123,7 +128,7 @@ import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
 import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
 import { CHECK_IN_PAGES } from './doorCheckIn.ts';
-import { MyNight } from './MyNight.tsx';
+import { MyNight, MyNightFloor } from './MyNight.tsx';
 import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { StaffSignIn } from './StaffSignIn.tsx';
@@ -356,6 +361,7 @@ export default function Demo() {
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
+      <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
       <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
@@ -365,6 +371,7 @@ export default function Demo() {
       <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="staff-sign-in" element={<StaffSignIn />} />
       <Route path="my-night" element={<MyNight />} />
+      <Route path="my-night/floor" element={<MyNightFloor />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -446,6 +453,8 @@ function DemoHome({ from }: { from: string }) {
         </ul>
         <h3>Events in A · Summary first · desktop</h3>
         <BoardPages pages={EVENTS_PAGES} />
+        <h3>All dates in A, loading and failed (sc-98187) · desktop and 320 px</h3>
+        <BoardPages pages={ALL_DATES_PAGES} />
         <h3>An event in a phone browser hands over to the app · 390 and 320 px</h3>
         <BoardPages pages={HANDOFF_PAGES} />
         <h3>Today, Events and Calendar fit a phone’s window (sc-57468) · 390 and 320 px</h3>
@@ -468,6 +477,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_CHANGE_PAGES} />
         <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PARTY_PAGES} />
+        <h3>
+          An answer link from the invitation, on the guest’s page · sc-1291 · phone, tablet and desk
+        </h3>
+        <BoardPages pages={GUEST_LINK_PAGES} />
         <h3>
           Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
         </h3>
@@ -568,6 +581,16 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-34">34 · Staffing</h2>
         <h3>The roster: who works the event, without making them members (sc-3906) · desktop</h3>
         <BoardPages pages={ROSTER_PAGES} />
+        <h3>
+          The briefing: house rules and everyone’s shift, sent with one tap (sc-3917) · desktop and
+          narrow web
+        </h3>
+        <BoardPages pages={BRIEFING_PAGES} />
+        <h3>
+          A person on the staff is told when their shift changes, and reminded the day before
+          (sc-4333) · desktop
+        </h3>
+        <BoardPages pages={NOTICE_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
@@ -682,6 +705,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>
+          The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
+          English and French
+        </h3>
+        <BoardPages pages={CREDITS_PAGES} />
         <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
         <BoardPages pages={USAGE_WARNING_PAGES} />
       </section>

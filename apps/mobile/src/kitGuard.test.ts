@@ -2099,6 +2099,22 @@ describe("a section's hint is drawn in lines of whole points (sc-13281)", () => 
   });
 });
 
+describe("a row's line under its title is drawn in lines of whole points (sc-94081)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const line = /\{line != null && \(([\s\S]*?)\n\s*\)\}/u.exec(text)?.[1] ?? '';
+
+  it('gives the line its ratio through wholeLines', () => {
+    expect(
+      line,
+      'At 14 × 1.4 the line is 19.6 pt, and iOS draws its last line cut with an empty line under it (qa3, #94027).',
+    ).toMatch(/\bwholeLines=\{ROW_LINE\}/u);
+  });
+
+  it('sets no fractional line height under a title', () => {
+    expect(text).not.toMatch(/\n {2}line: \{/u);
+  });
+});
+
 describe('a pill with words grows with them rather than cutting them (sc-13281)', () => {
   const styleOf = (file: string, name: string) =>
     new RegExp(`\\n {2}${name}: \\{([^}]*)\\}`, 'u').exec(
@@ -2108,7 +2124,7 @@ describe('a pill with words grows with them rather than cutting them (sc-13281)'
   it.each([
     ['TodayParts.tsx', 'create', 'Créer votre premier événement (QA #76223)'],
     ['CreateWalkParts.tsx', 'tag', 'De cet appareil (QA #76223)'],
-    ['TodayParts.tsx', 'action', "an event card's action at the ninth step"],
+    ['TodayParts.tsx', 'needRow', 'a Needs you row at the ninth step'],
     ['TodayParts.tsx', 'chip', "an event card's count and stage at the ninth step"],
     ['TodayParts.tsx', 'chipSmall', "a tile's count and stage at the ninth step"],
     ['TodayParts.tsx', 'count', "Home's Needs you count of 10 or more at the ninth step"],

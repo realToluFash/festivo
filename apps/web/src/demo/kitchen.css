@@ -190,3 +190,46 @@
 .kitchen-changes > .desk-text {
   margin-top: var(--spaceSm);
 }
+
+/* sc-98187: the dates did not load, under the strip, with Try again under its line. */
+.dates-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.dates-failed p {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 15px/1.45 var(--fontFamily);
+}
+
+.dates-failed svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* sc-98187: at 320 (1280 at 400%), the tags leave the title its width and sit under the words, in line with the title. */
+@media (width <= 40rem) {
+  .dates-row {
+    flex-wrap: wrap;
+    row-gap: var(--spaceXs);
+  }
+
+  .dates-row .desk-row-words {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .dates-tags {
+    flex-wrap: wrap;
+    margin-left: 40px;
+  }
+
+  .dates-tags:empty {
+    display: none;
+  }
+}

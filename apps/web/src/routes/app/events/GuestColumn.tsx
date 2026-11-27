@@ -12,6 +12,7 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import {
+  GREET_AS_MAXIMUM,
   formatPhone,
   invitationLine,
   optOutLines,
@@ -34,6 +35,7 @@ import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import {
   ChoseNote,
   CompanionField,
+  GreetAsField,
   GuestField,
   LanguageField,
   PhoneField,
@@ -877,151 +879,160 @@ function GuestView({
           )}
         </section>
       )}
-      {(manages || guest.companions.length > 0) && (
-        <section className="desk-block" aria-labelledby={`${heading}-details`}>
-          <Head level={3} title={<span id={`${heading}-details`}>{t('guestList.details')}</span>}>
-            {manages && (
-              <button type="button" className="desk-text" data-focus="edit" onClick={onEdit}>
-                {t('guestList.edit')}
-              </button>
-            )}
-          </Head>
-          <ul className="desk-rows gs-rows">
-            {manages && (
-              <>
-                <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="mail" />
-                  <RowWords
-                    title={guest.email ?? t('guestList.none')}
-                    lines={[t('guestList.emailAddress')]}
-                  />
-                </li>
-                {optOuts.email != null && (
-                  <OptOutRow
-                    title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
-                    closes={optOuts.email.closes}
-                  />
-                )}
-                <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="phone" />
-                  <RowWords
-                    title={guest.mobile == null ? t('guestList.none') : formatPhone(guest.mobile)}
-                    lines={[t('guestList.mobileNumber')]}
-                  />
-                </li>
-                {optOuts.texts != null && (
-                  <OptOutRow
-                    title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
-                    closes={optOuts.texts.closes}
-                  />
-                )}
-                {optOuts.whatsApp != null && (
-                  <li className="desk-row">
-                    <IconLead name="whatsApp" />
-                    <RowWords
-                      title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
-                      lines={[t('guestList.onlyTheGuest')]}
-                    />
-                  </li>
-                )}
-                <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
-                  <IconLead name="globe" />
-                  <div className="gs-row-words">
-                    <RowWords
-                      title={
-                        ownLanguageName(guest.language) ??
-                        t('guestList.languageNotSetLine', {
-                          language: languageNameInSentence(t, guest.organisationLanguage ?? 'en'),
-                        })
-                      }
-                      lines={[t('language.label')]}
-                    />
-                    {guest.chosenLanguage != null && <ChoseNote chose={guest.chosenLanguage} />}
-                  </div>
-                </li>
-              </>
-            )}
-            {guest.companions.length > 0 && (
-              <li className="desk-row">
-                <IconLead name="users" />
+      <section className="desk-block" aria-labelledby={`${heading}-details`}>
+        <Head level={3} title={<span id={`${heading}-details`}>{t('guestList.details')}</span>}>
+          {manages && (
+            <button type="button" className="desk-text" data-focus="edit" onClick={onEdit}>
+              {t('guestList.edit')}
+            </button>
+          )}
+        </Head>
+        <ul className="desk-rows gs-rows">
+          <li className={guest.greetAs == null ? 'desk-row is-none' : 'desk-row'}>
+            <IconLead name="message" />
+            <RowWords
+              title={
+                guest.greetAs == null
+                  ? t('guestList.greetsByFullName')
+                  : t('guestList.greetsThemAs', { greetAs: guest.greetAs })
+              }
+              lines={[t('guestList.greetAs')]}
+            />
+          </li>
+          {manages && (
+            <>
+              <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="mail" />
                 <RowWords
-                  title={t('guestList.companionsNamed', {
-                    count: guest.companions.length,
-                    named: namedCount(names),
-                  })}
-                  lines={[t('guestList.placesFor')]}
+                  title={guest.email ?? t('guestList.none')}
+                  lines={[t('guestList.emailAddress')]}
                 />
               </li>
-            )}
-            {guest.companions.map((companion, at) => (
-              <li
-                key={companion.id}
-                className="desk-row"
-                {...(companion.arrival != null && guest.arrival == null
-                  ? { tabIndex: -1, 'data-focus': `arrival-${companion.id}` }
-                  : {})}
-              >
-                <MarkLead reply={companion.state} />
+              {optOuts.email != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
+                  closes={optOuts.email.closes}
+                />
+              )}
+              <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="phone" />
+                <RowWords
+                  title={guest.mobile == null ? t('guestList.none') : formatPhone(guest.mobile)}
+                  lines={[t('guestList.mobileNumber')]}
+                />
+              </li>
+              {optOuts.texts != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
+                  closes={optOuts.texts.closes}
+                />
+              )}
+              {optOuts.whatsApp != null && (
+                <li className="desk-row">
+                  <IconLead name="whatsApp" />
+                  <RowWords
+                    title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
+                    lines={[t('guestList.onlyTheGuest')]}
+                  />
+                </li>
+              )}
+              <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
+                <IconLead name="globe" />
                 <div className="gs-row-words">
                   <RowWords
-                    title={companionShown(t, guest.fullName, names, at)}
-                    lines={[
-                      companion.state === 'held'
-                        ? t('guestList.heldCompanion')
-                        : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
-                      ...(companion.arrival == null ? [] : [t('guestList.arrived')]),
-                    ]}
+                    title={
+                      ownLanguageName(guest.language) ??
+                      t('guestList.languageNotSetLine', {
+                        language: languageNameInSentence(t, guest.organisationLanguage ?? 'en'),
+                      })
+                    }
+                    lines={[t('language.label')]}
                   />
-                  {companion.namedByGuest && (
-                    <span className="gs-named-by">{t('guestList.namedByGuest')}</span>
-                  )}
+                  {guest.chosenLanguage != null && <ChoseNote chose={guest.chosenLanguage} />}
                 </div>
               </li>
-            ))}
-            {guest.arrival != null && (
-              <li className="desk-row">
-                <IconLead name="tick" />
-                <RowWords title={t('guestList.arrived')} lines={[t('guestList.arrival')]} />
-              </li>
-            )}
-            {manages && (
-              <li className="desk-row">
-                <IconLead name="user" />
-                <RowWords
-                  title={
-                    guest.added.by == null
-                      ? added
-                      : t('guestList.addedBy', { date: added, name: guest.added.by })
-                  }
-                  lines={[t('guestList.added')]}
-                />
-              </li>
-            )}
-          </ul>
-          {manages && (
-            <div className="gr-foot">
-              {stays == null ? (
-                <button
-                  type="button"
-                  className="gs-pill is-secondary"
-                  data-focus="remove"
-                  onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
-                >
-                  {t('guestList.removeFromList')}
-                </button>
-              ) : (
-                <p className="gr-stays">
-                  {t(
-                    stays === 'arrived'
-                      ? 'guestList.staysArrived'
-                      : 'guestList.staysCompanionArrived',
-                  )}
-                </p>
-              )}
-            </div>
+            </>
           )}
-        </section>
-      )}
+          {guest.companions.length > 0 && (
+            <li className="desk-row">
+              <IconLead name="users" />
+              <RowWords
+                title={t('guestList.companionsNamed', {
+                  count: guest.companions.length,
+                  named: namedCount(names),
+                })}
+                lines={[t('guestList.placesFor')]}
+              />
+            </li>
+          )}
+          {guest.companions.map((companion, at) => (
+            <li
+              key={companion.id}
+              className="desk-row"
+              {...(companion.arrival != null && guest.arrival == null
+                ? { tabIndex: -1, 'data-focus': `arrival-${companion.id}` }
+                : {})}
+            >
+              <MarkLead reply={companion.state} />
+              <div className="gs-row-words">
+                <RowWords
+                  title={companionShown(t, guest.fullName, names, at)}
+                  lines={[
+                    companion.state === 'held'
+                      ? t('guestList.heldCompanion')
+                      : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
+                    ...(companion.arrival == null ? [] : [t('guestList.arrived')]),
+                  ]}
+                />
+                {companion.namedByGuest && (
+                  <span className="gs-named-by">{t('guestList.namedByGuest')}</span>
+                )}
+              </div>
+            </li>
+          ))}
+          {guest.arrival != null && (
+            <li className="desk-row">
+              <IconLead name="tick" />
+              <RowWords title={t('guestList.arrived')} lines={[t('guestList.arrival')]} />
+            </li>
+          )}
+          {manages && (
+            <li className="desk-row">
+              <IconLead name="user" />
+              <RowWords
+                title={
+                  guest.added.by == null
+                    ? added
+                    : t('guestList.addedBy', { date: added, name: guest.added.by })
+                }
+                lines={[t('guestList.added')]}
+              />
+            </li>
+          )}
+        </ul>
+        {manages && (
+          <div className="gr-foot">
+            {stays == null ? (
+              <button
+                type="button"
+                className="gs-pill is-secondary"
+                data-focus="remove"
+                onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
+              >
+                {t('guestList.removeFromList')}
+              </button>
+            ) : (
+              <p className="gr-stays">
+                {t(
+                  stays === 'arrived'
+                    ? 'guestList.staysArrived'
+                    : 'guestList.staysCompanionArrived',
+                )}
+              </p>
+            )}
+          </div>
+        )}
+      </section>
       {manages && (
         <NeedsBlock
           guest={guest}
@@ -1187,6 +1198,7 @@ interface Values {
   number: string;
   companions: readonly { id: string | null; name: string; needs: NeedsTyped }[];
   language: string | null;
+  greetAs: string;
   needs: NeedsTyped;
 }
 
@@ -1204,6 +1216,7 @@ function valuesOf(guest: GuestDetails, country: string): Values {
       needs: needsTypedOf(one.needs),
     })),
     language: guest.language,
+    greetAs: guest.greetAs ?? '',
     needs: needsTypedOf(guest.needs),
   };
 }
@@ -1286,9 +1299,17 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-type Field = 'fullName' | 'email' | 'mobile' | 'language' | 'companions' | 'needs';
+type Field = 'fullName' | 'greetAs' | 'email' | 'mobile' | 'language' | 'companions' | 'needs';
 
-const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'language', 'companions', 'needs'];
+const FIELDS: readonly Field[] = [
+  'fullName',
+  'greetAs',
+  'email',
+  'mobile',
+  'language',
+  'companions',
+  'needs',
+];
 
 /** What the API would keep of each field, so a save that changes nothing sends nothing. */
 function keptOf(values: Values): Record<Field, string> {
@@ -1296,6 +1317,7 @@ function keptOf(values: Values): Record<Field, string> {
 
   return {
     fullName: sent.fullName,
+    greetAs: JSON.stringify(sent.greetAs ?? null),
     email: JSON.stringify(sent.email),
     mobile: JSON.stringify(mobileOf(values)),
     language: JSON.stringify(values.language),
@@ -1328,6 +1350,7 @@ function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Va
 
   return {
     fullName: mine('fullName') ? values.fullName : theirs.fullName,
+    greetAs: mine('greetAs') ? values.greetAs : theirs.greetAs,
     email: mine('email') ? values.email : theirs.email,
     country: mine('mobile') ? values.country : theirs.country,
     number: mine('mobile') ? values.number : theirs.number,
@@ -1434,6 +1457,8 @@ function EditForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -1475,6 +1500,12 @@ function EditForm({
         field: t('account.fullName'),
         theirs: theirs.fullName,
         yours: mine.fullName,
+      },
+      {
+        key: 'greetAs',
+        field: t('guestList.greetAs'),
+        theirs: theirs.greetAs ?? none,
+        yours: mine.greetAs ?? none,
       },
       {
         key: 'email',
@@ -1758,6 +1789,11 @@ function EditForm({
           error={words('fullName')}
           focusKey="fullName"
           onChange={(fullName) => change({ fullName })}
+        />
+        <GreetAsField
+          value={values.greetAs}
+          error={words('greetAs')}
+          onChange={(greetAs) => change({ greetAs })}
         />
         <GuestField
           label={t('guestList.emailAddress')}

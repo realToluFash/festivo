@@ -48,24 +48,30 @@ final readonly class GuestMessageSender
     ) {
     }
 
-    /** @param list<string> $guestIds */
-    public function check(Event $event, string $choice, array $guestIds, ?string $follows = null): GuestMessagePlan
+    /**
+     * @param list<string>                                 $guestIds
+     * @param list<array{type: string, groupId?: ?string}> $conditions
+     */
+    public function check(Event $event, string $choice, array $guestIds, ?string $follows = null, array $conditions = []): GuestMessagePlan
     {
         $this->assertCanSend($event);
-        [$choice, $guestIds, , $violations] = $this->audience($event, $choice, $guestIds, $follows);
+        [$choice, $guestIds, , $violations] = $this->audience($event, $choice, $guestIds, $follows, $conditions);
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        return $this->plan($event, $choice, $guestIds);
+        return $this->plan($event, $choice, $guestIds, $conditions);
     }
 
-    /** @param list<string> $guestIds */
-    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null): GuestMessageSent
+    /**
+     * @param list<string>                                 $guestIds
+     * @param list<array{type: string, groupId?: ?string}> $conditions its own copy, kept on the message and resolved again by nothing after it goes
+     */
+    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null, array $conditions = []): GuestMessageSent
     {
         $this->assertCanSend($event);
-        [$choice, $guestIds, $conversation, $violations] = $this->audience($event, $choice, $guestIds, $follows);
+        [$choice, $guestIds, $conversation, $violations] = $this->audience($event, $choice, $guestIds, $follows, $conditions);
         $subject = null === $subject ? null : Str\trim($subject);
         $subject = '' === $subject ? null : $subject;
         $message = Str\trim($message);
@@ -78,6 +84,8 @@ final readonly class GuestMessageSender
             $violations[] = $this->violation('message', 'validation.guest_message_required');
         } elseif (VisibleText::tooLong($message, GuestMessage::BODY_MAXIMUM)) {
             $violations[] = $this->violation('message', 'validation.guest_message_too_long', GuestMessage::BODY_MAXIMUM);
+        } elseif (!MessageTokens::wellFormed($message)) {
+            $violations[] = $this->violation('message', 'validation.guest_message_token_unknown');
         }
 
         if ([] !== $violations) {
@@ -86,16 +94,17 @@ final readonly class GuestMessageSender
 
         $id = Uuid::v7();
 
-        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $subject, $message, $id, $conversation): GuestMessageSent {
-            $plan = $this->plan($event, $choice, $guestIds);
-            $audience = GuestAudienceResolver::audience($event->getId(), $choice, $guestIds);
+        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $conditions, $subject, $message, $id, $conversation): GuestMessageSent {
+            $plan = $this->plan($event, $choice, $guestIds, $conditions);
+            $audience = GuestAudienceResolver::audience($event->getId(), $choice, $guestIds, $conditions);
             $scheduled = $this->notificationScheduler->scheduleFannedOut(GuestMessageNotice::NAME, $id->toRfc4122(), $audience, ['message' => $id->toRfc4122()], $event, $plan->deliveries);
 
             $this->connection->insert('guest_messages', [
                 'id' => $id->toRfc4122(),
                 'event_id' => $event->getId()->toRfc4122(),
                 'audience' => $choice,
-                'chosen_guest_ids' => Json\encode(GuestMessage::ALL === $choice ? [] : Vec\values($guestIds)),
+                'chosen_guest_ids' => Json\encode(GuestMessage::CHOSEN === $choice ? Vec\values($guestIds) : []),
+                'conditions' => GuestMessage::CONDITIONS === $choice ? Json\encode($conditions) : null,
                 'subject' => $subject,
                 'body' => $message,
                 'created_by_id' => $by->getId()->toRfc4122(),
@@ -116,15 +125,20 @@ final readonly class GuestMessageSender
         });
     }
 
-    /** @param list<string> $guestIds */
-    private function plan(Event $event, string $choice, array $guestIds): GuestMessagePlan
+    /**
+     * @param list<string>                                 $guestIds
+     * @param list<array{type: string, groupId?: ?string}> $conditions
+     */
+    private function plan(Event $event, string $choice, array $guestIds, array $conditions): GuestMessagePlan
     {
-        $deliveries = $this->guestReach->plan($event, GuestAudienceResolver::audience($event->getId(), $choice, $guestIds));
+        $deliveries = $this->guestReach->plan($event, GuestAudienceResolver::audience($event->getId(), $choice, $guestIds, $conditions));
 
         if ([] === $deliveries) {
-            throw ApiException::validation(GuestMessage::ALL === $choice
-                ? [$this->violation('audience', 'validation.guest_message_no_guests', code: 'no_guests')]
-                : [$this->violation('guestIds', 'validation.guest_message_choose_guests')]);
+            throw ApiException::validation([match ($choice) {
+                GuestMessage::ALL => $this->violation('audience', 'validation.guest_message_no_guests', code: 'no_guests'),
+                GuestMessage::CONDITIONS => $this->violation('conditions', 'validation.guest_message_nobody_matches', code: 'nobody_matches'),
+                default => $this->violation('guestIds', 'validation.guest_message_choose_guests'),
+            }]);
         }
 
         return new GuestMessagePlan($deliveries);
@@ -140,11 +154,12 @@ final readonly class GuestMessageSender
     }
 
     /**
-     * @param list<string> $guestIds
+     * @param list<string>                                 $guestIds
+     * @param list<array{type: string, groupId?: ?string}> $conditions
      *
      * @return array{string, list<string>, ?GuestMessage, list<array{propertyPath: string, message: string, code: string}>}
      */
-    private function audience(Event $event, string $choice, array $guestIds, ?string $follows): array
+    private function audience(Event $event, string $choice, array $guestIds, ?string $follows, array $conditions): array
     {
         if (null !== $follows) {
             $conversation = $this->guestMessageRepository->findOneOn($event, $follows)?->conversation();
@@ -152,6 +167,10 @@ final readonly class GuestMessageSender
             return null === $conversation
                 ? [$choice, [], null, [$this->violation('follows', 'validation.guest_message_follows_unknown')]]
                 : [GuestMessage::CHOSEN, $this->recipientsOf($conversation), $conversation, []];
+        }
+
+        if (GuestMessage::CONDITIONS === $choice) {
+            return [$choice, [], null, [] === $conditions ? [$this->violation('conditions', 'validation.guest_message_conditions_required', code: 'conditions_required')] : []];
         }
 
         $guestIds = self::uuids($guestIds);

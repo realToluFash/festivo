@@ -9,6 +9,7 @@ import {
   nameProblem,
   normalCode,
   openedTo,
+  providerOnlyRefusal,
   refusedTo,
   tryAgainWords,
 } from './redeem.ts';
@@ -41,6 +42,7 @@ const OPENED: OpenedDoorCode = {
     endsAt: '2026-11-14T23:30:00+00:00',
     timeZone: 'Europe/Lisbon',
     organisation: 'Ìrè Events',
+    country: 'NG',
   },
   standing: null,
 };
@@ -144,6 +146,31 @@ describe('a refused Join', () => {
 
   it('is too many tries on a 429', () => {
     expect(joinRefusal(refused('too_many_attempts', 429)).kind).toBe('tooMany');
+  });
+});
+
+describe('the right phone code refused as the password is (sc-94849)', () => {
+  it('is the provider-only refusal, with its organisation and only the linked providers', () => {
+    const problem = {
+      type: 'https://soirely.com/errors/oauth_only',
+      title: 'No',
+      status: 403,
+      organisation: 'Ìrè Events',
+      email: 'bisi@ire.events',
+      providers: ['apple'],
+    };
+
+    expect(providerOnlyRefusal(new ApiError(problem))).toEqual({
+      kind: 'providerOnly',
+      organisation: 'Ìrè Events',
+      providers: ['apple'],
+    });
+  });
+
+  it('is nothing for any other refusal', () => {
+    expect(providerOnlyRefusal(refused('phone_alternative', 409))).toBeNull();
+    expect(providerOnlyRefusal(refused('door_code_invalid', 404))).toBeNull();
+    expect(providerOnlyRefusal(new ApiUnreachableError())).toBeNull();
   });
 });
 

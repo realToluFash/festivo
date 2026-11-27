@@ -92,6 +92,11 @@ key read as a blank address line instead of as an error.
 `declare(strict_types=1)` is on every file, enforced by php-cs-fixer's `declare_strict_types`
 rather than by anybody remembering it.
 
+**A date rule that reads the event's zone lives in one place**, as `EventDayCount` does for
+days and `EventDay::before()` does for a typed day that must fall before the event. A caller
+maps the refusal to its own `validation.*` key and property path; it does not compare the
+days again.
+
 ## Dependencies
 
 `composer.json` pins `config.platform` to the PHP version and extension set the **container**

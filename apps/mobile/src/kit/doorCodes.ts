@@ -6,7 +6,13 @@ export const CAP_MOST = 500;
 export const LABEL_MOST = 60;
 
 /** Can edit is listed so it can be shown dimmed with why; a code never gives it. */
-export const CODE_CHOICES = ['can_view', 'can_check_in', 'can_edit'] as const;
+export const CODE_CHOICES = [
+  'can_view',
+  'can_check_in',
+  'can_work_floor',
+  'can_work_pass',
+  'can_edit',
+] as const;
 export type CodeChoice = (typeof CODE_CHOICES)[number];
 
 export type Ends = { kind: 'event' } | { kind: 'earlier'; date: string; time: string };

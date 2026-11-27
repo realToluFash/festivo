@@ -110,7 +110,7 @@ final readonly class OrganisationArchive
             SELECT gg.id, gg.event_id, gg.name, gg.created_at
               FROM guest_groups gg
               JOIN events ev ON ev.id = gg.event_id
-             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND gg.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, gg.event_id, gg.name_key, gg.id
             SQL,
         'guest_messages' => <<<'SQL'
@@ -119,6 +119,13 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = m.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, m.event_id, m.created_at, m.id
+            SQL,
+        'saved_audiences' => <<<'SQL'
+            SELECT a.id, a.event_id, a.name, a.conditions::text AS conditions, a.created_at
+              FROM saved_audiences a
+              JOIN events ev ON ev.id = a.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, a.event_id, a.name_key, a.id
             SQL,
         'seating_plans' => <<<'SQL'
             SELECT p.id, p.event_id, p.room_name, p.width_cm, p.length_cm, t.shared_at, t.share_by, p.created_at
@@ -250,6 +257,22 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND g.removed_at IS NULL
              ORDER BY ev.starts_at_utc, c.event_id, c.position, g.position, a.id
             SQL,
+        'kitchen_final_numbers' => <<<'SQL'
+            SELECT f.event_id, f.due_on
+              FROM kitchen_final_numbers f
+              JOIN events ev ON ev.id = f.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND f.due_on IS NOT NULL
+             ORDER BY ev.starts_at_utc, f.event_id
+            SQL,
+        'kitchen_copies' => <<<'SQL'
+            SELECT k.id, k.event_id, k.recorded_at, k.recorded_by_name,
+                   ((k.sheet - 'people') || jsonb_build_object('names', k.names)
+                            || CASE WHEN k.names THEN '{}'::jsonb ELSE '{"allergic": null}'::jsonb END)::text AS sheet
+              FROM kitchen_copies k
+              JOIN events ev ON ev.id = k.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, k.event_id, k.recorded_at, k.id
+            SQL,
         'dish_library' => <<<'SQL'
             SELECT d.id, d.name, d.description, array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets,
                    d.last_price_minor, d.last_price_currency, d.archived_at, d.created_at
@@ -314,6 +337,16 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = j.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
+            SQL,
+        'staff_attendance' => <<<'SQL'
+            SELECT a.shift_id, a.person_id AS staff_id, a.removed_name, a.clocked_in_at, a.clocked_out_at,
+                   a.corrected_in_at, a.in_corrected_by, a.corrected_out_at, a.out_corrected_by
+              FROM shift_attendances a
+              JOIN staff_shifts s ON s.id = a.shift_id
+              JOIN staff_jobs j ON j.id = s.job_id
+              JOIN events ev ON ev.id = j.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, a.person_id
             SQL,
         'staff_rates' => <<<'SQL'
             SELECT r.id, r.event_id, r.job_id, r.person_id AS staff_id, r.pay, r.amount_minor, ev.currency AS amount_currency, r.set_at
@@ -394,7 +427,7 @@ final readonly class OrganisationArchive
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
         'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
-        'superseded_at',
+        'superseded_at', 'recorded_at',
     ];
 
     private const array ROLES = [
@@ -479,7 +512,8 @@ final readonly class OrganisationArchive
                 foreach ($batch as $fetched) {
                     $row = self::row($fetched);
                     CsvFile::row($csv, Vec\map(Vec\values($row), self::cell(...)));
-                    \fwrite($json, (0 === $rows ? "\n        " : ",\n        ") . Str\replace(Json\encode($row, pretty: true), "\n", "\n        "));
+                    $listed = isset($row['sheet']) ? [...$row, 'sheet' => Json\decode((string) $row['sheet'])] : $row;
+                    \fwrite($json, (0 === $rows ? "\n        " : ",\n        ") . Str\replace(Json\encode($listed, pretty: true), "\n", "\n        "));
                     ++$rows;
                 }
             } while (self::BATCH === Iter\count($batch));

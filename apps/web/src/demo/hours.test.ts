@@ -24,7 +24,7 @@ import {
 const rowsAt = (state: Parameters<typeof hoursStart>[0]) => {
   const start = hoursStart(state);
 
-  return rowsOf(start.plan, start.clocks);
+  return rowsOf(start.plan, start.clocks, start.removed);
 };
 const row = (key: string, state: Parameters<typeof hoursStart>[0] = 'list') => {
   const found = rowsAt(state).find((one) => one.key === key);
@@ -40,6 +40,31 @@ describe('Hours worked (sc-234)', () => {
     expect(workedOf(lead.shift, lead.times)).toMatchObject({ minutes: 548, assumed: 548 });
     expect(clockedWords(lead)).toBe('In 15:52 · No clock-out');
     expect(markWords(lead)).toBe('Not clocked out · Counted to 01:00, the scheduled end');
+  });
+
+  it('keeps a removed person on the shift they worked, beside whoever took their place', () => {
+    const rows = rowsAt('removed');
+    const keys = rows.map((one) => one.key);
+    const femi = row('run:femi', 'removed');
+
+    expect(keys.indexOf('run:femi')).toBe(keys.indexOf('run:chinedu') + 1);
+    expect(femi).toMatchObject({ name: 'Femi Adeyemi', job: 'Runner', removed: true });
+    expect(row('run:chinedu', 'removed').removed).toBe(false);
+    expect(clockedWords(femi)).toBe('In 16:52 · No clock-out');
+    expect(markWords(femi)).toBe('Not clocked out · Counted to 00:00, the scheduled end');
+    expect(workedOf(femi.shift, femi.times)).toMatchObject({ minutes: 428, assumed: 428 });
+    expect(rowsAt('list').some((one) => one.removed)).toBe(false);
+  });
+
+  it('never leaves a removed person’s clock-out empty: they can no longer clock out', () => {
+    const femi = row('run:femi', 'removed');
+    const now = femi.shift.end - 60;
+
+    expect(stillOnOf({ ...femi, removed: false }, true, now)).toBe(true);
+    expect(stillOnOf(femi, true, now)).toBe(false);
+    expect(timesProblems({ ...draftOf(femi), outTime: '' }, stillOnOf(femi, true, now))).toEqual({
+      out: HW.outBlank,
+    });
   });
 
   it('counts nothing for a shift with no clock-in', () => {

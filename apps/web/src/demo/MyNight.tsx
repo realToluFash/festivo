@@ -16,10 +16,11 @@ import {
   moved,
   myNightStateOf,
   nightOf,
+  openFloorOf,
   yoursAlone,
 } from './myNight.ts';
 import { useClockCard } from './shiftClock.ts';
-import { SIGNED_OUT_HREF } from './doorCheckIn.ts';
+import { CW, SIGNED_OUT_HREF } from './doorCheckIn.ts';
 import { clockOf } from './doorCode.ts';
 import './doorCheckIn.css';
 import './myNight.css';
@@ -33,10 +34,21 @@ export function MyNight() {
   return <MyNightAt key={state} first={nightOf(state)} />;
 }
 
-function MyNightAt({ first }: { first: Night }) {
+/** The page itself; sc-28230's shift page at /demo/check-in/shift is this page with Check-in, and its own Sign out. */
+export function MyNightAt({
+  first,
+  checkIn = false,
+  onSignOut,
+}: {
+  first: Night;
+  checkIn?: boolean;
+  onSignOut?: () => void;
+}) {
   const [night, setNight] = useState(first);
   const navigate = useNavigate();
-  const signOut = () => void navigate(SIGNED_OUT_HREF);
+  const signOut = onSignOut ?? (() => void navigate(SIGNED_OUT_HREF));
+  const checksIn = checkIn || night.checksIn;
+  const openFloor = openFloorOf(night);
 
   return (
     <main id="content" className="myn">
@@ -44,7 +56,7 @@ function MyNightAt({ first }: { first: Night }) {
         {night.inApp && (
           <Link className="myn-back" to="/demo">
             <Glyph name="back" size={20} weight={2.4} />
-            <span>{MN.events}</span>
+            <span>{MN.overview}</span>
           </Link>
         )}
         <span className="myn-brand">
@@ -94,6 +106,19 @@ function MyNightAt({ first }: { first: Night }) {
                   </h1>
                 </div>
                 <Clock night={night} />
+                {checksIn && (
+                  <Link className="ci-primary myn-check-in" to="/demo/check-in?state=list">
+                    {CW.title}
+                  </Link>
+                )}
+                {openFloor != null && (
+                  <Link
+                    className={`${checksIn ? 'ci-secondary' : 'ci-primary'} myn-check-in`}
+                    to={openFloor.href}
+                  >
+                    {openFloor.label}
+                  </Link>
+                )}
                 <Shift night={night} />
                 <YourLead lead={night.lead} />
                 {night.rules != null && (
@@ -124,6 +149,33 @@ function MyNightAt({ first }: { first: Night }) {
           </>
         )}
         <You night={night} place="foot" onSignOut={signOut} />
+      </div>
+    </main>
+  );
+}
+
+/** Floor's way back in a browser (sc-98893): ‹ Your night returns to the person's own link page, still signed in. */
+export function MyNightFloor() {
+  const [params] = useSearchParams();
+  const state = myNightStateOf(params.get('state'));
+  const night = nightOf(state);
+
+  return (
+    <main id="content" className="myn">
+      <header className="myn-bar">
+        <Link className="myn-back" to={`/demo/my-night?state=${state}`}>
+          <Glyph name="back" size={20} weight={2.4} />
+          <span>{MN.title}</span>
+        </Link>
+        <span className="myn-brand">
+          <Brand />
+        </span>
+      </header>
+      <div className="myn-page">
+        <h1>{MN.floor}</h1>
+        <div className="myn-demo">
+          <p>{MN.floorStandsIn(night.name)}</p>
+        </div>
       </div>
     </main>
   );

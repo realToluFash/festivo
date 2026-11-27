@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Attendance\Clocking;
+use App\Domain\Staff\Briefing\BriefingTracker;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
 use App\Entity\StaffLinkToken;
@@ -15,6 +18,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
+use App\Enum\StaffBriefStatus;
 use App\Enum\StaffLinkStatus;
 use App\Http\Exception\ApiException;
 use App\Http\LinkTokens;
@@ -55,8 +59,11 @@ final readonly class StaffLinks
         private StaffShiftRepository $staffShiftRepository,
         private StaffRosterPublisher $staffRosterPublisher,
         private Auditor $auditor,
+        private Clocking $clocking,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private BriefingTracker $briefingTracker,
+        private ShiftNotices $shiftNotices,
     ) {
     }
 
@@ -120,22 +127,48 @@ final readonly class StaffLinks
         return $this->staffLinkTokenRepository->findOneByTokenHash(LinkTokens::hash($token))?->getStaffMember();
     }
 
+    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). The first open with nothing yet recorded of what they were told records the page as it stands, so a briefing read through an unmarked copy went (sc-4333); the window's end keeps a Finished event from recording. */
     public function opened(StaffMember $entry): void
     {
-        if (!$this->window($entry)->open || StaffLinkStatus::Opened === $entry->getLinkStatus()) {
+        if (!$this->window($entry)->open) {
             return;
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($entry): void {
+        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry) && !self::anOpenRecords($entry)) {
+            return;
+        }
+
+        $moved = $this->entityManager->wrapInTransaction(function () use ($entry): bool {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
-            $entry->linkMoved(StaffLinkStatus::Opened, null, $this->clock->now());
+            $opened = StaffLinkStatus::Opened !== $entry->getLinkStatus();
+
+            if ($opened) {
+                $entry->linkMoved(StaffLinkStatus::Opened, null, $this->clock->now());
+            }
+
+            $read = $this->briefingTracker->opened($entry);
+            $told = self::anOpenRecords($entry);
+
+            if ($told) {
+                $this->shiftNotices->briefed($entry);
+            }
+
             $this->entityManager->flush();
+
+            return $opened || $read || $told;
         });
 
-        $this->staffRosterPublisher->publish($entry->getEvent());
+        if ($moved) {
+            $this->staffRosterPublisher->publish($entry->getEvent());
+        }
     }
 
-    /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished. */
+    private static function anOpenRecords(StaffMember $entry): bool
+    {
+        return null === $entry->getTold() && (StaffBriefStatus::None !== $entry->getBriefStatus() || null !== $entry->getBriefCopyAt());
+    }
+
+    /** From 12 hours before their first shift starts until 2 hours after their last one ends or the event's end, whichever comes first; not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */
     public function window(StaffMember $entry): StaffLinkWindow
     {
         $event = $entry->getEvent();
@@ -143,23 +176,56 @@ final readonly class StaffLinks
         $shifts = $this->staffShiftRepository->findOfPerson($entry);
 
         if ($this->finished($event, $now)) {
-            return StaffLinkWindow::ended();
+            return StaffLinkWindow::ended($this->clocking->openUntil($entry));
         }
 
         if ([] === $shifts) {
             return StaffLinkWindow::noShiftYet();
         }
 
+        [$from, $until] = self::span($shifts, $event);
+
+        return match (true) {
+            $now < $from => StaffLinkWindow::notYet($from, $until),
+            $now >= $until => StaffLinkWindow::ended($this->clocking->openUntil($entry)),
+            default => StaffLinkWindow::open($until),
+        };
+    }
+
+    /** Whether the link was open when the event finished, at its end or its early end (sc-3585), so the event's end is what closed it (27 Nov, sc-3918). */
+    public function endedWithTheEvent(StaffMember $entry): bool
+    {
+        $event = $entry->getEvent();
+        $shifts = $this->staffShiftRepository->findOfPerson($entry);
+
+        if ([] === $shifts || !$this->finished($event, $this->clock->now())) {
+            return false;
+        }
+
+        $endedAt = $event->getEndedAt();
+        if (EventPhase::calledOff($endedAt, $event->getStartsAt())) {
+            return false;
+        }
+
+        [$from, $until] = self::span($shifts, $event);
+        $finishedAt = null !== $endedAt && $endedAt < $event->getEndsAt() ? $endedAt : $event->getEndsAt();
+
+        return $from <= $finishedAt && $finishedAt <= $until;
+    }
+
+    /**
+     * @param non-empty-list<StaffShift> $shifts
+     *
+     * @return array{0: DateTimeImmutable, 1: DateTimeImmutable}
+     */
+    private static function span(array $shifts, Event $event): array
+    {
         $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
         $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
         $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
         $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
 
-        return match (true) {
-            $now < $from => StaffLinkWindow::notYet($from, $until),
-            $now >= $until => StaffLinkWindow::ended(),
-            default => StaffLinkWindow::open($until),
-        };
+        return [$from, $event->getEndsAt() < $until ? $event->getEndsAt() : $until];
     }
 
     /**

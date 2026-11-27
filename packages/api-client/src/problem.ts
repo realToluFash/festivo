@@ -48,6 +48,8 @@ export interface Problem {
   provider?: string;
   /** On `organisation_two_factor_required`: the permission kept back. */
   permission?: string;
+  /** On a service's `permission_required` for the half a level does not work: the half it does (sc-4015). */
+  worksAt?: 'floor' | 'pass';
   /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
   changedBy?: string;
   /** On a Floor plan step's `precondition_failed`: every item a colleague changed since, so the whole step was refused (sc-5028). */

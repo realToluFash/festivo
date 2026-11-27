@@ -52,12 +52,12 @@ final readonly class ExpoPushService implements PushServiceInterface
             // The app makes the event_day and run_of_show channels; every other push takes Android's default.
             'channelId' => match (true) {
                 $notification->silent => self::SILENT_CHANNEL,
-                NotificationCategory::EventDay === $category => $category->value,
+                NotificationCategory::EventDay === $category && !$notification->notYetUrgent => $category->value,
                 default => null,
             },
             'interruptionLevel' => match (true) {
                 $notification->silent => 'passive',
-                NotificationCategory::EventDay === $category => 'time-sensitive',
+                NotificationCategory::EventDay === $category && !$notification->notYetUrgent => 'time-sensitive',
                 default => null,
             },
         ]);

@@ -58,8 +58,8 @@ describe('closedOf', () => {
 
 describe('matching', () => {
   const guests = [
-    { id: '1', name: 'Émile Okoro', flag: null, email: 'emile@example.test' },
-    { id: '2', name: 'Ada Bello', flag: 'no_address' as const },
+    { id: '1', name: 'Émile Okoro', flag: null, email: 'emile@example.test', language: 'en' },
+    { id: '2', name: 'Ada Bello', flag: 'no_address' as const, language: 'fr' },
   ];
 
   it('matches any part of the name, ignoring case and accents, and the address with guests.manage', () => {

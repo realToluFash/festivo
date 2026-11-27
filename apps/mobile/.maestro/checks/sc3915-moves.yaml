@@ -1,0 +1,38 @@
+# sc-3915: with the night page open, the person is moved to Section C, to no station, then back to Section B through the API; the Updated band names C, goes with no station, and names B again, each within 10 s. Needs ${METRO_URL}, ${EVENT_ID}, ${API_URL}, ${OWNER_TOKEN}, ${STAFF_ID}, ${STATION_B}, ${STATION_C}, ${P}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.yourNight'
+    timeout: 30000
+- tapOn:
+    id: 'events.yourNight'
+- extendedWaitUntil:
+    visible:
+      id: 'myNight.page'
+    timeout: 30000
+- evalScript: "${http.put(API_URL + '/api/events/' + EVENT_ID + '/stations/people/' + STAFF_ID, {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OWNER_TOKEN}, body: JSON.stringify({station: STATION_C})}).status}"
+- extendedWaitUntil:
+    visible: 'Updated: you.re now on Section C'
+    timeout: 10000
+- takeScreenshot: ${P}-to-c
+- evalScript: "${http.put(API_URL + '/api/events/' + EVENT_ID + '/stations/people/' + STAFF_ID, {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OWNER_TOKEN}, body: JSON.stringify({station: null})}).status}"
+- extendedWaitUntil:
+    notVisible:
+      id: 'myNight.updated'
+    timeout: 10000
+- assertVisible: '.*Waiter.*'
+- takeScreenshot: ${P}-to-none
+- extendedWaitUntil:
+    visible: 'Updated: you.re now on.*'
+    timeout: 12000
+    optional: true
+- assertNotVisible:
+    id: 'myNight.updated'
+- takeScreenshot: ${P}-to-none-later
+- evalScript: "${http.put(API_URL + '/api/events/' + EVENT_ID + '/stations/people/' + STAFF_ID, {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OWNER_TOKEN}, body: JSON.stringify({station: STATION_B})}).status}"
+- extendedWaitUntil:
+    visible: 'Updated: you.re now on Section B'
+    timeout: 10000
+- takeScreenshot: ${P}-back-to-b

@@ -1,3 +1,6 @@
+import { CREDITS_WORDS, count, signed } from './credits.ts';
+import type { DemoLink } from './settings.ts';
+
 export const BILLING_STATES = [
   'none',
   'packs',
@@ -19,6 +22,11 @@ export const BILLING_STATES = [
   'card_other',
   'refused',
   'offline_wait',
+  'few',
+  'empty',
+  'loading',
+  'credits_failed',
+  'reread_fails',
 ] as const;
 
 export type BillingState = (typeof BILLING_STATES)[number];
@@ -56,10 +64,6 @@ export function money(amount: number, currency: Currency, locale: string): strin
   }).format(amount);
 }
 
-export function count(n: number, locale: string): string {
-  return new Intl.NumberFormat(locale).format(n);
-}
-
 /** A wait turns into the 2-minute line 2 minutes after its payment, however often the tab was reloaded since. */
 export const WAIT_MS = 120_000;
 
@@ -95,12 +99,14 @@ export function expiry(month: number, year: number): string {
 }
 
 /** What the card shows of the method: only what the provider returns, and nothing for a method it names no way to show. */
-export function methodLine(method: Method): string | null {
+export function methodLine(method: Method, lang: 'en' | 'fr' = 'en'): string | null {
   if (method.kind === 'other') return null;
   if (method.kind !== 'card') return WALLETS[method.kind];
   const brand = BRANDS[method.brand]?.name;
+  const date = expiry(method.month, method.year);
+  if (lang === 'fr') return `${brand ?? 'Carte'} se terminant par ${method.last4} · Expire ${date}`;
 
-  return `${brand ?? 'Card'} ending ${method.last4} · Expires ${expiry(method.month, method.year)}`;
+  return `${brand ?? 'Card'} ending ${method.last4} · Expires ${date}`;
 }
 
 export type MethodShape = { kind: 'brand'; mark: string } | { kind: 'card' } | { kind: 'wallet' };
@@ -137,40 +143,6 @@ export function methodFor(state: BillingState): Method {
   return SAMPLE_CARD;
 }
 
-export interface Entry {
-  id: string;
-  day: string;
-  words: string;
-  credits: number;
-}
-
-export const SAMPLE_BALANCE = 5920;
-
-/** sc-3934's ledger kinds on the sample billing account, newest first. A line names a channel and a count, never an event or a person. */
-export const SAMPLE_LEDGER: readonly Entry[] = [
-  { id: 'l1', day: '2026-11-21', words: 'SMS · 40 parts', credits: -360 },
-  { id: 'l2', day: '2026-11-18', words: 'SMS · 2 parts', credits: -124 },
-  { id: 'l3', day: '2026-11-01', words: 'Included credits', credits: 50 },
-  { id: 'l4', day: '2026-11-01', words: 'Included credits not carried over', credits: -12 },
-  { id: 'l5', day: '2026-10-28', words: 'Credits bought', credits: 5000 },
-  { id: 'l6', day: '2026-10-21', words: 'SMS · 12 parts', credits: -24 },
-  { id: 'l7', day: '2026-10-14', words: 'Credits returned for failed messages', credits: 18 },
-  { id: 'l8', day: '2026-10-01', words: 'Included credits', credits: 50 },
-  { id: 'l9', day: '2026-09-30', words: 'Included credits not carried over', credits: -50 },
-  { id: 'l10', day: '2026-09-12', words: 'Credits bought', credits: 1000 },
-  { id: 'l11', day: '2026-09-01', words: 'Included credits', credits: 50 },
-];
-
-export const LEDGER_SHOWN = 10;
-
-export function withBought(ledger: readonly Entry[], entry: Entry): Entry[] {
-  return [entry, ...ledger].slice(0, LEDGER_SHOWN);
-}
-
-export function signed(credits: number, locale: string): string {
-  return `${credits < 0 ? '−' : '+'}${count(Math.abs(credits), locale)}`;
-}
-
 export function buyingLine(credits: number, locale: string): string {
   return `Buying ${count(credits, locale)} ${credits === 1 ? 'credit' : 'credits'}…`;
 }
@@ -180,7 +152,7 @@ export function creditsWord(n: number, locale: string): string {
 }
 
 export function boughtSaid(credits: number, balance: number, locale: string): string {
-  return `${W.bought} ${signed(credits, locale)}. ${creditsWord(balance, locale)}.`;
+  return `${CREDITS_WORDS.en.bought} ${signed(credits, locale)}. ${creditsWord(balance, locale)}.`;
 }
 
 export function renewsLine(locale: string): string {
@@ -194,39 +166,17 @@ export function renewsLine(locale: string): string {
   return `${money(ENTERPRISE.price, ENTERPRISE.currency, locale)} a month, renews ${date}`;
 }
 
-export function ledgerDay(day: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${day}T00:00:00Z`));
-}
-
 /** The board's English; the developer gives each its key in the four locales. */
 export const BILLING_WORDS = {
-  title: 'Plan and billing',
   refreshing: 'Refreshing…',
-  yourPlan: 'Your plan',
-  free: 'Free',
   enterprise: 'Enterprise',
-  changePlan: 'Change plan',
   confirming: 'Confirming your payment…',
   slow: 'Your payment is being confirmed.',
   slowEmail: 'We’ll email you once it is confirmed.',
-  credits: 'Credits',
-  included: '50 credits included each month',
-  addCredits: 'Add credits',
   packsNote:
     'Bought credits never expire. Included credits are used first and do not carry over when they renew each month. When credits run out, WhatsApp and SMS messages wait. Emails are still sent, and events keep running normally.',
-  bought: 'Credits bought',
   notAdded: 'Credits not added. Nothing was charged.',
   refused: 'Nothing was changed. Your role does not include the permission this needs.',
-  recent: 'Recent credit entries',
-  paymentMethod: 'Payment method',
-  update: 'Update',
-  updateName: 'Update the payment method',
-  cardNote: 'Card details go to our payment provider, never to us.',
   checkoutTitle: 'Paddle’s hosted checkout, not ours',
   pageTitle: 'Paddle’s hosted page, not ours',
   close: 'Close',
@@ -234,15 +184,10 @@ export const BILLING_WORDS = {
   sandbox: 'Sandbox only: at launch the checkout sells credit packs alone.',
 } as const;
 
-const W = BILLING_WORDS;
-
-export interface DemoLink {
-  to: string;
-  name: string;
-}
+export const billingAt = (state: BillingState) => `/demo/settings/plan-and-billing?state=${state}`;
 
 const at = (state: BillingState, name: string, more = ''): DemoLink => ({
-  to: `/demo/settings/plan-and-billing?state=${state}${more}`,
+  to: `${billingAt(state)}${more}`,
   name,
 });
 

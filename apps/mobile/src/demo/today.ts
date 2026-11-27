@@ -18,7 +18,8 @@ import {
 } from '../kit/today.ts';
 import { EVENT_OF_KEY as IDS } from './events/EventsSample.ts';
 import { type Guests, SAMPLE_GUESTS } from './events/GuestCounts.ts';
-import { needsOf, type YouEvent } from './today/needsYou.ts';
+import { needsOf, type YouEvent } from '../kit/todayNeeds.ts';
+import { demoT } from './today/needsYou.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 
@@ -430,6 +431,8 @@ function owedOn([key, due, title = KITCHEN]: Owed): YouEvent {
   return {
     shown: sample(key),
     startsAt: `${EVENTS[key].first}T12:00:00Z`,
+    endsAt: `${EVENTS[key].first}T22:00:00Z`,
+    status: 'live',
     timeZone: SAMPLE_ZONE,
     permissions: ['menu.manage'],
     milestones: [
@@ -454,7 +457,9 @@ function needs(
           : null;
 
   // Half a minute into the minute, so a milestone at 23:59 has passed at the demo's 23:59.
-  return owed == null ? null : needsOf(owed.map(owedOn), new Date(`${date}T${time}:30Z`), say.day);
+  return owed == null
+    ? null
+    : needsOf(owed.map(owedOn), new Date(`${date}T${time}:30Z`), say.day, demoT);
 }
 
 function now(today: string, time: string, say: Say): Now {

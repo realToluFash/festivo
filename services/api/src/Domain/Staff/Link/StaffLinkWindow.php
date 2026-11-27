@@ -6,7 +6,7 @@ namespace App\Domain\Staff\Link;
 
 use DateTimeImmutable;
 
-/** Where now falls in a person's link window: `from` only before it opens, and not before a person with no shift has one; `until` until it has ended. */
+/** Where now falls in a person's link window; `clockUntil`, past it, is while they are still clocked in and the link opens their clock card alone (sc-234). */
 final readonly class StaffLinkWindow
 {
     private function __construct(
@@ -14,6 +14,7 @@ final readonly class StaffLinkWindow
         public bool $ended,
         public ?DateTimeImmutable $from,
         public ?DateTimeImmutable $until,
+        public ?DateTimeImmutable $clockUntil = null,
     ) {
     }
 
@@ -32,8 +33,8 @@ final readonly class StaffLinkWindow
         return new self(true, false, null, $until);
     }
 
-    public static function ended(): self
+    public static function ended(?DateTimeImmutable $clockUntil = null): self
     {
-        return new self(false, true, null, null);
+        return new self(false, true, null, null, $clockUntil);
     }
 }

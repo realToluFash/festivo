@@ -1,4 +1,9 @@
-import type { KitchenAllergic, KitchenSheet } from '@soirely/api-client';
+import type {
+  KitchenAllergic,
+  KitchenChange,
+  KitchenChangesSince,
+  KitchenSheet,
+} from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 
 import { dayIn, dayWords } from './courseDefault.ts';
@@ -56,4 +61,112 @@ export function saveSheet(bytes: Uint8Array<ArrayBuffer>, name: string): void {
   link.download = name;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+export type DueError = 'start' | 'past';
+
+/** Before submit, both in the event's zone: on or after the start's day, or a newly typed day before today. A day left as it was is never refused. */
+export function dueError(
+  typed: string,
+  was: string | null,
+  startsAt: string,
+  timeZone: string,
+  now: Date,
+): DueError | null {
+  if (typed === '' || typed === was) return null;
+  if (typed >= dayIn(new Date(startsAt), timeZone)) return 'start';
+  if (typed < dayIn(now, timeZone)) return 'past';
+
+  return null;
+}
+
+/** "Tue, Nov 3": a stored day, as the Final numbers row writes it. */
+export function shortDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
+/** A copy's moment as words: the reader's locale, the event's zone, the 24-hour clock. */
+function copyMoment(recordedAt: string, timeZone: string, locale: string) {
+  const at = new Date(recordedAt);
+  const date = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone,
+  }).format(at);
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(at);
+
+  return { date, time };
+}
+
+/** "Given to the kitchen on Friday 7 Aug at 17:00 by Ada Obi". */
+export function copyLine(
+  t: TFunction,
+  recordedAt: string,
+  by: string,
+  timeZone: string,
+  locale: string,
+): string {
+  return t('kitchenSheet.copy', { ...copyMoment(recordedAt, timeZone, locale), name: by });
+}
+
+/** "Since Friday 7 Aug at 17:00", or that nothing has changed since then (sc-30692). */
+export function sinceLine(
+  t: TFunction,
+  changes: KitchenChangesSince,
+  timeZone: string,
+  locale: string,
+): string {
+  const at = copyMoment(changes.since, timeZone, locale);
+
+  return t(
+    changes.lines.length === 0 ? 'kitchenSheet.changes.none' : 'kitchenSheet.changes.since',
+    at,
+  );
+}
+
+const ITEM_STATE_WORDS = {
+  kitchen: 'kitchenSheet.kitchen',
+  skipped: 'kitchenSheet.skipped',
+  needsHost: 'kitchenSheet.needsHost',
+  menuChanged: 'kitchenSheet.changed',
+  notYet: 'kitchenSheet.cellNotYet',
+  never: 'kitchenSheet.cellNever',
+} as const;
+
+/** One change as its whole sentence, each kind a key of its own with its slots. */
+export function changeLine(t: TFunction, line: KitchenChange): string {
+  const { kind, code, who, item, count, old } = line;
+  const key = `kitchenSheet.changes.${kind}`;
+
+  if (code != null) {
+    const family = kind.startsWith('allergy') ? 'allergy' : 'diet';
+    const slot = { [family]: family === 'allergy' ? allergenName(t, code) : dietName(t, code) };
+
+    return who == null ? t(`${key}Count`, { ...slot, count }) : t(key, { ...slot, name: who });
+  }
+
+  if (item == null) return t(key, { count });
+
+  const name =
+    item.state != null
+      ? t(ITEM_STATE_WORDS[item.state])
+      : item.parent == null
+        ? item.name
+        : t('kitchenSheet.changes.named', { dish: item.parent, name: item.name });
+
+  if (kind === 'renamed') return t(key, { old: name, new: line.to });
+  if (kind === 'count') return t(key, { dish: name, old, new: count });
+
+  return t(key, { dish: name, count });
 }

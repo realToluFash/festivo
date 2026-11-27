@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { currentLocale } from '../i18n/index.ts';
+import { newestInView } from './newestInView.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -208,7 +209,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
         </header>
       )}
       {draft.step !== 'preview' && following ? (
-        <ol className="mg-stream" role="log" aria-label={MW.writeFollowUp}>
+        <ol className="mg-stream" role="log" ref={newestInView} aria-label={MW.writeFollowUp}>
           <StreamItems thread={draft.thread} />
           {draft.step === 'check' && (
             <li className="mg-said is-host">
@@ -258,7 +259,13 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           refused={refused}
           wrong={wrong}
           follows={draft.follows}
-          previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
+          previewOff={
+            draft.nobodyLeft?.to === draft.to
+              ? filled(PW.nobodyLeft, { name: draft.nobodyLeft.name })
+              : (countOf(draft.to, event.book.groups) ?? 0) === 0
+                ? PW.nobodyToPreview
+                : null
+          }
           onDraft={(next) => {
             if (next.subject != null) fixed('subject', next);
             if (next.body != null) fixed('body', next);

@@ -34,6 +34,16 @@ final class FixtureDirectories implements MembershipDirectoryInterface, EventDir
         return $this->grantsIn($user, $organisationId);
     }
 
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return false;
+    }
+
+    public function isOutsideIn(User $user, Uuid $organisationId): bool
+    {
+        return false;
+    }
+
     public function eventScopeIn(User $user, Uuid $organisationId): ?EventScope
     {
         $grants = $this->grantsIn($user, $organisationId);

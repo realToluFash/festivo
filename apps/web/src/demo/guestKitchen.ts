@@ -1,4 +1,4 @@
-import type { View, Visit } from './guest.ts';
+import type { StepFrom, View, Visit } from './guest.ts';
 import type { Party } from './guestCompanions.ts';
 import {
   type Access,
@@ -9,7 +9,7 @@ import {
 import { type Needs, otherError } from './guestNeeds.ts';
 import type { DemoLink } from './settings.ts';
 
-export type From = 'answer' | 'changing' | 'closed';
+export type From = StepFrom | 'closed';
 export type Field = 'other' | 'words' | 'access';
 export const FIELDS: readonly Field[] = ['other', 'words', 'access'];
 

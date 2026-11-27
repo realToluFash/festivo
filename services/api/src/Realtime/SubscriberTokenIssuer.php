@@ -60,6 +60,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventStaff->for($eventId->toRfc4122())]);
     }
 
+    /** One event's Who's here signal to ask again, for someone the route has already found may read it (sc-3918); its messages carry nothing else. */
+    public function issueForEventWhosHere(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventWhosHere->for($eventId->toRfc4122())]);
+    }
+
     /** One event's running order, for someone the route has already found holds run_of_show.read on it (sc-3893). */
     public function issueForEventSchedule(Uuid $eventId): IssuedSubscriberToken
     {
@@ -88,6 +94,12 @@ final readonly class SubscriberTokenIssuer
     public function issueForEventMenu(Uuid $eventId): IssuedSubscriberToken
     {
         return $this->issue([RealtimeTopic::EventMenu->for($eventId->toRfc4122())]);
+    }
+
+    /** One event's service, for someone the route has already found works it (sc-4005). */
+    public function issueForEventService(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventService->for($eventId->toRfc4122())]);
     }
 
     /** One event's budget lines and its headcount, which moves the range, for someone the route has already found holds budget.read on it (sc-83, sc-85). */

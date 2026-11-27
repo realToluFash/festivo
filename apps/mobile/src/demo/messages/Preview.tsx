@@ -3,7 +3,8 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
+import { Notice } from '../../components/Notice.tsx';
+import { readOut, useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import type { Anchor } from '../../components/Summary.tsx';
 import { measuredUnder } from '../measuredUnder.ts';
@@ -20,13 +21,16 @@ import {
   chosen,
   coverFor,
   filledAs,
+  filledIn,
   greetingFor,
   noticeFor,
   previewLines,
   noticeWordsIn,
+  previewAsLeft,
+  retried,
 } from './PreviewModel.ts';
 import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
-import { sayPreview } from './PreviewWords.ts';
+import { PW, sayPreview } from './PreviewWords.ts';
 import { noticeSmsOf } from './NoticeStates.ts';
 import { smsHead } from './Sms.ts';
 import { saySms } from './SmsWords.ts';
@@ -191,6 +195,34 @@ function Filling({ name, columns }: { name: string; columns: boolean }) {
   );
 }
 
+/** It could not be filled in: the alert in place of the page and its lines, and Try again for the same guest. */
+function Failed({ name, onRetry }: { name: string; onRetry: () => void }) {
+  return (
+    <Notice
+      tone="broken"
+      mark={tokens.marks.broken.glyph}
+      title={sayPreview.failed(name)}
+      body={PW.failedLine}
+      action={{ label: W.tryAgain, onPress: onRetry, testID: 'messages.preview.tryAgain' }}
+      announce
+    />
+  );
+}
+
+/** Under the heading: the one the preview found is no longer a guest, and who it is filled in for instead, said without moving focus. */
+function NoLongerGuest({ words }: { words: string }) {
+  useReadOut(words);
+
+  return (
+    <View style={styles.gone} testID="messages.preview.gone">
+      <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+      <Text size={14} weight="medium" style={[styles.secondary, styles.grow, styles.goneWords]}>
+        {words}
+      </Text>
+    </View>
+  );
+}
+
 /** The preview: Preview as, the page the guest opens, and what Soirely sends by each ticked channel, never the hosts' words. */
 export function Preview({
   draft,
@@ -217,10 +249,13 @@ export function Preview({
 
   useEffect(() => {
     if (!as.filling || as.held) return undefined;
-    const done = setTimeout(
-      () => dispatch({ type: 'previewing', previewing: { ...as, filling: false } }),
-      FILLING_MS,
-    );
+    const done = setTimeout(() => {
+      const next = filledIn(as);
+      dispatch({ type: 'previewing', previewing: next });
+      if (next.nobodyLeft == null) return;
+      dispatch({ type: 'edit' });
+      readOut(sayPreview.nobodyLeft(next.nobodyLeft));
+    }, FILLING_MS);
 
     return () => clearTimeout(done);
   }, [as, dispatch]);
@@ -239,6 +274,8 @@ export function Preview({
   ) : null;
   let shown: ReactNode;
   if (as.filling) shown = <Filling name={person.name} columns={columns} />;
+  else if (as.failed === true)
+    shown = <Failed name={person.name} onRetry={() => set(retried(as))} />;
   else if (columns)
     shown = (
       <View style={styles.columns}>
@@ -268,8 +305,13 @@ export function Preview({
         open={as.choosing}
         onOpen={() => set({ ...as, choosing: true })}
       />
+      {as.goneSaid != null && (
+        <NoLongerGuest
+          words={sayPreview.noLongerGuest(PREVIEW_PEOPLE[as.goneSaid].name, person.name)}
+        />
+      )}
       {shown}
-      {!as.filling && (
+      {!as.filling && as.failed !== true && (
         <View style={styles.lines}>
           {previewLines(draft.body, person).map((line) => (
             <Text key={line} size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
@@ -283,6 +325,7 @@ export function Preview({
         phone={phone}
         at={as.choosing ? at : null}
         shown={as.who}
+        people={previewAsLeft(as)}
         opener={control}
         onPick={(who) => {
           setAt(null);
@@ -368,6 +411,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInsetBorder,
   },
   lines: { gap: tokens.spaceXxs },
+  gone: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  goneWords: { lineHeight: 14 * 1.4 },
   accent: { color: tokens.colorAccentText },
   waCard: {
     maxWidth: 320,

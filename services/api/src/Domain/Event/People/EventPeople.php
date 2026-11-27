@@ -80,6 +80,7 @@ final readonly class EventPeople
         }
 
         $this->notOwnAccount($membership->getUser(), $by);
+        $this->notServiceLevel($role);
 
         if (null !== $this->eventPersonRepository->findOneOn($event->getId(), $membership)) {
             throw $this->invalid('membershipId', 'people.already_on_event');
@@ -101,6 +102,10 @@ final readonly class EventPeople
 
         if (null !== $role && $person->isOutside()) {
             $this->notLead($role, $person->getEvent()->getOrganisation()->getName());
+        }
+
+        if (null !== $role && !$person->isOutside()) {
+            $this->notServiceLevel($role);
         }
 
         if (null !== $role && $role !== $person->getRole()) {
@@ -151,6 +156,14 @@ final readonly class EventPeople
     {
         if (EventRole::Lead === $role) {
             throw $this->invalid('role', 'people.lead_members_only', ['{organisation}' => $organisation]);
+        }
+    }
+
+    /** A member holds one of the four event roles (sc-29912); the service levels are for someone working a shift (sc-4002). */
+    private function notServiceLevel(EventRole $role): void
+    {
+        if ($role->isServiceLevel()) {
+            throw $this->invalid('role', 'people.service_level_outside_only');
         }
     }
 

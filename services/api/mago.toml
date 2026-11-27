@@ -158,6 +158,7 @@ domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
+domain_service = ["App\\Domain\\Service\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 domain_budget = [
     "App\\Domain\\Budget\\*",
@@ -273,11 +274,12 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 # language is one of SupportedLocales (sc-852), as AI's and Address's are. Every account
 # and security email is queued on the notification path (sc-4332), through UserMailer.
 # A staff link's sign-in holds its job's level (sc-4235): the account lists it, and a
-# browser session ends with it, read from StaffLinkGrants alone.
+# browser session ends with it, read from StaffLinkGrants alone, as OutsideEvent.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
     "App\\Domain\\Staff\\Link\\StaffLinkGrants",
+    "App\\Domain\\Staff\\Link\\OutsideEvent",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -299,11 +301,12 @@ permit = [
 # suppression list (sc-46109); messaging does not reach back. Export all data keeps
 # its archive in the private bucket, and writes its CSV files as the guest export
 # does (CsvFile, sc-612); neither reaches back. An account a staff link signed in
-# holds its job's level on the event, from StaffLinkGrants (sc-4235).
+# holds its job's level on the event, from StaffLinkGrants (sc-4235), as OutsideEvent.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
     "App\\Domain\\Staff\\Link\\StaffLinkGrants",
+    "App\\Domain\\Staff\\Link\\OutsideEvent",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -408,18 +411,41 @@ permit = [
 # mobile number is checked by the account's parser; each change is audited and published.
 # A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
 # Stations give each course's items, as the menu lists them, the place that dishes them (sc-3910).
+# A change to a briefed person's shifts is told to them through messaging (sc-4333).
+# Hours worked are corrected only by a member who manages staff, read from the member's grants (sc-234).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
+    "App\\Domain\\Organisation\\MembershipDirectory",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
     "@layer:domain_event",
     "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Service floor: every guest's plate on its way to them (sc-4005). Orders are made from the
+# guests' picks and needs, items are dished where Stations put them, a table is reached
+# through Staff's ServiceTables (sc-4002), and every change is a patch on its topic. A late
+# arrival reaches it through Guest's port.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Service\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_guest",
+    "@layer:domain_menu",
+    "@layer:domain_service",
+    "@layer:domain_staff",
+    "@layer:repository",
     "@layer:realtime",
     "@layer:locale",
 ]

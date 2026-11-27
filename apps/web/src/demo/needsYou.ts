@@ -1,4 +1,4 @@
-import { type Milestone, levelOf } from '@soirely/domain';
+import { type Milestone, isYours } from '@soirely/domain';
 
 import { localDay } from './events.ts';
 
@@ -68,7 +68,7 @@ export function dueWords(
 
 /** A You milestone the reader's role changes: the rule both Today's Needs you and the Calendar's Only what needs you take. */
 export function needsMe(milestone: Milestone, permissions: readonly string[]): boolean {
-  return milestone.owner === 'you' && levelOf(permissions, milestone.area) === 'change';
+  return isYours(milestone, permissions);
 }
 
 /** Earliest first, a tie by title in the shown language. */

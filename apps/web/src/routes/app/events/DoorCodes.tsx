@@ -510,6 +510,7 @@ function MakeDialog({
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [refused, setRefused] = useState(false);
   const [menu, setMenu] = useState(false);
   const roleRef = useRef<HTMLInputElement>(null);
   const capRef = useRef<HTMLInputElement>(null);
@@ -539,11 +540,13 @@ function MakeDialog({
     };
     setBusy(true);
     setFailed(null);
+    setRefused(false);
     try {
       onMade(await api.makeDoorCode(eventId, sent));
     } catch (error) {
       setBusy(false);
-      setFailed(refusal(error, t('doorCodes.failMake')));
+      if (error instanceof ApiError && error.is('level_not_allowed_for_code')) setRefused(true);
+      else setFailed(refusal(error, t('doorCodes.failMake')));
     }
   }
 
@@ -560,6 +563,12 @@ function MakeDialog({
       <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
         {busy ? t('doorCodes.making') : ''}
       </p>
+      {refused && (
+        <p className="desk-error dc-failed" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('doorCodes.runRefused')} {t('doorCodes.runRefusedLine')}
+        </p>
+      )}
       {failed != null && (
         <p className="desk-error dc-failed" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />

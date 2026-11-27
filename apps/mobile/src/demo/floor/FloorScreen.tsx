@@ -12,6 +12,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { wayBackOf } from '../station/wayInRoute.ts';
 import { FlagLine, Glyph } from '../queue/QueueParts.tsx';
 import {
   Chip,
@@ -81,14 +82,23 @@ const hidden = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
+/** ?from= for the way in it opened from (sc-98893): its ‹ names Overview or Your night. */
 export function FloorRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; from?: string }>();
   const state = floorStateOf(params.state);
 
-  return <FloorDemo key={state} start={state} />;
+  return (
+    <FloorDemo key={`${state}:${params.from ?? ''}`} start={state} back={wayBackOf(params.from)} />
+  );
 }
 
-function FloorDemo({ start }: { start: ReturnType<typeof floorStateOf> }) {
+function FloorDemo({
+  start,
+  back,
+}: {
+  start: ReturnType<typeof floorStateOf>;
+  back: string | null;
+}) {
   const insets = useSafeAreaInsets();
   const kind = useLayout().kind;
   const phone = kind === 'phone';
@@ -114,7 +124,7 @@ function FloorDemo({ start }: { start: ReturnType<typeof floorStateOf> }) {
             contentContainerStyle={[styles.body, { paddingHorizontal: wide ? 20 : pad }]}
             testID="floor.list"
           >
-            <FloorList f={f} setF={setF} wide={wide} phone={phone} start={start} />
+            <FloorList f={f} setF={setF} wide={wide} phone={phone} start={start} back={back} />
           </ScrollView>
         )}
         {(wide || f.open != null) && shown != null && (
@@ -265,23 +275,26 @@ function FloorList({
   wide,
   phone,
   start,
+  back,
 }: {
   f: Floor;
   setF: (f: Floor) => void;
   wide: boolean;
   phone: boolean;
   start: ReturnType<typeof floorStateOf>;
+  back: string | null;
 }) {
   return (
     <>
       <Pressable
         onPress={goBack}
         accessibilityRole="button"
-        style={styles.back}
+        accessibilityLabel={back ?? 'Back'}
+        style={[styles.back, phone && styles.phoneHit]}
         testID="floor.back"
       >
         <Text size={15} weight="semibold" style={shared.accent}>
-          Back
+          {back == null ? 'Back' : `‹ ${back}`}
         </Text>
       </Pressable>
       <View style={styles.header}>

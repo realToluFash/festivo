@@ -1,8 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
-import { dotKept } from '../../layout/textSize.ts';
+import { LABEL_LINE, dotKept } from '../../layout/textSize.ts';
 
 import {
+  ARRIVING_EVERY,
+  FIGURE_RING,
+  TODAY_ARRIVEDS,
+  arrivedCount,
+  figureRing,
+  figureRoom,
   EVENT_DATES,
   EVENT_NAME,
   HEAD,
@@ -14,10 +23,16 @@ import {
   TODAY_ORGS,
   TODAY_VENUES,
   SIZE_TODAY,
+  STRIP_LABEL,
+  STRIP_TRACKING,
+  STARTS_DAYS,
   WEEK_DAYS,
+  titleOnOneLine,
   chipsUnderDates,
-  dayLineShares,
   daysUntil,
+  stripDays,
+  stripLabelRoom,
+  stripLabelSize,
   linkUnder,
   liveName,
   piecesKeepingDot,
@@ -129,16 +144,32 @@ describe('the size demo’s events', () => {
 });
 
 describe('a This week day line (sc-92250)', () => {
-  it('keeps the name and its dotted date on one line while both fit', () => {
-    expect(dayLineShares(120, 110, 4, 234)).toBe(true);
-  });
-
-  it('sends the date to the line under once one pixel short', () => {
-    expect(dayLineShares(120, 110, 4, 233)).toBe(false);
-  });
-
   it('starts every week day on a date this week', () => {
     for (const day of WEEK_DAYS) {
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
+    }
+  });
+});
+
+describe('a This week row title (sc-94683)', () => {
+  it('holds a title that fits its room to one line, so it takes no blank second one', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+  });
+
+  it('lets a title wider than its room wrap', () => {
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+  });
+
+  it('decides nothing before the row has its room', () => {
+    expect(titleOnOneLine(120, 0)).toBe(false);
+  });
+
+  it('has two events starting this week, one of them the Garden party, each titled by the product', () => {
+    const starts = STARTS_DAYS.flatMap((day) => day.rows).filter((row) => row.title == null);
+    expect(starts.map((row) => row.key)).toEqual(['garden', 'party']);
+    for (const day of STARTS_DAYS) {
       expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
       expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
     }
@@ -272,6 +303,27 @@ describe('the live cover on its side (sc-92312)', () => {
   });
 });
 
+describe('the live cover upright (sc-93578)', () => {
+  const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
+
+  it('draws Open the event inside the words column upright, as on its side, never beside the name', () => {
+    const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+    const upright = /\n {2}if \(upright\)[\s\S]*?\n {4}\);\n/u.exec(live)?.[0] ?? '';
+
+    expect(words).toMatch(
+      /\{under && <View style=\{phone \? styles\.openFlush : styles\.openUnder\}>\{open\}<\/View>\}\n {6}\{under && !phone && arrived != null && \([\s\S]*?<SizeFigure[\s\S]*?\)\}\n {4}<\/View>\n/u,
+    );
+    expect(live).toMatch(/\n {2}openFlush: \{ alignItems: 'flex-start' \},\n/u);
+    expect(live).toMatch(/\n {2}const block = under \? \(\n {4}words\n {2}\) : \(/u);
+    expect(upright).toMatch(/<View style=\{styles\.uprightNow\}>\{block\}<\/View>/u);
+  });
+
+  it('moves Open the event under the end line from AX1, as on its side', () => {
+    expect(openUnder(SEVENTH)).toBe(false);
+    expect(openUnder(AX1)).toBe(true);
+  });
+});
+
 describe('the switcher’s rows from AX1 (sc-92465)', () => {
   it('puts the organisation you are in first, then every other once each', () => {
     expect(switcherOrgs('several')).toEqual(['several', 'qa', 'lumen', 'ire', 'oneWord']);
@@ -313,5 +365,110 @@ describe('the switcher’s rows from AX1 (sc-92465)', () => {
     expect(dotKept('Jour 1 sur 1 · Salle des fêtes du Château de Chantilly')).toBe(
       'Jour 1 sur 1\u00a0· Salle des fêtes du Château de Chantilly',
     );
+  });
+});
+
+describe('the live cover with a guest arrived (sc-94022)', () => {
+  it('counts 1 of 12 and 141 of 152, and nobody until one is chosen', () => {
+    expect(TODAY_ARRIVEDS.map((one) => one.key)).toEqual(['none', 'one', 'many', 'live']);
+    expect(arrivedCount('none', 0)).toBeNull();
+    expect(arrivedCount('one', 0)).toEqual({ arrived: 1, expected: 12 });
+    expect(arrivedCount('many', 0)).toEqual({ arrived: 141, expected: 152 });
+  });
+
+  it('brings the first arrival in and undoes it again, inside 10 seconds', () => {
+    expect([0, 1, 2, 3].map((step) => arrivedCount('live', step))).toEqual([
+      null,
+      { arrived: 1, expected: 12 },
+      null,
+      { arrived: 1, expected: 12 },
+    ]);
+    expect(ARRIVING_EVERY).toBeLessThanOrEqual(10_000);
+  });
+
+  it('keeps main’s ring below AX1 and grows it to the two lines from AX1', () => {
+    expect(figureRing(18, 12.5)).toBe(FIGURE_RING);
+    expect(figureRing(18 * AX5, 12.5 * AX5)).toBe(
+      Math.ceil(18 * AX5 * 1.2) + Math.ceil(12.5 * AX5 * 1.3),
+    );
+  });
+
+  it('draws the figure from AX1 under Open the event, last in the words column, below AX1 over it at the right, and on the phone over its hairline as main does', () => {
+    const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
+    const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+    const block = /\n {2}const block = [\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+
+    expect(words.lastIndexOf('<SizeFigure')).toBeGreaterThan(words.indexOf('styles.openUnder'));
+    expect(words.indexOf('<SizeFigure')).toBeLessThan(words.indexOf('styles.hair'));
+    expect(words).toMatch(/\{phone && arrived != null && \(\s+<View>\s+<SizeFigure/u);
+    expect(block).toMatch(/<View style=\{styles\.right\}>\s+<SizeFigure[^>]*\/>\s+\{open\}/u);
+  });
+
+  it('gives the figure’s words the column less the ring and its gap', () => {
+    expect(figureRoom(968, 136, 10)).toBe(822);
+    expect(figureRoom(100, 136, 10)).toBe(0);
+  });
+});
+
+describe('This week’s strip, a day’s label (sc-94682)', () => {
+  const seventh = STRIP_LABEL * 1.353;
+
+  it('keeps the step’s size while the label fits its column', () => {
+    expect(stripLabelSize(seventh, 40, 3, 47)).toBe(seventh);
+    expect(stripLabelSize(seventh, 47, 5, 47)).toBe(seventh);
+  });
+
+  it('steps TODAY down to the largest whole size at which it fits its column', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const tracking = 5 * STRIP_TRACKING;
+    const at = (size: number) => ((52 - tracking) * size) / seventh + tracking;
+
+    expect(drawn).toBe(13);
+    expect(at(drawn)).toBeLessThanOrEqual(47);
+    expect(at(drawn + 1)).toBeGreaterThan(47);
+  });
+
+  it('never draws a label under its default size, even where it is too wide there', () => {
+    expect(stripLabelSize(seventh, 120, 5, 47)).toBe(STRIP_LABEL);
+    expect(stripLabelSize(STRIP_LABEL, 60, 5, 47)).toBe(STRIP_LABEL);
+  });
+
+  it('draws a step below the default as main does, even where the label is over its column', () => {
+    expect(stripLabelSize(9, 50, 5, 47)).toBe(9);
+  });
+
+  it('keeps the step’s line as the label’s room, so a stepped-down TODAY leaves today’s circle in line', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const room = stripLabelRoom(seventh);
+
+    expect(drawn).toBeLessThan(seventh);
+    expect(room).toBeCloseTo(Math.ceil(seventh * LABEL_LINE));
+    expect(room).toBeGreaterThan(Math.ceil(drawn * LABEL_LINE));
+    expect(stripLabelRoom(STRIP_LABEL)).toBeCloseTo(Math.ceil(STRIP_LABEL * LABEL_LINE));
+  });
+
+  it('sizes every day’s label room from the step alone, never from the size it is drawn at', () => {
+    const strip = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeStrip.tsx'), 'utf8');
+    const room = /style=\{\[styles\.labelRoom, \{ minHeight: stripLabelRoom\((\w+)\) \}\]\}/u.exec(
+      strip,
+    );
+
+    expect(room?.[1]).toBe('start');
+  });
+
+  it('draws seven days from today, a dot only where an event has a row', () => {
+    const days = stripDays('days');
+
+    expect(days.map((day) => day.date)).toEqual([
+      SIZE_TODAY,
+      '2026-11-26',
+      '2026-11-27',
+      '2026-11-28',
+      '2026-11-29',
+      '2026-11-30',
+      '2026-12-01',
+    ]);
+    expect(days.map((day) => day.dots)).toEqual([['ireti'], ['wed'], [], [], ['party'], [], []]);
+    expect(stripDays('quiet').every((day) => day.dots.length === 0)).toBe(true);
   });
 });

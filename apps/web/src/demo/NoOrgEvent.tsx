@@ -284,6 +284,61 @@ function Group({ heading, children }: { heading: string; children: ReactNode }) 
   );
 }
 
+/** The sidebar of an event held from outside (sc-71): its card, its level's areas and the person, with no organisation, Search or Events. */
+export function OutsideSide({
+  card,
+  areas,
+  current,
+  person,
+  opening = false,
+  groups = null,
+  tell,
+  inert = false,
+}: {
+  card: { name: string; when: string; cover: string };
+  areas: readonly OutsideArea[];
+  current: OutsideArea | null;
+  person: Person;
+  opening?: boolean;
+  groups?: Groups;
+  tell: Tell;
+  inert?: boolean;
+}) {
+  return (
+    <nav className="today-side people-side" aria-label={card.name} inert={inert}>
+      <div className="today-logo">
+        <Brand lockup />
+      </div>
+      <div className="people-event">
+        <div className="people-event-card">
+          <span className={`today-cover is-${card.cover} people-event-cover`} aria-hidden="true" />
+          <span className="today-grow">
+            <span className="people-event-name">{card.name}</span>
+            <span className="people-event-when">{card.when}</span>
+          </span>
+        </div>
+      </div>
+      <ul className="today-places">
+        {areas.map((area) => (
+          <li key={area}>
+            <button
+              type="button"
+              className={area === current ? 'today-place is-on' : 'today-place'}
+              aria-current={area === current ? 'page' : undefined}
+              onClick={() => area !== current && tell(NO_ORG.later(WORDS[area]))}
+            >
+              <Glyph name={GLYPHS[area]} />
+              {WORDS[area]}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="today-grow" />
+      <PersonMenu person={person} opening={opening} groups={groups} tell={tell} />
+    </nav>
+  );
+}
+
 function Shell({
   card,
   areas,
@@ -309,40 +364,15 @@ function Shell({
 }) {
   return (
     <div className="today desk">
-      <nav className="today-side people-side" aria-label={card.name}>
-        <div className="today-logo">
-          <Brand lockup />
-        </div>
-        <div className="people-event">
-          <div className="people-event-card">
-            <span
-              className={`today-cover is-${card.cover} people-event-cover`}
-              aria-hidden="true"
-            />
-            <span className="today-grow">
-              <span className="people-event-name">{card.name}</span>
-              <span className="people-event-when">{card.when}</span>
-            </span>
-          </div>
-        </div>
-        <ul className="today-places">
-          {areas.map((area) => (
-            <li key={area}>
-              <button
-                type="button"
-                className={area === current ? 'today-place is-on' : 'today-place'}
-                aria-current={area === current ? 'page' : undefined}
-                onClick={() => area !== current && tell(NO_ORG.later(WORDS[area]))}
-              >
-                <Glyph name={GLYPHS[area]} />
-                {WORDS[area]}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="today-grow" />
-        <PersonMenu person={person} opening={opening} groups={groups} tell={tell} />
-      </nav>
+      <OutsideSide
+        card={card}
+        areas={areas}
+        current={current}
+        person={person}
+        opening={opening}
+        groups={groups}
+        tell={tell}
+      />
       <main id="content" className="desk-main">
         <div className="desk-page">
           <div className="desk-column">{children}</div>

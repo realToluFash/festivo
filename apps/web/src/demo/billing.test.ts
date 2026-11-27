@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PACKS,
-  SAMPLE_LEDGER,
   WAIT_MS,
   billingStateOf,
   boughtSaid,
@@ -13,7 +12,6 @@ import {
   money,
   slowIn,
   waitLook,
-  withBought,
 } from './billing.ts';
 
 describe('Plan and billing checkout rules (sc-3933)', () => {
@@ -61,19 +59,6 @@ describe('Plan and billing checkout rules (sc-3933)', () => {
   it('writes the expiry as two-digit month and four-digit year in every language', () => {
     expect(expiry(3, 2030)).toBe('03/2030');
     expect(expiry(11, 2029)).toBe('11/2029');
-  });
-
-  it('puts a bought pack on top and keeps the newest 10', () => {
-    const after = withBought(SAMPLE_LEDGER, {
-      id: 'new',
-      day: '2026-11-24',
-      words: 'Credits bought',
-      credits: 1000,
-    });
-
-    expect(after).toHaveLength(10);
-    expect(after[0]?.id).toBe('new');
-    expect(after[1]?.id).toBe(SAMPLE_LEDGER[0]?.id);
   });
 
   it('says the buying line and the bought line in the board’s words', () => {

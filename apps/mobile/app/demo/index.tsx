@@ -1,3 +1,6 @@
+import { BRIEFING_BOARDS } from '../../src/demo/briefing/briefingModel.ts';
+import { SHIFT_MESSAGE_BOARDS } from '../../src/demo/shiftNotices/shiftMessagesModel.ts';
+import { SHIFT_NOTICE_BOARDS } from '../../src/demo/shiftNotices/shiftNoticesModel.ts';
 import { type Href, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -11,6 +14,7 @@ import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
+import { NARROW_BARS_BOARDS } from '../../src/demo/narrowBars/NarrowBarsBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
@@ -33,6 +37,7 @@ import {
 import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
 import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
+import { TODAY_FOLD_BOARDS } from '../../src/demo/todayFold/TodayFoldBoards.ts';
 import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
 import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
 import {
@@ -68,6 +73,8 @@ import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
+import { KITCHEN_WAY_IN_BOARDS } from '../../src/demo/station/wayInBoards.ts';
+import { FLOOR_WAY_IN_BOARDS } from '../../src/demo/floor/floorWayInBoards.ts';
 import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
@@ -76,6 +83,7 @@ import {
   STAFF_TEXT_BOARDS,
 } from '../../src/demo/staffLink/StaffLinkBoards.ts';
 import { SHIFT_CLOCK_BOARDS, STAFF_HOURS_BOARDS } from '../../src/demo/shiftClock/boards.ts';
+import { WHOS_HERE_BOARDS } from '../../src/demo/whosHere/WhosHereBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -199,6 +207,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
+    page: 'Today · Open the event in reach on the iPhone at the largest text sizes (sc-95084)',
+    boards: TODAY_FOLD_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
     page: 'Settings, Events and the Calendar · the organisation pill keeps its words whole at the largest text sizes (sc-92464)',
     boards: TOP_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
@@ -273,6 +289,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
     boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'The phone’s tab bars on a 320dp Android phone, every word whole (sc-99214)',
+    boards: NARROW_BARS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Organisation pill · when the words do not fit (sc-38149)',
@@ -1917,6 +1941,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=now',
       },
       {
+        title: 'A one-day event · on, nothing ahead',
+        what: 'Dîner en direct at 20:40: no step on its card, Coming up says when it ends (sc-93858)',
+        href: '/demo/events/evt-diner-1?state=liveOneDay',
+      },
+      {
+        title: 'A one-day event · Speeches ahead',
+        what: 'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDaySpeeches',
+      },
+      {
+        title: 'A one-day event · over',
+        what: 'At 23:45: every date has passed, with Duplicate, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDayOver',
+      },
+      {
+        title: 'Events · a one-day event happening now',
+        what: 'Dîner en direct leads Upcoming with no step on its card',
+        href: '/demo/events?state=liveOneDay',
+      },
+      {
         title: 'An event · paused',
         what: 'Resume is the step',
         href: '/demo/events/evt-party-2?state=paused',
@@ -2518,6 +2562,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · Remove asked for a mobile number',
+        what: 'Not joined, so the ask reads Keep them and Remove',
+        href: '/demo/people?state=longMobileRemove',
+      },
+      {
+        title: 'People · Remove asked for Kemi',
+        what: 'Joined from outside, so the ask reads Keep Kemi',
+        href: '/demo/people?state=joinedRemove',
+      },
+      {
+        title: 'People · a mobile number’s role change fails',
+        what: 'Pick a role offline: the line names +234 803 123 4567 whole',
+        href: '/demo/people?state=longMobileRoleFails',
+      },
+      {
         title: 'People · some added, one refused',
         what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
         href: '/demo/people?state=addPartial',
@@ -2669,6 +2728,30 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
+    page: 'Staffing · the briefing above the roster, house rules and everyone’s shift (sc-3917) · tablet portrait and landscape',
+    boards: BRIEFING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the reminder the day before and each person’s shift notices, on the Staff page (sc-4333) · phone, tablet portrait and landscape',
+    boards: SHIFT_NOTICE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · ShiftMessages-Phone, the change and reminder messages as a person on the staff gets them (sc-4333) · phone',
+    boards: SHIFT_MESSAGE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
     page: 'Staffing · one person’s own link, Share link first (sc-3912, sc-77903) · phone, tablet portrait and landscape',
     boards: [...STAFF_LINK_BOARDS, ...STAFF_TEXT_BOARDS].map(({ title, what, href }) => ({
       title,
@@ -2687,6 +2770,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Staffing · the event’s hours, actual times and corrections (sc-234) · phone, tablet portrait and landscape',
     boards: STAFF_HOURS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · Who’s here, the floor lead’s live list, the door and Cover (sc-3918) · phone, tablet portrait and landscape',
+    boards: WHOS_HERE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
@@ -2743,6 +2834,22 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
     boards: STATION_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382), and a service level’s Overview (sc-96279) · phone, tablet portrait and landscape',
+    boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · the way in to Floor, from Overview and Your night (sc-98893); Open Floor is on Your night’s section states above · phone, tablet portrait and landscape',
+    boards: FLOOR_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',

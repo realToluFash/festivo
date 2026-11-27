@@ -1,5 +1,5 @@
 import { type Href, router } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
@@ -18,6 +18,7 @@ import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -42,13 +43,17 @@ import { LiveBanner } from './TodaySizeLive.tsx';
 import { PillRow } from './TodaySizePill.tsx';
 import { SizeEvents } from './TodaySizeEvents.tsx';
 import { SizeOrg, orgId } from './TodaySizeSwitcher.tsx';
+import { SizeStrip } from './TodaySizeStrip.tsx';
 import { UprightRow } from './TodaySizeUpright.tsx';
 import { WeekDays } from './TodaySizeWeek.tsx';
 import {
+  ARRIVING_EVERY,
+  type ArrivedCount,
   HEAD,
   HEAD_LINK,
   NEXT_UP,
   SIZE_EVENTS,
+  TODAY_ARRIVEDS,
   TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
   TODAY_INVITES,
@@ -56,7 +61,10 @@ import {
   TODAY_NAMES,
   TODAY_ORGS,
   TODAY_VENUES,
+  STARTS_DAYS,
   TODAY_WEEKS,
+  WEEK_DAYS,
+  type TodayArrived,
   type TodayEventName,
   type TodayGreeting,
   type TodayInvite,
@@ -65,6 +73,7 @@ import {
   type TodayOrg,
   type TodayVenue,
   type TodayWeek,
+  arrivedCount,
   greetingMost,
   greetingName,
   greetingSize,
@@ -88,6 +97,7 @@ export interface TodaySizeStart {
   invite: TodayInvite;
   live: TodayLive;
   venue: TodayVenue;
+  arrived: TodayArrived;
   week: TodayWeek;
   switcher: boolean;
 }
@@ -122,6 +132,8 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   const [invite, setInvite] = useState(start.invite);
   const [live, setLive] = useState(start.live);
   const [venue, setVenue] = useState(start.venue);
+  const [arrived, setArrived] = useState(start.arrived);
+  const [step, setStep] = useState(0);
   const place = useMemo(() => ({ id: orgId(org), name: orgName(org), role: 'Owner' }), [org]);
   const [week, setWeek] = useState(start.week);
   const words = useMemo(
@@ -153,6 +165,14 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
     }),
     [org, tell, start.switcher],
   );
+  // The first arrival comes in from Check-in on another device, and is undone again, while Today stays open (sc-94022).
+  useEffect(() => {
+    if (arrived !== 'live') return;
+    const every = setInterval(() => setStep((now) => now + 1), ARRIVING_EVERY);
+
+    return () => clearInterval(every);
+  }, [arrived]);
+
   const page = (
     <I18nextProvider i18n={words}>
       <SizeOrg.Provider value={sizeOrg}>
@@ -164,8 +184,9 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           greeting={greeting}
           event={event}
           waiting={invite === 'one' ? 1 : 0}
-          live={kind === 'phone' ? null : liveName(live)}
+          live={liveName(live)}
           place={venueName(venue)}
+          arrived={arrivedCount(arrived, step)}
           week={week}
         />
       </SizeOrg.Provider>
@@ -173,7 +194,7 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. Under This week each day’s date follows its name after a dot only while both fit one line whole; otherwise the date takes the line under, without its dot. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. From AX1 one tap on the phone’s pill opens a stand-in for Where are you working?, drawn at the size chosen as main draws its rows from AX1: each row’s name wraps only between its words and steps down only as far as its widest word needs, never under its default size and with no line limit; a word too wide even then draws at its default size and breaks only where its line is full, every letter shown; the role line and Current each step alone, never larger than the name, and the role line’s dot stays on the word before it. The organisation you are in comes first, one tap on another switches to it, and Create an organisation, at the foot, opens its walk. Below AX1, and on the iPad, the pill opens main’s switcher at this device’s size. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. On its side, with an event live, the cover is its banner: Live now and Day 1 of 1 each step alone inside their chips and the second takes the line under the first where both do not fit, the name steps until its widest word fits and never draws smaller than the end line under it, and from AX1 Open the event takes the line under the end line; Open the event shows a toast here, as the event page has its own design. Upright, with an event live, the cover sits under the top row: below AX1 it is main’s, and from AX1 Live now and the day’s chip keep main’s size at the size chosen and grow to hold their words, wrapping only between words with the dot kept on the word before it, the day’s chip taking the line under Live now where both do not fit (sc-93211); the name, the end line and Open the event follow the rule drawn on its side, as a stand-in, since this story changes only the chips. Venue puts a place on the day’s chip. On the phone the live cover is not drawn here. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. Under This week each day’s date follows its name after a dot only while both fit one line whole; otherwise the date takes the line under, without its dot. A row’s title takes exactly the lines it draws: where it fits one line it is held to that line, so the event’s line follows it with no blank line, and where it does not it wraps only between words, Début : kept together on the first line (sc-94683). One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. From AX1 one tap on the phone’s pill opens a stand-in for Where are you working?, drawn at the size chosen as main draws its rows from AX1: each row’s name wraps only between its words and steps down only as far as its widest word needs, never under its default size and with no line limit; a word too wide even then draws at its default size and breaks only where its line is full, every letter shown; the role line and Current each step alone, never larger than the name, and the role line’s dot stays on the word before it. The organisation you are in comes first, one tap on another switches to it, and Create an organisation, at the foot, opens its walk. Below AX1, and on the iPad, the pill opens main’s switcher at this device’s size. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. On its side, with an event live, the cover is its banner: Live now and Day 1 of 1 each step alone inside their chips and the second takes the line under the first where both do not fit, the name steps until its widest word fits and never draws smaller than the end line under it, and from AX1 Open the event takes the line under the end line; Open the event shows a toast here, as the event page has its own design. Upright, with an event live, the cover sits under the top row: below AX1 it is main’s, and from AX1 Live now and the day’s chip keep main’s size at the size chosen and grow to hold their words, wrapping only between words with the dot kept on the word before it, the day’s chip taking the line under Live now where both do not fit (sc-93211); from AX1 the chips, the name and the end line take the cover’s full width and Open the event takes its own line under the end line, at the name’s left edge, as on its side; the name steps down only as far as its widest word needs, never under its default size and never smaller than the end line, the end line and Open the event each step alone by the same rule, and one word too wide even at its default size breaks inside itself (sc-93578). Venue puts a place on the day’s chip; the cover grows down to hold it and Today scrolls to bring Open the event into view. On the phone, with an event live, the cover sits under the pill row as main’s: below AX1 it is main’s, and from AX1 Live now and the day’s chip keep main’s 13 at the size chosen and grow to hold their words by the upright rule, the day’s chip taking the line under Live now where both do not fit, never wider than the screen (sc-93855); the name, the end line and Open the event, which are not that story’s, wrap only between words and step by the rule on its side, Open the event under the end line across the cover’s width. Guests arrived adds the arrived figure to the live cover (sc-94022): below AX1 it is main’s, over Open the event at the right of the words; from AX1, upright and on its side, it takes its own line under Open the event, at the name’s left edge, so the name, the end line and Open the event draw exactly as with nobody arrived and the first arrival moves nothing above it. Its numbers read on one line and step down as one unit only where they would not fit beside the ring, never under their default size and never larger than the name; arrived steps alone, never larger than the numbers; the ring is as tall as the two lines. The first arriving brings 1 of 12 in and takes it away again every 4 seconds, as Check-in on another device would. On the phone Guests arrived draws the figure where main draws it, under the end line and over Open the event. Below AX1 This week’s strip draws at the size chosen as main draws it, but a day’s label too wide for its column, as TODAY is at the seventh step on the iPhone, steps down alone to the largest whole size at which it fits on one line, never under its default size; a label that fits keeps its size, today keeps its accent and its filled circle, and from AX1 the strip is hidden, as on main (sc-94682). Otherwise at the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -244,6 +265,17 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           chosen={venue}
           onChoose={setVenue}
           id="venue"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="Guests arrived"
+          options={TODAY_ARRIVEDS}
+          chosen={arrived}
+          onChoose={(to) => {
+            setStep(0);
+            setArrived(to);
+          }}
+          id="arrived"
           prefix="demo.todaySize"
         />
         <Choices
@@ -319,6 +351,7 @@ function TodayPage({
   waiting,
   live,
   place,
+  arrived,
   week,
 }: {
   kind: LayoutKind;
@@ -330,6 +363,7 @@ function TodayPage({
   waiting: number;
   live: string | null;
   place: string | null;
+  arrived: ArrivedCount | null;
   week: TodayWeek;
 }) {
   const { t } = useTranslation();
@@ -355,8 +389,17 @@ function TodayPage({
         scale={scale}
         cap={cap}
       />
-      {week === 'days' ? (
-        <WeekDays locale={language} scale={scale} cap={cap} wide={kind !== 'phone'} />
+      {!atAccessibilitySizes(scale) && (
+        <SizeStrip locale={language} scale={scale} week={week} wide={kind !== 'phone'} />
+      )}
+      {week !== 'quiet' ? (
+        <WeekDays
+          days={week === 'starts' ? STARTS_DAYS : WEEK_DAYS}
+          locale={language}
+          scale={scale}
+          cap={cap}
+          wide={kind !== 'phone'}
+        />
       ) : (
         <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
       )}
@@ -388,11 +431,15 @@ function TodayPage({
           name={live}
           place={place}
           scale={scale}
+          arrived={arrived}
           top={
             kind === 'tabletPortrait' ? (
               <UprightRow scale={scale} cap={Infinity} waiting={waiting} onTab={toTab} />
+            ) : kind === 'phone' ? (
+              <PillRow scale={scale} cap={Infinity} waiting={waiting} />
             ) : undefined
           }
+          phone={kind === 'phone'}
         />
       ) : (
         <Cover

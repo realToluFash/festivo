@@ -235,6 +235,50 @@ describe('door codes on People, at a desk (sc-72)', () => {
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/door-codes')).toBe(false);
   });
 
+  it('offers the floor and the pass, never running the floor, and says why the API refuses it (sc-4002)', async () => {
+    const sent = await onPeople([], {
+      'POST /api/events/ev_1/door-codes': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/level_not_allowed_for_code',
+            title: 'A join code cannot let people run the floor.',
+            status: 422,
+          },
+          422,
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make a door code' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Door code' });
+
+    expect(within(dialog).getByRole('radio', { name: /Can work the floor/u })).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: /Can work the pass/u })).toBeDefined();
+    expect(within(dialog).queryByRole('radio', { name: /Can run the floor/u })).toBeNull();
+    expect(
+      within(dialog).getByText(
+        'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can work the floor/u }));
+    fireEvent.change(within(dialog).getByLabelText('How many people'), {
+      target: { value: '12' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make' }));
+
+    expect(
+      await within(dialog).findByText(
+        'A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
+      ),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/door-codes')?.body).toMatchObject(
+      {
+        role: 'can_work_floor',
+      },
+    );
+    expect(within(dialog).queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
   it('says the code was not made when the request does not arrive, and keeps the form', async () => {
     await onPeople([], {
       'POST /api/events/ev_1/door-codes': () => Promise.reject(new TypeError('offline')),

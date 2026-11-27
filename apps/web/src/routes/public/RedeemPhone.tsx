@@ -16,17 +16,17 @@ import { type CodeSource, useCodeCheck } from '../../codeCheck.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { codeChoice, phoneProblemMessage } from '../../phoneProblem.ts';
+import { type ProviderOnly, providerOnlyBy } from '../../session.ts';
 import { PHONE_CODE_LENGTH, type PhoneEntry } from './redeemEntry.ts';
 
 function entryLines(entry: PhoneEntry, t: ReturnType<typeof useTranslation>['t']) {
-  const name = entry.named.trim() === '' ? t('redeem.nameBlank') : null;
-  const number = phoneProblemMessage(
-    phoneLengthProblem(entry.number, entry.country),
-    entry.country,
-    t,
-  );
+  const name = entry.named.trim() === '' ? t('redeem.nameBlank') : (entry.refused.name ?? null);
+  const number =
+    phoneProblemMessage(phoneLengthProblem(entry.number, entry.country), entry.country, t) ??
+    entry.refused.number ??
+    (entry.alternative ? t('redeem.phone.alternative') : null);
 
-  return { name, number: number ?? (entry.alternative ? t('redeem.phone.alternative') : null) };
+  return { name, number };
 }
 
 /** Your name, the country's code and the mobile number, then Send code, as the web demo's redeem draws it. */
@@ -67,28 +67,46 @@ export function PhoneEntryStep({
           id="rd-name"
           label={t('redeem.yourName')}
           value={entry.named}
-          said={nameSaid}
+          told={nameSaid == null ? undefined : 'rd-name-line'}
           inputRef={fieldRef}
           autoComplete="name"
-          onChange={(named) => onChange({ ...entry, named })}
+          onChange={(named) =>
+            onChange({ ...entry, named, refused: { ...entry.refused, name: null } })
+          }
         />
+        <Says id="rd-name-line">{nameSaid}</Says>
       </div>
       <div className="rd-group">
         <div className="rd-phone">
           <CountryCode
             country={entry.country}
-            onChange={(country) => onChange({ ...entry, country, alternative: false })}
+            onChange={(country) =>
+              onChange({
+                ...entry,
+                country,
+                alternative: false,
+                refused: { ...entry.refused, number: null },
+              })
+            }
           />
           <Field
             id="rd-number"
             label={t('redeem.phone.mobile')}
             value={entry.number}
-            said={numberSaid}
+            told={numberSaid == null ? undefined : 'rd-number-line'}
             autoComplete="tel-national"
             inputMode="tel"
-            onChange={(number) => onChange({ ...entry, number, alternative: false })}
+            onChange={(number) =>
+              onChange({
+                ...entry,
+                number,
+                alternative: false,
+                refused: { ...entry.refused, number: null },
+              })
+            }
           />
         </div>
+        <Says id="rd-number-line">{numberSaid}</Says>
       </div>
       <Primary submit busy={busy}>
         {t('redeem.phone.sendCode')}
@@ -133,6 +151,7 @@ function CountryCode({ country, onChange }: { country: string; onChange: (code: 
 export type Leave<Signed> =
   | { kind: 'signedIn'; signedIn: Signed }
   | { kind: 'alternative' }
+  | { kind: 'providerOnly'; refusal: ProviderOnly }
   | { kind: 'refused'; error: ApiError };
 
 /** The phone code in a browser: one field and Verify, nothing sent as it is typed (WCAG 3.2.2). */
@@ -179,6 +198,11 @@ export function PhoneCodeStep<Signed>({
       if (when !== 'answer' || !(error instanceof ApiError)) return false;
       if (error.is('phone_alternative')) {
         onLeave({ kind: 'alternative' });
+        return true;
+      }
+      const providerOnly = providerOnlyBy(error.problem);
+      if (providerOnly != null) {
+        onLeave({ kind: 'providerOnly', refusal: providerOnly });
         return true;
       }
       if (error.status === 429 || error.status === 404 || error.is('door_code_invalid')) {
@@ -247,8 +271,7 @@ export function PhoneCodeStep<Signed>({
                 id="rd-phone-code"
                 label={texted ? t('redeem.phone.codeFromText') : t('redeem.phone.codeFromWhatsApp')}
                 value={digits}
-                said={said}
-                alert={status === 'wrong'}
+                told={said == null ? undefined : 'rd-phone-code-line'}
                 inputRef={fieldRef}
                 code
                 autoComplete="one-time-code"
@@ -259,6 +282,9 @@ export function PhoneCodeStep<Signed>({
                   setLine(null);
                 }}
               />
+              <Says id="rd-phone-code-line" alert={status === 'wrong'}>
+                {said}
+              </Says>
             </div>
             <Primary submit busy={busy}>
               {busy
@@ -318,12 +344,11 @@ export function Title({
   );
 }
 
-function Field({
+export function Field({
   id,
   label,
   value,
-  said,
-  alert = false,
+  told,
   inputRef,
   code = false,
   autoComplete,
@@ -334,8 +359,7 @@ function Field({
   id: string;
   label: string;
   value: string;
-  said: string | null;
-  alert?: boolean;
+  told?: string | undefined;
   inputRef?: RefObject<HTMLInputElement | null>;
   code?: boolean;
   autoComplete: string;
@@ -343,38 +367,50 @@ function Field({
   maxLength?: number;
   onChange: (typed: string) => void;
 }) {
-  const wrong = said != null;
+  const wrong = told != null;
 
   return (
-    <>
-      <div
-        className={['rd-field', wrong && 'is-wrong', value !== '' && 'is-filled']
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <label htmlFor={id} className="rd-label">
-          {label}
-        </label>
-        <input
-          ref={inputRef}
-          id={id}
-          className={code ? 'rd-input is-code' : 'rd-input'}
-          value={value}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
-          maxLength={maxLength}
-          spellCheck={false}
-          aria-invalid={wrong}
-          aria-describedby={wrong ? `${id}-line` : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-      {said != null && (
-        <p id={`${id}-line`} className="rd-says" role={alert ? 'alert' : undefined}>
-          {said}
-        </p>
-      )}
-    </>
+    <div
+      className={['rd-field', wrong && 'is-wrong', value !== '' && 'is-filled']
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <label htmlFor={id} className="rd-label">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={id}
+        className={code ? 'rd-input is-code' : 'rd-input'}
+        value={value}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        spellCheck={false}
+        aria-invalid={wrong}
+        aria-describedby={told}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
+/** A field's line, under its group, so a number's sits under the code and the number together. */
+export function Says({
+  id,
+  alert = false,
+  children,
+}: {
+  id: string;
+  alert?: boolean;
+  children: string | null;
+}) {
+  if (children == null) return null;
+
+  return (
+    <p id={id} className="rd-says" role={alert ? 'alert' : undefined}>
+      {children}
+    </p>
   );
 }
 

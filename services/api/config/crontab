@@ -4,6 +4,7 @@
 0 3 * * * php /app/bin/console app:prune-refresh-tokens --no-interaction
 10 3 * * * php /app/bin/console app:prune-unverified-accounts --no-interaction
 20 3 * * * php /app/bin/console app:prune-pending-registrations --no-interaction
+25 3 * * * php /app/bin/console app:prune-phone-sign-ins --no-interaction
 30 3 * * * php /app/bin/console app:prune-deleted --no-interaction
 40 3 * * * php /app/bin/console app:prune-notification-items --no-interaction
 50 3 * * * php /app/bin/console app:erase-staff-contacts --no-interaction
@@ -20,5 +21,6 @@
 * * * * * php /app/bin/console app:audit-exports:prepare --no-interaction
 * * * * * php /app/bin/console app:notifications:check --no-interaction
 15 * * * * php /app/bin/console app:mail:check-rates --no-interaction
+35 * * * * php /app/bin/console app:service-taps:expire --no-interaction
 55 3 * * * php /app/bin/console app:billing:reconcile --no-interaction
 58 3 * * * php /app/bin/console app:usage:measure-storage --no-interaction

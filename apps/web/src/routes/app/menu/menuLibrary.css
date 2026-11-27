@@ -668,7 +668,6 @@
 
   .lib-page.desk-page {
     padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
   }
 
   .lib-page .desk-row,

@@ -52,3 +52,51 @@ export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 
 
   return at.focused ? 'hold' : 'focus';
 }
+
+/** Whether a field that would take its focus at mount is held back from it, so the raise `mountedKeys` makes is the only thing that asks for its keys. A screen reader on, or not yet known, leaves the focus at mount, as at main before sc-92467. */
+export function holdsMountFocus(
+  os: string,
+  opened: OpenedFocus,
+  autoFocus: boolean | undefined,
+  readerAtMount: boolean | null,
+): boolean {
+  return os === 'android' && opened === 'mount' && autoFocus === true && readerAtMount === false;
+}
+
+/** Ticks, `NEW_FIELD_BOUND_MS` apart, from mount to the one raise of a held field's keys: Android drops a raise sent before it has given the window focus (qa #97238). */
+export const KEYS_RAISE_AFTER_TICKS = 4;
+
+export interface MountedKeys {
+  /** As `holdsMountFocus`. */
+  held: boolean;
+  /** As `ArrivedFocus.heldElsewhere`. */
+  heldElsewhere: boolean;
+  /** As `ArrivedFocus.readerOn`. */
+  readerOn: boolean | null;
+  /** A person has pressed the field. */
+  touched: boolean;
+  ticks: number;
+}
+
+/** What a field held back from its focus at mount in an Android window that does not slide in, as on a tablet, does now: it is focused with its keys, once (sc-92467). Nothing may ask for the keys before that or after it: Back puts them down without blurring the field, and Android reads them as down over a Modal, as a tablet's screens are, so a second request brings back keys a person had put down. React Native's own `autoFocus` is such a request, and Android honours it only now and then (qa #98098, #99147). A field a person pressed, or one pressed elsewhere, gets none. */
+export function mountedKeysStep(at: MountedKeys): 'tick' | 'wait' | 'raise' | 'done' {
+  if (!at.held || at.heldElsewhere || at.touched || at.readerOn === true) return 'done';
+  if (at.ticks < KEYS_RAISE_AFTER_TICKS) return 'tick';
+
+  return at.readerOn == null ? 'wait' : 'raise';
+}
+
+/** `mountedKeysStep` for one field: once it has raised the keys or stood down, nothing raises them again (lead, PR #3899). */
+export function mountedKeys(
+  held: boolean,
+): (at: Omit<MountedKeys, 'held'>) => 'tick' | 'wait' | 'raise' | 'done' {
+  let done = false;
+
+  return (at) => {
+    if (done) return 'done';
+    const step = mountedKeysStep({ ...at, held });
+    done = step === 'raise' || step === 'done';
+
+    return step;
+  };
+}

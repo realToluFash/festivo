@@ -23,4 +23,10 @@ final class NameNormaliser
 
         return Str\lowercase(Regex\replace(false === $decomposed ? self::name($name) : $decomposed, '/\p{Mn}+/u', ''));
     }
+
+    /** A label's, a group's or a saved audience's: the curl of an apostrophe aside too, as the web compares them before sending. */
+    public static function labelKey(string $name): string
+    {
+        return self::key(Str\replace_every($name, ['’' => "'", '‘' => "'", '`' => "'"]));
+    }
 }

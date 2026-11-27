@@ -53,6 +53,8 @@ export function useOffline(screen: {
 }): {
   watch: <T>(load: Promise<T>) => Promise<T>;
   keep: (at: Date) => void;
+  /** The band as the page sees it, for a read beside the watched load that keeps only under it (sc-98386). */
+  stale: Stale | null;
   refreshing: boolean;
 } {
   const { show } = useContext(StaleScreen);
@@ -72,7 +74,7 @@ export function useOffline(screen: {
 
   useLayoutEffect(() => () => show(screenId, null), [show, screenId]);
 
-  return { watch, keep, refreshing };
+  return { watch, keep, stale, refreshing };
 }
 
 /** A load of its own, with its own band: the bell's feed, which ages apart from the page under it (sc-27096). */

@@ -18,6 +18,16 @@ enum ErrorCode: string
     case LastOwner = 'last_owner';
     case OwnerRequired = 'owner_required';
     case GrantNotHeld = 'grant_not_held';
+    case TableNotYours = 'table_not_yours';
+    case TrayNotYours = 'tray_not_yours';
+    case PlateStageInvalid = 'plate_stage_invalid';
+    case PlateEmpty = 'plate_empty';
+    case TableNothingToServe = 'table_nothing_to_serve';
+    case TrayCheckIncomplete = 'tray_check_incomplete';
+    case UndoExpired = 'undo_expired';
+    case ServiceChanged = 'service_changed';
+    case ExpectedRequired = 'expected_required';
+    case LevelNotAllowedForCode = 'level_not_allowed_for_code';
     case AlreadyLinked = 'already_linked';
     case AddressLimitReached = 'address_limit_reached';
     case AddressNotVerified = 'address_not_verified';
@@ -66,10 +76,14 @@ enum ErrorCode: string
     case IdempotencyKeyRequired = 'idempotency_key_required';
     case IdempotencyKeyReused = 'idempotency_key_reused';
     case GuestAlreadyListed = 'guest_already_listed';
+    case AudienceNameTaken = 'audience_name_taken';
+    case AudiencesFull = 'audiences_full';
     case GuestArrived = 'guest_arrived';
     case CheckInClosed = 'check_in_closed';
     case StaffNumberShared = 'staff_number_shared';
     case StaffJobStaffed = 'staff_job_staffed';
+    case StaffJobWorked = 'staff_job_worked';
+    case StaffShiftWorked = 'staff_shift_worked';
     case StaffShiftFull = 'staff_shift_full';
     case StaffWorksAs = 'staff_works_as';
     case StaffShiftOverlap = 'staff_shift_overlap';
@@ -180,7 +194,7 @@ enum ErrorCode: string
     public function status(): int
     {
         return match ($this) {
-            self::BadRequest, self::IdempotencyKeyRequired => 400,
+            self::BadRequest, self::IdempotencyKeyRequired, self::ExpectedRequired => 400,
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
@@ -207,9 +221,9 @@ enum ErrorCode: string
             self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
             self::PlanLimit, self::PlanRequired => 403,
             self::PlanSoldByContract, self::PlanNotPriced, self::NothingPaidThroughProvider => 409,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::AudienceNameTaken, self::AudiencesFull, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffJobWorked, self::StaffShiftWorked, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
-            self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
+            self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::TableNotYours, self::TrayNotYours, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
             self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
@@ -221,6 +235,8 @@ enum ErrorCode: string
 
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
             self::AuditExportTooMany => 422,
+            self::LevelNotAllowedForCode => 422,
+            self::PlateStageInvalid, self::PlateEmpty, self::TableNothingToServe, self::TrayCheckIncomplete, self::UndoExpired, self::ServiceChanged => 409,
         };
     }
 

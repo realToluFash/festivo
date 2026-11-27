@@ -28,7 +28,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { tabBarSides } from '../../components/bodyEdges.ts';
+import { tabBarFit } from '../../components/bodyEdges.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
 import { statusFits } from '../../layout/titleFit.ts';
@@ -471,7 +471,7 @@ function EventBar({
   onTab: (area: AreaKey | null) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [slot, setSlot] = useState(0);
   const start = eventBarStart(fontScale);
@@ -481,7 +481,7 @@ function EventBar({
   const size = eventBarLabelSize(fontScale, widest, slot);
 
   return (
-    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
+    <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
       <MeasuredWords
         words={words}
         size={start}
@@ -576,8 +576,8 @@ function AreaPills({
         ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.pillsBar}
-        contentContainerStyle={styles.pills}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
         onLayout={(event: LayoutChangeEvent) => {
           shown.current = event.nativeEvent.layout.width;
@@ -601,7 +601,7 @@ function AreaPills({
                 ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
-              style={[styles.pill, on && styles.pillOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={counted ? badge.name : AREA_WORDS[one]}
@@ -808,19 +808,38 @@ const AREA_TITLE = {
   landscape: {},
 };
 
+export const areaTrack = StyleSheet.create({
+  bar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
+  row: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+  },
+  tab: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 14,
+    paddingRight: tokens.spaceXl,
+    borderRadius: 22,
+  },
+  on: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+});
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   figures: { fontVariant: ['tabular-nums'] },
   tabBar: {
     position: 'absolute',
     height: PHONE_TAB_BAR,
-    padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
-    gap: tokens.spaceHair,
     ...tokens.elevationNative.raised.ios,
     elevation: tokens.elevationNative.raised.android.elevation,
   },
@@ -898,23 +917,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
-  pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
-  pills: {
-    minHeight: 52,
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-  },
-  pill: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 14,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 22,
-  },
-  pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,

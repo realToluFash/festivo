@@ -1,0 +1,39 @@
+# sc-95859: the long day (25 Nov) at rest, scrolled step by step to its foot, then swiped down from the foot: back to the top, still open; then closed by a second swipe down.
+appId: host.exp.Exponent
+env:
+  DAY: '2026-11-25'
+---
+- runFlow: sc95859/open-day.yaml
+- takeScreenshot: day-top
+- swipe: { start: '50%,70%', end: '50%,55%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-a-little
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-2
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-3
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-4
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-5
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-scrolled-6
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: day-foot
+# From the foot, a drag down that starts on the grabber's strip.
+- swipe: { start: '50%,8%', end: '50%,80%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: day-strip-drag-from-foot
+- assertVisible:
+    id: 'calendar.daySheet'
+- swipe: { start: '50%,8%', end: '50%,80%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: day-strip-drag-at-top
+- assertNotVisible:
+    id: 'calendar.daySheet'

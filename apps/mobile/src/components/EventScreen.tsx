@@ -44,7 +44,7 @@ import {
   eventHref,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
-import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
+import { outsideArea, outsideOn, readsOverview, wayBack } from '../kit/outsideEvent.ts';
 import {
   type LinkFrom,
   linkFromIn,
@@ -215,8 +215,7 @@ export function EventScreen({
   const title = useRef<TextHandle>(null);
   const cardName = useRef<TextHandle>(null);
   const outside = outsideOn(signedIn, eventId);
-  const outsideAt = outside == null ? null : outsidePlaces(outside.role);
-  const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
+  const area = outside == null ? asked : outsideArea(outside.role, asked);
   // An event's link from another of the account's organisations moves it there once the event has loaded, said at the head of Overview until the person leaves it (sc-80863).
   const [moved, setMoved] = useState<{ into: string; words: string } | null>(null);
   const opened = useOpened(
@@ -238,7 +237,7 @@ export function EventScreen({
     signedIn.organisations,
   );
   if (moved != null && (area !== 'overview' || moved.into !== organisationId)) setMoved(null);
-  const { reload, freshen, change } = opened;
+  const { reload, freshen, change, refresh } = opened;
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
   const event = opened.kind === 'loaded' ? opened.event : null;
@@ -391,6 +390,7 @@ export function EventScreen({
             onChange={change}
             onEdit={onEdit}
             partRef={partRef}
+            watched={{ refresh, underBand: eventStale }}
             closedOnto={editing?.open === false ? editing : null}
             toast={
               toast?.eventId === eventId && toast.area === area
@@ -439,6 +439,8 @@ export function EventScreen({
           action={
             area === 'schedule' ? (
               <RunViewEntry event={event} happening={phase === 'happening_now'} />
+            ) : area === 'staff' ? (
+              <HoursEntry event={event} />
             ) : null
           }
         >
@@ -791,6 +793,31 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
   );
 }
 
+/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff. */
+function HoursEntry({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  if (!event.permissions.includes('staff.read')) return null;
+
+  return (
+    <View style={styles.runEntry}>
+      <SecondaryButton
+        label={t('staffHours.open')}
+        link
+        onPress={() => router.push({ pathname: '/events/[id]/hours', params: { id: event.id } })}
+        testID="events.staff.hours"
+      />
+      <SecondaryButton
+        label={t('whosHere.open')}
+        link
+        onPress={() =>
+          router.push({ pathname: '/events/[id]/whos-here', params: { id: event.id } })
+        }
+        testID="events.staff.whosHere"
+      />
+    </View>
+  );
+}
+
 /** The event is read on its own, so a link, a push and Calendar open it as Events does. */
 function useOpened(
   eventId: string,
@@ -808,6 +835,8 @@ function useOpened(
   change: (event: OrganisationEvent) => void;
   stale: Stale | null;
   refreshing: boolean;
+  /** Counts the reloads, the band's Try again among them, for the dates the page reads beside the event (sc-98386). */
+  refresh: number;
 } {
   const organisationId = organisation?.id;
   const settled = openedWithoutAsking(accountLoaded, organisation, outside);
@@ -878,7 +907,16 @@ function useOpened(
   }, [eventId, organisationId, outside, asks, key, attempt, watch]);
 
   if (settled != null)
-    return { ...settled, retry, reload, freshen, change, stale: null, refreshing: false };
+    return {
+      ...settled,
+      retry,
+      reload,
+      freshen,
+      change,
+      stale: null,
+      refreshing: false,
+      refresh: attempt,
+    };
 
   return {
     ...(held.for === key ? held.opened : { kind: 'loading' }),
@@ -888,6 +926,7 @@ function useOpened(
     change,
     stale,
     refreshing,
+    refresh: attempt,
   };
 }
 

@@ -152,6 +152,20 @@ export function searchTotal(groups: readonly SearchGroup[]): number {
   return groups.reduce((total, group) => total + group.total, 0);
 }
 
+/** A venue's city, only when its name is the place: every line that names a venue writes the two together. */
+export function venueCity(
+  venue: { name?: string | null; address?: { city?: string | null } | null } | null | undefined,
+): string | null {
+  const city = venue?.address?.city;
+  return venue?.name == null || city == null || city === '' ? null : city;
+}
+
+/** The place every line writes: the venue and its city, the venue alone, or that it is to be confirmed. */
+export function placeWords(venue: string | null, city: string | null, word: Word): string {
+  if (venue == null) return word('search.line.venueToBeConfirmed');
+  return city == null ? venue : word('search.line.venueCity', { venue, city });
+}
+
 function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): string {
   const days = eventDayWords(event, now, locale, { day: formatEventDate });
   const dates =
@@ -160,12 +174,7 @@ function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): st
       : days.kind === 'days'
         ? word('search.line.days', { first: days.first, last: days.last })
         : word('search.line.calledOffOn', { date: days.date });
-  const venue = event.venue?.name ?? null;
-  const city = event.venue?.address?.city ?? null;
-  const place =
-    venue != null && city != null && city !== ''
-      ? word('search.line.venueCity', { venue, city })
-      : (venue ?? word('search.line.venueToBeConfirmed'));
+  const place = placeWords(event.venue?.name ?? null, venueCity(event.venue), word);
 
   return word('search.line.event', { dates, place });
 }

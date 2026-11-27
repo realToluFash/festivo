@@ -130,11 +130,27 @@ export function piecesOf(word: string): string[] {
     .filter((piece) => piece !== '');
 }
 
-/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
-export function fitWidest(size: number, start: number, widest: number, slot: number): number {
+/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. Tracking that stays the same at every size, `tracking` across the word, is taken out before the word is scaled (sc-94682). */
+export function fitWidest(
+  size: number,
+  start: number,
+  widest: number,
+  slot: number,
+  tracking = 0,
+): number {
   if (widest <= slot) return start;
 
-  return Math.max(size, Math.floor((start * slot) / widest));
+  return Math.max(size, Math.floor((start * (slot - tracking)) / (widest - tracking)));
+}
+
+/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
+export function dayLineShares(
+  name: number,
+  dottedDate: number,
+  gap: number,
+  room: number,
+): boolean {
+  return name + gap + dottedDate <= room;
 }
 
 /** A label beside a glyph that grows with it, `glyph` per unit of the label's size: `start` while the widest word and the glyph fit `inside`, never below `size` (sc-13496). */

@@ -1,5 +1,5 @@
 import { type Card, cardOf } from './shiftClock.ts';
-import { CW, signedOutTime } from './doorCheckIn.ts';
+import { DOOR_ZONE, clockOf, readerLocale } from './doorCode.ts';
 
 export const MY_NIGHT_STATES = [
   'night',
@@ -14,6 +14,11 @@ export const MY_NIGHT_STATES = [
   'stale',
   'loading',
   'app',
+  'section_checkin',
+  'section_door',
+  'section_pass',
+  'section_view',
+  'kitchen',
 ] as const;
 
 export type MyNightState = (typeof MY_NIGHT_STATES)[number];
@@ -46,7 +51,19 @@ export type Night = {
   staleAt: string | null;
   loading: boolean;
   inApp: boolean;
+  /** The station on this shift is a section station (sc-3910). */
+  section: boolean;
+  /** The level the job carries (sc-4002), or the person's role. */
+  access: Access;
+  /** The job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
 };
+
+export type Access =
+  'Can work the floor' | 'Can work the pass' | 'Can view' | 'Can check guests in' | 'Lead';
+
+/** sc-4002: of these, who opens the floor; the app's whole list is `opensFloor` in apps/mobile/src/demo/floor/floorWayIn.ts. */
+const OPENS_FLOOR: readonly Access[] = ['Can work the floor', 'Lead'];
 
 export const MN = {
   title: 'Your night',
@@ -66,18 +83,24 @@ export const MN = {
   staff: 'Staff',
   guests: 'Guests',
   yourTables: 'Your tables',
-  opensAt: (time: string) => `Opens at ${time} when doors open`,
+  opensAt: (time: string) => `Shown when doors open, at ${time}`,
   updated: (station: string) => `Updated: you’re now on ${station}`,
-  staleTitle: 'Couldn’t reach Soirely',
+  staleTitle: 'Cannot reach Soirely',
   staleBody: (time: string) => `This is your night as it was at ${time}.`,
   tryAgain: 'Try again',
   loading: 'Loading your night…',
   signedInAs: (name: string) => `Signed in as ${name}`,
   signOut: 'Sign out',
-  events: 'Events',
+  overview: 'Overview',
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
+  openFloor: 'Open Floor',
+  floor: 'Floor',
+  floorStandsIn: (name: string) =>
+    `Floor in a browser is sc-4021’s, and it has no web demo yet: this page stands in for it, to show the way back. Still signed in as ${name}, with no new sign-in.`,
+  yoursAlone: (time: string) =>
+    `This link is yours alone. You are signed in until ${time}. Nothing stays on this device.`,
 } as const;
 
 export function guestCount(table: Table): string {
@@ -88,8 +111,24 @@ export function headingOf(night: Night): string {
   return night.station ?? night.job;
 }
 
+const LISBON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
+
+/** As the product's `atWords` writes it: the clock alone on today's date, else "Sun, Nov 15, 02:00" in the reader's locale. */
+export function untilWords(until: string, now: string): string {
+  if (LISBON_DAY.format(new Date(until)) === LISBON_DAY.format(new Date(now)))
+    return clockOf(until);
+  const day = new Intl.DateTimeFormat(readerLocale(), {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: DOOR_ZONE,
+  });
+
+  return `${day.format(new Date(until))}, ${clockOf(until)}`;
+}
+
 export function yoursAlone(night: Night): string {
-  return CW.shift.signedOutAt(signedOutTime(night.linkEndsAt, night.now));
+  return MN.yoursAlone(untilWords(night.linkEndsAt, night.now));
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });
@@ -149,6 +188,9 @@ const NIGHT: Night = {
   staleAt: null,
   loading: false,
   inApp: false,
+  section: true,
+  access: 'Can work the floor',
+  checksIn: false,
 };
 
 export function myNightStateOf(raw: string | null | undefined): MyNightState {
@@ -172,7 +214,7 @@ export function nightOf(state: MyNightState): Night {
         clock: { ...cardOf('clocked_in'), end: 23 * 60 },
       };
     case 'no_station':
-      return { ...night, station: null, lead: KEMI, tables: null };
+      return { ...night, station: null, section: false, lead: KEMI, tables: null };
     case 'no_lead':
       return { ...night, lead: KEMI };
     case 'no_lead_none':
@@ -196,6 +238,24 @@ export function nightOf(state: MyNightState): Night {
       return { ...night, loading: true };
     case 'app':
       return { ...night, inApp: true };
+    case 'section_checkin':
+      return { ...night, access: 'Lead', checksIn: true };
+    case 'section_door':
+      return { ...night, access: 'Can check guests in', checksIn: true };
+    case 'section_pass':
+      return { ...night, access: 'Can work the pass' };
+    case 'section_view':
+      return { ...night, access: 'Can view' };
+    case 'kitchen':
+      return {
+        ...night,
+        name: 'Gbenga Salami',
+        station: 'Fryer',
+        job: 'Cook',
+        tables: null,
+        section: false,
+        access: 'Can work the pass',
+      };
     default:
       return night;
   }
@@ -206,13 +266,20 @@ export function moved(night: Night): Night {
   return { ...night, station: 'Section C', lead: IFEANYI, tables: SECTION_C, updated: 'Section C' };
 }
 
+/** Open Floor above Your shift on a section station whose access opens the floor (sc-98893). */
+export function openFloorOf(night: Night): { label: string; href: string } | null {
+  return night.section && OPENS_FLOOR.includes(night.access)
+    ? { label: MN.openFloor, href: `/demo/my-night/floor?state=${night.state}` }
+    : null;
+}
+
 export function fresh(night: Night): Night {
   return { ...night, staleAt: null };
 }
 
 const named: Record<MyNightState, string> = {
-  night: 'Tonight, 19:40: doors open, tables open',
-  before_doors: 'Before doors, 16:20: Opens at 19:00 when doors open',
+  night: 'Tonight, 19:40: doors open, tables open; Open Floor above Your shift',
+  before_doors: 'Before doors, 16:20: Shown when doors open, at 19:00',
   early: 'Early, 15:30: Clock in opens at 16:00',
   two_shifts: 'Two shifts: Later: Bartender from 23:00',
   no_station: 'No station: Tonight you’re on Waiter, the floor lead, no tables',
@@ -220,9 +287,15 @@ const named: Record<MyNightState, string> = {
   no_lead_none: 'No lead at all: No lead named yet',
   updated: 'Updated: you’re now on Section C, announced',
   sparse: 'Sparse: no rules, no timing, no dietary needs, no phone for the lead',
-  stale: 'Couldn’t reach Soirely: your night as it was at 19:32',
+  stale: 'Cannot reach Soirely: your night as it was at 19:32',
   loading: 'Loading',
   app: 'In the app: no link line, Sign out stays',
+  section_checkin:
+    'A Lead whose job checks in: Check-in primary, Open Floor the secondary under it',
+  section_door: 'Can check guests in on a section: Check-in alone, no Open Floor',
+  section_pass: 'Can work the pass on a section: no Open Floor',
+  section_view: 'Can view on a section: no Open Floor',
+  kitchen: 'A kitchen station: no Open Floor, and Open {station} is in the app only',
 };
 
 export const MY_NIGHT_PAGES: readonly {

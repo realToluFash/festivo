@@ -117,6 +117,7 @@ export const W = {
   showLatestTitle: 'Show the latest version?',
   showLatestBody: 'What you typed will be replaced by the version somebody else saved.',
   starts: 'Starts',
+  allDates: 'All dates',
   ends: 'Ends',
   date: 'Date',
   time: 'Time',

@@ -98,22 +98,42 @@ export interface HoursRow {
   name: string;
   job: string;
   times: Times;
+  removed: boolean;
 }
 
-/** Every assigned place, a row each; a place nobody has taken has no row. */
-export function rowsOf(plan: Plan, clocks: Clocks): HoursRow[] {
+/** Someone taken off the roster after clocking in: off the shift, so not in the plan, and only their name kept with their times. */
+export interface Removed {
+  shift: string;
+  person: string;
+  name: string;
+}
+
+/** Every assigned place, a row each, then whoever was removed from that shift after clocking in; a place nobody has taken has no row. */
+export function rowsOf(plan: Plan, clocks: Clocks, removed: readonly Removed[] = []): HoursRow[] {
   return [...plan.shifts]
     .sort((a, b) => a.start - b.start || a.job.localeCompare(b.job))
-    .flatMap((shift) =>
-      shift.people.map((person) => ({
+    .flatMap((shift) => [
+      ...shift.people.map((person) => ({
         key: placeKey(shift.id, person),
         shift,
         person,
         name: personName(plan, person),
         job: jobName(plan, shift.job),
         times: clocks[placeKey(shift.id, person)] ?? t(null, null),
+        removed: false,
       })),
-    );
+      ...removed
+        .filter((one) => one.shift === shift.id)
+        .map((one) => ({
+          key: placeKey(shift.id, one.person),
+          shift,
+          person: one.person,
+          name: one.name,
+          job: jobName(plan, shift.job),
+          times: clocks[placeKey(shift.id, one.person)] ?? t(null, null),
+          removed: true,
+        })),
+    ]);
 }
 
 /** During service only what has happened by `now` shows. */
@@ -150,6 +170,7 @@ export const HW = {
   openedAt: (time: string) => `Clock-in opened at ${time}`,
   notOut: (end: string) => `Not clocked out · Counted to ${end}, the scheduled end`,
   noAttendance: 'No attendance recorded · 0 h counted',
+  removed: 'Removed from the roster',
   worked: 'Hours worked',
   of: (worked: string, scheduled: string) => `${worked} of ${scheduled} scheduled`,
   assumed: (time: string) => `of which ${time} assumed (not clocked out)`,
@@ -295,6 +316,7 @@ export function timesProblems(draft: TimesDraft, stillOn: boolean): Problems {
 /** Clocked in, not clocked out, and still able to clock out under Recording's limit. */
 export const stillOnOf = (row: HoursRow, live: boolean, now = LIVE_NOW) =>
   live &&
+  !row.removed &&
   row.times.clockIn != null &&
   row.times.clockOut == null &&
   now <= outLimit(row.shift, row.times.clockIn);
@@ -347,6 +369,7 @@ export const HOURS_STATES = [
   'correct_long',
   'corrected',
   'read_only',
+  'removed',
   'loading',
   'failed',
   'empty',
@@ -360,6 +383,7 @@ export const hoursStateOf = (raw: string | null): HoursState =>
 export interface HoursStart {
   plan: Plan;
   clocks: Clocks;
+  removed: Removed[];
   live: boolean;
   manage: boolean;
   open: { key: string; draft: TimesDraft; pressed: boolean } | null;
@@ -367,6 +391,26 @@ export interface HoursStart {
 
 const LEAD = placeKey('lead', 'ifeoma');
 const NO_SHOW = placeKey('w2', 'emeka');
+
+/** Femi was taken off the roster while clocked in on Runner, so his place opened and Chinedu took it. */
+const FEMI: Removed = { shift: 'run', person: 'femi', name: 'Femi Adeyemi' };
+
+function withRemoved(plan: Plan, clocks: Clocks): Pick<HoursStart, 'plan' | 'clocks' | 'removed'> {
+  return {
+    plan: {
+      ...plan,
+      shifts: plan.shifts.map((one) =>
+        one.id === FEMI.shift ? { ...one, people: [...one.people, 'chinedu'] } : one,
+      ),
+    },
+    clocks: {
+      ...clocks,
+      [placeKey(FEMI.shift, FEMI.person)]: t(h(16, 52), null),
+      [placeKey(FEMI.shift, 'chinedu')]: t(h(20, 15), h(24, 8)),
+    },
+    removed: [FEMI],
+  };
+}
 
 export function hoursStart(state: HoursState): HoursStart {
   const plan = samplePlan();
@@ -406,6 +450,8 @@ export function hoursStart(state: HoursState): HoursStart {
   return {
     plan: state === 'empty' ? { ...plan, shifts: [] } : plan,
     clocks: state === 'list_live' ? liveClocks(clocks) : fixed,
+    removed: [],
+    ...(state === 'removed' ? withRemoved(plan, clocks) : {}),
     live: state === 'list_live',
     manage: state !== 'read_only',
     open: opened[state] ?? null,
@@ -425,6 +471,7 @@ export const HOURS_PAGES: readonly { name: string; states: readonly DemoLink[] }
       link('list_live', 'During service: Clocked in, Not clocked in yet'),
       link('corrected', 'Corrected: Out 01:15 · corrected from no clock-out'),
       link('read_only', 'Without staff.manage: no Correct times'),
+      link('removed', 'Removed from the roster: Femi Adeyemi, not clocked out, beside Chinedu Eze'),
       link('loading', 'Loading'),
       link('failed', 'Cannot load'),
       link('empty', 'Nobody on a shift'),

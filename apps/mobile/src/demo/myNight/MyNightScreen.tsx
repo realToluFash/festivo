@@ -1,11 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '../../components/Brand.tsx';
-import { SecondaryButton } from '../../components/Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -20,14 +20,23 @@ import {
   type Night,
   type Table,
   MN,
+  checkInOf,
   fresh,
   guestCount,
   headingOf,
   moved,
+  movedOffSection,
+  movedOntoSection,
+  movedToGrill,
+  openFloorOf,
   myNightStateOf,
   nightOf,
-  signedOutAt,
+  openOf,
+  whosHereOf,
+  rowLineOf,
+  signedInUntil,
 } from './myNightModel.ts';
+import { InsideEvent } from '../doorCode/Inside.tsx';
 import { ClockCard } from '../shiftClock/ShiftClockScreen.tsx';
 import { useClockCard } from '../shiftClock/useClockCard.ts';
 
@@ -42,7 +51,39 @@ export function MyNightRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const first = myNightStateOf(state);
 
+  if (first === 'app_event') return <FromTheEvent night={nightOf(first)} />;
+
   return <MyNightScreen key={first} first={nightOf(first)} />;
+}
+
+/** In the app, a staff-link holder lands in their event (sc-71); Your night heads its Overview and opens the page over it. */
+function FromTheEvent({ night }: { night: Night }) {
+  const [at, setAt] = useState<'overview' | 'people'>('overview');
+
+  return (
+    <InsideEvent
+      at={at}
+      role="Can view"
+      who={night.name}
+      locale="en"
+      shown={{
+        id: 'evt-adebayo-60',
+        name: night.event,
+        day: '2026-11-28',
+        starts: night.starts,
+        ends: { date: '2026-11-29', time: night.linkEnds },
+        venue: 'Eko Hotel, Victoria Island',
+        job: night.job,
+      }}
+      night={{
+        line: rowLineOf(night),
+        onOpen: () => router.push('/demo/my-night?state=app'),
+      }}
+      onAt={setAt}
+      onSignOut={goBack}
+      onAccount={() => router.push('/demo/settings/account?as=noOrg')}
+    />
+  );
 }
 
 /** A staff member's whole night on one page (sc-3915): one column on a phone, two on a tablet. */
@@ -59,6 +100,10 @@ export function MyNightScreen({ first }: { first: Night }) {
   const you = (
     <You night={night} onSignOut={() => setTold(MN.signOutLands)} inBar={wide} told={told} />
   );
+  const checkIn = checkInOf(night);
+  const open = openOf(night);
+  const openFloor = openFloorOf(night);
+  const whosHere = whosHereOf(night);
 
   const left = (
     <>
@@ -77,6 +122,55 @@ export function MyNightScreen({ first }: { first: Night }) {
         </Text>
       </View>
       <Clock night={night} />
+      {checkIn != null && (
+        <PrimaryButton
+          label={checkIn.label}
+          onPress={() => router.push(checkIn.href as Href)}
+          testID="myNight.checkIn"
+        />
+      )}
+      {open != null &&
+        (open.primary ? (
+          <PrimaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ))}
+      {openFloor != null &&
+        (openFloor.primary ? (
+          <PrimaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            testID="myNight.openFloor"
+          />
+        ) : (
+          <SecondaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            testID="myNight.openFloor"
+          />
+        ))}
+      {whosHere != null &&
+        (whosHere.primary ? (
+          <PrimaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
+          />
+        ) : (
+          <SecondaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
+          />
+        ))}
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}
@@ -144,7 +238,7 @@ export function MyNightScreen({ first }: { first: Night }) {
           >
             <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
             <Text size={17} weight="semibold" style={styles.accent}>
-              {MN.events}
+              {MN.overview}
             </Text>
           </Pressable>
         )}
@@ -221,6 +315,27 @@ export function MyNightScreen({ first }: { first: Night }) {
                 label={MN.demoMoveButton}
                 onPress={() => setNight(moved(night))}
                 testID="myNight.demo.move"
+              />
+            )}
+            {night.state === 'kitchen' && night.updated == null && (
+              <SecondaryButton
+                label={MN.demoKitchenMoveButton}
+                onPress={() => setNight(movedToGrill(night))}
+                testID="myNight.demo.moveKitchen"
+              />
+            )}
+            {night.state === 'no_station' && night.kind == null && (
+              <SecondaryButton
+                label={MN.demoOntoSectionButton}
+                onPress={() => setNight(movedOntoSection(night))}
+                testID="myNight.demo.ontoSection"
+              />
+            )}
+            {night.state === 'section_app' && night.kind != null && (
+              <SecondaryButton
+                label={MN.demoOffSectionButton}
+                onPress={() => setNight(movedOffSection(night))}
+                testID="myNight.demo.offSection"
               />
             )}
             <SecondaryButton label={MN.backToDemo} onPress={goBack} testID="myNight.demo.back" />
@@ -373,7 +488,7 @@ function You({
         </Text>
         {!night.inApp && (
           <Text size={17} style={styles.secondary} testID="myNight.alone">
-            {MN.yoursAlone(signedOutAt(night))}
+            {MN.yoursAlone(signedInUntil(night))}
           </Text>
         )}
         {told != null && (

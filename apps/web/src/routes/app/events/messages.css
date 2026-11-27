@@ -126,6 +126,15 @@
   text-decoration: none;
 }
 
+.mg-row .desk-row-name {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .mg-row:hover {
   background: var(--colorNeutralFill);
 }
@@ -298,6 +307,7 @@
 
 .mg-head h2 {
   font: 700 18px/1.25 var(--fontFamily);
+  overflow-wrap: anywhere;
 }
 
 .mg-head-words p {
@@ -649,7 +659,9 @@
 }
 
 .mg-to-label {
-  width: var(--space3xl);
+  min-width: var(--space3xl);
+  flex-shrink: 0;
+  white-space: nowrap;
   color: var(--colorInkSecondary);
   font: 600 14px/1 var(--fontFamily);
 }
@@ -738,6 +750,24 @@
 .mg-field:empty::before {
   color: var(--colorInkTertiary);
   content: attr(data-placeholder);
+}
+
+/* The product's Message is a textarea; the demo draws it as text in the card, growing to its 200 px. */
+textarea.mg-field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  resize: none;
+  field-sizing: content;
+}
+
+textarea.mg-field::placeholder {
+  color: var(--colorInkTertiary);
+  opacity: 1;
 }
 
 .mg-tools {
@@ -1029,6 +1059,38 @@
 .mg-radio-row.is-person .desk-radio {
   grid-row: span 2;
   align-self: center;
+}
+
+/* At a phone the conversations stand above the open one, as the demo's reflow has them at 320 (WCAG 2.2 1.4.10); the shell already pads the page 16 px, so neither pane adds its own. */
+@media (width <= 40rem) {
+  .ev-msgs.desk-page {
+    padding: 0;
+  }
+
+  .mg {
+    flex-direction: column;
+  }
+
+  .mg-list {
+    width: auto;
+    padding-inline: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .mg-in,
+  .mg-pane.is-loading {
+    padding-inline: 0;
+  }
+
+  .mg-head {
+    flex-wrap: wrap;
+  }
+
+  .mg-head-words {
+    flex: 1 1 10rem;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1325,6 +1387,313 @@
 
 .mg-system svg,
 .mg-follow-line svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
+.mg-goes {
+  max-width: min(86%, 500px);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+  text-align: right;
+}
+
+.mg-conds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.mg-add-at {
+  position: relative;
+}
+
+.mg-add-at .desk-text {
+  font-size: 14px;
+}
+
+.mg-pop-line {
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-pop-count {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mg-pop-count p {
+  font: 700 22px/1.2 var(--fontFamily);
+}
+
+.mg-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: min(100%, 520px);
+  padding: 14px 18px;
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
+  box-shadow:
+    0 0 0 1.5px var(--colorBorder),
+    0 10px 30px color-mix(in srgb, var(--colorInk) 10%, transparent);
+}
+
+.mg-ask-question {
+  overflow: hidden;
+  font: 700 17px/1.3 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mg-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--spaceXxl);
+}
+
+.mg-acts.is-end {
+  justify-content: flex-end;
+}
+
+.mg-danger {
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxl);
+  border-radius: var(--radiusPill);
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+  color: var(--colorBroken);
+  font: 600 15px/1 var(--fontFamily);
+}
+
+.mgt-saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mgt-saved-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.mgt-saved-pick {
+  flex: 1;
+  min-width: 0;
+  padding-block: var(--spaceXs);
+}
+
+.mgt-saved-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.mgt-saved-line {
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.35 var(--fontFamily);
+}
+
+.mgt-more-at {
+  position: relative;
+  flex: none;
+}
+
+.mgt-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border-radius: 50%;
+  color: var(--colorInkSecondary);
+}
+
+.mgt-more:hover,
+.mgt-more[aria-expanded='true'] {
+  background: var(--colorNeutralFill);
+  color: var(--colorInk);
+}
+
+.mgt-mark {
+  fill: currentcolor;
+}
+
+.mgt-menu {
+  position: absolute;
+  top: calc(100% + var(--spaceXs));
+  right: 0;
+  z-index: 32;
+  min-width: 180px;
+  padding: var(--spaceXs);
+  border-radius: var(--radiusInset);
+}
+
+.mgt-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border-radius: var(--radiusNav);
+  font: 600 15px/1 var(--fontFamily);
+  text-align: left;
+}
+
+.mgt-menu-item:hover {
+  background: var(--colorNeutralFill);
+}
+
+.mgt-menu-item.is-red {
+  color: var(--colorBroken);
+}
+
+.mgt-bin {
+  flex: none;
+}
+
+.mgt-add {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--spaceXs);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--mgPop);
+}
+
+.mgt-add-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--spaceHair);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceLg);
+  border-radius: var(--radiusNav);
+  text-align: left;
+}
+
+.mgt-add-item:hover {
+  background: var(--colorNeutralFill);
+}
+
+.mgt-add-word {
+  font: 600 15px/1.25 var(--fontFamily);
+}
+
+.mgt-add-line {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.35 var(--fontFamily);
+}
+
+.mgt-add-head {
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceXs);
+  font: 700 14px/1.3 var(--fontFamily);
+}
+
+.mgt-gone {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mgt-gone svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
+.mgt-see {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mgt-see-name {
+  color: var(--colorInk);
+  font-weight: 600;
+}
+
+.mgt-save-at {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mgt-name {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--spaceMd);
+}
+
+.mgt-name-acts {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.mgt-name-save {
+  min-height: var(--sizeHit);
+}
+
+.mgt-ask {
+  width: 100%;
+  margin-bottom: var(--spaceSm);
+}
+
+.mgt-ask-question {
+  white-space: normal;
+}
+
+/* At a phone To's popovers hang from the whole To row rather than the chip, so they fit the 320 px reflow (WCAG 2.2 1.4.10). */
+@media (width <= 40rem) {
+  .mg-to-row {
+    position: relative;
+  }
+
+  .mg-to-at {
+    position: static;
+  }
+
+  .mg-to-row .mg-to-pop {
+    left: 0;
+    width: auto;
+    right: 0;
+  }
+}
+
+.mg-manage {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-top: 1px solid var(--colorBorder);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-manage svg {
   flex: none;
   margin-top: var(--spaceHair);
 }

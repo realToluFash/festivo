@@ -1,9 +1,12 @@
 import {
   ApiError,
+  type AudienceBook,
   type DeliveryState,
+  type GuestCondition,
   type GuestMessageCheck,
   type GuestMessageDelivery,
   type GuestMessageDetails,
+  type GuestMessageInput,
   type GuestMessageRow,
   type GuestMessageSummary,
   type NotSentReason,
@@ -23,8 +26,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { numberFormat } from '@soirely/domain';
+import { messageSegments, messageWire, numberFormat, sortedGroups } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -36,10 +40,17 @@ import { useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import {
   type Field,
+  type Picked,
+  type Quick,
   type Refusals,
   type Who,
   MESSAGE_MAXIMUM,
+  NOT_REPLIED,
+  QUICKS,
   SUBJECT_MAXIMUM,
+  asCondition,
+  audienceRefusal,
+  audienceRefusalOf,
   closedOf,
   conversationsOf,
   fieldOfPath,
@@ -47,11 +58,34 @@ import {
   matching,
   refusalsOf,
   shortTitle,
+  writesToNotReplied,
 } from './messagesArea.ts';
+import {
+  type Counted,
+  type Groups,
+  SavedRow,
+  WhoBlock,
+  conditionsChip,
+  conditionsWords,
+  deletedGroups,
+  groupsOf,
+  refusalLine,
+  useAudienceMatch,
+  useFocusLater,
+} from './MessagesTo.tsx';
 import { useHubTopics } from './useHubTopics.ts';
+import {
+  type FieldHandle,
+  InsertMenu,
+  MessageField,
+  MessagePreview,
+  MessageWords,
+} from './MessagesWriteItOnce.tsx';
+import { plainWords } from './messageWords.ts';
 import './messages.css';
 
 const CHIPS_SHOWN = 6;
+const NO_BOOK: AudienceBook = { audiences: [], groups: [] };
 const CANT_SHOWN = 2;
 
 type Draft = {
@@ -74,6 +108,8 @@ interface Desk {
   event: OrganisationEvent;
   manage: boolean;
   addresses: boolean;
+  guests: PickableGuest[] | null;
+  guestsFailed: boolean;
   whyOff: string | undefined;
   focus: (key: string) => void;
   say: (words: string) => void;
@@ -86,9 +122,18 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const closed = closedOf(event, now);
   const manage = canOn(event, 'messages.manage');
   const addresses = canOn(event, 'guests.manage');
+  const { state: arriving } = useLocation();
   const [list, setList] = useState<ListLoad>({ kind: 'loading' });
-  const [pane, setPane] = useState<Pane>({ kind: 'idle' });
+  const [pane, setPane] = useState<Pane>(() =>
+    writesToNotReplied(arriving) && manage && closed == null
+      ? { kind: 'compose', who: NOT_REPLIED, openTo: false, body: '', follows: null }
+      : { kind: 'idle' },
+  );
+  const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
+  const [draftBook, setDraftBook] = useState<AudienceBook>(NO_BOOK);
   const [ask, setAsk] = useState(0);
+  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const [guestsFailed, setGuestsFailed] = useState(false);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(null);
@@ -110,6 +155,28 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, ask]);
+
+  useEffect(() => {
+    if (!manage) return;
+    let current = true;
+
+    api.guestMessageGuests(event.id).then(
+      (all) => {
+        if (!current) return;
+        setGuests(all);
+        setGuestsFailed(false);
+      },
+      () => {
+        if (!current) return;
+        setGuests((was) => was ?? []);
+        setGuestsFailed(true);
+      },
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [manage, event.id, ask]);
 
   const topics = useMemo(() => [realtimeTopic('EventMessages', event.id)], [event.id]);
   const again = useCallback(() => setAsk((n) => n + 1), []);
@@ -141,6 +208,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     event,
     manage,
     addresses,
+    guests,
+    guestsFailed,
     whyOff: closed == null ? undefined : whyId,
     focus,
     say,
@@ -155,6 +224,19 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
 
   const lit = pane.kind === 'message' ? pane.id : pane.kind === 'reached' ? pane.of : null;
   const conversations = list.kind === 'loaded' ? conversationsOf(list.messages) : [];
+  const draft =
+    pane.kind === 'compose' && pane.follows == null
+      ? {
+          line: `${
+            draftTo.kind === 'conditions'
+              ? t('eventMessages.toAudience', {
+                  audience: `${t('eventMessages.guestsWho')} ${conditionsWords(draftTo.conditions, groupsOf(draftBook, []), t)}`,
+                })
+              : audienceWords({ audience: draftTo.kind, conditions: null }, t)
+          } · ${t('eventMessages.notSentYet')}`,
+          when: whenWords(now.toISOString()),
+        }
+      : null;
 
   return (
     <div ref={root} className="desk ev desk-page ev-msgs">
@@ -190,7 +272,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
                   {t('eventMessages.tryAgain')}
                 </button>
               </div>
-            ) : list.messages.length === 0 ? (
+            ) : list.messages.length === 0 && draft == null ? (
               <div className="mg-empty">
                 <h2>{t('eventMessages.noneYet')}</h2>
                 <p>{t('eventMessages.noneLine')}</p>
@@ -198,6 +280,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
             ) : (
               <Rows
                 conversations={conversations}
+                draft={draft}
+                onDraft={() => focus('body')}
                 lit={lit}
                 onOpen={(id) => {
                   setPane({ kind: 'message', id });
@@ -213,6 +297,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               key="compose"
               desk={desk}
               first={pane}
+              onWho={setDraftTo}
+              onBook={setDraftBook}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
                 setPane({ kind: 'message', id: pane.follows?.id ?? id });
@@ -302,24 +388,53 @@ function whenWords(at: string): string {
   }).format(new Date(at));
 }
 
-function audienceWords(message: Pick<GuestMessageSummary, 'audience'>, t: TFunction): string {
-  return message.audience === 'all'
-    ? t('eventMessages.toAll')
-    : t('eventMessages.toChosen', { audience: t('eventMessages.chooseGuests') });
+function timeWords(at: string): string {
+  return new Intl.DateTimeFormat(currentLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(at));
 }
 
-function titleOf(message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>): string {
-  return message.subject?.trim() ? guestMessageTitle(message) : shortTitle(message.firstLine);
+function audienceWords(
+  message: Pick<GuestMessageSummary, 'audience' | 'conditions'>,
+  t: TFunction,
+): string {
+  if (message.audience === 'all') return t('eventMessages.toAll');
+
+  if (message.audience !== 'conditions') return t('eventMessages.toChosen');
+
+  const conditions = message.conditions ?? [];
+
+  return t('eventMessages.toAudience', {
+    audience: `${t('eventMessages.guestsWho')} ${conditionsWords(conditions.map(asCondition), groupsOf(null, conditions), t)}`,
+  });
+}
+
+function titleOf(
+  message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>,
+  t: TFunction,
+): string {
+  return message.subject?.trim()
+    ? guestMessageTitle(message)
+    : shortTitle(plainWords(t, message.firstLine));
 }
 
 type Conversation = { id: string; messages: GuestMessageRow[] };
 
+/** The new message being written, at the top of the list and lit, as the demo has it until it is sent. */
+type DraftRow = { line: string; when: string };
+
 function Rows({
   conversations,
+  draft,
+  onDraft,
   lit,
   onOpen,
 }: {
   conversations: readonly Conversation[];
+  draft: DraftRow | null;
+  onDraft: () => void;
   lit: string | null;
   onOpen: (id: string) => void;
 }) {
@@ -335,12 +450,12 @@ function Rows({
         const message = latest(conversation);
         if (first == null || message == null) return null;
         const on = conversation.id === lit;
-        const title = titleOf(first);
+        const title = titleOf(first, t);
         const line = [
           ...(conversation.messages.length > 1 && message.sending
             ? [t('eventMessages.followUp')]
             : []),
-          audienceWords(message, t),
+          audienceWords(first, t),
           message.sentBy,
           t('eventMessages.email'),
           message.sending
@@ -374,12 +489,36 @@ function Rows({
     </ul>
   );
 
+  const title = t('eventMessages.newMessage');
+
   return (
     <>
+      {draft != null && (
+        <ul className="mg-rows">
+          <li>
+            <button
+              type="button"
+              className="mg-row is-on"
+              aria-label={[title, draft.line, draft.when].join(', ')}
+              aria-current="true"
+              onClick={onDraft}
+            >
+              <GroupMark />
+              <span className="desk-row-words">
+                <span className="desk-row-title">
+                  <span className="desk-row-name">{title}</span>
+                </span>
+                <span className="desk-row-line">{draft.line}</span>
+              </span>
+              <span className="mg-when">{draft.when}</span>
+            </button>
+          </li>
+        </ul>
+      )}
       {sending.length > 0 && rows(sending)}
       {done.length > 0 && (
-        <section className="mg-section" aria-label={t('eventMessages.done')}>
-          <h2 className="mg-section-head">{t('eventMessages.done')}</h2>
+        <section className="mg-section" aria-label={t('eventMessages.doneHeading')}>
+          <h2 className="mg-section-head">{t('eventMessages.doneHeading')}</h2>
           {rows(done)}
         </section>
       )}
@@ -407,19 +546,23 @@ function Idle({
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{t('eventMessages.newMessage')}</h2>
       <p className="mg-idle-line">{line}</p>
-      {desk.manage && (
-        <MiniComposer
-          desk={desk}
-          chip={t('eventMessages.allGuests')}
-          placeholder={t('eventMessages.writeToGuests')}
-          onWrite={onWrite}
-        />
-      )}
+      <MiniComposer
+        desk={desk}
+        chip={allGuestsChip(t, desk.guestsFailed ? null : desk.guests)}
+        placeholder={t('eventMessages.writeToGuests')}
+        onWrite={onWrite}
+      />
     </div>
   );
 }
 
-/** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
+function allGuestsChip(t: TFunction, guests: readonly PickableGuest[] | null): string {
+  return guests == null
+    ? t('eventMessages.allGuests')
+    : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`;
+}
+
+/** The composer waiting at the foot, or without messages.manage the reason nobody can write: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
 function MiniComposer({
   desk,
   chip,
@@ -435,6 +578,15 @@ function MiniComposer({
 }) {
   const { t } = useTranslation();
   const off = desk.whyOff != null;
+
+  if (!desk.manage) {
+    return (
+      <p className="mg-manage">
+        <Glyph name="info" size={16} weight={2.2} />
+        <span>{t('eventMessages.onlyManage', { area: t('eventNav.messages') })}</span>
+      </p>
+    );
+  }
 
   return (
     <div className="mg-mini">
@@ -526,14 +678,19 @@ function failureWords(error: unknown, t: TFunction): string {
 function ComposePane({
   desk,
   first,
+  onWho,
+  onBook,
   onSent,
 }: {
   desk: Desk;
   first: Draft;
+  onWho: (who: Who) => void;
+  onBook: (book: AudienceBook) => void;
   onSent: (id: string, count: number) => void;
 }) {
   const { t } = useTranslation();
   const [who, setWho] = useState<Who>(first.who);
+  useEffect(() => onWho(who), [who, onWho]);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState(first.body);
   const [toOpen, setToOpen] = useState(first.openTo);
@@ -541,17 +698,29 @@ function ComposePane({
   const [wrong, setWrong] = useState<Partial<Record<Field, string>>>({});
   const [refused, setRefused] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'write' });
-  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const guests = desk.guests;
+  const [book, setBook] = useState<AudienceBook>(NO_BOOK);
+  useEffect(() => onBook(book), [book, onBook]);
+  const counted = useAudienceMatch(
+    desk.event.id,
+    who.kind === 'conditions' ? who.conditions : null,
+  );
+  const groups = groupsOf(book, counted.match?.conditions ?? []);
+  const [previewing, setPreviewing] = useState(false);
+  const [gone, setGone] = useState<readonly string[]>([]);
+  const [nobodyLeft, setNobodyLeft] = useState<{ name: string; who: Who } | null>(null);
   const chip = useRef<HTMLButtonElement>(null);
+  const field = useRef<FieldHandle>(null);
   const ids = useId();
   const off = desk.whyOff != null;
+  const now = useServerNow();
 
   useEffect(() => {
     let current = true;
 
-    api.guestMessageGuests(desk.event.id).then(
-      (all) => current && setGuests(all),
-      () => current && setGuests([]),
+    api.audienceBook(desk.event.id).then(
+      (found) => current && setBook(found),
+      () => undefined,
     );
 
     return () => {
@@ -567,6 +736,14 @@ function ComposePane({
   }
 
   function fromApi(error: unknown): void {
+    const audience = audienceRefusalOf(error);
+
+    if (audience != null) {
+      setStep({ kind: 'write' });
+      setRefused(refusalLine(audience, t));
+      desk.focus('refused');
+      return;
+    }
     if (error instanceof ApiError && error.status === 422) {
       const words: Partial<Record<Field, string>> = {};
 
@@ -587,12 +764,22 @@ function ComposePane({
     if (off) return;
 
     const refusals = refusalsOf(who, subject, message);
-    setRefused(null);
+    const why = audienceRefusal(
+      who,
+      deletedGroups(who, groups),
+      counted.counting ? null : (counted.match?.count ?? null),
+    );
+
+    setRefused(why == null ? null : refusalLine(why, t));
     if (firstRefused(refusals) != null) {
       refuse(refusalWords(refusals, t));
       return;
     }
     setWrong({});
+    if (why != null) {
+      desk.focus('refused');
+      return;
+    }
     setStep({ kind: 'checking' });
     desk.focus('check');
     api
@@ -629,14 +816,85 @@ function ComposePane({
   }
 
   const chosen = who.kind === 'chosen' ? who.ids : [];
+  const matched = (counted.match?.guests ?? []).map((guest) => guest.id);
+  const people = (guests ?? [])
+    .filter(
+      (guest) =>
+        who.kind === 'all' || (who.kind === 'conditions' ? matched : chosen).includes(guest.id),
+    )
+    .filter((guest) => !gone.includes(guest.id))
+    .sort((a, b) => a.name.localeCompare(b.name, currentLocale()));
+  const previewOff =
+    nobodyLeft?.who === who
+      ? t('eventMessages.nobodyLeft', { name: nobodyLeft.name })
+      : people.length === 0
+        ? t('eventMessages.nobodyToPreview')
+        : null;
+
+  function preview(on: boolean): void {
+    setPreviewing(on);
+    desk.focus(on ? 'preview-heading' : 'preview');
+  }
+
+  if (previewing)
+    return (
+      <div className="mg-in is-compose">
+        <h2 className="desk-unseen">{t('eventMessages.newMessage')}</h2>
+        <div className="mg-compose-body is-top">
+          <MessagePreview
+            event={desk.event}
+            people={people}
+            subject={subject}
+            wire={message}
+            now={now}
+            onGone={(person) => {
+              setGone((was) => [...was, person.id]);
+              if (people.every((one) => one.id === person.id)) {
+                setNobodyLeft({ name: person.name, who });
+                preview(false);
+              }
+            }}
+          />
+        </div>
+        <div className="mg-preview-bar">
+          <button type="button" className="desk-text" onClick={() => preview(false)}>
+            <Glyph name="pen" size={17} weight={2.2} />
+            {t('eventMessages.edit')}
+          </button>
+          <button
+            type="button"
+            className="desk-text"
+            aria-pressed="true"
+            data-focus="preview-on"
+            onClick={() => preview(false)}
+          >
+            <Glyph name="eye" size={17} weight={2.2} />
+            {t('eventMessages.previewOn')}
+          </button>
+          <span className="today-grow" />
+          <button
+            type="button"
+            className="mg-send"
+            aria-label={t('eventMessages.send')}
+            onClick={() => {
+              setPreviewing(false);
+              send();
+            }}
+          >
+            <Glyph name="send" size={20} weight={2.4} />
+          </button>
+        </div>
+      </div>
+    );
+
   const chipWords =
-    who.kind === 'all'
-      ? guests == null
-        ? t('eventMessages.allGuests')
-        : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`
-      : chosen.length === 0
-        ? t('eventMessages.chooseGuests')
-        : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
+    who.kind === 'conditions'
+      ? conditionsChip(who, book.audiences, counted, t)
+      : who.kind === 'all'
+        ? allGuestsChip(t, desk.guestsFailed ? null : guests)
+        : chosen.length === 0
+          ? t('eventMessages.chooseGuests')
+          : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
 
   return (
     <div className="mg-in is-compose">
@@ -670,8 +928,15 @@ function ComposePane({
                   addresses={desk.addresses}
                   chip={chip}
                   choosingFirst={choosing}
+                  eventId={desk.event.id}
+                  book={book}
+                  setBook={setBook}
+                  counted={counted}
+                  groups={groups}
+                  say={desk.say}
                   onPick={(next) => {
                     setWho(next);
+                    setRefused(null);
                     fixed('who', { who: next });
                   }}
                   onClose={(toChip) => {
@@ -762,18 +1027,17 @@ function ComposePane({
             {wrong.subject}
           </p>
         )}
-        <textarea
-          className="mg-field"
-          value={message}
-          aria-label={t('eventMessages.message')}
-          aria-invalid={wrong.message == null ? undefined : true}
-          aria-describedby={wrong.message == null ? desk.whyOff : `${ids}-message`}
-          placeholder={t('eventMessages.writeToGuests')}
-          readOnly={step.kind !== 'write' || off}
-          data-focus="body"
-          onChange={(typed) => {
-            setMessage(typed.target.value);
-            fixed('message', { message: typed.target.value });
+        <MessageField
+          fieldRef={field}
+          first={messageSegments(message)}
+          editable={step.kind === 'write' && !off}
+          invalid={wrong.message != null}
+          describedBy={wrong.message == null ? desk.whyOff : `${ids}-message`}
+          onChange={(segments) => {
+            const wire = messageWire(segments);
+
+            setMessage(wire);
+            fixed('message', { message: wire });
           }}
           onKeyDown={(key) => commandEnter(key, send)}
         />
@@ -797,7 +1061,20 @@ function ComposePane({
         )}
         {step.kind === 'write' && (
           <div className="mg-tools">
-            <span className="today-grow" />
+            {!off && <InsertMenu onPick={(token) => field.current?.insert(token)} />}
+            {!off && (
+              <button
+                type="button"
+                className="desk-text mg-preview-tool"
+                aria-describedby={previewOff == null ? undefined : `${ids}-preview-off`}
+                data-focus="preview"
+                {...offButton(previewOff != null)}
+                onClick={() => previewOff == null && preview(true)}
+              >
+                <Glyph name="eye" size={17} weight={2.2} />
+                {t('eventMessages.preview')}
+              </button>
+            )}
             <span className="mg-goes-page">{t('eventMessages.goesOnTheirPage')}</span>
             <button
               type="submit"
@@ -812,13 +1089,21 @@ function ComposePane({
             </button>
           </div>
         )}
+        {step.kind === 'write' && !off && previewOff != null && guests != null && (
+          <p id={`${ids}-preview-off`} className="mg-why">
+            <Glyph name="info" size={16} weight={2.2} />
+            <span>{previewOff}</span>
+          </p>
+        )}
         {first.follows != null && <FollowLine count={first.follows.count} />}
       </form>
     </div>
   );
 }
 
-function audienceOf(who: Who): { audience: 'all' | 'chosen'; guestIds?: string[] } {
+function audienceOf(who: Who): Pick<GuestMessageInput, 'audience' | 'guestIds' | 'conditions'> {
+  if (who.kind === 'conditions') return { audience: 'conditions', conditions: [...who.conditions] };
+
   return who.kind === 'all' ? { audience: 'all' } : { audience: 'chosen', guestIds: [...who.ids] };
 }
 
@@ -997,6 +1282,12 @@ function ToPopover({
   addresses,
   chip,
   choosingFirst,
+  eventId,
+  book,
+  setBook,
+  counted,
+  groups,
+  say,
   onPick,
   onClose,
   onNobody,
@@ -1006,6 +1297,12 @@ function ToPopover({
   addresses: boolean;
   chip: RefObject<HTMLButtonElement | null>;
   choosingFirst: boolean;
+  eventId: string;
+  book: AudienceBook;
+  setBook: (change: (book: AudienceBook) => AudienceBook) => void;
+  counted: Counted;
+  groups: Groups;
+  say: (words: string) => void;
   onPick: (who: Who) => void;
   onClose: (toChip: boolean) => void;
   onNobody: () => void;
@@ -1014,11 +1311,24 @@ function ToPopover({
   const [choosing, setChoosing] = useState(
     choosingFirst || (who.kind === 'chosen' && who.ids.length === 0),
   );
+  const [kept, setKept] = useState(who.kind === 'conditions' ? who.conditions : []);
   const box = useRef<HTMLDivElement>(null);
+  const focusLater = useFocusLater(box);
   const titleId = useId();
   const name = useId();
   const chosen = who.kind === 'chosen' ? who.ids : [];
   const number = numberFormat(currentLocale());
+  const coming = useAudienceMatch(eventId, QUICK_CONDITIONS.coming);
+  const notReplied = useAudienceMatch(eventId, QUICK_CONDITIONS.notReplied);
+  const quickCounts = { coming, notReplied };
+  const pick: Picked | 'all' | 'chosen' =
+    who.kind !== 'conditions'
+      ? who.kind
+      : who.pick.startsWith('saved:') &&
+          !book.audiences.some((one) => `saved:${one.id}` === who.pick)
+        ? 'who'
+        : who.pick;
+  const shared = { eventId, book, setBook, focusLater, say };
 
   useEffect(() => {
     if (!choosing) box.current?.querySelector<HTMLElement>('input:checked')?.focus();
@@ -1026,7 +1336,7 @@ function ToPopover({
 
   useEffect(() => {
     const keys = (key: globalThis.KeyboardEvent) => {
-      if (key.key !== 'Escape') return;
+      if (key.key !== 'Escape' || key.defaultPrevented) return;
 
       key.preventDefault();
       onClose(true);
@@ -1045,6 +1355,11 @@ function ToPopover({
       document.removeEventListener('pointerdown', outside);
     };
   }, [chip, onClose]);
+
+  function conditions(next: readonly GuestCondition[], picked: Picked): void {
+    setKept(next);
+    onPick({ kind: 'conditions', conditions: next, pick: picked });
+  }
 
   if (choosing)
     return (
@@ -1085,12 +1400,27 @@ function ToPopover({
       <div className="mgt-scroll">
         <fieldset className="mg-radios">
           <legend className="desk-unseen">{t('eventMessages.to')}</legend>
+          {sortedGroups(book.audiences).map((one) => (
+            <SavedRow
+              key={one.id}
+              shared={shared}
+              audience={one}
+              radio={{ name, checked: pick === `saved:${one.id}` }}
+              groups={groups}
+              onChoose={() => conditions(one.conditions.map(asCondition), `saved:${one.id}`)}
+              onGone={() => {
+                if (who.kind === 'conditions' && who.pick === `saved:${one.id}`)
+                  onPick({ ...who, pick: 'who' });
+                focusLater('input:checked');
+              }}
+            />
+          ))}
           <label className="mg-radio-row">
             <input
               type="radio"
               name={name}
               className="desk-radio"
-              checked={who.kind === 'all'}
+              checked={pick === 'all'}
               onChange={() => onPick({ kind: 'all' })}
             />
             <span className="today-grow">{t('eventMessages.allGuests')}</span>
@@ -1098,12 +1428,31 @@ function ToPopover({
               <span className="mg-radio-count">{number.format(guests.length)}</span>
             )}
           </label>
+          {QUICKS.map((quick) => {
+            const count = quickCounts[quick].match?.count;
+
+            return (
+              <label key={quick} className="mg-radio-row">
+                <input
+                  type="radio"
+                  name={name}
+                  className="desk-radio"
+                  checked={pick === quick}
+                  onChange={() => conditions(QUICK_CONDITIONS[quick], quick)}
+                />
+                <span className="today-grow">
+                  {t(`eventMessages.${quick === 'coming' ? 'coming' : 'hasntReplied'}`)}
+                </span>
+                {count != null && <span className="mg-radio-count">{number.format(count)}</span>}
+              </label>
+            );
+          })}
           <label className="mg-radio-row">
             <input
               type="radio"
               name={name}
               className="desk-radio"
-              checked={who.kind === 'chosen'}
+              checked={pick === 'chosen'}
               onChange={() => {
                 onPick({ kind: 'chosen', ids: chosen });
                 setChoosing(true);
@@ -1123,11 +1472,38 @@ function ToPopover({
               </button>
             </div>
           )}
+          <label className="mg-radio-row">
+            <input
+              type="radio"
+              name={name}
+              className="desk-radio"
+              checked={pick === 'who'}
+              onChange={() => conditions(who.kind === 'conditions' ? who.conditions : kept, 'who')}
+            />
+            <span className="today-grow">{t('eventMessages.guestsWho')}</span>
+          </label>
         </fieldset>
+        {who.kind === 'conditions' && (
+          <WhoBlock
+            shared={shared}
+            who={who}
+            counted={counted}
+            groups={groups}
+            onConditions={(next) =>
+              conditions(next, pick === 'all' || pick === 'chosen' ? 'who' : pick)
+            }
+            onSaved={(saved) => onPick({ ...who, pick: saved })}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+const QUICK_CONDITIONS: Record<Quick, GuestCondition[]> = {
+  coming: [{ type: 'coming' }],
+  notReplied: [{ type: 'notReplied' }],
+};
 
 const SKELETON_ROWS = 7;
 
@@ -1430,7 +1806,7 @@ function MessagePane({
       </div>
     );
 
-  const title = titleOf(message);
+  const title = titleOf(message, t);
 
   return (
     <div className="mg-in">
@@ -1456,23 +1832,21 @@ function MessagePane({
           />
         ))}
       </ol>
-      {desk.manage && (
-        <MiniComposer
-          desk={desk}
-          chip={audienceWords(message, t)}
-          placeholder={t('eventMessages.writeFollowUp')}
-          follows={message.deliveries.length}
-          onWrite={(_openTo, body) =>
-            onFollow(
-              message.audience === 'all'
-                ? { kind: 'all' }
-                : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
-              body,
-              message.deliveries.length,
-            )
-          }
-        />
-      )}
+      <MiniComposer
+        desk={desk}
+        chip={audienceWords(message, t)}
+        placeholder={t('eventMessages.writeFollowUp')}
+        follows={message.deliveries.length}
+        onWrite={(_openTo, body) =>
+          onFollow(
+            message.audience === 'all'
+              ? { kind: 'all' }
+              : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
+            body,
+            message.deliveries.length,
+          )
+        }
+      />
     </div>
   );
 }
@@ -1518,13 +1892,23 @@ function Said({ message, onWho }: { message: GuestMessageDetails; onWho: () => v
         {message.subject != null && message.subject.trim() !== '' && (
           <p className="mg-subject-line">{message.subject}</p>
         )}
-        <p>{message.message}</p>
+        <p>
+          <MessageWords wire={message.message} />
+        </p>
       </div>
       <p className="mg-meta is-end">
         <span className="mg-bit">{t('eventMessages.onTheirPage')}</span>
         <span aria-hidden="true">·</span>
         <span className="mg-bit">{`${message.sentBy} · ${whenWords(message.sentAt)}`}</span>
       </p>
+      {message.audience === 'conditions' && !message.sending && (
+        <p className="mg-goes">
+          {t('eventMessages.workedOut', {
+            time: timeWords(message.sentAt),
+            guests: t('eventMessages.guests', { count: of }),
+          })}
+        </p>
+      )}
       {message.sending ? (
         <p className="mg-sending">
           <span className="mg-spin" aria-hidden="true" />
@@ -1651,7 +2035,7 @@ function ReachedPane({
       <div className="mg-reached-top">
         <button type="button" className="desk-back" onClick={onBack}>
           <Glyph name="back" size={17} weight={2.4} />
-          {titleOf(message)}
+          {titleOf(message, t)}
         </button>
       </div>
       <div className="mg-reached-body">

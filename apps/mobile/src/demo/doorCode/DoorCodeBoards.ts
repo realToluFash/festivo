@@ -46,6 +46,7 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   welcome: ['Joining · the welcome', 'Enter a door code under its choices'],
   camera: ['Joining · the camera', 'Its chip opens the app on the event'],
   enter: ['Joining · enter a door code', 'Q7KM 4XP2, any case, spaces ignored'],
+  'signed-out': ['Joining · signed out', 'Signed out. above Enter a door code, empty'],
   'enter-blank': ['Joining · left blank', 'Enter the door code.'],
   'enter-short': ['Joining · too short', 'A door code is 8 letters and numbers.'],
   checking: ['Joining · checking', 'Continue turns, held, then the event'],
@@ -68,11 +69,48 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   'code-exhausted': ['Joining · too many wrong tries', 'Send a new code'],
   'code-failed': ['Joining · it did not go', 'No connection; nothing lost'],
   'used-up': ['Joining · used up after the phone code', 'Once sc-4235 is built'],
+  'event-keys': [
+    'Joining · the keys up on Your name',
+    'Your name and the number row both above Send code (sc-97734)',
+  ],
+  'event-keys-number': [
+    'Joining · the keys up on Mobile number',
+    'From Your name once the soft keys settle; both above Send code, or the number alone',
+  ],
+  'event-keys-refused': [
+    'Joining · the keys up after a refusal',
+    'That code does not work, with both fields when all three fit',
+  ],
+  'event-keys-failed': [
+    'Joining · the keys up after it did not go',
+    'Something went wrong on the way, with the fields',
+  ],
   'code-second-number': [
     'Joining · an alternative number, the code',
     'Rita’s number is an alternative number',
   ],
   'second-number': ['Joining · an alternative number', 'Back to the name and number, both kept'],
+  'code-provider-only': [
+    'Joining · Google or Apple only, the code',
+    'Bisi is in Ìrè Events, Google linked (sc-94849)',
+  ],
+  'code-provider-only-apple': [
+    'Joining · Google or Apple only, the code, Apple',
+    'Bisi has Apple linked',
+  ],
+  'code-provider-only-both': [
+    'Joining · Google or Apple only, the code, both',
+    'Bisi has both linked',
+  ],
+  'provider-only': ['Joining · Google or Apple only', 'After the right code: Continue with Google'],
+  'provider-only-apple': [
+    'Joining · Google or Apple only, Apple',
+    'After the right code: Continue with Apple',
+  ],
+  'provider-only-both': [
+    'Joining · Google or Apple only, both',
+    'Each linked provider, in the app’s order',
+  ],
   in: ['Joining · you’re in', 'Open the event'],
   'event-in': ['Inside the event · can check guests in', 'Check guests in on its card'],
   'event-in-view': ['Inside the event · can view', 'The same card with no step'],

@@ -11,56 +11,49 @@ final class Version20261125230000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'One list of the addresses an organisation no longer reaches, per channel (sc-3969): guest_complaints becomes guest_suppressions, each complaint kept as an email suppression with its hash as it was, and the guest\'s own opt-outs join it. email_soft_bounces counts the soft bounces in a row to an address.';
+        return 'Who gets it (sc-3957): a deleted group keeps its row so a condition can still name it, a message keeps its own copy of its conditions, and an event keeps up to 20 saved audiences.';
     }
 
     public function up(Schema $schema): void
     {
+        $this->addSql('ALTER TABLE guest_groups ADD deleted_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->addSql('DROP INDEX uniq_guest_group_name');
+        $this->addSql('CREATE UNIQUE INDEX uniq_guest_group_name ON guest_groups (event_id, name_key) WHERE (deleted_at IS NULL)');
+        $this->addSql('ALTER TABLE guest_messages ADD conditions JSONB DEFAULT NULL');
+        $this->addSql('ALTER TABLE guest_messages DROP CONSTRAINT chk_guest_message_audience');
         $this->addSql(<<<'SQL'
-            CREATE TABLE guest_suppressions (
-                organisation_id  UUID NOT NULL,
-                channel          VARCHAR(10) NOT NULL,
-                address_hash     VARCHAR(64) NOT NULL,
-                reason           VARCHAR(20) NOT NULL,
-                suppressed_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                PRIMARY KEY (organisation_id, channel, address_hash)
+            ALTER TABLE guest_messages ADD CONSTRAINT chk_guest_message_audience CHECK (
+                (audience IN ('all', 'chosen') AND conditions IS NULL)
+                OR (audience = 'conditions' AND conditions IS NOT NULL)
             )
             SQL);
-        $this->addSql('CREATE INDEX IDX_9147B8C49E6B1585 ON guest_suppressions (organisation_id)');
-        $this->addSql('ALTER TABLE guest_suppressions ADD CONSTRAINT FK_9147B8C49E6B1585 FOREIGN KEY (organisation_id) REFERENCES organisations (id) ON DELETE CASCADE NOT DEFERRABLE');
         $this->addSql(<<<'SQL'
-            INSERT INTO guest_suppressions (organisation_id, channel, address_hash, reason, suppressed_at)
-            SELECT organisation_id, 'email', address_hash, 'complained', NOW()
-            FROM   guest_complaints
-            SQL);
-        $this->addSql('DROP TABLE guest_complaints');
-        $this->addSql(<<<'SQL'
-            CREATE TABLE email_soft_bounces (
-                address_hash  VARCHAR(64) NOT NULL,
-                in_a_row      INT NOT NULL,
-                PRIMARY KEY (address_hash)
+            CREATE TABLE saved_audiences (
+                id         UUID NOT NULL,
+                event_id   UUID NOT NULL,
+                name       VARCHAR(240) NOT NULL,
+                name_key   VARCHAR(240) NOT NULL,
+                conditions JSONB NOT NULL,
+                created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                updated_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                PRIMARY KEY (id)
             )
             SQL);
+        $this->addSql('CREATE UNIQUE INDEX uniq_saved_audience_name ON saved_audiences (event_id, name_key)');
+        $this->addSql('CREATE INDEX IDX_SAVED_AUDIENCE_EVENT ON saved_audiences (event_id)');
+        $this->addSql('ALTER TABLE saved_audiences ADD CONSTRAINT FK_SAVED_AUDIENCE_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE email_soft_bounces');
-        $this->addSql(<<<'SQL'
-            CREATE TABLE guest_complaints (
-                address_hash     VARCHAR(64) NOT NULL,
-                organisation_id  UUID NOT NULL,
-                PRIMARY KEY (organisation_id, address_hash)
-            )
-            SQL);
-        $this->addSql('CREATE INDEX IDX_9D42FFAB9E6B1585 ON guest_complaints (organisation_id)');
-        $this->addSql('ALTER TABLE guest_complaints ADD CONSTRAINT FK_9D42FFAB9E6B1585 FOREIGN KEY (organisation_id) REFERENCES organisations (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql(<<<'SQL'
-            INSERT INTO guest_complaints (organisation_id, address_hash)
-            SELECT organisation_id, address_hash
-            FROM   guest_suppressions
-            WHERE  reason = 'complained'
-            SQL);
-        $this->addSql('DROP TABLE guest_suppressions');
+        $this->addSql('DROP TABLE saved_audiences');
+        $this->addSql("DELETE FROM guest_messages WHERE audience = 'conditions'");
+        $this->addSql('ALTER TABLE guest_messages DROP CONSTRAINT chk_guest_message_audience');
+        $this->addSql('ALTER TABLE guest_messages DROP conditions');
+        $this->addSql("ALTER TABLE guest_messages ADD CONSTRAINT chk_guest_message_audience CHECK (audience IN ('all', 'chosen'))");
+        $this->addSql('DELETE FROM guest_groups WHERE deleted_at IS NOT NULL');
+        $this->addSql('DROP INDEX uniq_guest_group_name');
+        $this->addSql('CREATE UNIQUE INDEX uniq_guest_group_name ON guest_groups (event_id, name_key)');
+        $this->addSql('ALTER TABLE guest_groups DROP deleted_at');
     }
 }

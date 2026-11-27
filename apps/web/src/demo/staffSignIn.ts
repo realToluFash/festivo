@@ -3,6 +3,7 @@ import { callingCode } from '@soirely/domain';
 import { DOOR_EVENT } from './doorCode.ts';
 import { JOB, SHIFT_NAME } from './doorCheckIn.ts';
 import { type Step as RedeemStep, RESEND_FROM, DRAWN_RESEND } from './redeem.ts';
+import { linkedIn, type Provider } from './providerOnly.ts';
 import { SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -74,6 +75,7 @@ export type LinkStep =
   | { kind: 'tooMany' }
   | { kind: 'wrongAccount' }
   | { kind: 'alternative' }
+  | { kind: 'providerOnly'; providers: readonly Provider[]; busy: Busy }
   | CodeStep
   | { kind: 'twoFactor'; digits: string; line: string | null; wrong: boolean; busy: Busy };
 
@@ -94,6 +96,12 @@ export const LINK_STATES = [
   'two-factor-wrong',
   'code-alternative',
   'alternative-number',
+  'code-provider-only',
+  'code-provider-only-apple',
+  'code-provider-only-both',
+  'provider-only',
+  'provider-only-apple',
+  'provider-only-both',
   'wrong-account',
   'too-many',
   'signed-out',
@@ -141,8 +149,19 @@ export const freshTwoFactor = (): LinkStep => ({
 export const twoFactorFor = (state: LinkState) =>
   state === 'two-factor-no-email' ? MASKED : ACCOUNT_EMAIL;
 
-/** What the number turns out to be after the right code: an account with two-factor, or a verified alternative on one. */
-export type LinkStart = { step: LinkStep; twoFactor: boolean; alternative?: boolean };
+/** What the number turns out to be after the right code: an account with two-factor, a verified alternative on one, or a member whose organisation signs in with Google or Apple only (sc-94849). */
+export type LinkStart = {
+  step: LinkStep;
+  twoFactor: boolean;
+  alternative?: boolean;
+  providers?: readonly Provider[];
+};
+
+export const refusedStep = (providers: readonly Provider[]): LinkStep => ({
+  kind: 'providerOnly',
+  providers,
+  busy: 'no',
+});
 
 /** The step a state opens on, and what the account behind the number holds. */
 export function linkStart(state: LinkState): LinkStart {
@@ -179,6 +198,18 @@ export function linkStart(state: LinkState): LinkStart {
       return { step: code({ digits: '48' }), twoFactor: false, alternative: true };
     case 'alternative-number':
       return { step: { kind: 'alternative' }, twoFactor: false, alternative: true };
+    case 'code-provider-only':
+    case 'code-provider-only-apple':
+    case 'code-provider-only-both':
+      return { step: code({ digits: '48' }), twoFactor: false, providers: linkedIn(state) };
+    case 'provider-only':
+    case 'provider-only-apple':
+    case 'provider-only-both':
+      return {
+        step: refusedStep(linkedIn(state)),
+        twoFactor: false,
+        providers: linkedIn(state),
+      };
     case 'wrong-account':
       return { step: { kind: 'wrongAccount' }, twoFactor: false };
     case 'too-many':
@@ -224,6 +255,17 @@ export const STAFF_SIGN_IN_PAGES: readonly { name: string; states: readonly Demo
       at('two-factor-wrong', 'Two-factor, a wrong code'),
       at('code-alternative', 'An alternative number on an account: the code, before the right one'),
       at('alternative-number', 'An alternative number on an account, after the right code'),
+    ],
+  },
+  {
+    name: 'Staff link · a member of an organisation that signs in with Google or Apple only (sc-94849)',
+    states: [
+      at('code-provider-only', 'Google linked: the code, before the right one'),
+      at('provider-only', 'Google linked, after the right code: Continue with Google'),
+      at('code-provider-only-apple', 'Apple linked: the code, before the right one'),
+      at('provider-only-apple', 'Apple linked, after the right code: Continue with Apple'),
+      at('code-provider-only-both', 'Both linked: the code, before the right one'),
+      at('provider-only-both', 'Both linked, after the right code: Google, then Apple'),
     ],
   },
   {

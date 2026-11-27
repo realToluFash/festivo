@@ -1,12 +1,13 @@
 import { keepsWhatLoaded } from '@soirely/domain';
 
-/** What a failed load leaves on screen: what loaded stays, under the band, only when Soirely never answered (sc-22586). */
+/** What a failed load leaves on screen: what loaded stays, under the band, only when Soirely never answered (sc-22586). A load through the screen's watch has the watch's verdict; one beside it, the Overview's dates, judges the error itself with `neverReached` (sc-98386). */
 export function afterFailedLoad<L extends { kind: string }>(
   before: L,
   error: unknown,
   failed: L,
+  unreached: (error: unknown) => boolean = keepsWhatLoaded,
 ): L {
-  return before.kind === 'loaded' && keepsWhatLoaded(error) ? before : failed;
+  return before.kind === 'loaded' && unreached(error) ? before : failed;
 }
 
 /** What a load leaves on a form that already shows: neither an answer nor a failure replaces it or the tag it saves against (Decided, 2 Nov, sc-27086). */

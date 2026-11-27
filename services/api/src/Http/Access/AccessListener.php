@@ -68,7 +68,16 @@ final readonly class AccessListener
         $user = $this->account($route, false);
 
         if ($policy->orOnAnEvent && null !== $policy->permission) {
-            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw self::notFound();
+            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId);
+
+            if (null === $scope) {
+                if ($this->membershipDirectory->isOutsideIn($user, $organisationId)) {
+                    throw ApiException::permissionRequired($policy->permission);
+                }
+
+                throw self::notFound();
+            }
+
             $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission, $policy->feature);
 
             return;
@@ -84,10 +93,17 @@ final readonly class AccessListener
         $user = $this->account($route, true);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
-        $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
+        $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw $this->noGrantOn($user, $eventId, $policy);
         $this->check($request, $grants, $policy->permission, $policy->feature, $policy->featureLocksReading);
 
         $request->attributes->set(self::EVENT, $eventId);
+    }
+
+    private function noGrantOn(User $user, Uuid $eventId, InEvent $policy): ApiException
+    {
+        return null !== $policy->endedLink && $this->membershipDirectory->linkEndedWithTheEvent($user, $eventId)
+            ? new ApiException(ErrorCode::EventConcluded, $this->translator->trans($policy->endedLink))
+            : self::notFound();
     }
 
     /** Not a member reads as not found: a 403 would confirm the organisation exists. */

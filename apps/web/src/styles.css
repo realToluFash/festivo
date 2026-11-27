@@ -352,6 +352,11 @@ span {
   background: var(--colorCard);
 }
 
+/* In the shell a page that borrows Settings' .desk-page never scrolls itself: the card scrolls it from 641 px and the window under that. A page that scrolled itself would clip a part opened past its rows into sideways scroll, and hold its sticky bars and panels where they sit (sc-98499). */
+.shell-content .desk-page {
+  overflow: visible;
+}
+
 /* From 641 px the sidebar is beside the page (sc-60699). */
 @media (width > 40rem) {
   /* At a desk no page has the band (sc-39471, sc-39509): the page is one card 10 from the window's edges, and it scrolls inside the card. */
@@ -395,8 +400,8 @@ span {
     padding: 0;
   }
 
-  /* Seating fills its card edge to edge, as its demo's desk-main does (sc-58064): the room is the card's, not a band inside it. */
-  .shell-content.is-card:has(> .st) {
+  /* Seating and Messages fill their card edge to edge, as their demos' desk-main does (sc-58064, sc-3942): the room is the card's, not a band inside it. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) {
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -407,16 +412,24 @@ span {
     min-height: 0;
   }
 
-  /* What the shell puts above Seating keeps the card's padding the room gave up. */
-  .shell-content.is-card:has(> .st) > :not(.st) {
+  .shell-content.is-card > .ev-msgs {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* What the shell puts above Seating or Messages keeps the card's padding the room gave up. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) > :not(.st, .ev-msgs) {
     flex-shrink: 0;
     margin-inline: var(--space6xl);
   }
 
   /* The offline band's wrapper stays in the page while online, holding only its hidden announcer: it takes no room, so the first notice after it does. */
-  .shell-content.is-card:has(> .st)
-    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),
-  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st) {
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :not(.st, .ev-msgs):first-child:not(:has(> .visually-hidden:only-child)),
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :first-child:has(> .visually-hidden:only-child)
+    + :not(.st, .ev-msgs) {
     margin-top: var(--space3xl);
   }
 }
@@ -2379,10 +2392,16 @@ span {
   margin-bottom: var(--space3xl);
 }
 
-/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
+}
+
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not.
+   Important, because a page heading's own :focus { outline: none } would otherwise hide it (sc-74701);
+   a scope whose ring is another colour sets --noticeRing. */
 [data-notice-landing]:focus {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
+  outline: 2px solid var(--noticeRing, var(--colorAccent)) !important;
+  outline-offset: 2px !important;
 }
 
 .two-factor-overdue {
@@ -4864,25 +4883,6 @@ button.members-row {
 
 .timeline-failed-mark {
   color: var(--colorBroken);
-}
-
-.timeline-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXl);
-  margin: var(--spaceLg) 0 0;
-}
-
-.timeline-key div {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.timeline-key dd {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
 }
 
 /* On a phone the pills leave the date line for their own, as in the app, so a far-off date in another zone and the longer fr and pt words wrap within the rows' floor rather than past it. */

@@ -56,6 +56,7 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'The event finished before this message was due; in Done',
   ],
   scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
+  nobodyDue: ['nobody matched when it was due', 'Sent nothing; greyed, no actions; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
@@ -98,6 +99,19 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   previewGreetAs: ['previewed as Bisi Adewale', 'Greeted as “Auntie Bisi”, their Greet as'],
   previewChose: ['previewed as Camille Dubois', 'The Date in French, the language they chose'],
   previewLoading: ['filling it in', 'Filling it in for Camille Dubois… over the shapes'],
+  previewFailed: ['could not fill it in', 'Offline: the alert in the page’s place, and Try again'],
+  previewGone: [
+    'no longer a guest',
+    'Camille Dubois left Preview as; filled in for Amaka Eze, and the line says so',
+  ],
+  previewGoneLast: [
+    'no longer a guest, nobody left',
+    'The preview closed; Preview not offered, and the line says why',
+  ],
+  previewNobody: [
+    'nobody to preview',
+    'Coming · 0: Preview not offered, its tokens unfilled; Nobody matches is the reason',
+  ],
   previewMarkup: ['a Greet as with markup', 'Kemi Bankole’s Greet as shown as text'],
   typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
   previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],
