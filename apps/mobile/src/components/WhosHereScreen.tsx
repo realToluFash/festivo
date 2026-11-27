@@ -1130,21 +1130,24 @@ function CoverForm({
         <>
           <View style={styles.choices} accessibilityRole="radiogroup">
             {people.map((row, i) => {
-              const line = t('whosHere.onStation', { station: row.station?.name ?? '' });
+              const line =
+                row.station == null ? null : t('whosHere.onStation', { station: row.station.name });
               const warn = leavesEmpty(read, row)
                 ? t('whosHere.leaves', { station: row.station?.name ?? '' })
                 : null;
+              const label =
+                line == null
+                  ? row.name
+                  : warn == null
+                    ? t('whosHere.choiceLabel', { name: row.name, line })
+                    : t('whosHere.choiceLabelWarn', { name: row.name, line, warn });
               return (
                 <ChoiceRow
                   key={row.id}
                   name={row.name}
                   line={line}
                   warn={warn}
-                  label={
-                    warn == null
-                      ? t('whosHere.choiceLabel', { name: row.name, line })
-                      : t('whosHere.choiceLabelWarn', { name: row.name, line, warn })
-                  }
+                  label={label}
                   on={chosen?.id === row.id}
                   onPress={() =>
                     set({
@@ -1200,7 +1203,7 @@ function ChoiceRow({
   testID,
 }: {
   name: string;
-  line: string;
+  line: string | null;
   warn: string | null;
   label: string;
   on: boolean;
@@ -1222,9 +1225,11 @@ function ChoiceRow({
         <Text size={16} weight="semibold">
           {name}
         </Text>
-        <Text size={14} style={styles.secondary}>
-          {line}
-        </Text>
+        {line != null && (
+          <Text size={14} style={styles.secondary}>
+            {line}
+          </Text>
+        )}
         {warn != null && <MarkLine kind="notyet" ink={tokens.colorAttention} words={warn} dashed />}
       </View>
       <View style={[styles.radio, on && styles.radioOn]} />
