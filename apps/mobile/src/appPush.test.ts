@@ -207,6 +207,22 @@ describe("the app's push (sc-3980)", () => {
     expect(said).toEqual([true, false, false]);
   });
 
+  it('calls push blocked on a simulator in a QA build, and not in any other build', async () => {
+    device.isDevice = false;
+    const said: boolean[] = [];
+
+    settings.environment = 'development';
+    const stopOther = followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([false]));
+    stopOther();
+
+    settings.environment = 'qa';
+    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
+    const stop = followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([false, true]));
+    stop();
+  });
+
   it('reads push again on the way back to the app, and registers the token once it is allowed', async () => {
     const said: boolean[] = [];
     notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
