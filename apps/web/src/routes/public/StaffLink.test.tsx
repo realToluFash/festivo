@@ -494,6 +494,23 @@ describe('A link signed in as its own account (sc-4235)', () => {
     }
   });
 
+  it('still opens Your night, with no switch to Floor, after a course is fired (sc-98893)', async () => {
+    const asked = routed({
+      'POST /api/staff-links/opened': () => answer(YOURS),
+      'POST /api/staff-links/night': () => answer({ ...NIGHT, floor: true }),
+      'GET /api/events/ev-1/service/floor': () =>
+        answer({ courses: [{ id: 'c1', name: 'Main', firedAt: '2027-03-06T19:30:00+00:00' }] }),
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Tonight you’re on Section B' }),
+    ).toBeTruthy();
+    const open = screen.getByRole('link', { name: 'Open Floor' });
+    expect(open.getAttribute('href')).toBe('/floor/ev-1?from=night');
+    expect(screen.getByText('Folake Adeyemi')).toBeTruthy();
+    expect(asked.filter((line) => line.includes('/floor'))).toEqual([]);
+  });
+
   it('marks the floor lead when they stand in, and says when there is no lead at all', async () => {
     routed({
       'POST /api/staff-links/opened': () => answer(YOURS),

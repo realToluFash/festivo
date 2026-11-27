@@ -2,6 +2,8 @@ import type { MyNight, MyNightGuest } from '@soirely/api-client';
 import { formatWallClock, wallOfZoned } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { openStationOf } from './stationWayIn.ts';
+
 /** 24-hour, on the event's clock whatever the reader's zone. */
 export function clockAt(at: string, locale: string): string {
   return formatWallClock(wallOfZoned(at), locale);
@@ -101,9 +103,21 @@ export function checkInBackOf(
     : { label: 'checkIn.back', href: null };
 }
 
-/** Who's here above Your shift (sc-3918), last of the buttons: primary when neither Check-in, Open {station} nor Open Floor comes before it; null shows no button. */
-export function whosHereOf(night: MyNight, opensBefore: boolean) {
-  return night.whosHere ? { primary: checkInOf(night) == null && !opensBefore } : null;
+export interface NightButton {
+  opens: 'checkIn' | 'station' | 'floor' | 'whosHere';
+  kind: 'primary' | 'secondary';
+}
+
+/** Your night's buttons above Your shift, in order: Check-in first for a door job (sc-28230), then Open {station} (sc-95382) or Open Floor (sc-98893), never both, then Who's here (sc-3918). The first is the page's one primary; the rest are secondary under it. */
+export function nightButtonsOf(night: MyNight): NightButton[] {
+  const opens: NightButton['opens'][] = [];
+
+  if (checkInOf(night) != null) opens.push('checkIn');
+  if (openStationOf(night) != null) opens.push('station');
+  if (opensFloorOf(night)) opens.push('floor');
+  if (night.whosHere) opens.push('whosHere');
+
+  return opens.map((one, index) => ({ opens: one, kind: index === 0 ? 'primary' : 'secondary' }));
 }
 
 /** Where My night's Check-in leads, for a job whose level opens check-in at the door (sc-28230); null shows no button. */

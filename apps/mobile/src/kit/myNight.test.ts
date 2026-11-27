@@ -11,9 +11,9 @@ import {
   headingOf,
   rowLineOf,
   scanHrefOf,
-  updatedAfter,
-  whosHereOf,
+  nightButtonsOf,
   opensFloorOf,
+  updatedAfter,
 } from './myNight.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
@@ -49,18 +49,34 @@ const NIGHT: MyNight = {
 
 describe('My night leads a lead to Who’s here (sc-3918)', () => {
   it('as the only button, primary, when nothing comes before it', () => {
-    expect(whosHereOf({ ...NIGHT, whosHere: true }, false)).toEqual({ primary: true });
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true })).toEqual([
+      { opens: 'whosHere', kind: 'primary' },
+    ]);
   });
 
   it('as a secondary button under Check-in, Open {station} or Open Floor', () => {
-    expect(whosHereOf({ ...NIGHT, whosHere: true, checksIn: true }, false)).toEqual({
-      primary: false,
-    });
-    expect(whosHereOf({ ...NIGHT, whosHere: true }, true)).toEqual({ primary: false });
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, checksIn: true })).toEqual([
+      { opens: 'checkIn', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, station: 'Grill', dishes: true })).toEqual([
+      { opens: 'station', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, floor: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+  });
+
+  it('no button at all for a night that opens nothing', () => {
+    expect(nightButtonsOf(NIGHT)).toEqual([]);
   });
 
   it('nowhere for someone who leads nothing', () => {
-    expect(whosHereOf(NIGHT, true)).toBeNull();
+    expect(nightButtonsOf({ ...NIGHT, floor: true })).not.toContainEqual(
+      expect.objectContaining({ opens: 'whosHere' }),
+    );
   });
 });
 
@@ -162,5 +178,25 @@ describe('Open Floor on Your night (sc-98893)', () => {
   it('follows the night’s floor flag: a section station whose access opens the floor', () => {
     expect(opensFloorOf({ ...NIGHT, floor: true })).toBe(true);
     expect(opensFloorOf(NIGHT)).toBe(false);
+  });
+
+  it('is the page’s primary button on its own', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+    ]);
+  });
+
+  it('sits under Check-in as the secondary button when the job checks in too, and Check-in stays the one primary', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true, checksIn: true })).toEqual([
+      { opens: 'checkIn', kind: 'primary' },
+      { opens: 'floor', kind: 'secondary' },
+    ]);
+  });
+
+  it('comes before Who’s here, which is then secondary', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true, whosHere: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
   });
 });
