@@ -8,8 +8,8 @@ import {
   type ShiftClockCard as ClockCard,
 } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
-import { router } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,9 +109,11 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
   const { account } = useSignedIn();
   const { seen, again } = useMyNight(eventId);
 
-  useEffect(() => {
-    if (seen.kind === 'gone') onBack();
-  }, [seen.kind, onBack]);
+  useFocusEffect(
+    useCallback(() => {
+      if (seen.kind === 'gone') onBack();
+    }, [seen.kind, onBack]),
+  );
 
   useReadOut(
     seen.kind === 'shown' && seen.updated != null
