@@ -53,7 +53,6 @@ export type Panel =
 export const RW = {
   title: 'Staff',
   sub: 'Who works the event, where they work, and what each station serves.',
-  tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   roster: 'Roster',
   add: 'Add a person',
   empty: 'Nobody on the staff yet',
