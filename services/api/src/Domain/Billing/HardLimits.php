@@ -75,7 +75,7 @@ final readonly class HardLimits implements HardLimitsInterface
             return;
         }
 
-        $this->requireRoom($event->getOrganisation(), $this->guestRepository->countPeople($event), $adding, 'guest.');
+        $this->requireRoom($event->getOrganisation(), $this->guestRepository->countPeople($event), $adding, 'guest.capacity_reached', 'guest.plan_limit');
     }
 
     public function requireRoomForCopy(Organisation $organisation, int $people): void
@@ -84,7 +84,7 @@ final readonly class HardLimits implements HardLimitsInterface
             return;
         }
 
-        $this->requireRoom($organisation, 0, $people, 'event.copy_');
+        $this->requireRoom($organisation, 0, $people, 'event.copy_capacity_reached', 'event.copy_plan_limit');
     }
 
     public function requireSeatToInvite(Organisation $organisation): void
@@ -126,12 +126,12 @@ final readonly class HardLimits implements HardLimitsInterface
     }
 
     /** The ceiling first: no plan lifts it, so offering Change plan for it would lift nothing. */
-    private function requireRoom(Organisation $organisation, int $people, int $adding, string $keys): void
+    private function requireRoom(Organisation $organisation, int $people, int $adding, string $overCeiling, string $overPlan): void
     {
         if ($people + $adding > self::EVENT_CAPACITY) {
             throw new ApiException(
                 ErrorCode::EventCapacityReached,
-                $this->translator->trans($keys . 'capacity_reached', ['ceiling' => self::EVENT_CAPACITY, 'count' => $adding]),
+                $this->translator->trans($overCeiling, ['ceiling' => self::EVENT_CAPACITY, 'count' => $adding]),
                 members: ['ceiling' => self::EVENT_CAPACITY, 'onEvent' => $people, 'adding' => $adding],
             );
         }
@@ -142,7 +142,7 @@ final readonly class HardLimits implements HardLimitsInterface
             return;
         }
 
-        throw $this->reached(CatalogueLimit::GuestsPerEvent, $plan, $people, $allowance, $keys . 'plan_limit', ['adding' => $adding]);
+        throw $this->reached(CatalogueLimit::GuestsPerEvent, $plan, $people, $allowance, $overPlan, ['adding' => $adding]);
     }
 
     /** Taken under a lock on the organisation, held to the end of the caller's transaction. */

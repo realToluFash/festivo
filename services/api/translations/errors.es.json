@@ -35,7 +35,7 @@
     "payer_limit": "Un evento puede tener hasta 20 pagadores.",
     "payer_covers_costs": "Este pagador cubre costes. Elija primero quién los paga.",
     "plan_limit_reached": "Se ha alcanzado el límite del plan.",
-    "event_capacity_reached": "An event can have up to 10,000 people.",
+    "event_capacity_reached": "Un evento puede tener hasta 10.000 personas.",
     "seating_plan_exists": "Este evento ya tiene un plano de mesas.",
     "seating_section_limit": "Un plano puede tener hasta 30 zonas. Elimine una para añadir otra.",
     "guest_already_listed": "Ese nombre ya está en la lista.",
