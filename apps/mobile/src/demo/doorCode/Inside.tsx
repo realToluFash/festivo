@@ -141,6 +141,7 @@ export function InsideEvent({
   night,
   station,
   floor,
+  band,
   onAt,
   onSignOut,
   onAccount,
@@ -155,6 +156,8 @@ export function InsideEvent({
   night?: NightRow;
   station?: StationRow;
   floor?: FloorRow;
+  /** The Offline band, across the column above the event's card, where the product's frame draws it (sc-97945). */
+  band?: ReactNode;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -247,6 +250,7 @@ export function InsideEvent({
         />
         <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
           <ScrollView contentContainerStyle={styles.pane} showsVerticalScrollIndicator={false}>
+            {band != null && <View style={styles.bandSide}>{band}</View>}
             {page}
           </ScrollView>
         </View>
@@ -274,6 +278,7 @@ export function InsideEvent({
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {band != null && <View style={phone ? styles.bandPhone : styles.bandUpright}>{band}</View>}
         {page}
       </ScrollView>
       {!phone && (
@@ -753,6 +758,9 @@ function Capsule({
   );
 }
 
+const PANE_TOP = 26;
+const PANE_SIDE = 30;
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
   chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
@@ -765,7 +773,15 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     overflow: 'hidden',
   },
-  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl, gap: 18 },
+  pane: {
+    paddingTop: PANE_TOP,
+    paddingHorizontal: PANE_SIDE,
+    paddingBottom: tokens.space6xl,
+    gap: 18,
+  },
+  bandSide: { marginTop: -PANE_TOP, marginHorizontal: -PANE_SIDE },
+  bandPhone: { marginTop: -tokens.spaceLg, marginHorizontal: -tokens.spaceXxl },
+  bandUpright: { marginHorizontal: -tokens.space5xl },
   logo: { height: 30, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   sideCard: {
     flexDirection: 'row',
