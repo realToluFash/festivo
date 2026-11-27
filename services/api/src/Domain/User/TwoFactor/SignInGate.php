@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor;
 
+use App\Domain\Organisation\SignInRules\BreakGlass;
 use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
@@ -42,6 +43,7 @@ final readonly class SignInGate
         private TokenIssuer $tokenIssuer,
         private KnownDevices $knownDevices,
         private PhoneSignIns $phoneSignIns,
+        private BreakGlass $breakGlass,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -54,7 +56,7 @@ final readonly class SignInGate
             $this->link($user, $link);
             $this->signedInByPhoneCode($user, $byPhoneCode);
 
-            return $this->issue($user, $request, $link, null !== $byPhoneCode && $endsWithGrants);
+            return $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $endsWithGrants);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
@@ -97,7 +99,7 @@ final readonly class SignInGate
         $byPhoneCode = $challenge->getPhoneSignIn();
         $this->signedInByPhoneCode($user, $byPhoneCode);
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, null !== $byPhoneCode && $inBrowser), $linked);
+        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $inBrowser), $linked);
     }
 
     private function open(#[SensitiveParameter] string $token): TwoFactorChallenge
@@ -130,9 +132,10 @@ final readonly class SignInGate
         }
     }
 
-    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $endsWithGrants): IssuedTokens
+    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $byPhoneCode, bool $endsWithGrants): IssuedTokens
     {
         $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider, $endsWithGrants);
+        $this->breakGlass->signedIn($user, $link?->provider, $byPhoneCode, $request);
         $this->entityManager->flush();
 
         if (null !== $request) {

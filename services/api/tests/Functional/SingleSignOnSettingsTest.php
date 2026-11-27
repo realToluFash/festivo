@@ -9,6 +9,7 @@ use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup;
 use App\Domain\Organisation\Plan\PlanChanger;
+use App\Domain\Organisation\SignInRules\BreakGlass;
 use App\Domain\Organisation\SingleSignOn\ScriptedProviderDocuments;
 use App\Domain\Organisation\SingleSignOn\SingleSignOnSettings;
 use App\Domain\User\UserRegistrar;
@@ -28,6 +29,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -217,6 +219,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         [$owner, $organisation] = $this->proved();
         $this->join($organisation, $this->member('julien@ire.events', 'Julien'), SeededRole::Admin);
         $this->member('stranger@ire.events', 'No Membership');
+        $this->join($organisation, $this->member('tobi@elsewhere.example', 'Tobi'), SeededRole::Owner);
         $this->join($organisation, $this->member('kemi@elsewhere.example', 'Kemi'), SeededRole::Admin);
         $this->saveGoogle($owner, $organisation);
         $this->testWorked($organisation, $owner);
@@ -234,8 +237,19 @@ final class SingleSignOnSettingsTest extends ApiTestCase
             self::assertSame('Ìrè Events signs you in through Google Workspace.', $problem['detail']);
         }
 
-        self::assertSame(200, $this->passwordSignIn('folake@ire.events'), 'an Owner keeps their own sign-in');
         self::assertSame(200, $this->passwordSignIn('kemi@elsewhere.example'), 'an address elsewhere is untouched');
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => BreakGlass::USED]), 'nobody has gone around anything yet');
+
+        self::assertSame(200, $this->passwordSignIn('folake@ire.events'), 'an Owner keeps their own sign-in');
+        self::assertSame(['signedInWith' => [null, 'password']], $this->audited(BreakGlass::USED, $organisation)->getChanges());
+        self::assertSame(
+            [['sign_in_rules.notice', 1]],
+            Vec\map(
+                self::service(Connection::class)->fetchAllAssociative("SELECT type, jsonb_array_length((audience::jsonb) -> 'only') AS told FROM scheduled_notifications WHERE payload::jsonb ->> 'email' = 'break_glass'"),
+                static fn (array $row): array => [Type\string()->coerce($row['type']), Type\int()->coerce($row['told'])],
+            ),
+            'the other Owner is told, not the one who signed in',
+        );
 
         foreach (['julien@ire.events', 'newcomer@ire.events'] as $address) {
             $this->send('POST', '/api/auth/oauth/google', ['idToken' => $this->googleToken('subject-' . $address, $address)]);

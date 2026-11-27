@@ -44,6 +44,22 @@ final readonly class SignInRulesMailer
         return new RenderedNotification($this->userMailer->line('signInRules.changed.subject', $locale, $named), Str\join($paragraphs, "\n\n"));
     }
 
+    /** To another Owner: who signed in around the identity provider, how and when. */
+    public function breakGlass(User $owner, string $locale, string $organisation, string $by, string $provider, string $method, DateTimeImmutable $at): RenderedNotification
+    {
+        $named = ['{organisation}' => $organisation, '{name}' => $by, '{provider}' => $provider];
+        $link = Str\trim_right($this->webOrigin, '/') . '/app/settings/data-and-control/audit-log';
+
+        return new RenderedNotification($this->userMailer->line('signInRules.breakGlass.subject', $locale, $named), Str\join([
+            $this->userMailer->line('signInRules.breakGlass.body', $locale, ['organisation' => $organisation, 'name' => $by, 'provider' => $provider, 'method' => $method, 'when' => $this->userMailer->moment($at, $owner, $locale)]),
+            $this->userMailer->line('signInRules.breakGlass.explain', $locale, $named),
+            $this->userMailer->line('signInRules.breakGlass.unexpected', $locale, $named),
+            $this->userMailer->line('signInRules.breakGlass.open', $locale, ['{link}' => $link]),
+            '--',
+            $this->userMailer->line('signInRules.breakGlass.footer', $locale, $named),
+        ], "\n\n"));
+    }
+
     /** A member without two-factor, told the moment it is required of them, with the instant in their zone (sc-609). */
     public function twoFactorDue(User $member, string $locale, string $address, string $organisation, DateTimeImmutable $deadline): RenderedNotification
     {

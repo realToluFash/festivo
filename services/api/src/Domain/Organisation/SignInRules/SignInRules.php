@@ -10,6 +10,7 @@ use App\Domain\User\TwoFactor\SecondFactors;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\ProviderIdentity;
+use App\Entity\SsoProvider;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Access\Grants;
@@ -60,20 +61,10 @@ final readonly class SignInRules
     /** Any address at the domain, account or not; Owners keep their own sign-in, so a broken provider can't lock them out. */
     public function singleSignOnRefusal(string $address, ?User $user): ?ApiException
     {
-        $domain = Str\lowercase(Str\after_last($address, '@') ?? '');
-        $organisation = $this->emailDomainRepository->findProvedOf($domain)?->getOrganisation();
+        $provider = $this->requiredProviderAt($address);
+        $organisation = $provider?->getOrganisation();
 
-        if (null === $organisation || null === $organisation->getSsoRequiredSince()) {
-            return null;
-        }
-
-        if (null !== $user && true === $this->membershipRepository->findActive($user, $organisation->getId())?->getRole()->isOwner()) {
-            return null;
-        }
-
-        $provider = $this->ssoProviderRepository->findLive($organisation);
-
-        if (null === $provider) {
+        if (null === $provider || null === $organisation || (null !== $user && $this->isOwnerIn($user, $organisation))) {
             return null;
         }
 
@@ -88,6 +79,15 @@ final readonly class SignInRules
             [...$named, 'email' => $address],
             ['{organisation}' => $named['organisation'], '{provider}' => $named['provider']],
         );
+    }
+
+    /** The provider an Owner's sign-in goes around: required sign-on covers their address, and only being an Owner lets them past it. */
+    public function singleSignOnBypassedBy(User $user): ?SsoProvider
+    {
+        $address = $user->getPrimaryEmailAddress()?->getAddress();
+        $provider = null === $address ? null : $this->requiredProviderAt($address);
+
+        return null !== $provider && $this->isOwnerIn($user, $provider->getOrganisation()) ? $provider : null;
     }
 
     public function refuseUnderSingleSignOn(?string $address, ?User $user): void
@@ -267,6 +267,23 @@ final readonly class SignInRules
         }
 
         return $limit;
+    }
+
+    private function requiredProviderAt(string $address): ?SsoProvider
+    {
+        $domain = Str\lowercase(Str\after_last($address, '@') ?? '');
+        $organisation = $this->emailDomainRepository->findProvedOf($domain)?->getOrganisation();
+
+        if (null === $organisation || null === $organisation->getSsoRequiredSince()) {
+            return null;
+        }
+
+        return $this->ssoProviderRepository->findLive($organisation);
+    }
+
+    private function isOwnerIn(User $user, Organisation $organisation): bool
+    {
+        return true === $this->membershipRepository->findActive($user, $organisation->getId())?->getRole()->isOwner();
     }
 
     public function isLinked(User $user): bool

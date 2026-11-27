@@ -294,6 +294,10 @@
     "audit.change": "{field}: {before} → {after}",
     "audit.value.on": "On",
     "audit.value.off": "Off",
+    "audit.value.password": "Password",
+    "audit.value.google": "Google",
+    "audit.value.apple": "Apple",
+    "audit.value.phone_code": "Text message code",
     "audit.value.none": "None",
     "audit.value.lead": "Lead",
     "audit.value.can_edit": "Can edit",
@@ -588,8 +592,10 @@
     "audit.what.sso.required_on": "Switched required sign-on on",
     "audit.what.sso.required_off": "Switched required sign-on off",
     "audit.what.sso.removed": "Removed single sign-on",
+    "audit.what.sso.bypassed": "Signed in without single sign-on",
     "audit.field.provider": "Provider",
     "audit.field.sso": "Single sign-on",
     "audit.field.required": "Required sign-on",
-    "audit.field.said": "The provider said"
+    "audit.field.said": "The provider said",
+    "audit.field.signedInWith": "Signed in with"
 }

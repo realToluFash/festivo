@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Recovery;
 
+use App\Domain\Organisation\SignInRules\BreakGlass;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\SecondFactorAnswer;
@@ -49,6 +50,7 @@ final readonly class PasswordRecovery
         private Passkeys $passkeys,
         private SecondFactorCheck $secondFactorCheck,
         private SignInRules $signInRules,
+        private BreakGlass $breakGlass,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -151,6 +153,7 @@ final readonly class PasswordRecovery
         }
 
         $tokens = $this->tokenIssuer->issueFor($user, $request);
+        $this->breakGlass->signedIn($user, null, false, $request);
         $this->entityManager->flush();
 
         if (null !== $request) {

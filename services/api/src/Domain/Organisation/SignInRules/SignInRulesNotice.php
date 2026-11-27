@@ -34,6 +34,9 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
     /** Only to those without two-factor, when it was required alongside another change. */
     public const string DUE = 'due';
 
+    /** To the other Owners, when one signs in around required sign-on (sc-610). */
+    public const string BREAK_GLASS = 'break_glass';
+
     public function __construct(
         private SignInRulesMailer $signInRulesMailer,
         private SignInRules $signInRules,
@@ -57,6 +60,16 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
             'changes' => $changes,
             'at' => $at->format(\DATE_ATOM),
             'asked' => $asked,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function breakGlass(Organisation $organisation, User $by, string $provider, string $method, DateTimeImmutable $at, ?string $asked): array
+    {
+        return [
+            ...self::payload(self::BREAK_GLASS, $organisation, $by, [], $at, $asked),
+            'provider' => $provider,
+            'method' => $method,
         ];
     }
 
@@ -141,6 +154,19 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
         $notice = self::shape($payloads[0]);
         $member = $this->entityManager->find(User::class, $recipient->id) ?? throw new LogicException('A recipient is an account.');
         $at = new DateTimeImmutable($notice['at']);
+
+        if (self::BREAK_GLASS === $notice['email']) {
+            return $this->signInRulesMailer->breakGlass(
+                $member,
+                $recipient->locale,
+                $notice['organisation'],
+                $notice['by']['name'],
+                $notice['provider'] ?? '',
+                $notice['method'] ?? '',
+                $at,
+            );
+        }
+
         $changes = $notice['changes'];
         $twoFactorRequired = true === ($changes['everyoneNeedsTwoFactor'][1] ?? null);
         $toldOnce = $twoFactorRequired && ['everyoneNeedsTwoFactor'] === Vec\keys($changes);
@@ -171,7 +197,7 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
     /**
      * @param array<string, mixed> $payload
      *
-     * @return array{email: string, organisation: string, organisationId: string, by: array{id: string, name: string}, changes: array<string, array{0: mixed, 1: mixed}>, at: string, asked: ?string}
+     * @return array{email: string, organisation: string, organisationId: string, by: array{id: string, name: string}, changes: array<string, array{0: mixed, 1: mixed}>, at: string, asked: ?string, provider?: string, method?: string}
      */
     private static function shape(array $payload): array
     {
@@ -183,6 +209,8 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
             'changes' => Type\dict(Type\string(), Type\shape([0 => Type\mixed(), 1 => Type\mixed()])),
             'at' => Type\string(),
             'asked' => Type\nullable(Type\string()),
+            'provider' => Type\optional(Type\string()),
+            'method' => Type\optional(Type\string()),
         ])->coerce($payload);
     }
 }
