@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "37275ed16261363b8d4051c58fcc7aab",
+    "content-hash": "c251af90e8eb88ee11ed17897e3e9ea8",
     "packages": [
         {
             "name": "anthropic-ai/sdk",
@@ -3047,25 +3047,26 @@
             "time": "2026-04-13T11:55:37+00:00"
         },
         {
-            "name": "giggsey/libphonenumber-for-php-lite",
-            "version": "9.0.41",
+            "name": "giggsey/libphonenumber-for-php",
+            "version": "9.0.44",
             "source": {
                 "type": "git",
-                "url": "https://github.com/giggsey/libphonenumber-for-php-lite.git",
-                "reference": "6ffb41a259c950d6f4df5596e32917f631052910"
+                "url": "https://github.com/giggsey/libphonenumber-for-php.git",
+                "reference": "fd4063b9954c6ac452832573ab41d91c49ac799c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/giggsey/libphonenumber-for-php-lite/zipball/6ffb41a259c950d6f4df5596e32917f631052910",
-                "reference": "6ffb41a259c950d6f4df5596e32917f631052910",
+                "url": "https://api.github.com/repos/giggsey/libphonenumber-for-php/zipball/fd4063b9954c6ac452832573ab41d91c49ac799c",
+                "reference": "fd4063b9954c6ac452832573ab41d91c49ac799c",
                 "shasum": ""
             },
             "require": {
+                "giggsey/locale": "^2.10",
                 "php": "^8.1",
-                "symfony/polyfill-mbstring": "^1.17"
+                "symfony/polyfill-mbstring": "^1.31"
             },
-            "conflict": {
-                "giggsey/libphonenumber-for-php": "*"
+            "replace": {
+                "giggsey/libphonenumber-for-php-lite": "self.version"
             },
             "require-dev": {
                 "ext-dom": "*",
@@ -3082,9 +3083,6 @@
                 "symfony/console": "^6.4",
                 "symfony/filesystem": "^6.4",
                 "symfony/process": "^6.4"
-            },
-            "suggest": {
-                "giggsey/libphonenumber-for-php": "Use libphonenumber-for-php for geocoding, carriers, timezones and matching"
             },
             "type": "library",
             "extra": {
@@ -3108,8 +3106,8 @@
                     "homepage": "https://giggsey.com/"
                 }
             ],
-            "description": "A lite version of giggsey/libphonenumber-for-php, which is a PHP Port of Google's libphonenumber",
-            "homepage": "https://github.com/giggsey/libphonenumber-for-php-lite",
+            "description": "A library for parsing, formatting, storing and validating international phone numbers, a PHP Port of Google's libphonenumber.",
+            "homepage": "https://github.com/giggsey/libphonenumber-for-php",
             "keywords": [
                 "geocoding",
                 "geolocation",
@@ -3119,10 +3117,68 @@
                 "validation"
             ],
             "support": {
-                "issues": "https://github.com/giggsey/libphonenumber-for-php-lite/issues",
-                "source": "https://github.com/giggsey/libphonenumber-for-php-lite"
+                "issues": "https://github.com/giggsey/libphonenumber-for-php/issues",
+                "source": "https://github.com/giggsey/libphonenumber-for-php"
             },
-            "time": "2026-10-08T08:51:54+00:00"
+            "time": "2026-11-23T08:41:24+00:00"
+        },
+        {
+            "name": "giggsey/locale",
+            "version": "2.10.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/giggsey/Locale.git",
+                "reference": "c13d22635eac0e51d1dcd7f09b99fd7475209a51"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/giggsey/Locale/zipball/c13d22635eac0e51d1dcd7f09b99fd7475209a51",
+                "reference": "c13d22635eac0e51d1dcd7f09b99fd7475209a51",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "ext-json": "*",
+                "friendsofphp/php-cs-fixer": "^3.66",
+                "infection/infection": "^0.29|^0.32.0",
+                "php-coveralls/php-coveralls": "^2.7",
+                "phpstan/extension-installer": "^1.4.3",
+                "phpstan/phpstan": "^2.1.7",
+                "phpstan/phpstan-deprecation-rules": "^2.0.1",
+                "phpstan/phpstan-phpunit": "^2.0.4",
+                "phpstan/phpstan-strict-rules": "^2.0.3",
+                "phpunit/phpunit": "^10.5.45",
+                "symfony/console": "^6.4",
+                "symfony/filesystem": "^6.4",
+                "symfony/finder": "^6.4",
+                "symfony/process": "^6.4",
+                "symfony/var-exporter": "^6.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Giggsey\\Locale\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Joshua Gigg",
+                    "email": "giggsey@gmail.com",
+                    "homepage": "https://giggsey.com/"
+                }
+            ],
+            "description": "Locale functions required by libphonenumber-for-php",
+            "support": {
+                "issues": "https://github.com/giggsey/Locale/issues",
+                "source": "https://github.com/giggsey/Locale/tree/2.10.0"
+            },
+            "time": "2026-10-22T19:31:33+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
