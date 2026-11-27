@@ -492,8 +492,15 @@ def side_pr(story, pr):
     """A developer's pull request on a linguist's ticket, such as a test that has to take the
     new wording. The lead reviews it and its developer merges it, while the ticket keeps the
     state the linguist gives it."""
-    return linguists(story) and not (pr.get("branch") or "").startswith("l10n/") \
-        and not design_pr(pr)
+    return ops_pr(story, pr) or linguists(story) \
+        and not (pr.get("branch") or "").startswith("l10n/") and not design_pr(pr)
+
+
+def ops_pr(story, pr):
+    """Ops's pull request, from an ops/ branch, on a story another role builds, such as a
+    tester's check put in the repository. The lead reviews it and ops answers its threads
+    and merges it, while the story keeps its state."""
+    return R.is_ops_branch(pr.get("branch")) and R.builder_of(story["labels"]) != "ops"
 
 
 def design_pr(pr):
@@ -609,7 +616,8 @@ def developer_items(stories, prs):
                              "close it, saying why", f"{role}:close:#{number}")
             continue
         if pr["state"] == "merged":
-            if story["state"] in R.MERGING and not linguists(story) and not design:
+            if story["state"] in R.MERGING and not linguists(story) and not design \
+                    and not side:
                 if covered and verdict["verdict"] == "pass":
                     if story["id"] in building \
                             or any(not t["done"] for t in story.get("tasks") or []):
@@ -643,7 +651,7 @@ def developer_items(stories, prs):
         elif pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] in ("In Progress", "Failed Code Review") \
-                and not covered and not linguists(story) and not design:
+                and not covered and not linguists(story) and not design and not side:
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
         elif pr["checks"] == "green" and (side or follow or design
@@ -769,6 +777,8 @@ def machine_items(checks):
 def builder(story, pr):
     if design_pr(pr):
         return "ux"
+    if ops_pr(story, pr):
+        return "ops"
     return "l10n" if linguists(story) and not side_pr(story, pr) else R.builder_of(story["labels"])
 
 

@@ -9,11 +9,13 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BELL_BOARDS } from '../../src/demo/bell/BellBoards.ts';
 import { USAGE_WARNING_BOARDS } from '../../src/demo/usageWarning/UsageWarningBoards.ts';
+import { LIMIT_BOARDS } from '../../src/demo/limitReached/LimitReachedBoards.ts';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
+import { NARROW_BARS_BOARDS } from '../../src/demo/narrowBars/NarrowBarsBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
@@ -73,6 +75,7 @@ import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { KITCHEN_WAY_IN_BOARDS } from '../../src/demo/station/wayInBoards.ts';
+import { FLOOR_WAY_IN_BOARDS } from '../../src/demo/floor/floorWayInBoards.ts';
 import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
@@ -155,6 +158,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: '37 · Billing · A plan’s hard limit, or the ceiling, refused (sc-3930)',
+    boards: LIMIT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Bold text · the weight map',
@@ -287,6 +294,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
     boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'The phone’s tab bars on a 320dp Android phone, every word whole (sc-99214)',
+    boards: NARROW_BARS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Organisation pill · when the words do not fit (sc-38149)',
@@ -2388,6 +2403,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Draft created. Opening it.',
         href: '/demo/events/evt-wed-4?state=duplicateCreated',
       },
+      {
+        title: 'Duplicate · guest list ticked',
+        what: 'Also copy the guest list, and the lists it changes',
+        href: '/demo/events/evt-wed-4?state=duplicateGuests',
+      },
+      {
+        title: 'Duplicate · guest list copied',
+        what: 'Draft created. 128 guests copied.',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsCreated',
+      },
+      {
+        title: 'Duplicate · guest list over the plan',
+        what: 'A host without billing.manage: no in-app plan line',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefused',
+      },
+      {
+        title: 'Duplicate · over the plan, as an owner',
+        what: 'With billing.manage: the plan cannot be changed in the app',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedOwner',
+      },
+      {
+        title: 'Duplicate · guest list over the ceiling',
+        what: 'An owner, yet no plan line: no plan lifts 10,000 people',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedCeiling',
+      },
+      {
+        title: 'Duplicate · guest list, not created',
+        what: 'The start and the tick are kept',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsNotCreated',
+      },
+      {
+        title: 'Duplicate · no guests.manage',
+        what: 'No box: the copy is set up only',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsHidden',
+      },
+      {
+        title: 'Duplicate · small list, ticked copy',
+        what: 'Tick and Create draft: 12 guests copied',
+        href: '/demo/events/evt-draft-4?state=duplicate',
+      },
       { title: 'Mute · on', what: 'Just for you', href: '/demo/events/evt-wed-4?state=muted' },
       {
         title: 'Mute · not loaded',
@@ -2828,6 +2883,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382), and a service level’s Overview (sc-96279) · phone, tablet portrait and landscape',
     boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · the way in to Floor, from Overview and Your night (sc-98893); Open Floor is on Your night’s section states above · phone, tablet portrait and landscape',
+    boards: FLOOR_WAY_IN_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

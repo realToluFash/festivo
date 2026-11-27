@@ -38,6 +38,7 @@ import { useStartingCountry } from './useStartingCountry.ts';
 import { EventCrumb } from './EventOverview.tsx';
 import { StaffTabs } from './StaffTabs.tsx';
 import { useBriefing } from './Briefing.tsx';
+import { removalLine } from './notices.ts';
 import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
@@ -83,6 +84,7 @@ type Field = keyof Problems;
 const LINK_KEYS: Record<StaffLink, string> = {
   none: 'roster.linkNone',
   copied: 'roster.linkCopied',
+  shared: 'roster.linkShared',
   sent: 'roster.linkSent',
   opened: 'roster.linkOpened',
   no_mobile: 'roster.linkNoMobile',
@@ -92,15 +94,16 @@ const LINK_KEYS: Record<StaffLink, string> = {
 const LINK_MARKS: Record<StaffLink, string> = {
   none: 'is-none',
   copied: 'is-copied',
+  shared: 'is-shared',
   sent: 'is-sent',
   opened: 'is-opened',
   no_mobile: 'is-no-mobile',
   erased: 'is-erased',
 };
 
-/** Copied: given out, and not yet marked as sent. */
+/** Copied or Shared: given out, and not yet marked as sent. */
 function unmarked(link: StaffLink): boolean {
-  return link === 'copied';
+  return link === 'copied' || link === 'shared';
 }
 
 function draftOf(entry: StaffEntry | null, country: string): Draft {
@@ -142,7 +145,13 @@ export function StaffRefused({ event }: { event: OrganisationEvent }) {
 }
 
 /** /app/events/:id/staff (sc-3906): the Roster on the event's Staff page, as its demo draws it at a desk. */
-export function RosterArea({ event }: { event: OrganisationEvent }) {
+export function RosterArea({
+  event,
+  onChange,
+}: {
+  event: OrganisationEvent;
+  onChange: (event: OrganisationEvent, tag: string) => void;
+}) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -237,6 +246,13 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
             onStaff={(staff) => setLoad({ kind: 'loaded', plan: { ...load.plan, staff } })}
             onPlan={(plan) => setLoad({ kind: 'loaded', plan })}
             reload={() => setAttempt((n) => n + 1)}
+            onConcluded={() => {
+              setAttempt((n) => n + 1);
+              void api.taggedEvent(event.id).then(
+                (latest) => onChange(latest.event, latest.tag),
+                () => undefined,
+              );
+            }}
           />
         )}
       </div>
@@ -250,12 +266,15 @@ function Roster({
   onStaff,
   onPlan,
   reload,
+  onConcluded,
 }: {
   event: OrganisationEvent;
   plan: StaffPlan;
   onStaff: (staff: StaffEntry[]) => void;
   onPlan: (plan: StaffPlan) => void;
   reload: () => void;
+  /** The API said the event is over on a page that did not know: the event and the roster are read again, so the page shows the Finished state. */
+  onConcluded: () => void;
 }) {
   const { t } = useTranslation();
   const { staff } = plan;
@@ -300,6 +319,7 @@ function Roster({
     finished,
     onEntry: (entry) => relinked(entry),
     onRules: (rules) => onPlan({ ...plan, rules }),
+    reload: onConcluded,
     focus: (id) => {
       focusAfter.current = id;
     },
@@ -630,7 +650,9 @@ function Roster({
                         <th scope="col">{t('roster.station')}</th>
                         <th scope="col">{t('roster.shift')}</th>
                         <th scope="col">{t('briefing.card')}</th>
-                        <th scope="col">{t('roster.link')}</th>
+                        <th scope="col" className="rs-link-col">
+                          {t('roster.link')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -712,6 +734,7 @@ function Roster({
                 {panel.kind === 'remove' && opened != null && (
                   <RemoveAsk
                     entry={opened}
+                    told={removalLine(opened, finished, t)}
                     times={times}
                     busy={busy}
                     failed={failed}
@@ -865,6 +888,8 @@ function trailLine(entry: StaffEntry, times: StaffTimes, t: TFunction): string |
   switch (entry.link) {
     case 'copied':
       return t('roster.trailCopied', { name, time });
+    case 'shared':
+      return t('roster.trailShared', { name, time });
     case 'sent':
       return t('roster.trailSent', { name, time });
     case 'opened':
@@ -1055,9 +1080,11 @@ function Details({
     ? null
     : finished
       ? t('roster.nextErasing')
-      : unmarked(entry.link)
+      : entry.link === 'copied'
         ? t('roster.nextCopied')
-        : null;
+        : entry.link === 'shared'
+          ? t('roster.nextShared')
+          : null;
   const trail = trailLine(entry, times, t);
 
   return (
@@ -1174,6 +1201,7 @@ function Details({
 
 function RemoveAsk({
   entry,
+  told,
   times,
   busy,
   failed,
@@ -1181,6 +1209,8 @@ function RemoveAsk({
   onRemove,
 }: {
   entry: StaffEntry;
+  /** The added line once a push will tell them (sc-4333). */
+  told: string | null;
   times: StaffTimes;
   busy: boolean;
   failed: string | null;
@@ -1202,6 +1232,7 @@ function RemoveAsk({
         {failed != null && <Failed words={failed} />}
         <ShiftList entry={entry} times={times} ask />
         <p className="mn-quiet">{t('roster.stopsWorking')}</p>
+        {told != null && <p className="mn-quiet">{told}</p>}
       </div>
       <div className="mn-panel-foot">
         <div className="mn-panel-acts">

@@ -1,7 +1,7 @@
-import type { Milestone } from '@soirely/domain';
+import { type Milestone, isYours } from '@soirely/domain';
 
 import { sayIn } from '../today.ts';
-import { dueWords, isYours } from '../../kit/todayNeeds.ts';
+import { dueWords } from '../../kit/todayNeeds.ts';
 import { demoT } from '../today/needsYou.ts';
 import type { EventDemoState } from './EventsModel.ts';
 

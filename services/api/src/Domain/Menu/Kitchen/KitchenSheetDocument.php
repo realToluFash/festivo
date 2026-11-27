@@ -24,6 +24,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * @phpstan-import-type SheetStation from KitchenSheet
  * @phpstan-import-type Allergic from KitchenSheet
  * @phpstan-import-type Cell from KitchenSheet
+ * @phpstan-import-type Since from KitchenSinceCopy
+ * @phpstan-import-type Line from KitchenChanges
  */
 final readonly class KitchenSheetDocument
 {
@@ -59,6 +61,8 @@ final readonly class KitchenSheetDocument
         .station li { padding: 2pt 0; border-bottom: 1px solid #000; }
         .station li.chefs { font-weight: 700; }
         .station .n { float: right; width: auto; }
+        .changes { break-after: page; }
+        .changes li { margin: 0 0 4pt; overflow-wrap: anywhere; }
         .sep { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
         CSS;
 
@@ -67,20 +71,23 @@ final readonly class KitchenSheetDocument
     ) {
     }
 
-    /** @param Sheet $sheet */
-    public function html(Event $event, array $sheet, string $locale): string
+    /**
+     * @param Sheet  $sheet
+     * @param ?Since $changes the page of changes that comes first (sc-30692), under the names rule it was read with
+     */
+    public function html(Event $event, array $sheet, string $locale, ?array $changes = null): string
     {
         $title = $this->word('title', $locale);
         $courses = $sheet['courses'];
 
         return Str\format(
-            '<!doctype html><html lang="%s"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head><body>%s%s%s%s</body></html>',
+            '<!doctype html><html lang="%s"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head><body>%s%s%s%s%s</body></html>',
             self::e($locale),
             self::e($title . ' · ' . $event->getName()),
             Str\format(self::STYLE, $sheet['paper']->pageSize(), self::cssString($this->word('page', $locale, ['n' => "\u{1}", 'm' => "\u{2}"]))),
+            '<div class="foot">' . self::e($this->word('health', $locale)) . '</div>' . (null === $changes ? '' : $this->changes($event, $changes, $locale)),
             Str\format(
-                '<div class="foot">%s</div><header class="head"><h1>%s</h1><p>%s</p><p>%s</p><p>%s</p><p>%s</p></header>',
-                self::e($this->word('health', $locale)),
+                '<header class="head"><h1>%s</h1><p>%s</p><p>%s</p><p>%s</p><p>%s</p></header>',
                 self::e($title),
                 self::e($event->getName()),
                 self::e($this->day($event->getStartsAt(), $event->getTimeZone(), $locale)),
@@ -95,6 +102,71 @@ final readonly class KitchenSheetDocument
             $this->diets($sheet, $locale),
             Str\join(Vec\map($courses, fn (array $course): string => $this->course($course, $locale)), ''),
         );
+    }
+
+    /** @param Since $changes */
+    private function changes(Event $event, array $changes, string $locale): string
+    {
+        $slots = $this->moment($changes['since'], $event->getTimeZone(), $locale);
+        $head = '<section class="changes"><h1>' . self::e($this->word('changes.since_page', $locale, $slots)) . '</h1>';
+
+        return [] === $changes['lines']
+            ? $head . $this->line($this->word('changes.none', $locale, $slots)) . '</section>'
+            : $head . '<ul>' . Str\join(Vec\map($changes['lines'], fn (array $line): string => '<li>' . self::e($this->change($line, $locale)) . '</li>'), '') . '</ul></section>';
+    }
+
+    /** @param Line $line each kind of change one whole key with its slots */
+    private function change(array $line, string $locale): string
+    {
+        $family = Str\starts_with($line['kind'], 'allergy') ? 'allergy' : 'diet';
+        $key = Str\lowercase(Str\replace_every($line['kind'], ['New' => '_new', 'Gone' => '_gone', 'More' => '_more', 'Fewer' => '_fewer']));
+
+        if (null !== $line['code']) {
+            $name = 'allergy' === $family ? $this->allergen($line['code'], null, $locale) : $this->diet($line['code'], null, $locale);
+
+            return null === $line['who']
+                ? $this->word('changes.' . $key . '_count', $locale, [$family => $name, 'count' => $line['count']])
+                : $this->word('changes.' . $key, $locale, [$family => $name, 'name' => $line['who']]);
+        }
+
+        if (null === $line['item']) {
+            return $this->word('changes.' . $key, $locale, ['count' => $line['count']]);
+        }
+
+        $item = $line['item'];
+        $name = match (true) {
+            null !== $item['state'] => $this->word(match ($item['state']) {
+                'needsHost' => 'needs_host',
+                'menuChanged' => 'menu_changed',
+                'notYet' => 'cell_notyet',
+                'never' => 'cell_never',
+                default => $item['state'],
+            }, $locale),
+            null !== $item['parent'] => $this->word('changes.named', $locale, ['dish' => $item['parent'], 'name' => $item['name']]),
+            default => $item['name'],
+        };
+
+        return match ($line['kind']) {
+            'added' => $this->word('changes.added', $locale, ['dish' => $name, 'count' => $line['count']]),
+            'removed' => $this->word('changes.removed', $locale, ['dish' => $name, 'count' => $line['count']]),
+            'renamed' => $this->word('changes.renamed', $locale, ['old' => $name, 'new' => $line['to'] ?? '']),
+            default => $this->word('changes.count', $locale, ['dish' => $name, 'old' => $line['old'], 'new' => $line['count']]),
+        };
+    }
+
+    /** @return array{date: string, time: string} the copy's moment, in the reader's language, the event's zone and the 24-hour clock */
+    private function moment(string $at, string $zone, string $locale): array
+    {
+        $dates = SupportedLocales::dates($locale);
+        $moment = new DateTimeImmutable($at);
+        $timeZone = new DateTimeZone($zone);
+        $day = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timeZone, null, new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM');
+        $time = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timeZone, null, 'HH:mm');
+
+        return [
+            'date' => $day?->format($moment) ?: $moment->setTimezone($timeZone)->format('l j M'),
+            'time' => $time?->format($moment) ?: $moment->setTimezone($timeZone)->format('H:i'),
+        ];
     }
 
     /** @param Sheet $sheet */
@@ -266,13 +338,9 @@ final readonly class KitchenSheetDocument
     /** "Tuesday, Jun 8 · 19:42": the snapshot's day and its time on the 24-hour clock, in the event's time zone. */
     private function asOf(string $at, string $zone, string $locale): string
     {
-        $dates = SupportedLocales::dates($locale);
-        $moment = new DateTimeImmutable($at);
-        $timeZone = new DateTimeZone($zone);
-        $day = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timeZone, null, new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM');
-        $time = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timeZone, null, 'HH:mm');
+        ['date' => $date, 'time' => $time] = $this->moment($at, $zone, $locale);
 
-        return ($day?->format($moment) ?: $moment->setTimezone($timeZone)->format('l j M')) . ' · ' . ($time?->format($moment) ?: $moment->setTimezone($timeZone)->format('H:i'));
+        return $date . ' · ' . $time;
     }
 
     /** A translated line inside CSS `content`, its page numbers turned into counters. */

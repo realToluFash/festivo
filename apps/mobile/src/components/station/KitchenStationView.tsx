@@ -198,7 +198,9 @@ export function KitchenStationView({
     setKept(sent.left);
     if (sent.refused.length > 0) {
       setNotSent((was) => [...was, ...sent.refused.flatMap((one) => one.lines)]);
-      setUndoable((was) => withoutRefused(was, sent.refused));
+      setUndoable((was) =>
+        withoutRefused(was, [...sent.refused, ...sent.dropped.map((tap) => ({ tap }))]),
+      );
     }
     if (sent.refetch) await read().catch(() => undefined);
   }, [store, read]);
@@ -272,8 +274,8 @@ export function KitchenStationView({
     () =>
       loaded.state !== 'ok' || station == null
         ? null
-        : stationView(station, withMine(loaded.reads, mine), now),
-    [loaded, station, mine, now],
+        : stationView(station, withMine(loaded.reads, mine), now, t),
+    [loaded, station, mine, now, t],
   );
 
   useEffect(() => {

@@ -20,7 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { NoticeLines, UnreachableMark, noticeWords } from '../shiftNotices/ShiftNotices.tsx';
 import { afterResend, stateWordOf } from '../shiftNotices/shiftNoticesModel.ts';
 import { StatusShape } from '../staffLink/StaffLinkScreen.tsx';
-import type { OnRoster } from '../staffLink/StaffRosterModel.ts';
+import { type OnRoster, shiftWithMore } from '../staffLink/StaffRosterModel.ts';
 import {
   type Brief,
   type BriefingStart,
@@ -41,6 +41,7 @@ import {
   fitRules,
   noMobileFor,
   noteOf,
+  offersOf,
   onShift,
   QUIET_ENDS,
   resultLines,
@@ -143,8 +144,8 @@ export function useBriefing(
 
   const people: Person[] = roster.map((one) => ({ ...one, ...(extras[one.id] ?? NO_BRIEF) }));
   const manage = first.access === 'manage';
-  const acts = manage && !first.finished;
-  const sends = acts && first.live && first.concluded !== true;
+  const offers = offersOf(first);
+  const { acts, sends } = offers;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
@@ -344,12 +345,12 @@ export function useBriefing(
         )}
         <View style={styles.acts}>
           <QuietButton
-            label={manage ? BW.editRules : BW.rules}
+            label={offers.rules}
             onPress={() => open({ kind: 'rules', editing: false })}
             testID="briefing.rules"
           />
           <QuietButton
-            label={BW.previewAs}
+            label={offers.preview}
             onPress={() => open({ kind: 'preview', id: onShift(people)[0]?.id ?? 'chinedu' })}
             testID="briefing.preview"
           />
@@ -663,7 +664,7 @@ function CopyRow({
       {brief && (
         <View style={styles.inline}>
           <Text size={14} style={[styles.secondary, styles.shrink]}>
-            {[one.job, one.shift, one.station].filter(Boolean).join(' · ')}
+            {[one.job, shiftWithMore(one), one.station].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.pill}>
             <Text size={12} weight="semibold" style={styles.secondary}>

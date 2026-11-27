@@ -54,7 +54,8 @@ enum ErrorCode: string
     case PayerCoversCosts = 'payer_covers_costs';
     case PaymentAlreadyPaid = 'payment_already_paid';
     case PaymentCancelled = 'payment_cancelled';
-    case PlanLimit = 'plan_limit';
+    case PlanLimitReached = 'plan_limit_reached';
+    case EventCapacityReached = 'event_capacity_reached';
     case PlanRequired = 'plan_required';
     case PlanSoldByContract = 'plan_sold_by_contract';
     case PlanNotPriced = 'plan_not_priced';
@@ -121,7 +122,6 @@ enum ErrorCode: string
     case InvitationNeedsEmail = 'invitation_needs_email';
     case PhoneAlternative = 'phone_alternative';
     case JoinOfferUnavailable = 'join_offer_unavailable';
-    case TeamSeatsInUse = 'team_seats_in_use';
     case RequestLinkDead = 'request_link_dead';
     case JoinRequestWaiting = 'join_request_waiting';
     case JoinRequestCoolingOff = 'join_request_cooling_off';
@@ -206,7 +206,7 @@ enum ErrorCode: string
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
             self::InvitationNeedsEmail, self::PhoneAlternative => 409,
-            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress => 409,
             self::InvitationNotFound, self::RequestLinkDead, self::DoorCodeInvalid => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
             self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken, self::DomainManaged => 409,
@@ -219,7 +219,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
-            self::PlanLimit, self::PlanRequired => 403,
+            self::PlanLimitReached, self::EventCapacityReached, self::PlanRequired => 403,
             self::PlanSoldByContract, self::PlanNotPriced, self::NothingPaidThroughProvider => 409,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::AudienceNameTaken, self::AudiencesFull, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffJobWorked, self::StaffShiftWorked, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,

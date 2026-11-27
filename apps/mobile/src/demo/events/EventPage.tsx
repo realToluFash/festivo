@@ -54,6 +54,7 @@ import {
 } from './EventLifecycle.tsx';
 import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
 import { duplicateStateOf } from './Duplicate.ts';
+import { guestsOn } from './DuplicateGuests.ts';
 import {
   type CardStep,
   type EditPart,
@@ -181,7 +182,7 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
-const HOST = ['events.read', 'events.create', 'events.manage'];
+const HOST = ['events.read', 'events.create', 'events.manage', 'guests.manage'];
 const VIEWER = ['events.read'];
 
 /** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
@@ -256,6 +257,7 @@ export function EventScreen({
   clock,
   night,
   station,
+  floor,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -291,6 +293,8 @@ export function EventScreen({
   night?: TonightRow | undefined;
   /** Kitchen station, under Your night or in its place, on the event's day (sc-95382). */
   station?: TonightRow | undefined;
+  /** Floor, under Kitchen station, else Your night, else in its place, on the event's day (sc-98893). */
+  floor?: TonightRow | undefined;
 }) {
   const shell = useShell();
   const top = useBehind(openedOver);
@@ -614,7 +618,7 @@ export function EventScreen({
       else setAt('overview');
     },
   });
-  const tonight = <TonightRows night={night} station={station} />;
+  const tonight = <TonightRows night={night} station={station} floor={floor} />;
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -1051,6 +1055,9 @@ export function EventScreen({
             event={event}
             locale={locale}
             start={copies === 0 ? duplicateStateOf(state) : null}
+            guests={guestsOn(event.id, peopleOn(event.id))}
+            people={peopleOn(event.id)}
+            permissions={member.permissions}
             opener={opener}
             onClose={() => setDuplicating(false)}
             onCreated={(copy) => {

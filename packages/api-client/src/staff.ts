@@ -2,8 +2,8 @@ import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-/** How far a person's own link got (sc-3912), or why none can be given. */
-export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given; Copied and Shared (the app's share sheet, sc-77903) are both handed out and not yet marked as sent. */
+export type StaffLink = 'none' | 'copied' | 'shared' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 /** Where a person's briefing stands (sc-3917): Changed since sent is a briefed person whose station, shift or lead moved since. */
 export type StaffBriefing = 'none' | 'sent' | 'read' | 'changed';
@@ -14,6 +14,55 @@ export interface StaffBriefingCopy {
   at: string;
   marked: boolean;
 }
+
+export type StaffChangeKind =
+  | 'start_time'
+  | 'end_time'
+  | 'shift_added'
+  | 'shift_removed'
+  | 'shift_retimed'
+  | 'more_changes'
+  | 'no_shift_left'
+  | 'job'
+  | 'date'
+  | 'venue';
+
+const CHANGE_KINDS: readonly StaffChangeKind[] = [
+  'start_time',
+  'end_time',
+  'shift_added',
+  'shift_removed',
+  'shift_retimed',
+  'more_changes',
+  'no_shift_left',
+  'job',
+  'date',
+  'venue',
+];
+
+/** One line of a change notice waiting to go (sc-4333): shift lines carry instants, a start or end time line its new time in `start` and its old in `oldStart`, the job and venue lines names, the date line days, More changes a count. */
+export interface StaffChange {
+  kind: StaffChangeKind;
+  start: string | null;
+  end: string | null;
+  oldStart: string | null;
+  oldEnd: string | null;
+  /** On a start or end time line, a time on another day than this one names its day; every time does when null. */
+  on: string | null;
+  /** The shift moved a week or more, so each weekday on the line carries its date. */
+  dated: boolean;
+  new: string | null;
+  old: string | null;
+  count: number;
+}
+
+/** Where a person's change notice stands (sc-4333), for the roster's Briefing column; null before their briefing went and whenever push has not reached them, so the row stays sc-3917's. */
+export type StaffNotice =
+  | { state: 'waiting'; goesAt: string; changes: StaffChange[] }
+  | { state: 'told'; at: string; channel: string; ending: StaffNoticeEnding | null };
+
+/** The call-off's or End now's notice, when that is what told them. */
+export type StaffNoticeEnding = 'called_off' | 'ended';
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -60,6 +109,9 @@ export interface StaffEntry {
   briefing: StaffBriefing;
   briefingCopy: StaffBriefingCopy | null;
   contactsErased: boolean;
+  notice: StaffNotice | null;
+  /** Signed in to the app with notifications allowed, so a change notice reaches them by push (sc-4333). */
+  inApp: boolean;
 }
 
 export interface StaffJob {
@@ -156,7 +208,15 @@ export const STAFF_RULES_MAXIMUM = 2000;
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
+const LINKS: readonly StaffLink[] = [
+  'none',
+  'copied',
+  'shared',
+  'sent',
+  'opened',
+  'no_mobile',
+  'erased',
+];
 
 const KINDS: readonly StationKind[] = ['place', 'section'];
 
@@ -170,6 +230,63 @@ function asBriefingCopy(raw: unknown): StaffBriefingCopy | null | undefined {
   return text(by) && typeof at === 'string' && typeof marked === 'boolean'
     ? { by, at, marked }
     : undefined;
+}
+
+function asChange(raw: unknown): StaffChange | null {
+  if (!isRecord(raw)) return null;
+  const { kind, start, end, oldStart, oldEnd, count } = raw;
+  const on = raw.on ?? null;
+  const dated = raw.dated ?? false;
+
+  return CHANGE_KINDS.includes(kind as StaffChangeKind) &&
+    text(start) &&
+    text(end) &&
+    text(oldStart) &&
+    text(oldEnd) &&
+    text(raw.new) &&
+    text(raw.old) &&
+    text(on) &&
+    typeof count === 'number' &&
+    typeof dated === 'boolean'
+    ? {
+        kind: kind as StaffChangeKind,
+        start,
+        end,
+        oldStart,
+        oldEnd,
+        new: raw.new,
+        old: raw.old,
+        count,
+        on,
+        dated,
+      }
+    : null;
+}
+
+function asNotice(raw: unknown): StaffNotice | null | undefined {
+  if (raw === null || raw === undefined) return null;
+  if (!isRecord(raw)) return undefined;
+
+  switch (raw.state) {
+    case 'waiting': {
+      const changes = every(raw.changes, asChange);
+
+      return typeof raw.goesAt === 'string' && changes != null
+        ? { state: 'waiting', goesAt: raw.goesAt, changes }
+        : undefined;
+    }
+    case 'told': {
+      const ending = raw.ending ?? null;
+
+      return typeof raw.at === 'string' &&
+        typeof raw.channel === 'string' &&
+        (ending === null || ending === 'called_off' || ending === 'ended')
+        ? { state: 'told', at: raw.at, channel: raw.channel, ending }
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -234,9 +351,11 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     linkAt,
     briefing,
     contactsErased,
+    inApp,
   } = raw;
   const job = asJobRef(raw.job);
   const briefingCopy = asBriefingCopy(raw.briefingCopy);
+  const notice = asNotice(raw.notice);
   const station = raw.station === null ? null : asStationRef(raw.station);
   const stations = every(raw.stations, asStationRef);
   const shifts = Array.isArray(raw.shifts) ? raw.shifts.map(asEntryShift) : null;
@@ -259,7 +378,9 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     !text(linkAt) ||
     !BRIEFINGS.includes(briefing as StaffBriefing) ||
     briefingCopy === undefined ||
-    typeof contactsErased !== 'boolean'
+    notice === undefined ||
+    typeof contactsErased !== 'boolean' ||
+    typeof inApp !== 'boolean'
   )
     return null;
 
@@ -281,6 +402,8 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     briefing: briefing as StaffBriefing,
     briefingCopy,
     contactsErased,
+    notice,
+    inApp,
   };
 }
 
@@ -446,4 +569,44 @@ function asOpenStaffLink(raw: Record<string, unknown>): OpenStaffLink | null {
     timeZone: reader === 'yours' && typeof raw.timeZone === 'string' ? raw.timeZone : null,
     pastAccess: raw.pastAccess === true,
   };
+}
+
+/** The staffing page's Reminder the day before card (sc-4333): days are the event's calendar days, `next.date` the day the reminder goes, and `sent` only once the last day's reminder has gone. */
+export interface StaffReminder {
+  on: boolean;
+  time: string;
+  next: { date: string; count: number } | null;
+  notBriefed: number;
+  unreachable: number;
+  sent: { date: string; count: number } | null;
+  concluded: 'called_off' | 'ended' | null;
+}
+
+function asDayCount(raw: unknown): { date: string; count: number } | null | undefined {
+  if (raw === null) return null;
+  if (!isRecord(raw)) return undefined;
+
+  return typeof raw.date === 'string' && typeof raw.count === 'number'
+    ? { date: raw.date, count: raw.count }
+    : undefined;
+}
+
+export function asStaffReminder(raw: unknown): StaffReminder | null {
+  if (!isRecord(raw)) return null;
+  const { on, time, notBriefed, unreachable, concluded } = raw;
+  const next = asDayCount(raw.next);
+  const sent = asDayCount(raw.sent);
+
+  if (
+    typeof on !== 'boolean' ||
+    typeof time !== 'string' ||
+    next === undefined ||
+    sent === undefined ||
+    typeof notBriefed !== 'number' ||
+    typeof unreachable !== 'number' ||
+    !(concluded === null || concluded === 'called_off' || concluded === 'ended')
+  )
+    return null;
+
+  return { on, time, next, notBriefed, unreachable, sent, concluded };
 }

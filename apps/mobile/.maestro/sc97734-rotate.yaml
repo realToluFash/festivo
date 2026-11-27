@@ -1,0 +1,27 @@
+# sc-97734: the door code's event step with the keys up on Your name, rotated on its side and back. Pass CODE. Screenshots: rotate-land, rotate-back.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: rotate-land
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: rotate-back

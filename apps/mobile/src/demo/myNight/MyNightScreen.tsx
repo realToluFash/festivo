@@ -10,6 +10,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -25,7 +26,10 @@ import {
   guestCount,
   headingOf,
   moved,
+  movedOffSection,
+  movedOntoSection,
   movedToGrill,
+  openFloorOf,
   myNightStateOf,
   nightOf,
   openOf,
@@ -62,7 +66,7 @@ function FromTheEvent({ night }: { night: Night }) {
       at={at}
       role="Can view"
       who={night.name}
-      locale="en"
+      locale={dateLocale()}
       shown={{
         id: 'evt-adebayo-60',
         name: night.event,
@@ -99,6 +103,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   );
   const checkIn = checkInOf(night);
   const open = openOf(night);
+  const openFloor = openFloorOf(night);
   const whosHere = whosHereOf(night);
 
   const left = (
@@ -137,6 +142,21 @@ export function MyNightScreen({ first }: { first: Night }) {
             label={open.label}
             onPress={() => router.push(open.href as Href)}
             testID="myNight.openStation"
+          />
+        ))}
+      {openFloor != null &&
+        (openFloor.primary ? (
+          <PrimaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            testID="myNight.openFloor"
+          />
+        ) : (
+          <SecondaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            tall={!wide}
+            testID="myNight.openFloor"
           />
         ))}
       {whosHere != null &&
@@ -304,6 +324,20 @@ export function MyNightScreen({ first }: { first: Night }) {
                 label={MN.demoKitchenMoveButton}
                 onPress={() => setNight(movedToGrill(night))}
                 testID="myNight.demo.moveKitchen"
+              />
+            )}
+            {night.state === 'no_station' && night.kind == null && (
+              <SecondaryButton
+                label={MN.demoOntoSectionButton}
+                onPress={() => setNight(movedOntoSection(night))}
+                testID="myNight.demo.ontoSection"
+              />
+            )}
+            {night.state === 'section_app' && night.kind != null && (
+              <SecondaryButton
+                label={MN.demoOffSectionButton}
+                onPress={() => setNight(movedOffSection(night))}
+                testID="myNight.demo.offSection"
               />
             )}
             <SecondaryButton label={MN.backToDemo} onPress={goBack} testID="myNight.demo.back" />

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Station;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Briefing\FinishedBriefings;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
@@ -28,6 +29,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -50,6 +52,8 @@ final readonly class StationPlan
 
     public const string WALK_ORDERED = 'stations.walk_ordered';
 
+    public const string COVERED = 'stations.covered';
+
     private const array SUGGESTED = ['door', 'bar', 'kitchen', 'stage', 'floor'];
 
     public function __construct(
@@ -62,8 +66,10 @@ final readonly class StationPlan
         private StationRules $stationRules,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private FinishedBriefings $finishedBriefings,
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -135,20 +141,53 @@ final readonly class StationPlan
         $event = $person->getEvent();
 
         $this->changed($event, function () use ($event, $person, $stationId, $by): null {
-            $to = null === $stationId ? null : $this->station($event, $stationId);
-            $from = $person->getStation();
+            $this->placeWithin($event, $person, $stationId, $by);
 
-            if ($from === $to) {
-                return null;
+            return null;
+        });
+    }
+
+    /** As `place`, inside the caller's transaction. */
+    public function placeWithin(Event $event, StaffMember $person, ?string $stationId, User $by): void
+    {
+        $to = null === $stationId ? null : $this->station($event, $stationId);
+        $from = $person->getStation();
+
+        if ($from === $to) {
+            return;
+        }
+
+        if (null !== $from && $from->getLead() === $person) {
+            $from->setLead(null);
+        }
+
+        $person->setStation($to);
+        $person->setCover(null, null, null);
+        $this->auditor->record(self::PERSON_PLACED, 'StaffMember', $person->getId(), Actor::User, $by->getId(), $by->getName(), [
+            'station' => [$from?->getName(), $to?->getName()],
+        ]);
+    }
+
+    /** Who's here's Cover (sc-3918): someone already here moves onto the station of someone who is not, who keeps their own place there. A lead who leaves stops leading. */
+    public function cover(StaffMember $absent, StaffMember $mover, User $by): void
+    {
+        $this->changed($absent->getEvent(), function () use ($absent, $mover, $by): null {
+            $to = $absent->getStation() ?? throw ApiException::validation([StationRules::violation('absent', 'whos_here.cover_no_station')]);
+            $from = $mover->getStation();
+
+            if ($from === $to || $mover === $absent) {
+                throw ApiException::validation([StationRules::violation('mover', 'whos_here.cover_already_on', ['{station}' => $to->getName()])]);
             }
 
-            if (null !== $from && $from->getLead() === $person) {
+            if (null !== $from && $from->getLead() === $mover) {
                 $from->setLead(null);
             }
 
-            $person->setStation($to);
-            $this->auditor->record(self::PERSON_PLACED, 'StaffMember', $person->getId(), Actor::User, $by->getId(), $by->getName(), [
-                'station' => [$from?->getName(), $to?->getName()],
+            $mover->setStation($to);
+            $mover->setCover($absent, $from?->getName(), $this->clock->now());
+            $this->auditor->record(self::COVERED, 'StaffMember', $mover->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'station' => [$from?->getName(), $to->getName()],
+                'covering' => [null, $absent->getId()->toRfc4122()],
             ]);
 
             return null;
@@ -328,7 +367,7 @@ final readonly class StationPlan
     {
         $done = $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $done = $change();
+            $done = $this->finishedBriefings->keeping($event, $change);
             $this->entityManager->flush();
 
             return $done;

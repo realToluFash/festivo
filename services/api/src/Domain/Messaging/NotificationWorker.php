@@ -8,6 +8,7 @@ use App\Domain\Messaging\Exception\Unreachable;
 use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
+use App\Domain\Messaging\Interfaces\FollowsDeliveryInterface;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\Audience;
@@ -731,7 +732,7 @@ final class NotificationWorker
                     finished_at = :now,
                     claimed_until = NULL
                 WHERE id = :id
-                RETURNING type, event_id
+                RETURNING type, event_id, scheduled_notification_id
                 SQL,
             [
                 'status' => $status->value,
@@ -746,7 +747,13 @@ final class NotificationWorker
         );
 
         if (false !== $finished) {
-            $this->guestMessagesChanged->afterFinished(Type\string()->coerce($finished['type']), Type\nullable(Type\string())->coerce($finished['event_id']));
+            $typeName = Type\string()->coerce($finished['type']);
+            $this->guestMessagesChanged->afterFinished($typeName, Type\nullable(Type\string())->coerce($finished['event_id']));
+            $type = $this->notificationRegistry->has($typeName) ? $this->notificationRegistry->type($typeName) : null;
+
+            if ($type instanceof FollowsDeliveryInterface) {
+                $type->finished(self::dict($this->connection->fetchOne('SELECT payload FROM scheduled_notifications WHERE id = :id', ['id' => $finished['scheduled_notification_id']])), $status);
+            }
         }
 
         // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.

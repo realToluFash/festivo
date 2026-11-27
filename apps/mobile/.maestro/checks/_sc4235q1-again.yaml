@@ -1,0 +1,109 @@
+# sc-4235 (qa1): a number on an account under another name; signed-out door code; a full code's holder back in after Continue; a new number at a full code refused with name and number kept. Run before _sc4235q1-holder. Pass CODE, CAP, CAP2, TITLE (the event's title as its tile shows it).
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Ada Typed', NUMBER: '08034440711' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440711' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 01-in-account-name
+- runFlow:
+    file: sc4235/_q1-out.yaml
+    env: { SHOT: '02-signed-out' }
+- assertVisible:
+    id: 'redeem.signedOut'
+# the holder takes CAP's one use
+- tapOn:
+    id: 'redeem.enter.code'
+- inputText: ${CAP}
+- hideKeyboard
+- tapOn:
+    id: 'redeem.enter.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 20000
+- assertNotVisible:
+    id: 'redeem.signedOut'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: 03-after-continue
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440721' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- runFlow:
+    file: sc4235/_q1-out.yaml
+    env: { SHOT: '04-signed-out-2' }
+# CAP2: its holder takes the one use
+- tapOn:
+    id: 'redeem.enter.code'
+- inputText: ${CAP2}
+- hideKeyboard
+- tapOn:
+    id: 'redeem.enter.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 20000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Two', NUMBER: '08034440731' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440731' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- runFlow:
+    file: sc4235/_q1-out.yaml
+    env: { SHOT: '05-signed-out-3' }
+# a new number at the full CAP2
+- tapOn:
+    id: 'redeem.enter.code'
+- inputText: ${CAP2}
+- hideKeyboard
+- tapOn:
+    id: 'redeem.enter.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 20000
+- tapOn: ${TITLE}
+- waitForAnimationToEnd
+- takeScreenshot: 06-full-event
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'New Person', NUMBER: '08034440742' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440742' }
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.number'
+    timeout: 20000
+- assertNotVisible:
+    id: 'redeem.in.open'
+- tapOn: ${TITLE}
+- waitForAnimationToEnd
+- takeScreenshot: 07-full-new-refused

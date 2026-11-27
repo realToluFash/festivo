@@ -77,6 +77,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { EventMenu } from './EventMenu.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
+import { StaffRosterList } from './staff/StaffRosterList.tsx';
 import { Screen } from './Screen.tsx';
 import { StepScreen } from '../steps/StepScreen.tsx';
 import { LoadingBlock, PageToast, TextAction, type ToastAt } from './Summary.tsx';
@@ -94,6 +95,8 @@ import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
 import { toastOverPage } from '../kit/savedRowFocus.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+
+const NO_STAFF: readonly EventPlace[] = ['staff'];
 
 interface Editing {
   part: EditPart;
@@ -237,10 +240,11 @@ export function EventScreen({
     signedIn.organisations,
   );
   if (moved != null && (area !== 'overview' || moved.into !== organisationId)) setMoved(null);
-  const { reload, freshen, change } = opened;
+  const { reload, freshen, change, refresh } = opened;
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
   const event = opened.kind === 'loaded' ? opened.event : null;
+  const noStaff = event != null && !event.permissions.includes('staff.read');
   const creates = event != null && roleHolds(event, 'events.create');
   const manages = offersEdit(event);
   const deletes = offersDelete(event);
@@ -287,6 +291,11 @@ export function EventScreen({
 
   const chooseArea = (next: EventPlace, choice?: Choice) =>
     navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
+  const staffClosed = noStaff && area === 'staff';
+
+  useEffect(() => {
+    if (staffClosed) navigation.setParams({ [EVENT_AREA]: 'overview' });
+  }, [staffClosed, navigation]);
   const stack = navigation.getState();
   const behind = eventBack(stack?.routes ?? [], stack?.index ?? 0, searched);
   const leave = () => {
@@ -390,6 +399,7 @@ export function EventScreen({
             onChange={change}
             onEdit={onEdit}
             partRef={partRef}
+            watched={{ refresh, underBand: eventStale }}
             closedOnto={editing?.open === false ? editing : null}
             toast={
               toast?.eventId === eventId && toast.area === area
@@ -432,14 +442,31 @@ export function EventScreen({
           event={event}
           tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
+      ) : area === 'staff' && !noStaff ? (
+        <View style={styles.stack} testID="events.area.staff">
+          <EventTop
+            kind={kind}
+            event={event}
+            phase={phase ?? event.phase}
+            manages={manages}
+            now={now}
+            onChange={change}
+            onEdit={onEdit == null ? undefined : (part) => onEdit(part, partRef(part))}
+            onDuplicate={onDuplicate}
+          />
+          <HoursEntry event={event} />
+          <StaffRosterList
+            key={event.id}
+            eventId={event.id}
+            manages={event.permissions.includes('staff.manage')}
+          />
+        </View>
       ) : (
         <PlaceholderArea
           area={area}
           action={
             area === 'schedule' ? (
               <RunViewEntry event={event} happening={phase === 'happening_now'} />
-            ) : area === 'staff' ? (
-              <HoursEntry event={event} />
             ) : null
           }
         >
@@ -573,6 +600,7 @@ export function EventScreen({
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
               outside: outside == null ? undefined : { id: outside.id, role: outside.role },
+              hidden: noStaff ? NO_STAFF : undefined,
               bare,
             }
           : undefined
@@ -792,7 +820,7 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
   );
 }
 
-/** Staff's way into the event's hours worked (sc-234), for anyone who can see its staff. */
+/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff. */
 function HoursEntry({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   if (!event.permissions.includes('staff.read')) return null;
@@ -804,6 +832,14 @@ function HoursEntry({ event }: { event: OrganisationEvent }) {
         link
         onPress={() => router.push({ pathname: '/events/[id]/hours', params: { id: event.id } })}
         testID="events.staff.hours"
+      />
+      <SecondaryButton
+        label={t('whosHere.open')}
+        link
+        onPress={() =>
+          router.push({ pathname: '/events/[id]/whos-here', params: { id: event.id } })
+        }
+        testID="events.staff.whosHere"
       />
     </View>
   );
@@ -826,6 +862,8 @@ function useOpened(
   change: (event: OrganisationEvent) => void;
   stale: Stale | null;
   refreshing: boolean;
+  /** Counts the reloads, the band's Try again among them, for the dates the page reads beside the event (sc-98386). */
+  refresh: number;
 } {
   const organisationId = organisation?.id;
   const settled = openedWithoutAsking(accountLoaded, organisation, outside);
@@ -896,7 +934,16 @@ function useOpened(
   }, [eventId, organisationId, outside, asks, key, attempt, watch]);
 
   if (settled != null)
-    return { ...settled, retry, reload, freshen, change, stale: null, refreshing: false };
+    return {
+      ...settled,
+      retry,
+      reload,
+      freshen,
+      change,
+      stale: null,
+      refreshing: false,
+      refresh: attempt,
+    };
 
   return {
     ...(held.for === key ? held.opened : { kind: 'loading' }),
@@ -906,6 +953,7 @@ function useOpened(
     change,
     stale,
     refreshing,
+    refresh: attempt,
   };
 }
 

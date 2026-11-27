@@ -7,11 +7,6 @@
   --btGreen: var(--deskGreen);
 }
 
-/* Settings' desk-page scrolls, and in the card it has no padding, so it would clip a part opened 10 past its rows (sc-92). The card scrolls instead. */
-.bt.desk-page {
-  overflow: visible;
-}
-
 /* The crumbs are the way back, so in every language they wrap at word breaks rather than truncate, as the Guests' do (sc-79848). Staff rates shares .bt. */
 .bt .ev-crumb ol {
   flex-wrap: wrap;

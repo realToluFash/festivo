@@ -1,5 +1,5 @@
-# sc-28230: Check-in opened from My night's Check-in reads ‹ Your night and returns to My night (ux #97400). On a tablet in landscape it draws no back.
-# Needs ${METRO_URL}, ${EV}. Expo Go signed in, in English, as a staff account at Can check guests in on EV.
+# sc-28230: Check-in opened from My night's Check-in reads ‹ Your night and returns to My night (ux #97400).
+# Needs ${METRO_URL}, ${EV}. Expo Go signed in, as a staff account at Can check guests in on EV.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EV}/my-night
@@ -8,7 +8,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 15000 }
 - waitForAnimationToEnd: { timeout: 3000 }
 - takeScreenshot: check-in-from-night
-- tapOn: { text: '.*Your night' }
+- tapOn: { text: '.*{{t:myNight.title}}' }
 - extendedWaitUntil: { visible: { id: 'myNight.checkIn' }, timeout: 15000 }
 - waitForAnimationToEnd: { timeout: 3000 }
 - takeScreenshot: back-on-my-night

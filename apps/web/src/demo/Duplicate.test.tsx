@@ -207,15 +207,42 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
       const refused = dialog('Your plan allows 100 people per event');
 
       fireEvent.click(within(refused).getByRole('button', { name: 'Ask an owner' }));
-      expect(within(refused).getByText(DW.asked)).toBeDefined();
+      expect(await within(refused).findByText(DW.asked, {}, { timeout: 3000 })).toBeDefined();
       cleanup();
 
       await at('duplicateOverCeiling');
-      const ceiling = dialog('An event can hold 10,000 people');
+      const ceiling = dialog('An event can have up to 10,000 people');
 
       expect(within(ceiling).getByText('10,214 people · companions count as people')).toBeDefined();
       expect(within(ceiling).queryByRole('button', { name: 'Change plan' })).toBeNull();
       expect(within(ceiling).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
     },
   );
+
+  it('reaches Not sent and the one-owner line on the copy’s Ask an owner', SLOW, async () => {
+    await at('duplicateOverPlanAsk');
+    const refused = dialog('Your plan allows 100 people per event');
+    const ask = () => within(refused).getByRole('button', { name: 'Ask an owner' });
+
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /Offline/u }));
+    fireEvent.click(ask());
+    await waitFor(
+      () =>
+        expect(within(refused).getByRole('alert').textContent).toBe(
+          'Not sent. Try again in a moment.',
+        ),
+      { timeout: 3000 },
+    );
+
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /Offline/u }));
+    fireEvent.click(within(refused).getByRole('checkbox', { name: /one owner/u }));
+    fireEvent.click(ask());
+    expect(
+      await within(refused).findByText(
+        'The owner has been sent the link to Compare plans.',
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeDefined();
+  });
 });

@@ -5,8 +5,11 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/guests/check-in?state=door&from=night
 - waitForAnimationToEnd: { timeout: 5000 }
 - extendedWaitUntil: { visible: { text: '.*Check-in.*' }, timeout: 30000 }
+- assertVisible: { text: '.*Your night' }
 - takeScreenshot: demo-check-in-from-night
 - openLink: ${METRO_URL}/--/demo/guests/check-in?state=door
 - waitForAnimationToEnd: { timeout: 5000 }
 - extendedWaitUntil: { visible: { text: '.*Check-in.*' }, timeout: 30000 }
+- assertVisible: { text: '.*Guests' }
+- assertNotVisible: { text: '.*Your night' }
 - takeScreenshot: demo-check-in-from-guests

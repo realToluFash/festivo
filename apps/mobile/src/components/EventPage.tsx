@@ -66,7 +66,9 @@ import { useKeysUp } from './keyboardWatch.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
 import { RowList, TextAction } from './Summary.tsx';
-import { ComingUp, useTimeline } from './Timeline.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
+import { ComingUp, type Watched, useTimeline } from './Timeline.tsx';
+import { useFloorRowItem } from './FloorWayIn.tsx';
 import { useStationRowItem } from './StationWayIn.tsx';
 import { useYourNightItem } from './YourNight.tsx';
 
@@ -92,9 +94,12 @@ export function EventPage({
   onEndNowOpened,
   notice,
   moved = null,
+  watched,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  /** The screen's reloads, the band's Try again among them, each a read of the dates beside the event's, and whether its band is up (sc-98386). */
+  watched: Watched;
   /** Guests, on the choice a count on the Guests card opens (sc-3786). */
   onGuests: (choice: Choice) => void;
   /** The event's People, from the People card (sc-68607). */
@@ -134,9 +139,10 @@ export function EventPage({
   const now = useServerNow();
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
-  const timeline = useTimeline(event.id, now, event);
+  const timeline = useTimeline(event.id, now, event, watched);
   const night = useYourNightItem(event.id);
   const station = useStationRowItem(event);
+  const floor = useFloorRowItem(event);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
@@ -319,6 +325,7 @@ export function EventPage({
       onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
     />
   );
+  const needsYou = <EventNeeds event={event} timeline={timeline} />;
   const nameCover = (
     <PartsSection
       title={t('eventPage.nameAndCover')}
@@ -344,7 +351,7 @@ export function EventPage({
       onOpen={() => setThanking(true)}
     />
   );
-  const tonight = [night, station].filter((item) => item != null);
+  const tonight = [night, station, floor].filter((item) => item != null);
   const yourNight = tonight.length === 0 ? null : <RowList items={tonight} />;
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const people = <EventPeopleCard event={event} onOpen={onPeople} />;
@@ -409,6 +416,7 @@ export function EventPage({
             {notice}
             {thankYou}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
           </>
@@ -430,6 +438,7 @@ export function EventPage({
             {numbers}
             {people}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
             {forYou}

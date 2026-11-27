@@ -43,6 +43,42 @@ export function barFits({ room, field, bar, margin }: DockRoom): boolean {
   return field + 2 * margin + bar <= room;
 }
 
+export interface DockSizes {
+  shown: number;
+  foot: number;
+  field: number;
+  group: number;
+}
+
+/** Whether the bar leaves the keys for the page: with the keys up, when the focused input or its group would not fit above it. */
+export function dockInline({
+  keysUp,
+  hasFoot,
+  sizes,
+  inline,
+  margin,
+}: {
+  keysUp: boolean;
+  hasFoot: boolean;
+  sizes: DockSizes;
+  inline: boolean;
+  margin: number;
+}): boolean {
+  const field = Math.max(sizes.field, sizes.group);
+
+  return (
+    hasFoot &&
+    keysUp &&
+    field > 0 &&
+    !barFits({
+      room: sizes.shown + (inline ? 0 : sizes.foot),
+      field,
+      bar: sizes.foot,
+      margin,
+    })
+  );
+}
+
 export interface ScrollInsets {
   automaticallyAdjustKeyboardInsets: boolean;
   contentInset: { bottom: number } | undefined;

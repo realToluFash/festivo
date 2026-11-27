@@ -30,9 +30,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * Final numbers due, and the copies of the kitchen sheet given to the kitchen (sc-30812). Soirely sends nothing: the host passes the PDF on.
  *
  * @phpstan-import-type Sheet from KitchenSheet
+ * @phpstan-import-type SheetCourse from KitchenSheet
+ * @phpstan-import-type Since from KitchenSinceCopy
  *
  * @phpstan-type Given array{id: string, recordedAt: string, by: string}
- * @phpstan-type Final array{due: ?string, picksOpenUntil: ?string, copies: list<Given>}
+ * @phpstan-type Shown array{since: string, lines: list<array{kind: string, code: ?string, who: ?string, item: ?array{name: string, parent: ?string, state: ?string}, to: ?string, old: int, count: int}>}
+ * @phpstan-type Final array{due: ?string, picksOpenUntil: ?string, copies: list<Given>, changes: ?Shown}
  */
 final readonly class FinalNumbers
 {
@@ -40,18 +43,24 @@ final readonly class FinalNumbers
         private KitchenFinalNumbersRepository $kitchenFinalNumbersRepository,
         private KitchenCopyRepository $kitchenCopyRepository,
         private MenuSerialiser $menuSerialiser,
+        private KitchenSinceCopy $kitchenSinceCopy,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone */
-    public function of(Event $event): array
+    /**
+     * @param ?Sheet $now the sheet with its names, when the caller has it
+     *
+     * @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone; `changes` the sheet now against the latest copy, null with none
+     */
+    public function of(Event $event, bool $names, ?array $now = null): array
     {
         $due = $this->kitchenFinalNumbersRepository->findOneForEvent($event)?->getDueOn();
         $zone = new DateTimeZone($event->getTimeZone());
         $lastClose = $this->lastClose($event);
+        $changes = $this->changes($event, $names, $now);
 
         return [
             'due' => $due?->format('Y-m-d'),
@@ -61,6 +70,9 @@ final readonly class FinalNumbers
                 'recordedAt' => $copy->getRecordedAt()->setTimezone($zone)->format(\DATE_ATOM),
                 'by' => $copy->getRecordedByName(),
             ]),
+            'changes' => null === $changes ? null : ['since' => $changes['since'], 'lines' => Vec\map($changes['lines'], static fn (array $line): array => [
+                'kind' => $line['kind'], 'code' => $line['code'], 'who' => $line['who'], 'item' => $line['item'], 'to' => $line['to'], 'old' => $line['old'], 'count' => $line['count'],
+            ])],
         ];
     }
 
@@ -76,12 +88,45 @@ final readonly class FinalNumbers
         });
     }
 
-    /** @param Sheet $sheet the sheet as its recorder may read it; its "As of" becomes the moment it was given */
-    public function record(Event $event, array $sheet, User $by, bool $names): KitchenCopy
+    /**
+     * @param ?Sheet $now the sheet with its names, when the caller has it
+     *
+     * @return ?Since the changes since the latest copy under this reader's names rule; null before a first copy
+     */
+    public function changes(Event $event, bool $names, ?array $now = null): ?array
+    {
+        $copy = $this->kitchenCopyRepository->findLatestForEvent($event);
+
+        if (null === $copy) {
+            return null;
+        }
+
+        $since = $this->kitchenSinceCopy->of($event, $copy, $now);
+
+        return ['since' => $since['since'], 'lines' => KitchenChanges::forReader($since['lines'], $names)];
+    }
+
+    /**
+     * @param Sheet  $sheet   the sheet with its names, whoever records it; a recorder without guests.manage keeps its rows with no name, only what each eats, so the next change is found person by person
+     * @param ?Since $changes the copy's changes page, under the recorder's names rule
+     */
+    public function record(Event $event, array $sheet, User $by, bool $names, ?array $changes): KitchenCopy
     {
         $now = $this->clock->now();
         $held = [...$sheet, 'asOf' => $now->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM), 'paper' => $sheet['paper']->value];
+
+        if (!$names) {
+            $held = [...$held, 'names' => false, 'allergic' => null, 'people' => Vec\map($sheet['allergic'] ?? [], static fn (array $one): array => ['id' => $one['id'], 'allergens' => $one['allergens'], 'otherAllergy' => $one['otherAllergy'], 'diets' => $one['diets'], 'otherDiet' => $one['otherDiet']])];
+        }
+
+        if (null !== $changes) {
+            $held['changes'] = $changes;
+        }
+
         $copy = new KitchenCopy($event, $now, $by, $names, $held);
+        $final = $this->kitchenFinalNumbersRepository->findOneForEvent($event) ?? new KitchenFinalNumbers($event);
+        $final->setDiffersSince(null);
+        $this->entityManager->persist($final);
         $this->entityManager->persist($copy);
         $this->entityManager->flush();
 
@@ -103,7 +148,32 @@ final readonly class FinalNumbers
             'otherDiet' => Type\nullable(Type\string()),
             'cells' => Type\vec(Type\shape(['kind' => Type\string(), 'text' => Type\optional(Type\string())])),
         ]));
-        $courses = Type\vec(Type\shape([
+
+        return [
+            'asOf' => Type\string()->coerce($held['asOf'] ?? null),
+            'paper' => Paper::from(Type\string()->coerce($held['paper'] ?? null)),
+            'names' => $names,
+            'coming' => Type\int()->coerce($held['coming'] ?? null),
+            'allergicCount' => Type\int()->coerce($held['allergicCount'] ?? null),
+            'allergic' => $names ? $allergic->coerce($held['allergic'] ?? []) : null,
+            'allergyCounts' => $counts->coerce($held['allergyCounts'] ?? []),
+            'dietCounts' => $counts->coerce($held['dietCounts'] ?? []),
+            'courses' => self::coursesType()->coerce($held['courses'] ?? []),
+        ];
+    }
+
+    /** @return ?Since the copy's changes page as given, read under the same names rule as the rest of it */
+    public function changesOf(KitchenCopy $copy, bool $readerNames): ?array
+    {
+        $held = Type\nullable(Type\shape(['since' => Type\string(), 'lines' => KitchenChanges::linesType()]))->coerce($copy->getSheet()['changes'] ?? null);
+
+        return null === $held ? null : ['since' => $held['since'], 'lines' => KitchenChanges::forReader($held['lines'], $readerNames && $copy->heldNames())];
+    }
+
+    /** @return Type\TypeInterface<list<SheetCourse>> */
+    public static function coursesType(): Type\TypeInterface
+    {
+        return Type\vec(Type\shape([
             'id' => Type\string(),
             'name' => Type\string(),
             'rows' => Type\vec(Type\shape(['id' => Type\string(), 'kind' => Type\string(), 'name' => Type\string(), 'count' => Type\int()])),
@@ -122,23 +192,6 @@ final readonly class FinalNumbers
                 'lines' => Type\vec(Type\shape(['name' => Type\string(), 'count' => Type\int(), 'chefs' => Type\bool()])),
             ]))),
         ]));
-
-        return [
-            'asOf' => Type\string()->coerce($held['asOf'] ?? null),
-            'paper' => Paper::from(Type\string()->coerce($held['paper'] ?? null)),
-            'names' => $names,
-            'coming' => Type\int()->coerce($held['coming'] ?? null),
-            'allergicCount' => Type\int()->coerce($held['allergicCount'] ?? null),
-            'allergic' => $names ? $allergic->coerce($held['allergic'] ?? []) : null,
-            'allergyCounts' => $counts->coerce($held['allergyCounts'] ?? []),
-            'dietCounts' => $counts->coerce($held['dietCounts'] ?? []),
-            'courses' => $courses->coerce($held['courses'] ?? []),
-        ];
-    }
-
-    public function hasCopy(Event $event): bool
-    {
-        return $this->kitchenCopyRepository->anyForEvent($event);
     }
 
     /** The moment the due day ends: 23:59 in the event's zone. */

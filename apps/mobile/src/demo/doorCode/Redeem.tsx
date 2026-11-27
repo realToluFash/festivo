@@ -33,6 +33,9 @@ import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
 import { DemoScreen, NavBar } from '../DemoScreen.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
+import { FieldsAboveSend } from '../../components/FieldsAboveSend.tsx';
+import { SETTLED_MS } from '../../components/intoView.ts';
+import { useKeyboardTop } from '../../components/keyboardWatch.ts';
 import { HELD_MS } from '../people/PeopleSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SelectRow } from '../SelectRow.tsx';
@@ -64,7 +67,6 @@ import {
 import { SEND_MS } from './HoldItUp.tsx';
 import { TurningButton } from './TurningButton.tsx';
 import { InsideEvent, You } from './Inside.tsx';
-import { FieldsAboveSend } from './KeysUp.tsx';
 import {
   afterPhoneCode,
   BISI,
@@ -449,7 +451,9 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     [],
   );
   const refusal = flow.usedUp ? W.refused : flow.failed ? W.failedBody : null;
-  const nameFirst = flow.keys === 'name' || (flow.keys == null && flow.name === '' && !flow.usedUp);
+  const nameFirst = flow.keys != null || (flow.name === '' && !flow.usedUp);
+  const keysUp = useKeyboardTop() != null;
+  const toNumber = useRef(flow.keys === 'number');
   const name = useRef(flow.name);
   const number = useRef(flow.number);
   const held = useRef(flow.held);
@@ -458,6 +462,17 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
   const [numberSaid, setNumberSaid] = useState(flow.numberSaid);
   const [sending, setSending] = useState(flow.held);
   const over = useAccessibilitySizes();
+
+  // Mobile number is reached as the product reaches it, Next from Your name once the keys have settled: focused as the step mounts, the dock and the lift measured it half arrived (qa #98882).
+  useEffect(() => {
+    if (!keysUp || !toNumber.current) return undefined;
+    const next = setTimeout(() => {
+      toNumber.current = false;
+      numberField.current?.focus();
+    }, SETTLED_MS);
+
+    return () => clearTimeout(next);
+  }, [keysUp]);
 
   useEffect(() => {
     if (!sending) return;
@@ -570,7 +585,6 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
                 returnKeyType="go"
                 submitBehavior="submit"
                 onSubmitEditing={send}
-                autoFocus={flow.keys === 'number'}
                 testID="redeem.event.number"
               />
             </View>

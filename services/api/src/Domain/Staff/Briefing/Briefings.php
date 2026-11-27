@@ -6,11 +6,13 @@ namespace App\Domain\Staff\Briefing;
 
 use App\Audit\Auditor;
 use App\Domain\Staff\Link\StaffLinks;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventPhase;
 use App\Enum\StaffBriefStatus;
 use App\Enum\StaffLinkStatus;
 use App\Http\Exception\ApiException;
@@ -29,15 +31,17 @@ final readonly class Briefings
         private BriefingPrinter $briefingPrinter,
         private EntityManagerInterface $entityManager,
         private StaffRosterPublisher $staffRosterPublisher,
+        private ShiftNotices $shiftNotices,
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
     }
 
-    /** A new link, as the Link column's copy gives one (a token per delivery, Copied unless it already went), recorded as the briefing's copy. */
+    /** A new link, as the Link column's copy gives one (a token per delivery, Copied unless it already went), recorded as the briefing's copy. Refused 409 `event_concluded` as Mark as sent is, with no link issued. */
     public function copy(StaffMember $entry, User $by): string
     {
+        $this->refuseOnceFinished($entry);
         $url = $this->staffLinks->deliver($entry, $by);
 
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
@@ -51,11 +55,12 @@ final readonly class Briefings
         return $url;
     }
 
-    /** Refused 409 `conflict` with no briefing copy to mark. */
+    /** Refused 409 `conflict` with no briefing copy to mark, and 409 `event_concluded` once the event is Finished, when no briefing goes (sc-4333). */
     public function markSent(StaffMember $entry, User $by): void
     {
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
+            $this->refuseOnceFinished($entry);
 
             if (null === $entry->getBriefCopyAt()) {
                 throw new ApiException(ErrorCode::Conflict, $this->translator->trans('staff.briefing_not_copied'));
@@ -70,6 +75,7 @@ final readonly class Briefings
             $read = StaffBriefStatus::Read === $entry->getBriefStatus() && $print === $entry->getBriefPrint();
             $entry->setBrief($read ? StaffBriefStatus::Read : StaffBriefStatus::Sent, $print);
             $entry->setBriefCopy($by, $now, true);
+            $this->shiftNotices->briefed($entry);
 
             if (!$entry->getLinkStatus()->delivered()) {
                 $entry->linkMoved(StaffLinkStatus::Sent, $by, $now);
@@ -80,5 +86,14 @@ final readonly class Briefings
         });
 
         $this->staffRosterPublisher->publish($entry->getEvent());
+    }
+
+    private function refuseOnceFinished(StaffMember $entry): void
+    {
+        $event = $entry->getEvent();
+
+        if (EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now())) {
+            throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('staff.briefing_concluded'));
+        }
     }
 }

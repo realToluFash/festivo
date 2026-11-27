@@ -1,0 +1,13 @@
+# sc-100878 regression (sc-40661): "zzz" typed into a fresh country search finds noMatch.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Search Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s-zzz
+- assertVisible: { id: 'createWalk.countries.noMatch' }

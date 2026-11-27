@@ -1,0 +1,12 @@
+# sc-4235 subflow (qa1): Sign out on You're in, then the signed-out door code with the keyboard closed, screenshot SHOT.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'redeem.in.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.enter.code'
+    timeout: 20000
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

@@ -6,6 +6,7 @@ namespace App\Domain\Staff;
 
 use App\Audit\Auditor;
 use App\Domain\Staff\Model\StaffDetails;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
 use App\Entity\StaffJob;
 use App\Entity\StaffMember;
@@ -42,6 +43,7 @@ final readonly class StaffRoster
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
         private StaffPlan $staffPlan,
+        private ShiftNotices $shiftNotices,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private ShiftAttendanceRepository $shiftAttendanceRepository,
@@ -120,6 +122,7 @@ final readonly class StaffRoster
             }
 
             $this->audit(self::REMOVED, $entry, $by);
+            $this->shiftNotices->removed($entry);
             $this->staffPlan->release($entry);
             $ownRate = $this->staffRateRepository->findOneBy(['person' => $entry]);
 

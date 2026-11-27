@@ -416,7 +416,7 @@ function Shell() {
 
         {!bandless && (
           <header className="shell-band" inert={menuOpen}>
-            <NotificationsBell userId={session.userId} />
+            <NotificationsBell userId={session.userId} accountZone={session.timezone} />
           </header>
         )}
 
@@ -434,7 +434,13 @@ function Shell() {
             value={
               bandless
                 ? {
-                    bell: <NotificationsBell userId={session.userId} look="desk" />,
+                    bell: (
+                      <NotificationsBell
+                        userId={session.userId}
+                        accountZone={session.timezone}
+                        look="desk"
+                      />
+                    ),
                     said: ownNotices ? said : null,
                     above: ownNotices ? (
                       <>

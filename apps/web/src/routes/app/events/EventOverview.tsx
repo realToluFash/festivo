@@ -66,7 +66,8 @@ import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
 import { ThankYouCard } from './ThankYou.tsx';
-import { ComingUp, useTimeline } from './Timeline.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
+import { type Beside, ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
@@ -135,11 +136,13 @@ export function Overview({
   event,
   tag,
   heading,
+  beside,
   onChange,
 }: {
   event: OrganisationEvent;
   tag: string;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
@@ -180,7 +183,7 @@ export function Overview({
   });
   const resume = useResume({ event, heading, onChange, onResumed: () => setResumed(true) });
   const comingUpHeading = useRef<HTMLHeadingElement>(null);
-  const timeline = useTimeline(event, comingUpHeading, now);
+  const timeline = useTimeline(event, comingUpHeading, now, beside);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const card = shownEvent(listEventOf({ ...event, milestones: milestones ?? [] }), phase);
 
@@ -321,6 +324,7 @@ export function Overview({
             shown={shown}
             onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
+            needsYou={<EventNeeds event={event} timeline={timeline} />}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
@@ -417,6 +421,7 @@ function Details({
   shown,
   onCover,
   onOpen,
+  needsYou,
   comingUp,
 }: {
   event: OrganisationEvent;
@@ -429,6 +434,7 @@ function Details({
   shown: number;
   onCover: (event: OrganisationEvent) => void;
   onOpen: (part: Part) => void;
+  needsYou: ReactNode;
   comingUp: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -575,6 +581,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needsYou}
       {comingUp}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{t('eventPage.nameAndCover')}</span>} />

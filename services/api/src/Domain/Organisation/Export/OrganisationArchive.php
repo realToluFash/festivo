@@ -266,7 +266,7 @@ final readonly class OrganisationArchive
             SQL,
         'kitchen_copies' => <<<'SQL'
             SELECT k.id, k.event_id, k.recorded_at, k.recorded_by_name,
-                   (k.sheet || jsonb_build_object('names', k.names)
+                   ((k.sheet - 'people') || jsonb_build_object('names', k.names)
                             || CASE WHEN k.names THEN '{}'::jsonb ELSE '{"allergic": null}'::jsonb END)::text AS sheet
               FROM kitchen_copies k
               JOIN events ev ON ev.id = k.event_id

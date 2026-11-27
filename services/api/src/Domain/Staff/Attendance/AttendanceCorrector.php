@@ -7,6 +7,7 @@ namespace App\Domain\Staff\Attendance;
 use App\Audit\Auditor;
 use App\Domain\Organisation\MembershipDirectory;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\WhosHere\WhosHereSignal;
 use App\Entity\Event;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
@@ -18,6 +19,7 @@ use App\Enum\Permission;
 use App\Http\Exception\ApiException;
 use App\Repository\ShiftAttendanceRepository;
 use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use Psl\Str;
@@ -34,6 +36,7 @@ final readonly class AttendanceCorrector
         private Auditor $auditor,
         private ClockInterface $clock,
         private MembershipDirectory $membershipDirectory,
+        private WhosHereSignal $whosHereSignal,
     ) {
     }
 
@@ -100,7 +103,9 @@ final readonly class AttendanceCorrector
             return;
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($shift, $person, $attendance, $in, $out, $by, $now): void {
+        $this->entityManager->wrapInTransaction(function () use ($event, $shift, $person, $attendance, $in, $out, $by, $now): void {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+
             if (null === $attendance) {
                 $attendance = new ShiftAttendance($shift, $person ?? throw new LogicException('A removed person always has their row.'));
                 $this->entityManager->persist($attendance);
@@ -116,6 +121,7 @@ final readonly class AttendanceCorrector
             ]);
             $this->entityManager->flush();
         });
+        $this->whosHereSignal->publish($event);
     }
 
     private static function same(?DateTimeImmutable $one, ?DateTimeImmutable $other): bool

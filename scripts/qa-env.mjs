@@ -132,6 +132,7 @@ export function stackConfig(
     SOIRELY_GOOGLE_AUTHORIZE_URL: `${browser.oidc}/google/authorize`,
     SOIRELY_APPLE_AUTHORIZE_URL: `${browser.oidc}/apple/authorize`,
     OAUTH_APPLE_RETURN_URI: `${urls.api}/api/auth/oauth/apple/return`,
+    DEFAULT_URI: urls.api,
     SOIRELY_API_URL: browser.api,
     SOIRELY_MERCURE_URL: browser.mercure,
     CORS_WEB_ORIGIN: urls.web,
@@ -461,6 +462,35 @@ export function commitTarget(sha, { verify, remoteBranchesWith }) {
     throw new Error(`no branch on origin holds ${sha}; was it force-pushed away?`);
   }
   return { ref: sha, label: sha };
+}
+
+const EXPO_PUSH_PATH = '/expo/--/api/v2/push/send';
+
+// Smocker's history, oldest first, as the product's Expo messages, newest first.
+export function expoPushes(history) {
+  return history
+    .filter(({ request }) => request?.method === 'POST' && request.path === EXPO_PUSH_PATH)
+    .flatMap(({ request }) => {
+      const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+      return Array.isArray(body) ? body : [body];
+    })
+    .reverse();
+}
+
+// Expo's message as the APNs payload Expo would hand Apple; expo-notifications reads data from `body`.
+export function apnsPayload(message) {
+  const aps = {
+    alert: { title: message.title ?? '', body: message.body ?? '' },
+    ...(message.sound ? { sound: message.sound } : {}),
+    ...(message.threadId ? { 'thread-id': message.threadId } : {}),
+    ...(message.interruptionLevel ? { 'interruption-level': message.interruptionLevel } : {}),
+  };
+  return { aps, body: message.data ?? {} };
+}
+
+export function pushPick(args) {
+  const picked = args.find((arg) => /^[1-9]\d*$/.test(arg));
+  return picked === undefined ? 1 : Number(picked);
 }
 
 // One of a tester's simulators runs at a time: the phone unless --ipad or --se asks otherwise.
@@ -1695,15 +1725,19 @@ QA environment, tester ${CONFIG.tester} — ${root}
   }
 }
 
-function simulatorId(name) {
+function simulatorDevice(name) {
   const list = JSON.parse(
     capture('xcrun', ['simctl', 'list', 'devices', 'available', '-j']) ?? '{}',
   );
   for (const devices of Object.values(list.devices ?? {})) {
     const found = devices.find((d) => d.name === name);
-    if (found) return found.udid;
+    if (found) return found;
   }
   return null;
+}
+
+function simulatorId(name) {
+  return simulatorDevice(name)?.udid ?? null;
 }
 
 // iOS offers to save a password after every sign-in, and on an iPad Maestro cannot see the
@@ -3398,8 +3432,11 @@ export const batchRuns = (checks, languages) =>
 export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
-  if (cold) lines.push('- runFlow: batch/sign-out.yaml');
-  else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
+  if (cold) {
+    // An earlier run left on its side hides Sign out in Settings, so it is put upright first.
+    lines.push('- setOrientation: PORTRAIT', helperStep('/portrait', 'batch/helper.js').trimEnd());
+    lines.push('- runFlow: batch/sign-out.yaml');
+  } else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
   runs.forEach((run, index) => {
     if (index > 0 && run.language !== runs[index - 1].language)
@@ -4674,6 +4711,49 @@ function chrome() {
   ]);
 }
 
+async function push(args) {
+  const answer = await fetch(`${CONFIG.urls.smocker}/history`);
+  if (!answer.ok) throw new Error(`Smocker answered ${answer.status} at ${CONFIG.urls.smocker}`);
+  const pushes = expoPushes(await answer.json());
+  if (pushes.length === 0)
+    throw new Error('the product has sent no push since Smocker last started');
+  if (args.includes('--list')) {
+    pushes.forEach((message, index) =>
+      console.log(`${index + 1}  ${message.title ?? ''} — ${message.body ?? ''}`),
+    );
+    return;
+  }
+  const pick = pushPick(args);
+  const message = pushes[pick - 1];
+  if (!message) throw new Error(`only ${pushes.length} pushes sent; \`push --list\` names them`);
+
+  const root = qaWorktree();
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  const { open } = simulatorFor(args);
+  const device = simulatorDevice(CONFIG.simulators[open].name);
+  if (!device) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  if (device.state !== 'Booted') {
+    throw new Error(
+      `the ${open} simulator is shut: \`xcrun simctl boot ${device.udid}\` boots it, then push again`,
+    );
+  }
+  const { udid } = device;
+  if (!capture('xcrun', ['simctl', 'get_app_container', udid, id])) {
+    throw new Error(`${id} is not on the ${open}: \`release\` installs it`);
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-push-'));
+  try {
+    const file = join(dir, 'payload.json');
+    writeFileSync(file, JSON.stringify(apnsPayload(message)));
+    run('xcrun', ['simctl', 'push', udid, id, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  console.log(
+    `Pushed #${pick} to ${id} on the ${open}: ${message.title ?? ''} — ${message.body ?? ''}`,
+  );
+}
+
 const COMMANDS = {
   setup,
   'browser-host': browserHost,
@@ -4683,6 +4763,7 @@ const COMMANDS = {
   ios,
   android,
   release,
+  push,
   link,
   maestro,
   batch,

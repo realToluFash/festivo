@@ -134,9 +134,9 @@ services:
       OAUTH_APPLE_WEB_PRIVATE_KEY: '${OAUTH_APPLE_WEB_PRIVATE_KEY:------BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgV//Z8kpJkoVvFli+\nTxeBiDJ8otbUmWCpfftEotFilymhRANCAATCeZG05l+Nq/MIdW/eBJdevaMIffGE\n7n/d8D9fZTctSiEdGxmXmjC8ZYJumSnUj8Nh31ML6Zn0k+yjQbaM7uSk\n-----END PRIVATE KEY-----\n}'
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
+      DEFAULT_URI: ${DEFAULT_URI:-http://localhost:${API_PORT:-8080}}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
-      TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
       MINIMUM_APP_VERSION_IOS: ${MINIMUM_APP_VERSION_IOS:-}
       MINIMUM_APP_VERSION_ANDROID: ${MINIMUM_APP_VERSION_ANDROID:-}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
@@ -262,9 +262,11 @@ services:
     environment:
       SERVICES: s3
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       PERSISTENCE: 1
+      # Checked, so a URL signed for one host and sent to another is refused here as it is on S3 (sc-1055).
+      S3_SKIP_SIGNATURE_VALIDATION: 0
     ports:
       - '${STORAGE_PORT:-4566}:4566'
     volumes:
@@ -294,8 +296,8 @@ services:
     environment:
       BUCKET_PRIVATE: ${STORAGE_BUCKET_PRIVATE:-soirely-private}
       BUCKET_PUBLIC: ${STORAGE_BUCKET_PUBLIC:-soirely-public}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
       # The api's own default, so the bucket and the api never admit different origins.
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}

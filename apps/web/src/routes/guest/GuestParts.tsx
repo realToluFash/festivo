@@ -7,6 +7,7 @@ import { offButton } from '../../offButton.ts';
 export function TextAction({
   children,
   off = false,
+  busy = false,
   ink = false,
   icon,
   focus,
@@ -15,6 +16,7 @@ export function TextAction({
 }: {
   children: ReactNode;
   off?: boolean;
+  busy?: boolean;
   ink?: boolean;
   icon?: ReactNode;
   focus?: string;
@@ -27,10 +29,11 @@ export function TextAction({
       type="button"
       data-focus={focus}
       aria-describedby={describedBy}
-      {...offButton(off, { dim: false })}
+      aria-busy={busy || undefined}
+      {...offButton(off || busy, { dim: false })}
       onClick={onClick}
     >
-      {icon}
+      {busy ? <span className="gp-spinner is-small" aria-hidden="true" /> : icon}
       <span>{children}</span>
     </button>
   );
@@ -40,16 +43,19 @@ export function Filled({
   children,
   busy,
   focus,
+  wraps = false,
   onClick,
 }: {
   children: ReactNode;
   busy: boolean;
   focus?: string;
+  /** A label that may run to two lines or more, never cut (sc-3969's Stop emails). */
+  wraps?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className="gp-filled"
+      className={wraps ? 'gp-filled is-wraps' : 'gp-filled'}
       type="button"
       data-focus={focus}
       aria-busy={busy}
@@ -66,15 +72,20 @@ export function Notice({
   kind,
   alert = kind === 'broken',
   action,
+  className,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
+    <div
+      className={`gp-notice is-${kind}${className == null ? '' : ` ${className}`}`}
+      role={alert ? 'alert' : 'status'}
+    >
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>

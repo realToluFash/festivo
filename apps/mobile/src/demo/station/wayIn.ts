@@ -50,7 +50,12 @@ export function rowShows(event: EventDay, now: Date): boolean {
   return dayIn(now, event.timeZone) >= event.startDay;
 }
 
-/** The last answered read's time, 24-hour, in the event's zone. */
+/** "As of" on Overview's rows is in the device's zone, not the event's (sc-98893), so both rows agree. */
+export function deviceZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** The last answered read's time, 24-hour, in the zone given: the device's on Overview. */
 export function readAt(at: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone,

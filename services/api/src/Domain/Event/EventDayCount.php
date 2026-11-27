@@ -15,8 +15,7 @@ final class EventDayCount
     {
         $start = $startsAt->setTimezone($zone);
         $end = $endsAt->setTimezone($zone);
-        $utc = new DateTimeZone('UTC');
-        $days = (int) new DateTimeImmutable($start->format('Y-m-d'), $utc)->diff(new DateTimeImmutable($end->format('Y-m-d'), $utc))->format('%r%a');
+        $days = WallDays::between($start, $end);
 
         if ($end > $start && $end->getTimestamp() === $end->setTime(0, 0)->getTimestamp()) {
             --$days;

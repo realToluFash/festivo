@@ -7,29 +7,36 @@
   min-height: 0;
 }
 
-/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908, sc-3910). */
-.sn .gs-top {
+/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908, sc-3910), and a breadcrumb wrapped to three lines keeps its 44px row and runs under the title (sc-99786). */
+.sn :is(.ev-crumb-row, .gs-top) {
   flex: none;
 }
 
+/* A tab breaks only between words and is never narrower than its longest one; tabs that do not fit go to another row and share its width, the row's corners concentric with the tabs' (sc-99786, as sc-64803's day tabs). */
 .sn-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spaceHair);
   align-self: flex-start;
+  max-width: 100%;
   padding: var(--spaceHair);
-  border-radius: var(--radiusPill);
+  border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
   background: var(--colorInset);
 }
 
 .sn-tab {
   display: inline-flex;
+  flex: 1 0 auto;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
   min-height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
-  border-radius: var(--radiusPill);
+  padding: var(--spaceXxs) var(--spaceLg);
+  border-radius: calc(var(--sizeHit) / 2);
   color: var(--colorInkSecondary);
   font: var(--typeSmallStrong);
+  overflow-wrap: normal;
+  text-align: center;
 }
 
 .sn-tab[aria-current] {

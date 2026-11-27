@@ -10,6 +10,7 @@ use App\Domain\Staff\Attendance\Clocking;
 use App\Domain\Staff\Http\ClockCardSerialiser;
 use App\Domain\Staff\LeadFinder;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\WhosHere\WhosHereAccess;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\GuestNeed;
@@ -49,6 +50,7 @@ final readonly class MyNight
         private ServingStationsInterface $servingStations,
         private MembershipDirectoryInterface $membershipDirectory,
         private Clocking $clocking,
+        private WhosHereAccess $whosHereAccess,
         private ClockInterface $clock,
     ) {
     }
@@ -78,6 +80,8 @@ final readonly class MyNight
             'tables' => null,
             'checksIn' => false,
             'dishes' => false,
+            'floor' => false,
+            'whosHere' => false,
             'rules' => null,
         ];
     }
@@ -90,7 +94,7 @@ final readonly class MyNight
         return null === $card ? null : ClockCardSerialiser::card($card['shift'], $card['attendance'], $this->clock->now());
     }
 
-    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their level opens the door (sc-28230): their job's, or a join code's for the night it opened (sc-234); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
+    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their level opens the door (sc-28230): their job's, or a join code's for the night it opened (sc-234); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382); `floor` when their station is a section station and their account opens the floor (sc-98893); `whosHere` when their account may open Who's here (sc-3918) */
     public function of(StaffMember $entry, DateTimeImmutable $until, ?EventRole $level = null): array
     {
         $event = $entry->getEvent();
@@ -121,6 +125,8 @@ final readonly class MyNight
             'tables' => $this->tables($station, $now >= $doorsAt),
             'checksIn' => Iter\contains(($level ?? StaffLinkGrants::levelOf($entry))->permissions(), Permission::GuestsCheckIn),
             'dishes' => $this->dishes($entry),
+            'floor' => $this->worksFloor($entry),
+            'whosHere' => $this->readsWhosHere($entry),
             'rules' => $event->getStaffRules(),
         ];
     }
@@ -137,6 +143,26 @@ final readonly class MyNight
         }
 
         return true === $this->membershipDirectory->grantsOnEvent($account, $event->getOrganisation()->getId(), $event->getId())?->servesAt(ServicePlace::Pass);
+    }
+
+    /** Their station is a section station (sc-3910), and the account they read it with opens the floor (sc-4002): Can work the floor, Can run the floor, or a role above. */
+    private function worksFloor(StaffMember $entry): bool
+    {
+        $account = $entry->getAccount();
+        $event = $entry->getEvent();
+
+        if (null === $entry->getStation()?->getSection() || null === $account) {
+            return false;
+        }
+
+        return true === $this->membershipDirectory->grantsOnEvent($account, $event->getOrganisation()->getId(), $event->getId())?->servesAt(ServicePlace::Floor);
+    }
+
+    private function readsWhosHere(StaffMember $entry): bool
+    {
+        $account = $entry->getAccount() ?? $entry->getMember();
+
+        return null !== $account && $this->whosHereAccess->reads($account, $entry->getEvent());
     }
 
     /** @param list<StaffShift> $shifts by start; the one under way, else the next, else the last */

@@ -34,6 +34,7 @@ import {
   type PanelTools,
 } from './OrgMenu.tsx';
 import { OrgPill } from './OrgPill.tsx';
+import { SeatsFullRefusal } from './LimitRefusal.tsx';
 
 export function OrganisationSwitcher({
   current,
@@ -320,6 +321,7 @@ export function InvitationPanel({
         email: invitation.email,
       })}
     >
+      <SeatsFullRefusal outcome={outcome} />
       {isWaiting(outcome) ? (
         <InvitationActions
           name={organisation}

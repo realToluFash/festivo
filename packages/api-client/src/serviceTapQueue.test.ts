@@ -23,6 +23,26 @@ function tap(key: string): KeptServiceTap {
   );
 }
 
+function onPlate(key: string, plate: string): KeptServiceTap {
+  return keptServiceTap(
+    'e1',
+    { kind: 'tick', trayId: 't2', plateId: plate },
+    { plates: { [plate]: 'onItsWay' } },
+    key,
+    AT,
+  );
+}
+
+function item(key: string, name: string): KeptServiceTap {
+  return keptServiceTap(
+    'e1',
+    { kind: 'itemState', courseId: 'c1', item: name, state: 'ready' },
+    { item: 'preparing' },
+    key,
+    AT,
+  );
+}
+
 function refused(
   status: number,
   type: string,
@@ -88,7 +108,7 @@ describe('sending kept taps', () => {
     });
 
     expect(keys).toEqual(['k1', 'k2']);
-    expect(sent).toEqual({ refused: [], left: [], refetch: true });
+    expect(sent).toEqual({ refused: [], dropped: [], left: [], refetch: true });
   });
 
   it('sends each tap once when a second send starts while the first runs', async () => {
@@ -105,12 +125,12 @@ describe('sending kept taps', () => {
     ]);
 
     expect(keys).toEqual(['k1', 'k2']);
-    expect(first).toEqual({ refused: [], left: [], refetch: true });
-    expect(second).toEqual({ refused: [], left: [], refetch: false });
+    expect(first).toEqual({ refused: [], dropped: [], left: [], refetch: true });
+    expect(second).toEqual({ refused: [], dropped: [], left: [], refetch: false });
   });
 
   it('drops a refused tap with its lines, and still sends the ones after it', async () => {
-    const store = memoryServiceTapStore([tap('k1'), tap('k2')]);
+    const store = memoryServiceTapStore([tap('k1'), onPlate('k2', 'p9')]);
     const changed = [
       {
         plateId: 'p1',
@@ -153,7 +173,12 @@ describe('sending kept taps', () => {
         throw failure;
       });
 
-      expect(sent).toEqual({ refused: [], left: [tap('k1'), tap('k2')], refetch: false });
+      expect(sent).toEqual({
+        refused: [],
+        dropped: [],
+        left: [tap('k1'), tap('k2')],
+        refetch: false,
+      });
     }
   });
 
@@ -182,5 +207,172 @@ describe('sending kept taps', () => {
     });
 
     expect(keys).toEqual(['k1', 'k2']);
+  });
+
+  describe('a tap resting on a refused one (sc-97571)', () => {
+    const refuse =
+      (...keys: string[]) =>
+      async (one: KeptServiceTap) => {
+        if (keys.includes(one.key)) throw refused(409, 'service_changed', { changed: [] });
+      };
+
+    it('drops every later tap on the same item, sends the others in order, and counts the chain as answered', async () => {
+      const taps = [item('j0', 'jollof')];
+
+      for (let n = 1; n <= 11; n++) taps.push(item(`j${n}`, 'jollof'), onPlate(`o${n}`, `x${n}`));
+      taps.splice(3, 0, item('chicken', 'chicken'));
+      const store = memoryServiceTapStore(taps);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('j0')(one);
+      });
+
+      expect(sent.refused.map((one) => one.tap.key)).toEqual(['j0']);
+      expect(sent.dropped).toHaveLength(11);
+      expect(sentKeys).toEqual([
+        'j0',
+        'o1',
+        'chicken',
+        ...Array.from({ length: 10 }, (_, i) => `o${i + 2}`),
+      ]);
+      expect(sent.left).toEqual([]);
+      expect(sent.refetch).toBe(true);
+      expect(await store.load()).toEqual([]);
+    });
+
+    it('drops a tick and a check of the tray resting on a refused mark, not a tap on another plate', async () => {
+      const mark = keptServiceTap(
+        'e1',
+        { kind: 'mark', trayId: 't1', plateId: 'p1', item: 'rice', mark: 'on' as never },
+        { plates: { p1: 'dishing' } },
+        'm',
+        AT,
+      );
+      const store = memoryServiceTapStore([
+        mark,
+        onPlate('tickP1', 'p1'),
+        tap('check'),
+        onPlate('other', 'p9'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('m')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['tickP1', 'check']);
+      expect(sentKeys).toEqual(['m', 'other']);
+    });
+
+    it('drops a refused check, a tick and a later tap on a plate it saw', async () => {
+      const store = memoryServiceTapStore([
+        tap('check'),
+        onPlate('tick', 'p1'),
+        onPlate('after', 'p1'),
+      ]);
+
+      const sent = await sendServiceTaps(store, refuse('check'));
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['tick', 'after']);
+    });
+
+    it('drops an undo of a refused tap and a tap resting on a dropped one', async () => {
+      const undo = keptServiceTap(
+        'e1',
+        { kind: 'undo', subject: 'p1' },
+        { plates: {} },
+        'undo',
+        AT,
+      );
+      const wide = keptServiceTap(
+        'e1',
+        { kind: 'check', trayId: 't5' },
+        { plates: { p1: 'dishing', p2: 'dishing' } },
+        'wide',
+        AT,
+      );
+      const store = memoryServiceTapStore([
+        tap('first'),
+        wide,
+        onPlate('chain', 'p2'),
+        undo,
+        onPlate('free', 'p7'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('first')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['wide', 'chain', 'undo']);
+      expect(sentKeys).toEqual(['first', 'free']);
+      expect(sent.refused).toHaveLength(1);
+    });
+
+    const itemUndo = (key: string, name: string) =>
+      keptServiceTap(
+        'e1',
+        { kind: 'undo', subject: 'item-id-1' },
+        { item: 'ready', of: { courseId: 'c1', item: name } },
+        key,
+        AT,
+      );
+
+    it('drops an undo, named by the item id, of an item whose tap was refused', async () => {
+      const store = memoryServiceTapStore([
+        item('first', 'jollof'),
+        itemUndo('undo', 'jollof'),
+        item('other', 'chicken'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('first')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['undo']);
+      expect(sentKeys).toEqual(['first', 'other']);
+    });
+
+    it('drops a tap on an item whose kept undo was refused', async () => {
+      const store = memoryServiceTapStore([
+        itemUndo('undo', 'jollof'),
+        item('after', 'jollof'),
+        item('other', 'chicken'),
+      ]);
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('undo')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['after']);
+      expect(sentKeys).toEqual(['undo', 'other']);
+    });
+
+    it('drops the same after the kept taps were saved and read back', async () => {
+      const saved = JSON.stringify([
+        item('first', 'jollof'),
+        itemUndo('undo', 'jollof'),
+        onPlate('free', 'p7'),
+      ]);
+      const store = memoryServiceTapStore(asKeptServiceTaps(JSON.parse(saved)));
+      const sentKeys: string[] = [];
+
+      const sent = await sendServiceTaps(store, async (one) => {
+        sentKeys.push(one.key);
+        await refuse('first')(one);
+      });
+
+      expect(sent.dropped.map((one) => one.key)).toEqual(['undo']);
+      expect(sentKeys).toEqual(['first', 'free']);
+      expect(await store.load()).toEqual([]);
+    });
   });
 });

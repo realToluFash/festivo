@@ -46,6 +46,11 @@ final class WithholdingMembershipDirectory implements MembershipDirectoryInterfa
         return $this->less($this->real->grantsOnEvent($user, $organisationId, $eventId));
     }
 
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return $this->real->linkEndedWithTheEvent($user, $eventId);
+    }
+
     public function isOutsideIn(User $user, Uuid $organisationId): bool
     {
         return $this->real->isOutsideIn($user, $organisationId);

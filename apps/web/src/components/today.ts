@@ -88,6 +88,17 @@ export interface Now {
   ends: string;
 }
 
+export interface Need {
+  /** Unique among a list's rows: a milestone has no id, so its event, area, moment and title. */
+  key: string;
+  event: ShownEvent;
+  title: string;
+  due: string;
+  late: boolean;
+  /** The milestone's action, labelled as the API gives it; null when it has none. */
+  action: { label: string; link: string } | null;
+}
+
 export interface Moment {
   kind: 'plan' | 'day' | 'quiet' | 'first';
   /** False draws only what the product can show today, from the events' own dates. */
@@ -96,6 +107,8 @@ export interface Moment {
   hello: string;
   lead: string | null;
   sub: string;
+  /** Needs you (sc-61015): null on a first run and while nothing has loaded; empty when nothing needs the reader. */
+  needs: Need[] | null;
   days: StripDay[];
   bars: StripBar[];
   agenda: AgendaDay[];

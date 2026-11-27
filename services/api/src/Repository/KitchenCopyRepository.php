@@ -32,6 +32,11 @@ final class KitchenCopyRepository extends ServiceEntityRepository
             ->getResult());
     }
 
+    public function findLatestForEvent(Event $event): ?KitchenCopy
+    {
+        return $this->findOneBy(['event' => $event], ['recordedAt' => 'DESC', 'id' => 'DESC']);
+    }
+
     public function findOneInEvent(Event $event, string $id): ?KitchenCopy
     {
         if (!Uuid::isValid($id)) {
@@ -47,7 +52,7 @@ final class KitchenCopyRepository extends ServiceEntityRepository
     }
 
     /**
-     * An erased guest leaves every copy of their event (GDPR Art. 17): their named row goes, the counts stay as given.
+     * An erased guest leaves every copy of their event (GDPR Art. 17): their rows go, a changes page's line for them becomes a count of one, and the counts stay as given.
      *
      * @param list<string> $guestIds
      */
@@ -57,15 +62,27 @@ final class KitchenCopyRepository extends ServiceEntityRepository
             return;
         }
 
+        foreach (['allergic', 'people'] as $rows) {
+            $this->getEntityManager()->getConnection()->executeStatement(<<<'SQL'
+                UPDATE kitchen_copies
+                   SET sheet = jsonb_set(sheet, ARRAY[:rows]::text[], COALESCE(
+                           (SELECT jsonb_agg(person ORDER BY at)
+                              FROM jsonb_array_elements(sheet -> :rows) WITH ORDINALITY AS rows (person, at)
+                             WHERE (person ->> 'id') NOT IN (:ids)),
+                           '[]'::jsonb))
+                 WHERE event_id = :event
+                   AND jsonb_typeof(sheet -> :rows) = 'array'
+                SQL, ['rows' => $rows, 'event' => $event->getId()->toRfc4122(), 'ids' => $guestIds], ['ids' => ArrayParameterType::STRING]);
+        }
+
         $this->getEntityManager()->getConnection()->executeStatement(<<<'SQL'
             UPDATE kitchen_copies
-               SET sheet = jsonb_set(sheet, '{allergic}', COALESCE(
-                       (SELECT jsonb_agg(person ORDER BY at)
-                          FROM jsonb_array_elements(sheet -> 'allergic') WITH ORDINALITY AS rows (person, at)
-                         WHERE (person ->> 'id') NOT IN (:ids)),
+               SET sheet = jsonb_set(sheet, '{changes,lines}', COALESCE(
+                       (SELECT jsonb_agg(CASE WHEN (line ->> 'guest') IN (:ids) THEN line || '{"guest": null, "who": null}'::jsonb ELSE line END ORDER BY at)
+                          FROM jsonb_array_elements(sheet #> '{changes,lines}') WITH ORDINALITY AS lines (line, at)),
                        '[]'::jsonb))
              WHERE event_id = :event
-               AND jsonb_typeof(sheet -> 'allergic') = 'array'
+               AND jsonb_typeof(sheet #> '{changes,lines}') = 'array'
             SQL, ['event' => $event->getId()->toRfc4122(), 'ids' => $guestIds], ['ids' => ArrayParameterType::STRING]);
     }
 }

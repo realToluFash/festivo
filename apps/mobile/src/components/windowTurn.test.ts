@@ -469,3 +469,17 @@ describe('going back up from a level of Events’ Filter (sc-53520)', () => {
     expect(body).toMatch(/const close = \(\) => \{\s*setLevel\('top'\);\s*setCameFrom\(null\);/);
   });
 });
+
+describe('the country list’s sticky heading (sc-101592)', () => {
+  const steps = readFileSync(join(import.meta.dirname, 'CreateWalkSteps.tsx'), 'utf8');
+
+  it('pins the same index whether searching or not, which threw addViewAt on Android', () => {
+    expect(steps).toContain('const STICKY = [1];');
+    expect(steps).toContain('stickyHeaderIndices={STICKY}');
+    expect(steps).not.toMatch(/stickyHeaderIndices=\{(?!STICKY\})/);
+  });
+
+  it('keeps the heading first in the items, searching or not', () => {
+    expect(steps).toMatch(/const items: readonly Item\[\] = \[\s*HEADING,\s*\.\.\.shown\.map/);
+  });
+});

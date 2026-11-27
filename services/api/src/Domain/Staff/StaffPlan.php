@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Staff;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Briefing\FinishedBriefings;
 use App\Domain\Staff\Model\ShiftDetails;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
 use App\Entity\StaffJob;
 use App\Entity\StaffMember;
@@ -65,6 +67,8 @@ final readonly class StaffPlan
         private ShiftClock $shiftClock,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private FinishedBriefings $finishedBriefings,
+        private ShiftNotices $shiftNotices,
         private TranslatorInterface $translator,
         private ShiftAttendanceRepository $shiftAttendanceRepository,
     ) {
@@ -166,6 +170,7 @@ final readonly class StaffPlan
             $shift->setEndsAt($details->endsAt);
             $shift->setNeeded($details->needed);
             $this->audit(self::SHIFT_EDITED, 'StaffShift', $shift, $by, Auditor::diff($before, self::recorded($shift)));
+            $this->told(...$shift->getPeople());
 
             return $shift;
         });
@@ -180,6 +185,7 @@ final readonly class StaffPlan
             $this->refuseAssign($event, $shift, $person);
             $this->place($shift, $person);
             $this->audit(self::ASSIGNED, 'StaffShift', $shift, $by, ['person' => [null, $person->getId()->toRfc4122()]]);
+            $this->told($person);
 
             return $shift;
         });
@@ -204,6 +210,7 @@ final readonly class StaffPlan
             }
             $shift->setPeople(Vec\filter($shift->getPeople(), static fn (StaffMember $one): bool => $one !== $person));
             $this->audit(self::UNASSIGNED, 'StaffShift', $shift, $by, ['person' => [$person->getId()->toRfc4122(), null]]);
+            $this->told($person);
 
             return $shift;
         });
@@ -310,7 +317,7 @@ final readonly class StaffPlan
     {
         $done = $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $done = $change();
+            $done = $this->finishedBriefings->keeping($event, $change);
             $this->entityManager->flush();
 
             return $done;
@@ -319,6 +326,13 @@ final readonly class StaffPlan
         $this->staffRosterPublisher->publish($event);
 
         return $done;
+    }
+
+    /** A person whose briefing went is told of a change to their shifts (sc-4333), read once it is flushed. */
+    private function told(StaffMember ...$people): void
+    {
+        $this->entityManager->flush();
+        $this->shiftNotices->changed(...$people);
     }
 
     /** @return array<string, int|string> */

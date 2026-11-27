@@ -8,6 +8,7 @@ use App\Audit\Auditor;
 use App\Domain\Staff\Attendance\Clocking;
 use App\Domain\Staff\Briefing\BriefingTracker;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
 use App\Entity\StaffLinkToken;
@@ -17,6 +18,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
+use App\Enum\StaffBriefStatus;
 use App\Enum\StaffLinkStatus;
 use App\Http\Exception\ApiException;
 use App\Http\LinkTokens;
@@ -61,11 +63,12 @@ final readonly class StaffLinks
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private BriefingTracker $briefingTracker,
+        private ShiftNotices $shiftNotices,
     ) {
     }
 
-    /** The link with its plain token, returned once and never kept. */
-    public function deliver(StaffMember $entry, User $by): string
+    /** The link with its plain token, returned once and never kept; recorded `as` Copied or Shared unless it already went. */
+    public function deliver(StaffMember $entry, User $by, StaffLinkStatus $as = StaffLinkStatus::Copied): string
     {
         if (null === $entry->getMobile()) {
             throw new ApiException(ErrorCode::Conflict, $this->translator->trans('staff.link_needs_mobile'));
@@ -73,12 +76,12 @@ final readonly class StaffLinks
 
         $token = Base64\encode(SecureRandom\bytes(self::TOKEN_BYTES), Base64\Variant::UrlSafe, padding: false);
 
-        $this->entityManager->wrapInTransaction(function () use ($entry, $by, $token): void {
+        $this->entityManager->wrapInTransaction(function () use ($entry, $by, $token, $as): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
             $this->entityManager->persist(new StaffLinkToken($entry, LinkTokens::hash($token)));
 
             if (!$entry->getLinkStatus()->delivered()) {
-                $entry->linkMoved(StaffLinkStatus::Copied, $by, $this->clock->now());
+                $entry->linkMoved($as, $by, $this->clock->now());
             }
 
             $this->audit(self::ISSUED, $entry, $by);
@@ -95,7 +98,7 @@ final readonly class StaffLinks
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
 
-            if (StaffLinkStatus::Copied === $entry->getLinkStatus()) {
+            if ($entry->getLinkStatus()->handedOut()) {
                 $entry->linkMoved(StaffLinkStatus::Sent, $by, $this->clock->now());
                 $this->audit(self::MARKED_SENT, $entry, $by);
                 $this->entityManager->flush();
@@ -124,14 +127,14 @@ final readonly class StaffLinks
         return $this->staffLinkTokenRepository->findOneByTokenHash(LinkTokens::hash($token))?->getStaffMember();
     }
 
-    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). */
+    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). The first open with nothing yet recorded of what they were told records the page as it stands, so a briefing read through an unmarked copy went (sc-4333); the window's end keeps a Finished event from recording. */
     public function opened(StaffMember $entry): void
     {
         if (!$this->window($entry)->open) {
             return;
         }
 
-        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry)) {
+        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry) && !self::anOpenRecords($entry)) {
             return;
         }
 
@@ -144,14 +147,25 @@ final readonly class StaffLinks
             }
 
             $read = $this->briefingTracker->opened($entry);
+            $told = self::anOpenRecords($entry);
+
+            if ($told) {
+                $this->shiftNotices->briefed($entry);
+            }
+
             $this->entityManager->flush();
 
-            return $opened || $read;
+            return $opened || $read || $told;
         });
 
         if ($moved) {
             $this->staffRosterPublisher->publish($entry->getEvent());
         }
+    }
+
+    private static function anOpenRecords(StaffMember $entry): bool
+    {
+        return null === $entry->getTold() && (StaffBriefStatus::None !== $entry->getBriefStatus() || null !== $entry->getBriefCopyAt());
     }
 
     /** From 12 hours before their first shift starts until 2 hours after their last one ends or the event's end, whichever comes first; not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */
@@ -169,17 +183,49 @@ final readonly class StaffLinks
             return StaffLinkWindow::noShiftYet();
         }
 
-        $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
-        $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
-        $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
-        $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
-        $until = $event->getEndsAt() < $until ? $event->getEndsAt() : $until;
+        [$from, $until] = self::span($shifts, $event);
 
         return match (true) {
             $now < $from => StaffLinkWindow::notYet($from, $until),
             $now >= $until => StaffLinkWindow::ended($this->clocking->openUntil($entry)),
             default => StaffLinkWindow::open($until),
         };
+    }
+
+    /** Whether the link was open when the event finished, at its end or its early end (sc-3585), so the event's end is what closed it (27 Nov, sc-3918). */
+    public function endedWithTheEvent(StaffMember $entry): bool
+    {
+        $event = $entry->getEvent();
+        $shifts = $this->staffShiftRepository->findOfPerson($entry);
+
+        if ([] === $shifts || !$this->finished($event, $this->clock->now())) {
+            return false;
+        }
+
+        $endedAt = $event->getEndedAt();
+        if (EventPhase::calledOff($endedAt, $event->getStartsAt())) {
+            return false;
+        }
+
+        [$from, $until] = self::span($shifts, $event);
+        $finishedAt = null !== $endedAt && $endedAt < $event->getEndsAt() ? $endedAt : $event->getEndsAt();
+
+        return $from <= $finishedAt && $finishedAt <= $until;
+    }
+
+    /**
+     * @param non-empty-list<StaffShift> $shifts
+     *
+     * @return array{0: DateTimeImmutable, 1: DateTimeImmutable}
+     */
+    private static function span(array $shifts, Event $event): array
+    {
+        $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
+        $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
+        $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
+        $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
+
+        return [$from, $event->getEndsAt() < $until ? $event->getEndsAt() : $until];
     }
 
     /**

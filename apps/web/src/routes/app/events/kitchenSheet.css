@@ -305,7 +305,20 @@
 
   .ks.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
+  }
+
+  /* Final numbers stands under the sheet, one column (WCAG 2.2 1.4.10). */
+  .ks .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ks .ev-crumb ol,
+  .ks .ev-opened-actions {
+    flex-wrap: wrap;
+  }
+
+  .ks .ev-opened {
+    margin-left: 0;
   }
 
   .ks-people thead {
@@ -592,4 +605,13 @@
 
 .ks-give {
   margin-top: var(--spaceMd);
+}
+
+/* sc-30692: a dish name runs to 120 characters and stays whole, so a line breaks anywhere rather than overflows. */
+.ks-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.ks-changes > .desk-text {
+  margin-top: var(--spaceSm);
 }

@@ -11,6 +11,8 @@ import {
   headingOf,
   rowLineOf,
   scanHrefOf,
+  nightButtonsOf,
+  opensFloorOf,
   updatedAfter,
 } from './myNight.ts';
 
@@ -40,8 +42,43 @@ const NIGHT: MyNight = {
   tables: null,
   checksIn: false,
   dishes: false,
+  floor: false,
+  whosHere: false,
   rules: null,
 };
+
+describe('My night leads a lead to Who’s here (sc-3918)', () => {
+  it('as the only button, primary, when nothing comes before it', () => {
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true })).toEqual([
+      { opens: 'whosHere', kind: 'primary' },
+    ]);
+  });
+
+  it('as a secondary button under Check-in, Open {station} or Open Floor', () => {
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, checksIn: true })).toEqual([
+      { opens: 'checkIn', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, station: 'Grill', dishes: true })).toEqual([
+      { opens: 'station', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+    expect(nightButtonsOf({ ...NIGHT, whosHere: true, floor: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
+  });
+
+  it('no button at all for a night that opens nothing', () => {
+    expect(nightButtonsOf(NIGHT)).toEqual([]);
+  });
+
+  it('nowhere for someone who leads nothing', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true })).not.toContainEqual(
+      expect.objectContaining({ opens: 'whosHere' }),
+    );
+  });
+});
 
 describe('My night leads to check-in (sc-28230)', () => {
   it('to the event’s check-in for a job that checks guests in', () => {
@@ -134,5 +171,32 @@ describe('a staff member’s night in the app (sc-3915)', () => {
     expect(updatedAfter(NIGHT, null, onC)).toBe('Section C');
     expect(updatedAfter(onC, 'Section C', onC)).toBe('Section C');
     expect(updatedAfter(onC, 'Section C', jobOnly)).toBeNull();
+  });
+});
+
+describe('Open Floor on Your night (sc-98893)', () => {
+  it('follows the night’s floor flag: a section station whose access opens the floor', () => {
+    expect(opensFloorOf({ ...NIGHT, floor: true })).toBe(true);
+    expect(opensFloorOf(NIGHT)).toBe(false);
+  });
+
+  it('is the page’s primary button on its own', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+    ]);
+  });
+
+  it('sits under Check-in as the secondary button when the job checks in too, and Check-in stays the one primary', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true, checksIn: true })).toEqual([
+      { opens: 'checkIn', kind: 'primary' },
+      { opens: 'floor', kind: 'secondary' },
+    ]);
+  });
+
+  it('comes before Who’s here, which is then secondary', () => {
+    expect(nightButtonsOf({ ...NIGHT, floor: true, whosHere: true })).toEqual([
+      { opens: 'floor', kind: 'primary' },
+      { opens: 'whosHere', kind: 'secondary' },
+    ]);
   });
 });

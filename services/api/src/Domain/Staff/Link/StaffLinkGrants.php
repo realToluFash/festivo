@@ -54,6 +54,12 @@ final readonly class StaffLinkGrants
         return $live;
     }
 
+    /** Whether a staff link of the account's on the event ended only because the event did. */
+    public function endedWithTheEvent(User $user, Uuid $eventId): bool
+    {
+        return Iter\any($this->staffMemberRepository->findLinkedOn($user, $eventId), $this->staffLinks->endedWithTheEvent(...));
+    }
+
     /** @return list<array{entry: StaffMember, until: DateTimeImmutable, level: EventRole}> a join code's shift opens its night at the code's level, never the job's (sc-234) */
     public function byCode(User $user, Uuid $eventId): array
     {

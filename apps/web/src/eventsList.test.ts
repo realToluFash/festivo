@@ -1,8 +1,9 @@
 import { type EventPhase, numberFormat } from '@soirely/domain';
+import type { ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, cardStep, dayTiles, shownEvent } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, listEventOf, shownEvent } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -17,6 +18,7 @@ const lasting = (days: number, phase: EventPhase) =>
       status: 'live',
       concludedAt: null,
       place: null,
+      city: null,
       photo: null,
       milestones: [],
     } as ListEvent,
@@ -176,5 +178,45 @@ describe('cardStep', () => {
         withDate,
       ),
     ).toMatchObject({ kind: 'button', line: 'Wed, 5 Nov 2025' });
+  });
+});
+
+describe('listEventOf', () => {
+  const address = (city: string | null) => ({
+    formatted: '12 Bode Thomas Street',
+    line1: null,
+    line2: null,
+    city,
+    region: null,
+    postalCode: null,
+    countryCode: null,
+    latitude: null,
+    longitude: null,
+  });
+  const of = (venue: ListedEvent['venue']) =>
+    listEventOf({ venue, milestones: [] } as unknown as ListedEvent);
+
+  it('pairs a picked venue with its city', () => {
+    expect(of({ name: 'Harbour Hall', address: address('Lagos') })).toMatchObject({
+      place: 'Harbour Hall',
+      city: 'Lagos',
+    });
+  });
+
+  it('adds no city to a name typed by hand, a blank city, or a venue with no address', () => {
+    expect(of({ name: 'Harbour Hall', address: address(null) }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: address('') }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: null })).toMatchObject({
+      place: 'Harbour Hall',
+      city: null,
+    });
+  });
+
+  it('writes the address as saved, with no city, when the venue has no name', () => {
+    expect(of({ name: null, address: address('Lagos') })).toMatchObject({
+      place: '12 Bode Thomas Street',
+      city: null,
+    });
+    expect(of(null)).toMatchObject({ place: null, city: null });
   });
 });

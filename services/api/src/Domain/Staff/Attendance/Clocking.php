@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Attendance;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\WhosHere\WhosHereSignal;
+use App\Entity\Event;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
@@ -37,6 +39,7 @@ final readonly class Clocking
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private WhosHereSignal $whosHereSignal,
     ) {
     }
 
@@ -67,8 +70,14 @@ final readonly class Clocking
     /** @return array{recorded: bool, shift: StaffShift, attendance: ShiftAttendance} */
     public function clockIn(StaffMember $entry, ?User $by): array
     {
-        return $this->entityManager->wrapInTransaction(function () use ($entry, $by): array {
+        return $this->told($entry, $this->entityManager->wrapInTransaction(function () use ($entry, $by): array {
+            $this->holdEvent($entry->getEvent());
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
+
+            foreach ($this->staffShiftRepository->findOfPerson($entry) as $shift) {
+                $this->entityManager->refresh($shift);
+            }
+
             $card = $this->cardOf($entry) ?? throw $this->closed();
             $attendance = $card['attendance'];
 
@@ -77,12 +86,14 @@ final readonly class Clocking
             }
 
             return ['recorded' => true, 'shift' => $card['shift'], 'attendance' => $this->recordIn($card['shift'], $entry, $attendance, $by)];
-        });
+        }));
     }
 
-    /** A redeemer put on a shift by a join code that names it, if its window is open; false outside it (sc-72). The caller holds the transaction. */
+    /** A redeemer put on a shift by a join code that names it, if its window is open; false outside it (sc-72). The caller holds the transaction, and publishes Who's here's signal once it has committed. */
     public function clockInOn(StaffShift $shift, StaffMember $entry, User $by): bool
     {
+        $this->holdEvent($shift->getJob()->getEvent());
+        $this->entityManager->refresh($shift);
         $attendance = $this->shiftAttendanceRepository->findOneOn($shift, $entry);
 
         if (ClockPhase::Ready !== ClockWindow::phase($shift, $attendance, $this->clock->now())) {
@@ -97,7 +108,7 @@ final readonly class Clocking
     /** @return array{recorded: bool, shift: StaffShift, attendance: ShiftAttendance} */
     public function clockOut(StaffMember $entry, ?User $by): array
     {
-        return $this->entityManager->wrapInTransaction(function () use ($entry, $by): array {
+        return $this->told($entry, $this->entityManager->wrapInTransaction(function () use ($entry, $by): array {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
             $card = $this->cardOf($entry);
             $attendance = $card['attendance'] ?? null;
@@ -119,7 +130,27 @@ final readonly class Clocking
             $this->entityManager->flush();
 
             return ['recorded' => true, 'shift' => $card['shift'], 'attendance' => $attendance];
-        });
+        }));
+    }
+
+    /** A save that moves the shifts holds this lock while it reads who clocked in (sc-100276). Taken before an entry's, as every other holder takes them. */
+    private function holdEvent(Event $event): void
+    {
+        $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+    }
+
+    /**
+     * @param array{recorded: bool, shift: StaffShift, attendance: ShiftAttendance} $clocked
+     *
+     * @return array{recorded: bool, shift: StaffShift, attendance: ShiftAttendance}
+     */
+    private function told(StaffMember $entry, array $clocked): array
+    {
+        if ($clocked['recorded']) {
+            $this->whosHereSignal->publish($entry->getEvent());
+        }
+
+        return $clocked;
     }
 
     private function recordIn(StaffShift $shift, StaffMember $entry, ?ShiftAttendance $attendance, ?User $by): ShiftAttendance

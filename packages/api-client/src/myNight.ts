@@ -23,6 +23,10 @@ export interface MyNight {
   checksIn: boolean;
   /** Their station is a kitchen station and their access opens it (sc-95382). */
   dishes: boolean;
+  /** Their station is a section station and their access opens the floor (sc-98893). */
+  floor: boolean;
+  /** Their account may open Who's here (sc-3918): the floor lead, a station's lead, or staff.read. */
+  whosHere: boolean;
   /** The house rules, shown as Before you start (sc-3917). */
   rules: string | null;
 }
@@ -150,6 +154,8 @@ export function asMyNight(raw: unknown): MyNight | null {
     (raw.tables !== null && tables == null) ||
     typeof raw.checksIn !== 'boolean' ||
     typeof raw.dishes !== 'boolean' ||
+    typeof raw.floor !== 'boolean' ||
+    typeof raw.whosHere !== 'boolean' ||
     !text(raw.rules) ||
     typeof raw.pastAccess !== 'boolean' ||
     (raw.clock !== null && clock == null)
@@ -171,6 +177,8 @@ export function asMyNight(raw: unknown): MyNight | null {
     tables,
     checksIn: raw.checksIn,
     dishes: raw.dishes,
+    floor: raw.floor,
+    whosHere: raw.whosHere,
     rules: raw.rules,
   };
 }

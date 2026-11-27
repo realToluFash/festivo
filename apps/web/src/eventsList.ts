@@ -12,6 +12,8 @@ import {
   milestoneMoment,
   numberFormat,
   shownDays,
+  placeWords,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -30,6 +32,8 @@ export interface ListEvent {
   status: EventState;
   concludedAt: string | null;
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }
@@ -49,6 +53,7 @@ export function listEventOf(event: ListedEvent): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: venueCity(event.venue),
     photo: event.cover,
   };
 }
@@ -82,7 +87,7 @@ export function rowLine(
 ): string {
   return t('events.daysAndPlace', {
     dates: daysWords(event, now, locale, t, keepDays),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 

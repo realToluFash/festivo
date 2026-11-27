@@ -8,22 +8,40 @@ import {
   type MilestoneOwner,
   namesZone,
   milestoneMoment,
+  neverReached,
   serverClock,
+  shownBeside,
+  shownPhase,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { listEventOf, rowLine, shownEvent } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { useLoadedAt } from '../../../serverNow.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { distanceWords } from './distanceWords.ts';
-import { Glyph } from '../../../components/Glyph.tsx';
+import { EventThumb } from '../../../components/EventCard.tsx';
+import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
+import { RowWords } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import '../../../components/SettingsParts.css';
+import '../../../components/eventPage.css';
+import './guests.css';
+import './allDates.css';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
+
+const FAILED: Load = { kind: 'failed' };
+
+/** The event's band, which the dates read beside (sc-98386): its Try again presses, each a read of the dates too, and whether it is up, which is how long a read that never reached Soirely keeps the dates shown. */
+export interface Beside {
+  reloads: number;
+  underBand: boolean;
+}
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -37,6 +55,12 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
   automatic: 'timeline.key_automatic',
 };
 
+const OWNER_GLYPH: Record<MilestoneOwner, GlyphName> = {
+  event: 'events',
+  you: 'user',
+  automatic: 'refresh',
+};
+
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
 export interface TimelineRead {
   load: Load;
@@ -45,31 +69,61 @@ export interface TimelineRead {
   retry: () => void;
 }
 
+/** One read of the dates, told apart by what starts it; `kept` holds only while the read that never reached Soirely is the one out or last finished, so a read still out shows what it loaded whatever the band does. */
+interface Read {
+  eventId: string;
+  status: OrganisationEvent['status'];
+  attempt: number;
+  reloads: number;
+}
+
+function sameRead(a: Read, b: Read): boolean {
+  return (
+    a.eventId === b.eventId &&
+    a.status === b.status &&
+    a.attempt === b.attempt &&
+    a.reloads === b.reloads
+  );
+}
+
 export function useTimeline(
   { id: eventId, status }: OrganisationEvent,
   heading: RefObject<HTMLHeadingElement | null>,
   now: Date,
+  { reloads, underBand }: Beside,
 ): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [unreached, setUnreached] = useState<Read | null>(null);
   const [attempt, setAttempt] = useState(0);
   const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
+    const read: Read = { eventId, status, attempt, reloads };
 
     api.eventTimeline(eventId).then(
-      (timeline) => current && setLoad({ kind: 'loaded', timeline, at: serverClock.now() }),
-      () => current && setLoad({ kind: 'failed' }),
+      (timeline) => {
+        if (!current) return;
+        setLoad({ kind: 'loaded', timeline, at: serverClock.now() });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        setLoad((was) => (was.kind === 'loaded' && neverReached(error) ? was : FAILED));
+        setUnreached(neverReached(error) ? read : null);
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [eventId, status, attempt]);
+  }, [eventId, status, attempt, reloads]);
+
+  const kept = unreached != null && sameRead(unreached, { eventId, status, attempt, reloads });
+  const shown = shownBeside(load, kept, underBand, FAILED);
 
   return {
-    load,
-    now: load.kind === 'loaded' && load.at > now ? load.at : now,
+    load: shown,
+    now: shown.kind === 'loaded' && shown.at > now ? shown.at : now,
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -139,7 +193,6 @@ export function ComingUp({
                 marked={marked}
                 timeZone={load.timeline.timeZone}
                 now={now}
-                distance
               />
             ))}
           </ol>
@@ -149,52 +202,128 @@ export function ComingUp({
   );
 }
 
-/** Every milestone, earliest first, under the line naming the event's zone. */
+/** All dates as its demo draws it (sc-98187): the title, the event's strip, then every milestone earliest first in flat rows under the line naming the event's zone, and the key. */
 export function AllDates({
   event,
   now: tick,
   heading,
+  beside,
 }: {
   event: OrganisationEvent;
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
 }) {
   const { t } = useTranslation();
-  const { load, now, retried, retry } = useTimeline(event, heading, tick);
+  const { load, now, retried, retry } = useTimeline(event, heading, tick, beside);
+  const loadedAt = useLoadedAt(event);
+  const strip = shownEvent(
+    listEventOf({ ...event, milestones: [] }),
+    shownPhase(event, loadedAt, tick),
+  );
 
   return (
-    <>
+    <div className="dates">
+      <h1 ref={heading} className="gs-title" tabIndex={-1}>
+        {t('timeline.allDates')}
+      </h1>
+      <div className="ev-strip">
+        <EventThumb event={strip} size={40} />
+        <RowWords title={event.name} lines={[rowLine(strip, tick, dateLocale(), t)]} />
+      </div>
       {load.kind === 'loading' && <DatesLoading />}
-      {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
+      {load.kind === 'failed' && (
+        <div className="dates-failed" role={retried ? 'alert' : undefined}>
+          <p>
+            <Glyph name="alert" size={16} weight={2.2} />
+            {t('timeline.failed')}
+          </p>
+          <button type="button" className="gs-pill is-secondary" onClick={retry}>
+            {t('timeline.retry')}
+          </button>
+        </div>
+      )}
       {load.kind === 'loaded' && (
         <>
-          <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
-          <ol className="timeline-list arrives">
+          <p className="dates-intro">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
+          <ol className="desk-rows ev-details arrives">
             {markedMilestones(load.timeline.milestones, now, event.status === 'ended').map(
               (marked, index) => (
-                <MilestoneRow
-                  key={index}
-                  marked={marked}
-                  timeZone={load.timeline.timeZone}
-                  now={now}
-                  distance={false}
-                />
+                <DateRow key={index} marked={marked} timeZone={load.timeline.timeZone} now={now} />
               ),
             )}
           </ol>
-          <dl className="timeline-key">
+          <dl className="dates-key">
             {(['event', 'you', 'automatic'] as const).map((owner) => (
-              <div key={owner}>
-                <dt>
-                  <OwnerPill owner={owner} />
-                </dt>
+              <div key={owner} className="dates-key-row">
+                <OwnerLead owner={owner} />
+                <dt>{t(OWNER_WORD[owner])}</dt>
                 <dd>{t(OWNER_KEY[owner])}</dd>
               </div>
             ))}
           </dl>
         </>
       )}
-    </>
+    </div>
+  );
+}
+
+function OwnerLead({ owner }: { owner: MilestoneOwner }) {
+  return (
+    <span className="ev-lead" aria-hidden="true">
+      <Glyph name={OWNER_GLYPH[owner]} size={22} weight={2} />
+    </span>
+  );
+}
+
+function DateRow({
+  marked: { milestone, standing, nextUp },
+  timeZone,
+  now,
+}: {
+  marked: MarkedMilestone;
+  timeZone: string;
+  now: Date;
+}) {
+  const { t } = useTranslation();
+  const moment = milestoneMoment(milestone.at, timeZone, now, dateLocale());
+
+  return (
+    <li>
+      <div className="desk-row dates-row">
+        <OwnerLead owner={milestone.owner} />
+        <RowWords
+          title={milestone.title}
+          lines={[
+            <time key="when" dateTime={milestone.at}>
+              {t('timeline.ownerMoment', { owner: t(OWNER_WORD[milestone.owner]), moment })}
+            </time>,
+            ...(milestone.note == null ? [] : [milestone.note]),
+          ]}
+        />
+        <span className="dates-tags">
+          {standing === 'overdue' && (
+            <span className="dates-tag is-overdue">
+              <Glyph name="alert" size={13} weight={2.4} />
+              {t('timeline.overdue')}
+            </span>
+          )}
+          {standing === 'passed' && (
+            <span className="dates-tag is-passed">
+              <Glyph name="tick" size={13} weight={2.6} />
+              {t('timeline.passed')}
+            </span>
+          )}
+          {nextUp && <span className="dates-tag">{t('timeline.nextUp')}</span>}
+        </span>
+      </div>
+      {milestone.action != null && (
+        <Link className="desk-text ev-maps" to={milestone.action.link}>
+          {milestone.action.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
+    </li>
   );
 }
 
@@ -223,16 +352,15 @@ function DatesFailed({ announced, onRetry }: { announced: boolean; onRetry: () =
   );
 }
 
+/** A Coming up row: the moment, named with its zone when the reader's differs, and how far off it is. */
 function MilestoneRow({
   marked,
   timeZone,
   now,
-  distance,
 }: {
   marked: MarkedMilestone;
   timeZone: string;
   now: Date;
-  distance: boolean;
 }) {
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
@@ -242,16 +370,14 @@ function MilestoneRow({
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>
       <p className="timeline-when">
         <time dateTime={milestone.at}>
-          {distance && namesZone(timeZone, readerZone())
+          {namesZone(timeZone, readerZone())
             ? t('timeline.momentInZone', { moment, timeZone })
             : moment}
         </time>
-        {distance && (
-          <span className="muted">
-            {' '}
-            · <Distance at={milestone.at} timeZone={timeZone} now={now} />
-          </span>
-        )}
+        <span className="muted">
+          {' '}
+          · <Distance at={milestone.at} timeZone={timeZone} now={now} />
+        </span>
       </p>
       <p className="timeline-title">{milestone.title}</p>
       {milestone.note != null && <p className="muted timeline-note">{milestone.note}</p>}

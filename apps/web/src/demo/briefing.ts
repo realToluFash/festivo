@@ -579,15 +579,18 @@ const waiting = (changes: readonly Change[]) => ({
 
 const severalShifts = reshaped({
   grace: {
-    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 15:00 to 23:00',
+    more: ['Sunday 12:00 to 18:00'],
     ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' }]),
   },
   tope: {
-    shift: 'Saturday 17:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 17:00 to 23:00',
+    more: ['Sunday 12:00 to 18:00'],
     ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
   },
   yusuf: {
     shift: null,
+    more: [],
     ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00–Sunday 00:00' }, { field: 'noShift' }]),
   },
 });
@@ -979,7 +982,7 @@ const STATES = {
   noticesSeveralShifts: () =>
     noticed({
       name: 'Several shifts, waiting',
-      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, and Yusuf’s last is taken off. Each reads Goes at with its short line; a shift’s start carries its weekday, its end only when on another day.',
+      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, and Yusuf’s last is taken off. Each reads Goes at with its short line; a shift’s start carries its weekday, its end only when on another day. Grace’s and Tope’s Shift reads their earliest with +1 more, as sc-3908’s roster does.',
       people: severalShifts(),
     }),
   noticesEve: () =>
@@ -1096,7 +1099,7 @@ const STATES = {
     noticed(
       {
         name: 'Called off',
-        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again or Send to {n} changed; Copy link stays.',
+        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again, Send to {n} changed or Copy link, as on a finished event.',
         people: calledOff(),
       },
       { concluded: 'calledOff' },

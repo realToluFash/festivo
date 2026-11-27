@@ -1,0 +1,21 @@
+# Release build: signs in as EMAIL with PASSWORD and allows notifications from the bell, so `push` shows banners. sc-4333.
+appId: com.soirely.app
+---
+- runFlow: release-sign-in.yaml
+- takeScreenshot: rel-signed-in
+- openLink: soirely://notifications
+- extendedWaitUntil:
+    visible:
+      id: '.*pushAsk\.turnOn'
+    timeout: 20000
+- takeScreenshot: rel-bell-ask
+- tapOn:
+    id: '.*pushAsk\.turnOn'
+- extendedWaitUntil:
+    visible: 'Allow'
+    timeout: 15000
+- takeScreenshot: rel-os-alert
+- tapOn: 'Allow'
+- assertNotVisible:
+    id: '.*pushAsk\.turnOn'
+- takeScreenshot: rel-allowed

@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { ManagedBanner } from './Managed.tsx';
+import { SeatsFullRefusal } from './LimitRefusal.tsx';
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { offButton } from '../offButton.ts';
@@ -126,6 +127,7 @@ function InvitationRow({
             </button>
           </div>
           <p className="invitation-row-note">{t(keys.declineNote, { inviter })}</p>
+          <SeatsFullRefusal outcome={outcome} />
         </div>
       )}
 

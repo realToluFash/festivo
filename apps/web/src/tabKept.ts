@@ -1,5 +1,4 @@
-import { ApiUnreachableError } from '@soirely/api-client';
-import { keepsWhatLoaded } from '@soirely/domain';
+import { neverReached } from '@soirely/domain';
 import { useEffect, useSyncExternalStore } from 'react';
 
 export interface Kept<T> {
@@ -36,18 +35,9 @@ export function useKeptAsShown<T>(key: string, shown: T | null): void {
   }, [key, shown]);
 }
 
-/** A 5xx on the token refresh is an answer, as the offline watch counts it: only a request with no answer at all is unreached. */
-function unreached(error: unknown): boolean {
-  return (
-    keepsWhatLoaded(error) ||
-    error instanceof TypeError ||
-    (error instanceof ApiUnreachableError && error.cause != null)
-  );
-}
-
 /** What this tab kept for a load that never reached Soirely; a load Soirely refused keeps nothing. */
 export function keptFor<T>(key: string, error: unknown): Kept<T> | null {
-  if (!unreached(error)) return null;
+  if (!neverReached(error)) return null;
 
   const found = kept.get(key) as Kept<T> | undefined;
   if (found == null) return null;

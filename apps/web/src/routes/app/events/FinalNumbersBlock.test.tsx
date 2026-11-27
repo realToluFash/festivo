@@ -279,7 +279,7 @@ describe('Final numbers due and the copies (sc-30812)', () => {
         ),
     });
 
-    expect(await screen.findByText('Guests can still choose until Monday, Nov 4.')).toBeDefined();
+    expect(await screen.findByText('Guests can still choose until Mon, Nov 4.')).toBeDefined();
   });
 
   it('gives final numbers: downloads the PDF, records it, and announces it', async () => {
@@ -384,5 +384,119 @@ describe('Final numbers due and the copies (sc-30812)', () => {
     expect(within(final).queryByRole('button', { name: /Final numbers due/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Give final numbers…' })).toBeNull();
     expect(within(final).getAllByRole('button', { name: 'Download this copy' })).toHaveLength(2);
+  });
+});
+
+const line = (kind: string, more: Record<string, unknown> = {}) => ({
+  kind,
+  code: null,
+  who: null,
+  item: null,
+  to: null,
+  old: 0,
+  count: 0,
+  ...more,
+});
+
+const item = (name: string, parent: string | null = null) => ({ name, parent, state: null });
+
+const CHANGES = {
+  since: '2030-11-07T17:00:00+01:00',
+  lines: [
+    line('allergyNew', { code: 'sesame', who: 'Ngozi Eze', count: 1 }),
+    line('allergyGone', { code: 'peanuts', count: 1 }),
+    line('dietNew', { code: 'other', count: 2 }),
+    line('comingFewer', { count: 1 }),
+    line('count', { item: item('Fish', 'Jollof rice'), old: 41, count: 40 }),
+    line('added', { item: item('Sea bream'), count: 6 }),
+    line('removed', { item: item('Fish'), count: 6 }),
+    line('renamed', { item: item('Fish', 'Jollof rice'), to: 'Sea bass' }),
+    line('count', { item: { name: '', parent: null, state: 'notYet' }, old: 3, count: 0 }),
+  ],
+};
+
+describe('Changes since the latest copy (sc-30692)', () => {
+  it('opens the sheet with each change in words, in order', async () => {
+    onSheet({ [SHEET]: () => json(withFinal({ ...NONE, copies: COPIES, changes: CHANGES })) });
+
+    const card = await screen.findByRole('region', { name: 'Since Thursday, Nov 7 at 17:00' });
+    expect(
+      within(card)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      'New allergy: Sesame (Ngozi Eze)',
+      'Allergy removed: Peanuts (1 guest)',
+      'New diet: Other diet (2 guests)',
+      '1 fewer coming',
+      'Jollof rice · Fish: 41 to 40',
+      'Added: Sea bream, 6',
+      'Removed: Fish, was 6',
+      'Renamed: Jollof rice · Fish, now Sea bass',
+      'Not chosen yet: 3 to 0',
+    ]);
+  });
+
+  it('gives the changes through the same dialog, then reads from the new copy', async () => {
+    let given = false;
+    const sent = onSheet({
+      [SHEET]: () =>
+        json(
+          withFinal({
+            ...NONE,
+            copies: COPIES,
+            changes: given ? { since: '2030-11-08T09:30:00+01:00', lines: [] } : CHANGES,
+          }),
+        ),
+      [GIVE]: () => {
+        given = true;
+
+        return pdf('sheet.pdf');
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Give the changes…' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Download PDF' }),
+    );
+
+    expect(
+      await screen.findByText('Given to the kitchen. A copy is kept on this page.'),
+    ).toBeDefined();
+    expect(
+      await screen.findByRole('region', { name: 'No changes since Friday, Nov 8 at 09:30.' }),
+    ).toBeDefined();
+    expect(sent).toContain(GIVE);
+  });
+
+  it('says when nothing has changed, with no action', async () => {
+    onSheet({
+      [SHEET]: () =>
+        json(withFinal({ ...NONE, copies: COPIES, changes: { ...CHANGES, lines: [] } })),
+    });
+
+    await screen.findByRole('region', { name: 'No changes since Thursday, Nov 7 at 17:00.' });
+    expect(screen.queryByRole('button', { name: 'Give the changes…' })).toBeNull();
+  });
+
+  it.each([
+    ['without menu.manage', OWNER_PERMISSIONS.filter((one) => one !== 'menu.manage'), null],
+    ['once the event has started', OWNER_PERMISSIONS, '2030-11-15T19:00:00+01:00'],
+  ])('keeps the list and asks for nothing %s', async (_when, permissions, now) => {
+    if (now != null) vi.setSystemTime(new Date(now));
+    onSheet(
+      { [SHEET]: () => json(withFinal({ ...NONE, copies: COPIES, changes: CHANGES })) },
+      permissions,
+    );
+
+    await screen.findByText('1 fewer coming');
+    expect(screen.queryByRole('button', { name: 'Give the changes…' })).toBeNull();
+  });
+
+  it('is not shown before a first copy', async () => {
+    onSheet({ [SHEET]: () => json(withFinal({ ...NONE, changes: null })) });
+
+    await screen.findByRole('region', { name: 'Final numbers' });
+    expect(screen.queryByText(/since/i)).toBeNull();
   });
 });
