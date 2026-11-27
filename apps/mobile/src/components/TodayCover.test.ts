@@ -200,8 +200,9 @@ describe('the live cover upright from AX1 (sc-93578)', () => {
     expect(block).toMatch(
       /<CoverLine\n {8}size=\{48\}[\s\S]*?room=\{column\}\n {8}onDrawn=\{setName\}/u,
     );
+    expect(block).toMatch(/<View style=\{styles\.openUnder\}>\{open\}<\/View>/u);
     expect(block).toMatch(
-      /now\.arrived == null && <View style=\{styles\.openUnder\}>\{open\}<\/View>/u,
+      /now\.arrived != null && \(\s*<View style=\{styles\.arrivedUnder\}>\s*<ArrivedFigure figure=\{now\.arrived\} whole \/>\s*<\/View>\s*\)/u,
     );
   });
 

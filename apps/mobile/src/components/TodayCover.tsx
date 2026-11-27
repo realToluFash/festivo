@@ -556,7 +556,11 @@ export function ArrivedFigure({ figure, whole = false }: { figure: Figure; whole
   return (
     <View style={styles.arrived} accessible accessibilityLabel={figure.spoken}>
       {figure.share != null && (
-        <Ring share={figure.share} side={side} line={whole ? Math.max(4, Math.round(side / 11)) : 4} />
+        <Ring
+          share={figure.share}
+          side={side}
+          line={whole ? Math.max(4, Math.round(side / 11)) : 4}
+        />
       )}
       <View style={styles.shrink}>
         <View style={styles.figureLine}>
