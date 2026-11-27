@@ -229,8 +229,8 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
       <div className="ev-wide gs-page">
         <KeptHere />
         <Crumbs event={event} tell={tell} />
-        <header className="gs-top">
-          <h1 className="gs-title" tabIndex={-1}>
+        <header className="gs-top kitchen-top">
+          <h1 className="gs-title kitchen-title" tabIndex={-1}>
             {KW.title}
           </h1>
           {load === 'loaded' && (

@@ -330,12 +330,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .kitchen .gs-top {
+  .kitchen-top {
     flex-wrap: wrap;
     gap: var(--spaceSm) var(--spaceLg);
   }
 
-  .kitchen .gs-title {
+  .kitchen-top .kitchen-title {
     flex-basis: 100%;
   }
 
