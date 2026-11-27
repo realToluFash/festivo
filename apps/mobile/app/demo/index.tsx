@@ -2415,8 +2415,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Duplicate · guest list over the plan',
-        what: 'Not created. Back to the form keeps the tick',
+        what: 'A host without billing.manage: no in-app plan line',
         href: '/demo/events/evt-wed-4?state=duplicateGuestsRefused',
+      },
+      {
+        title: 'Duplicate · over the plan, as an owner',
+        what: 'With billing.manage: the plan cannot be changed in the app',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedOwner',
       },
       {
         title: 'Duplicate · guest list, not created',

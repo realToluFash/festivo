@@ -19,6 +19,7 @@ export const DUPLICATE_STATES = [
   'duplicateGuests',
   'duplicateGuestsCreated',
   'duplicateGuestsRefused',
+  'duplicateGuestsRefusedOwner',
   'duplicateGuestsNotCreated',
   'duplicateGuestsHidden',
 ] as const;

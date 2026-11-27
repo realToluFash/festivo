@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 import { WEDDING } from '../guests/GuestsSample.ts';
 import type { DuplicateState } from './Duplicate.ts';
 
@@ -8,6 +10,7 @@ export const COPY_PLAN = { plan: 'free', allowed: 100 } as const;
 
 const figure = (count: number) => count.toLocaleString('en-GB');
 
+/** The web's five eventDuplicate keys in English: the app's catalogues have none of them yet, and the developer adds all four locales from the web's. */
 export const GW = {
   copyGuests: (count: number) =>
     `Also copy the guest list (${figure(count)} ${count === 1 ? 'guest' : 'guests'})`,
@@ -18,7 +21,6 @@ export const GW = {
       : `${figure(count)} guests: names, contact details and companions`,
   notCopiedGuestList:
     'Replies, invitations, invitation links, check-ins, meal choices, seating, messages and history',
-  created: 'Draft created. Opening it.',
   guestsCopied: (count: number) =>
     `${figure(count)} ${count === 1 ? 'guest' : 'guests'} copied. Nobody was invited or contacted.`,
 };
@@ -35,31 +37,35 @@ export interface CopyLists {
   notCopied: readonly string[];
 }
 
-const COPIED = [
-  'Name',
-  'Type',
-  'Venue',
-  'Cover and its description',
-  'Time zone',
-  'Currency',
-  'Length',
-];
-const HOSTS = 'Hosts';
-const HAPPENED = 'Anything that happened at the event';
+const COPIED = ['Name', 'Type', 'Venue', 'Cover', 'TimeZone', 'Currency', 'Length'] as const;
 
-/** Ticked, Guests and Replies give way to the guest list's own line, as the web's lists do; unticked, the lists are today's. */
-export function copyLists(ticked: boolean, guests: number): CopyLists {
+/** Ticked, Guests and Replies give way to the guest list's own line, as the web's lists do; unticked, the lists are today's, in the app's own keys. */
+export function copyLists(ticked: boolean, guests: number, t: TFunction): CopyLists {
+  const copied = COPIED.map((key) => t(`eventDuplicate.copied${key}`));
+  const hosts = t('eventDuplicate.notCopiedHosts');
+  const happened = t('eventDuplicate.notCopiedHappened');
+
   return ticked
     ? {
-        copied: [...COPIED, GW.copiedGuests(guests)],
-        notCopied: [HOSTS, HAPPENED, GW.notCopiedGuestList],
+        copied: [...copied, GW.copiedGuests(guests)],
+        notCopied: [hosts, happened, GW.notCopiedGuestList],
       }
-    : { copied: COPIED, notCopied: [HOSTS, 'Guests', 'Replies', HAPPENED] };
+    : {
+        copied,
+        notCopied: [
+          hosts,
+          t('eventDuplicate.notCopiedGuests'),
+          t('eventDuplicate.notCopiedReplies'),
+          happened,
+        ],
+      };
 }
 
 /** The success line joins the copied count to the app's line, the count the answer gave rather than the box's. */
-export function createdLine(copied: number | null): string {
-  return copied == null ? GW.created : `${GW.created} ${GW.guestsCopied(copied)}`;
+export function createdLine(copied: number | null, t: TFunction): string {
+  const created = t('eventDuplicate.created');
+
+  return copied == null ? created : `${created} ${GW.guestsCopied(copied)}`;
 }
 
 export interface GuestCopy {
@@ -67,6 +73,8 @@ export interface GuestCopy {
   refused: boolean;
   copied: number | null;
   manages: boolean;
+  /** The sample's owner, with billing.manage, reads the refusal; every other state is the demo's host, without it. */
+  owner: boolean;
 }
 
 export function guestCopyStart(state: DuplicateState | null, guests: number): GuestCopy {
@@ -74,13 +82,15 @@ export function guestCopyStart(state: DuplicateState | null, guests: number): Gu
     state === 'duplicateGuests' ||
     state === 'duplicateGuestsCreated' ||
     state === 'duplicateGuestsRefused' ||
+    state === 'duplicateGuestsRefusedOwner' ||
     state === 'duplicateGuestsNotCreated';
 
   return {
     ticked,
-    refused: state === 'duplicateGuestsRefused',
+    refused: state === 'duplicateGuestsRefused' || state === 'duplicateGuestsRefusedOwner',
     copied: state === 'duplicateGuestsCreated' ? guests : null,
     manages: state !== 'duplicateGuestsHidden',
+    owner: state === 'duplicateGuestsRefusedOwner',
   };
 }
 

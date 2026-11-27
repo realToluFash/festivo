@@ -12,6 +12,7 @@ import { MomentBox, type Picking, PickerLayer, pick } from '../../components/Mom
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { CheckMark } from '../../components/SecurityTwoFactor.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
+import { SheetScrollView } from '../../components/Sheet.tsx';
 import { FocusedScreen, SectionHead } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import {
@@ -59,6 +60,7 @@ export function DuplicateGuestsScreen({
   ticked,
   copied,
   refusal,
+  billing,
   opener,
   onClose,
   onPick,
@@ -76,6 +78,8 @@ export function DuplicateGuestsScreen({
   ticked: boolean;
   copied: number | null;
   refusal: LimitRefusal | null;
+  /** Holds billing.manage, so a plan limit says the plan cannot be changed here, as `LimitRefusalBody` has it. */
+  billing: boolean;
   opener: Opener;
   onClose: () => void;
   onPick: (starts: Starts) => void;
@@ -92,7 +96,7 @@ export function DuplicateGuestsScreen({
   const busy = status === 'creating' || status === 'created';
   const gap = useShellLayout() === 'phone' ? tokens.spaceXl : tokens.spaceLg;
   const startsLabel = t('eventDuplicate.starts');
-  const lists = copyLists(guests != null && ticked, guests ?? 0);
+  const lists = copyLists(guests != null && ticked, guests ?? 0, t);
   const choose = (mode: 'date' | 'time') =>
     pick(
       {
@@ -117,7 +121,14 @@ export function DuplicateGuestsScreen({
   const layer =
     refusal != null
       ? {
-          layer: <CopyRefusalLayer refusal={refusal} onBack={onBack} testID={`${testID}.limit`} />,
+          layer: (
+            <CopyRefusalLayer
+              refusal={refusal}
+              billing={billing}
+              onBack={onBack}
+              testID={`${testID}.limit`}
+            />
+          ),
           onClose: onBack,
         }
       : picking != null
@@ -147,7 +158,7 @@ export function DuplicateGuestsScreen({
       onCancel={onClose}
       cancelTestID={`${testID}.cancel`}
       opener={opener}
-      toast={status === 'created' ? { words: createdLine(copied), onClose: () => {} } : null}
+      toast={status === 'created' ? { words: createdLine(copied, t), onClose: () => {} } : null}
       over={layer}
       testID={testID}
     >
@@ -236,10 +247,12 @@ function Listed({ title, items }: { title: string; items: readonly string[] }) {
 /** sc-3930's refusal in the app's guest shape, for a copy: no Remove a guest, its one way the untick line, and Back to the form keeping the start and the tick. */
 function CopyRefusalLayer({
   refusal,
+  billing,
   onBack,
   testID,
 }: {
   refusal: LimitRefusal;
+  billing: boolean;
   onBack: () => void;
   testID: string;
 }) {
@@ -256,28 +269,30 @@ function CopyRefusalLayer({
             {refusal.title}
           </Text>
         </View>
-        {refusal.line != null && <Text size={15.5}>{refusal.line}</Text>}
-        {refusal.figure != null && (
-          <Text size={14} style={[styles.secondary, styles.figures]}>
-            {refusal.figure}
-          </Text>
-        )}
-        <View style={styles.safe}>
-          <Glyph name="shield" size={16} ink={tokens.colorAccentText} weight={2.2} />
-          <Text size={14.5} weight="semibold" style={[styles.grow, styles.safeInk]}>
-            {refusal.safe}
-          </Text>
-        </View>
-        {refusal.untick != null && (
-          <Text size={15} weight="medium" testID={`${testID}.untick`}>
-            {refusal.untick}
-          </Text>
-        )}
-        {refusal.planLimit && (
-          <Text size={15} weight="medium" testID={`${testID}.inApp`}>
-            {t('limitReached.inApp')}
-          </Text>
-        )}
+        <SheetScrollView contentContainerStyle={styles.refusalLines}>
+          {refusal.line != null && <Text size={15.5}>{refusal.line}</Text>}
+          {refusal.figure != null && (
+            <Text size={14} style={[styles.secondary, styles.figures]}>
+              {refusal.figure}
+            </Text>
+          )}
+          <View style={styles.safe}>
+            <Glyph name="shield" size={16} ink={tokens.colorAccentText} weight={2.2} />
+            <Text size={14.5} weight="semibold" style={[styles.grow, styles.safeInk]}>
+              {refusal.safe}
+            </Text>
+          </View>
+          {refusal.untick != null && (
+            <Text size={15} weight="medium" testID={`${testID}.untick`}>
+              {refusal.untick}
+            </Text>
+          )}
+          {refusal.planLimit && billing && (
+            <Text size={15} weight="medium" testID={`${testID}.inApp`}>
+              {t('limitReached.inApp')}
+            </Text>
+          )}
+        </SheetScrollView>
         <Pill
           label={refusal.back}
           kind="secondary"
@@ -302,6 +317,7 @@ const styles = StyleSheet.create({
   box: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg, paddingVertical: 10 },
   grow: { flex: 1, minWidth: 0 },
   sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 22, paddingBottom: 34 },
+  refusalLines: { gap: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   hard: {
     width: 24,

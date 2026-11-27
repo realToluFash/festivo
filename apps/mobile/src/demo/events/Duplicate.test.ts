@@ -14,7 +14,7 @@ import { sampleEvent } from './EventsSample.ts';
 const STARTS = { date: '2027-11-05', time: '15:00' };
 
 describe('Duplicate’s states (sc-48601)', () => {
-  it('are the opening state, the app’s five and sc-101394’s five, all on the event’s page', () => {
+  it('are the opening state, the app’s five and sc-101394’s six, all on the event’s page', () => {
     expect(DUPLICATE_STATES).toEqual([
       'duplicate',
       'duplicateCreating',
@@ -25,6 +25,7 @@ describe('Duplicate’s states (sc-48601)', () => {
       'duplicateGuests',
       'duplicateGuestsCreated',
       'duplicateGuestsRefused',
+      'duplicateGuestsRefusedOwner',
       'duplicateGuestsNotCreated',
       'duplicateGuestsHidden',
     ]);

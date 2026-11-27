@@ -314,6 +314,7 @@ export function DuplicateScreen({
       ticked={ticked}
       copied={copy.copied}
       refusal={copy.refused ? copyRefusal(people, t) : null}
+      billing={copy.owner || permissions.includes('billing.manage')}
       opener={opener}
       onClose={onClose}
       onPick={(starts) => act({ type: 'picked', starts })}
