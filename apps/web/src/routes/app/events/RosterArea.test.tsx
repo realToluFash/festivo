@@ -808,6 +808,31 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
     expect(within(row()).queryByRole('button', { name: 'Mark as sent: Amaka Eze' })).toBeNull();
   });
 
+  it('reads Shared for a person shared in the app, with Copied’s ring, and marks it as sent (sc-77903)', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...COPIED, link: 'shared' }),
+      'POST /api/events/ev_1/staff/st_1/link/sent': () =>
+        json({ staff: entry('st_1', 'Amaka Eze', { ...SENT, linkBy: 'Folake Adeyemi' }) }),
+    });
+
+    expect(await within(row()).findByText('Shared')).toBeDefined();
+    expect(
+      within(row()).getByText('Shared by Folake Adeyemi · 19:12 · not marked as sent'),
+    ).toBeDefined();
+    expect(row().querySelector('.rs-mark.is-shared')).not.toBeNull();
+    expect(
+      screen.getByText('Next: send a link to everyone who has not been sent one yet.'),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sent: Amaka Eze' }));
+
+    expect(await within(row()).findByText('Link sent')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/staff/st_1/link/sent')).toBe(
+      true,
+    );
+  });
+
   it('leaves a row reading Link sent as it was after another copy, with no Mark as sent', async () => {
     signedIn();
     clipboard(() => Promise.resolve());
