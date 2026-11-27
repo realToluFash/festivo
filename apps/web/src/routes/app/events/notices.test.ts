@@ -108,6 +108,31 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
     expect(words(one).slice(1, 3)).toEqual(lines);
   });
 
+  it('keeps the weekday on the old end of a moved shift over midnight (sc-100276)', () => {
+    const one = person({
+      notice: {
+        state: 'waiting',
+        goesAt: '2026-10-15T19:55:00+01:00',
+        changes: [
+          {
+            kind: 'end_time',
+            start: '2026-10-19T02:00:00+01:00',
+            end: null,
+            oldStart: '2026-10-18T02:00:00+01:00',
+            oldEnd: null,
+            new: null,
+            old: null,
+            count: 0,
+            on: null,
+            dated: false,
+          },
+        ],
+      },
+    });
+
+    expect(words(one)[1]).toBe('End Monday 02:00 (was Sunday 02:00)');
+  });
+
   it('names the weekday on a shift’s start, and on an end only past midnight', () => {
     const one = person({
       notice: {

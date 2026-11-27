@@ -818,6 +818,24 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMovedShiftOverMidnightKeepsTheWeekdayOnItsOldEnd(): void
+    {
+        $this->editTimes($this->evening, '2027-03-06T22:00', '2027-03-07T02:00');
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
+
+        self::assertSame([['date', null, false], ['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([
+            'The date is now Sunday 7 Mar (was Saturday 6 Mar).',
+            'Your start time is now Sunday 22:00 (was Saturday 22:00).',
+            'Your end time is now Monday 02:00 (was Sunday 02:00).',
+        ], $this->pushes()[0][1]);
+    }
+
+    #[Test]
     public function aShiftMovedToAnotherDayWithEditTimesNamesItsNewDay(): void
     {
         $this->briefed($this->ada);

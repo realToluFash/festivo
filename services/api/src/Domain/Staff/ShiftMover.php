@@ -6,6 +6,7 @@ namespace App\Domain\Staff;
 
 use App\Audit\Auditor;
 use App\Domain\Event\LocalTimeResolver;
+use App\Domain\Event\WallDays;
 use App\Entity\Event;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffShift;
@@ -38,7 +39,7 @@ final readonly class ShiftMover
      */
     public function move(Event $event, DateTimeImmutable $startedOn, DateTimeImmutable $startsOn, DateTimeZone $zone, User $by): void
     {
-        $days = self::daysBetween($startedOn, $startsOn);
+        $days = WallDays::between($startedOn, $startsOn);
 
         if (0 === $days) {
             return;
@@ -65,14 +66,6 @@ final readonly class ShiftMover
             $shift->setStartsAt($startsAt);
             $shift->setEndsAt($endsAt);
         }
-    }
-
-    /** From the date one wall-clock time reads to the date the other does, whatever their times of day; negative when earlier. */
-    private static function daysBetween(DateTimeImmutable $from, DateTimeImmutable $to): int
-    {
-        $utc = new DateTimeZone('UTC');
-
-        return (int) new DateTimeImmutable($from->format('Y-m-d'), $utc)->diff(new DateTimeImmutable($to->format('Y-m-d'), $utc))->format('%r%a');
     }
 
     /** @return array{startsAt: string, endsAt: string} */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\ShiftNotice;
 
+use App\Domain\Event\WallDays;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Enum\ShiftChangeKind;
@@ -49,7 +50,7 @@ final readonly class ShiftChanges
         $now = Vec\values($nowOf->shifts)[0];
         $toldStart = ShiftTold::wall($told[0]);
         $nowStart = ShiftTold::wall($now[0]);
-        $on = 0 === self::daysMoved($toldStart, $nowStart) ? $nowStart : null;
+        $on = 0 === WallDays::between($toldStart, $nowStart) ? $nowStart : null;
         $dated = self::isDatedMove($toldStart, $nowStart);
         $lines = [];
 
@@ -109,11 +110,6 @@ final readonly class ShiftChanges
     /** A week or more on, a weekday alone could read as the day it left. */
     private static function isDatedMove(DateTimeImmutable $from, DateTimeImmutable $to): bool
     {
-        return self::DATED_MOVE_DAYS <= Math\abs(self::daysMoved($from, $to));
-    }
-
-    private static function daysMoved(DateTimeImmutable $from, DateTimeImmutable $to): int
-    {
-        return (int) $from->setTime(0, 0)->diff($to->setTime(0, 0))->format('%r%a');
+        return self::DATED_MOVE_DAYS <= Math\abs(WallDays::between($from, $to));
     }
 }
