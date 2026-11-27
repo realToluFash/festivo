@@ -1,4 +1,4 @@
-# sc-100237: Add guest on an event the plan has no room for opens the limit sheet in the batch's language; screenshot it, scroll to its foot, with the keys still up. Needs ${METRO_URL}, ${EVENT_ID}.
+# sc-100237: Add guest on an event the plan has no room for opens the limit sheet in the batch's language; screenshots the sheet as it opens. Needs ${METRO_URL}, ${EVENT_ID}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
