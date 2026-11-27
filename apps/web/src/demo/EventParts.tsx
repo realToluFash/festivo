@@ -105,6 +105,7 @@ export function shownSample(
       {
         ...event,
         place: event.venue == null ? null : venueLine(event.venue),
+        city: null,
         photo: event.photo ? 'standIn' : null,
         milestones: dates ?? [
           milestoneAt(event.startsAt, `${event.name} starts`),

@@ -1,4 +1,5 @@
 import { isServiceLevel, type OrganisationEvent, type OutsideEvent } from '@soirely/api-client';
+import { placeWords, venueCity } from '@soirely/domain';
 import { type Ref, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -43,6 +44,9 @@ export function OutsideOverview({
   const reads = !isServiceLevel(held.role);
   const onEvent = usePeopleCount(reads ? event.id : null);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
+  const placeLine = placeWords(place, venueCity(event.venue), (key, values) =>
+    t(key, values ?? {}),
+  );
   const night = useYourNightItem(event.id);
   const station = useStationRowItem(event);
   const rows = [
@@ -102,7 +106,7 @@ export function OutsideOverview({
       >
         <OnCard text={cardWhen(t, event, locale)} />
         <CardSays ref={nameRef} text={event.name} heading />
-        <OnCard text={place ?? t('eventPage.venueToBeConfirmed')} />
+        <OnCard text={placeLine} />
         <OnCard text={levelLine(t, held, event, locale)} strong />
       </SummaryCard>
       {rows.length > 0 && <RowList items={rows} />}
