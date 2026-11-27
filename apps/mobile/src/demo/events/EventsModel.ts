@@ -72,6 +72,7 @@ export function shownEvent(event: SampleEvent, now: Date): Shown {
       {
         ...event,
         place: event.venue?.place ?? null,
+        city: null,
         photo: event.photo ? 'standIn' : null,
         milestones: datesOf(event, now),
       },
