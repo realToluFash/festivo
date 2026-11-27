@@ -397,7 +397,10 @@ function EventOf({
 
   if (page === 'staff' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.staff) ? (
-      <RosterArea event={load.event} />
+      <RosterArea
+        event={load.event}
+        onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+      />
     ) : (
       <StaffRefused event={load.event} />
     );
