@@ -1,4 +1,4 @@
-import { formatDay, formatTimeOfDay } from './datetime.ts';
+import { clockText } from './datetime.ts';
 
 /** The shape `@soirely/api-client` reads as `NotificationItem`; only what the feed needs. */
 export interface FeedItem {
@@ -153,17 +153,65 @@ export async function readSettled<Page>(
   return arrivalsSeen() === seen ? page : readSettled(read, arrivalsSeen);
 }
 
-/** "at 14:05" today, the locale's date before today. */
+/** "at 14:05" today, the locale's date before today, both in `timeZone`, where the reader's day turns over. */
 export function whenShown(
   createdAt: string,
   now: Date,
   locale: string,
+  timeZone: string,
 ): { today: true; time: string } | { today: false; date: string } {
   const at = new Date(createdAt);
+  const shown = bellFormats(locale, timeZone);
 
-  return at.toDateString() === now.toDateString()
-    ? { today: true, time: formatTimeOfDay(at, locale) }
-    : { today: false, date: formatDay(at, locale) };
+  return shown.calendar.format(at) === shown.calendar.format(now)
+    ? { today: true, time: clockText(shown.time, at) }
+    : { today: false, date: shown.day.format(at) };
+}
+
+interface BellFormats {
+  calendar: Intl.DateTimeFormat;
+  day: Intl.DateTimeFormat;
+  time: Intl.DateTimeFormat;
+}
+
+const bellFormatsMade = new Map<string, BellFormats>();
+
+/** Made once a locale and zone, since the bell asks for every item on every render. */
+function bellFormats(locale: string, timeZone: string): BellFormats {
+  const key = `${locale} ${timeZone}`;
+  const made = bellFormatsMade.get(key) ?? {
+    calendar: new Intl.DateTimeFormat('en-CA', { dateStyle: 'short', timeZone }),
+    day: new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    }),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone,
+    }),
+  };
+  bellFormatsMade.set(key, made);
+
+  return made;
+}
+
+/** The zone a member reads the bell and Changed since you looked in: their account's (sc-868), else the device's, which also stands in for an account zone the device's time-zone data lacks (sc-82298). */
+export function readerZoneOf(accountZone: string | null | undefined): string {
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  if (accountZone == null) return device;
+
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: accountZone });
+
+    return accountZone;
+  } catch {
+    return device;
+  }
 }
 
 /** 1 to 99, then the locale's "99+", and none at 0. */

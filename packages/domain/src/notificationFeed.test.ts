@@ -13,6 +13,7 @@ import {
   feedWithRead,
   feedWithReadsUndone,
   readSettled,
+  readerZoneOf,
   whenShown,
 } from './notificationFeed.ts';
 
@@ -276,17 +277,59 @@ describe('the bell feed (sc-3980)', () => {
 
 describe('the time on a bell item', () => {
   test('is the time today, on a 24-hour clock', () => {
-    expect(whenShown('2026-10-29T14:05:00', new Date('2026-10-29T18:00:00'), 'en')).toEqual({
-      today: true,
-      time: '14:05',
-    });
+    expect(
+      whenShown('2026-10-29T14:05:00Z', new Date('2026-10-29T18:00:00Z'), 'en', 'UTC'),
+    ).toEqual({ today: true, time: '14:05' });
   });
 
   test("is the locale's date before today", () => {
-    expect(whenShown('2026-10-20T09:00:00', new Date('2026-10-29T18:00:00'), 'en')).toEqual({
-      today: false,
-      date: 'Tuesday, Oct 20',
+    expect(
+      whenShown('2026-10-20T09:00:00Z', new Date('2026-10-29T18:00:00Z'), 'en', 'UTC'),
+    ).toEqual({ today: false, date: 'Tuesday, Oct 20' });
+  });
+
+  test('reads in the zone it is given, so London and Lagos differ by the hour (sc-82298)', () => {
+    const now = new Date('2026-11-22T12:00:00Z');
+
+    expect(whenShown('2026-11-22T05:15:00Z', now, 'en', 'Europe/London')).toEqual({
+      today: true,
+      time: '05:15',
     });
+    expect(whenShown('2026-11-22T05:15:00Z', now, 'en', 'Africa/Lagos')).toEqual({
+      today: true,
+      time: '06:15',
+    });
+  });
+
+  test('decides today in that zone: 23:30 in London is yesterday there and today in Lagos', () => {
+    const made = '2026-11-21T23:30:00Z';
+    const opened = new Date('2026-11-22T08:00:00Z');
+
+    expect(whenShown(made, opened, 'en-GB', 'Europe/London')).toEqual({
+      today: false,
+      date: 'Saturday 21 Nov',
+    });
+    expect(whenShown(made, opened, 'en-GB', 'Africa/Lagos')).toEqual({
+      today: true,
+      time: '00:30',
+    });
+  });
+});
+
+describe('the zone the bell reads in (sc-82298)', () => {
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  test("is the account's over the device's", () => {
+    expect(readerZoneOf('Asia/Tokyo')).toBe('Asia/Tokyo');
+  });
+
+  test("is the device's while the account has none", () => {
+    expect(readerZoneOf(null)).toBe(device);
+    expect(readerZoneOf(undefined)).toBe(device);
+  });
+
+  test("is the device's for an account zone the device cannot format", () => {
+    expect(readerZoneOf('Mars/Olympus_Mons')).toBe(device);
   });
 });
 

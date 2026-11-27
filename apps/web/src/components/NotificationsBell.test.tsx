@@ -50,10 +50,16 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function renderedBell(look: 'band' | 'desk' | 'banner' = 'band') {
+function renderedBell(
+  look: 'band' | 'desk' | 'banner' = 'band',
+  accountZone: string | null = null,
+) {
   const router = createMemoryRouter(
     [
-      { path: '/app', element: <NotificationsBell userId="u1" look={look} /> },
+      {
+        path: '/app',
+        element: <NotificationsBell userId="u1" accountZone={accountZone} look={look} />,
+      },
       { path: '/app/events/:id', element: <p>Event page</p> },
     ],
     { initialEntries: ['/app'] },
@@ -67,6 +73,7 @@ function bell() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -159,6 +166,20 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByText('Unread')).toBeTruthy();
     expect(screen.getByText('Muted')).toBeTruthy();
     expect(screen.getByText(/^Ada & Tomi · at \d\d:\d\d$/)).toBeTruthy();
+  });
+
+  it("gives an item's time in the account's zone, not the browser's (sc-82298)", async () => {
+    const createdAt = '2026-11-22T05:15:00Z';
+    vi.useFakeTimers({ now: new Date('2026-11-22T12:00:00Z'), toFake: ['Date'] });
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ createdAt })], unreadCount: 1, next: null }),
+    });
+    renderedBell('band', 'Asia/Tokyo');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(await screen.findByText('Ada & Tomi · at 14:15')).toBeTruthy();
   });
 
   it('opening an item marks it read and goes to its place', async () => {

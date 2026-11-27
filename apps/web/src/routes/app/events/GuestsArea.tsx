@@ -61,6 +61,7 @@ import {
   changeAnswer,
   changeWhen,
   changedRows,
+  readerZoneOf,
   GREET_AS_MAXIMUM,
 } from '@soirely/domain';
 import {
@@ -255,7 +256,7 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
-  const readerZone = useSession().timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const readerZone = readerZoneOf(useSession().timezone);
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);

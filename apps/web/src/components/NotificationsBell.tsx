@@ -10,6 +10,7 @@ import {
   feedWithRead,
   feedWithReadsUndone,
   readSettled,
+  readerZoneOf,
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -48,12 +49,15 @@ type Feed =
 /** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page; `banner` is Today's, glass on its banner. */
 export function NotificationsBell({
   userId,
+  accountZone = null,
   look = 'band',
 }: {
   userId: string;
+  accountZone?: string | null;
   look?: 'band' | 'desk' | 'banner';
 }) {
   const { t } = useTranslation();
+  const zone = readerZoneOf(accountZone);
   const navigate = useNavigate();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [open, setOpen] = useState(false);
@@ -356,8 +360,11 @@ export function NotificationsBell({
       lines: item.lines,
       where:
         item.eventName == null
-          ? when(item.createdAt, t)
-          : t('notifications.whereWhen', { event: item.eventName, when: when(item.createdAt, t) }),
+          ? when(item.createdAt, zone, t)
+          : t('notifications.whereWhen', {
+              event: item.eventName,
+              when: when(item.createdAt, zone, t),
+            }),
       unread: !item.read,
       muted: item.muted,
       more:
@@ -460,8 +467,8 @@ function FeedBand({ stale }: { stale: Stale | null }) {
   );
 }
 
-function when(createdAt: string, t: TFunction): string {
-  const shown = whenShown(createdAt, new Date(), currentLocale());
+function when(createdAt: string, zone: string, t: TFunction): string {
+  const shown = whenShown(createdAt, new Date(), currentLocale(), zone);
 
   return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
 }
