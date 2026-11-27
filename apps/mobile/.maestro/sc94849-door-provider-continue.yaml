@@ -1,30 +1,23 @@
-# sc-94849: from the door code's provider-only refusal, continue with PROVIDER_ID (signIn.google or signIn.apple) as USERNAME in the local sign-in sandbox, and land back on the door code signed in (or on the two-factor step).
+# sc-94849: from the door code's provider-only refusal (checks/sc95675-provider-only-code.yaml, run with --cold), continue with PROVIDER_ID (signIn.google or signIn.apple) as USERNAME in the local sign-in sandbox, and land back on the door code signed in (or on the two-factor step).
 appId: host.exp.Exponent
 ---
 - tapOn:
     id: ${PROVIDER_ID}
-- takeScreenshot: 03-busy
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*|.*Each name is its own account.*'
+    timeout: 30000
 - runFlow:
     when:
-      visible: 'Continue'
+      visible: '.*Wants to Use.*'
     commands:
       - tapOn: 'Continue'
 - extendedWaitUntil:
-    visible: '.*own account.*'
-    timeout: 30000
+    visible: '.*Each name is its own account.*'
+    timeout: 20000
 - tapOn:
-    text: 'owner-a'
-    optional: true
-- runFlow:
-    when:
-      notVisible: '.*qa3.*'
-    commands:
-      - tapOn:
-          point: '28%,21%'
+    text: '.*Each name is its own account.*'
 - inputText: ${USERNAME}
-- tapOn:
-    text: 'Sign in'
-    index: 0
+- tapOn: 'Sign in'
 - runFlow:
     when:
       visible: 'Open in .*'
