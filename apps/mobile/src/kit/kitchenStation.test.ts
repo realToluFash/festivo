@@ -32,6 +32,9 @@ import {
   withoutRefused,
 } from './kitchenStation.ts';
 
+const say = ((key: string, o?: Record<string, unknown>) =>
+  key === 'service.floor.seatRange' ? `Seats ${o?.first} to ${o?.last}` : key) as never;
+
 const PASS = 'pass';
 const GRILL = 'grill';
 const COLD = 'cold';
@@ -106,6 +109,7 @@ function read(
         key: 't4',
         kind: 'table',
         name: 'Table 4',
+        seats: [],
         firedAt: at(0),
         plates: [],
         guests: guests.map((guest) => ({
@@ -168,8 +172,31 @@ const ITEMS = [
 ] as const;
 
 describe('stationView', () => {
+  it('names a tray for a block of single seats by its seats', () => {
+    const p = (id: string, guest: string) =>
+      plate(id, guest, 'main', ['jollof', 'plantain'], { stage: 'dishing', trayId: 'x' });
+    const walking = {
+      ...tray(
+        'b1',
+        ['p1'],
+        [
+          { id: PASS, marks: [] },
+          { id: COLD, marks: [['p1', 'plantain']] },
+          { id: GRILL, marks: [['p1', 'jollof']] },
+        ],
+        { steps: [{ step: 'start', at: at(3), by: 'w' }] },
+      ),
+      table: 'block:none:1',
+    };
+    const main = read(MAIN, [...ITEMS], [{ id: 'a', seat: '1', order: p('p1', 'a') }], [walking]);
+    const block = { ...main.tables[0]!, key: 'block:none:1', name: null, seats: ['1', '2', '10'] };
+    const view = stationView(GRILL, [{ ...main, tables: [block] }], now, say);
+
+    expect(view.heading.map((one) => one.table)).toEqual(['Seats 1 to 10']);
+  });
+
   it('says nothing is fired before any course is', () => {
-    expect(stationView(GRILL, [], now)).toEqual({
+    expect(stationView(GRILL, [], now, say)).toEqual({
       fired: false,
       latest: null,
       left: [],
@@ -185,10 +212,10 @@ describe('stationView', () => {
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof', 'plantain']) }],
     );
 
-    expect(stationView(GRILL, [main], now).left.map((one) => [one.key, one.toDish])).toEqual([
+    expect(stationView(GRILL, [main], now, say).left.map((one) => [one.key, one.toDish])).toEqual([
       ['jollof', 1],
     ]);
-    expect(stationView(PASS, [main], now).left.map((one) => one.key)).toEqual(['chef']);
+    expect(stationView(PASS, [main], now, say).left.map((one) => one.key)).toEqual(['chef']);
   });
 
   it('counts plates not yet On here, owed plates among them, and keeps an earlier course’s item only while a plate needs it', () => {
@@ -232,7 +259,7 @@ describe('stationView', () => {
     );
 
     expect(
-      stationView(GRILL, [starterNeeded, main], now).left.map((one) => [
+      stationView(GRILL, [starterNeeded, main], now, say).left.map((one) => [
         one.course,
         one.key,
         one.toDish,
@@ -241,7 +268,7 @@ describe('stationView', () => {
       [null, 'jollof', 2],
       ['Starter', 'puff', 1],
     ]);
-    expect(stationView(GRILL, [starterDone, main], now).left.map((one) => one.key)).toEqual([
+    expect(stationView(GRILL, [starterDone, main], now, say).left.map((one) => one.key)).toEqual([
       'jollof',
     ]);
   });
@@ -252,17 +279,17 @@ describe('stationView', () => {
       [{ key: 'jollof', at: GRILL, state: 'preparing', readyIn: 5 }],
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof']), held: ['jollof'] }],
     );
-    const [line] = stationView(GRILL, [main], new Date(at(4))).left;
+    const [line] = stationView(GRILL, [main], new Date(at(4)), say).left;
 
     expect([line?.waiting, line?.heldUp]).toEqual([1, null]);
-    expect(stationView(GRILL, [main], new Date(at(5))).left[0]?.heldUp).toBe(5);
+    expect(stationView(GRILL, [main], new Date(at(5)), say).left[0]?.heldUp).toBe(5);
 
     const nobodyHeld = read(
       MAIN,
       [{ key: 'jollof', at: GRILL, state: 'preparing', readyIn: 5 }],
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof']) }],
     );
-    expect(stationView(GRILL, [nobodyHeld], new Date(at(9))).left[0]?.heldUp).toBeNull();
+    expect(stationView(GRILL, [nobodyHeld], new Date(at(9)), say).left[0]?.heldUp).toBeNull();
   });
 
   it('lists started trays heading here oldest first, with each item’s count and the flagged plates', () => {
@@ -309,7 +336,7 @@ describe('stationView', () => {
       ],
       [newer, older],
     );
-    const view = stationView(GRILL, [main], now);
+    const view = stationView(GRILL, [main], now, say);
 
     expect(view.here).toEqual([]);
     expect(
@@ -402,7 +429,7 @@ describe('stationView', () => {
       [{ id: 'c', seat: '3', order: null, owed: [] }],
     );
     starter.tables[0]!.plates.push(owed);
-    const [here] = stationView(GRILL, [starter, main], now).here;
+    const [here] = stationView(GRILL, [starter, main], now, say).here;
 
     expect(
       here?.faced.map((p) => [
@@ -449,7 +476,7 @@ describe('stationView', () => {
     const takenOff = tray('t', [], [{ id: PASS, marks: [] }]);
 
     for (const t of [marked, taken, takenOff]) {
-      const view = stationView(GRILL, [main(t)], now);
+      const view = stationView(GRILL, [main(t)], now, say);
       expect([view.here, view.heading]).toEqual([[], []]);
     }
   });
@@ -494,7 +521,7 @@ describe('stationView', () => {
       [late, early],
     );
 
-    expect(stationView(GRILL, [main], now).here.map((one) => one.tray.id)).toEqual([
+    expect(stationView(GRILL, [main], now, say).here.map((one) => one.tray.id)).toEqual([
       'early',
       'late',
     ]);

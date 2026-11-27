@@ -1255,7 +1255,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorCard,
   },
-  sheet: { gap: tokens.spaceXl },
+  sheet: {
+    gap: tokens.spaceXl,
+    paddingTop: 27,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.spaceLg,
+  },
   reasons: { gap: tokens.spaceXs },
   reason: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd, minHeight: 48 },
   radio: {
