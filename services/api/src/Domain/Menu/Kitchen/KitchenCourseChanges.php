@@ -59,18 +59,14 @@ final readonly class KitchenCourseChanges
             $before = Iter\search($copy, static fn (array $one): bool => $one['id'] === $course['id']);
             $after = Iter\search($now, static fn (array $one): bool => $one['id'] === $course['id']);
 
-            if (null === $after) {
-                continue;
-            }
-
             foreach (self::STATES as $state) {
                 $old = null === $before ? 0 : self::figure($before, $state);
-                $new = self::figure($after, $state);
+                $new = null === $after ? 0 : self::figure($after, $state);
 
                 if ($old !== $new) {
                     $shown = match (true) {
                         'notChosen' !== $state => $state,
-                        $after['never'] => 'never',
+                        ($after ?? $before)['never'] ?? false => 'never',
                         default => 'notYet',
                     };
                     $lines[] = KitchenChanges::line('count', item: ['name' => '', 'parent' => null, 'state' => $shown], old: $old, count: $new);

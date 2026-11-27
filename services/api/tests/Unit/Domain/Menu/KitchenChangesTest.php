@@ -79,13 +79,29 @@ final class KitchenChangesTest extends TestCase
     }
 
     #[Test]
-    public function aDietAloneThatOnlyLeftTheSheetsNamesIsNoChange(): void
+    public function aDietCarriedBetweenTheNamesAndTheOtherDietsIsSaidByTheFigureAlone(): void
     {
         $ada = KitchenSides::person('a', 'Ada', [], ['vegan']);
         $copy = KitchenSides::side([$ada], diets: ['vegan' => 1]);
         $now = KitchenSides::side([], diets: ['vegan' => 1]);
 
-        self::assertSame([], KitchenChanges::between($copy, $now, ['a' => $ada]));
+        self::assertSame(['dietNew:vegan::1'], self::saidBetween(KitchenChanges::between($copy, $now, ['a' => $ada]), true));
+
+        $quin = KitchenSides::person('q', 'Quin', ['sesame'], ['halal']);
+        $copy = KitchenSides::side([], diets: ['halal' => 1]);
+
+        self::assertSame(['allergyNew:sesame:Quin:1', 'dietGone:halal::1'], self::said($copy, KitchenSides::side([$quin]), true));
+    }
+
+    #[Test]
+    public function aDeletedCoursesOtherFiguresGoToNought(): void
+    {
+        $copy = KitchenSides::side([]);
+        $copy['courses'][0]['kitchen'] = 12;
+        $copy['courses'][0]['skipped'] = 3;
+        $now = [...KitchenSides::side([]), 'courses' => []];
+
+        self::assertSame(['kitchen 12 0', 'skipped 3 0'], Vec\map(KitchenChanges::between($copy, $now, []), static fn (array $line): string => Str\join([$line['item']['state'] ?? '', (string) $line['old'], (string) $line['count']], ' ')));
     }
 
     #[Test]
@@ -161,6 +177,12 @@ final class KitchenChangesTest extends TestCase
     {
         $room = Dict\from_entries(Vec\map($now['people'], static fn (array $one): array => [$one['id'], $one]));
 
-        return Vec\map(KitchenChanges::forReader(KitchenChanges::between($copy, $now, $room), $names), static fn (array $line): string => Str\join([$line['kind'], $line['code'] ?? '', $line['who'] ?? '', (string) $line['count']], ':'));
+        return self::saidBetween(KitchenChanges::between($copy, $now, $room), $names);
+    }
+
+    /** @return list<string> */
+    private static function saidBetween(mixed $lines, bool $names): array
+    {
+        return Vec\map(KitchenChanges::forReader($lines, $names), static fn (array $line): string => Str\join([$line['kind'], $line['code'] ?? '', $line['who'] ?? '', (string) $line['count']], ':'));
     }
 }

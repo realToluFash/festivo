@@ -44,6 +44,13 @@ final readonly class KitchenChanges
             }
         }
 
+        // A diet that left the other-diets figure for a new named row was carried there, not recorded: the figure's own line says it.
+        $carried = [];
+
+        foreach (NeedKind::Diet->codes() as $code) {
+            $carried[$code] = self::unnamed($copy['dietCounts'], $copy['people'], 'diets', $code) - self::unnamed($now['dietCounts'], $now['people'], 'diets', $code);
+        }
+
         $lines = [];
 
         foreach (Vec\unique(Vec\concat(Vec\keys($after), Vec\keys($before))) as $id) {
@@ -58,6 +65,12 @@ final readonly class KitchenChanges
                 $moved = static fn (array $from, array $against): array => Vec\filter($from, static fn (string $code): bool => !Iter\contains($against, $code) || ($reworded && 'other' === $code));
 
                 foreach ($moved($has, $had) as $code) {
+                    if ('diet' === $family && null === $was && ($carried[$code] ?? 0) > 0) {
+                        --$carried[$code];
+
+                        continue;
+                    }
+
                     $lines[] = self::need($family . 'New', $code, $id, $who, 1);
                 }
 
@@ -69,7 +82,7 @@ final readonly class KitchenChanges
 
         foreach (['allergy' => [NeedKind::Allergen, 'allergyCounts', 'allergens'], 'diet' => [NeedKind::Diet, 'dietCounts', 'diets']] as $family => [$kind, $counts, $field]) {
             foreach ($kind->codes() as $code) {
-                $change = self::unnamed($now[$counts], Vec\values($after), $field, $code) - self::unnamed($copy[$counts], Vec\values($before), $field, $code);
+                $change = self::unnamed($now[$counts], $now['people'], $field, $code) - self::unnamed($copy[$counts], $copy['people'], $field, $code);
 
                 if (0 !== $change) {
                     $lines[] = self::need($family . ($change > 0 ? 'New' : 'Gone'), $code, null, null, Math\abs($change));

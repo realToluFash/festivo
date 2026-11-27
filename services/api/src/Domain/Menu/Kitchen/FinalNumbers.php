@@ -49,8 +49,12 @@ final readonly class FinalNumbers
     ) {
     }
 
-    /** @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone; `changes` the sheet now against the latest copy, null with none */
-    public function of(Event $event, bool $names): array
+    /**
+     * @param ?Sheet $now the sheet with its names, when the caller has it
+     *
+     * @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone; `changes` the sheet now against the latest copy, null with none
+     */
+    public function of(Event $event, bool $names, ?array $now = null): array
     {
         $due = $this->kitchenFinalNumbersRepository->findOneForEvent($event)?->getDueOn();
         $zone = new DateTimeZone($event->getTimeZone());
@@ -64,7 +68,7 @@ final readonly class FinalNumbers
                 'recordedAt' => $copy->getRecordedAt()->setTimezone($zone)->format(\DATE_ATOM),
                 'by' => $copy->getRecordedByName(),
             ]),
-            'changes' => $this->changes($event, $names),
+            'changes' => $this->changes($event, $names, $now),
         ];
     }
 

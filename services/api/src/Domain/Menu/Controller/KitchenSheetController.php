@@ -62,7 +62,7 @@ final readonly class KitchenSheetController
         $names = $this->names($event);
         $sheet = $this->kitchenSheet->of($event, $names);
 
-        return new JsonResponse(['sheet' => [...$sheet, 'paper' => $sheet['paper']->value], 'finalNumbers' => $this->finalNumbers->of($event, $names)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
+        return new JsonResponse(['sheet' => [...$sheet, 'paper' => $sheet['paper']->value], 'finalNumbers' => $this->finalNumbers->of($event, $names, $names ? $sheet : null)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
     }
 
     /** Final numbers due (sc-30812): a day or null. Refused 422 on `due`. */
