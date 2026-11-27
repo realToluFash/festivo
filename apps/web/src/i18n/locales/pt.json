@@ -7348,14 +7348,14 @@
       "undoUntil": "Pode anular até esta hora: {{time}}",
       "undone": "Anulado.",
       "step": {
-        "sentBack": "Devolução: {{items}} de {{guest}} · {{reason}}",
+        "sentBack": "Devolução de {{guest}}: {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "Não foi possível carregar a sala. Tente novamente.",
       "tryAgain": "Tentar novamente",
       "listBack": "Voltar",
       "chefsChoice": "À escolha do chef",
-      "chefsChoiceInSentence": "à escolha do chef",
+      "chefsChoiceInSentence": "o prato à escolha do chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "A sala abre com «Pode servir na sala»",

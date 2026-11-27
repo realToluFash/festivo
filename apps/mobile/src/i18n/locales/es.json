@@ -3817,7 +3817,7 @@
       "undoUntil": "Se puede deshacer hasta esta hora: {{time}}",
       "undone": "Deshecho.",
       "step": {
-        "sentBack": "Devolución: {{items}} de {{guest}} · {{reason}}",
+        "sentBack": "Devolución de {{guest}}: {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "No se ha podido cargar la sala. Inténtelo de nuevo.",
@@ -3832,7 +3832,7 @@
       "tryAgain": "Reintentar",
       "listBack": "Volver",
       "chefsChoice": "A elección del chef",
-      "chefsChoiceInSentence": "a elección del chef",
+      "chefsChoiceInSentence": "el plato a elección del chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La sala se abre con «Puede atender en sala»",

@@ -43,7 +43,8 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             new: null,
             old: null,
             count: 0,
-            on: null,
+            on: '2026-10-17T15:00:00+01:00',
+            dated: false,
           },
           {
             kind: 'job',
@@ -55,6 +56,7 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             old: 'Floor',
             count: 0,
             on: null,
+            dated: false,
           },
         ],
       },
@@ -66,6 +68,69 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
       'Job Bar (was Floor)',
       'Edits before then go in the same message.',
     ]);
+  });
+
+  it.each([
+    [
+      false,
+      '2026-10-18',
+      ['Start Sunday 18:00 (was Saturday 18:00)', 'End Sunday 23:00 (was Saturday 23:00)'],
+    ],
+    [
+      true,
+      '2026-10-24',
+      [
+        'Start Saturday, Oct 24, 18:00 (was Saturday, Oct 17, 18:00)',
+        'End Saturday, Oct 24, 23:00 (was Saturday, Oct 17, 23:00)',
+      ],
+    ],
+  ])('names a moved shift’s new day, dated %s (sc-100276)', (dated, day, lines) => {
+    const line = (kind: 'start_time' | 'end_time', hour: string) => ({
+      kind,
+      start: `${day}T${hour}:00+01:00`,
+      end: null,
+      oldStart: `2026-10-17T${hour}:00+01:00`,
+      oldEnd: null,
+      new: null,
+      old: null,
+      count: 0,
+      on: null,
+      dated,
+    });
+    const one = person({
+      notice: {
+        state: 'waiting',
+        goesAt: '2026-10-15T19:55:00+01:00',
+        changes: [line('start_time', '18:00'), line('end_time', '23:00')],
+      },
+    });
+
+    expect(words(one).slice(1, 3)).toEqual(lines);
+  });
+
+  it('keeps the weekday on the old end of a moved shift over midnight (sc-100276)', () => {
+    const one = person({
+      notice: {
+        state: 'waiting',
+        goesAt: '2026-10-15T19:55:00+01:00',
+        changes: [
+          {
+            kind: 'end_time',
+            start: '2026-10-19T02:00:00+01:00',
+            end: null,
+            oldStart: '2026-10-18T02:00:00+01:00',
+            oldEnd: null,
+            new: null,
+            old: null,
+            count: 0,
+            on: null,
+            dated: false,
+          },
+        ],
+      },
+    });
+
+    expect(words(one)[1]).toBe('End Monday 02:00 (was Sunday 02:00)');
   });
 
   it('names the weekday on a shift’s start, and on an end only past midnight', () => {
@@ -84,6 +149,7 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             old: null,
             count: 0,
             on: null,
+            dated: false,
           },
           {
             kind: 'shift_retimed',
@@ -95,6 +161,7 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             old: null,
             count: 0,
             on: null,
+            dated: false,
           },
           {
             kind: 'no_shift_left',
@@ -106,6 +173,7 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             old: null,
             count: 0,
             on: null,
+            dated: false,
           },
         ],
       },
@@ -134,6 +202,7 @@ describe('the Briefing column’s notice lines (sc-4333)', () => {
             old: null,
             count: 0,
             on: '2026-10-17T17:00:00+01:00',
+            dated: false,
           },
         ],
       },
