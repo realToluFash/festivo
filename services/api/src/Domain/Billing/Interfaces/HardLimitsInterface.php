@@ -24,5 +24,8 @@ interface HardLimitsInterface
     /** As an invitation sent: a request still awaiting approval holds no seat until it is approved. */
     public function requireSeatToApprove(Organisation $organisation): void;
 
+    /** Refused 409 `team_seats_in_use`, naming the plan's seats, when a suspended member back would pass them. */
+    public function requireSeatToRestore(Organisation $organisation): void;
+
     public function requireSeatToAccept(Organisation $organisation): void;
 }

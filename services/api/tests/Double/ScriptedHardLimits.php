@@ -67,6 +67,13 @@ final class ScriptedHardLimits implements HardLimitsInterface
         }
     }
 
+    public function requireSeatToRestore(Organisation $organisation): void
+    {
+        if ($this->consult(__FUNCTION__)) {
+            $this->hardLimits->requireSeatToRestore($organisation);
+        }
+    }
+
     public function requireSeatToAccept(Organisation $organisation): void
     {
         if ($this->consult(__FUNCTION__)) {

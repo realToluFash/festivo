@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
@@ -47,7 +48,7 @@ final readonly class MemberActions
         private DomainSuspender $domainSuspender,
         private ClockInterface $clock,
         private OwnerClaimHandler $ownerClaimHandler,
-        private TeamSeats $teamSeats,
+        private HardLimitsInterface $hardLimits,
         private MemberAccessMailer $memberAccessMailer,
         private RecentProof $recentProof,
     ) {
@@ -162,7 +163,7 @@ final readonly class MemberActions
                 ]));
             }
 
-            $this->teamSeats->requireFree($membership->getOrganisation());
+            $this->hardLimits->requireSeatToRestore($membership->getOrganisation());
             $this->membershipMachine->move($membership, MembershipStatus::Active, MembershipChannel::Settings, $by);
             $this->record(MemberSuspension::RESTORED, $membership, $by, [
                 'status' => [MembershipStatus::Suspended->value, MembershipStatus::Active->value],

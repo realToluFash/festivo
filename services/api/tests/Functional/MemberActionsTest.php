@@ -8,7 +8,6 @@ use App\Domain\Organisation\Members\MemberActions;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\Members\OwnershipTransfer;
-use App\Domain\Organisation\Members\TeamSeats;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -22,11 +21,10 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\Suspension;
-use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
@@ -35,7 +33,6 @@ use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Mime\Email;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class MemberActionsTest extends ApiTestCase
 {
@@ -460,18 +457,20 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
-    public function restoringWaitsForAFreeTeamSeatAndSuspendingFreesOne(): void
+    public function restoringWaitsForAFreeSeatOnThePlanAndSuspendingFreesOne(): void
     {
-        $this->seats('2');
+        self::service(ScriptedHardLimits::class)->enforce();
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
+        $this->as($this->owner, 'POST', $this->path('/members/invite'), ['email' => 'dayo@example.com', 'roleId' => $this->roleId(SeededRole::Member)]);
+        self::assertSame(201, $this->statusCode(), 'a pending invitation takes the seat Chidi left');
 
         $refused = $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
         self::assertSame(409, $this->statusCode(), Json\encode($refused));
         self::assertSame(ErrorCode::TeamSeatsInUse->type(), $refused['type'] ?? null);
-        self::assertSame('All 2 team seats on this organisation’s plan are in use, so nothing has changed.', $refused['detail'] ?? null);
-        self::assertSame(2, $refused['limit'] ?? null);
+        self::assertSame('All 3 team seats on this organisation’s plan are in use, so nothing has changed.', $refused['detail'] ?? null);
+        self::assertSame(3, $refused['limit'] ?? null);
         self::assertSame(MembershipStatus::Suspended, $this->membership($chidi)->getStatus());
 
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($bisi) . '/suspend'));
@@ -543,18 +542,6 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aSingleSeatIsNamedAsTheOnlyOne(): void
-    {
-        $this->seats('1');
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
-        $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
-
-        $refused = $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
-
-        self::assertSame('The only team seat on this organisation’s plan is in use, so nothing has changed.', $refused['detail'] ?? null);
-    }
-
-    #[Test]
     public function aSuspendedMemberCannotLeave(): void
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
@@ -595,11 +582,6 @@ final class MemberActionsTest extends ApiTestCase
         $proof = $this->as($this->owner, 'POST', '/api/auth/proof', ['password' => self::PASSWORD]);
 
         return $this->as($this->owner, 'POST', $this->path('/ownership'), ['membershipId' => $membershipId, 'proof' => $proof['proof'] ?? null]);
-    }
-
-    private function seats(string $limit): void
-    {
-        self::getContainer()->set(TeamSeats::class, new TeamSeats(self::service(MembershipRepository::class), self::service(TranslatorInterface::class), self::service(EntityManagerInterface::class), $limit));
     }
 
     private function bodyTo(string $address): string
