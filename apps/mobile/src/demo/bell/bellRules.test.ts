@@ -1,69 +1,40 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  FADE_REACH,
-  bellStartOf,
-  fixedAboveOnSide,
-  listRoom,
-  listSides,
-  topScrolls,
-  topSides,
-} from './bellRules.ts';
-import { TAB_FADE } from '../../layout/todayFold.ts';
+import { TOP_ROW, bellStartOf, fixedAbove, frameSides, listRoom } from './bellRules.ts';
 
-describe('Notifications on a phone on its side (sc-62023)', () => {
+describe('Notifications on a phone on its side, in the B frame (sc-62023)', () => {
   it('reads its state from the route', () => {
     expect(bellStartOf('shown', 'scrolled')).toEqual({ ask: true, at: 'scrolled' });
     expect(bellStartOf(undefined, 'nope')).toEqual({ ask: false, at: 'top' });
   });
 
-  it('scrolls its top away only on its side', () => {
-    expect(topScrolls({ width: 640, height: 360 })).toBe(true);
-    expect(topScrolls({ width: 360, height: 640 })).toBe(false);
+  it('keeps only the status bar and the B top row above the list', () => {
+    expect(TOP_ROW).toBe(48);
+    expect(fixedAbove({ top: 24 })).toBe(72);
+    expect(fixedAbove({ top: 0 })).toBe(48);
   });
 
-  it('gives the Android phone on its side at least half its height', () => {
-    const room = listRoom(360, 24, 80);
+  it('gives the Android phone on its side at least half its height, with either navigation', () => {
+    const threeButton = listRoom(360, fixedAbove({ top: 24 }), 0);
+    const gesture = listRoom(360, fixedAbove({ top: 24 }), 24);
 
-    expect(room.list).toBe(256);
-    expect(room.list).toBeGreaterThanOrEqual(room.least);
-    expect(room.least).toBe(180);
-    expect(room.clear).toBe(186);
+    expect(threeButton.least).toBe(180);
+    expect(threeButton.list).toBe(288);
+    expect(gesture.list).toBe(264);
+    expect(gesture.list).toBeGreaterThanOrEqual(gesture.least);
   });
 
   it('gives the iPhone 17 Pro on its side at least half its height', () => {
-    const room = listRoom(402, 0, 81);
+    const room = listRoom(402, fixedAbove({ top: 0 }), 21);
 
-    expect(room.list).toBe(321);
     expect(room.least).toBe(201);
+    expect(room.list).toBe(333);
     expect(room.list).toBeGreaterThanOrEqual(room.least);
   });
 
-  it('keeps the top in line with upright on its side, past each bar once', () => {
-    const bars = [
-      { top: 24, left: 48, right: 0 },
-      { top: 0, left: 62, right: 62 },
-      { top: 24, left: 0, right: 0 },
-    ];
-
-    for (const insets of bars) {
-      const inList = listSides(insets).paddingLeft + topSides(true, insets).paddingLeft;
-      const inListRight = listSides(insets).paddingRight + topSides(true, insets).paddingRight;
-
-      expect(inList).toBe(topSides(false, insets).paddingLeft);
-      expect(inListRight).toBe(topSides(false, insets).paddingRight);
-    }
-    const navBar = { left: 48, right: 0 };
-
-    expect(listSides(navBar).paddingLeft + topSides(true, navBar).paddingLeft).toBe(68);
-  });
-
-  it('keeps only the status strip above the list on its side', () => {
-    expect(fixedAboveOnSide({ top: 24 })).toBe(24);
-    expect(listRoom(360, fixedAboveOnSide({ top: 24 }), 80).list).toBe(256);
-  });
-
-  it('reaches as far up as the fade TodayCover draws', () => {
-    expect(FADE_REACH).toBe(TAB_FADE);
+  it('moves the frame in past Android’s bar or the Dynamic Island, 20 from it', () => {
+    expect(frameSides({ left: 48, right: 0 })).toEqual({ paddingLeft: 68, paddingRight: 20 });
+    expect(frameSides({ left: 62, right: 62 })).toEqual({ paddingLeft: 82, paddingRight: 82 });
+    expect(frameSides({ left: 0, right: 0 })).toEqual({ paddingLeft: 20, paddingRight: 20 });
   });
 });

@@ -12,52 +12,30 @@ export function bellStartOf(ask: string | undefined, at: string | undefined): Be
   return { ask: ask === 'shown', at: at === 'scrolled' ? 'scrolled' : 'top' };
 }
 
-/** On its side a phone's top scrolls away with the list, as Events' does (sc-39471); upright it stays above the list, as on main. */
-export function topScrolls(window: { width: number; height: number }): boolean {
-  return window.width > window.height;
-}
+/** The B frame's row with Back and Mark all read, as BellParts' `bellTop` draws it. */
+export const TOP_ROW = 48;
 
-/** How far up from the screen's foot the fade under the phone's tab bar reaches, as `TabBarFade` draws it; its test reads the height from `TodayCover.tsx`. */
-export const FADE_REACH = 150;
-
-const LIST_SIDE = tokens.spaceXl;
-
-const TOP_SIDE = tokens.spaceXxl;
+const SIDE = tokens.spaceXxl;
 
 type Sides = { left: number; right: number };
 
-export function listSides(insets: Sides): { paddingLeft: number; paddingRight: number } {
-  return sidePadding(LIST_SIDE, insets);
+/** The B frame's 20 at each side, moved in past Android's bar or the Dynamic Island on its side (sc-54891); upright the insets are 0. */
+export function frameSides(insets: Sides): { paddingLeft: number; paddingRight: number } {
+  return sidePadding(SIDE, insets);
 }
 
-/** On its side the top sits inside the list, which has already moved in past the bars, so it adds only the step from the list's edge to its own. */
-export function topSides(
-  onSide: boolean,
-  insets: Sides,
-): { paddingLeft: number; paddingRight: number } {
-  return onSide
-    ? sidePadding(TOP_SIDE - LIST_SIDE, { left: 0, right: 0 })
-    : sidePadding(TOP_SIDE, insets);
-}
-
-/** On its side only the status strip stays above the list. */
-export function fixedAboveOnSide(insets: { top: number }): number {
-  return insets.top;
+/** Only the status bar and the row with Back and Mark all read stay above the list; the title scrolls with it. */
+export function fixedAbove(insets: { top: number }): number {
+  return insets.top + TOP_ROW;
 }
 
 export interface ListRoom {
-  /** From the foot of what stays above the list to the top of the tab bar, as the AC measures it. */
+  /** From the foot of what stays above the list to the foot of the screen's safe area, as the AC measures it; the B frame has no tab bar. */
   list: number;
   /** Half the screen's height, the least the list may have on its side. */
   least: number;
-  /** The part of the list above the fade, where a notification can be stopped whole. */
-  clear: number;
 }
 
-export function listRoom(height: number, fixedAbove: number, tabBarClearance: number): ListRoom {
-  return {
-    list: height - fixedAbove - tabBarClearance,
-    least: Math.ceil(height / 2),
-    clear: height - fixedAbove - FADE_REACH,
-  };
+export function listRoom(height: number, above: number, below: number): ListRoom {
+  return { list: height - above - below, least: Math.ceil(height / 2) };
 }
