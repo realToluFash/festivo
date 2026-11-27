@@ -545,7 +545,7 @@
     "guest_message.notice.link": "{label}: {url}",
     "guest_message.notice.from": "{organisation} via Soirely",
     "guest_message.notice.footer": "To answer {hosts}, reply on your page. This email cannot take replies.",
-    "guest_message.notice.unsubscribe": "To stop these emails or choose how {organisation} can reach you: {url}",
+    "guest_message.notice.unsubscribe_label": "Stop emails from {organisation}",
     "validation.guest_message_required": "Enter a message.",
     "validation.your_messages_no_address": "Nothing is on record to turn off on this channel.",
     "validation.guest_message_subject_too_long": "Shorten the subject to {count, number, ::group-auto} characters or fewer.",
