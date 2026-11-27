@@ -26,6 +26,13 @@ describe('the event step keeps Your name and the number row above Send code with
     );
   });
 
+  it("gives the step's dock rule the focused field's block, label and line included, never the kept tier (sc-7099)", () => {
+    expect(fields).toMatch(
+      /scroll\.focusedGroup\.forEach\(\(needs\) => needs\(focusedBlock\(fields\)\.height\)\)/u,
+    );
+    expect(fields).not.toMatch(/needs\(kept/u);
+  });
+
   it('still lands with Your name focused, and signed in shows no field', () => {
     expect(redeem).toMatch(/autoFocus=\{step\.typed == null\}/u);
     expect(redeem).toMatch(/\{!signedIn && \(\s*<View ref=\{nameBlock\}>/u);

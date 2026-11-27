@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { type EventFields, keptInView, offsetAboveSend } from './fieldsAboveSend.ts';
+import { barFits } from './keyboard.ts';
+import { type EventFields, focusedBlock, keptInView, offsetAboveSend } from './fieldsAboveSend.ts';
 
 const MARGIN = tokens.spaceLg;
 // The tile and the heading take 0 to 180, the refusal 196 to 240, then the two fields spaceLg apart, as `styles.fields` gaps them.
@@ -81,5 +82,42 @@ describe('where the scroll rests with the keys up (sc-97734)', () => {
   it('never scrolls above the top, and leaves both alone wherever they already show', () => {
     expect(offsetAboveSend({ ...PLAIN, room: 600, offset: 300, margin: MARGIN })).toBe(0);
     expect(offsetAboveSend({ ...PLAIN, room: 440, offset: 40, margin: MARGIN })).toBeNull();
+  });
+});
+
+describe("what the step's dock rule is given (sc-97734, AC bullet 3)", () => {
+  // Send code, 60 tall, docked: the lift's room is the room to the keys less the bar. Undocked, it is the whole room.
+  const SEND = 60;
+  const docked = (room: number) => ({ room: room + SEND, bar: SEND, margin: MARGIN });
+  const inline = (room: number) => ({ room, bar: SEND, margin: MARGIN });
+
+  it('is the focused field block, label and line included, whatever the lift keeps', () => {
+    expect(focusedBlock(PLAIN)).toBe(NAME);
+    expect(focusedBlock({ ...PLAIN, focus: 'number' })).toBe(NUMBER);
+    expect(focusedBlock(REFUSED)).toBe(NAME);
+  });
+
+  it('keeps Send code docked wherever that block fits above it, the two fields kept where the room left holds them', () => {
+    expect(keptInView(PLAIN, 240, MARGIN).height).toBe(180);
+    expect(barFits({ ...docked(240), field: focusedBlock(PLAIN).height })).toBe(true);
+    expect(keptInView(PLAIN, 140, MARGIN)).toEqual(NAME);
+    expect(barFits({ ...docked(140), field: focusedBlock(PLAIN).height })).toBe(true);
+  });
+
+  it('undocks Send code where the field block plus Send code exceed the room', () => {
+    // The SE in Portuguese at the largest text: 100 above a docked Send code, the field block 84 plus its margins and the bar is 168.
+    expect(keptInView(PLAIN, 100, MARGIN)).toEqual(NAME);
+    expect(barFits({ ...docked(100), field: focusedBlock(PLAIN).height })).toBe(false);
+  });
+
+  it('docks Send code again from the undocked frame wherever the field fits under it, though the kept span does not', () => {
+    // Rotated back to portrait, or the keys shrinking under an undocked bar: the frame reaches the keys. In a room of 204 to 263 the span fits and span plus Send code does not, yet Your name plus Send code does.
+    for (const room of [204, 230, 263]) {
+      const kept = keptInView(PLAIN, room, MARGIN);
+      expect(kept.height).toBe(180);
+      expect(barFits({ ...inline(room), field: kept.height })).toBe(false);
+      expect(barFits({ ...inline(room), field: focusedBlock(PLAIN).height })).toBe(true);
+    }
+    expect(barFits({ ...inline(167), field: focusedBlock(PLAIN).height })).toBe(false);
   });
 });
