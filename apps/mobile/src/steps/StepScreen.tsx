@@ -243,13 +243,14 @@ export function StepScreen({
   const [inline, setInline] = useState(false);
   // While docked the scroll view ends at the foot, while in place at the keys.
   const room = sizes.shown + (inline ? 0 : sizes.foot);
+  const fieldHeight = Math.max(sizes.field, sizes.group);
   const nextInline =
     foot != null &&
     keysUp &&
-    sizes.field > 0 &&
+    fieldHeight > 0 &&
     !barFits({
       room,
-      field: Math.max(sizes.field, sizes.group),
+      field: fieldHeight,
       bar: sizes.foot,
       margin: tokens.spaceLg,
     });

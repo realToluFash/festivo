@@ -47,3 +47,18 @@ describe('the event step keeps Your name and the number row above Send code with
     expect(redeem).toMatch(/\{!signedIn && \(\s*<View ref=\{numberBlock\}>/u);
   });
 });
+
+describe('the dock gate reads the field group when the focused input measures 0 (sc-97734)', () => {
+  const step = read('src', 'steps', 'StepScreen.tsx');
+
+  it('needs a height from the input or its group, not from the input alone', () => {
+    expect(step).toContain('const fieldHeight = Math.max(sizes.field, sizes.group);');
+    expect(step).toMatch(/fieldHeight > 0 &&\s*!barFits\(\{\s*room,\s*field: fieldHeight,/u);
+    expect(step).not.toContain('sizes.field > 0');
+  });
+
+  it('undocks the pt largest-text SE numbers QA logged: 206 and 363.5 against a 179.5 bar', () => {
+    expect(barFits({ room: 370, field: 206, bar: 179.5, margin: 12 })).toBe(false);
+    expect(barFits({ room: 320, field: 363.5, bar: 179.5, margin: 12 })).toBe(false);
+  });
+});
