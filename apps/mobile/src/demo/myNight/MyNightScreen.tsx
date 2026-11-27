@@ -10,6 +10,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -65,7 +66,7 @@ function FromTheEvent({ night }: { night: Night }) {
       at={at}
       role="Can view"
       who={night.name}
-      locale="en"
+      locale={dateLocale()}
       shown={{
         id: 'evt-adebayo-60',
         name: night.event,
