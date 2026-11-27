@@ -49,7 +49,6 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped, focusedField } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { screenReaderNow } from './screenReaderNow.ts';
 import {
   arrivedFocusStep,
   holdsMountFocus,
@@ -437,7 +436,7 @@ export function useOpenedFocus(
     return () => clearTimeout(next);
   }, [opened, arrival, focused, readerOn, ticks]);
 
-  const [held] = useState(() => holdsMountFocus(Platform.OS, opened, autoFocus, screenReaderNow()));
+  const [held] = useState(() => holdsMountFocus(Platform.OS, opened, autoFocus, readerOn));
   const [keysStep] = useState(() => mountedKeys(held));
   const [keyTicks, setKeyTicks] = useState(0);
   const touched = useRef(false);
