@@ -3398,8 +3398,11 @@ export const batchRuns = (checks, languages) =>
 export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
-  if (cold) lines.push('- runFlow: batch/sign-out.yaml');
-  else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
+  if (cold) {
+    // An earlier run left on its side hides Sign out in Settings, so it is put upright first.
+    lines.push('- setOrientation: PORTRAIT', helperStep('/portrait', 'batch/helper.js').trimEnd());
+    lines.push('- runFlow: batch/sign-out.yaml');
+  } else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
   runs.forEach((run, index) => {
     if (index > 0 && run.language !== runs[index - 1].language)
