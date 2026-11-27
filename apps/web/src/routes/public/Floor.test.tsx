@@ -415,6 +415,8 @@ describe('Floor in the browser (sc-4021)', () => {
 
     await screen.findByText(/1 tap waiting$/);
     expect(screen.queryByText(/Sent back · Dropped/)).toBeNull();
+    const seat = screen.getByText('Ada Obi').closest('li')!;
+    expect(within(seat).getAllByText('Waiting to send')).toHaveLength(1);
     expect(sent).toHaveLength(1);
   });
 

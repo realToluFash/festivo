@@ -19,6 +19,7 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
+  orderWaits,
   owesSentBack,
   refusalKey,
   roomCourse,
@@ -875,7 +876,14 @@ function Seat({
             {itemsOf(order, t)}
           </Text>
         )}
-        <WordLine {...stageSaid(t, guest)} size={14} />
+        <View style={styles.wrap}>
+          <WordLine {...stageSaid(t, guest)} size={14} />
+          {orderWaits(guest, keptOn) && (
+            <Text size={13} weight="semibold" style={styles.chip}>
+              {t('service.waitingToSend')}
+            </Text>
+          )}
+        </View>
         {held != null && (
           <View style={styles.held}>
             <Text size={14} weight="medium" style={styles.secondary}>

@@ -19,6 +19,7 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
+  orderWaits,
   owesSentBack,
   refusalKey,
   roomCourse,
@@ -710,7 +711,10 @@ function Seat({
         </p>
         <FlagWords guest={guest} />
         {order != null && <p>{itemsOf(t, order)}</p>}
-        <WordLine {...stageOf(t, guest)} />
+        <p className="flr-wrap">
+          <WordLine {...stageOf(t, guest)} />
+          {orderWaits(guest, keptOn) && waiting}
+        </p>
         {held != null && (
           <>
             <p className="flr-quiet">
