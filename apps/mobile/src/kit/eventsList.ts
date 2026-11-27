@@ -14,6 +14,7 @@ import {
   numberFormat,
   shownDays,
   stepAwaitsMilestones,
+  placeWords,
   venueCity,
   wallDayNumber,
 } from '@soirely/domain';
@@ -95,15 +96,6 @@ export function daysWords(
   }
 }
 
-/** The place an event's card and its page both write: the venue and its city, the venue alone, or that it is to be confirmed. */
-export function placeWords(event: Pick<ListEvent, 'place' | 'city'>, t: TFunction): string {
-  return event.place == null
-    ? t('eventPage.venueToBeConfirmed')
-    : event.city == null
-      ? event.place
-      : t('search.line.venueCity', { venue: event.place, city: event.city });
-}
-
 export function rowLine(
   event: Shown,
   now: Date,
@@ -113,7 +105,7 @@ export function rowLine(
 ): string {
   return t('todayScreen.dayAndPlace', {
     day: daysWords(event, now, locale, list, t),
-    place: placeWords(event, t),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 

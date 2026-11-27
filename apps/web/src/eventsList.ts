@@ -12,6 +12,7 @@ import {
   milestoneMoment,
   numberFormat,
   shownDays,
+  placeWords,
   venueCity,
   wallDayNumber,
 } from '@soirely/domain';
@@ -77,13 +78,6 @@ export function daysWords(
   }
 }
 
-function placeWords(event: Pick<ListEvent, 'place' | 'city'>, t: TFunction): string {
-  if (event.place == null) return t('eventPage.venueToBeConfirmed');
-  return event.city == null
-    ? event.place
-    : t('search.line.venueCity', { venue: event.place, city: event.city });
-}
-
 export function rowLine(
   event: Shown,
   now: Date,
@@ -93,7 +87,7 @@ export function rowLine(
 ): string {
   return t('events.daysAndPlace', {
     dates: daysWords(event, now, locale, t, keepDays),
-    place: placeWords(event, t),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 

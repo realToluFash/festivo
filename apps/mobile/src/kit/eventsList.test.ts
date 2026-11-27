@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { numberFormat } from '@soirely/domain';
+import { numberFormat, placeWords } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -8,7 +8,6 @@ import {
   dayTiles,
   daysWords,
   listEventOf,
-  placeWords,
   rowLine,
   rowTag,
   shownEvent,
@@ -38,19 +37,20 @@ const EVENT = {
 
 describe('placeWords', () => {
   it('writes the venue, a comma and its city, as Search does', () => {
+    const lineOf = (e: { place: string | null; city: string | null }) =>
+      placeWords(e.place, e.city, (key, values) => t(key, values ?? {}));
     const of = (name: string | null, city: string | null) =>
-      placeWords(
+      lineOf(
         listEventOf({
           ...EVENT,
           venue: { name, address: { formatted: 'Calle 1', city } },
         } as unknown as ListedEvent),
-        t,
       );
 
     expect(of('Finca Pilar', 'Toledo')).toBe('Finca Pilar, Toledo');
     expect(of('Finca Pilar', null)).toBe('Finca Pilar');
     expect(of(null, 'Toledo')).toBe('Calle 1');
-    expect(placeWords(listEventOf(EVENT), t)).toBe('eventPage.venueToBeConfirmed');
+    expect(lineOf(listEventOf(EVENT))).toBe('search.line.venueToBeConfirmed');
   });
 
   it("is the place in the row's line", () => {

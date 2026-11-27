@@ -1,12 +1,18 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, PHASE_LOOK, formatEventRange, shownPhase } from '@soirely/domain';
+import {
+  type EventPhase,
+  PHASE_LOOK,
+  formatEventRange,
+  placeWords,
+  shownPhase,
+} from '@soirely/domain';
 import { type RefObject, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { EditPart } from '../kit/eventNav.ts';
-import { listEventOf, placeWords } from '../kit/eventsList.ts';
+import { listEventOf } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -110,6 +116,7 @@ export function EventTop({
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
 }) {
   const { t } = useTranslation();
+  const row = listEventOf({ ...event, milestones: [] });
   const duplicateOpener = useRef<ViewInstance>(null);
   const endPassed = phase === 'draft' && now.getTime() >= Date.parse(event.endsAt);
 
@@ -129,7 +136,7 @@ export function EventTop({
         })}
       </Text>
       <Text size={tokens.typeBody.size} muted>
-        {placeWords(listEventOf({ ...event, milestones: [] }), t)}
+        {placeWords(row.place, row.city, (key, values) => t(key, values ?? {}))}
       </Text>
       <Placeholder label={t('eventPage.invited')} />
       {onChange != null && (
