@@ -183,17 +183,49 @@ final readonly class StaffLinks
             return StaffLinkWindow::noShiftYet();
         }
 
-        $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
-        $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
-        $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
-        $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
-        $until = $event->getEndsAt() < $until ? $event->getEndsAt() : $until;
+        [$from, $until] = self::span($shifts, $event);
 
         return match (true) {
             $now < $from => StaffLinkWindow::notYet($from, $until),
             $now >= $until => StaffLinkWindow::ended($this->clocking->openUntil($entry)),
             default => StaffLinkWindow::open($until),
         };
+    }
+
+    /** Whether the link was open when the event finished, at its end or its early end (sc-3585), so the event's end is what closed it (27 Nov, sc-3918). */
+    public function endedWithTheEvent(StaffMember $entry): bool
+    {
+        $event = $entry->getEvent();
+        $shifts = $this->staffShiftRepository->findOfPerson($entry);
+
+        if ([] === $shifts || !$this->finished($event, $this->clock->now())) {
+            return false;
+        }
+
+        $endedAt = $event->getEndedAt();
+        if (EventPhase::calledOff($endedAt, $event->getStartsAt())) {
+            return false;
+        }
+
+        [$from, $until] = self::span($shifts, $event);
+        $finishedAt = null !== $endedAt && $endedAt < $event->getEndsAt() ? $endedAt : $event->getEndsAt();
+
+        return $from <= $finishedAt && $finishedAt <= $until;
+    }
+
+    /**
+     * @param non-empty-list<StaffShift> $shifts
+     *
+     * @return array{0: DateTimeImmutable, 1: DateTimeImmutable}
+     */
+    private static function span(array $shifts, Event $event): array
+    {
+        $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
+        $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
+        $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
+        $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
+
+        return [$from, $event->getEndsAt() < $until ? $event->getEndsAt() : $until];
     }
 
     /**

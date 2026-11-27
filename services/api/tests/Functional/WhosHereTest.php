@@ -112,6 +112,7 @@ final class WhosHereTest extends ApiTestCase
         self::assertSame(['shift', '2027-03-07T01:00:00+01:00'], $this->jobEnd($read, 'Waiter'), 'the latest Waiter shift ending in the next 24 hours');
         self::assertSame(['event', '2027-03-07T02:00:00+01:00'], $this->jobEnd($read, 'Door'), 'Door has no shift tonight, and the event ends first');
         self::assertSame([false, 4, true, null], [$read['ended'], $read['rosterSize'], $this->viewer($read)['canCover'], $this->viewer($read)['station']]);
+        self::assertSame('NG', $read['countryCode'], 'no venue, so the organisation\'s country');
     }
 
     #[Test]
@@ -224,11 +225,56 @@ final class WhosHereTest extends ApiTestCase
         $dayo = $this->signedIn($this->dayo, '+2348031110001');
 
         self::assertTrue($this->as($this->owner, 'GET', $this->path())['ended']);
-        $this->as($dayo, 'POST', $this->path('walk-ons'), ['fullName' => 'Kunle Ade', 'mobile' => null, 'job' => $this->jobs['Door'], 'station' => $this->places['Door']]);
-        self::assertSame(404, $this->statusCode(), 'Dayo\'s staff link stops granting once the event ends, before the event is read: ' . Json\encode($this->last()));
-
-        $this->as($this->owner, 'POST', $this->path('walk-ons'), ['fullName' => 'Kunle Ade', 'mobile' => null, 'job' => $this->jobs['Door'], 'station' => $this->places['Door']]);
+        $walkOn = ['fullName' => 'Kunle Ade', 'mobile' => null, 'job' => $this->jobs['Door'], 'station' => $this->places['Door']];
+        $this->as($this->owner, 'POST', $this->path('walk-ons'), $walkOn);
         self::assertSame([409, 'event_concluded'], [$this->statusCode(), $this->errorCode()]);
+
+        foreach ([
+            ['GET', $this->path(), null],
+            ['POST', $this->path('walk-ons'), $walkOn],
+            ['POST', $this->path('cover'), ['absent' => $this->ngozi, 'mover' => $this->grace]],
+            ['PUT', $this->path('people/' . $this->ngozi . '/mobile'), ['mobile' => ['countryCode' => 'NG', 'number' => '0803 111 0009']]],
+            ['POST', $this->path('subscriptions'), null],
+        ] as [$method, $path, $body]) {
+            $this->as($dayo, $method, $path, $body);
+            self::assertSame([409, 'event_concluded'], [$this->statusCode(), $this->errorCode()], 'Dayo\'s link ended with the event, so he is told the event ended: ' . $method . ' ' . $path);
+        }
+
+        $this->as($this->account('stranger@ire.events', 'Kemi Bassey'), 'GET', $this->path());
+        self::assertSame(404, $this->statusCode(), 'an account with no link to the event learns nothing');
+    }
+
+    #[Test]
+    public function aNightCalledOffBeforeItStartedReadsAsNotFound(): void
+    {
+        $dayo = $this->signedIn($this->dayo, '+2348031110001');
+        $this->event()->end(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        self::em()->flush();
+
+        $this->as($dayo, 'GET', $this->path());
+        self::assertSame(404, $this->statusCode(), 'his link was open when the night was called off, but it never took place: ' . Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aLinkThatEndedBeforeTheEventStillReadsAsNotFound(): void
+    {
+        $early = $this->person('Femi Ade', 'Door', '0803 111 0005');
+        $this->onShift([$early], 'Door', '2027-03-06T17:00', '2027-03-06T18:00');
+        $femi = $this->signedIn($early, '+2348031110005');
+        $dayo = $this->signedIn($this->dayo, '+2348031110001');
+        $this->station($early, 'Door');
+        $this->as($this->owner, 'PUT', $this->staff('stations/' . $this->places['Door'] . '/lead'), ['lead' => $early]);
+        $this->as($femi, 'GET', $this->path());
+        self::assertSame(200, $this->statusCode(), 'he leads the Door');
+
+        $this->event()->makeLive(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        self::em()->flush();
+        self::mockTime(new DateTimeImmutable('2027-03-07T01:30:00Z'));
+        $this->as($femi, 'GET', $this->path());
+        self::assertSame(404, $this->statusCode(), 'his link closed two hours after his shift, before the event ended: ' . Json\encode($this->last()));
+
+        $this->as($dayo, 'GET', $this->path());
+        self::assertSame([409, 'event_concluded'], [$this->statusCode(), $this->errorCode()], 'Dayo\'s link ran to the scheduled end, so the event\'s end closed it');
     }
 
     #[Test]

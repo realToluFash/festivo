@@ -22,4 +22,7 @@ interface MembershipDirectoryInterface
 
     /** Whether the account, not a member, holds a live grant on one of the organisation's events from outside or through a staff link (sc-71, sc-4235). */
     public function isOutsideIn(User $user, Uuid $organisationId): bool;
+
+    /** Whether the account held a staff link on the event that ended only because the event ended (27 Nov, sc-3918). */
+    public function linkEndedWithTheEvent(User $user, Uuid $eventId): bool;
 }

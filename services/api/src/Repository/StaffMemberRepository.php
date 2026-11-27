@@ -58,6 +58,20 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
         return $query->getQuery()->getResult();
     }
 
+    /** @return list<StaffMember> the account's entries holding a link on the event, whether or not it has finished */
+    public function findLinkedOn(User $account, Uuid $eventId): array
+    {
+        /** @var list<StaffMember> */
+        return $this->createQueryBuilder('s')
+            ->where('s.account = :account')
+            ->andWhere('s.event = :event')
+            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = s)')
+            ->setParameter('account', $account->getId(), 'uuid')
+            ->setParameter('event', $eventId, 'uuid')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** @return list<StaffMember> in the order they were added; RosterOrder sorts them */
     public function findOnEvent(Event $event): array
     {
