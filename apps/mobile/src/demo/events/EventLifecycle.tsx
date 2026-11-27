@@ -2,12 +2,15 @@ import { typedNameMatches } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { DuplicateScreen as ProductDuplicate } from '../../components/DuplicateEvent.tsx';
+import { useTranslation } from 'react-i18next';
+
 import { BoxField } from '../../components/MomentPick.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Ask, type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { guestAnswer, guestCopyStart, guestsToCopy } from './DuplicateGuests.ts';
+import { DuplicateGuestsScreen, copyRefusal } from './DuplicateGuestsScreen.tsx';
 import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
 import {
   CREATING_MS,
@@ -235,12 +238,15 @@ export function DeleteScreen({
   );
 }
 
-/** The product's Duplicate (sc-48601), on the demo's answers: Create draft always comes back created. */
+/** The product's Duplicate (sc-48601) with sc-101394's box, on the demo's answers: unticked, Create draft always comes back created; ticked, the plan's people per event decides. */
 export function DuplicateScreen({
   open,
   event,
   locale,
   start,
+  guests,
+  people,
+  permissions,
   opener,
   onClose,
   onCreated,
@@ -249,15 +255,24 @@ export function DuplicateScreen({
   event: SampleEvent;
   locale: string;
   start: DuplicateState | null;
+  /** Guests on the list, each once without companions. */
+  guests: number;
+  /** The people the list brings, companions counted, as the plan counts them. */
+  people: number;
+  permissions: readonly string[];
   opener: Opener;
   onClose: () => void;
   onCreated: (copy: SampleEvent) => void;
 }) {
+  const { t } = useTranslation();
   const [run, setRun] = useState(() =>
     duplicateStart(start, startsAfter(wallOf(event.startsAt, event.timeZone))),
   );
+  const [copy, setCopy] = useState(() => guestCopyStart(start, guests));
   const [refusals, setRefusals] = useState(run.focus == null ? 0 : 1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shown = guestsToCopy(guests, copy.manages ? permissions : []);
+  const ticked = shown != null && copy.ticked;
   const act = (action: DuplicateAction) => setRun((now) => reduceDuplicate(now, action));
   const create = () => {
     const next = reduceDuplicate(run, { type: 'create' });
@@ -267,6 +282,12 @@ export function DuplicateScreen({
       return;
     }
     timer.current = setTimeout(() => {
+      if (ticked && guestAnswer(people) === 'refused') {
+        setRun((now) => ({ ...now, status: 'editing' }));
+        setCopy((now) => ({ ...now, refused: true }));
+        return;
+      }
+      setCopy((now) => ({ ...now, copied: ticked ? guests : null }));
       act({ type: 'created' });
       timer.current = setTimeout(
         () => onCreated(copyOf(event, instantOf(run.starts.date, run.starts.time, event.timeZone))),
@@ -283,16 +304,22 @@ export function DuplicateScreen({
   );
 
   return (
-    <ProductDuplicate
+    <DuplicateGuestsScreen
       open={open}
       event={event}
       locale={locale}
       run={run}
       refusals={refusals}
+      guests={shown}
+      ticked={ticked}
+      copied={copy.copied}
+      refusal={copy.refused ? copyRefusal(people, t) : null}
       opener={opener}
       onClose={onClose}
       onPick={(starts) => act({ type: 'picked', starts })}
+      onTick={() => setCopy((now) => ({ ...now, ticked: !now.ticked }))}
       onCreate={create}
+      onBack={() => setCopy((now) => ({ ...now, refused: false }))}
       testID="event.duplicate"
     />
   );

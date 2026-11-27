@@ -2403,6 +2403,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Draft created. Opening it.',
         href: '/demo/events/evt-wed-4?state=duplicateCreated',
       },
+      {
+        title: 'Duplicate · guest list ticked',
+        what: 'Also copy the guest list, and the lists it changes',
+        href: '/demo/events/evt-wed-4?state=duplicateGuests',
+      },
+      {
+        title: 'Duplicate · guest list copied',
+        what: 'Draft created. 128 guests copied.',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsCreated',
+      },
+      {
+        title: 'Duplicate · guest list over the plan',
+        what: 'Not created. Back to the form keeps the tick',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefused',
+      },
+      {
+        title: 'Duplicate · guest list, not created',
+        what: 'The start and the tick are kept',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsNotCreated',
+      },
+      {
+        title: 'Duplicate · no guests.manage',
+        what: 'No box: the copy is set up only',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsHidden',
+      },
+      {
+        title: 'Duplicate · small list, ticked copy',
+        what: 'Tick and Create draft: 12 guests copied',
+        href: '/demo/events/evt-draft-4?state=duplicate',
+      },
       { title: 'Mute · on', what: 'Just for you', href: '/demo/events/evt-wed-4?state=muted' },
       {
         title: 'Mute · not loaded',
