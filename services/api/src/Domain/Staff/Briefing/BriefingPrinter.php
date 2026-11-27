@@ -31,7 +31,6 @@ final readonly class BriefingPrinter
         $shifts ??= $this->staffShiftRepository->findOfPerson($entry);
         $shown = Vec\sort(
             Vec\map($shifts, static fn (StaffShift $shift): string => Json\encode([
-                $shift->getId()->toRfc4122(),
                 $shift->getJob()->getId()->toRfc4122(),
                 $shift->getStartsAt()->format('Y-m-d H:i'),
                 $shift->getEndsAt()->format('Y-m-d H:i'),

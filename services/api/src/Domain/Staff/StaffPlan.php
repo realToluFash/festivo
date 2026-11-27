@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Briefing\FinishedBriefings;
 use App\Domain\Staff\Model\ShiftDetails;
 use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Entity\Event;
@@ -66,6 +67,7 @@ final readonly class StaffPlan
         private ShiftClock $shiftClock,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private FinishedBriefings $finishedBriefings,
         private ShiftNotices $shiftNotices,
         private TranslatorInterface $translator,
         private ShiftAttendanceRepository $shiftAttendanceRepository,
@@ -315,7 +317,7 @@ final readonly class StaffPlan
     {
         $done = $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $done = $change();
+            $done = $this->finishedBriefings->keeping($event, $change);
             $this->entityManager->flush();
 
             return $done;

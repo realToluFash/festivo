@@ -50,6 +50,7 @@ final readonly class ShiftNotices implements EventEndedInterface
             }
 
             if ([] === $this->toldShifts->changesOf($entry)) {
+                $this->toldShifts->sameHoursNow($entry);
                 $this->notificationScheduler->cancel(ShiftChangeNotice::key($entry));
 
                 continue;
