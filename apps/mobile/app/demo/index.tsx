@@ -2424,6 +2424,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedOwner',
       },
       {
+        title: 'Duplicate · guest list over the ceiling',
+        what: 'An owner, yet no plan line: no plan lifts 10,000 people',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedCeiling',
+      },
+      {
         title: 'Duplicate · guest list, not created',
         what: 'The start and the tick are kept',
         href: '/demo/events/evt-wed-4?state=duplicateGuestsNotCreated',

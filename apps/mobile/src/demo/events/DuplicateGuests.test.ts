@@ -1,12 +1,15 @@
+import { limitRefusalOf } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import { peopleOn } from '../guests/GuestsModel.ts';
 import {
+  COPY_CEILING,
   COPY_PLAN,
   GW,
   WEDDING_LIST,
   copyLists,
+  copyProblem,
   createdLine,
   guestAnswer,
   guestCopyStart,
@@ -93,5 +96,33 @@ describe('Also copy the guest list (sc-101394)', () => {
     expect(guestAnswer(WEDDING_LIST.people)).toBe('refused');
     expect(guestAnswer(COPY_PLAN.allowed)).toBe('created');
     expect(guestAnswer(12)).toBe('created');
+  });
+
+  it('refuses an owner over the ceiling with the untick line and no plan line', () => {
+    const start = guestCopyStart('duplicateGuestsRefusedCeiling', 128);
+    expect(start).toMatchObject({ ticked: true, refused: true, owner: true, over: 'ceiling' });
+
+    const refusal = limitRefusalOf(
+      copyProblem(start.over, WEDDING_LIST.people),
+      'copy',
+      t,
+      'en-GB',
+    );
+    expect(refusal).toMatchObject({
+      title: 'limitReached.title.ceiling',
+      line: 'limitReached.copy.overCeiling',
+      planLimit: false,
+      untick: 'limitReached.copy.untick',
+    });
+    expect(copyProblem('ceiling', WEDDING_LIST.people).problem).toMatchObject({
+      ceiling: COPY_CEILING.ceiling,
+      adding: COPY_CEILING.adding,
+    });
+  });
+
+  it('refuses over the plan with the plan line held for billing.manage', () => {
+    expect(guestCopyStart('duplicateGuestsRefusedOwner', 128).over).toBe('plan');
+    const refusal = limitRefusalOf(copyProblem('plan', WEDDING_LIST.people), 'copy', t, 'en-GB');
+    expect(refusal).toMatchObject({ title: 'limitReached.title.people', planLimit: true });
   });
 });

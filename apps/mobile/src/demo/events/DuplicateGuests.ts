@@ -1,3 +1,4 @@
+import { ApiError } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 
 import { WEDDING } from '../guests/GuestsSample.ts';
@@ -7,6 +8,33 @@ import type { DuplicateState } from './Duplicate.ts';
 export const WEDDING_LIST = { guests: 128, people: 156 } as const;
 
 export const COPY_PLAN = { plan: 'free', allowed: 100 } as const;
+
+/** The board's ceiling sample: a list of 10,412 people against the 10,000 no plan lifts. Sample, not spec. */
+export const COPY_CEILING = { ceiling: 10_000, adding: 10_412 } as const;
+
+export type CopyOver = 'plan' | 'ceiling';
+
+/** The API's answer to a list too big to copy, as `HardLimits::requireRoomForCopy` sends it (sc-3930): the ceiling first, since no plan lifts it, else the plan's people per event. */
+export function copyProblem(over: CopyOver, people: number): ApiError {
+  return over === 'ceiling'
+    ? new ApiError({
+        type: 'https://soirely.com/errors/event_capacity_reached',
+        title: 'Event capacity reached.',
+        status: 403,
+        ceiling: COPY_CEILING.ceiling,
+        onEvent: 0,
+        adding: COPY_CEILING.adding,
+      })
+    : new ApiError({
+        type: 'https://soirely.com/errors/plan_limit_reached',
+        title: 'Plan limit reached.',
+        status: 403,
+        limit: 'guests_per_event',
+        plan: COPY_PLAN.plan,
+        allowed: COPY_PLAN.allowed,
+        adding: people,
+      });
+}
 
 const figure = (count: number) => count.toLocaleString('en-GB');
 
@@ -71,9 +99,11 @@ export function createdLine(copied: number | null, t: TFunction): string {
 export interface GuestCopy {
   ticked: boolean;
   refused: boolean;
+  /** Which limit refused the copy: the ceiling state's, else the plan's. */
+  over: CopyOver;
   copied: number | null;
   manages: boolean;
-  /** The sample's owner, with billing.manage, reads the refusal; every other state is the demo's host, without it. */
+  /** The sample's owner, with billing.manage, reads the refusal in the owner and ceiling states; every other state is the demo's host, without it. */
   owner: boolean;
 }
 
@@ -83,14 +113,19 @@ export function guestCopyStart(state: DuplicateState | null, guests: number): Gu
     state === 'duplicateGuestsCreated' ||
     state === 'duplicateGuestsRefused' ||
     state === 'duplicateGuestsRefusedOwner' ||
+    state === 'duplicateGuestsRefusedCeiling' ||
     state === 'duplicateGuestsNotCreated';
 
   return {
     ticked,
-    refused: state === 'duplicateGuestsRefused' || state === 'duplicateGuestsRefusedOwner',
+    refused:
+      state === 'duplicateGuestsRefused' ||
+      state === 'duplicateGuestsRefusedOwner' ||
+      state === 'duplicateGuestsRefusedCeiling',
+    over: state === 'duplicateGuestsRefusedCeiling' ? 'ceiling' : 'plan',
     copied: state === 'duplicateGuestsCreated' ? guests : null,
     manages: state !== 'duplicateGuestsHidden',
-    owner: state === 'duplicateGuestsRefusedOwner',
+    owner: state === 'duplicateGuestsRefusedOwner' || state === 'duplicateGuestsRefusedCeiling',
   };
 }
 

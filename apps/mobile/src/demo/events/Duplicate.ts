@@ -20,6 +20,7 @@ export const DUPLICATE_STATES = [
   'duplicateGuestsCreated',
   'duplicateGuestsRefused',
   'duplicateGuestsRefusedOwner',
+  'duplicateGuestsRefusedCeiling',
   'duplicateGuestsNotCreated',
   'duplicateGuestsHidden',
 ] as const;

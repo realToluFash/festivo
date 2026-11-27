@@ -1,4 +1,3 @@
-import { ApiError } from '@soirely/api-client';
 import { type LimitRefusal, copyEndsLine, limitRefusalOf } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -23,7 +22,7 @@ import { useShellLayout } from '../../components/settingsShell.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import type { DuplicateRun, Starts } from '../../kit/eventDuplicate.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { COPY_PLAN, GW, copyLists, createdLine } from './DuplicateGuests.ts';
+import { type CopyOver, GW, copyLists, copyProblem, createdLine } from './DuplicateGuests.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Original = { name: string; startsAt: string; endsAt: string; timeZone: string };
@@ -31,22 +30,13 @@ type Original = { name: string; startsAt: string; endsAt: string; timeZone: stri
 /** The box is a whole row, 44 pt on iOS and 48 dp on Android. */
 const BOX_HEIGHT = Platform.OS === 'android' ? tokens.sizeHitPhonePrimary : tokens.sizeHit;
 
-/** The API's answer to a list that passes the plan's people per event, as `HardLimits::requireRoomForCopy` sends it (sc-3930). */
+/** The refusal the app reads from the API's answer to a list too big to copy. */
 export function copyRefusal(
+  over: CopyOver,
   people: number,
   t: Parameters<typeof limitRefusalOf>[2],
 ): LimitRefusal | null {
-  const error = new ApiError({
-    type: 'https://soirely.com/errors/plan_limit_reached',
-    title: 'Plan limit reached.',
-    status: 403,
-    limit: 'guests_per_event',
-    plan: COPY_PLAN.plan,
-    allowed: COPY_PLAN.allowed,
-    adding: people,
-  });
-
-  return limitRefusalOf(error, 'copy', t, dateLocale());
+  return limitRefusalOf(copyProblem(over, people), 'copy', t, dateLocale());
 }
 
 /** sc-48601's Duplicate with sc-101394's box: the product's screen, plus Also copy the guest list under when the copy ends. */

@@ -313,7 +313,7 @@ export function DuplicateScreen({
       guests={shown}
       ticked={ticked}
       copied={copy.copied}
-      refusal={copy.refused ? copyRefusal(people, t) : null}
+      refusal={copy.refused ? copyRefusal(copy.over, people, t) : null}
       billing={copy.owner || permissions.includes('billing.manage')}
       opener={opener}
       onClose={onClose}
