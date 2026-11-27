@@ -44,6 +44,14 @@ describe('the event’s bar on a phone (sc-71148)', () => {
   });
 });
 
+describe('the phone’s tab bars before their words are measured (sc-99214)', () => {
+  it('hides both bars’ labels until their size is fitted', () => {
+    expect(cover).toMatch(/style: !words\.fitted && styles\.waiting,/u);
+    expect(cover).toMatch(/\(widest === 0 \|\| slot === 0\) && styles\.waiting\]/u);
+    expect(title).toMatch(/fitted: slot > 0 && widths\.length === words\.length,/u);
+  });
+});
+
 describe('the capsule the upright band is laid out beside (sc-91290)', () => {
   it('is as tall as the geometry LABEL_IN_BAND is built from', () => {
     const capsule = / {2}whiteCapsule: \{[\s\S]*?\n {2}\},/u.exec(cover)?.[0] ?? '';

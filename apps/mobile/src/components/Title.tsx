@@ -161,6 +161,8 @@ export function useWholeWords(
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
     pending: wordsPending(look.room, slot, widths.length, words.length),
+    /** Its width and every word are known, so the size drawn is the fitted one. */
+    fitted: slot > 0 && widths.length === words.length,
     // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
     lineHeight: wholeLineHeight(size, drawn),
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width and its frame. */
