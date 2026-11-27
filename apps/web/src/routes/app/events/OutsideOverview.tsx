@@ -36,7 +36,9 @@ export function OutsideOverview({
   const { t } = useTranslation();
   const onEvent = usePeopleCount(event.id);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
-  const placeLine = placeWords(place, venueCity(event.venue), (key, values) => t(key, values ?? {}));
+  const placeLine = placeWords(place, venueCity(event.venue), (key, values) =>
+    t(key, values ?? {}),
+  );
   const locale = dateLocale();
   const day = formatEventDate(event.startsAt, event.timeZone, locale, false);
   const when = t('outsideEvent.when', {
