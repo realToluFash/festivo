@@ -1,0 +1,8 @@
+# sc-85022: the app demo's held page (/demo/settings?held=${HELD}), for the side-by-side pair. ORIENT, HELD (paused or overdue).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings?held=${HELD}
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-${HELD}

@@ -1,0 +1,13 @@
+# sc-33154: Today on the day: Now, the arrived figure and the folded band, from the top down.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: today-top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: today-2
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: today-3

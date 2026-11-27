@@ -1,0 +1,87 @@
+# sc-48600: Hosted by on ${EVENT_ID} (hosts Adaeze Obi, Tunde Bakare, live): a repeated name typed as Host 3 (before and after Save), the last host kept (Host 2 removed), and six hosts, beside the demo's hostsDuplicate, lastHost and hostsSix. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.field.2'
+- inputText: 'Adaeze Obi'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: hostsDuplicate-typed-product
+- tapOn:
+    id: 'event.edit.hosts.save'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: hostsDuplicate-saved-product
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- tapOn:
+    id: 'event.edit.hosts.discard'
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.hosts.remove.1'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: lastHost-product
+- tapOn:
+    id: 'event.edit.hosts.field.0'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: lastHost-focused-product
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- tapOn:
+    id: 'event.edit.hosts.discard'
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.field.2'
+- inputText: 'Ngozi Obi'
+- tapOn:
+    id: 'event.edit.hosts.field.3'
+- inputText: 'Emeka Obi'
+- tapOn:
+    id: 'event.edit.hosts.field.4'
+- inputText: 'Funke Bakare'
+- tapOn:
+    id: 'event.edit.hosts.field.5'
+- inputText: 'Segun Bakare'
+- tapOn: 'Hosted by|Anfitriones|Organisé par|Anfitriões'
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.field.0'
+    direction: UP
+    timeout: 5000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: hostsSix-product
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: hostsSix-foot-product
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- tapOn:
+    id: 'event.edit.hosts.discard'

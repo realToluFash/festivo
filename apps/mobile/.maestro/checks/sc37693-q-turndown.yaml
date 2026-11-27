@@ -1,0 +1,16 @@
+# sc-37693: turning down a request asks first, as turningDown draws it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'members.answer' }
+- waitForAnimationToEnd
+- scrollUntilVisible: { element: { id: 'members.turnDown' }, direction: DOWN }
+- tapOn: { id: 'members.turnDown' }
+- waitForAnimationToEnd
+- takeScreenshot: q-turndown-ask
+- tapOn: { id: 'members.turnDown.keep' }
+- waitForAnimationToEnd
+- takeScreenshot: q-turndown-kept

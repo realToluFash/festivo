@@ -1,0 +1,19 @@
+# sc-75689: the app's Design demo, Reply by with the event no longer available: Save, Close replies sooner if asked, then the notice.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyByGone
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: opened
+- tapOn:
+    id: 'event.edit.replyBy.save'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: 'Close replies sooner'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '{{t:eventEdit.eventGone}}'
+- takeScreenshot: gone

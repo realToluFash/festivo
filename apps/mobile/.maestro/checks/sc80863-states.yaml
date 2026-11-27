@@ -1,0 +1,51 @@
+# sc-80863: unavailable, same, loading (API paused) and failed (API stopped) then Try again, each beside nothing; demo pairs in sc80863-demo. Pass C_EV, OWN, EVENT.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${C_EV}
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.backToEvents'
+    timeout: 20000
+- takeScreenshot: unavailable
+- openLink: ${METRO_URL}/--/events/${OWN}
+- waitForAnimationToEnd
+- takeScreenshot: same
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=loading
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- extendedWaitUntil:
+    visible:
+      text: 'Try again'
+    timeout: 60000
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    text: 'Try again'
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: retried

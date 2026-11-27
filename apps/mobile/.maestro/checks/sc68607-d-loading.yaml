@@ -1,0 +1,9 @@
+# sc-68607: the demo's People card on Overview, state loading, for the pair beside the app's.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?people=loading
+- extendedWaitUntil: { visible: '.*People.*', timeout: 30000 }
+- scrollUntilVisible: { element: { id: 'overview.people' }, centerElement: true, timeout: 40000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-loading

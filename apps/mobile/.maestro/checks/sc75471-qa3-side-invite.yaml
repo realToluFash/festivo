@@ -1,0 +1,17 @@
+# sc-75471: an invitation waiting on You are not in an organisation; Accept and join, then Open lands in Today with Now working in.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: noOrganisation }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: invitations
+- tapOn: 'Accept and join.*'
+- extendedWaitUntil: { visible: 'You joined.*', timeout: 15000 }
+- takeScreenshot: joined
+- tapOn: 'Open .*'
+- extendedWaitUntil: { visible: 'Now working in.*', timeout: 15000 }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: opened

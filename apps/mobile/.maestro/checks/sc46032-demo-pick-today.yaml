@@ -1,0 +1,33 @@
+# sc-46032: the today demo, its pill's switcher, a pick of Casa Lumen: the demo's Now working in ‹name›., for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      notVisible:
+        id: switcher.tile.org-casa-lumen
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.tile.org-casa-lumen
+          timeout: 15000
+- tapOn:
+    id: switcher.tile.org-casa-lumen
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-today-picked

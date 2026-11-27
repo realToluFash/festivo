@@ -1,0 +1,63 @@
+# sc-60164: ${EV_DONE}, a Finished event with a short thank-you (under 40 characters): the card, Edit thank-you's screen, Discard your change?, a 281-character line refused, saved empty (removed), then Add a thank-you and saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_DONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.edit'
+- takeScreenshot: card-line
+- tapOn:
+    id: 'event.thankYou.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.field'
+    timeout: 10000
+- takeScreenshot: edit-screen
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: 'Thank you all for coming to our anniversary party. Thank you all for coming to our anniversary party. Thank you all for coming to our anniversary party. Thank you all for coming to our anniversary party. Thank you all for coming to our anniversary party. Thank you all for coming !'
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: edit-over
+- tapOn:
+    id: 'event.thankYou.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'event.thankYou.discard'
+- tapOn:
+    id: 'event.thankYou.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.field'
+    timeout: 10000
+- tapOn:
+    id: 'event.thankYou.field'
+- eraseText: 60
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: removed-toast
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.add'
+- takeScreenshot: card-add
+- tapOn:
+    id: 'event.thankYou.add'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.field'
+    timeout: 10000
+- takeScreenshot: add-screen
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: 'Thank you all for coming to our anniversary!'
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: saved-toast

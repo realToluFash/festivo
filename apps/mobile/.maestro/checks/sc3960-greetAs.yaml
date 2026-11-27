@@ -1,0 +1,78 @@
+# sc-3960: ${GUEST_ID}'s Greet as in ${EVENT_ID}'s Guests (Details, Edit guest's counter, 61 refused, only spaces saved as empty), each beside the demo's state, with ORIENT PORTRAIT or LANDSCAPE.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.greetAs'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: greetAs-product
+- tapOn:
+    id: 'guest.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form.greetAs'
+    timeout: 10000
+- tapOn:
+    id: 'guest.form.greetAs'
+- eraseText: 80
+- inputText: '  Auntie Bisi  '
+- hideKeyboard
+- assertVisible: '11 of 60'
+- takeScreenshot: greetAsEdit-product
+- tapOn:
+    id: 'guest.form.greetAs'
+- eraseText: 80
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+- hideKeyboard
+- assertVisible: '61 of 60'
+- tapOn:
+    id: 'guest.form.save'
+- extendedWaitUntil:
+    visible: 'Shorten Greet as to 60 characters or fewer.'
+    timeout: 10000
+- takeScreenshot: greetAsLong-product
+- tapOn:
+    id: 'guest.form.greetAs'
+- eraseText: 80
+- inputText: '     '
+- hideKeyboard
+- assertVisible: '0 of 60'
+- takeScreenshot: greetAsSpaces-product
+- tapOn:
+    id: 'guest.form.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.greetAs'
+    timeout: 15000
+- assertVisible: '.*full name.*'
+- takeScreenshot: greetAsEmpty-product
+- openLink: ${METRO_URL}/--/demo/guests?state=greetAs
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: greetAs-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=greetAsEdit
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: greetAsEdit-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=greetAsLong
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: greetAsLong-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=greetAsSpaces
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: greetAsSpaces-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=greetAsEmpty
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: greetAsEmpty-demo

@@ -1,0 +1,64 @@
+.ev-new-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  max-width: 720px;
+}
+
+.ev-new-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.ev-new-when {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ev-new-gap:empty {
+  margin-top: -7px;
+}
+
+.ev-new-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceLg);
+}
+
+.ev-new-pair select {
+  min-width: 0;
+}
+
+.ev-new-cover {
+  max-width: 480px;
+}
+
+.ev-new-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.ev .ev-select select.is-empty {
+  color: var(--colorInkSecondary);
+}
+
+.ev-new-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ev-new-frame {
+  position: relative;
+  max-width: 480px;
+}

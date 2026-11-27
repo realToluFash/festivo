@@ -1,0 +1,14 @@
+# sc-29875: an open Today shows a press made elsewhere within 60 s, with no reload: Drinks is Now, then Done is pressed, and Now reads "Nothing is on". Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: 'Drinks reception'
+    timeout: 45000
+- takeScreenshot: before
+- evalScript: ${output.t0 = Date.now()}
+- extendedWaitUntil:
+    visible: '{{t:runView.nothingNow}}'
+    timeout: 75000
+- evalScript: ${console.log('caught up after ms ' + (Date.now() - output.t0))}
+- takeScreenshot: after

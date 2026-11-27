@@ -1,0 +1,29 @@
+# sc-73933: on the iPad, the Filter menu with two types chosen, upright, on its side and upright again; text size set outside the flow.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.anniversary' }
+- tapOn: { id: 'events.filter.type.party' }
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: r-up
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: r-side
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: r-up-again
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- takeScreenshot: r-up-reopened
+- tapOn: { id: 'events.filter.clear' }

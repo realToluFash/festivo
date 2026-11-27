@@ -1,0 +1,24 @@
+# sc-86056: opens the switcher from the pill, or the paused page's Switch organisation, and chooses ORG by name; OPENER is frame.organisation|home.switchOrganisation (the pill) or accessPaused.switch. ORIENT, ORG, OPENER.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation|accessPaused\..+'
+    timeout: 30000
+- tapOn:
+    id: '${OPENER}'
+- extendedWaitUntil:
+    visible:
+      id: switcher.heading
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switcher-open
+- tapOn:
+    text: '${ORG}.*'
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: chosen

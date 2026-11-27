@@ -1,0 +1,6 @@
+# sc-89448: the event demo's Menu area, for the top of the side-by-side pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=menu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: demo-shell

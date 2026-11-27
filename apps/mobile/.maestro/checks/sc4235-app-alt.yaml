@@ -1,0 +1,32 @@
+# sc-4235: in the app, a door code by phone with a verified alternative number on another account: after the right code, back on the event step with the number kept and the alternative line under it. Pass CODE. Signs the session out.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Rita Alt', NUMBER: '08034440702' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.resend'
+    timeout: 20000
+- takeScreenshot: 01-code
+- runScript:
+    file: ../scripts/latest-sms-code.js
+    env:
+      DIGITS: '4440702'
+- inputText: ${output.code}
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 02-after-code
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.number'
+    timeout: 20000
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: 03-alternative

@@ -1,0 +1,15 @@
+# sc-89448: opens ${EVENT_ID}'s Menu, screenshots the live line, then waits (up to 4 minutes) for the stale line once the API is stopped from outside, and screenshots the band and the stale line together.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.live'
+    timeout: 30000
+- takeScreenshot: fresh-live
+- extendedWaitUntil:
+    visible:
+      id: 'menu.stale'
+    timeout: 240000
+- waitForAnimationToEnd
+- takeScreenshot: fresh-stale

@@ -1,0 +1,20 @@
+# sc-49692: a headcount reply moves only its event's replies line on Today's Your events, within ten seconds.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '.*33% replied.*'
+    timeout: 30000
+- swipe:
+    start: 50%, 80%
+    end: 50%, 40%
+    duration: 500
+- waitForAnimationToEnd
+- takeScreenshot: before
+- runScript:
+    file: ../scripts/sc49692-reply.js
+- extendedWaitUntil:
+    visible: '.*67% replied.*'
+    timeout: 10000
+- takeScreenshot: after
+- assertVisible: '.*33% replied.*'

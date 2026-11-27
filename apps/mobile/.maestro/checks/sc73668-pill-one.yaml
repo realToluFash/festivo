@@ -1,0 +1,12 @@
+# Today's organisation pill counting one invitation waiting. sc-73668.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible: '.*1 invitation.*'
+    timeout: 15000
+- takeScreenshot: pill

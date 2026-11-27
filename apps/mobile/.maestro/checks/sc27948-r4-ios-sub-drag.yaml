@@ -1,0 +1,13 @@
+# sc-27948 retest r4: on the phone, Subscribe dragged slowly from its strip (9 pt below its top) past half closes.
+appId: host.exp.Exponent
+---
+- runFlow: sc27948/open-subscribe.yaml
+- takeScreenshot: open
+- swipe:
+    start: '201,72'
+    end: '201,820'
+    duration: 3000
+- waitForAnimationToEnd
+- takeScreenshot: after
+- assertNotVisible:
+    id: 'calendarFeed.panel'

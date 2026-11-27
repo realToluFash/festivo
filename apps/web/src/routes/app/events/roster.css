@@ -1,0 +1,623 @@
+/* The Roster on the event's Staff page (sc-3906), as its demo draws it: src/demo/roster.css, with the menu's docked panel and the stations' card it borrows. */
+
+.rs .mn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+}
+
+.rs .mn-head {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.rs .mn-sub,
+.rs .mn-quiet {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.rs .mn-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
+}
+
+.rs .mn-lock svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs .mn-split {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXl);
+  min-height: 0;
+}
+
+.rs .mn-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.rs .mn-eyebrow {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.4 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs .mn-panel-acts {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-left: auto;
+}
+
+.rs .mn-panel {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 360px;
+  max-height: calc(100vh - 140px);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.rs .mn-panel-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-bottom: 1px solid var(--colorInsetBorder);
+}
+
+.rs .mn-panel-names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.rs .mn-panel h2 {
+  margin: 0;
+  font: 700 20px/1.3 var(--fontFamily);
+}
+
+.rs .sn-card h2 {
+  margin: 0;
+  font: 700 20px/1.25 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.rs .mn-panel h2:focus,
+.rs .sn-card h2:focus {
+  outline: none;
+}
+
+.rs .mn-panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  overflow-y: auto;
+}
+
+.rs .mn-panel-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.rs .mn-failed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs .mn-failed:focus {
+  outline: none;
+}
+
+.rs .sn-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  scroll-margin-top: var(--spaceLg);
+}
+
+.rs .sn-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.rs .sn-card-names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.rs .sn-card h2.sn-eyebrow {
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.4 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-frame {
+  overflow-x: auto;
+}
+
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-table thead th {
+  padding: 0 var(--spaceLg) var(--spaceXs) 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+  text-align: left;
+}
+
+.rs-table tbody th,
+.rs-table tbody td {
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceSm) 0;
+  border-top: 1px solid var(--colorBorder);
+  color: var(--colorInk);
+  font: var(--typeBody);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.rs-table tbody tr.is-lit {
+  background: var(--colorRowSelected);
+}
+
+.rs-table tbody th {
+  min-width: 120px;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.rs-table td.rs-shift {
+  white-space: nowrap;
+}
+
+/* A cell breaks only between words at every width (sc-70540, sc-75033): the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. The Coverage table is an .rs-table too, so this stays inside the Roster's frame, which scrolls where the table is wider. */
+.rs-frame > .rs-table :is(th, td),
+.rs-frame > .rs-table :is(th, td) * {
+  overflow-wrap: normal;
+}
+
+/* Link's words run longest in every language, so it keeps 168 px at every width; Job, Station and Shift narrow only to their longest word. */
+.rs-frame > .rs-table thead th.rs-link-col {
+  min-width: 168px;
+}
+
+/* With the person's panel open at 1280 × 800 the Roster had about 470 px and cut its Link column (sc-3912, #78267): a shift breaks only after its day and before its end time, and the cells close up to 8 px with none after the last, as the demo does. */
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(thead th, tbody th, tbody td) {
+  padding-right: var(--spaceSm);
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift {
+  white-space: normal;
+}
+
+.rs-table tbody td.rs-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.rs-name {
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-name:hover,
+.rs-name[aria-current] {
+  color: var(--colorAccentText);
+  text-decoration: underline;
+}
+
+.rs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.rs-mark {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorAccent);
+  border-radius: var(--radiusPill);
+}
+
+.rs-mark.is-opened {
+  border-color: var(--optionGreen);
+  background: var(--optionGreen);
+}
+
+.rs-mark.is-copied {
+  background: linear-gradient(90deg, var(--colorAccent) 50%, transparent 50%);
+}
+
+.rs-mark.is-none {
+  border-style: dashed;
+  border-color: var(--colorInkSecondary);
+}
+
+.rs-mark.is-no-mobile {
+  border-color: var(--colorAttention);
+}
+
+.rs-mark.is-erased {
+  border-color: var(--colorInkTertiary);
+}
+
+.rs-mark.is-erased::after {
+  position: absolute;
+  top: 50%;
+  left: -3px;
+  width: 16px;
+  height: 2px;
+  background: var(--colorInkTertiary);
+  content: '';
+  transform: rotate(-45deg);
+}
+
+.rs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: var(--spaceXxl) var(--spaceXl);
+  color: var(--colorInkSecondary);
+  text-align: center;
+}
+
+.rs-empty-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeTitleSection);
+}
+
+.rs-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+}
+
+.rs-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-facts dt {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.rs-facts dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.rs-next {
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-ask-shift {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+}
+
+.rs-danger {
+  color: var(--colorBrokenText);
+}
+
+.gs-pill.rs-remove-go {
+  border-color: var(--colorBroken);
+  background: var(--colorBroken);
+}
+
+.rs-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.rs-warning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.rs-warning:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rs-warning p {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-warning-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spaceSm);
+}
+
+.rs-bar {
+  position: sticky;
+  bottom: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  align-self: center;
+  max-width: 640px;
+  margin-top: auto;
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusField);
+  background: var(--colorDark);
+  box-shadow: var(--shadowPopover);
+  color: var(--colorInkOnDark);
+}
+
+.rs-bar-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-bar-lines p {
+  margin: 0;
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-bar .desk-text.rs-bar-dismiss {
+  min-height: var(--sizeHit);
+  color: var(--colorInkOnDark);
+}
+
+/* Below about 920 px the panel drops under the table; at 400% zoom (320 CSS px) the desk is one column and only the table scrolls sideways (WCAG 2.2 1.4.10). */
+@media (width <= 920px) {
+  .rs .mn-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rs .mn-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+}
+
+/* From 961 to 1279 px, until the docked Roster keeps whole words at 1280 (sc-71607), an open person or form comes before the Roster at the card's width, as its demo's wideDesk.css (sc-73291); up to 960 narrowDesk.css already does. */
+@media (60rem < width < 80rem) {
+  .rs .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rs .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .rs .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+@media (width <= 720px) {
+  .rs.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+  }
+
+  .rs .ev-crumb ol,
+  .rs .gs-top,
+  .rs .sn-card-top,
+  .rs .mn-panel-acts {
+    flex-wrap: wrap;
+  }
+
+  .rs .sn-card-names {
+    flex-basis: 12rem;
+  }
+
+  /* At 400% zoom Job and Station keep 128 px and the frame scrolls further (sc-70540). */
+  .rs-frame > .rs-table thead th:nth-child(2),
+  .rs-frame > .rs-table thead th:nth-child(3) {
+    min-width: 128px;
+  }
+
+  /* Only here: at a desk an empty Shift cell wraps between words rather than push the frame further (sc-71607, sc-75033). */
+  .rs-frame > .rs-table td.rs-no-shift {
+    white-space: nowrap;
+  }
+}
+
+.rs-more {
+  margin-left: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+  white-space: nowrap;
+}
+
+.rs-shifts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A person's own link (sc-3912): the word, who and when, Copy link and Mark as sent in the row, and the link to copy by hand under it. */
+.rs-link-cell,
+.rs-link-fact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.rs-trail {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.rs-link-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceMd);
+}
+
+.rs-missed,
+.rs-held-says {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-table tbody tr.rs-held-row td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rs-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+}
+
+.rs-held-label {
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.rs-held-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.rs-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceXxl);
+  color: var(--colorInkSecondary);
+  text-align: center;
+}

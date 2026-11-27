@@ -1,0 +1,87 @@
+# sc-54804, tablet in ${ORIENT}: Paste a reply, Nothing to paste, Whose reply is this? with its rows, a long quote and Show all, a search by reply, and the record form's back label, in the account's language.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: '   '
+- longPressOn: { id: 'guests.search' }
+- extendedWaitUntil: { visible: { text: 'Select all' }, timeout: 4000, optional: true }
+- tapOn: { text: 'Select all', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- tapOn: { text: '(Copy|Copier)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- eraseText: 20
+- hideKeyboard
+- takeScreenshot: guests
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste.nothing'
+    timeout: 10000
+- takeScreenshot: nothing
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Hi! Thank you so much for the invitation, we will be there with the kids and my sister who lands on Friday. Can we bring anything at all? We cannot wait to see you all, it has been far too long since the last time we were together. Love from all of us, see you very soon and safe travels to everyone coming from abroad.'
+- longPressOn: { id: 'guests.search' }
+- extendedWaitUntil: { visible: { text: 'Select all' }, timeout: 4000, optional: true }
+- tapOn: { text: 'Select all', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- tapOn: { text: '(Copy|Copier)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- eraseText: 400
+- hideKeyboard
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 10000
+- takeScreenshot: whose
+- scrollUntilVisible:
+    element:
+      id: 'paste.row.${LONG_ID}'
+    direction: DOWN
+    optional: true
+- takeScreenshot: whose-rows-down
+- scrollUntilVisible:
+    element:
+      id: 'paste.whose.title'
+    direction: UP
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'paste.quote.all'
+    commands:
+      - tapOn:
+          id: 'paste.quote.all'
+      - takeScreenshot: whose-all
+- tapOn:
+    id: 'paste.search'
+- inputText: 'Guest'
+- hideKeyboard
+- takeScreenshot: whose-search
+- scrollUntilVisible:
+    element:
+      id: 'paste.row.${LAST_ID}'
+    direction: DOWN
+    optional: true
+- takeScreenshot: whose-search-down
+- tapOn:
+    id: 'paste.row.${LAST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: form
+- tapOn:
+    id: 'guest.record.cancel'
+- setOrientation: PORTRAIT

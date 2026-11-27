@@ -1,0 +1,100 @@
+# Change your mobile number at the current text size: the country box, Royaume-Uni chosen, the keypad up, and "12" refused. sc-78438.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible: '(Changez votre|Change your).*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: change-open
+- scrollUntilVisible:
+    element:
+      id: 'phone.country'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'phone.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'phone.country'
+- waitForAnimationToEnd
+- takeScreenshot: change-list-open
+- tapOn:
+    id: 'phone.country.search'
+- inputText: 'Royaume'
+- waitForAnimationToEnd
+- tapOn:
+    point: '30%,57%'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: '(Terminé|Done)'
+    commands:
+      - tapOn: '(Terminé|Done)'
+      - waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'phone.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- assertNotVisible:
+    id: 'phone.country.search'
+- assertVisible: '.*\+44.*'
+- takeScreenshot: change-gb
+- scrollUntilVisible:
+    element:
+      id: 'phone.number'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'phone.number'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'phone.number'
+- eraseText: 60
+- inputText: '12'
+- waitForAnimationToEnd
+- takeScreenshot: change-keypad
+- tapOn: 'Done'
+- scrollUntilVisible:
+    element:
+      id: 'phone.send'
+- scrollUntilVisible:
+    element:
+      id: 'phone.send'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'phone.send'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.tooShort}}'
+- scrollUntilVisible:
+    element:
+      id: 'phone.country'
+    direction: UP
+- takeScreenshot: change-refused
+- scroll
+- takeScreenshot: change-refused-2

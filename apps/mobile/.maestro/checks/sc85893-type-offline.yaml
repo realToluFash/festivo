@@ -1,0 +1,15 @@
+# sc-85893: with the door already open, typing filters the list it holds (run with the API stopped)
+appId: host.exp.Exponent
+---
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'segun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: offline-segun
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'kwo'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: offline-kwo

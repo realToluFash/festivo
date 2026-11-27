@@ -1,0 +1,45 @@
+# sc-85893 the product's door in the demo's three states, for side-by-side pairs
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'okon fola'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: doorSearch-product
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'Kofi Asante'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: doorNoMatch-product
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'Chinedu Ez'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: doorSearch-start-product
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'Kofi Asante'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 60
+- inputText: 'Chinedu Eze'
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: walkInDuplicate-product
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 60
+- inputText: 'Nedu Ez'
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: walkInDuplicate-inside-product

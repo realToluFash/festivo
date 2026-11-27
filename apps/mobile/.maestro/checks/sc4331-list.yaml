@@ -1,0 +1,27 @@
+# sc-4331: the guest list's filter menu with Changed since you looked first, then chosen, then the menu in use.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: changedRow-product
+- tapOn:
+    id: guests.filter
+- extendedWaitUntil:
+    visible:
+      id: guests.filter.changed
+    timeout: 8000
+- takeScreenshot: changedMenu-unticked-product
+- tapOn:
+    id: guests.filter.changed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: changed-chosen-product
+- tapOn:
+    id: guests.filter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: changedMenu-product

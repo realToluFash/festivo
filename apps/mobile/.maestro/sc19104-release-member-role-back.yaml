@@ -1,0 +1,17 @@
+# sc-19104, Android release build, phone, Settings > Members open: a member's page, Back to Members.
+appId: com.soirely.app
+---
+- tapOn:
+    id: 'members.row.*'
+- extendedWaitUntil:
+    visible:
+      id: 'members.goToOrganisation|members.role.*'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: member-page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 10000
+- takeScreenshot: member-back-members

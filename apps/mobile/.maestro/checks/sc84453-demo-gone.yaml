@@ -1,0 +1,20 @@
+# sc-84453: the demo's wedding over a deleted party, and the not-available page, iPad upright.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?from=eventBellGone&pushed=1&lang=en
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-over-gone
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?area=guests&state=eventDeleted&lang=en
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: not-available

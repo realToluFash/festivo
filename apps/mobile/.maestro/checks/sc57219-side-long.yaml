@@ -1,0 +1,40 @@
+# sc-57219, in landscape: 500 letters in one run; label clear, then drag to the first line. TOKEN.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+- waitForAnimationToEnd
+- takeScreenshot: long-typed
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: DOWN
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: long-first-line
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: UP
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: UP
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: long-last-line
+- setOrientation: PORTRAIT
