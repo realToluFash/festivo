@@ -7342,7 +7342,7 @@
     "notYet": "Aún sin fichar",
     "opensAt": "Apertura del fichaje: {{time}}",
     "notOut": "Salida sin fichar · Se cuenta hasta el final programado ({{end}})",
-    "noAttendance": "Sin fichajes · 0 h contadas",
+    "noAttendance": "Sin fichajes · 0 h contadas",
     "removed": "Ya no está en la lista del personal",
     "worked": "Horas trabajadas",
     "of": "{{worked}} de {{scheduled}} programadas",

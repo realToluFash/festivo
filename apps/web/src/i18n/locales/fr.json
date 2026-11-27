@@ -7342,7 +7342,7 @@
     "notYet": "Arrivée pas encore pointée",
     "opensAt": "Pointage à partir de {{time}}",
     "notOut": "Départ non pointé · Compté jusqu’à la fin planifiée ({{end}})",
-    "noAttendance": "Aucun pointage · 0 h comptée",
+    "noAttendance": "Aucun pointage · 0 h comptée",
     "removed": "N’est plus sur la liste du personnel",
     "worked": "Heures travaillées",
     "of": "{{worked}} sur {{scheduled}} planifiées",
