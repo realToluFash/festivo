@@ -30,6 +30,7 @@ use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 
 /** A person whose briefing went is told of a change to their shifts, 15 minutes after the last edit, by push to the app they signed in to (sc-4333). */
@@ -257,6 +258,57 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->at('2027-03-05T09:15:00Z');
 
         self::assertSame([['Your shift has changed · Owambe', ['Your start time is now 20:00 (was 19:00).'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
+    }
+
+    #[Test]
+    public function aCopyOpenedButNeverMarkedAsSentIsABriefingThatWent(): void
+    {
+        $sunday = $this->newShift('2027-03-07T00:00', '2027-03-07T02:00');
+        $this->assign($sunday, $this->ada);
+        $token = $this->copiedLink($this->ada);
+        self::mockTime(new DateTimeImmutable('2027-03-06T05:30:00Z'));
+        $this->opened($token);
+        self::assertSame(['notice' => null, 'briefing' => 'read'], $this->row($this->ada));
+
+        $this->editTimes($sunday, '2027-03-07T00:30', '2027-03-07T02:00');
+        $this->at('2027-03-06T05:45:00Z');
+        self::assertSame([['Your shift has changed · Owambe', '/app/events/' . $this->eventId . '/my-night']], Vec\map($this->pushes(), static fn (array $push): array => [$push[0], $push[2]]));
+
+        $this->at('2027-03-06T09:00:00Z');
+        self::assertContains(['Ada Obi', 'Your shift starts Sunday 7 Mar at 00:30 · Owambe', ['Bartender at Harbour Hall.']], $this->reminders());
+
+        $this->as($this->owner, 'DELETE', $this->path($this->ada));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-06T09:15:00Z');
+
+        self::assertSame(['Your shift has changed · Owambe', 'You are no longer on the staff for Owambe on Saturday 6 Mar'], Vec\map($this->pushes(), static fn (array $push): string => $push[0]));
+    }
+
+    #[Test]
+    public function anOpenWithAChangeWaitingRecordsNothingSoTheChangeStillGoes(): void
+    {
+        self::mockTime(new DateTimeImmutable('2027-03-06T05:30:00Z'));
+        $token = $this->copiedLink($this->ada);
+        $this->markedSent($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->opened($token);
+        self::assertSame('told', $this->row($this->ada)['notice']['state'] ?? null);
+
+        $this->at('2027-03-06T05:45:00Z');
+
+        self::assertSame([['Your shift has changed · Owambe', ['Your start time is now 19:00 (was 18:00).'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
+    }
+
+    #[Test]
+    public function anOpenOnceTheEventIsFinishedRecordsNothing(): void
+    {
+        $this->live();
+        $token = $this->copiedLink($this->ada);
+        self::mockTime(new DateTimeImmutable('2027-03-07T03:00:00Z'));
+        $this->opened($token);
+
+        self::assertSame(['notice' => null, 'briefing' => 'none'], $this->row($this->ada));
+        self::assertNull(self::em()->getConnection()->fetchOne('SELECT told FROM staff_members WHERE id = :id', ['id' => $this->ada]));
     }
 
     #[Test]
@@ -610,9 +662,29 @@ final class ShiftNoticesTest extends ApiTestCase
 
     private function briefed(string $staffId): void
     {
+        $this->copiedLink($staffId);
+        $this->markedSent($staffId);
+    }
+
+    /** @return string the token of the link Copy link gives */
+    private function copiedLink(string $staffId): string
+    {
         $this->as($this->owner, 'POST', $this->path($staffId . '/briefing/link'));
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        return Str\after_last(Type\string()->coerce($this->last()['url'] ?? null), '/w/');
+    }
+
+    private function markedSent(string $staffId): void
+    {
         $this->as($this->owner, 'POST', $this->path($staffId . '/briefing/sent'));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** The person opens their link, as the page reports once it is visible, signed in or not. */
+    private function opened(#[SensitiveParameter] string $token): void
+    {
+        $this->client->request('POST', '/api/staff-links/opened', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode(['token' => $token]));
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
