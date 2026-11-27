@@ -41,6 +41,11 @@ export function doorAddress(eventId: string): string {
   return `/door/${encodeURIComponent(eventId)}`;
 }
 
+/** Floor opened from Your night (sc-98893): its way back reads Your night and returns to the shift page. */
+export function floorAddress(eventId: string): string {
+  return `/floor/${encodeURIComponent(eventId)}?from=night`;
+}
+
 export function shiftAddress(eventId: string): string {
   return `/night/${encodeURIComponent(eventId)}`;
 }

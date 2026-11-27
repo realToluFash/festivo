@@ -89,7 +89,7 @@ import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
-import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES, SHEET_A_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -118,6 +118,7 @@ import { RUN_PAGES } from './runView.ts';
 import { NightPage } from './Night.tsx';
 import { NIGHT_KEPT_PAGES, NIGHT_PAGES } from './night.ts';
 import { StationsPage } from './Stations.tsx';
+import { STAFF_TAB_PAGES } from './staffTabs.ts';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
 import { TEAM_STATES, type TeamStateName } from './team.ts';
@@ -518,6 +519,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
         <BoardPages pages={CHANGES_PAGES} />
+        <h3>
+          The sheet’s own states, in Guests A · sc-3911 and sc-34244 · desktop, and a web window
+          down to 320 px
+        </h3>
+        <BoardPages pages={SHEET_A_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-32">
@@ -600,6 +606,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={STATIONS_PAGES} />
         <h3>Hours worked: actual times, the two marks and Correct times (sc-234) · desktop</h3>
         <BoardPages pages={HOURS_PAGES} />
+        <h3>The Staff tabs keep their words whole, wrapping to another row (sc-99786) · desktop</h3>
+        <BoardPages pages={STAFF_TAB_PAGES} />
         <h3>The clock card on a person’s own shift, in a browser (sc-234) · phone</h3>
         <BoardPages pages={SHIFT_CLOCK_PAGES} />
         <h3>

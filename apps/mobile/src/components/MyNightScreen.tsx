@@ -18,14 +18,15 @@ import Svg, { Path } from 'react-native-svg';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
-  checkInOf,
+  type NightButton,
+  checkInHrefOf,
   clockAt,
   crossesMidnight,
   dietaryOf,
   headingOf,
+  nightButtonsOf,
   updatedAfter,
   weekdayOf,
-  whosHereOf,
 } from '../kit/myNight.ts';
 import { type ClockLine, actionOf, answerOf, recordedWords } from '../kit/shiftClock.ts';
 import { openStationOf } from '../kit/stationWayIn.ts';
@@ -99,7 +100,7 @@ function shown(was: Seen, night: MyNight): Seen {
   };
 }
 
-/** A staff member's whole night on one page, opened from the event's Overview (sc-3915), as the app's demo /demo/my-night?state=app draws it: one column on a phone, two on a tablet. */
+/** A staff member's whole night on one page, opened from the event's Overview (sc-3915), as the app's demo /demo/my-night?state=app draws it: one column on a phone, two on a tablet. Open Floor (sc-98893) and Open {station} (sc-95382) never show together: a station is a section or a kitchen station. */
 export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -214,16 +215,31 @@ function Night({
         {clock}
       </>
     );
-  const checkIn = checkInOf(night);
-  const station = openStationOf(night);
-  const whosHere = whosHereOf(night, station);
-  const openWhosHere = () =>
-    router.push({ pathname: '/events/[id]/whos-here', params: { id: night.event.id } });
-  const openStation = () =>
-    router.push({
-      pathname: '/events/[id]/station',
-      params: { id: night.event.id, from: 'night' },
-    });
+  const buttons: Record<
+    NightButton['opens'],
+    { label: string; href: Parameters<typeof router.push>[0]; testID: string }
+  > = {
+    checkIn: {
+      label: t('checkIn.title'),
+      href: checkInHrefOf(night.event.id, 'night'),
+      testID: 'myNight.checkIn',
+    },
+    station: {
+      label: t('station.wayIn.open', { station: openStationOf(night) ?? '' }),
+      href: { pathname: '/events/[id]/station', params: { id: night.event.id, from: 'night' } },
+      testID: 'myNight.openStation',
+    },
+    floor: {
+      label: t('service.floor.wayIn.open'),
+      href: { pathname: '/events/[id]/floor', params: { id: night.event.id, from: 'night' } },
+      testID: 'myNight.openFloor',
+    },
+    whosHere: {
+      label: t('whosHere.open'),
+      href: { pathname: '/events/[id]/whos-here', params: { id: night.event.id } },
+      testID: 'myNight.whosHere',
+    },
+  };
 
   const left = (
     <>
@@ -242,41 +258,14 @@ function Night({
         </Text>
       </View>
       {clock}
-      {checkIn != null && (
-        <PrimaryButton
-          label={t('checkIn.title')}
-          onPress={() => router.push(checkIn)}
-          testID="myNight.checkIn"
-        />
-      )}
-      {station != null &&
-        (checkIn == null ? (
-          <PrimaryButton
-            label={t('station.wayIn.open', { station })}
-            onPress={openStation}
-            testID="myNight.openStation"
-          />
-        ) : (
-          <SecondaryButton
-            label={t('station.wayIn.open', { station })}
-            onPress={openStation}
-            testID="myNight.openStation"
-          />
-        ))}
-      {whosHere != null &&
-        (whosHere.primary ? (
-          <PrimaryButton
-            label={t('whosHere.open')}
-            onPress={openWhosHere}
-            testID="myNight.whosHere"
-          />
-        ) : (
-          <SecondaryButton
-            label={t('whosHere.open')}
-            onPress={openWhosHere}
-            testID="myNight.whosHere"
-          />
-        ))}
+      {nightButtonsOf(night).map(({ opens, kind }) => {
+        const Button = kind === 'primary' ? PrimaryButton : SecondaryButton;
+        const { label, href, testID } = buttons[opens];
+
+        return (
+          <Button key={opens} label={label} onPress={() => router.push(href)} testID={testID} />
+        );
+      })}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />

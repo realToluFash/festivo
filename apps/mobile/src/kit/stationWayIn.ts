@@ -54,11 +54,43 @@ export function readStationRow(
   }));
 }
 
+/** A 403 or 404: the read is not theirs, and asking again would be refused again. */
+export function refused(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 403 || error.status === 404);
+}
+
 /** A refusal takes the row away; anything else keeps its line, as of when it was read. */
 export function afterFailedRead(was: StationRowRead, error: unknown): StationRowRead {
-  if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return null;
+  if (refused(error)) return null;
 
   return was == null ? was : { ...was, stale: true };
+}
+
+/** Reads the row now and every `every` ms, handing `seen` each outcome; a refusal ends the polling with the row, since asking again would be refused again. Returns what stops it. */
+export function pollStationRow(
+  read: () => Promise<NonNullable<StationRowRead>>,
+  every: number,
+  seen: (next: (was: StationRowRead) => StationRowRead) => void,
+): () => void {
+  let current = true;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const stop = () => {
+    current = false;
+    if (timer != null) clearInterval(timer);
+  };
+  const load = () =>
+    read().then(
+      (fresh) => current && seen(() => fresh),
+      (error: unknown) => {
+        if (!current) return;
+        if (refused(error)) stop();
+        seen((was) => afterFailedRead(was, error));
+      },
+    );
+  void load();
+  timer = setInterval(() => void load(), every);
+
+  return stop;
 }
 
 /** Open {station} on Your night: their own kitchen station, when their access opens it; null shows no button. */

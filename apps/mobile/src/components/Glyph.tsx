@@ -80,6 +80,8 @@ const GLYPHS = {
   ],
   x: [{ d: 'M18 6 6 18' }, { d: 'm6 6 12 12' }],
   info: [{ cx: 12, cy: 12, r: 10 }, { d: 'M12 16v-4' }, { d: 'M12 8h.01' }],
+  /** A ring with a stroke through it: a channel the guest stopped (sc-3969). */
+  slash: [{ cx: 12, cy: 12, r: 9 }, { d: 'M5.6 5.6l12.8 12.8' }],
   alert: [{ cx: 12, cy: 12, r: 10 }, { d: 'M12 8v4' }, { d: 'M12 16h.01' }],
   warn: [
     { d: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' },

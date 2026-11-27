@@ -15,6 +15,7 @@ import { CLOCKS, type SampleEvent, instantOf, localDay, shownOf } from './events
 import { CW, type SampleName, cw, linesFor } from './kitchenChanges.ts';
 import { heldNeeds, resetNeedsYou, seedNeedsYou } from './needsYou.ts';
 import type { DemoLink } from './settings.ts';
+import type { SheetMenu, SheetState } from './kitchenSheet.ts';
 
 /** Final numbers due and the kitchen's copies (sc-30812) in Guests A's language, on the wedding: board/guests-a-spec.md §21. */
 export const KITCHEN_EVENT = 'evt-wed-4';
@@ -57,7 +58,6 @@ export const KW = {
   sheetLine: '{{allergic}} people with allergies · {{courses}} courses · As of {{at}}',
   allergies: 'Allergies',
   diets: 'Diets',
-  showAll: 'Show all {{count}} people with allergies',
   namesNeed: 'Names need Guests manage.',
   notChosen: 'Not chosen yet',
   noPdf: 'The demo makes no PDF. In the product this downloads “{{file}}”.',
@@ -98,6 +98,15 @@ export interface Copy {
 
 export type Dialog = 'rest' | 'making' | 'failed';
 
+/** The top's own Download PDF (sc-3911), apart from Give final numbers…'s dialog. */
+export type Pdf = 'rest' | 'making' | 'made' | 'failed';
+
+/** sc-3911's and sc-34244's sheet under the A top: which room, which menu. */
+export interface SheetBody {
+  state: SheetState;
+  menu: SheetMenu;
+}
+
 export interface Kitchen {
   due: string | null;
   copies: readonly Copy[];
@@ -119,6 +128,9 @@ export interface KitchenStart {
   /** guests.manage, apart from menu.manage on the changes states (sc-30692); sc-30812's states keep them together. */
   names?: boolean;
   clock?: Date;
+  /** The sheet's own states: sc-3911's room and sc-34244's menu, read from See picks; none on sc-30812's and sc-30692's states. */
+  sheet?: SheetBody;
+  pdf?: Pdf;
 }
 
 const FIRST: Copy = { id: 3, at: '2026-11-03T09:41:00Z', by: READER };
@@ -286,10 +298,96 @@ const STATES = {
   },
 } satisfies Record<string, { name: string; starts: Partial<KitchenStart> }>;
 
-export type KitchenStateName = keyof typeof STATES;
+/** sc-3911's and sc-34244's sheet in A (sc-99611), each also as `<name>_counts`: without guests.manage, counts and no names. */
+const SHEET_STATES = {
+  sheet_open: { name: 'The sheet before picks close', state: 'open', menu: 'plain' },
+  sheet_closed: {
+    name: 'After the close: never given the default, No allergy · a diet, the default given, the cell words',
+    state: 'closed',
+    menu: 'plain',
+  },
+  sheet_no_allergies: { name: 'No allergies recorded', state: 'noAllergies', menu: 'plain' },
+  sheet_closed_no_allergies: {
+    name: 'After the close, no allergies recorded: diets alone kept people from the default',
+    state: 'closedNoAllergies',
+    menu: 'plain',
+  },
+  sheet_no_diets: { name: 'No diets recorded', state: 'noDiets', menu: 'plain' },
+  sheet_loading: { name: 'Loading', state: 'loading', menu: 'plain' },
+  sheet_unreached: {
+    name: 'The kitchen sheet could not be loaded: Try again',
+    state: 'cannotReach',
+    menu: 'plain',
+  },
+  sheet_refused: {
+    name: 'Refused without menu.read (403): Back to the event',
+    state: 'refused',
+    menu: 'plain',
+  },
+  pdf_making: {
+    name: 'The top’s Download PDF: making',
+    state: 'open',
+    menu: 'plain',
+    pdf: 'making',
+  },
+  pdf_made: { name: 'The top’s Download PDF: made', state: 'open', menu: 'plain', pdf: 'made' },
+  pdf_failed: {
+    name: 'The top’s Download PDF: failed, Try again',
+    state: 'open',
+    menu: 'plain',
+    pdf: 'failed',
+  },
+  sheet_long: {
+    name: 'After the close, a 120-character dish and a 60-character variant in Main',
+    state: 'closed',
+    menu: 'long',
+  },
+  stations_open: { name: 'By station: a menu with items', state: 'open', menu: 'items' },
+  stations_closed: { name: 'By station after the close', state: 'closed', menu: 'items' },
+  stations_moved: {
+    name: 'By station after a lead moves Grill before Kitchen',
+    state: 'open',
+    menu: 'moved',
+  },
+} satisfies Record<string, { name: string; state: SheetState; menu: SheetMenu; pdf?: Pdf }>;
+
+type SheetStateBase = keyof typeof SHEET_STATES;
+/** Nothing about guests.manage shows before the sheet loads or on a 403, so these have no `_counts` twin. */
+const NO_SHEET = ['sheet_loading', 'sheet_unreached', 'sheet_refused'] as const;
+type NoSheet = (typeof NO_SHEET)[number];
+export type SheetStateName = SheetStateBase | `${Exclude<SheetStateBase, NoSheet>}_counts`;
+export type KitchenStateName = keyof typeof STATES | SheetStateName;
+
+const showsSheet = (base: string): boolean => !(NO_SHEET as readonly string[]).includes(base);
+
+export const SHEET_STATE_NAMES = Object.keys(SHEET_STATES).flatMap((one) =>
+  showsSheet(one) ? [one, `${one}_counts`] : [one],
+) as SheetStateName[];
+
+const COUNTS = '_counts';
+
+function sheetStateOf(value: string): { base: SheetStateBase; names: boolean } | null {
+  const counts = value.endsWith(COUNTS);
+  const base = counts ? value.slice(0, -COUNTS.length) : value;
+  if (counts && !showsSheet(base)) return null;
+
+  return Object.hasOwn(SHEET_STATES, base)
+    ? { base: base as SheetStateBase, names: !counts }
+    : null;
+}
 
 export function isKitchenState(value: string | null): value is KitchenStateName {
-  return value != null && Object.hasOwn(STATES, value);
+  return value != null && (Object.hasOwn(STATES, value) || sheetStateOf(value) != null);
+}
+
+function stateName(value: KitchenStateName): string {
+  const sheet = sheetStateOf(value);
+  if (sheet == null) return STATES[value as keyof typeof STATES].name;
+  if (!showsSheet(sheet.base)) return SHEET_STATES[sheet.base].name;
+
+  return sheet.names
+    ? `${SHEET_STATES[sheet.base].name}, with guests.manage`
+    : `${SHEET_STATES[sheet.base].name}, without guests.manage`;
 }
 
 export function startOf(value: string | null): KitchenStart {
@@ -300,7 +398,23 @@ export function startOf(value: string | null): KitchenStart {
     return BASE;
   }
 
-  const start = { ...BASE, ...(STATES[value].starts as Partial<KitchenStart>) };
+  const sheet = sheetStateOf(value);
+  if (sheet != null) {
+    const body: { state: SheetState; menu: SheetMenu; pdf?: Pdf } = SHEET_STATES[sheet.base];
+    kept = NOTHING;
+
+    return {
+      ...BASE,
+      names: sheet.names,
+      sheet: { state: body.state, menu: body.menu },
+      ...(body.pdf == null ? {} : { pdf: body.pdf }),
+    };
+  }
+
+  const start = {
+    ...BASE,
+    ...(STATES[value as keyof typeof STATES].starts as Partial<KitchenStart>),
+  };
   kept = start.kitchen;
 
   return start;
@@ -601,7 +715,6 @@ export const ALLERGIC: readonly Allergic[] = [
   },
 ];
 
-export const SHOWN_FIRST = 4;
 export const COMING = 96;
 
 export const DIETS: readonly [string, number][] = [
@@ -646,16 +759,21 @@ export function allergenCounts(): [string, number][] {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
-export function sheetLine(event: SampleEvent, now: Date, allergic = ALLERGIC.length): string {
+export function sheetLine(
+  event: SampleEvent,
+  now: Date,
+  allergic = ALLERGIC.length,
+  courses = COURSES.length,
+): string {
   return filled(KW.sheetLine, {
     allergic,
-    courses: COURSES.length,
+    courses,
     at: momentOf(now.toISOString(), event.timeZone, now),
   });
 }
 
 function link(state: KitchenStateName): DemoLink {
-  return { to: kitchenAt(KITCHEN_EVENT, state), name: STATES[state].name };
+  return { to: kitchenAt(KITCHEN_EVENT, state), name: stateName(state) };
 }
 
 const DATE_LINKS: readonly DemoLink[] = [
@@ -750,6 +868,33 @@ export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[]
       dateLink('changes_late', 'All dates: came back after the date, due at the start', true),
       dateLink('changes_no_date', 'All dates: no date set, due at the start', true),
     ],
+  },
+];
+
+const both = (states: readonly Exclude<SheetStateBase, NoSheet>[]): DemoLink[] =>
+  states.flatMap((one) => [link(one), link(`${one}${COUNTS}` as SheetStateName)]);
+
+/** sc-3911's and sc-34244's states under the A top (sc-99611), each with and without guests.manage. */
+export const SHEET_A_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'The sheet before and after the close, and with nothing recorded',
+    states: both([
+      'sheet_open',
+      'sheet_closed',
+      'sheet_no_allergies',
+      'sheet_closed_no_allergies',
+      'sheet_no_diets',
+      'sheet_long',
+    ]),
+  },
+  {
+    name: 'Loading, could not be loaded, refused',
+    states: NO_SHEET.map((one) => link(one)),
+  },
+  { name: 'The top’s Download PDF', states: both(['pdf_making', 'pdf_made', 'pdf_failed']) },
+  {
+    name: 'By station (sc-34244)',
+    states: both(['stations_open', 'stations_closed', 'stations_moved']),
   },
 ];
 

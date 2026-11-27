@@ -95,11 +95,12 @@ final class MyNightTest extends ApiTestCase
         $night = $this->night($this->signedIn());
 
         self::assertSame(200, $this->statusCode(), Json\encode($night));
-        self::assertSame(['pastAccess', 'clock', 'event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'dishes', 'whosHere', 'rules'], Vec\keys($night));
+        self::assertSame(['pastAccess', 'clock', 'event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'dishes', 'floor', 'whosHere', 'rules'], Vec\keys($night));
         self::assertFalse($night['whosHere'], 'a waiter who leads nothing does not read Who\'s here');
         self::assertSame(['id' => $this->eventId, 'name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $night['event']);
         self::assertFalse($night['checksIn']);
         self::assertFalse($night['dishes'], 'a section station dishes nothing');
+        self::assertTrue($night['floor'], "a Waiter's Can work the floor on a section station opens it");
         self::assertSame('2027-03-07T02:00:00+01:00', $night['endsAt'], "the event's end, before 2 hours after the last shift");
         self::assertSame(['Section B', 'Waiter'], [$night['station'], $night['job']]);
         self::assertSame(['job' => 'Waiter', 'startsAt' => '2027-03-06T17:00:00+01:00', 'endsAt' => '2027-03-07T01:00:00+01:00'], $night['shift']);
@@ -172,6 +173,46 @@ final class MyNightTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'pass']);
         self::assertTrue($this->night($user)['dishes'] ?? null, "a job's Can work the pass opens them through the staff link");
+    }
+
+    #[Test]
+    public function aSectionStationWorksTheFloorOnlyForAnAccountWhoseAccessOpensIt(): void
+    {
+        $user = $this->signedIn();
+        $this->seatedSection(withLead: false);
+        $section = self::em()->getRepository(StaffStation::class)->findOneBy(['event' => $this->event(), 'kind' => StationKind::Section]) ?? self::fail('no section station');
+        $grill = new StaffStation($this->event(), StationKind::Place, 'Grill', 'grill', null, 2);
+        self::em()->persist($grill);
+        self::em()->flush();
+
+        foreach (['view' => false, 'check_in' => false, 'pass' => false, 'floor' => true, 'run' => true] as $access => $opens) {
+            $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => $access]);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+            self::em()->clear();
+            self::assertSame($opens, $this->night($user)['floor'] ?? null, "a job's {$access} through the staff link");
+        }
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'view']);
+        self::em()->clear();
+        foreach ([[EventRole::Lead, true], [EventRole::CanEdit, true], [EventRole::CanRunFloor, true], [EventRole::CanWorkFloor, true], [EventRole::CanWorkPass, false], [EventRole::CanCheckIn, false]] as [$role, $opens]) {
+            $grant = EventPerson::outside($this->event(), self::em()->find(User::class, $user->getId()) ?? self::fail('no account'), $role, null, null);
+            self::em()->persist($grant);
+            self::em()->flush();
+            self::assertSame($opens, $this->night($user)['floor'] ?? null, $role->value . ' granted on the event');
+            self::em()->remove(self::em()->find(EventPerson::class, $grant->getId()) ?? self::fail('no grant'));
+            self::em()->flush();
+        }
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'floor']);
+        self::em()->clear();
+        $this->putOn($grill);
+        self::assertFalse($this->night($user)['floor'] ?? null, 'a kitchen station is not the floor');
+
+        $this->putOn(null);
+        self::assertFalse($this->night($user)['floor'] ?? null, 'on no station');
+
+        $this->putOn($section);
+        self::assertTrue($this->night($user)['floor'] ?? null, 'back on the section');
     }
 
     #[Test]

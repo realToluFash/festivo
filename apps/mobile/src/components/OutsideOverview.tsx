@@ -16,6 +16,7 @@ import { CARD_PIECES, Confetti } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { CardSays, OnCard, Row, RowList, SummaryCard, TextAction } from './Summary.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { useFloorRowItem } from './FloorWayIn.tsx';
 import { useStationRowItem } from './StationWayIn.tsx';
 import { useYourNightItem } from './YourNight.tsx';
 
@@ -49,9 +50,11 @@ export function OutsideOverview({
   );
   const night = useYourNightItem(event.id);
   const station = useStationRowItem(event);
+  const floor = useFloorRowItem(event);
   const rows = [
     ...(night == null ? [] : [night]),
     ...(station == null ? [] : [station]),
+    ...(floor == null ? [] : [floor]),
     ...(reads
       ? [
           {

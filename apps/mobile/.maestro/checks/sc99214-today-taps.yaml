@@ -1,0 +1,48 @@
+# sc-99214: on the phone's bar at the foot of Today, one tap on each tab opens its area and marks that tab selected.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'tab-events|frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-events|frame.events'
+      selected: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: events
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-calendar|frame.calendar'
+      selected: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: calendar
+- tapOn:
+    id: 'home.openSettings|frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings
+- tapOn:
+    id: 'tab-today|frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 15000
+- takeScreenshot: today

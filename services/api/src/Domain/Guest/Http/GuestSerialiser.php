@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Http;
 
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Messaging\GuestMessages\GuestSuppressions;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\GuestGroup;
@@ -13,6 +14,7 @@ use App\Entity\MealAnswer;
 use App\Entity\SeatAssignment;
 use App\Entity\SeatingRow;
 use App\Entity\SeatingTable;
+use App\Enum\GuestChannel;
 use App\Enum\GuestReply;
 use App\Enum\GuestStanding;
 use App\Enum\MealAnswerKind;
@@ -28,7 +30,7 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Greet as goes to every reader, as how the guest is addressed and not a way to reach them (sc-3960). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777). */
+/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Greet as goes to every reader, as how the guest is addressed and not a way to reach them (sc-3960). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777), and so do the opt-outs (sc-3969). */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -37,6 +39,7 @@ final readonly class GuestSerialiser
         private GuestGroupRepository $guestGroupRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
         private MealAnswerRepository $mealAnswerRepository,
+        private GuestSuppressions $guestSuppressions,
     ) {
     }
 
@@ -222,11 +225,25 @@ final readonly class GuestSerialiser
 
         return [
             ...self::guest($host, $companions, $contacts ? $this->guestNeedsRecord->of([$host, ...$companions]) : null, $this->seatsOf($companions), $this->mealsOf($companions)),
-            ...$contacts ? ['organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale())] : [],
+            ...$contacts ? [
+                'organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale()),
+                'optOuts' => $this->optOuts($host),
+            ] : [],
             'added' => [
                 'at' => $host->getCreatedAt()->format(\DATE_ATOM),
                 'by' => $host->getAddedBy()?->getName(),
             ],
         ];
+    }
+
+    /** @return array<string, ?string> when the address now on each row stopped this organisation's messages on that channel (sc-3969), with guests.manage alone */
+    private function optOuts(Guest $guest): array
+    {
+        $organisation = $guest->getEvent()->getOrganisation()->getId();
+
+        return Dict\from_entries(Vec\map(GuestChannel::cases(), fn (GuestChannel $channel): array => [
+            $channel->field(),
+            $this->guestSuppressions->optedOutSince($organisation, $channel, GuestChannel::Email === $channel ? $guest->getEmail() : $guest->getMobile())?->format(\DATE_ATOM),
+        ]));
     }
 }
