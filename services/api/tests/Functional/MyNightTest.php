@@ -95,7 +95,8 @@ final class MyNightTest extends ApiTestCase
         $night = $this->night($this->signedIn());
 
         self::assertSame(200, $this->statusCode(), Json\encode($night));
-        self::assertSame(['pastAccess', 'clock', 'event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'dishes', 'rules'], Vec\keys($night));
+        self::assertSame(['pastAccess', 'clock', 'event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'dishes', 'whosHere', 'rules'], Vec\keys($night));
+        self::assertFalse($night['whosHere'], 'a waiter who leads nothing does not read Who\'s here');
         self::assertSame(['id' => $this->eventId, 'name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $night['event']);
         self::assertFalse($night['checksIn']);
         self::assertFalse($night['dishes'], 'a section station dishes nothing');
@@ -245,6 +246,24 @@ final class MyNightTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($night));
         self::assertSame([], $night['tables']);
         self::assertFalse(Str\contains(Json\encode($night), 'Folake'));
+    }
+
+    #[Test]
+    public function theFloorLeadAndAStationsLeadAreToldTheyReadWhosHere(): void
+    {
+        $this->seatedSection(withLead: false);
+        $user = $this->signedIn();
+        self::assertFalse($this->night($user)['whosHere'] ?? null, 'on a station they do not lead');
+
+        $this->entry($this->grace)->setFloorLead(true);
+        self::em()->flush();
+        self::assertTrue($this->night($user)['whosHere'] ?? null, 'the floor lead reads the whole floor');
+
+        $grace = $this->entry($this->grace);
+        $grace->setFloorLead(false);
+        $grace->getStation()?->setLead($grace);
+        self::em()->flush();
+        self::assertTrue($this->night($user)['whosHere'] ?? null, "a station's lead reads their own station");
     }
 
     #[Test]

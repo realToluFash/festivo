@@ -40,6 +40,7 @@ const NIGHT = {
   tables: null,
   checksIn: true,
   dishes: false,
+  whosHere: false,
   rules: null,
 };
 

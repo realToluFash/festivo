@@ -106,6 +106,22 @@ class StaffMember
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $briefCopyMarked = false;
 
+    /** The lead who added them at the door from Who's here (sc-3918), who may give them a number without staff.manage. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $walkOnBy = null;
+
+    /** Whom they were moved to cover from Who's here (sc-3918), the station they left and when. A move from Stations clears it. */
+    #[ORM\ManyToOne(targetEntity: StaffMember::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffMember $covering = null;
+
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $movedFrom = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $movedAt = null;
+
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
         $this->id = Uuid::v7();
@@ -279,5 +295,37 @@ class StaffMember
         $this->briefCopyBy = $by;
         $this->briefCopyAt = $at;
         $this->briefCopyMarked = $marked;
+    }
+
+    public function getWalkOnBy(): ?User
+    {
+        return $this->walkOnBy;
+    }
+
+    public function setWalkOnBy(?User $walkOnBy): void
+    {
+        $this->walkOnBy = $walkOnBy;
+    }
+
+    public function getCovering(): ?StaffMember
+    {
+        return $this->covering;
+    }
+
+    public function getMovedFrom(): ?string
+    {
+        return $this->movedFrom;
+    }
+
+    public function getMovedAt(): ?DateTimeImmutable
+    {
+        return $this->movedAt;
+    }
+
+    public function setCover(?StaffMember $covering, ?string $movedFrom, ?DateTimeImmutable $movedAt): void
+    {
+        $this->covering = $covering;
+        $this->movedFrom = $movedFrom;
+        $this->movedAt = $movedAt;
     }
 }

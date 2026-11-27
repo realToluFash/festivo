@@ -25,6 +25,7 @@ import {
   headingOf,
   updatedAfter,
   weekdayOf,
+  whosHereOf,
 } from '../kit/myNight.ts';
 import { type ClockLine, actionOf, answerOf, recordedWords } from '../kit/shiftClock.ts';
 import { openStationOf } from '../kit/stationWayIn.ts';
@@ -215,6 +216,9 @@ function Night({
     );
   const checkIn = checkInOf(night);
   const station = openStationOf(night);
+  const whosHere = whosHereOf(night, station);
+  const openWhosHere = () =>
+    router.push({ pathname: '/events/[id]/whos-here', params: { id: night.event.id } });
   const openStation = () =>
     router.push({
       pathname: '/events/[id]/station',
@@ -257,6 +261,20 @@ function Night({
             label={t('station.wayIn.open', { station })}
             onPress={openStation}
             testID="myNight.openStation"
+          />
+        ))}
+      {whosHere != null &&
+        (whosHere.primary ? (
+          <PrimaryButton
+            label={t('whosHere.open')}
+            onPress={openWhosHere}
+            testID="myNight.whosHere"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('whosHere.open')}
+            onPress={openWhosHere}
+            testID="myNight.whosHere"
           />
         ))}
       {night.shift != null && <Shift night={night} shift={night.shift} />}

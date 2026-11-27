@@ -141,6 +141,16 @@ import {
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import { type MyNight, asMyNight } from './myNight.ts';
 import {
+  type MobileAdded,
+  type TypedMobile,
+  type WalkOnAdded,
+  type WalkOnTyped,
+  type WhosHere,
+  asMobileAdded,
+  asWalkOnAdded,
+  asWhosHere,
+} from './whosHere.ts';
+import {
   type ClockAction,
   type ClockOutcome,
   type HoursTyped,
@@ -4309,6 +4319,83 @@ export class ApiClient {
     return this.staffHoursOf(
       await this.put<unknown>(`/api/events/${eventId}/staff/hours/${shiftId}/${staffId}`, typed),
     );
+  }
+
+  /** Who's here tonight (sc-3918): to staff.read, the floor lead, and a station lead for their own station; 403 for anybody else. */
+  async whosHere(eventId: string): Promise<WhosHere> {
+    return this.whosHereOf(await this.get<unknown>(this.whosHerePath(eventId)));
+  }
+
+  /** Someone at the door: their roster entry, a shift from now and their station, and the link to copy with a number. Refused 422 `validation_failed` per field and 409 `event_concluded` once the event has ended. */
+  async addWalkOn(eventId: string, typed: WalkOnTyped): Promise<WalkOnAdded> {
+    const added = asWalkOnAdded(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/walk-ons`, typed),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a walk-on in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** A number for someone with none, and their link to copy; to staff.manage, and the lead who added that walk-on. */
+  async addWhosHereMobile(
+    eventId: string,
+    staffId: string,
+    mobile: TypedMobile,
+  ): Promise<MobileAdded> {
+    const added = asMobileAdded(
+      await this.put<unknown>(
+        `${this.whosHerePath(eventId)}/people/${encodeURIComponent(staffId)}/mobile`,
+        { mobile },
+      ),
+    );
+
+    if (added == null) {
+      throw new Error(
+        'The API answered a mobile number in a shape this client does not know. Check WhosHereController in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** Moves someone who is here onto an absent person's station; the floor lead's and staff.manage's only. */
+  async coverStation(eventId: string, absent: string, mover: string): Promise<WhosHere> {
+    return this.whosHereOf(
+      await this.post<unknown>(`${this.whosHerePath(eventId)}/cover`, { absent, mover }),
+    );
+  }
+
+  /** A hub token for this event's Who's here signal; its messages carry nothing but read again. */
+  async whosHereSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.whosHerePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private whosHerePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/whos-here`;
+  }
+
+  private whosHereOf(raw: unknown): WhosHere {
+    const read = asWhosHere(raw);
+
+    if (read == null) {
+      throw new Error(
+        "The API answered Who's here in a shape this client does not know. Check WhosHereController in services/api.",
+      );
+    }
+
+    return read;
   }
 
   private staffHoursOf(raw: unknown): StaffHours {
