@@ -33,7 +33,10 @@ appId: host.exp.Exponent
     when:
       platform: iOS
     commands:
-      - tapOn: '{{t:any:eventPeople.role.can_check_in}}'
+      - tapOn:
+          text: '.*{{t:any:eventPeople.role.can_check_in}}.*'
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: keys-closed
+- assertVisible:
+    id: 'redeem.event.send'
