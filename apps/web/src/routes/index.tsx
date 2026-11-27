@@ -40,6 +40,7 @@ import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
+import { DueNowPage } from './app/events/DueNow.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
@@ -133,6 +134,7 @@ export const routes = [
           { path: 'events/:eventId/messages', element: <EventMessages /> },
           { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
+          { path: 'due/:reminderId', element: <DueNowPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'menu-library', element: <MenuLibrary /> },
           { path: 'guests', element: <Navigate to="/app" replace /> },
