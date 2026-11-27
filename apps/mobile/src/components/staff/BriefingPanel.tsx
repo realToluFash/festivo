@@ -22,6 +22,7 @@ import { Field, TextField } from '../Field.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { ListPicker } from '../ListPicker.tsx';
 import { BoxField } from '../MomentPick.tsx';
+import { Card, Shift, YourLead } from '../MyNightScreen.tsx';
 import { readOut } from '../ReadOut.tsx';
 import { Skeleton } from '../Skeleton.tsx';
 import { Text } from '../Text.tsx';
@@ -119,6 +120,10 @@ export function BriefingPanel({
   );
 }
 
+function isConcluded(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'event_concluded';
+}
+
 function CopyList({
   eventId,
   people,
@@ -136,7 +141,13 @@ function CopyList({
   const [busy, setBusy] = useState<string | null>(null);
   const [missed, setMissed] = useState<string | null>(null);
   const [held, setHeld] = useState<{ id: string; url: string } | null>(null);
+  const [over, setOver] = useState(false);
   const listed = withShifts(people);
+
+  function alreadyOver(): void {
+    setOver(true);
+    say(t('eventEnd.alreadyOver'));
+  }
 
   async function copy(entry: StaffEntry): Promise<void> {
     if (busy != null) return;
@@ -146,8 +157,9 @@ function CopyList({
     let answer;
     try {
       answer = await api.copyBriefingLink(eventId, entry.id);
-    } catch {
+    } catch (error) {
       setBusy(null);
+      if (isConcluded(error)) return alreadyOver();
       setMissed(entry.id);
       say(t('staffLink.notIssued'));
       return;
@@ -173,9 +185,12 @@ function CopyList({
       onEntry(await api.markBriefingSent(eventId, entry.id));
       if (held?.id === entry.id) setHeld(null);
       say(t('staffLink.marked', { name: entry.fullName }));
-    } catch {
-      setMissed(entry.id);
-      say(t('staffLink.notIssued'));
+    } catch (error) {
+      if (isConcluded(error)) alreadyOver();
+      else {
+        setMissed(entry.id);
+        say(t('staffLink.notIssued'));
+      }
     } finally {
       setBusy(null);
     }
@@ -202,10 +217,15 @@ function CopyList({
       <Text size={15} style={styles.secondary}>
         {t('briefing.copySub')}
       </Text>
+      {over && (
+        <Text size={15} weight="semibold" style={styles.attention} testID="briefing.over">
+          {t('eventEnd.alreadyOver')}
+        </Text>
+      )}
       {listed.map((one) => {
         const note = noteOf(one, t);
         const copied = one.briefingCopy;
-        const offered = acts && copies(one, true);
+        const offered = acts && !over && copies(one, true);
         const line = [one.job?.name, shiftLine(t, one, locale), one.station?.name]
           .filter(Boolean)
           .join(' · ');
@@ -491,8 +511,8 @@ function Preview({
         />
       </Field>
       <View style={styles.saved}>
-        <Glyph name="eye" size={16} ink={tokens.colorInkSecondary} />
-        <Text size={15} weight="medium" style={[styles.secondary, styles.shrink]}>
+        <Glyph name="eye" size={16} ink={tokens.colorAttentionText} />
+        <Text size={15} weight="semibold" style={[styles.attention, styles.shrink]}>
           {t('briefing.previewBanner')}
         </Text>
       </View>
@@ -529,32 +549,19 @@ function Preview({
             </Text>
           ) : (
             <>
-              <Text size={13} weight="semibold" style={styles.secondary}>
-                {t('myNight.onTonight')}
+              <Text size={20} weight="bold">
+                {`${t('myNight.onTonight')} ${headingOf(shown.night)}`}
               </Text>
-              <Text size={24} weight="bold">
-                {headingOf(shown.night)}
-              </Text>
-              <Text size={16} weight="medium">
-                {`${shown.night.shift.job} · ${t('staffRoster.shift', {
-                  start: clockAt(shown.night.shift.startsAt, locale),
-                  end: clockAt(shown.night.shift.endsAt, locale),
-                })}`}
-              </Text>
-              {shown.night.lead != null && (
-                <Text size={15} style={styles.secondary}>
-                  {`${t('myNight.yourLead')}: ${shown.night.lead.name}`}
-                </Text>
-              )}
+              <Shift night={shown.night} shift={shown.night.shift} />
+              <Card title={t('myNight.yourLead')}>
+                <YourLead lead={shown.night.lead} callable={false} />
+              </Card>
             </>
           )}
           {shown.night.rules != null && (
-            <View style={styles.rulesBlock}>
-              <Text size={15} weight="bold">
-                {t('myNight.beforeYouStart')}
-              </Text>
-              <Text size={15}>{shown.night.rules}</Text>
-            </View>
+            <Card title={t('myNight.beforeYouStart')}>
+              <Text size={17}>{shown.night.rules}</Text>
+            </Card>
           )}
         </View>
       )}
@@ -580,6 +587,7 @@ const styles = StyleSheet.create({
   },
   body: { gap: tokens.spaceLg, paddingBottom: tokens.spaceXl },
   secondary: { color: tokens.colorInkSecondary },
+  attention: { color: tokens.colorAttentionText },
   broken: { color: tokens.colorBrokenText, flexShrink: 1 },
   shrink: { flexShrink: 1 },
   list: { gap: tokens.spaceMd },
@@ -606,5 +614,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
-  rulesBlock: { gap: tokens.spaceXxs, paddingTop: tokens.spaceSm },
 });
