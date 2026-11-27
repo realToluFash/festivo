@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from '../steps/Lines.tsx';
 import { COUNTRIES, type Country } from './countries.ts';
 
-/** The label inside, the value under it and a chevron: a field that opens a list. */
+/** A field that opens a list: the value and a chevron, with the label inside unless a Field above draws it. */
 export function SelectRow({
   label,
   country,
