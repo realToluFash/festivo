@@ -10,6 +10,7 @@ import {
   floorTables,
   floorWord,
   inFloorOrder,
+  orderWaits,
   owesSentBack,
   sectionsMoved,
   stageLeftBy,
@@ -346,6 +347,24 @@ describe('withKeptTaps', () => {
       at(withKeptTaps(sent, [undo('p2', { kind: 'sendBack', was: 'toFollow' })])).owed,
     ).toMatchObject([{ id: 'p2', stage: 'served', owedReason: 'toFollow', sentBack: [] }]);
     expect(at(withKeptTaps(sent, [undo('p1', { kind: 'choice', was: null })])).choice).toBeNull();
+  });
+});
+
+describe('orderWaits', () => {
+  const seat = (extra: Partial<ServiceOrderRead> = {}, owed: ServiceOrderRead[] = []) => ({
+    ...guest(1, order('served', { id: 'p1', ...extra })),
+    owed,
+  });
+  const kept = new Set(['p1']);
+
+  it('marks an order with a kept tap and no other mark, as an undone send-back is', () => {
+    expect(orderWaits(seat(), kept)).toBe(true);
+    expect(orderWaits(seat(), new Set())).toBe(false);
+  });
+
+  it('leaves the mark to a held choice or the owed line', () => {
+    expect(orderWaits(seat({ held: true }), kept)).toBe(false);
+    expect(orderWaits(seat({}, [order('toServe', { id: 'p1' })]), kept)).toBe(false);
   });
 });
 

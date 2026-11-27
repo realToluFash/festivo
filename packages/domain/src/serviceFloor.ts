@@ -150,6 +150,18 @@ export function owesSentBack(guest: FloorGuest): boolean {
   );
 }
 
+/** A held guest's choice and an owed plate carry their own mark; a kept tap on any other order, as an undone send-back is, marks the order's stage (sc-4021). */
+export function orderWaits(guest: FloorGuest, keptOn: ReadonlySet<string | undefined>): boolean {
+  const order = guest.order;
+
+  return (
+    order != null &&
+    !order.held &&
+    !guest.owed.some((plate) => plate.id === order.id) &&
+    keptOn.has(order.id)
+  );
+}
+
 export function hasFlags(guest: ServiceGuestRead): boolean {
   const { allergens, allergenOther, diet, dietOther } = guest.flags;
 
