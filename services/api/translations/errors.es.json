@@ -113,6 +113,7 @@
     "export_expired": "La descarga de esta exportación ha terminado.",
     "provider_kept_by_rule": "Su organización solo admite Google o Apple, así que la última cuenta vinculada se mantiene.",
     "oauth_only": "Esta organización solo admite el inicio de sesión con Google o Apple.",
+    "sso_sign_in_required": "Esta organización inicia su sesión con su proveedor de identidad.",
     "oauth_only_unlinked": "No hay ninguna cuenta de Google o Apple vinculada.",
     "organisation_two_factor_required": "Esta organización pide primero la verificación en dos pasos.",
     "organisation_two_factor_overdue": "Esta organización exige la verificación en dos pasos.",

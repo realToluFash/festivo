@@ -17,6 +17,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\EmailDomainRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
+use App\Repository\SsoProviderRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -40,6 +41,7 @@ final readonly class SignInRules
         private ProviderIdentityRepository $providerIdentityRepository,
         private SecondFactors $secondFactors,
         private EmailDomainRepository $emailDomainRepository,
+        private SsoProviderRepository $ssoProviderRepository,
         private UserMailer $userMailer,
         private ClockInterface $clock,
     ) {
@@ -55,9 +57,49 @@ final readonly class SignInRules
         return $this->requiringProvider($user);
     }
 
+    /** Any address at the domain, account or not; Owners keep their own sign-in, so a broken provider can't lock them out. */
+    public function singleSignOnRefusal(string $address, ?User $user): ?ApiException
+    {
+        $domain = Str\lowercase(Str\after_last($address, '@') ?? '');
+        $organisation = $this->emailDomainRepository->findProvedOf($domain)?->getOrganisation();
+
+        if (null === $organisation || null === $organisation->getSsoRequiredSince()) {
+            return null;
+        }
+
+        if (null !== $user && true === $this->membershipRepository->findActive($user, $organisation->getId())?->getRole()->isOwner()) {
+            return null;
+        }
+
+        $provider = $this->ssoProviderRepository->findLive($organisation);
+
+        if (null === $provider) {
+            return null;
+        }
+
+        $named = ['organisation' => $organisation->getName(), 'provider' => $provider->getName()];
+
+        return new ApiException(
+            ErrorCode::SsoSignInRequired,
+            'sign_in.sso_required',
+            [],
+            null,
+            [],
+            [...$named, 'email' => $address],
+            ['{organisation}' => $named['organisation'], '{provider}' => $named['provider']],
+        );
+    }
+
     /** `oauth_only`, naming the organisation, the address and the providers to use instead: one refusal for sign-in, reset and refresh alike. */
     public function passwordRefusal(User $user): ?ApiException
     {
+        $address = $user->getPrimaryEmailAddress()?->getAddress();
+        $singleSignOn = null === $address ? null : $this->singleSignOnRefusal($address, $user);
+
+        if (null !== $singleSignOn) {
+            return $singleSignOn;
+        }
+
         $organisation = $this->refusingPassword($user);
 
         if (null === $organisation) {

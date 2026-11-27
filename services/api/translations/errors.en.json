@@ -113,6 +113,7 @@
     "export_expired": "This export’s download has ended.",
     "provider_kept_by_rule": "Your organisation signs in with Google or Apple only, so your last one stays linked.",
     "oauth_only": "This organisation signs in with Google or Apple only.",
+    "sso_sign_in_required": "This organisation signs you in through its identity provider.",
     "oauth_only_unlinked": "No Google or Apple account is linked.",
     "organisation_two_factor_required": "This organisation asks for two-factor first.",
     "organisation_two_factor_overdue": "This organisation requires two-factor.",

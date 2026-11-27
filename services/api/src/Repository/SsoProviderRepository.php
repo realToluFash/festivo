@@ -23,6 +23,14 @@ final class SsoProviderRepository extends ServiceEntityRepository
         return $this->findOneBy(['organisation' => $organisation, 'standing' => $standing]);
     }
 
+    /** The provider people sign in through now: the current one once it is on, the staying one while a change waits. */
+    public function findLive(Organisation $organisation): ?SsoProvider
+    {
+        $current = $this->findStanding($organisation, SsoStanding::Current);
+
+        return true === $current?->isOn() ? $current : $this->findStanding($organisation, SsoStanding::Staying);
+    }
+
     /** @return list<SsoProvider> */
     public function findForOrganisation(Organisation $organisation): array
     {

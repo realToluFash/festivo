@@ -34,6 +34,7 @@
     "assistant.too_many_tools": "Se pueden ofrecer como máximo {most, number, ::group-auto} herramientas; esta petición ofrece {count, number, ::group-auto}.",
     "assistant.resource_context_too_long": "El contexto del recurso puede tener como máximo {most, number, ::group-auto} caracteres; este tiene {count, number, ::group-auto}. Envíe lo que se ve en la pantalla, no el registro completo.",
     "sign_in.idle_timeout": "{organisation} cierra la sesión tras {days, number, ::group-auto} días sin uso. Vuelva a iniciar sesión para seguir.",
+    "sign_in.sso_required": "{organisation} signs you in through {provider}.",
     "validation.cover_description_too_long": "Acorte la descripción a {count, number, ::group-auto} caracteres como máximo.",
     "validation.seating_room_between": "La sala debe medir entre {min} y {max}.",
     "validation.seating_room_name_too_long": "Acorte el nombre de la sala a {count, number, ::group-auto} caracteres como máximo.",

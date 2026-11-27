@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Provider;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Interfaces\CodeRedeemerInterface;
 use App\Domain\User\Interfaces\IdTokenVerifierInterface;
 use App\Domain\User\Model\IssuedTokens;
@@ -33,6 +34,7 @@ final readonly class ProviderSignIn
         private UserRepository $userRepository,
         private UserRegistrar $userRegistrar,
         private SignInGate $signInGate,
+        private SignInRules $signInRules,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -70,6 +72,7 @@ final readonly class ProviderSignIn
         $name = $claims->name ?? self::nameOrNull($suppliedName);
 
         if (null !== $known) {
+            $this->refuseUnderSingleSignOn($known->getUser()->getPrimaryEmailAddress()?->getAddress(), $known->getUser());
             self::fillBlankName($known->getUser(), $name);
             $known->vouchedFor($claims->verifiedEmail());
             $this->entityManager->flush();
@@ -88,6 +91,7 @@ final readonly class ProviderSignIn
         $owner = $this->userRepository->findOneByPrimaryEmailAddress($claims->email);
 
         if (null !== $owner && true === $owner->getPrimaryEmailAddress()?->isVerified()) {
+            $this->refuseUnderSingleSignOn($claims->email, $owner);
             $admission = $this->signInGate->admit($owner, $request, new ProviderLink($provider, $claims->subject, $claims->verifiedEmail()));
 
             if (!$admission instanceof IssuedTokens) {
@@ -101,11 +105,21 @@ final readonly class ProviderSignIn
             return new ProviderSignInResult($owner, $admission, true);
         }
 
+        $this->refuseUnderSingleSignOn($claims->email, null);
         $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request, $provider);
         $this->entityManager->persist(new ProviderIdentity($registered->user, $provider, $claims->subject, $claims->verifiedEmail()));
         $this->entityManager->flush();
 
         return new ProviderSignInResult($registered->user, $registered->tokens, false);
+    }
+
+    private function refuseUnderSingleSignOn(?string $address, ?User $user): void
+    {
+        $refusal = null === $address ? null : $this->signInRules->singleSignOnRefusal($address, $user);
+
+        if (null !== $refusal) {
+            throw $refusal;
+        }
     }
 
     /** A name only ever fills a blank one: a later sign-in that brings none must not empty it. */

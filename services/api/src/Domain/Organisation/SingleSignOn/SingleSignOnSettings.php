@@ -62,12 +62,9 @@ final readonly class SingleSignOnSettings
         return $this->ssoProviderRepository->findStanding($organisation, SsoStanding::Staying);
     }
 
-    /** The provider people sign in through now: the current one once it is on, the staying one while a change waits. */
     public function live(Organisation $organisation): ?SsoProvider
     {
-        $current = $this->current($organisation);
-
-        return true === $current?->isOn() ? $current : $this->staying($organisation);
+        return $this->ssoProviderRepository->findLive($organisation);
     }
 
     /**

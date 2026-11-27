@@ -23,7 +23,9 @@ use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Enum\SeededRole;
+use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +36,7 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Clock\Clock;
 
 final class SingleSignOnSettingsTest extends ApiTestCase
 {
@@ -204,6 +207,66 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame([null, null, false], [$page['provider'], $page['staying'], $page['on']]);
         self::assertSame(['provider' => ['Google Workspace', null]], $this->audited(SingleSignOnSettings::REMOVED, $organisation)->getChanges());
+    }
+
+    #[Test]
+    public function requiredSignOnTurnsEveryOtherWayInAwayForTheDomainButNotForAnOwner(): void
+    {
+        // The scripted provider's signing key lives in the container.
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->join($organisation, $this->member('julien@ire.events', 'Julien'), SeededRole::Admin);
+        $this->member('stranger@ire.events', 'No Membership');
+        $this->join($organisation, $this->member('kemi@elsewhere.example', 'Kemi'), SeededRole::Admin);
+        $this->saveGoogle($owner, $organisation);
+        $this->testWorked($organisation, $owner);
+        $this->send('POST', $this->path($organisation, 'on'));
+        self::assertSame(200, $this->passwordSignIn('julien@ire.events'), 'on but not required');
+
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, 'required'));
+
+        foreach (['julien@ire.events', 'stranger@ire.events'] as $address) {
+            self::assertSame(403, $this->passwordSignIn($address), $address);
+            $problem = Type\shape(['type' => Type\string(), 'detail' => Type\string(), 'organisation' => Type\string(), 'provider' => Type\string()], true)->coerce($this->problem());
+            self::assertSame(ErrorCode::SsoSignInRequired->type(), $problem['type']);
+            self::assertSame(['Ìrè Events', 'Google Workspace'], [$problem['organisation'], $problem['provider']]);
+            self::assertSame('Ìrè Events signs you in through Google Workspace.', $problem['detail']);
+        }
+
+        self::assertSame(200, $this->passwordSignIn('folake@ire.events'), 'an Owner keeps their own sign-in');
+        self::assertSame(200, $this->passwordSignIn('kemi@elsewhere.example'), 'an address elsewhere is untouched');
+
+        foreach (['julien@ire.events', 'newcomer@ire.events'] as $address) {
+            $this->send('POST', '/api/auth/oauth/google', ['idToken' => $this->googleToken('subject-' . $address, $address)]);
+            self::assertResponseStatusCodeSame(403);
+            self::assertSame(ErrorCode::SsoSignInRequired->type(), $this->problem()['type'], $address);
+        }
+
+        self::assertNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress('newcomer@ire.events'), 'Google makes no account there');
+    }
+
+    private function passwordSignIn(string $email): int
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $this->send('POST', '/api/auth/login', ['email' => $email, 'password' => self::PASSWORD]);
+
+        return $this->client->getResponse()->getStatusCode();
+    }
+
+    private function googleToken(string $subject, string $email): string
+    {
+        $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
+
+        return self::service(TestSigningKeys::class)->sign([
+            'iss' => $configured('OAUTH_GOOGLE_ISSUERS'),
+            'aud' => $configured('OAUTH_GOOGLE_CLIENT_IDS'),
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'sub' => $subject,
+            'email' => $email,
+            'email_verified' => true,
+        ]);
     }
 
     #[Test]
