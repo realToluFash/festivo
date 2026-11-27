@@ -105,6 +105,43 @@ describe('the Floor row on Overview (sc-98893)', () => {
   });
 });
 
+describe('the Floor row with no connection (sc-98893)', () => {
+  it('keeps its last line with "as of" in the device’s zone, not the event’s', () => {
+    expect(floorOverviewOf('offline', 'Europe/London').floor?.line).toBe(
+      'Section B · Mains · as of 18:38',
+    );
+    expect(floorOverviewOf('offline', 'Africa/Lagos').floor?.line).toBe(
+      'Section B · Mains · as of 19:38',
+    );
+  });
+
+  it('is read as one button with "as of" in it', () => {
+    expect(FL.label(floorOverviewOf('offline', 'Europe/London').floor?.line ?? '')).toBe(
+      'Floor, Section B · Mains · as of 18:38',
+    );
+  });
+
+  it('drops "as of" once a read succeeds', () => {
+    const floor = floorOverviewOf('reconnects', 'Europe/London').floor;
+
+    expect([floor?.line, floor?.moves?.line]).toEqual([
+      'Section B · Mains · as of 18:38',
+      'Section B · Mains',
+    ]);
+  });
+
+  it('waits for the first read with no placeholder, then shows the line', () => {
+    const floor = floorOverviewOf('answering').floor;
+
+    expect([floor?.line, floor?.answersIn != null]).toEqual(['Section B · Mains', true]);
+    expect(floorOverviewOf('one_section').floor?.answersIn).toBe(undefined);
+  });
+
+  it('opens Floor even with no connection', () => {
+    expect(floorOverviewOf('offline').floor?.href).toBe('/demo/floor?state=yours&from=overview');
+  });
+});
+
 describe('Open Floor on Your night (sc-98893)', () => {
   it('shows on a section station whose access opens the floor, in a browser and in the app', () => {
     for (const state of ['night', 'section_app', 'before_doors', 'station_lead'] as const) {

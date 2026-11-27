@@ -42,6 +42,21 @@ function useFloorLine(floor: FloorLink | null): string | null {
   return line;
 }
 
+/** Until the Floor read answers there is no row; then it fades in (`answering`). */
+function useAnswered(floor: FloorLink | null): boolean {
+  const waits = floor?.answersIn;
+  const [answered, setAnswered] = useState(waits == null);
+
+  useEffect(() => {
+    if (waits == null) return;
+    const timer = setTimeout(() => setAnswered(true), waits);
+
+    return () => clearTimeout(timer);
+  }, [waits]);
+
+  return answered;
+}
+
 function rows(shown: FloorWayInOverview, floorLine: string | null) {
   const night = nightOf(shown.night);
   const { station, floor } = shown;
@@ -58,7 +73,11 @@ function rows(shown: FloorWayInOverview, floorLine: string | null) {
     }),
     ...(floor != null &&
       floorLine != null && {
-        floor: { line: floorLine, onOpen: () => router.push(floor.href as Href) },
+        floor: {
+          line: floorLine,
+          onOpen: () => router.push(floor.href as Href),
+          fades: floor.answersIn != null,
+        },
       }),
   };
 }
@@ -69,6 +88,7 @@ function OrganiserOverview({
   shown: Extract<FloorWayInOverview, { page: 'organiser' }>;
 }) {
   const line = useFloorLine(shown.floor);
+  const answered = useAnswered(shown.floor);
 
   return (
     <EventsShell>
@@ -77,7 +97,7 @@ function OrganiserOverview({
         state={null}
         area={null}
         clock={shown.now}
-        {...rows(shown, line)}
+        {...rows(shown, answered ? line : null)}
       />
     </EventsShell>
   );
@@ -87,6 +107,7 @@ function RowListOverview({ shown }: { shown: Extract<FloorWayInOverview, { page:
   const [at, setAt] = useState<'overview' | 'people'>('overview');
   const night = nightOf(shown.night);
   const line = useFloorLine(shown.floor);
+  const answered = useAnswered(shown.floor);
 
   return (
     <InsideEvent
@@ -103,7 +124,7 @@ function RowListOverview({ shown }: { shown: Extract<FloorWayInOverview, { page:
         venue: 'Eko Hotel, Victoria Island',
         job: shown.rostered ? night.job : null,
       }}
-      {...rows(shown, line)}
+      {...rows(shown, answered ? line : null)}
       onAt={setAt}
       onSignOut={goBack}
       onAccount={() => router.push('/demo/settings/account?as=noOrg')}

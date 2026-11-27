@@ -1,6 +1,14 @@
 import { type InsideLevel } from '../doorCode/RedeemModel.ts';
 import { type MyNightState } from '../myNight/myNightModel.ts';
-import { type EventDay, type Where, opensStations, rowLine, rowShows } from '../station/wayIn.ts';
+import {
+  type EventDay,
+  KS,
+  type Where,
+  opensStations,
+  readAt,
+  rowLine,
+  rowShows,
+} from '../station/wayIn.ts';
 import { type FloorState } from './FloorModel.ts';
 import { type OnFloor, floorLine, opensFloor } from './floorWayIn.ts';
 
@@ -12,6 +20,9 @@ const ROW_STATES = [
   'all_tables',
   'no_section',
   'moving',
+  'answering',
+  'offline',
+  'reconnects',
   'past_midnight',
   'day_before',
   'finished',
@@ -43,6 +54,17 @@ const DAY_BEFORE = new Date('2026-11-27T22:59:00Z');
 /** How long the demo waits before the floor lead moves Grace to Section D, for the `moving` state. */
 export const MOVES_IN = 3000;
 
+/** How long the demo's Floor read takes to answer, for the `answering` state. */
+export const READ_ANSWERS_IN = 1500;
+
+/** When the row's last read succeeded, for the `offline` and `reconnects` states. */
+export const LAST_READ = new Date('2026-11-28T18:38:00Z');
+
+/** {time} is the device's zone, not the event's (sc-98893's With no connection). */
+export function deviceZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 interface Sample<Role = InsideLevel | 'Lead' | 'Admin'> {
   role: Role;
   who: string;
@@ -58,6 +80,12 @@ interface Sample<Role = InsideLevel | 'Lead' | 'Admin'> {
   floor: FloorState;
   /** The floor lead moves the person while Overview is open (sc-36034). */
   movesTo?: OnFloor;
+  /** The first Floor read has not answered yet: no row, no placeholder. */
+  answering?: boolean;
+  /** Reads are failing: the row keeps its last line with "as of" this read. */
+  lastRead?: Date;
+  /** The next read succeeds while Overview is open, and "as of" goes. */
+  reconnects?: boolean;
 }
 
 const SECTION_B: OnFloor = { sections: ['Section B'], manages: false, course: 'Mains' };
@@ -102,6 +130,9 @@ const ROWS: Record<RowState, Sample<InsideLevel>> = {
     floor: 'noSection',
   },
   moving: { ...GRACE, movesTo: { ...SECTION_B, sections: ['Section D'] }, floor: 'moved' },
+  answering: { ...GRACE, answering: true },
+  offline: { ...GRACE, lastRead: LAST_READ },
+  reconnects: { ...GRACE, lastRead: LAST_READ, reconnects: true },
   past_midnight: { ...GRACE, now: new Date('2026-11-28T23:30:00Z') },
   day_before: { ...GRACE, now: DAY_BEFORE },
   finished: { ...GRACE, now: new Date('2026-11-29T01:10:00Z'), finished: true },
@@ -142,8 +173,10 @@ const ORGANISER: Record<OrganiserState, Sample> = {
 export interface FloorLink {
   line: string;
   href: string;
-  /** The line after the floor lead's move, and when it lands. */
+  /** The line after the floor lead's move, or the next read that succeeds, and when it lands. */
   moves?: { line: string; in: number };
+  /** The first read answers after this long; until then there is no row. */
+  answersIn?: number;
 }
 
 interface Shown {
@@ -167,18 +200,23 @@ function isOrganiser(state: FloorWayInState): state is OrganiserState {
   return ORGANISER_STATES.some((one) => one === state);
 }
 
-function floorLink(sample: Sample): FloorLink {
-  const link = {
-    line: floorLine(sample.on, sample.locale),
-    href: `/demo/floor?state=${sample.floor}&from=overview`,
-  };
+function floorLink(sample: Sample, zone: string): FloorLink {
+  const line = floorLine(sample.on, sample.locale);
+  const href = `/demo/floor?state=${sample.floor}&from=overview`;
+
+  if (sample.lastRead != null) {
+    const stale = { line: KS.asOf(line, readAt(sample.lastRead, zone)), href };
+
+    return sample.reconnects === true ? { ...stale, moves: { line, in: MOVES_IN } } : stale;
+  }
+  if (sample.answering === true) return { line, href, answersIn: READ_ANSWERS_IN };
 
   return sample.movesTo == null
-    ? link
-    : { ...link, moves: { line: floorLine(sample.movesTo, sample.locale), in: MOVES_IN } };
+    ? { line, href }
+    : { line, href, moves: { line: floorLine(sample.movesTo, sample.locale), in: MOVES_IN } };
 }
 
-function shownOf(sample: Sample, day: EventDay): Shown {
+function shownOf(sample: Sample, day: EventDay, zone: string): Shown {
   const today = rowShows(day, sample.now);
   const kitchen = sample.kitchen;
 
@@ -194,20 +232,23 @@ function shownOf(sample: Sample, day: EventDay): Shown {
             href: `/demo/kitchen-station?state=here&from=overview&on=${kitchen.on}`,
           }
         : null,
-    floor: today && opensFloor(sample.role) ? floorLink(sample) : null,
+    floor: today && opensFloor(sample.role) ? floorLink(sample, zone) : null,
   };
 }
 
-export function floorOverviewOf(state: FloorWayInState): FloorWayInOverview {
+export function floorOverviewOf(
+  state: FloorWayInState,
+  zone: string = deviceZone(),
+): FloorWayInOverview {
   if (isOrganiser(state)) {
     const sample = ORGANISER[state];
 
-    return { ...shownOf(sample, ORGANISER_DAY), page: 'organiser', role: sample.role };
+    return { ...shownOf(sample, ORGANISER_DAY, zone), page: 'organiser', role: sample.role };
   }
   const sample = ROWS[state];
 
   return {
-    ...shownOf(sample, { ...DAY, finished: sample.finished }),
+    ...shownOf(sample, { ...DAY, finished: sample.finished }, zone),
     page: 'rows',
     role: sample.role,
   };
@@ -232,6 +273,18 @@ const WHAT: Record<FloorWayInState, readonly [string, string]> = {
   moving: [
     'The section moves',
     'Floor · Section B · Mains becomes Section D · Mains a few seconds in, while Overview is open',
+  ],
+  answering: [
+    'The Floor read not yet answered',
+    'No row and no placeholder, then Floor · Section B · Mains fades in over 200 ms; none under Reduce motion',
+  ],
+  offline: [
+    'No connection',
+    'Floor · Section B · Mains · as of {time}, its last line kept; {time} in this device’s zone',
+  ],
+  reconnects: [
+    'The connection comes back',
+    'Floor · Section B · Mains · as of {time}, then the next read drops “as of” a few seconds in',
   ],
   past_midnight: ['Past midnight', '00:30 on Sunday, before the end: the row stays'],
   day_before: ['23:59 the day before', 'Your night only: the row shows from 00:00 on the day'],
