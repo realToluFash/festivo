@@ -1,8 +1,9 @@
-import { type LimitRefusal } from '@soirely/domain';
-import { type RefObject } from 'react';
+import { type InvitationOutcome, type LimitRefusal, limitRefusalOf } from '@soirely/domain';
+import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { dateLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SheetLayer } from './FormLayers.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -19,7 +20,7 @@ interface RefusalProps {
   /** Remove a guest's link, closing the refusal onto the guest list. */
   onGuestList?: (() => void) | undefined;
   onBack: () => void;
-  testID?: string;
+  testID?: string | undefined;
 }
 
 /** sc-3930 in the app: a plan's hard limit, or the ceiling, refused in a bottom sheet on a phone and a centred card on a tablet. */
@@ -32,9 +33,41 @@ export function LimitRefusalSheet({
   opener: RefObject<ScreenReaderTarget | null>;
 }) {
   return (
-    <Sheet open={refusal != null} onClose={props.onBack} opener={opener} testID={props.testID}>
+    <Sheet
+      open={refusal != null}
+      onClose={props.onBack}
+      opener={opener}
+      {...(props.testID == null ? {} : { testID: props.testID })}
+    >
       {refusal != null && <LimitRefusalBody refusal={refusal} {...props} />}
     </Sheet>
+  );
+}
+
+/** A join the seats refused, from an invitation's row: Not now closes it, and the next Accept that meets them opens it again. */
+export function SeatsFullSheet({
+  outcome,
+  testID,
+}: {
+  outcome: InvitationOutcome | undefined;
+  testID?: string | undefined;
+}) {
+  const { t } = useTranslation();
+  const [shut, setShut] = useState<InvitationOutcome | null>(null);
+  const opener = useRef<ScreenReaderTarget>(null);
+  const refusal =
+    outcome?.kind === 'seatsFull' && outcome !== shut
+      ? limitRefusalOf(outcome.error, 'seatAccept', t, dateLocale())
+      : null;
+
+  return (
+    <LimitRefusalSheet
+      refusal={refusal}
+      billing={false}
+      opener={opener}
+      onBack={() => setShut(outcome ?? null)}
+      testID={testID}
+    />
   );
 }
 

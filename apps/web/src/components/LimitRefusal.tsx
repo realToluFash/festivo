@@ -1,12 +1,54 @@
-import { type LimitRefusal, type LimitWay } from '@soirely/domain';
+import {
+  type InvitationOutcome,
+  type LimitRefusal,
+  type LimitWay,
+  limitRefusalOf,
+} from '@soirely/domain';
+import { type ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+
+import { dateLocale } from '../i18n/index.ts';
+import { LayersContext, useDeskLayers } from '../layers.ts';
 
 import { Glyph } from './Glyph.tsx';
 import { Dialog } from './SettingsParts.tsx';
 import './LimitRefusal.css';
 
 const MEMBERS_AT = '/app/settings/members';
+
+/** A join the seats refused, from an invitation's row: Not now closes it, and the next Accept that meets them opens it again. */
+export function SeatsFullRefusal({ outcome }: { outcome: InvitationOutcome | undefined }) {
+  const { t } = useTranslation();
+  const [shut, setShut] = useState<InvitationOutcome | null>(null);
+
+  if (outcome?.kind !== 'seatsFull' || outcome === shut) return null;
+
+  const refusal = limitRefusalOf(outcome.error, 'seatAccept', t, dateLocale());
+
+  return refusal == null ? null : (
+    <OwnLayers>
+      <LimitRefusalDialog refusal={refusal} onBack={() => setShut(outcome)} />
+    </OwnLayers>
+  );
+}
+
+/** A dialog's layers where the page has none to draw it in, as the switcher's. */
+function OwnLayers({ children }: { children: ReactNode }) {
+  const outer = useContext(LayersContext);
+  const { layers, setHost } = useDeskLayers();
+
+  if (outer.host != null) return children;
+
+  return (
+    <LayersContext value={layers}>
+      {children}
+      <div className="desk">
+        <div ref={setHost} className="desk-layers" />
+      </div>
+    </LayersContext>
+  );
+}
 
 /** sc-3930: a plan's hard limit, or the ceiling, refused over the page it was met on; the way back leaves the work as it was. */
 export function LimitRefusalDialog({
