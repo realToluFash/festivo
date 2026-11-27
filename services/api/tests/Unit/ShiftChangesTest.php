@@ -167,16 +167,17 @@ final class ShiftChangesTest extends TestCase
     }
 
     #[Test]
-    public function theDateAndVenueEachHaveTheirLineAfterTheShifts(): void
+    public function theDateLineLeadsTheShiftsAndTheVenueFollowsThem(): void
     {
         $told = self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00']]);
         $moved = new ShiftTold(['a' => ['2027-03-07 17:00', '2027-03-07 23:00']], $told->job, '2027-03-07', 'Eko Hotel');
 
         self::assertSame(
-            ['start_time', 'end_time', 'date', 'venue'],
+            ['date', 'start_time', 'end_time', 'venue'],
             Vec\map(ShiftChanges::between($told, $moved), static fn (ShiftChange $line): string => $line->kind->value),
         );
-        self::assertSame([['date', '2027-03-07', '2027-03-06'], ['venue', 'Eko Hotel', 'Harbour Hall']], Vec\slice(self::values(ShiftChanges::between($told, $moved)), 2));
+        $values = self::values(ShiftChanges::between($told, $moved));
+        self::assertSame([['date', '2027-03-07', '2027-03-06'], ['venue', 'Eko Hotel', 'Harbour Hall']], [$values[0], $values[3]]);
     }
 
     /** @param array<string, array{0: string, 1: string}> $shifts */

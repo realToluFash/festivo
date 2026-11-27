@@ -31,15 +31,11 @@ final readonly class ShiftChanges
             $lines[] = ShiftChange::value(ShiftChangeKind::Job, $now->job[1], $told->job[1]);
         }
 
-        if ($now->date !== $told->date) {
-            $lines[] = ShiftChange::value(ShiftChangeKind::Date, $now->date, $told->date);
-        }
-
         if ($now->venue !== $told->venue && null !== $now->venue && null !== $told->venue) {
             $lines[] = ShiftChange::value(ShiftChangeKind::Venue, $now->venue, $told->venue);
         }
 
-        return $lines;
+        return $now->date === $told->date ? $lines : [ShiftChange::value(ShiftChangeKind::Date, $now->date, $told->date), ...$lines];
     }
 
     /** @return list<ShiftChange> */
