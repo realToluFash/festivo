@@ -19,6 +19,8 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { tableName } from './tableName.ts';
+
 export interface StationItemLine {
   courseId: string;
   course: string | null;
@@ -121,7 +123,7 @@ export function hereSince(tray: ServiceTray, station: string): string | null {
 interface Seen {
   plates: Map<string, ServicePlate>;
   seats: Map<string, { seat: string; flags: ServiceFlags }>;
-  tables: Map<string, string>;
+  tables: Map<string, ServiceRead['tables'][number]>;
   courses: Map<string, string>;
   trays: Map<string, ServiceTray>;
 }
@@ -138,7 +140,7 @@ function seen(reads: readonly ServiceRead[]): Seen {
   for (const read of reads) {
     out.courses.set(read.course.id, read.course.name);
     for (const table of read.tables) {
-      out.tables.set(table.key, table.name);
+      out.tables.set(table.key, table);
       for (const plate of table.plates) out.plates.set(plate.id, plate);
       for (const guest of table.guests) {
         out.seats.set(guest.id, { seat: guest.seat, flags: guest.flags });
@@ -176,6 +178,7 @@ export function stationView(
   station: string,
   fired: readonly ServiceRead[],
   now: Date,
+  t: TFunction,
 ): StationView {
   const latest = fired.at(-1) ?? null;
 
@@ -256,9 +259,10 @@ export function stationView(
         });
     }
     const since = hereSince(tray, station);
+    const table = all.tables.get(tray.table);
     const read: StationTray = {
       id: tray.id,
-      table: all.tables.get(tray.table) ?? tray.table,
+      table: table == null ? tray.table : tableName(t, table),
       waiter: tray.waiter.name,
       plates: plates.length,
       flagged: plates.filter((plate) => isFlagged(flagsOf(plate))).length,

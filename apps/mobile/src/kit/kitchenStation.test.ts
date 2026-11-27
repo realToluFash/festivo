@@ -3,6 +3,7 @@ import {
   type ServicePlate,
   type ServiceRead,
   type ServiceTray,
+  asServiceRead,
   keepServiceTap,
   keptServiceTap,
   memoryServiceTapStore,
@@ -31,6 +32,19 @@ import {
   undoWords,
   withoutRefused,
 } from './kitchenStation.ts';
+
+async function english() {
+  const i18n = createInstance();
+  await i18n.init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  });
+
+  return i18n.t;
+}
+
+const t = await english();
 
 const PASS = 'pass';
 const GRILL = 'grill';
@@ -106,6 +120,7 @@ function read(
         key: 't4',
         kind: 'table',
         name: 'Table 4',
+        seats: [],
         firedAt: at(0),
         plates: [],
         guests: guests.map((guest) => ({
@@ -169,7 +184,7 @@ const ITEMS = [
 
 describe('stationView', () => {
   it('says nothing is fired before any course is', () => {
-    expect(stationView(GRILL, [], now)).toEqual({
+    expect(stationView(GRILL, [], now, t)).toEqual({
       fired: false,
       latest: null,
       left: [],
@@ -185,10 +200,10 @@ describe('stationView', () => {
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof', 'plantain']) }],
     );
 
-    expect(stationView(GRILL, [main], now).left.map((one) => [one.key, one.toDish])).toEqual([
+    expect(stationView(GRILL, [main], now, t).left.map((one) => [one.key, one.toDish])).toEqual([
       ['jollof', 1],
     ]);
-    expect(stationView(PASS, [main], now).left.map((one) => one.key)).toEqual(['chef']);
+    expect(stationView(PASS, [main], now, t).left.map((one) => one.key)).toEqual(['chef']);
   });
 
   it('counts plates not yet On here, owed plates among them, and keeps an earlier course’s item only while a plate needs it', () => {
@@ -232,7 +247,7 @@ describe('stationView', () => {
     );
 
     expect(
-      stationView(GRILL, [starterNeeded, main], now).left.map((one) => [
+      stationView(GRILL, [starterNeeded, main], now, t).left.map((one) => [
         one.course,
         one.key,
         one.toDish,
@@ -241,7 +256,7 @@ describe('stationView', () => {
       [null, 'jollof', 2],
       ['Starter', 'puff', 1],
     ]);
-    expect(stationView(GRILL, [starterDone, main], now).left.map((one) => one.key)).toEqual([
+    expect(stationView(GRILL, [starterDone, main], now, t).left.map((one) => one.key)).toEqual([
       'jollof',
     ]);
   });
@@ -252,17 +267,17 @@ describe('stationView', () => {
       [{ key: 'jollof', at: GRILL, state: 'preparing', readyIn: 5 }],
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof']), held: ['jollof'] }],
     );
-    const [line] = stationView(GRILL, [main], new Date(at(4))).left;
+    const [line] = stationView(GRILL, [main], new Date(at(4)), t).left;
 
     expect([line?.waiting, line?.heldUp]).toEqual([1, null]);
-    expect(stationView(GRILL, [main], new Date(at(5))).left[0]?.heldUp).toBe(5);
+    expect(stationView(GRILL, [main], new Date(at(5)), t).left[0]?.heldUp).toBe(5);
 
     const nobodyHeld = read(
       MAIN,
       [{ key: 'jollof', at: GRILL, state: 'preparing', readyIn: 5 }],
       [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof']) }],
     );
-    expect(stationView(GRILL, [nobodyHeld], new Date(at(9))).left[0]?.heldUp).toBeNull();
+    expect(stationView(GRILL, [nobodyHeld], new Date(at(9)), t).left[0]?.heldUp).toBeNull();
   });
 
   it('lists started trays heading here oldest first, with each item’s count and the flagged plates', () => {
@@ -309,7 +324,7 @@ describe('stationView', () => {
       ],
       [newer, older],
     );
-    const view = stationView(GRILL, [main], now);
+    const view = stationView(GRILL, [main], now, t);
 
     expect(view.here).toEqual([]);
     expect(
@@ -370,7 +385,7 @@ describe('stationView', () => {
       variant: 'Child’s portion',
     });
     const two = plate('p2', 'b', 'main', ['plantain'], { stage: 'dishing', trayId: 't' });
-    const t = tray(
+    const faced = tray(
       't',
       ['o1', 'p1', 'p2'],
       [
@@ -394,7 +409,7 @@ describe('stationView', () => {
         { id: 'a', seat: '1', order: one, allergens: ['peanuts'] },
         { id: 'b', seat: '2', order: two },
       ],
-      [t],
+      [faced],
     );
     const starter = read(
       STARTER,
@@ -402,7 +417,7 @@ describe('stationView', () => {
       [{ id: 'c', seat: '3', order: null, owed: [] }],
     );
     starter.tables[0]!.plates.push(owed);
-    const [here] = stationView(GRILL, [starter, main], now).here;
+    const [here] = stationView(GRILL, [starter, main], now, t).here;
 
     expect(
       here?.faced.map((p) => [
@@ -448,8 +463,8 @@ describe('stationView', () => {
     );
     const takenOff = tray('t', [], [{ id: PASS, marks: [] }]);
 
-    for (const t of [marked, taken, takenOff]) {
-      const view = stationView(GRILL, [main(t)], now);
+    for (const gone of [marked, taken, takenOff]) {
+      const view = stationView(GRILL, [main(gone)], now, t);
       expect([view.here, view.heading]).toEqual([[], []]);
     }
   });
@@ -494,7 +509,7 @@ describe('stationView', () => {
       [late, early],
     );
 
-    expect(stationView(GRILL, [main], now).here.map((one) => one.tray.id)).toEqual([
+    expect(stationView(GRILL, [main], now, t).here.map((one) => one.tray.id)).toEqual([
       'early',
       'late',
     ]);
@@ -619,17 +634,6 @@ describe('undo after a mark (sc-4015)', () => {
 });
 
 describe('a mark kept offline, and its Not sent line (sc-4015)', () => {
-  async function english() {
-    const i18n = createInstance();
-    await i18n.init({
-      lng: 'en',
-      resources: { en: { translation: en } },
-      interpolation: { escapeValue: false },
-    });
-
-    return i18n.t;
-  }
-
   const jollof = (): ServiceRead => ({
     ...read({ id: 'mains', name: 'Mains' }, [{ key: 'jollof', at: 'grill' }], []),
     items: [
@@ -753,5 +757,56 @@ describe('the view’s wiring QA failed (sc-4015)', () => {
 
   it('tells the freshness line how many marks are kept on the device', () => {
     expect(view()).toMatch(/\.waiting\(kept\.length\)/u);
+  });
+});
+
+describe('a block of single seats (sc-100403)', () => {
+  const long = ['At the bar, far end', 'Window by the garden door'];
+
+  function served(seats: string[], fired = true): ServiceRead {
+    const base = read(
+      MAIN,
+      [...ITEMS],
+      [{ id: 'a', seat: seats[0]!, order: plate('p1', 'a', 'main', ['jollof']) }],
+      fired
+        ? [
+            tray('t', ['p1'], [{ id: GRILL, marks: [['p1', 'jollof']] }], {
+              table: 'block:none:1',
+            }),
+          ]
+        : [],
+    );
+    const raw = {
+      ...base,
+      tables: [{ ...base.tables[0]!, key: 'block:none:1', kind: 'block', name: null, seats }],
+    };
+    const parsed = asServiceRead(JSON.parse(JSON.stringify(raw)));
+    expect(parsed).not.toBeNull();
+
+    return parsed!;
+  }
+
+  const ten = Array.from({ length: 10 }, (_, i) => String(i + 1));
+
+  it.each([
+    [ten, 'Seats 1 to 10'],
+    [['11'], 'Seat 11'],
+    [long, 'Seats At the bar, far end to Window by the garden door'],
+  ])('parses and names %j as Floor does', (seats, name) => {
+    const [here] = stationView(GRILL, [served(seats)], now, t).here;
+
+    expect(here?.tray.table).toBe(name);
+    expect(t('station.arrived', { table: here!.tray.table, count: 1 })).toContain(name);
+    expect(here?.faced[0]?.seat).toBe(seats[0]);
+  });
+
+  it('parses a plan with no single seats', () => {
+    expect(asServiceRead(read(MAIN, [...ITEMS], []))?.tables[0]?.name).toBe('Table 4');
+  });
+
+  it('still refuses a table with neither a name nor seats', () => {
+    const base = read(MAIN, [...ITEMS], []);
+
+    expect(asServiceRead({ ...base, tables: [{ ...base.tables[0], name: null }] })).toBeNull();
   });
 });

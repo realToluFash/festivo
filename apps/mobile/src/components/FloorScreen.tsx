@@ -32,6 +32,7 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dateLocale } from '../i18n/index.ts';
+import { tableName } from '../kit/tableName.ts';
 import { useFloor } from '../kit/useFloor.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -107,14 +108,6 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
 
 function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
-}
-
-function tableName(t: TFunction, { name, seats }: FloorTable): string {
-  if (name != null) return name;
-
-  return seats.length === 1
-    ? t('service.floor.seat', { seat: seats[0] })
-    : t('service.floor.seatRange', { first: seats[0], last: seats.at(-1) });
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
