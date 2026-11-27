@@ -2273,6 +2273,15 @@ describe("An event's venue (sc-3589)", () => {
     expect(screen.queryByText('Venue to be confirmed')).toBeNull();
   });
 
+  it("writes the venue with its city at the top of an event's area, as the card does (sc-98651)", async () => {
+    signedIn();
+    serving({}, event({ venue: { name: 'Finca Pilar', address: { ...TYPED, city: 'Toledo' } } }));
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const card = screen.getByRole('heading', { level: 1 }).closest('section')!;
+    expect(within(card).getByText('Finca Pilar, Toledo')).toBeDefined();
+  });
+
   it('shows a typed address with no maps link', async () => {
     signedIn();
     serving(
