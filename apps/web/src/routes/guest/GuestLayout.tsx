@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useParams } from 'react-router';
 
@@ -19,10 +19,20 @@ import './guestPage.css';
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 
 export function GuestLayout() {
-  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
-  const signedIn = useSessionState().status === 'signedIn';
   const valid = token != null && TOKEN_SHAPE.test(token);
+
+  return (
+    <GuestShell token={valid ? token : null}>
+      {valid ? <Outlet context={token} /> : <InvalidInvitation />}
+    </GuestShell>
+  );
+}
+
+/** The guest's shell, with no sign-in: a guest's link token saves the language chosen, and a page without one only shows it. */
+export function GuestShell({ token, children }: { token: string | null; children: ReactNode }) {
+  const { t } = useTranslation();
+  const signedIn = useSessionState().status === 'signedIn';
   const { said } = useGuestLanguage();
 
   useLayoutEffect(() => holdScheme(config().scheme), []);
@@ -38,7 +48,7 @@ export function GuestLayout() {
           look="guest"
           current={currentLocale()}
           onChoose={(code) => {
-            if (token != null && valid) void chooseGuestLanguage(token, code, signedIn);
+            if (token != null) void chooseGuestLanguage(token, code, signedIn);
             else void showLanguage(code);
           }}
         />
@@ -47,7 +57,7 @@ export function GuestLayout() {
         {said > 0 && <span key={said}>{t('guest.languageSwitched')}</span>}
       </p>
       <main id="content" className="gp-main">
-        {valid ? <Outlet context={token} /> : <InvalidInvitation />}
+        {children}
       </main>
     </div>
   );

@@ -13,6 +13,11 @@ const BROKEN = [
 export function InvalidInvitation() {
   const { t } = useTranslation();
 
+  return <BadLink title={t('guest.invalidTitle')} body={t('guest.invalidBody')} />;
+}
+
+/** Guest page A's page for a link that does not work, with its own heading and body and nothing else. */
+export function BadLink({ title, body }: { title: string; body: string }) {
   return (
     <div className="gp-alone-wrap">
       <div className="gp-alone" role="alert">
@@ -30,8 +35,8 @@ export function InvalidInvitation() {
             ))}
           </svg>
         </span>
-        <h1 className="gp-alone-title">{t('guest.invalidTitle')}</h1>
-        <p>{t('guest.invalidBody')}</p>
+        <h1 className="gp-alone-title">{title}</h1>
+        <p>{body}</p>
       </div>
     </div>
   );

@@ -28,6 +28,8 @@ final readonly class GuestPageEvent
             'type' => $event->getType()->value,
             'cover' => $this->eventSerialiser->coverOf($event),
             'hosts' => $event->getHosts(),
+            // Its way in to Your messages names who reaches the guest (sc-3969).
+            'organisation' => $event->getOrganisation()->getName(),
             // The hosts' own words, shown only once it is over and never translated (sc-6476).
             'thankYou' => GuestPagePhase::Finished === $phase ? $event->getThankYou() : null,
             'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),

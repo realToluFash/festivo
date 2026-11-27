@@ -152,6 +152,60 @@ describe("a guest's own link", () => {
     expect(screen.queryByText(/This page is yours for this event/)).toBeNull();
   });
 
+  it('puts the way into Your messages after the account line, and opens it with the switches alone (sc-3969)', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...PAGE, event: { ...PAGE.event, organisation: 'The Okafors' } } },
+      ],
+      '/api/your-messages': [
+        {
+          status: 200,
+          body: {
+            organisation: 'The Okafors',
+            channels: {
+              email: { onRecord: true, on: true },
+              texts: { onRecord: false, on: false },
+              whatsApp: { onRecord: false, on: false },
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    const account = await screen.findByText('You do not need an account to answer.');
+    const wayIn = screen.getByRole('link', { name: 'Choose how The Okafors can reach you' });
+    expect(account.compareDocumentPosition(wayIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(wayIn);
+
+    expect(await screen.findByRole('switch', { name: 'Email' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Back' })).toBeDefined();
+    expect(sent.at(-1)).toEqual({ path: '/api/your-messages', body: { guestToken: TOKEN } });
+  });
+
+  it('has no way into Your messages while answers are closed (sc-3969)', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...PAGE,
+            answersOpen: false,
+            event: { ...PAGE.event, organisation: 'The Okafors' },
+          },
+        },
+      ],
+    });
+    open();
+
+    await screen.findByText(
+      'This invitation is for you and your family. Other guests cannot see your answer.',
+    );
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+    expect(screen.queryByRole('link', { name: /can reach you/ })).toBeNull();
+  });
+
   it('reads cover, answers, when, where and who, then the foot', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
     open();

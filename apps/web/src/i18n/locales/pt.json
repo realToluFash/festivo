@@ -3915,7 +3915,11 @@
     "greetAsCounter": "{{count, number}} de {{max, number}}",
     "greetAsTooLong": "Encurte o nome na saudação para {{count, number}} caracteres, no máximo.",
     "greetsThemAs": "As mensagens cumprimentam esta pessoa como «{{greetAs}}».",
-    "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo."
+    "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo.",
+    "optedOutEmail": "Unsubscribed from email on {{date}}",
+    "optedOutTexts": "Unsubscribed from texts on {{date}}",
+    "optedOutWhatsApp": "Unsubscribed from WhatsApp on {{date}}",
+    "onlyTheGuest": "Only the guest can change this."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -7185,7 +7189,8 @@
     "nothingToFill": "Não há nada a preencher, por isso todos os convidados recebem exatamente este texto.",
     "nobodyToPreview": "Ainda não escolheu convidados, por isso não há ninguém para a pré-visualização.",
     "whatSoirelySends": "O que a Soirely envia",
-    "emailFrom": "E-mail · de {{organisation}} via Soirely"
+    "emailFrom": "E-mail · de {{organisation}} via Soirely",
+    "unsubscribed": "Unsubscribed"
   },
   "service": {
     "stage": {
@@ -7460,5 +7465,34 @@
     "empty": "Ainda ninguém tem turno",
     "emptyLine": "As horas aparecem aqui quando houver pessoas atribuídas a turnos.",
     "openJobs": "Abrir Funções e turnos"
+  },
+  "yourMessages": {
+    "title": "Your messages",
+    "intro": "Choose how {{organisation}} can reach you. This changes nothing for anyone else who uses Soirely.",
+    "email": "Email",
+    "texts": "Text messages",
+    "whatsApp": "WhatsApp",
+    "on": "On",
+    "off": "Off",
+    "noEmail": "{{organisation}} has no email address for you.",
+    "noPhone": "{{organisation}} has no phone number for you.",
+    "emailOn": "Emails from {{organisation}} are on again.",
+    "emailOff": "Emails from {{organisation}} are off.",
+    "textsOn": "Texts from {{organisation}} are on again.",
+    "textsOff": "Texts from {{organisation}} are off.",
+    "whatsAppOn": "WhatsApp messages from {{organisation}} are on.",
+    "whatsAppOff": "WhatsApp messages from {{organisation}} are off.",
+    "foot": "Only you can turn these back on. {{organisation}} can see which you have turned off, and when.",
+    "stopEmails": "Stop emails from {{organisation}}",
+    "stopped": "You won’t get emails from {{organisation}} any more.",
+    "undo": "Undo",
+    "saving": "Saving…",
+    "loading": "Loading…",
+    "failed": "Saving did not work. Nothing has changed.",
+    "tryAgain": "Try again",
+    "back": "Back",
+    "brokenTitle": "This link does not work",
+    "brokenBody": "Nothing has changed. Open the link again from the most recent email you were sent.",
+    "wayIn": "Choose how {{organisation}} can reach you"
   }
 }
