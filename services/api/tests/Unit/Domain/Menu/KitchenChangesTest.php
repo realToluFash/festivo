@@ -13,6 +13,7 @@ use Psl\Str;
 use Psl\Vec;
 
 /**
+ * @phpstan-import-type Line from KitchenChanges
  * @phpstan-import-type Person from KitchenChanges
  * @phpstan-import-type Side from KitchenChanges
  */
@@ -106,7 +107,7 @@ final class KitchenChangesTest extends TestCase
         $copy['courses'][0]['skipped'] = 3;
         $now = [...KitchenSides::side([]), 'courses' => []];
 
-        self::assertSame(['kitchen 12 0', 'skipped 3 0'], Vec\map(KitchenChanges::between($copy, $now, []), static fn (array $line): string => Str\join([$line['item']['state'] ?? '', (string) $line['old'], (string) $line['count']], ' ')));
+        self::assertSame(['Main kitchen 12 0', 'Main skipped 3 0'], self::figures(KitchenChanges::between($copy, $now, [])));
     }
 
     #[Test]
@@ -170,13 +171,25 @@ final class KitchenChangesTest extends TestCase
     }
 
     #[Test]
-    public function aCoursesOtherFiguresChangeToo(): void
+    public function eachCoursesOwnFiguresNameTheirCourseAsItIsCalledNowANewOneFromNought(): void
     {
         $copy = KitchenSides::side([]);
         $now = KitchenSides::side([]);
+        $now['courses'][0]['name'] = 'Mains';
         $now['courses'][0]['notChosen'] = 3;
+        $now['courses'][] = [...$now['courses'][0], 'id' => 'dessert', 'name' => 'Dessert', 'notChosen' => 1];
 
-        self::assertSame([['name' => '', 'parent' => null, 'state' => 'notYet']], Vec\map(KitchenChanges::between($copy, $now, []), static fn (array $line): ?array => $line['item']));
+        self::assertSame(['Mains notYet 0 3', 'Dessert notYet 0 1'], self::figures(KitchenChanges::between($copy, $now, [])));
+    }
+
+    /**
+     * @param list<Line> $lines
+     *
+     * @return list<string> course state old new
+     */
+    private static function figures(array $lines): array
+    {
+        return Vec\map($lines, static fn (array $line): string => Str\join([$line['item']['parent'] ?? '', $line['item']['state'] ?? '', (string) $line['old'], (string) $line['count']], ' '));
     }
 
     /**

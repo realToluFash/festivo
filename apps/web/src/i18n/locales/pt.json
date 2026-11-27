@@ -6833,7 +6833,8 @@
       "added": "Adicionado: {{dish}}, {{count, number}}",
       "removed": "Removido: {{dish}}, antes {{count, number}}",
       "renamed": "Renomeado: {{old}}, agora {{new}}",
-      "named": "{{dish}} · {{name}}"
+      "named": "{{dish}} · {{name}}",
+      "inCourse": "{{course}} · {{name}}"
     }
   },
   "menuChange": {

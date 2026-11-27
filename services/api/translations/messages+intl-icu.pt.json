@@ -537,6 +537,7 @@
     "kitchen_sheet.changes.removed": "Removido: {dish}, antes {count, number, ::group-auto}",
     "kitchen_sheet.changes.renamed": "Renomeado: {old}, agora {new}",
     "kitchen_sheet.changes.named": "{dish} · {name}",
+    "kitchen_sheet.changes.in_course": "{course} · {name}",
     "kitchen_sheet.changes.since_page": "Alterações desde {date}, {time}",
     "guest_message.notice.subject": "{event}: uma mensagem de {hosts}",
     "guest_message.notice.dear": "Olá, {greeting},",

@@ -135,13 +135,13 @@ final readonly class KitchenSheetDocument
 
         $item = $line['item'];
         $name = match (true) {
-            null !== $item['state'] => $this->word(match ($item['state']) {
+            null !== $item['state'] => $this->word('changes.in_course', $locale, ['course' => $item['parent'] ?? '', 'name' => $this->word(match ($item['state']) {
                 'needsHost' => 'needs_host',
                 'menuChanged' => 'menu_changed',
                 'notYet' => 'cell_notyet',
                 'never' => 'cell_never',
                 default => $item['state'],
-            }, $locale),
+            }, $locale)]),
             null !== $item['parent'] => $this->word('changes.named', $locale, ['dish' => $item['parent'], 'name' => $item['name']]),
             default => $item['name'],
         };

@@ -6485,7 +6485,8 @@
       "added": "Added: {{dish}}, {{count, number}}",
       "removed": "Removed: {{dish}}, was {{count, number}}",
       "renamed": "Renamed: {{old}}, now {{new}}",
-      "named": "{{dish}} · {{name}}"
+      "named": "{{dish}} · {{name}}",
+      "inCourse": "{{course}} · {{name}}"
     }
   },
   "menuChange": {
