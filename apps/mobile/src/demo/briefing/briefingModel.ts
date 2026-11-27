@@ -160,6 +160,24 @@ export function noteOf(one: Person): string | null {
 const textable = (one: Person) =>
   one.mobile != null && one.stopped !== true && !one.heldText && !one.waitText;
 
+export interface Offers {
+  /** Copy link on the card and on each row, and the rules editable. */
+  acts: boolean;
+  sends: boolean;
+  rules: string;
+  preview: string;
+}
+
+export function offersOf(first: Pick<BriefingStart, 'access' | 'finished' | 'live'>): Offers {
+  const acts = first.access === 'manage' && !first.finished;
+  return {
+    acts,
+    sends: acts && first.live,
+    rules: acts ? BW.editRules : BW.rules,
+    preview: BW.previewAs,
+  };
+}
+
 export function dueAll(people: readonly Person[]): Person[] {
   return people.filter((one) => textable(one) && one.shift != null && one.brief === 'none');
 }

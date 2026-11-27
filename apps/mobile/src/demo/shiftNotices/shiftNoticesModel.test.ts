@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { rowLine } from '../staffLink/StaffRosterModel.ts';
 
-import type { Person } from '../briefing/briefingModel.ts';
+import { type Person, BW, offersOf } from '../briefing/briefingModel.ts';
 import {
   type ShiftStart,
   type ShiftState,
@@ -297,6 +297,23 @@ describe('what the page offers', () => {
       expect(briefingFor(shiftStart(state)).finished).toBe(finished != null);
       expect(sendsOffered(finished)).toBe(finished == null);
     }
+  });
+
+  it('offers what the screen draws once Finished: House rules and Preview as, no Copy link or send', () => {
+    const ended = SHIFT_STATES.filter((state) => shiftStart(state).finished != null);
+    expect(ended).toContain('called_off');
+    for (const state of ended) {
+      expect(offersOf(briefingFor(shiftStart(state)))).toEqual({
+        acts: false,
+        sends: false,
+        rules: BW.rules,
+        preview: BW.previewAs,
+      });
+    }
+    expect(offersOf(briefingFor(shiftStart('list')))).toMatchObject({
+      acts: true,
+      rules: BW.editRules,
+    });
   });
 
   it('shows the End now notice only on the refused send', () => {

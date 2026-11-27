@@ -41,6 +41,7 @@ import {
   fitRules,
   noMobileFor,
   noteOf,
+  offersOf,
   onShift,
   QUIET_ENDS,
   resultLines,
@@ -143,8 +144,8 @@ export function useBriefing(
 
   const people: Person[] = roster.map((one) => ({ ...one, ...(extras[one.id] ?? NO_BRIEF) }));
   const manage = first.access === 'manage';
-  const acts = manage && !first.finished;
-  const sends = acts && first.live;
+  const offers = offersOf(first);
+  const { acts, sends } = offers;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
@@ -344,12 +345,12 @@ export function useBriefing(
         )}
         <View style={styles.acts}>
           <QuietButton
-            label={acts ? BW.editRules : BW.rules}
+            label={offers.rules}
             onPress={() => open({ kind: 'rules', editing: false })}
             testID="briefing.rules"
           />
           <QuietButton
-            label={BW.previewAs}
+            label={offers.preview}
             onPress={() => open({ kind: 'preview', id: onShift(people)[0]?.id ?? 'chinedu' })}
             testID="briefing.preview"
           />
