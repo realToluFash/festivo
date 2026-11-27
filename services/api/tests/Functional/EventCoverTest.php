@@ -510,7 +510,7 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(201, $this->statusCode());
         $upload = Type\shape(['url' => Type\string(), 'key' => Type\string()], true)->coerce($body['upload'] ?? null);
 
-        $handle = \curl_init(self::insideTheNetwork($upload['url']));
+        $handle = \curl_init($upload['url']);
         \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $bytes,
@@ -526,7 +526,7 @@ final class EventCoverTest extends ApiTestCase
 
     private function fetch(string $url): string
     {
-        $handle = \curl_init(self::insideTheNetwork($url));
+        $handle = \curl_init($url);
         \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         $body = \curl_exec($handle);
         self::assertSame(200, \curl_getinfo($handle, \CURLINFO_HTTP_CODE));
@@ -536,17 +536,11 @@ final class EventCoverTest extends ApiTestCase
 
     private function statusOf(string $url): int
     {
-        $handle = \curl_init(self::insideTheNetwork($url));
+        $handle = \curl_init($url);
         \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_NOBODY => true, \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         \curl_exec($handle);
 
         return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
-    }
-
-    /** A URL names the store as a browser reaches it, and is signed for that host; the request keeps it and connects to the store inside the compose network. */
-    private static function insideTheNetwork(string $url): string
-    {
-        return $url;
     }
 
     private static function halves(int $width, int $height): string
