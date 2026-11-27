@@ -7,7 +7,7 @@ import { Animated } from 'react-native';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { readPick, stationTime } from '../kit/kitchenStation.ts';
+import { readPick, stationAsOf } from '../kit/kitchenStation.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import {
   type StationRowRead,
@@ -98,7 +98,7 @@ export function useStationRowItem(event: OrganisationEvent) {
       icon: 'tablet',
       title: t('station.wayIn.title'),
       said: (line) => t('station.wayIn.said', { line }),
-      asOf: (at) => stationTime(at, dateLocale()),
+      asOf: (at) => stationAsOf(at, dateLocale()),
       read: () =>
         readStationRow(
           t,
