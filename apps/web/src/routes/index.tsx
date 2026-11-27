@@ -45,6 +45,7 @@ import { Invitation } from './guest/Invitation.tsx';
 import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
 import { RedeemPage } from './public/Redeem.tsx';
+import { FloorPage } from './public/Floor.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
@@ -160,6 +161,7 @@ export const routes = [
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/w/:token', element: <StaffLinkPage /> },
+      { path: '/floor/:eventId', element: <FloorPage /> },
       { path: '/d', element: <RedeemPage /> },
       { path: '/d/:code', element: <RedeemPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
