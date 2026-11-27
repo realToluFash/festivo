@@ -63,7 +63,9 @@ export function forward(walk: Walk, t: TFunction): Walk {
   if (refusal != null) return { ...walk, refusal };
   if (walk.step === 3) return walk;
 
-  return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: false };
+  const toPick = walk.step === 1 && walk.country != null && walk.country !== walk.device.country;
+
+  return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: toPick };
 }
 
 /** The step on screen and the one leaving it; each turn has its own number, so the two never share a key. */

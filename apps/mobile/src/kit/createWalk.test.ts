@@ -9,6 +9,7 @@ import {
   boxWords,
   countries,
   factsOf,
+  forward,
   firstTurn,
   freshWalk,
   nameInSight,
@@ -213,6 +214,15 @@ describe('the walk turning between steps (qa3, #39178)', () => {
       leaving: country,
       dir: -1,
     });
+  });
+
+  it('brings a picked country into view when Continue reaches the country step again (sc-100878)', () => {
+    const zimbabwe: Walk = { ...name, country: 'ZW' };
+
+    expect(forward(zimbabwe, t).cameBack).toBe(true);
+    expect(forward(name, t).cameBack).toBe(false);
+    expect(forward({ ...name, country: null, step: 1 }, t).refusal).toBeNull();
+    expect(forward({ ...country, country: 'ZW' }, t).cameBack).toBe(false);
   });
 
   it('lets the leaving step go only at the end of the turn on screen', () => {
