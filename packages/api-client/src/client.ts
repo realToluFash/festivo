@@ -3393,7 +3393,20 @@ export class ApiClient {
     return { url: typeof body.url === 'string' ? body.url : '', staff };
   }
 
-  /** Only a Copied row moves; Link sent and Link opened stay. */
+  /** As deliverStaffLink, recorded as Shared: the app's share sheet cannot say whether it went (sc-77903). */
+  async shareStaffLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/share`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
   async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
     return this.staffAnswerOf(
       await this.post<unknown>(
