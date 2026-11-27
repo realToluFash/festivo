@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { barFits } from '../kit/keyboard.ts';
+
 const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
 const redeem = read('src', 'components', 'Redeem.tsx');
 const demo = read('src', 'demo', 'doorCode', 'Redeem.tsx');
@@ -30,8 +32,16 @@ describe('the event step keeps Your name and the number row above Send code with
     expect(fields).toMatch(
       /scroll\.focusedGroup\.forEach\(\(needs\) => needs\(focusedBlock\(fields\)\.height\)\)/u,
     );
-    expect(fields.indexOf('focusedGroup.forEach')).toBeLessThan(fields.indexOf('answeringNow()'));
+    expect(fields.indexOf('focusedGroup.forEach')).toBeLessThan(fields.indexOf('keyboardTopNow('));
     expect(fields).not.toMatch(/needs\(kept/u);
+  });
+
+  it('undocks Send code on the SE at the largest text once the dock hears the 204pt field block (QA: field 77-281pt, foot 152pt, keys at 418pt)', () => {
+    const margin = 24;
+    const scrollTop = 77;
+    const room = 418 - scrollTop;
+    expect(barFits({ room, field: 204, bar: 152, margin })).toBe(false);
+    expect(barFits({ room, field: 0, bar: 152, margin })).toBe(true);
   });
 
   it('still lands with Your name focused, and signed in shows no field', () => {

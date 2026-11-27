@@ -71,11 +71,9 @@ async function measure(
   if (focus != null) last.current = focus.contentY >= number.contentY ? 'number' : 'name';
   fieldUnderToast(focus == null ? null : { top: frame.top, height: focus.height });
   const fields = { refusal, name, number, focus: last.current };
-  // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3). It is reported before the answering bail-out below, so a measure an answer cut short still tells the dock what the field needs (sc-97734).
+  // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3). It is reported before any bail-out below and whether or not a field holds the focus right now (the field kept from the last measure stands in), so the dock hears what the field needs however the keys or the focus arrived (sc-97734).
+  scroll.focusedGroup.forEach((needs) => needs(focusedBlock(fields).height));
   const keys = keyboardTopNow(scroll.origin.current);
-  if (keys != null && focus != null) {
-    scroll.focusedGroup.forEach((needs) => needs(focusedBlock(fields).height));
-  }
   if (keys == null || scroll.answeringNow()) return null;
 
   // The landing toast over a step covers what is under it as the keys do (sc-37983).
