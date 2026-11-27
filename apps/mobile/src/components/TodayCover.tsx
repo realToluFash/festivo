@@ -549,10 +549,15 @@ function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; li
 }
 
 /** Now's arrived figure (sc-29978), read as its words: "141/152" over "arrived" beside a ring, or "37" over "arrived" with no ring while nobody is Coming. */
-export function ArrivedFigure({ figure }: { figure: Figure }) {
+export function ArrivedFigure({ figure, whole = false }: { figure: Figure; whole?: boolean }) {
+  const fontScale = PixelRatio.getFontScale();
+  const side = whole ? Math.max(44, Math.ceil(fontScale * (18 * 1.2 + 12.5 * 1.3))) : 44;
+
   return (
     <View style={styles.arrived} accessible accessibilityLabel={figure.spoken}>
-      {figure.share != null && <Ring share={figure.share} />}
+      {figure.share != null && (
+        <Ring share={figure.share} side={side} line={whole ? Math.max(4, Math.round(side / 11)) : 4} />
+      )}
       <View style={styles.shrink}>
         <View style={styles.figureLine}>
           <Text size={18} weight="bold" accessible={false} style={[styles.white, styles.figures]}>
@@ -642,21 +647,16 @@ function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
       >
         {now.ends}
       </CoverLine>
-      {now.arrived == null && <View style={styles.openUnder}>{open}</View>}
+      <View style={styles.openUnder}>{open}</View>
+      {now.arrived != null && (
+        <View style={styles.arrivedUnder}>
+          <ArrivedFigure figure={now.arrived} whole />
+        </View>
+      )}
     </View>
   );
 
-  return now.arrived == null ? (
-    words
-  ) : (
-    <View style={styles.wideRow}>
-      {words}
-      <View style={styles.right}>
-        <ArrivedFigure figure={now.arrived} />
-        {open}
-      </View>
-    </View>
-  );
+  return words;
 }
 
 export function NowBlock({
@@ -1538,6 +1538,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
+  arrivedUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },
