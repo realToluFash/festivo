@@ -245,6 +245,17 @@ final class WhosHereTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNightCalledOffBeforeItStartedReadsAsNotFound(): void
+    {
+        $dayo = $this->signedIn($this->dayo, '+2348031110001');
+        $this->event()->end(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        self::em()->flush();
+
+        $this->as($dayo, 'GET', $this->path());
+        self::assertSame(404, $this->statusCode(), 'his link was open when the night was called off, but it never took place: ' . Json\encode($this->last()));
+    }
+
+    #[Test]
     public function aLinkThatEndedBeforeTheEventStillReadsAsNotFound(): void
     {
         $early = $this->person('Femi Ade', 'Door', '0803 111 0005');
