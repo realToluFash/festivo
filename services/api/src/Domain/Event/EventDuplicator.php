@@ -50,26 +50,30 @@ final readonly class EventDuplicator
         $length = self::wallClock($original->getEndsAt())->getTimestamp() - self::wallClock($original->getStartsAt())->getTimestamp();
         $end = self::wallClock($start);
 
-        $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
-        EventVenue::write($copy, EventVenue::of($original));
-        $copy->setArrivalNote($original->getArrivalNote());
-        $this->entityManager->persist($copy);
-        $this->staffPlan->suggest($copy);
-        $this->stationPlan->suggest($copy);
-        $cover = $this->eventCoverEditor->copy($original, $copy);
-        $this->seatingPlanCopier->copy($original, $copy, $by);
-        $groups = $this->guestListCopier->copyGroups($original, $copy);
-        $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by, $groups) : null;
-
-        $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
-            ...EventCreator::recorded($copy),
-            ...Auditor::diff([], null === $cover ? [] : EventCoverEditor::recorded($cover)),
-            'duplicatedFrom' => [null, $original->getId()->toRfc4122()],
-            ...(null === $guestsCopied ? [] : ['guestsCopied' => [null, $guestsCopied]]),
-        ]);
+        $cover = null;
 
         try {
-            $this->entityManager->flush();
+            [$copy, $guestsCopied] = $this->entityManager->wrapInTransaction(function () use ($original, $by, $start, $end, $length, $zone, $copyGuests, &$cover): array {
+                $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
+                EventVenue::write($copy, EventVenue::of($original));
+                $copy->setArrivalNote($original->getArrivalNote());
+                $this->entityManager->persist($copy);
+                $this->staffPlan->suggest($copy);
+                $this->stationPlan->suggest($copy);
+                $cover = $this->eventCoverEditor->copy($original, $copy);
+                $this->seatingPlanCopier->copy($original, $copy, $by);
+                $groups = $this->guestListCopier->copyGroups($original, $copy);
+                $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by, $groups) : null;
+
+                $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
+                    ...EventCreator::recorded($copy),
+                    ...Auditor::diff([], null === $cover ? [] : EventCoverEditor::recorded($cover)),
+                    'duplicatedFrom' => [null, $original->getId()->toRfc4122()],
+                    ...(null === $guestsCopied ? [] : ['guestsCopied' => [null, $guestsCopied]]),
+                ]);
+
+                return [$copy, $guestsCopied];
+            });
         } catch (Throwable $failed) {
             if (null !== $cover) {
                 $this->eventCoverEditor->unpublish($cover->getPhotoKey());
