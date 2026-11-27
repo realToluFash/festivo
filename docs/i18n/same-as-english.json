@@ -21,6 +21,7 @@
     "web:guest.calendarApple",
     "web:guest.calendarGoogle",
     "web:guestList.how.whatsapp",
+    "web:yourMessages.whatsApp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
