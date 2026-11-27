@@ -584,7 +584,17 @@ function Seat({
             {g.dish}
           </Text>
         )}
-        <WordLine word={seatWord(g)} said={seatWord(g)} size={14} />
+        {g.kept ? (
+          <View style={shared.wrap}>
+            <Shape word={seatWord(g)} />
+            <Text size={14} weight="semibold">
+              {seatWord(g)}
+            </Text>
+            <Chip word="Waiting to send" paths={SEND} tone="outline" />
+          </View>
+        ) : (
+          <WordLine word={seatWord(g)} said={seatWord(g)} size={14} />
+        )}
         {h != null && (
           <View style={styles.held}>
             <Text size={14} weight="medium" style={shared.secondary}>
