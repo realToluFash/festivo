@@ -60,7 +60,8 @@ export function StaffLinkScreen({
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
-  const [manages, setManages] = useState(false);
+  const [manages, setManages] = useState<boolean | null>(null);
+  const [eventFailed, setEventFailed] = useState(false);
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState<Busy>(null);
   const [failed, setFailed] = useState(false);
@@ -124,7 +125,9 @@ export function StaffLinkScreen({
       (event) => {
         if (current) setManages(event.permissions.includes('staff.manage'));
       },
-      () => undefined,
+      () => {
+        if (current) setEventFailed(true);
+      },
     );
     reader.current();
     const stop = followReadingAgain(
@@ -266,11 +269,14 @@ export function StaffLinkScreen({
     </Pressable>
   );
 
-  if (seen.kind === 'loading' || seen.kind === 'failed')
+  const failedLoad = seen.kind === 'failed' || (seen.kind === 'shown' && eventFailed);
+  const loading =
+    seen.kind === 'loading' || (seen.kind === 'shown' && manages == null && !failedLoad);
+  if (loading || failedLoad)
     return (
       <Page insets={insets} phone={phone} landscape={false}>
         {back}
-        {seen.kind === 'loading' ? (
+        {loading ? (
           <Skeleton shape="rows" rowHeight={64} rows={3} words={t('staffLink.loading')} />
         ) : (
           <View style={styles.failedBlock} testID="staffLink.loadFailed">
@@ -279,6 +285,7 @@ export function StaffLinkScreen({
               label={t('staffRoster.tryAgain')}
               onPress={() => {
                 setSeen({ kind: 'loading' });
+                setEventFailed(false);
                 setRound((n) => n + 1);
               }}
               testID="staffLink.retry"
@@ -292,7 +299,8 @@ export function StaffLinkScreen({
   const isGone = seen.kind === 'removed';
   const shift = shiftLine(t, entry, locale) ?? t('staffRoster.noShift');
   const trail = trailLine(t, entry, locale);
-  const doing = !isGone && acts(entry, manages);
+  const may = manages === true;
+  const doing = !isGone && acts(entry, may);
 
   const person = (
     <View style={styles.header}>
@@ -333,7 +341,7 @@ export function StaffLinkScreen({
       <Text size={15} style={styles.secondary}>
         {helpLine(t, entry.link)}
       </Text>
-      {!manages && (
+      {!may && (
         <View style={styles.lock} testID="staffLink.readOnly">
           <Glyph name="lock" size={16} ink={tokens.colorInkSecondary} />
           <Text size={15} weight="medium" style={[styles.secondary, styles.shrink]}>
@@ -420,7 +428,7 @@ export function StaffLinkScreen({
           </View>
         )}
       </View>
-      {offersMarkSent(entry, manages, asking) && (
+      {offersMarkSent(entry, may, asking) && (
         <SecondaryButton
           label={t('staffLink.markSent')}
           off={busy === 'mark'}
@@ -428,7 +436,7 @@ export function StaffLinkScreen({
           testID="staffLink.markSent"
         />
       )}
-      {offersReplace(entry, manages) && (
+      {offersReplace(entry, may) && (
         <QuietButton
           ref={replaceOpener}
           label={t('staffLink.replaceOpen')}
@@ -537,9 +545,7 @@ function Page({
         ]}
         testID="staffLink.page"
       >
-        <View style={phone ? styles.phoneColumn : landscape ? styles.wide : styles.column}>
-          {children}
-        </View>
+        <View style={phone ? undefined : landscape ? styles.wide : styles.column}>{children}</View>
       </ScrollView>
     </View>
   );
@@ -550,7 +556,6 @@ const styles = StyleSheet.create({
   body: { gap: tokens.spaceLg },
   bodyPhone: { padding: tokens.spaceLg },
   bodyTablet: { padding: tokens.spaceXl, alignItems: 'center' },
-  phoneColumn: { gap: tokens.spaceLg },
   column: { width: '100%', maxWidth: 560, gap: tokens.spaceLg },
   wide: { width: '100%', maxWidth: 960, gap: tokens.spaceLg },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
