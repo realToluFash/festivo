@@ -416,6 +416,14 @@ export function undoWords(mark: StationMark): 'station.undoPreparing' | 'station
   return mark.to === 'preparing' ? 'station.undoPreparing' : 'station.undoReady';
 }
 
+export function stationTime(at: Date | number | string, locale: string): string {
+  return new Date(at).toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+}
+
 /** The row's as of, in the Offline band's own form and, unless a zone is given, the device's zone (sc-97945). */
 export function stationAsOf(at: Date | number | string, locale: string, timeZone?: string): string {
   return formatTimeOfDay(new Date(at), locale, timeZone);

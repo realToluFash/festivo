@@ -25,6 +25,7 @@ import {
   refusedAccess,
   rememberPick,
   stationAsOf,
+  stationTime,
   stationView,
   topicMessage,
   undoCloses,
@@ -717,7 +718,17 @@ describe('a mark kept offline, and its Not sent line (sc-4015)', () => {
   });
 });
 
-describe('the station’s as of (sc-4015, sc-97945)', () => {
+describe('the station’s times (sc-4015)', () => {
+  it('are 24-hour, whatever the device’s own setting', () => {
+    expect(stationTime(new Date(2027, 2, 6, 19, 42), 'en-US')).toBe('19:42');
+  });
+
+  it('keep the unpadded hour before ten that the strip has always shown', () => {
+    expect(stationTime(new Date(2027, 2, 6, 9, 5), 'es')).toBe('9:05');
+  });
+});
+
+describe('the Kitchen station row’s as of (sc-97945)', () => {
   const read = new Date('2027-03-06T08:05:00Z');
 
   it('is 24-hour, whatever the device’s own setting', () => {
