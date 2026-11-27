@@ -33,13 +33,14 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dateLocale } from '../i18n/index.ts';
+import { blockName } from '../kit/blockName.ts';
 import { useFloor } from '../kit/useFloor.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Glyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { Sheet, SheetActions } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -112,12 +113,8 @@ function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
   );
 }
 
-function tableName(t: TFunction, { name, seats }: FloorTable): string {
-  if (name != null) return name;
-
-  return seats.length === 1
-    ? t('service.floor.seat', { seat: seats[0] })
-    : t('service.floor.seatRange', { first: seats[0], last: seats.at(-1) });
+function tableName(t: TFunction, table: FloorTable): string {
+  return blockName(t, table);
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
@@ -1257,7 +1254,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     gap: tokens.spaceXl,
-    paddingTop: 27,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },

@@ -19,6 +19,8 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { blockName } from './blockName.ts';
+
 export interface StationItemLine {
   courseId: string;
   course: string | null;
@@ -178,11 +180,8 @@ function trayName(t: TFunction, key: string, all: Seen): string {
   const name = all.tables.get(key);
   if (name != null) return name;
   const seats = all.blocks.get(key) ?? [];
-  if (seats.length === 0) return key;
 
-  return seats.length === 1
-    ? t('service.floor.seat', { seat: seats[0] })
-    : t('service.floor.seatRange', { first: seats[0], last: seats.at(-1) });
+  return seats.length === 0 ? key : blockName(t, { name: null, seats });
 }
 
 /** @param fired every fired course's read, in the menu's order; the last is the latest fired */
