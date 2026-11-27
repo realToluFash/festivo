@@ -1,4 +1,5 @@
 import { dayDate, wallDay } from './calendar.ts';
+import { zoneDeviceCanFormat } from './datetime.ts';
 import { type EventState, eventPhase } from './eventStates.ts';
 import { levelOf } from './roles.ts';
 
@@ -178,9 +179,5 @@ function dayNumber(moment: Date, timeZone: string): number {
 }
 
 function canonicalZone(zone: string): string {
-  try {
-    return new Intl.DateTimeFormat('en', { timeZone: zone }).resolvedOptions().timeZone;
-  } catch {
-    return zone;
-  }
+  return zoneDeviceCanFormat(zone) ?? zone;
 }
