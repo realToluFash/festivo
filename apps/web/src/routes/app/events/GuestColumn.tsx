@@ -1120,7 +1120,6 @@ function GuestView({
   );
 }
 
-/** Marked by the triangle and the words, not the amber alone; there when the page opens, so a region, not an alert. */
 /** sc-3969: a channel the guest stopped, under the row it concerns; a record, not a control. */
 function OptOutRow({ title, closes }: { title: string; closes: boolean }) {
   const { t } = useTranslation();
@@ -1133,6 +1132,7 @@ function OptOutRow({ title, closes }: { title: string; closes: boolean }) {
   );
 }
 
+/** Marked by the triangle and the words, not the amber alone; there when the page opens, so a region, not an alert. */
 function WrongPerson({
   name,
   heading,

@@ -128,6 +128,18 @@ final class YourMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aComplaintIsNotShownToTheHostAsAnOptOut(): void
+    {
+        $guest = $this->add('Emeka Nwosu', self::ADDRESS);
+        $first = $this->sendAndWork();
+        self::service(MailWebhook::class)->receive(['RecordType' => 'SpamComplaint', 'Email' => self::ADDRESS, 'Metadata' => ['delivery' => $this->deliveryOf($first)]]);
+
+        $details = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $guest)['guest'] ?? null);
+
+        self::assertSame(['email' => null, 'texts' => null, 'whatsApp' => null], $details['optOuts']);
+    }
+
+    #[Test]
     public function aComplaintStopsTheNextEmail(): void
     {
         $this->add('Emeka Nwosu', self::ADDRESS);

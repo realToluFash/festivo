@@ -243,7 +243,7 @@ final readonly class GuestSerialiser
 
         return Dict\from_entries(Vec\map(GuestChannel::cases(), fn (GuestChannel $channel): array => [
             $channel->field(),
-            $this->guestSuppressions->since($organisation, $channel, GuestChannel::Email === $channel ? $guest->getEmail() : $guest->getMobile())?->format(\DATE_ATOM),
+            $this->guestSuppressions->optedOutSince($organisation, $channel, GuestChannel::Email === $channel ? $guest->getEmail() : $guest->getMobile())?->format(\DATE_ATOM),
         ]));
     }
 }

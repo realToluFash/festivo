@@ -162,6 +162,15 @@ describe('Your messages (sc-3969)', () => {
     expect(within(screen.getByRole('main')).queryByRole('button')).toBeNull();
   });
 
+  it('a failed first load offers Try again instead of loading for good', async () => {
+    open([() => answer({}, 500), () => answer(standing())]);
+
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('button', { name: `Stop emails from ${ORG}` })).toBeTruthy();
+  });
+
   it('with no token at all, says the link does not work without asking', async () => {
     const asked = open([], '/your-messages');
 

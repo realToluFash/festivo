@@ -61,6 +61,8 @@ function YourMessagesPage({ entry, from }: { entry: YourMessagesKey; from: From 
   const [failed, setFailed] = useState<Change | null>(null);
   const [saved, setSaved] = useState<MessageChannel | null>(null);
   const [focusOn, setFocusOn] = useState<{ on: string } | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAgain, setLoadAgain] = useState(0);
   const entered = useRef(entry);
 
   useEffect(() => {
@@ -70,19 +72,22 @@ function YourMessagesPage({ entry, from }: { entry: YourMessagesKey; from: From 
     api.yourMessages(entered.current).then(
       (answer) => {
         if (!current) return;
+        setLoadFailed(false);
         setStanding(answer);
         const email = answer.channels.email;
         setLead(from === 'email' && email.onRecord && email.on ? 'button' : null);
       },
       (error: unknown) => {
-        if (current && error instanceof ApiError && error.status === 404) setStanding('broken');
+        if (!current) return;
+        if (error instanceof ApiError && error.status === 404) setStanding('broken');
+        else setLoadFailed(true);
       },
     );
 
     return () => {
       current = false;
     };
-  }, [from]);
+  }, [from, loadAgain]);
 
   useLayoutEffect(() => {
     if (focusOn == null) return;
@@ -146,7 +151,9 @@ function YourMessagesPage({ entry, from }: { entry: YourMessagesKey; from: From 
   const savedOn = saved != null && standing != null ? standing.channels[saved].on : false;
   const said =
     standing == null
-      ? t('yourMessages.loading')
+      ? loadFailed
+        ? t('yourMessages.failed')
+        : t('yourMessages.loading')
       : leadBusy
         ? t('yourMessages.saving')
         : saved == null
@@ -165,7 +172,25 @@ function YourMessagesPage({ entry, from }: { entry: YourMessagesKey; from: From 
         <h1 id="gp-yours-h" className="gp-yours-title" tabIndex={-1}>
           {t('yourMessages.title')}
         </h1>
-        {standing == null ? (
+        {standing == null && loadFailed ? (
+          <Notice
+            kind="broken"
+            className="gp-yours-alert"
+            action={
+              <TextAction
+                focus="yoursRetry"
+                onClick={() => {
+                  setLoadFailed(false);
+                  setLoadAgain((n) => n + 1);
+                }}
+              >
+                {t('yourMessages.tryAgain')}
+              </TextAction>
+            }
+          >
+            {t('yourMessages.failed')}
+          </Notice>
+        ) : standing == null ? (
           <Shapes />
         ) : (
           <>

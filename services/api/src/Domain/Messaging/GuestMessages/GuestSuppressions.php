@@ -99,6 +99,21 @@ final readonly class GuestSuppressions
         return false === $at ? null : new DateTimeImmutable(Type\string()->coerce($at));
     }
 
+    /** When the guest stopped this organisation's messages on the channel, by their own word; a complaint is not an opt-out, and the migration's date for one is not the guest's. */
+    public function optedOutSince(Uuid $organisation, GuestChannel $channel, ?string $address): ?DateTimeImmutable
+    {
+        if (null === $address || '' === $address) {
+            return null;
+        }
+
+        $at = $this->connection->fetchOne(
+            'SELECT suppressed_at FROM guest_suppressions WHERE organisation_id = :organisation AND channel = :channel AND address_hash = :hash AND reason <> :complained',
+            ['organisation' => $organisation->toRfc4122(), 'channel' => $channel->value, 'hash' => $this->hash($address), 'complained' => GuestSuppressionReason::Complained->value],
+        );
+
+        return false === $at ? null : new DateTimeImmutable(Type\string()->coerce($at));
+    }
+
     /**
      * @param list<string> $addresses
      *
