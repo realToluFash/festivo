@@ -184,6 +184,7 @@ final class OrganisationExportTest extends ApiTestCase
         'usage_records' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'usage_reservations' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'usage_totals' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_warnings' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
     ];
 
     private User $owner;

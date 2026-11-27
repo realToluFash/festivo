@@ -156,7 +156,7 @@ function twoCourses(): FloorRead {
   return floor;
 }
 
-function open(floor: FloorRead = FLOOR, status = 200) {
+function open(floor: FloorRead = FLOOR, status = 200, address = '/floor/e1') {
   now = floor;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const path = new URL(String(input)).pathname;
@@ -174,7 +174,10 @@ function open(floor: FloorRead = FLOOR, status = 200) {
       headers: { 'Content-Type': 'application/json' },
     });
   });
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/floor/e1'] })} />);
+  const router = createMemoryRouter(routes, { initialEntries: [address] });
+  render(<RouterProvider router={router} />);
+
+  return router;
 }
 
 const press = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
@@ -233,6 +236,23 @@ describe('Floor in the browser (sc-4021)', () => {
     open();
 
     expect(await screen.findByText('Adaeze & Tunde · Main')).toBeTruthy();
+  });
+
+  it('opened from Your night, its way back reads Your night and returns to the shift page, still signed in (sc-98893)', async () => {
+    const router = open(FLOOR, 200, '/floor/e1?from=night');
+
+    const back = await screen.findByRole('link', { name: 'Your night' });
+    expect(back.getAttribute('href')).toBe('/night/e1');
+    fireEvent.click(back);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/night/e1'));
+    expect(screen.queryByRole('link', { name: 'Enter a door code' })).toBeNull();
+  });
+
+  it('has no way back to Your night when opened some other way', async () => {
+    open();
+
+    await screen.findByText('Adaeze & Tunde · Main');
+    expect(screen.queryByRole('link', { name: 'Your night' })).toBeNull();
   });
 
   it('marks a held guest’s choice, and offers no What’s ready with nothing ready', async () => {

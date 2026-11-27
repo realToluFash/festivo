@@ -1,6 +1,7 @@
 /* 641 to 960 px only (sc-60699), but for Settings' stack at the end: 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
 @media (40rem < width <= 60rem) {
-  .today.desk .desk-page {
+  .today.desk .desk-page,
+  .today .today-main {
     padding-inline: var(--spaceXxl);
   }
 

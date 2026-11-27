@@ -1,0 +1,148 @@
+# sc-32801: an event's Overview Needs you card on the app, for each seeded event (E1..E7 by id) and beside the app demo's states.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${E5}
+- extendedWaitUntil:
+    visible:
+      text: 'QA5.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: e5-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: e5-product
+- openLink: ${METRO_URL}/--/events/${E1}
+- extendedWaitUntil:
+    visible:
+      text: 'QA1.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: e1-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: e1-product
+- openLink: ${METRO_URL}/--/events/${E3}
+- extendedWaitUntil:
+    visible:
+      text: 'QA3.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: e3-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: e3-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYou
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: needsYou-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYou-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouOverdue
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: needsYouOverdue-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouOverdue-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=live
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: live-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: live-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouLoading
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: needsYouLoading-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouLoading-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouFailed
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: needsYouFailed-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouFailed-demo

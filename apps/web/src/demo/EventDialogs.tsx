@@ -10,6 +10,8 @@ import { copyStart } from '../copyStart.ts';
 import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
+import { AskOwner, AskSwitches } from './LimitAsk.tsx';
+import { type Owners } from './limitReached.ts';
 import { Ask, Dialog } from '../components/SettingsParts.tsx';
 import {
   type Refusal,
@@ -413,11 +415,13 @@ function Refusal({
 }) {
   const plan = problem.type === 'plan_limit_reached' ? problem : null;
   const title = plan != null ? DW.planTitle(plan.limit) : DW.ceilingTitle(CEILING);
+  const [offline, setOffline] = useState(false);
+  const [owners, setOwners] = useState<Owners>('several');
 
   return (
     <Dialog title={title} verb={null} dismiss={DW.backToForm} onDismiss={onBack} onConfirm={onBack}>
       <NotBuilt words={W.notBuilt('sc-3930')} />
-      <p className="desk-line">
+      <p className="desk-line lr-hard-limit">
         {plan != null
           ? DW.overPlan(plan.count, plan.limit)
           : DW.overCeiling(problem.count, CEILING)}
@@ -435,14 +439,22 @@ function Refusal({
           {DW.changePlan}
         </button>
       )}
-      {plan != null && !billing && !asked && (
-        <button type="button" className="button" onClick={onAsk}>
-          {DW.askOwner}
-        </button>
+      {plan != null && !billing && (
+        <AskOwner
+          start={asked ? { now: 'sent', owners } : { now: 'ready' }}
+          offline={offline}
+          owners={owners}
+          onSent={onAsk}
+        />
       )}
-      <p className="desk-note" role="status">
-        {plan != null && !billing && asked ? DW.asked : ''}
-      </p>
+      {plan != null && !billing && (
+        <AskSwitches
+          offline={offline}
+          owners={owners}
+          onOffline={setOffline}
+          onOwners={setOwners}
+        />
+      )}
     </Dialog>
   );
 }

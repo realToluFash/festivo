@@ -2413,7 +2413,9 @@
       "tryAgain": "Try again",
       "loading": "Loading your night…",
       "alone": "This link is yours alone. You are signed in until {{time}}. Nothing stays on this device.",
-      "beforeYouStart": "Before you start"
+      "beforeYouStart": "Before you start",
+      "title": "Your night",
+      "openFloor": "Open Floor"
     },
     "clock": {
       "clockIn": "Clock in",
@@ -6954,7 +6956,7 @@
         "sentBack": "Sent back: {{guest}}’s {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
-      "loadFailed": "Floor didn’t load. Try again.",
+      "loadFailed": "Floor did not load. Try again.",
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",
@@ -7006,7 +7008,7 @@
     "yourShift": "Your shift",
     "notSignedIn": {
       "title": "Sign in from your link or code",
-      "body": "To check guests in, open the link we sent you, or enter your door code again.",
+      "body": "Open the link we sent you, or enter your door code again.",
       "cta": "Enter a door code"
     }
   },
