@@ -464,6 +464,35 @@ export function commitTarget(sha, { verify, remoteBranchesWith }) {
   return { ref: sha, label: sha };
 }
 
+const EXPO_PUSH_PATH = '/expo/--/api/v2/push/send';
+
+// Smocker's history, oldest first, as the product's Expo messages, newest first.
+export function expoPushes(history) {
+  return history
+    .filter(({ request }) => request?.method === 'POST' && request.path === EXPO_PUSH_PATH)
+    .flatMap(({ request }) => {
+      const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+      return Array.isArray(body) ? body : [body];
+    })
+    .reverse();
+}
+
+// Expo's message as the APNs payload Expo would hand Apple; expo-notifications reads data from `body`.
+export function apnsPayload(message) {
+  const aps = {
+    alert: { title: message.title ?? '', body: message.body ?? '' },
+    ...(message.sound ? { sound: message.sound } : {}),
+    ...(message.threadId ? { 'thread-id': message.threadId } : {}),
+    ...(message.interruptionLevel ? { 'interruption-level': message.interruptionLevel } : {}),
+  };
+  return { aps, body: message.data ?? {} };
+}
+
+export function pushPick(args) {
+  const picked = args.find((arg) => /^\d+$/.test(arg));
+  return picked === undefined ? 1 : Number(picked);
+}
+
 // One of a tester's simulators runs at a time: the phone unless --ipad or --se asks otherwise.
 export function simulatorFor(args) {
   const open = ['ipad', 'se'].find((key) => args.includes(`--${key}`)) ?? 'phone';
@@ -4678,6 +4707,43 @@ function chrome() {
   ]);
 }
 
+async function push(args) {
+  const answer = await fetch(`${CONFIG.urls.smocker}/history`);
+  if (!answer.ok) throw new Error(`Smocker answered ${answer.status} at ${CONFIG.urls.smocker}`);
+  const pushes = expoPushes(await answer.json());
+  if (pushes.length === 0)
+    throw new Error('the product has sent no push since Smocker last started');
+  if (args.includes('--list')) {
+    pushes.forEach((message, index) =>
+      console.log(`${index + 1}  ${message.title ?? ''} — ${message.body ?? ''}`),
+    );
+    return;
+  }
+  const pick = pushPick(args);
+  const message = pushes[pick - 1];
+  if (!message) throw new Error(`only ${pushes.length} pushes sent; \`push --list\` names them`);
+
+  const root = qaWorktree();
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  const { open } = simulatorFor(args);
+  const udid = simulatorId(CONFIG.simulators[open].name);
+  if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  if (!capture('xcrun', ['simctl', 'get_app_container', udid, id])) {
+    throw new Error(`${id} is not on the ${open}: \`release\` installs it`);
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-push-'));
+  try {
+    const file = join(dir, 'payload.json');
+    writeFileSync(file, JSON.stringify(apnsPayload(message)));
+    run('xcrun', ['simctl', 'push', udid, id, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  console.log(
+    `Pushed #${pick} to ${id} on the ${open}: ${message.title ?? ''} — ${message.body ?? ''}`,
+  );
+}
+
 const COMMANDS = {
   setup,
   'browser-host': browserHost,
@@ -4687,6 +4753,7 @@ const COMMANDS = {
   ios,
   android,
   release,
+  push,
   link,
   maestro,
   batch,
