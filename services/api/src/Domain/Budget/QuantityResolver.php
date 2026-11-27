@@ -9,11 +9,10 @@ use App\Domain\Budget\Model\QuantityFacts;
 use App\Domain\Budget\Model\StaffCost;
 use App\Domain\Event\EventDayCount;
 use App\Domain\Guest\Headcount\HeadcountCalculator;
+use App\Domain\Seating\Numbers\SeatingNumbers;
 use App\Entity\Event;
 use App\Enum\CostBasis;
 use App\Enum\QuantitySource;
-use App\Repository\SeatingPlanRepository;
-use App\Repository\SeatingTableRepository;
 use DateTimeZone;
 use Psl\Math;
 
@@ -32,8 +31,7 @@ final readonly class QuantityResolver
 
     public function __construct(
         private HeadcountCalculator $headcountCalculator,
-        private SeatingPlanRepository $seatingPlanRepository,
-        private SeatingTableRepository $seatingTableRepository,
+        private SeatingNumbers $seatingNumbers,
         private StaffCosts $staffCosts,
     ) {
     }
@@ -41,13 +39,13 @@ final readonly class QuantityResolver
     public function factsFor(Event $event, ?StaffCost $staff = null): QuantityFacts
     {
         $staff ??= $this->staffCosts->of($event);
-        $plan = $this->seatingPlanRepository->findOneForEvent($event);
+        $room = $this->seatingNumbers->of($event);
         $counts = $this->headcountCalculator->forEvents([$event])[$event->getId()->toRfc4122()];
 
         return new QuantityFacts(
             $counts['onList'],
             $counts['accepted'],
-            null === $plan ? null : $this->seatingTableRepository->count(['plan' => $plan]),
+            SeatingNumbers::NO_SEATING_PLAN === $room['reason'] ? null : $room['plan']['tables'],
             0 === $staff->scheduledMinutes ? null : Math\div($staff->scheduledMinutes + 30, 60),
             EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), new DateTimeZone($event->getTimeZone())),
             HeadcountCalculator::ifAllCome($counts),

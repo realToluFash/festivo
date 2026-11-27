@@ -6,6 +6,7 @@ namespace App\Domain\Seating;
 
 use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
+use App\Domain\Seating\Numbers\SeatingNumbersPublisher;
 use App\Entity\Event;
 use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
@@ -85,6 +86,7 @@ final readonly class SeatingPlanEditor
         private SeatingRowRepository $seatingRowRepository,
         private SeatingSeatRepository $seatingSeatRepository,
         private SeatingSerialiser $seatingSerialiser,
+        private SeatingNumbersPublisher $seatingNumbersPublisher,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
@@ -1321,6 +1323,7 @@ final readonly class SeatingPlanEditor
             $this->checkInSignal->send($event);
         }
 
+        $this->seatingNumbersPublisher->publish($event);
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $plan));
         null === $plan ? $this->guestPageSignal->send($event) : $this->guestPageSignal->seatingChanged($event);
     }

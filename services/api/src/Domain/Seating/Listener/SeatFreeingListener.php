@@ -6,6 +6,7 @@ namespace App\Domain\Seating\Listener;
 
 use App\Domain\Seating\GuestPageSignal;
 use App\Domain\Seating\Http\SeatingSerialiser;
+use App\Domain\Seating\Numbers\SeatingNumbersPublisher;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\GuestReply;
@@ -33,6 +34,7 @@ final class SeatFreeingListener
         private readonly GuestRepository $guestRepository,
         private readonly SeatingPlanRepository $seatingPlanRepository,
         private readonly SeatingSerialiser $seatingSerialiser,
+        private SeatingNumbersPublisher $seatingNumbersPublisher,
         private readonly RealtimePublisher $realtimePublisher,
         private readonly GuestPageSignal $guestPageSignal,
         private readonly CheckInSignal $checkInSignal,
@@ -77,6 +79,7 @@ final class SeatFreeingListener
 
         foreach ($events as $id => $event) {
             $this->checkInSignal->send($event);
+            $this->seatingNumbersPublisher->publish($event);
             $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $id, $this->seatingSerialiser->seating($event, $this->seatingPlanRepository->findOneForEvent($event)));
             $this->guestPageSignal->seatingChanged($event);
         }
