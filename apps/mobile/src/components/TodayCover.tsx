@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
+import { coverRowSides, pastSides, sidePadding, tabBarFit } from './bodyEdges.ts';
 import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
@@ -1287,9 +1287,10 @@ function TabRow<T extends string>({
   words,
 }: TabBarProps<T> & { words: TabWords }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
   return (
-    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
+    <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
       {words.measure}
       {tabs.map(([label, glyph], index) => {
         const on = label === at;
@@ -1628,13 +1629,11 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     height: PHONE_TAB_BAR,
-    padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
-    gap: tokens.spaceHair,
     ...tokens.elevationNative.raised.ios,
     elevation: tokens.elevationNative.raised.android.elevation,
   },

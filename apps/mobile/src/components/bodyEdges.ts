@@ -21,15 +21,34 @@ export function sideInsets(
   };
 }
 
-/** How far the phone's floating tab bar sits in from each side of the page. */
-const TAB_BAR_SIDE = 18;
+export interface TabBarGeometry {
+  side: number;
+  padSides: number;
+  padEnds: number;
+  gap: number;
+}
 
-/** The phone's floating tab bar's ends, past a navigation bar or the Dynamic Island on its side as Events' edges are (sc-54891). */
-export function tabBarSides(insets: { left: number; right: number }): {
-  left: number;
-  right: number;
-} {
-  return pastSides(TAB_BAR_SIDE, insets);
+/** Android sets no phone narrower than 320dp (CDD §7.1.1.1), so under 360 the phone's tab bar makes room for its words (sc-99214). */
+export const TAB_BAR_NARROW_BELOW = 360;
+
+const TAB_BAR: TabBarGeometry = { side: 18, padSides: 5, padEnds: 5, gap: tokens.spaceHair };
+const NARROW_TAB_BAR: TabBarGeometry = { side: 8, padSides: 3, padEnds: 5, gap: 0 };
+
+/** The threshold is the window's width, never the language, so the bar's edges never move between languages or between Today and an event (sc-99214). */
+export function tabBarGeometry(windowWidth: number): TabBarGeometry {
+  return windowWidth < TAB_BAR_NARROW_BELOW ? NARROW_TAB_BAR : TAB_BAR;
+}
+
+/** The phone's floating tab bar on a window `windowWidth` wide, its ends past a navigation bar or the Dynamic Island on its side as Events' edges are (sc-54891). */
+export function tabBarFit(windowWidth: number, insets: { left: number; right: number }) {
+  const { side, padSides, padEnds, gap } = tabBarGeometry(windowWidth);
+
+  return {
+    ...pastSides(side, insets),
+    paddingHorizontal: padSides,
+    paddingVertical: padEnds,
+    gap,
+  };
 }
 
 /** How far Today's top row on a phone sits in from each side while no bar takes one. */
