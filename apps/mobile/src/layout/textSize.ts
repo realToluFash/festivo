@@ -143,6 +143,11 @@ export function fitWidest(
   return Math.max(size, Math.floor((start * (slot - tracking)) / (widest - tracking)));
 }
 
+/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
+export function titleOnOneLine(width: number, room: number): boolean {
+  return room > 0 && width <= room;
+}
+
 /** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
 export function dayLineShares(
   name: number,
