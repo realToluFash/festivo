@@ -209,7 +209,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
               <Strip freshness={floor.freshness} />
             </View>
             {moved != null && (
-              <View style={styles.moved} accessibilityLiveRegion="polite" testID="floor.moved">
+              <View style={styles.moved} testID="floor.moved">
                 <Text size={15} weight="semibold" style={styles.grow}>
                   {moved}
                 </Text>
@@ -758,7 +758,7 @@ function Seat({
   return (
     <View style={styles.seat} testID={`floor.seat.${String(guest.seat)}`}>
       <View style={styles.badge} {...hidden}>
-        <Text size={15} weight="bold">
+        <Text size={15} weight="bold" accessible={false}>
           {String(guest.seat)}
         </Text>
       </View>
