@@ -54,7 +54,7 @@ import {
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
-import { stationItem, type TonightRow } from '../station/TonightRows.tsx';
+import { floorItem, stationItem, type TonightRow } from '../station/TonightRows.tsx';
 import {
   AREA_WORDS,
   areasFor,
@@ -107,6 +107,9 @@ export interface NightRow {
 /** Someone whose access opens the kitchen stations, on the event's day (sc-95382): under Your night, or first. */
 export type StationRow = TonightRow;
 
+/** Someone whose access opens the floor, on the event's day (sc-98893): under Kitchen station, else Your night, else first. */
+export type FloorRow = TonightRow;
+
 export interface MoreGroup {
   key: string;
   title: string;
@@ -137,6 +140,7 @@ export function InsideEvent({
   groups = [],
   night,
   station,
+  floor,
   onAt,
   onSignOut,
   onAccount,
@@ -150,6 +154,7 @@ export function InsideEvent({
   groups?: readonly MoreGroup[];
   night?: NightRow;
   station?: StationRow;
+  floor?: FloorRow;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -182,6 +187,7 @@ export function InsideEvent({
         you={!side}
         night={night}
         station={station}
+        floor={floor}
         onPeople={() => onAt('people')}
         onSignOut={onSignOut}
         tell={tell}
@@ -381,6 +387,7 @@ function Overview({
   you,
   night,
   station,
+  floor,
   onPeople,
   onSignOut,
   tell,
@@ -393,6 +400,7 @@ function Overview({
   you: boolean;
   night: NightRow | undefined;
   station: StationRow | undefined;
+  floor: FloorRow | undefined;
   onPeople: () => void;
   onSignOut: () => void;
   tell: (words: string) => void;
@@ -421,6 +429,7 @@ function Overview({
           },
         ]),
     ...(station == null ? [] : [stationItem(station, 'inside.station')]),
+    ...(floor == null ? [] : [floorItem(floor, 'inside.floor')]),
     ...(reads
       ? [
           {

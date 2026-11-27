@@ -256,6 +256,7 @@ export function EventScreen({
   clock,
   night,
   station,
+  floor,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -291,6 +292,8 @@ export function EventScreen({
   night?: TonightRow | undefined;
   /** Kitchen station, under Your night or in its place, on the event's day (sc-95382). */
   station?: TonightRow | undefined;
+  /** Floor, under Kitchen station, else Your night, else in its place, on the event's day (sc-98893). */
+  floor?: TonightRow | undefined;
 }) {
   const shell = useShell();
   const top = useBehind(openedOver);
@@ -614,7 +617,7 @@ export function EventScreen({
       else setAt('overview');
     },
   });
-  const tonight = <TonightRows night={night} station={station} />;
+  const tonight = <TonightRows night={night} station={station} floor={floor} />;
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
