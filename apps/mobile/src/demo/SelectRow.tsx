@@ -10,13 +10,14 @@ import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from '../steps/Lines.tsx';
 import { COUNTRIES, type Country } from './countries.ts';
 
-/** The label inside, the value under it and a chevron: a field that opens a list. */
+/** A field that opens a list: the value and a chevron, with the label inside unless a Field above draws it. */
 export function SelectRow({
   label,
   country,
   onChange,
   compact = false,
   withCallingCode = false,
+  labelled = false,
   wrong = false,
   pickerRef,
   testID,
@@ -29,6 +30,8 @@ export function SelectRow({
   compact?: boolean;
   /** For a phone: "+44 United Kingdom", as the app's mobile field shows it (sc-62). */
   withCallingCode?: boolean;
+  /** A Field above it draws the label, as the app's pickers sit, so the box holds the value alone. */
+  labelled?: boolean;
   /** A line about it shows under it: a refused text field's red edge, 2pt with focus (sc-30447). */
   wrong?: boolean;
   /** Where a refusal naming it sends the screen reader. */
@@ -70,6 +73,10 @@ export function SelectRow({
         ) : compact ? (
           <Text size={17} weight="semibold" accessible={false}>
             {`${country.flag} ${country.dial}`}
+          </Text>
+        ) : labelled ? (
+          <Text size={17} style={styles.grow} accessible={false}>
+            {named(country, withCallingCode)}
           </Text>
         ) : (
           <View style={styles.words}>

@@ -531,7 +531,7 @@ function Lists({
                     <SecondaryButton
                       label={t('whosHere.cover', { station: row.station.name })}
                       onPress={() => onCover(row)}
-                      stacked={phone}
+                      tall={phone}
                       ref={(v) => keep(refs, `cover|${row.id}`, v)}
                       testID={`whosHere.cover.${row.id}`}
                     />

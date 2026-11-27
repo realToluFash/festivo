@@ -67,8 +67,8 @@ final readonly class StaffLinks
     ) {
     }
 
-    /** The link with its plain token, returned once and never kept. */
-    public function deliver(StaffMember $entry, User $by): string
+    /** The link with its plain token, returned once and never kept; recorded `as` Copied or Shared unless it already went. */
+    public function deliver(StaffMember $entry, User $by, StaffLinkStatus $as = StaffLinkStatus::Copied): string
     {
         if (null === $entry->getMobile()) {
             throw new ApiException(ErrorCode::Conflict, $this->translator->trans('staff.link_needs_mobile'));
@@ -76,12 +76,12 @@ final readonly class StaffLinks
 
         $token = Base64\encode(SecureRandom\bytes(self::TOKEN_BYTES), Base64\Variant::UrlSafe, padding: false);
 
-        $this->entityManager->wrapInTransaction(function () use ($entry, $by, $token): void {
+        $this->entityManager->wrapInTransaction(function () use ($entry, $by, $token, $as): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
             $this->entityManager->persist(new StaffLinkToken($entry, LinkTokens::hash($token)));
 
             if (!$entry->getLinkStatus()->delivered()) {
-                $entry->linkMoved(StaffLinkStatus::Copied, $by, $this->clock->now());
+                $entry->linkMoved($as, $by, $this->clock->now());
             }
 
             $this->audit(self::ISSUED, $entry, $by);
@@ -98,7 +98,7 @@ final readonly class StaffLinks
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
 
-            if (StaffLinkStatus::Copied === $entry->getLinkStatus()) {
+            if ($entry->getLinkStatus()->handedOut()) {
                 $entry->linkMoved(StaffLinkStatus::Sent, $by, $this->clock->now());
                 $this->audit(self::MARKED_SENT, $entry, $by);
                 $this->entityManager->flush();

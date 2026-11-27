@@ -2,8 +2,8 @@ import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-/** How far a person's own link got (sc-3912), or why none can be given. */
-export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given; Copied and Shared (the app's share sheet, sc-77903) are both handed out and not yet marked as sent. */
+export type StaffLink = 'none' | 'copied' | 'shared' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 /** Where a person's briefing stands (sc-3917): Changed since sent is a briefed person whose station, shift or lead moved since. */
 export type StaffBriefing = 'none' | 'sent' | 'read' | 'changed';
@@ -208,7 +208,15 @@ export const STAFF_RULES_MAXIMUM = 2000;
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
+const LINKS: readonly StaffLink[] = [
+  'none',
+  'copied',
+  'shared',
+  'sent',
+  'opened',
+  'no_mobile',
+  'erased',
+];
 
 const KINDS: readonly StationKind[] = ['place', 'section'];
 
