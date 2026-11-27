@@ -91,10 +91,13 @@ def sync_shortcut(db, shortcut, now, full=False):
     return fetched
 
 
+UNPLACED = object()
+
+
 def design_branch_move(history, states, branches):
     """The ux/ branch or pull request whose push moved a story from Needs Design to Ready For
-    Dev, if its last move was that one; otherwise None. `branches` names each pull request's
-    branch, by number."""
+    Dev, if its last move was that one; UNPLACED if that move names a pull request `branches`
+    does not hold yet; otherwise None. `branches` names each pull request's branch, by number."""
     for entry in reversed(history):
         moves = history_moves(entry)
         if not moves:
@@ -108,6 +111,9 @@ def design_branch_move(history, states, branches):
                 branches.get(thing.get("number")) if kind == "pull-request" else None
             if roles.is_design_branch(name):
                 return name
+        if any(thing["entity_type"] == "pull-request" and thing.get("number") not in branches
+               for thing in history_vcs(entry)):
+            return UNPLACED
         return None
     return None
 
@@ -148,7 +154,8 @@ def undo_design_branch_moves(db, shortcut, raws, states, epics):
     pushed, a designer's ux/ branch too, while its demo is still under review. Ready For Dev
     means a merged demo, so the move is undone while a ux/ branch naming the story has not
     merged, and stands once every one has: the integration makes the same move on the merge.
-    A story Shortcut fails on is stored without its `updated_at`, so the next sync tries again."""
+    A story Shortcut fails on, or whose move names a pull request sq's GitHub view does not
+    hold yet, is stored without its `updated_at`, so the next sync tries again."""
     ids = {name: int(state_id) for state_id, name in states.items()}
     if "Needs Design" not in ids:
         return
@@ -163,7 +170,10 @@ def undo_design_branch_moves(db, shortcut, raws, states, epics):
         branches.update({number: branch for branch, numbers in pulls.items()
                          for number in numbers})
         try:
-            if design_branch_move(shortcut.history(raw["id"]), states, branches):
+            found = design_branch_move(shortcut.history(raw["id"]), states, branches)
+            if found is UNPLACED:
+                store.put_story(db, dict(slim(raw, states, epics), updated_at=None))
+            elif found:
                 moved = shortcut.update(raw["id"], workflow_state_id=ids["Needs Design"])
                 store.put_story(db, slim(moved or shortcut.story(raw["id"]), states, epics))
         except ShortcutError:
