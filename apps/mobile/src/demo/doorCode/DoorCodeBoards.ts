@@ -75,7 +75,7 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   ],
   'event-keys-number': [
     'Joining · the keys up on Mobile number',
-    'Both still above Send code, or Mobile number alone',
+    'From Your name once the soft keys settle; both above Send code, or the number alone',
   ],
   'event-keys-refused': [
     'Joining · the keys up after a refusal',
