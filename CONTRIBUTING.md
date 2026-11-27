@@ -142,6 +142,14 @@ link (`simctl openurl`) instead of the app's icon, for a link that opens the app
 install; it is iOS only. `ios` and `release` set the simulator they boot to the default text size. The next `ios` removes the build and starts
 them again.
 
+The stack sends its pushes to Smocker's Expo stand-in, so nothing reaches a device. `node .qa/bin/qa-env.mjs push`
+takes the product's newest push from Smocker and hands it to the release build on the iPhone simulator
+(`--ipad`, `--se`) through `simctl push`, as the APNs payload Expo would send: the title, the body, the
+thread and interruption level, and the data the app opens on tap. `push --list` numbers the pushes
+newest first, and `push 3` sends the third. It needs `release` first, signed in, with notifications
+turned on from the bell's card (Allow on the OS alert), and shows only what was sent since Smocker
+last started.
+
 There are several developers. Developer 1 works in this checkout on the development ports.
 `just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at
 `../soirely-devN` with its own containers and database, on ports of its own (`STACKS` in
