@@ -282,6 +282,26 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('words an unnamed dish in lowercase inside the send-back title and step', async () => {
+    const unnamed: FloorRead = structuredClone(FLOOR);
+    const plate = unnamed.courses[0]?.tables[0]?.guests[0]?.order;
+    if (plate == null) throw new Error('fixture has no plate');
+    plate.items = [{ key: 'chef', name: null, state: 'preparing' }];
+
+    open(unnamed);
+    fireEvent.click(await screen.findByRole('button', { name: /^Table 10,/ }));
+    press('Send back');
+
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText('Send back chef’s choice?')).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
+
+    expect(
+      (await screen.findAllByText('Sent back: Ada Obi’s chef’s choice · Dropped')).length,
+    ).toBeGreaterThan(0);
+  });
+
   it('draws no action at a table the person may not write at', async () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: /^Table 3,/ }));
