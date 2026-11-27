@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ registerPushTarget: vi.fn(async () => {}) }));
 const device = vi.hoisted(() => ({ isDevice: true }));
-const settings = vi.hoisted(() => ({ easProjectId: 'project' as string | undefined }));
+const settings = vi.hoisted(() => ({
+  easProjectId: 'project' as string | undefined,
+  environment: 'development',
+}));
 const notifications = vi.hoisted(() => ({
   getPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
   requestPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
@@ -99,6 +102,7 @@ describe("the app's push (sc-3980)", () => {
     vi.clearAllMocks();
     device.isDevice = true;
     settings.easProjectId = 'project';
+    settings.environment = 'development';
     stored.clear();
     platform.OS = 'ios';
   });
@@ -162,6 +166,19 @@ describe("the app's push (sc-3980)", () => {
     expect(await pushAskDue()).toBe(true);
     await markPushAsked();
     expect(await pushAskDue()).toBe(false);
+
+    notifications.getPermissionsAsync.mockResolvedValue({ granted: true, status: 'granted' });
+  });
+
+  it('in a QA build asks on a simulator without a project id, and still registers no token', async () => {
+    settings.environment = 'qa';
+    settings.easProjectId = undefined;
+    device.isDevice = false;
+    notifications.getPermissionsAsync.mockResolvedValue({ granted: false, status: 'undetermined' });
+
+    expect(await pushAskDue()).toBe(true);
+    await registerAppPush();
+    expect(api.registerPushTarget).not.toHaveBeenCalled();
 
     notifications.getPermissionsAsync.mockResolvedValue({ granted: true, status: 'granted' });
   });
