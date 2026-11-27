@@ -1,0 +1,14 @@
+# sc-97734: one state of the door code's demo, /demo/redeem?state=${STATE}, screenshot demo-${STATE}. Pass STATE and ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/redeem?state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible: 'never-on-screen-sc97734'
+    timeout: 3000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-${STATE}

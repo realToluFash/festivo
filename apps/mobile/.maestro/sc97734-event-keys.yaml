@@ -1,0 +1,39 @@
+# sc-97734: the door code's event step, signed out, keys up on Your name, then Mobile number, then keys closed. Pass CODE (a working door code) and ORIENT (PORTRAIT or LANDSCAPE_LEFT). Screenshots: keys-name, keys-number, keys-closed.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: keys-name
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: 'redeem.event.number'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: keys-number
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: '.*(Can check guests|Pode fazer|Puede registrar|Peut enregistrer).*'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: keys-closed
