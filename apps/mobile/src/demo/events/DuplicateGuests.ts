@@ -9,7 +9,6 @@ export const WEDDING_LIST = { guests: 128, people: 156 } as const;
 
 export const COPY_PLAN = { plan: 'free', allowed: 100 } as const;
 
-/** The board's ceiling sample: a list of 10,412 people against the 10,000 no plan lifts. Sample, not spec. */
 export const COPY_CEILING = { ceiling: 10_000, adding: 10_412 } as const;
 
 export type CopyOver = 'plan' | 'ceiling';
@@ -99,7 +98,6 @@ export function createdLine(copied: number | null, t: TFunction): string {
 export interface GuestCopy {
   ticked: boolean;
   refused: boolean;
-  /** Which limit refused the copy: the ceiling state's, else the plan's. */
   over: CopyOver;
   copied: number | null;
   manages: boolean;
