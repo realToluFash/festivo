@@ -1,7 +1,24 @@
-# sc-97945: ${EVENT_ID}'s Overview, then the stack stopped within seconds (HOLD=1: after about three minutes), until the Kitchen station row adds "as of" beside the Offline band; the stack starts again at the end. LAND=1 turns an Android tablet to landscape first, ORIENT=1 an iPad. P prefixes the screenshots.
+# sc-97945: ${EVENT_ID}'s Overview, then the stack stopped within seconds (HOLD=1: after about three minutes), until the Kitchen station row adds "as of" beside the Offline band; the stack starts again when it ends, passed or failed. LAND=1 turns an Android tablet to landscape first, ORIENT=1 an iPad. P prefixes the screenshots.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+  - runFlow:
+      when:
+        true: ${typeof ORIENT !== 'undefined' && ORIENT}
+      commands:
+        - setOrientation: PORTRAIT
 ---
-- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- runFlow:
+    when:
+      true: ${typeof LAND !== 'undefined' && LAND}
+    commands:
+      - runScript:
+          file: ../batch/helper.js
+          env:
+            ASK: /landscape
 - runFlow:
     when:
       true: ${typeof ORIENT !== 'undefined' && ORIENT}
@@ -23,7 +40,10 @@ appId: host.exp.Exponent
           visible: 'QA_NEVER_THERE'
           timeout: 175000
           optional: true
-- evalScript: "${http.get(HELPER_URL + '/api?to=stopped').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - extendedWaitUntil:
     visible:
       id: 'events.station'
@@ -42,9 +62,3 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: ${P}-stale
-- evalScript: "${http.get(HELPER_URL + '/api?to=up').body}"
-- runFlow:
-    when:
-      true: ${typeof ORIENT !== 'undefined' && ORIENT}
-    commands:
-      - setOrientation: PORTRAIT
