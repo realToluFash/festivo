@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MAIN,
   barGeometry,
   eventLabelSize,
   staysWhole,
@@ -34,7 +35,7 @@ describe('the phone bars under 360dp (sc-99214)', () => {
   });
 
   it('would still break Convidados at 10 on main’s geometry at 320', () => {
-    expect(staysWhole(CONVIDADOS, 12, 10, (320 - 56) / 5)).toBe(false);
+    expect(staysWhole(CONVIDADOS, 12, 10, tabWidth(320, 5, MAIN))).toBe(false);
   });
 
   it('keeps Événements whole at 12 on Today’s bar at 320, at 100 and 200 percent', () => {
