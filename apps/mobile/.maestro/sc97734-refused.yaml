@@ -1,4 +1,4 @@
-# sc-97734: a refused Send code on the door code's event step, then the keys up on each field. Pass CODE, ORIENT, PAUSE (ms to wait before Send, 1 unless something must change first), NUMBER (a valid UK mobile, no leading 0), and STOP_URL and TOKEN to stop the code before Send ("That code does not work"); for "Something went wrong on the way" stop the API before Send instead and pass STOP_URL=none. Screenshots: refused-sent, refused-keys-name, refused-keys-number.
+# sc-97734: a refused Send code on the door code's event step, then the keys up on each field. Pass CODE, ORIENT, PAUSE (ms to wait before Send, 1 unless something must change first), NUMBER (a valid UK mobile, no leading 0), and STOP_URL, TOKEN and ORIGIN (the stack's web URL) to stop the code before Send ("That code does not work"); for "Something went wrong on the way" stop the API before Send instead and pass STOP_URL=none. Screenshots: refused-sent, refused-keys-name, refused-keys-number.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -8,13 +8,24 @@ appId: host.exp.Exponent
       id: 'redeem.name.field'
     timeout: 30000
 - inputText: 'Ada Member'
-- pressKey: Enter
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: 'redeem.event.number'
 - inputText: ${NUMBER}
 - runScript:
     file: sc97734-stop.js
     env:
       STOP_URL: ${STOP_URL}
       TOKEN: ${TOKEN}
+      ORIGIN: ${ORIGIN}
 - extendedWaitUntil:
     visible: 'never-on-screen-sc97734'
     timeout: ${PAUSE}

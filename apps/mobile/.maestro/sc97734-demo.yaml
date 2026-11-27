@@ -1,4 +1,4 @@
-# sc-97734: one state of the door code's demo, /demo/redeem?state=${STATE}, screenshot demo-${STATE}. Pass STATE and ORIENT.
+# sc-97734: one state of the door code's demo, /demo/redeem?state=${STATE}, screenshot demo-${STATE}. Pass STATE and ORIENT, and WAIT_ID when the state has no Your name field (its own control's id).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -6,9 +6,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
-    visible: 'never-on-screen-sc97734'
-    timeout: 3000
-    optional: true
+    visible:
+      id: ${WAIT_ID || 'redeem.name.field'}
+    timeout: 15000
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: demo-${STATE}

@@ -11,13 +11,17 @@ appId: host.exp.Exponent
     timeout: 4000
 - setOrientation: LANDSCAPE_LEFT
 - extendedWaitUntil:
-    visible: 'never-on-screen-sc97734'
+    visible:
+      id: 'redeem.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
     timeout: 3000
-    optional: true
 - takeScreenshot: rotate-land
 - setOrientation: PORTRAIT
 - extendedWaitUntil:
-    visible: 'never-on-screen-sc97734'
+    visible:
+      id: 'redeem.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
     timeout: 3000
-    optional: true
 - takeScreenshot: rotate-back
