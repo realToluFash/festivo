@@ -555,5 +555,20 @@
     "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests.",
     "saved_audience.full": "This event has {most, number, ::group-auto} saved audiences, the most it can have. Delete one to save another.",
     "validation.guest_greet_as_too_long": "{count, plural, one {Shorten Greet as to {count, number, ::group-auto} character or fewer.} other {Shorten Greet as to {count, number, ::group-auto} characters or fewer.}}",
-    "validation.guest_message_token_unknown": "Not sent. Part of the message cannot be filled in for each guest: remove it, then use Insert."
+    "validation.guest_message_token_unknown": "Not sent. Part of the message cannot be filled in for each guest: remove it, then use Insert.",
+    "usage_warning.drafts.heading_part": "{organisation} has used {percent} of its included assistant drafts",
+    "usage_warning.drafts.heading_all": "{organisation} has used all its included assistant drafts",
+    "usage_warning.storage.heading_part": "{organisation} has used {percent} of its included storage",
+    "usage_warning.storage.heading_all": "{organisation} has used all its included storage",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} of {included, plural, one {{included, number, ::group-auto} assistant draft} other {{included, number, ::group-auto} assistant drafts}}",
+    "usage.storage_row": "{used} of {included} storage",
+    "usage.size.megabyte": "{size} MB",
+    "usage.size.gigabyte": "{size} GB",
+    "usage.size.terabyte": "{size} TB",
+    "usage_warning.drafts.next_part": "After your included assistant drafts, each draft costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}}.",
+    "usage_warning.drafts.next_all": "Each assistant draft now costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}} until your included drafts reset.",
+    "usage_warning.drafts.reset": "Your included assistant drafts reset on {date}.",
+    "usage_warning.storage.next": "Uploads keep working, and nothing is charged.",
+    "usage_warning.email.open": "Open Plan and billing",
+    "usage_warning.email.link": "{label}: {url}"
 }

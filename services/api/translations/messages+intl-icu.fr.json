@@ -555,5 +555,20 @@
     "guest_message.event_ended": "Cet événement s’est terminé il y a plus de 30 jours : vous ne pouvez plus écrire à ses invités.",
     "saved_audience.full": "Cet événement compte {most, number, ::group-auto} audiences enregistrées, le maximum possible. Supprimez-en une pour en enregistrer une autre.",
     "validation.guest_greet_as_too_long": "Raccourcissez l’appellation à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
-    "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer."
+    "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer.",
+    "usage_warning.drafts.heading_part": "{organisation} has used {percent} of its included assistant drafts",
+    "usage_warning.drafts.heading_all": "{organisation} has used all its included assistant drafts",
+    "usage_warning.storage.heading_part": "{organisation} has used {percent} of its included storage",
+    "usage_warning.storage.heading_all": "{organisation} has used all its included storage",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} of {included, plural, one {{included, number, ::group-auto} assistant draft} other {{included, number, ::group-auto} assistant drafts}}",
+    "usage.storage_row": "{used} of {included} storage",
+    "usage.size.megabyte": "{size} MB",
+    "usage.size.gigabyte": "{size} GB",
+    "usage.size.terabyte": "{size} TB",
+    "usage_warning.drafts.next_part": "After your included assistant drafts, each draft costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}}.",
+    "usage_warning.drafts.next_all": "Each assistant draft now costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}} until your included drafts reset.",
+    "usage_warning.drafts.reset": "Your included assistant drafts reset on {date}.",
+    "usage_warning.storage.next": "Uploads keep working, and nothing is charged.",
+    "usage_warning.email.open": "Open Plan and billing",
+    "usage_warning.email.link": "{label}: {url}"
 }

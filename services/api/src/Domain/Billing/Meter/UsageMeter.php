@@ -47,6 +47,7 @@ final readonly class UsageMeter
         private Catalogue $catalogue,
         private UnitPricer $unitPricer,
         private UsagePublisher $usagePublisher,
+        private UsageWarnings $usageWarnings,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {
@@ -211,12 +212,13 @@ final readonly class UsageMeter
     {
         $subscription = $this->subscriptionRepository->findCurrentOf($organisationId);
         $now = $this->now();
-        $period = $this->subscriptionPeriods->containing($subscription, $now)->period;
+        $inForce = $this->subscriptionPeriods->containing($subscription, $now);
+        $period = $inForce->period;
         $key = $organisationId->toRfc4122() . '/' . $day->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d');
         $organisation = $subscription->getOrganisation();
         $account = $subscription->getBillingAccount();
 
-        $record = $this->connection()->transactional(function () use ($organisation, $account, $bytes, $now, $period, $key): UsageRecord {
+        $record = $this->connection()->transactional(function () use ($organisation, $account, $bytes, $now, $inForce, $period, $key): UsageRecord {
             $this->lockAccount($account->getId());
             $record = $this->recordUnder($organisation->getId(), UsageKind::StorageBytes, $key);
 
@@ -237,6 +239,7 @@ final readonly class UsageMeter
                     SQL,
                 ['organisation' => $organisation->getId()->toRfc4122(), 'start' => $period->start->format(self::DATETIME), 'bytes' => $bytes],
             );
+            $this->usageWarnings->after($organisation->getId(), $period, UsageKind::StorageBytes, $bytes, self::allowance($inForce->terms, UsageKind::StorageBytes), 0);
 
             return $record;
         });
@@ -281,7 +284,8 @@ final readonly class UsageMeter
         $reservedPrice = $reservation->getCreditsPerUnit();
         $sameKind = $delivered->kind === $reservation->getKind();
         $paidByReservedUnit = false;
-        $terms = $this->subscriptionPeriods->containing($this->subscriptionRepository->findCurrentOf($organisationId), $periodStart)->terms;
+        $inForce = $this->subscriptionPeriods->containing($this->subscriptionRepository->findCurrentOf($organisationId), $periodStart);
+        $terms = $inForce->terms;
         $free = $this->includedFree($organisationId, $periodStart, $delivered->kind, self::allowance($terms, $delivered->kind));
 
         if ($sameKind) {
@@ -310,6 +314,10 @@ final readonly class UsageMeter
         }
 
         $this->addToAccount($reservation->getBillingAccount()->getId(), balance: -$credits, held: -($fromCredits * $reservedPrice));
+
+        if (UsageKind::AiRequest === $delivered->kind) {
+            $this->usageWarnings->after($organisationId, $inForce->period, UsageKind::AiRequest, $this->used($organisationId, $periodStart, UsageKind::AiRequest), self::allowance($terms, UsageKind::AiRequest), $this->catalogue->unitCosts()->aiProposal);
+        }
 
         if ($late || $beyond > 0) {
             $this->logger->notice($late ? 'A late settle: its reservation was released before it.' : 'A settle went beyond what its reservation held.', ['reservationId' => $reservation->getId()->toRfc4122(), 'recordId' => $record->getId()->toRfc4122(), 'creditsTaken' => $credits]);
@@ -425,6 +433,15 @@ final readonly class UsageMeter
         ) ?: 0);
 
         return Math\maxva(0, $allowance->amount - $taken);
+    }
+
+    /** @return int<0, max> */
+    private function used(Uuid $organisationId, DateTimeImmutable $periodStart, UsageKind $kind): int
+    {
+        return Type\uint()->coerce($this->connection()->fetchOne(
+            'SELECT used FROM usage_totals WHERE organisation_id = :organisation AND period_start = :start AND kind = :kind',
+            ['organisation' => $organisationId->toRfc4122(), 'start' => $periodStart->format(self::DATETIME), 'kind' => $kind->value],
+        ) ?: 0);
     }
 
     /** @return array{credit_balance: int, credits_held: int} */
