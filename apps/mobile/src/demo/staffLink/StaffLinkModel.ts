@@ -3,7 +3,6 @@ export type LinkStatus = 'none' | 'shared' | 'copied' | 'sent' | 'opened';
 export interface Who {
   id: string;
   name: string;
-  first: string;
   job: string;
   shift: string;
   mobile: string | null;
@@ -12,7 +11,6 @@ export interface Who {
 export const PERSON: Who = {
   id: 'ada-obi',
   name: 'Ada Obi',
-  first: 'Ada',
   job: 'Waiter',
   shift: '17:00 to 00:00',
   mobile: '+2348031110004',
@@ -34,16 +32,16 @@ export const W = {
   replace: 'Replace link',
   replaceOpen: 'Replace link…',
   keep: 'Keep this link',
-  replaceTitle: (first: string) => `Replace ${first}’s link?`,
+  replaceTitle: (name: string) => `Replace ${name}’s link?`,
   replaceLine: 'Their current link stops working now.',
-  didYouSend: (first: string) => `Did you send it to ${first}?`,
+  didYouSend: (name: string) => `Did you send it to ${name}?`,
   didYouSendLine: 'The share sheet cannot tell whether it went.',
   copied: 'Link copied.',
   notIssued: 'That did not work. Try again in a moment.',
   refused: 'The link could not be copied. Copy it from the link field.',
   linkFor: (name: string) => `Link for ${name}`,
-  replaced: (first: string) => `[${first}’s link is replaced. Share link gives them a new one.]`,
-  marked: (first: string) => `[Marked as sent to ${first}.]`,
+  replaced: (name: string) => `[${name}’s link is replaced. Share link gives them a new one.]`,
+  marked: (name: string) => `[Marked as sent to ${name}.]`,
   help: 'It opens their own shift, from 12 hours before it starts.',
   noMobile: 'Add a mobile number to send a link',
   noMobileLine: '[Their mobile number is added on the web, in the roster.]',
@@ -155,9 +153,7 @@ export function copyRefused(s: LinkState, url: string): LinkState {
 export function backFromShare(s: LinkState): LinkState {
   const next = { ...s, ...delivered(s, 'shared'), busy: null };
 
-  return next.status === 'shared'
-    ? { ...next, asking: true, say: W.didYouSend(s.who.first) }
-    : next;
+  return next.status === 'shared' ? { ...next, asking: true, say: W.didYouSend(s.who.name) } : next;
 }
 
 export function markSent(s: LinkState): LinkState {
@@ -167,8 +163,8 @@ export function markSent(s: LinkState): LinkState {
     trail: mine(),
     asking: false,
     held: null,
-    toast: W.marked(s.who.first),
-    say: W.marked(s.who.first),
+    toast: W.marked(s.who.name),
+    say: W.marked(s.who.name),
   };
 }
 
@@ -182,7 +178,7 @@ export function askReplace(s: LinkState, open: boolean): LinkState {
 
 /** Replace link ends every link they were given and issues nothing: the next Share or Copy gives a new one. */
 export function replace(s: LinkState): LinkState {
-  const toast = W.replaced(s.who.first);
+  const toast = W.replaced(s.who.name);
 
   return {
     ...s,
@@ -296,7 +292,6 @@ const fresh = (who: Who): LinkState => ({
 const NO_MOBILE: Who = {
   id: 'ada',
   name: 'Ada Nnaji',
-  first: 'Ada',
   job: 'Cook',
   shift: '15:00 to 23:00',
   mobile: null,

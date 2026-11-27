@@ -28,7 +28,7 @@ describe('one person’s link in the app (sc-3912)', () => {
     const s = backFromShare(pressed(seed('none'), 'share'));
     expect(s.status).toBe('shared');
     expect(s.asking).toBe(true);
-    expect(s.say).toBe('Did you send it to Ada?');
+    expect(s.say).toBe('Did you send it to Ada Obi?');
     expect(trailLine(s.status, s.trail)).toBe(`Shared by ${YOU} · ${NOW} · not marked as sent`);
     expect(offersMarkSent(s)).toBe(false);
     expect(offersMarkSent(notYet(s))).toBe(true);
@@ -69,7 +69,7 @@ describe('one person’s link in the app (sc-3912)', () => {
 
   it('opens Replace link with an ellipsis, since it asks first', () => {
     expect(W.replaceOpen).toBe('Replace link…');
-    expect(W.replaceTitle('Ada')).toBe('Replace Ada’s link?');
+    expect(W.replaceTitle('Ada Obi')).toBe('Replace Ada Obi’s link?');
   });
 
   it('records nothing when no link is issued, and keeps the status', () => {

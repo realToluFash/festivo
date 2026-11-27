@@ -50,7 +50,7 @@ import {
   seedFor,
   trailLine,
 } from './StaffLinkModel.ts';
-import { RW, firstName, keep, personOf, removeKept, restoreKept } from './StaffRosterModel.ts';
+import { RW, keep, personOf, removeKept, restoreKept } from './StaffRosterModel.ts';
 import {
   BALANCE,
   QUIET_ENDS,
@@ -92,7 +92,6 @@ export function StaffLinkRoute() {
           {
             id: person.id,
             name: person.name,
-            first: firstName(person.name),
             job: person.job ?? RW.noJob,
             shift: person.shift ?? RW.noShift,
             mobile: person.mobile,
@@ -333,7 +332,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
       {s.asking && (
         <View style={styles.ask} testID="staffLink.ask">
           <Text size={17} weight="bold" accessibilityRole="header">
-            {W.didYouSend(who.first)}
+            {W.didYouSend(who.name)}
           </Text>
           <Text size={15} style={styles.secondary}>
             {W.didYouSendLine}
@@ -507,14 +506,14 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
               </>
             )}
             <SecondaryButton
-              label={`${who.first} opens the link`}
+              label={`${who.name} opens the link`}
               onPress={() =>
                 apply({ ...s, status: 'opened', trail: { by: '', at: '19:20' }, say: '' })
               }
               testID="staffLink.demo.opened"
             />
             <SecondaryButton
-              label={`${who.first} is removed on the web`}
+              label={`${who.name} is removed on the web`}
               onPress={() => apply(removedNow(s))}
               testID="staffLink.demo.removed"
             />
@@ -629,7 +628,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
       >
         <View style={styles.confirm}>
           <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-            {W.replaceTitle(who.first)}
+            {W.replaceTitle(who.name)}
           </Text>
           <Text size={tokens.typeBodyPhone.size}>{W.replaceLine}</Text>
           <SheetActions>
