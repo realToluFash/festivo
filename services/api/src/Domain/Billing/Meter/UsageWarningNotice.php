@@ -25,7 +25,6 @@ use Psl\Dict;
 use Psl\Math;
 use Psl\Str;
 use Psl\Type;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -34,17 +33,12 @@ final readonly class UsageWarningNotice implements NotificationTypeInterface
 {
     public const string NAME = 'billing.usage_warning';
 
-    /** Plan and billing at Usage this period, in the organisation the warning names: the web switches to it first. */
-    public const string PLACE = '/app/settings/plan-and-billing?organisation=%s#usage-this-period';
-
     /** @var non-empty-list<array{string, int}> decimal, largest first */
     private const array UNITS = [['terabyte', 1_000_000_000_000], ['gigabyte', 1_000_000_000], ['megabyte', 1_000_000]];
 
     public function __construct(
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
-        #[Autowire(env: 'CORS_WEB_ORIGIN')]
-        private string $webOrigin,
     ) {
     }
 
@@ -60,11 +54,6 @@ final readonly class UsageWarningNotice implements NotificationTypeInterface
             'resetsAt' => $periodEnd->format(\DATE_ATOM),
             'draftCost' => $draftCost,
         ];
-    }
-
-    public static function place(Uuid $organisationId): string
-    {
-        return Str\format(self::PLACE, $organisationId->toRfc4122());
     }
 
     public function name(): string
@@ -141,8 +130,8 @@ final readonly class UsageWarningNotice implements NotificationTypeInterface
     {
         $warning = self::shape($payloads[0]);
         $locale = $recipient->locale;
-        $organisationId = Uuid::fromString($warning['organisationId']);
-        $name = $this->organisation($warning['organisationId'])?->getName() ?? '';
+        $organisation = $this->organisation($warning['organisationId']);
+        $name = $organisation?->getName() ?? '';
         $drafts = UsageKind::AiRequest->value === $warning['kind'];
         $all = 100 <= $warning['threshold'];
         $what = $drafts ? 'drafts' : 'storage';
@@ -153,26 +142,18 @@ final readonly class UsageWarningNotice implements NotificationTypeInterface
             ? [
                 $this->trans('usage.assistant_drafts_row', ['used' => $warning['used'], 'included' => $warning['included']], $locale),
                 $this->trans($all ? 'usage_warning.drafts.next_all' : 'usage_warning.drafts.next_part', ['count' => $warning['draftCost']], $locale),
-                $this->trans('usage_warning.drafts.reset', ['date' => self::day(new DateTimeImmutable($warning['resetsAt']), $locale)], $locale),
+                $this->trans('usage_warning.drafts.reset', ['date' => self::day(new DateTimeImmutable($warning['resetsAt']), $organisation?->getTimezone() ?? 'UTC', $locale)], $locale),
             ]
             : [
                 $this->trans('usage.storage_row', ['used' => $this->size($warning['used'], $locale), 'included' => $this->size($warning['included'], $locale)], $locale),
                 $this->trans('usage_warning.storage.next', [], $locale),
             ];
 
-        $place = self::place($organisationId);
-
         if (NotificationChannel::Email === $channel) {
-            return new RenderedNotification($title, Str\join([
-                $title,
-                '',
-                ...$lines,
-                '',
-                $this->trans('usage_warning.email.link', ['label' => $this->trans('usage_warning.email.open', [], $locale), 'url' => Str\trim_right($this->webOrigin, '/') . $place], $locale),
-            ], "\n"));
+            return new RenderedNotification($title, Str\join([$title, '', ...$lines], "\n"));
         }
 
-        return new RenderedNotification($title, Str\join($lines, "\n"), $lines, $place);
+        return new RenderedNotification($title, Str\join($lines, "\n"), $lines);
     }
 
     /** In the largest of MB, GB and TB in which it is at least 1 (MB below 1 MB), at most one decimal, rounded down: a size never reads as the included amount before it is reached. */
@@ -202,12 +183,12 @@ final readonly class UsageWarningNotice implements NotificationTypeInterface
         return false === $formatted ? $threshold . '%' : $formatted;
     }
 
-    /** Day and long month, with no weekday and no time, as Usage this period's range shows it. */
-    private static function day(DateTimeImmutable $at, string $locale): string
+    /** Day and long month in the organisation's time zone, with no weekday and no time, as Usage this period's range shows it. */
+    private static function day(DateTimeImmutable $at, string $timezone, string $locale): string
     {
         $dates = SupportedLocales::dates($locale);
         $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('dMMMM');
-        $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'UTC', null, false === $pattern ? 'd MMMM' : $pattern);
+        $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timezone, null, false === $pattern ? 'd MMMM' : $pattern);
 
         return $formatter?->format($at) ?: $at->format('Y-m-d');
     }

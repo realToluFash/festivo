@@ -183,7 +183,7 @@ final class UsageWarningTest extends FunctionalTestCase
             'After your included assistant drafts, each draft costs 13 credits.',
             'Your included assistant drafts reset on 1 December.',
         ], $item->lines);
-        self::assertSame('/app/settings/plan-and-billing?organisation=' . $this->organisation->toRfc4122() . '#usage-this-period', $item->place);
+        self::assertNull($item->place, 'Plan and billing is not built yet (sc-3934), so opening the item opens nothing');
 
         $all = $this->rendered(NotificationChannel::InApp, 'en', UsageKind::AiRequest, 100, 5, 5);
         self::assertSame('Ìrè Events has used all its included assistant drafts', $all->subject);
@@ -215,18 +215,25 @@ final class UsageWarningTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function theEmailRepeatsTheHeadingThenTheLinesThenOneLinkToPlanAndBillingInThatOrganisation(): void
+    public function theResetDayIsTheDayInTheOrganisationsTimeZone(): void
+    {
+        $this->moveTo('America/Los_Angeles');
+        self::assertSame('Your included assistant drafts reset on 30 November.', $this->rendered(NotificationChannel::InApp, 'en', UsageKind::AiRequest, 80, 4, 5, '2026-12-01T05:00:00+00:00')->lines[2]);
+
+        $this->moveTo('Asia/Tokyo');
+        self::assertSame('Your included assistant drafts reset on 1 December.', $this->rendered(NotificationChannel::InApp, 'en', UsageKind::AiRequest, 80, 4, 5, '2026-11-30T20:00:00+00:00')->lines[2]);
+    }
+
+    #[Test]
+    public function theEmailRepeatsTheHeadingThenTheLinesWithNoWebAddress(): void
     {
         $email = $this->rendered(NotificationChannel::Email, 'en', UsageKind::StorageBytes, 100, 2 * self::GB, 2 * self::GB);
 
         self::assertSame('Ìrè Events has used all its included storage', $email->subject);
-        $lines = Str\split($email->body, "\n");
-        $link = Vec\reverse($lines)[0] ?? '';
-
-        self::assertSame(['Ìrè Events has used all its included storage', '', '2 GB of 2 GB storage', 'Uploads keep working, and nothing is charged.', ''], Vec\slice($lines, 0, 5));
-        self::assertCount(6, $lines);
-        self::assertStringStartsWith('Open Plan and billing: http', $link);
-        self::assertStringEndsWith('/app/settings/plan-and-billing?organisation=' . $this->organisation->toRfc4122() . '#usage-this-period', $link);
+        self::assertSame(['Ìrè Events has used all its included storage', '', '2 GB of 2 GB storage', 'Uploads keep working, and nothing is charged.'], Str\split($email->body, "\n"));
+        self::assertStringNotContainsString('http', $email->body);
+        self::assertStringNotContainsString('/app/', $email->body);
+        self::assertNull($email->place);
     }
 
     #[Test]
@@ -238,11 +245,17 @@ final class UsageWarningTest extends FunctionalTestCase
         self::assertSame(2, Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT used FROM usage_totals WHERE organisation_id = ? AND kind = ?', [$this->organisation->toRfc4122(), 'ai_request'])));
     }
 
-    private function rendered(NotificationChannel $channel, string $locale, UsageKind $kind, int $threshold, int $used, int $included): RenderedNotification
+    private function rendered(NotificationChannel $channel, string $locale, UsageKind $kind, int $threshold, int $used, int $included, string $periodEnd = '2026-12-01T09:00:00+00:00'): RenderedNotification
     {
-        $payload = UsageWarningNotice::payload($this->organisation, $kind, $threshold, $used, $included, new DateTimeImmutable('2026-12-01T09:00:00+00:00'), 13);
+        $payload = UsageWarningNotice::payload($this->organisation, $kind, $threshold, $used, $included, new DateTimeImmutable($periodEnd), 13);
 
         return self::service(UsageWarningNotice::class)->render($channel, new Recipient(NotificationAudienceKind::Member, $this->owner, 'Folake Adeyemi', $locale, 'folake@ire.events'), [$payload]);
+    }
+
+    private function moveTo(string $timezone): void
+    {
+        self::em()->getConnection()->executeStatement('UPDATE organisations SET timezone = ? WHERE id = ?', [$timezone, $this->organisation->toRfc4122()]);
+        self::em()->clear();
     }
 
     private function meter(): UsageMeter

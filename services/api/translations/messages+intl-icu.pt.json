@@ -568,7 +568,5 @@
     "usage_warning.drafts.next_part": "After your included assistant drafts, each draft costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}}.",
     "usage_warning.drafts.next_all": "Each assistant draft now costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}} until your included drafts reset.",
     "usage_warning.drafts.reset": "Your included assistant drafts reset on {date}.",
-    "usage_warning.storage.next": "Uploads keep working, and nothing is charged.",
-    "usage_warning.email.open": "Open Plan and billing",
-    "usage_warning.email.link": "{label}: {url}"
+    "usage_warning.storage.next": "Uploads keep working, and nothing is charged."
 }
