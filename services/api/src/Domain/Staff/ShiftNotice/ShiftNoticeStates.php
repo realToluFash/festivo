@@ -134,6 +134,7 @@ final readonly class ShiftNoticeStates
             'old' => $change->old,
             'count' => $change->count,
             'on' => $at($change->on),
+            'dated' => $change->dated,
         ];
     }
 

@@ -103,6 +103,7 @@ final class ShiftNoticesTest extends ApiTestCase
                 'old' => null,
                 'count' => 0,
                 'on' => '2027-03-06T19:00:00+01:00',
+                'dated' => false,
             ]],
         ], $this->row($this->ada)['notice']);
 
@@ -695,7 +696,7 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     /**
-     * @param array<string, string>       $edit
+     * @param array<string, mixed>        $edit
      * @param array{0: string, 1: string} $moved     the evening shift's times after
      * @param array{0: string, 1: string} $overnight those of a shift over midnight
      */
@@ -710,7 +711,7 @@ final class ShiftNoticesTest extends ApiTestCase
         self::assertSame($overnight, $this->timesOf($night));
     }
 
-    /** @return iterable<string, array{array<string, string>, array{string, string}, array{string, string}}> */
+    /** @return iterable<string, array{array<string, mixed>, array{string, string}, array{string, string}}> */
     public static function savedStarts(): iterable
     {
         $stayed = [['2027-03-06T18:00', '2027-03-06T23:00'], ['2027-03-06T22:00', '2027-03-07T02:00']];
@@ -728,7 +729,7 @@ final class ShiftNoticesTest extends ApiTestCase
         yield 'a later time on the same day' => [['startsAt' => '2027-03-06T20:00'], ...$stayed];
         yield 'the end alone' => [['endsAt' => '2027-03-09T02:00'], ...$stayed];
         yield 'the time zone alone' => [['timeZone' => 'Pacific/Auckland'], ...$stayed];
-        yield 'the venue and the reply-by day' => [['replyBy' => '2027-03-04'], ...$stayed];
+        yield 'the venue and the reply-by day' => [['venue' => ['name' => 'Eko Hotel'], 'replyBy' => '2027-03-04'], ...$stayed];
     }
 
     #[Test]
@@ -803,18 +804,50 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->briefed($this->ada);
         $this->editEvent(['startsAt' => '2027-03-07T16:00', 'endsAt' => '2027-03-08T02:00']);
 
-        $waiting = Type\shape(['changes' => Type\vec(Type\shape(['kind' => Type\string()], true))], true)->coerce($this->row($this->ada)['notice']);
-        self::assertSame(['date', 'start_time', 'end_time'], Vec\map($waiting['changes'], static fn (array $change): string => $change['kind']));
+        self::assertSame([['date', null, false], ['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
         self::assertSame('changed', $this->row($this->ada)['briefing']);
 
         $this->at('2027-03-01T10:15:00Z');
 
         self::assertSame([['Your shift has changed · Owambe', [
             'The date is now Sunday 7 Mar (was Saturday 6 Mar).',
-            'Your start time is now 18:00 (was Saturday 18:00).',
-            'Your end time is now 23:00 (was Saturday 23:00).',
+            'Your start time is now Sunday 18:00 (was Saturday 18:00).',
+            'Your end time is now Sunday 23:00 (was Saturday 23:00).',
         ], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
         self::assertSame('sent', $this->row($this->ada)['briefing']);
+    }
+
+    #[Test]
+    public function aShiftMovedToAnotherDayWithEditTimesNamesItsNewDay(): void
+    {
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-07T18:00', '2027-03-07T23:00');
+
+        self::assertSame([['start_time', null, false], ['end_time', null, false]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(
+            ['Your start time is now Sunday 18:00 (was Saturday 18:00).', 'Your end time is now Sunday 23:00 (was Saturday 23:00).'],
+            $this->pushes()[0][1],
+        );
+    }
+
+    #[Test]
+    public function aMoveOfSevenDaysGivesEachWeekdayItsDate(): void
+    {
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-13T16:00', 'endsAt' => '2027-03-14T02:00']);
+
+        self::assertSame([['date', null, false], ['start_time', null, true], ['end_time', null, true]], $this->waitingLines($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([
+            'The date is now Saturday 13 Mar (was Saturday 6 Mar).',
+            'Your start time is now Saturday 13 Mar, 18:00 (was Saturday 6 Mar, 18:00).',
+            'Your end time is now Saturday 13 Mar, 23:00 (was Saturday 6 Mar, 23:00).',
+        ], $this->pushes()[0][1]);
     }
 
     #[Test]
@@ -831,6 +864,14 @@ final class ShiftNoticesTest extends ApiTestCase
 
         $this->at('2027-03-06T09:00:00Z');
         self::assertCount(1, $this->reminders());
+    }
+
+    /** @return list<array{string, ?string, bool}> each Waiting line's kind, the day a time need not name, and whether its weekdays are dated */
+    private function waitingLines(string $staffId): array
+    {
+        $notice = Type\shape(['changes' => Type\vec(Type\shape(['kind' => Type\string(), 'on' => Type\nullable(Type\string()), 'dated' => Type\bool()], true))], true)->coerce($this->row($staffId)['notice']);
+
+        return Vec\map($notice['changes'], static fn (array $change): array => [$change['kind'], $change['on'], $change['dated']]);
     }
 
     private function shiftEntity(string $shiftId): StaffShift

@@ -7,14 +7,18 @@ namespace App\Domain\Staff\ShiftNotice;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Enum\ShiftChangeKind;
+use DateTimeImmutable;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Vec;
 
 /** Above three shift lines, removals are chosen first, then the soonest (sc-4333, "Decided, 26 Nov (pm): several shifts"). */
 final readonly class ShiftChanges
 {
     public const int SHIFT_LINES_SHOWN = 3;
+
+    private const int DATED_MOVE_DAYS = 7;
 
     /**
      * @param ?non-negative-int $shown the shift lines named, every one when null, as the roster's Waiting lines have them
@@ -43,15 +47,18 @@ final readonly class ShiftChanges
     {
         $told = Vec\values($toldOf->shifts)[0];
         $now = Vec\values($nowOf->shifts)[0];
-        $on = ShiftTold::wall($now[0]);
+        $toldStart = ShiftTold::wall($told[0]);
+        $nowStart = ShiftTold::wall($now[0]);
+        $on = 0 === self::daysMoved($toldStart, $nowStart) ? $nowStart : null;
+        $dated = self::isDatedMove($toldStart, $nowStart);
         $lines = [];
 
         if ($now[0] !== $told[0]) {
-            $lines[] = ShiftChange::time(ShiftChangeKind::StartTime, $on, ShiftTold::wall($told[0]), $on);
+            $lines[] = ShiftChange::time(ShiftChangeKind::StartTime, $nowStart, $toldStart, $on, $dated);
         }
 
         if ($now[1] !== $told[1]) {
-            $lines[] = ShiftChange::time(ShiftChangeKind::EndTime, ShiftTold::wall($now[1]), ShiftTold::wall($told[1]), $on);
+            $lines[] = ShiftChange::time(ShiftChangeKind::EndTime, ShiftTold::wall($now[1]), ShiftTold::wall($told[1]), $on, $dated);
         }
 
         return $lines;
@@ -78,7 +85,7 @@ final readonly class ShiftChanges
             if (null === $before) {
                 $others[] = ShiftChange::shift(ShiftChangeKind::ShiftAdded, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]));
             } elseif ($before !== $times) {
-                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftRetimed, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]), ShiftTold::wall($before[0]), ShiftTold::wall($before[1]));
+                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftRetimed, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]), ShiftTold::wall($before[0]), ShiftTold::wall($before[1]), self::isDatedMove(ShiftTold::wall($before[0]), ShiftTold::wall($times[0])));
             }
         }
 
@@ -97,5 +104,16 @@ final readonly class ShiftChanges
         }
 
         return $lines;
+    }
+
+    /** A week or more on, a weekday alone could read as the day it left. */
+    private static function isDatedMove(DateTimeImmutable $from, DateTimeImmutable $to): bool
+    {
+        return self::DATED_MOVE_DAYS <= Math\abs(self::daysMoved($from, $to));
+    }
+
+    private static function daysMoved(DateTimeImmutable $from, DateTimeImmutable $to): int
+    {
+        return (int) $from->setTime(0, 0)->diff($to->setTime(0, 0))->format('%r%a');
     }
 }

@@ -8,6 +8,7 @@ use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Domain\Staff\ShiftNotice\ShiftChanges;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Psl\Iter;
 use Psl\Vec;
@@ -45,6 +46,34 @@ final class ShiftChangesTest extends TestCase
             [['start_time', '2027-03-07 17:00', '2027-03-06 17:00'], ['end_time', '2027-03-07 23:00', '2027-03-06 23:00']],
             self::read($told, self::told(['b' => ['2027-03-07 17:00', '2027-03-07 23:00']])),
         );
+    }
+
+    #[Test]
+    #[TestWith(['2027-03-06 19:00', '2027-03-06 19:00', false])]
+    #[TestWith(['2027-03-07 17:00', null, false])]
+    #[TestWith(['2027-03-05 17:00', null, false])]
+    #[TestWith(['2027-03-12 23:30', null, false])]
+    #[TestWith(['2027-03-13 00:30', null, true])]
+    #[TestWith(['2027-02-27 17:00', null, true])]
+    public function aOneShiftTimeNeedNotNameADayOnlyWhileItsStartStaysOnIt(string $start, ?string $on, bool $dated): void
+    {
+        $lines = ShiftChanges::between(self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00']]), self::told(['a' => [$start, '2027-03-14 01:00']]));
+
+        self::assertSame(
+            [[$on, $dated], [$on, $dated]],
+            Vec\map($lines, static fn (ShiftChange $line): array => [$line->on?->format('Y-m-d H:i'), $line->dated]),
+        );
+    }
+
+    #[Test]
+    public function amongSeveralShiftsOnlyOneMovedAWeekIsDated(): void
+    {
+        $lines = ShiftChanges::between(
+            self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00'], 'b' => ['2027-03-07 12:00', '2027-03-07 18:00']]),
+            self::told(['a' => ['2027-03-12 17:00', '2027-03-12 23:00'], 'b' => ['2027-03-14 12:00', '2027-03-14 18:00']]),
+        );
+
+        self::assertSame([false, true], Vec\map($lines, static fn (ShiftChange $line): bool => $line->dated));
     }
 
     #[Test]
