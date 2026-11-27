@@ -950,6 +950,7 @@ describe('The briefing on the Roster (sc-3917)', () => {
     tables: null,
     checksIn: false,
     dishes: false,
+    floor: false,
     whosHere: false,
     rules: 'Black shirts. Phones away on the floor.',
   };

@@ -3816,6 +3816,14 @@
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "Floor didn’t load. Try again.",
+      "wayIn": {
+        "title": "Floor",
+        "line": "{{where}} · {{course}}",
+        "allTables": "All tables",
+        "noSection": "No section yet",
+        "said": "Floor, {{line}}",
+        "open": "Open Floor"
+      },
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",

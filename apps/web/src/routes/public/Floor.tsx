@@ -27,13 +27,14 @@ import {
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { restoreSession, useSessionState } from '../../session.ts';
 import { NotSignedIn } from './DoorCheckIn.tsx';
+import { shiftAddress } from './doorCheckIn.ts';
 import { useFloor } from './useFloor.ts';
 import './floor.css';
 
@@ -130,7 +131,7 @@ function useWide(): boolean {
   );
 }
 
-/** /floor/:eventId (sc-4021): Floor in a signed-in staff member's browser, as the app draws it. */
+/** /floor/:eventId (sc-4021): Floor in a signed-in staff member's browser, as the app draws it; ?from=night gives it Your night's way back (sc-98893). */
 export function FloorPage() {
   const { eventId = '' } = useParams();
   const session = useSessionState();
@@ -148,6 +149,8 @@ export function FloorPage() {
 
 function Floor({ eventId }: { eventId: string }) {
   const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const fromNight = params.get('from') === 'night';
   const floor = useFloor(eventId);
   const wide = useWide();
   const [open, setOpen] = useState<string | null>(null);
@@ -240,6 +243,12 @@ function Floor({ eventId }: { eventId: string }) {
       {!inFront && (
         <div className="flr-list">
           <div className="flr-head">
+            {fromNight && (
+              <Link className="flr-back" to={shiftAddress(eventId)}>
+                <Glyph name="back" size={22} />
+                <span>{t('staffLink.night.title')}</span>
+              </Link>
+            )}
             <h1>{t('service.floor.title')}</h1>
             <p className="flr-quiet">{listLine(t, read)}</p>
             <Strip freshness={floor.freshness} />

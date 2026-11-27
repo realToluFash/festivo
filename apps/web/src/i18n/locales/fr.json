@@ -2495,7 +2495,9 @@
       "tryAgain": "Réessayer",
       "loading": "Chargement de votre soirée…",
       "alone": "Ce lien n’est destiné qu’à vous. Fin de la session : {{time}}. Rien n’est conservé sur cet appareil.",
-      "beforeYouStart": "Avant de commencer"
+      "beforeYouStart": "Avant de commencer",
+      "title": "Your night",
+      "openFloor": "Open Floor"
     },
     "clock": {
       "clockIn": "Pointer l’arrivée",

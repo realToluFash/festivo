@@ -2495,7 +2495,9 @@
       "tryAgain": "Tentar novamente",
       "loading": "A carregar a sua noite…",
       "alone": "Esta ligação é só para si. A sessão termina a esta hora: {{time}}. Nada fica guardado neste dispositivo.",
-      "beforeYouStart": "Antes de começar"
+      "beforeYouStart": "Antes de começar",
+      "title": "Your night",
+      "openFloor": "Open Floor"
     },
     "clock": {
       "clockIn": "Picar entrada",

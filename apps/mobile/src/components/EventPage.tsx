@@ -68,6 +68,7 @@ import type { TextHandle } from './Text.tsx';
 import { RowList, TextAction } from './Summary.tsx';
 import { EventNeeds } from './EventNeeds.tsx';
 import { ComingUp, type Watched, useTimeline } from './Timeline.tsx';
+import { useFloorRowItem } from './FloorWayIn.tsx';
 import { useStationRowItem } from './StationWayIn.tsx';
 import { useYourNightItem } from './YourNight.tsx';
 
@@ -141,6 +142,7 @@ export function EventPage({
   const timeline = useTimeline(event.id, now, event, watched);
   const night = useYourNightItem(event.id);
   const station = useStationRowItem(event);
+  const floor = useFloorRowItem(event);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
@@ -349,7 +351,7 @@ export function EventPage({
       onOpen={() => setThanking(true)}
     />
   );
-  const tonight = [night, station].filter((item) => item != null);
+  const tonight = [night, station, floor].filter((item) => item != null);
   const yourNight = tonight.length === 0 ? null : <RowList items={tonight} />;
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const people = <EventPeopleCard event={event} onOpen={onPeople} />;
