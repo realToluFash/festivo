@@ -3832,7 +3832,7 @@
       "tryAgain": "Réessayer",
       "listBack": "Retour",
       "chefsChoice": "Au choix du chef",
-      "chefsChoiceInSentence": "chef’s choice",
+      "chefsChoiceInSentence": "l’assiette au choix du chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La salle s’ouvre avec « Peut servir en salle »",
