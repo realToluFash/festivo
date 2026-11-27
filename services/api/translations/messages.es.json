@@ -507,6 +507,8 @@
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
     "staff.briefing_not_copied": "Primero copie el enlace desde el briefing y después márquelo como enviado.",
+    "staff.briefing_concluded": "This event has finished, so no briefing is sent.",
+    "staff.reminder_concluded": "This event has finished, so its reminder can no longer be changed.",
     "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace.",
     "staff.clock_closed": "Ahora no se puede fichar la entrada ni la salida en este turno.",
     "staff.clock_out_not_in": "No ha fichado la entrada, así que no hay salida que fichar.",

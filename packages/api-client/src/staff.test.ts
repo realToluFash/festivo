@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { asStaffLinkWindow, asStaffPlan } from './staff.ts';
+import { asStaffLinkWindow, asStaffPlan, asStaffReminder } from './staff.ts';
 
 const tablesOf = (count: number) =>
   Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
@@ -25,6 +25,8 @@ const entry = {
   briefing: 'none',
   briefingCopy: null,
   contactsErased: false,
+  notice: null,
+  inApp: false,
 };
 
 const plan = {
@@ -64,6 +66,99 @@ describe('asStaffPlan', () => {
     const read = { ...plan, staff: [briefed], rules: 'Black shirts.' };
 
     expect(asStaffPlan(read)).toEqual(read);
+  });
+
+  it('reads a change notice waiting to go, told, and nobody to reach (sc-4333)', () => {
+    const waiting = {
+      ...entry,
+      briefing: 'sent',
+      notice: {
+        state: 'waiting',
+        goesAt: '2026-11-01T11:15:00+01:00',
+        changes: [
+          {
+            kind: 'start_time',
+            start: '2026-11-07T15:00:00+01:00',
+            end: null,
+            oldStart: '2026-11-07T16:00:00+01:00',
+            oldEnd: null,
+            new: null,
+            old: null,
+            count: 0,
+            on: '2026-11-07T15:00:00+01:00',
+          },
+        ],
+      },
+    };
+    const told = {
+      ...entry,
+      notice: { state: 'told', at: '2026-11-01T11:15:00+01:00', channel: 'push', ending: null },
+    };
+    const calledOff = {
+      ...entry,
+      id: 'c',
+      notice: {
+        state: 'told',
+        at: '2026-11-01T11:15:00+01:00',
+        channel: 'push',
+        ending: 'called_off',
+      },
+    };
+    const read = { ...plan, staff: [waiting, told, calledOff] };
+
+    expect(asStaffPlan(read)).toEqual(read);
+  });
+
+  it('reads a change without the start it belongs to as none', () => {
+    const change = {
+      kind: 'job',
+      start: null,
+      end: null,
+      oldStart: null,
+      oldEnd: null,
+      new: 'Bar',
+      old: 'Floor',
+      count: 0,
+    };
+    const notice = { state: 'waiting', goesAt: '2026-11-01T11:15:00+01:00', changes: [change] };
+
+    expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice }] })?.staff[0]?.notice).toEqual({
+      ...notice,
+      changes: [{ ...change, on: null }],
+    });
+  });
+
+  it('reads a told notice without its ending as none, and refuses an ending it does not know', () => {
+    const told = { state: 'told', at: '2026-11-01T11:15:00+01:00', channel: 'push' };
+
+    expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice: told }] })?.staff[0]?.notice).toEqual(
+      { ...told, ending: null },
+    );
+    expect(
+      asStaffPlan({ ...plan, staff: [{ ...entry, notice: { ...told, ending: 'paused' } }] }),
+    ).toBeNull();
+  });
+
+  it('refuses a change notice of a state or kind it does not know', () => {
+    expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice: { state: 'held' } }] })).toBeNull();
+    expect(
+      asStaffPlan({ ...plan, staff: [{ ...entry, notice: { state: 'unreachable' } }] }),
+    ).toBeNull();
+    expect(
+      asStaffPlan({
+        ...plan,
+        staff: [
+          {
+            ...entry,
+            notice: {
+              state: 'waiting',
+              goesAt: '2026-11-01T11:15:00+01:00',
+              changes: [{ kind: 'pay' }],
+            },
+          },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it('refuses a briefing state it does not know, and a plan without its rules', () => {
@@ -179,5 +274,40 @@ describe('asStaffLinkWindow', () => {
       from: '2026-10-24T05:00:00+01:00',
     });
     expect(asStaffLinkWindow({ state: 'not_yet', from: 5 })).toBeNull();
+  });
+});
+
+describe('asStaffReminder', () => {
+  const card = {
+    on: true,
+    time: '10:00',
+    next: { date: '2026-10-16', count: 3 },
+    notBriefed: 1,
+    unreachable: 2,
+    sent: null,
+    concluded: null,
+  };
+
+  it('reads the card (sc-4333)', () => {
+    expect(asStaffReminder(card)).toEqual(card);
+    expect(
+      asStaffReminder({
+        ...card,
+        next: null,
+        sent: { date: '2026-10-16', count: 5 },
+        concluded: 'called_off',
+      }),
+    ).toEqual({
+      ...card,
+      next: null,
+      sent: { date: '2026-10-16', count: 5 },
+      concluded: 'called_off',
+    });
+  });
+
+  it('refuses a shape it does not know', () => {
+    expect(asStaffReminder({ ...card, concluded: 'paused' })).toBeNull();
+    expect(asStaffReminder({ ...card, next: { date: '2026-10-16' } })).toBeNull();
+    expect(asStaffReminder({ ...card, unreachable: undefined })).toBeNull();
   });
 });

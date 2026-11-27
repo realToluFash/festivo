@@ -7,6 +7,7 @@ namespace App\Domain\Staff\Http;
 use App\Domain\Staff\Briefing\BriefingTracker;
 use App\Domain\Staff\RosterOrder;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\ShiftNotice\ShiftNoticeStates;
 use App\Domain\Staff\Station\StationSerialiser;
 use App\Entity\Event;
 use App\Entity\StaffJob;
@@ -18,7 +19,7 @@ use App\Repository\StaffShiftRepository;
 use DateTimeZone;
 use Psl\Vec;
 
-/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. `briefing` is where their briefing stands (sc-3917), and `briefingCopy` the last copy of their link from it. Every time is the instant, with the event's offset. */
+/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. `briefing` is where their briefing stands (sc-3917), and `briefingCopy` the last copy of their link from it. `notice` is where their change notice stands (sc-4333), null before their briefing went or while push has not reached them, and `inApp` whether push can. Every time is the instant, with the event's offset. */
 final readonly class StaffSerialiser
 {
     public function __construct(
@@ -27,6 +28,7 @@ final readonly class StaffSerialiser
         private StaffShiftRepository $staffShiftRepository,
         private StationSerialiser $stationSerialiser,
         private BriefingTracker $briefingTracker,
+        private ShiftNoticeStates $shiftNoticeStates,
     ) {
     }
 
@@ -45,9 +47,10 @@ final readonly class StaffSerialiser
         $staff = RosterOrder::sort($this->staffMemberRepository->findOnEvent($event), $theirs);
         $tables = $this->stationSerialiser->tables($event);
         $floorLead = $this->staffMemberRepository->findOneBy(['event' => $event, 'floorLead' => true]);
+        $notices = $this->shiftNoticeStates->ofEvent($event);
 
         return [
-            'staff' => Vec\map($staff, fn (StaffMember $entry): array => $this->entry($entry, $theirs[$entry->getId()->toRfc4122()] ?? [], $tables, $floorLead)),
+            'staff' => Vec\map($staff, fn (StaffMember $entry): array => $this->entry($entry, $theirs[$entry->getId()->toRfc4122()] ?? [], $tables, $floorLead, $notices)),
             'jobs' => Vec\map($this->staffJobRepository->findOnEvent($event), self::job(...)),
             'shifts' => Vec\map($shifts, self::shift(...)),
             'stations' => $this->stationSerialiser->stations($event, $staff),
@@ -56,13 +59,14 @@ final readonly class StaffSerialiser
     }
 
     /**
-     * @param ?list<StaffShift>                                     $shifts    the person's shifts by start, read when null
-     * @param ?array<string, list<array{id: string, name: string}>> $tables    each seating section's tables, read when null
-     * @param ?StaffMember                                          $floorLead the event's floor lead, read when null
+     * @param ?list<StaffShift>                                                                                                                 $shifts    the person's shifts by start, read when null
+     * @param ?array<string, list<array{id: string, name: string}>>                                                                             $tables    each seating section's tables, read when null
+     * @param ?StaffMember                                                                                                                      $floorLead the event's floor lead, read when null
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, concluded: array<string, string>, inApp: array<string, true>} $notices   the event's change notices, read when null
      *
      * @return array<string, mixed>
      */
-    public function entry(StaffMember $entry, ?array $shifts = null, ?array $tables = null, ?StaffMember $floorLead = null): array
+    public function entry(StaffMember $entry, ?array $shifts = null, ?array $tables = null, ?StaffMember $floorLead = null, ?array $notices = null): array
     {
         $event = $entry->getEvent();
         $job = $entry->getJob();
@@ -99,6 +103,8 @@ final readonly class StaffSerialiser
                 'marked' => $entry->isBriefCopyMarked(),
             ],
             'contactsErased' => null !== $entry->getContactsErasedAt(),
+            'notice' => $this->shiftNoticeStates->of($entry, $shifts, $notices ??= $this->shiftNoticeStates->ofEvent($event)),
+            'inApp' => $this->shiftNoticeStates->inApp($entry, $notices),
         ];
     }
 

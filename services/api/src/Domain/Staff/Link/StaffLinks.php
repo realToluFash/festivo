@@ -8,6 +8,7 @@ use App\Audit\Auditor;
 use App\Domain\Staff\Attendance\Clocking;
 use App\Domain\Staff\Briefing\BriefingTracker;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
 use App\Entity\StaffLinkToken;
@@ -17,6 +18,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
+use App\Enum\StaffBriefStatus;
 use App\Enum\StaffLinkStatus;
 use App\Http\Exception\ApiException;
 use App\Http\LinkTokens;
@@ -61,6 +63,7 @@ final readonly class StaffLinks
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private BriefingTracker $briefingTracker,
+        private ShiftNotices $shiftNotices,
     ) {
     }
 
@@ -124,14 +127,14 @@ final readonly class StaffLinks
         return $this->staffLinkTokenRepository->findOneByTokenHash(LinkTokens::hash($token))?->getStaffMember();
     }
 
-    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). */
+    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). The first open with nothing yet recorded of what they were told records the page as it stands, so a briefing read through an unmarked copy went (sc-4333); the window's end keeps a Finished event from recording. */
     public function opened(StaffMember $entry): void
     {
         if (!$this->window($entry)->open) {
             return;
         }
 
-        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry)) {
+        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry) && !self::anOpenRecords($entry)) {
             return;
         }
 
@@ -144,14 +147,25 @@ final readonly class StaffLinks
             }
 
             $read = $this->briefingTracker->opened($entry);
+            $told = self::anOpenRecords($entry);
+
+            if ($told) {
+                $this->shiftNotices->briefed($entry);
+            }
+
             $this->entityManager->flush();
 
-            return $opened || $read;
+            return $opened || $read || $told;
         });
 
         if ($moved) {
             $this->staffRosterPublisher->publish($entry->getEvent());
         }
+    }
+
+    private static function anOpenRecords(StaffMember $entry): bool
+    {
+        return null === $entry->getTold() && (StaffBriefStatus::None !== $entry->getBriefStatus() || null !== $entry->getBriefCopyAt());
     }
 
     /** From 12 hours before their first shift starts until 2 hours after their last one ends or the event's end, whichever comes first; not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */

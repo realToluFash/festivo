@@ -9,11 +9,13 @@ use App\Entity\StaffMember;
 use App\Entity\StaffStation;
 use App\Entity\User;
 use App\Enum\EventStatus;
+use App\Enum\StaffBriefStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Type;
 use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<StaffMember> */
@@ -87,5 +89,33 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
             ->orderBy('e.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @param list<Event> $events
+     *
+     * @return array<string, true> keyed by the id of each event on which somebody's briefing went
+     */
+    public function eventsWithBriefed(array $events): array
+    {
+        if ([] === $events) {
+            return [];
+        }
+
+        $ids = $this->createQueryBuilder('s')
+            ->select('DISTINCT IDENTITY(s.event) AS event')
+            ->where('s.event IN (:events)')
+            ->andWhere('s.briefStatus <> :none')
+            ->setParameter('events', $events)
+            ->setParameter('none', StaffBriefStatus::None)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $found = [];
+        foreach ($ids as $id) {
+            $found[Uuid::fromString(Type\string()->coerce($id))->toRfc4122()] = true;
+        }
+
+        return $found;
     }
 }
