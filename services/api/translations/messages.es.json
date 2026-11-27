@@ -573,9 +573,9 @@
     "service.expected_required": "Envíe con cada paso del servicio el estado que vio el dispositivo.",
     "service.idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada paso del servicio.",
     "service.idempotency_key_reused": "Esta Idempotency-Key ya se usó con otro paso. No se ha cambiado nada.",
-    "timeline.give_final_numbers": "Give final numbers to the kitchen",
-    "timeline.open_kitchen_sheet": "Open the kitchen sheet",
-    "validation.final_numbers_invalid": "Choose a valid date.",
-    "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",
-    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date."
+    "timeline.give_final_numbers": "Entregar las cifras definitivas a cocina",
+    "timeline.open_kitchen_sheet": "Abrir la hoja de cocina",
+    "validation.final_numbers_invalid": "Elija una fecha válida.",
+    "validation.final_numbers_not_before_event": "La fecha no puede ser el día en que empieza el evento ni posterior. Elija una fecha anterior.",
+    "validation.final_numbers_past": "La fecha no puede estar en el pasado. Elija hoy o una fecha posterior."
 }
