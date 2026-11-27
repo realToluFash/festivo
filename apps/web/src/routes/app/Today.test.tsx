@@ -1,5 +1,5 @@
 import type { Membership } from '@soirely/api-client';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -460,6 +460,61 @@ describe('Needs you on Today (sc-61015)', () => {
     await screen.findByText('Loading…', {}, { timeout: 200 }).catch(() => undefined);
 
     expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+  });
+
+  it('counts one row in the singular, in the heading and on the cover', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving([event('Ade’s 40th', { milestones: [kitchen], id: 'ev_ade' })]);
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Needs you, 1 thing' }),
+    ).toBeDefined();
+    expect(screen.getByText('1 thing needs you.')).toBeDefined();
+  });
+
+  it('shows neither the tick nor a count after a read that failed with nothing kept', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(JSON.stringify({ message: 'Broken' }), { status: 500 }),
+    );
+    open();
+
+    await screen.findByText('The events did not load. Try again in a moment.');
+
+    expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+    expect(screen.queryByText(/need you\./u)).toBeNull();
+  });
+
+  it('keeps what a load gave under the offline band after a reload that went unanswered', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    const overdue = { ...kitchen, at: '2020-11-10T23:59:00+01:00' };
+    const soirely = { reachable: true };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+
+      if (!soirely.reachable) throw new TypeError('Failed to fetch');
+      if (url.pathname !== '/api/orgs/org_1/events') return new Promise<Response>(() => {});
+
+      const shown =
+        url.searchParams.get('finished') === 'true'
+          ? []
+          : [event('Ade’s 40th', { milestones: [overdue] })];
+
+      return new Response(JSON.stringify({ events: shown, total: shown.length }), { status: 200 });
+    });
+    open();
+    await screen.findByRole('heading', { level: 2, name: 'Needs you, 1 thing' });
+
+    soirely.reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() => expect(document.querySelector('.offline-band-words')).not.toBeNull());
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Needs you, 1 thing' })).toBeDefined();
     expect(screen.queryByText('Nothing needs you')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type Milestone, levelOf, milestoneDistance, wallDay } from '@soirely/domain';
+import { type Milestone, isYours, needDue, needOrder } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import type { Need, ShownEvent } from '../../components/today.ts';
@@ -14,32 +14,7 @@ export interface YouEvent {
   milestones: readonly Milestone[];
 }
 
-/** The reader's own milestone, in an area their role changes on this event. */
-export function isYours(
-  { owner, area }: Pick<Milestone, 'owner' | 'area'>,
-  permissions: readonly string[],
-): boolean {
-  return owner === 'you' && levelOf(permissions, area) === 'change';
-}
-
-export interface NeedKey {
-  at: string;
-  title: string;
-  startsAt: string;
-  name: string;
-}
-
-/** Earliest first; a tie goes by the event's start, then its name, then the milestone's title, in the reader's language. Today's Needs you orders by it. */
-export function needOrder(a: NeedKey, b: NeedKey): number {
-  return (
-    Date.parse(a.at) - Date.parse(b.at) ||
-    Date.parse(a.startsAt) - Date.parse(b.startsAt) ||
-    a.name.localeCompare(b.name) ||
-    a.title.localeCompare(b.title)
-  );
-}
-
-/** A milestone's due words, in calendar days in the event's zone: "Due {{date}}" carries the year only when its day falls in another year than today (sc-29884). */
+/** A milestone's due words, in the reader's language, from the due the domain classifies (sc-29884). */
 export function dueWords(
   at: string,
   timeZone: string,
@@ -47,26 +22,19 @@ export function dueWords(
   day: DayWords,
   t: TFunction,
 ): { words: string; late: boolean } {
-  const distance = milestoneDistance(at, timeZone, now);
-  const dueDay = wallDay(at, timeZone);
+  const due = needDue(at, timeZone, now);
 
-  switch (distance.kind) {
-    case 'now':
+  switch (due.kind) {
+    case 'overdue':
       return { words: t('today.overdue'), late: true };
-    case 'daysAgo':
-      return { words: t('today.overdueDays', { count: distance.count }), late: true };
-    case 'today':
+    case 'overdueDays':
+      return { words: t('today.overdueDays', { count: due.count }), late: true };
+    case 'dueToday':
       return { words: t('today.dueToday'), late: false };
-    case 'inDays':
-      return {
-        words:
-          distance.count === 1
-            ? t('today.dueTomorrow')
-            : t('today.dueOn', {
-                date: day(dueDay, dueDay.slice(0, 4) !== wallDay(now, timeZone).slice(0, 4)),
-              }),
-        late: false,
-      };
+    case 'dueTomorrow':
+      return { words: t('today.dueTomorrow'), late: false };
+    case 'dueOn':
+      return { words: t('today.dueOn', { date: day(due.day, due.withYear) }), late: false };
   }
 }
 
