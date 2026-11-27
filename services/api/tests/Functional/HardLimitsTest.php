@@ -154,6 +154,29 @@ final class HardLimitsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCopyOfAnEventAtTheCeilingBringsEveryoneAndHoldsOnlyAPageOfThemAtATime(): void
+    {
+        self::service(PlanChanger::class)->change($this->organisation, Plan::Enterprise, 'Ada at Soirely', 'A test copies an event at the ceiling.');
+        self::em()->flush();
+        $original = $this->event();
+        $this->seed($original, HardLimits::EVENT_CAPACITY - 1_000);
+        self::service(Connection::class)->executeStatement(
+            "INSERT INTO guests (id, event_id, host_id, full_name, name_key, position, created_at, updated_at) SELECT gen_random_uuid(), event_id, id, 'Plus one of ' || full_name, 'plus one of ' || name_key, 1, NOW(), NOW() FROM (SELECT * FROM guests WHERE event_id = :event ORDER BY id DESC LIMIT 1000) AS hosts",
+            ['event' => $original],
+        );
+        self::em()->clear();
+
+        $this->as('POST', '/api/events/' . $original . '/duplicate', ['startsAt' => '2030-12-14T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(9_000, $this->last()['guestsCopied'] ?? null);
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($this->last()['event'] ?? null)['id'];
+        self::assertSame(10_000, $this->people($copy));
+        self::assertSame(1_000, Type\int()->coerce(self::service(Connection::class)->fetchOne("SELECT COUNT(*) FROM guests c JOIN guests h ON h.id = c.host_id WHERE c.event_id = :copy AND h.event_id = :copy AND c.full_name = 'Plus one of ' || h.full_name", ['copy' => $copy])));
+        self::assertLessThan(1_000, Iter\count(self::em()->getUnitOfWork()->getIdentityMap()[Guest::class] ?? []));
+    }
+
+    #[Test]
     public function aLiveEventOverTheLimitStillSendsTakesRepliesWalkInsAndArrivalsAndRunsServiceAndAsksNoLimit(): void
     {
         $event = $this->event(live: true);

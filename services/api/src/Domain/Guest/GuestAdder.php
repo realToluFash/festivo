@@ -10,6 +10,7 @@ use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
+use App\Entity\AuditEntry;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -75,8 +76,8 @@ final readonly class GuestAdder
     }
 
     /** The one audit entry for a guest arriving, added here or copied with a duplicated event (sc-3656). */
-    public static function recordAdded(Auditor $auditor, Guest $guest, User $by): void
+    public static function recordAdded(Auditor $auditor, Guest $guest, User $by): AuditEntry
     {
-        $auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
+        return $auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
     }
 }
