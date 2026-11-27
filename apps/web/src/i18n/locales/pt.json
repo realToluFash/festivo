@@ -3916,10 +3916,10 @@
     "greetAsTooLong": "Encurte o nome na saudação para {{count, number}} caracteres, no máximo.",
     "greetsThemAs": "As mensagens cumprimentam esta pessoa como «{{greetAs}}».",
     "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo.",
-    "optedOutEmail": "Unsubscribed from email on {{date}}",
-    "optedOutTexts": "Unsubscribed from texts on {{date}}",
-    "optedOutWhatsApp": "Unsubscribed from WhatsApp on {{date}}",
-    "onlyTheGuest": "Only the guest can change this."
+    "optedOutEmail": "Deixou de receber e-mails no dia {{date}}",
+    "optedOutTexts": "Deixou de receber SMS no dia {{date}}",
+    "optedOutWhatsApp": "Deixou de receber WhatsApp no dia {{date}}",
+    "onlyTheGuest": "Só a pessoa convidada pode alterar isto."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -7190,7 +7190,7 @@
     "nobodyToPreview": "Ainda não escolheu convidados, por isso não há ninguém para a pré-visualização.",
     "whatSoirelySends": "O que a Soirely envia",
     "emailFrom": "E-mail · de {{organisation}} via Soirely",
-    "unsubscribed": "Unsubscribed"
+    "unsubscribed": "Cancelou a subscrição"
   },
   "service": {
     "stage": {
@@ -7467,32 +7467,32 @@
     "openJobs": "Abrir Funções e turnos"
   },
   "yourMessages": {
-    "title": "Your messages",
-    "intro": "Choose how {{organisation}} can reach you. This changes nothing for anyone else who uses Soirely.",
-    "email": "Email",
-    "texts": "Text messages",
+    "title": "As suas mensagens",
+    "intro": "Escolha como {{organisation}} pode entrar em contacto consigo. Isto não muda nada para mais ninguém que use a Soirely.",
+    "email": "E-mail",
+    "texts": "SMS",
     "whatsApp": "WhatsApp",
-    "on": "On",
-    "off": "Off",
-    "noEmail": "{{organisation}} has no email address for you.",
-    "noPhone": "{{organisation}} has no phone number for you.",
-    "emailOn": "Emails from {{organisation}} are on again.",
-    "emailOff": "Emails from {{organisation}} are off.",
-    "textsOn": "Texts from {{organisation}} are on again.",
-    "textsOff": "Texts from {{organisation}} are off.",
-    "whatsAppOn": "WhatsApp messages from {{organisation}} are on.",
-    "whatsAppOff": "WhatsApp messages from {{organisation}} are off.",
-    "foot": "Only you can turn these back on. {{organisation}} can see which you have turned off, and when.",
-    "stopEmails": "Stop emails from {{organisation}}",
-    "stopped": "You won’t get emails from {{organisation}} any more.",
-    "undo": "Undo",
-    "saving": "Saving…",
-    "loading": "Loading…",
-    "failed": "Saving did not work. Nothing has changed.",
-    "tryAgain": "Try again",
-    "back": "Back",
-    "brokenTitle": "This link does not work",
-    "brokenBody": "Nothing has changed. Open the link again from the most recent email you were sent.",
-    "wayIn": "Choose how {{organisation}} can reach you"
+    "on": "Ativado",
+    "off": "Desativado",
+    "noEmail": "{{organisation}} não tem o seu endereço de e-mail.",
+    "noPhone": "{{organisation}} não tem o seu número de telefone.",
+    "emailOn": "Voltou a ativar os e-mails de {{organisation}}.",
+    "emailOff": "Desativou os e-mails de {{organisation}}.",
+    "textsOn": "Voltou a ativar os SMS de {{organisation}}.",
+    "textsOff": "Desativou os SMS de {{organisation}}.",
+    "whatsAppOn": "Ativou as mensagens de WhatsApp de {{organisation}}.",
+    "whatsAppOff": "Desativou as mensagens de WhatsApp de {{organisation}}.",
+    "foot": "Ninguém além de si pode voltar a ativar estas opções. {{organisation}} pode ver o que desativou e quando.",
+    "stopEmails": "Deixar de receber e-mails de {{organisation}}",
+    "stopped": "Deixará de receber e-mails de {{organisation}}.",
+    "undo": "Anular",
+    "saving": "A guardar…",
+    "loading": "A carregar…",
+    "failed": "Não foi possível guardar. Nada mudou.",
+    "tryAgain": "Tentar novamente",
+    "back": "Voltar",
+    "brokenTitle": "Esta ligação não funciona",
+    "brokenBody": "Nada mudou. Abra novamente a ligação a partir do e-mail mais recente que recebeu.",
+    "wayIn": "Escolha como {{organisation}} pode entrar em contacto consigo"
   }
 }
