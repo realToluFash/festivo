@@ -335,6 +335,9 @@
     "web:briefing.card",
     "web:staffRates.minutes",
     "mobile:shiftClock.minutes_one",
-    "mobile:shiftClock.minutes_other"
+    "mobile:shiftClock.minutes_other",
+    "messagesCounts:usage.size.megabyte",
+    "messagesCounts:usage.size.gigabyte",
+    "messagesCounts:usage.size.terabyte"
   ]
 }
