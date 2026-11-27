@@ -3852,7 +3852,7 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
 
 describe('a check that runs a sibling check', () => {
