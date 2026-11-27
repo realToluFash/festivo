@@ -555,5 +555,18 @@
     "guest_message.event_ended": "Cet événement s’est terminé il y a plus de 30 jours : vous ne pouvez plus écrire à ses invités.",
     "saved_audience.full": "Cet événement compte {most, number, ::group-auto} audiences enregistrées, le maximum possible. Supprimez-en une pour en enregistrer une autre.",
     "validation.guest_greet_as_too_long": "Raccourcissez l’appellation à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
-    "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer."
+    "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer.",
+    "usage_warning.drafts.heading_part": "{organisation} a utilisé {percent} de ses brouillons de l’assistant inclus",
+    "usage_warning.drafts.heading_all": "{organisation} a utilisé tous ses brouillons de l’assistant inclus",
+    "usage_warning.storage.heading_part": "{organisation} a utilisé {percent} de son stockage inclus",
+    "usage_warning.storage.heading_all": "{organisation} a utilisé tout son stockage inclus",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} sur {included, plural, one {{included, number, ::group-auto} brouillon de l’assistant} many {{included, number, ::group-auto} de brouillons de l’assistant} other {{included, number, ::group-auto} brouillons de l’assistant}}",
+    "usage.storage_row": "{used} sur {included} de stockage",
+    "usage.size.megabyte": "{size} Mo",
+    "usage.size.gigabyte": "{size} Go",
+    "usage.size.terabyte": "{size} To",
+    "usage_warning.drafts.next_part": "Une fois les brouillons de l’assistant inclus épuisés, chaque brouillon coûtera {count, plural, one {{count, number, ::group-auto} crédit} many {{count, number, ::group-auto} de crédits} other {{count, number, ::group-auto} crédits}}.",
+    "usage_warning.drafts.next_all": "Chaque brouillon de l’assistant coûte désormais {count, plural, one {{count, number, ::group-auto} crédit} many {{count, number, ::group-auto} de crédits} other {{count, number, ::group-auto} crédits}}, jusqu’au renouvellement des brouillons inclus.",
+    "usage_warning.drafts.reset": "Les brouillons de l’assistant inclus se renouvellent le {date}.",
+    "usage_warning.storage.next": "Vous pouvez toujours importer des fichiers, et rien n’est facturé."
 }

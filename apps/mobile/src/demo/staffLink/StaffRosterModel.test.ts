@@ -22,6 +22,7 @@ import {
   rowLine,
   restoreKept,
   sampleRoster,
+  shiftWithMore,
   withKept,
 } from './StaffRosterModel.ts';
 
@@ -47,6 +48,16 @@ describe('the event’s Staff in the app (sc-77903)', () => {
     const chinedu = sampleRoster().find((one) => one.id === 'chinedu');
     if (chinedu == null) throw new Error('sample');
     expect(rowLine(chinedu)).toBe('No job yet · No station yet · Not on a shift yet');
+  });
+
+  it('reads several shifts as the first with +{n} more, wherever the shift is written (sc-3908)', () => {
+    expect(shiftWithMore({ shift: 'Saturday 15:00 to 23:00', more: 1 })).toBe(
+      'Saturday 15:00 to 23:00 +1 more',
+    );
+    expect(shiftWithMore({ shift: 'Saturday 15:00 to 23:00', more: 0 })).toBe(
+      'Saturday 15:00 to 23:00',
+    );
+    expect(shiftWithMore({ shift: null, more: 2 })).toBeNull();
   });
 
   it('reads what a link screen changed, and leaves out someone removed', () => {

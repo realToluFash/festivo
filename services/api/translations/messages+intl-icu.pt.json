@@ -555,5 +555,18 @@
     "guest_message.event_ended": "Este evento terminou há mais de 30 dias, por isso já não pode escrever aos seus convidados.",
     "saved_audience.full": "Este evento tem {most, number, ::group-auto} públicos guardados, o máximo possível. Elimine um para guardar outro.",
     "validation.guest_greet_as_too_long": "Encurte o nome na saudação para {count, plural, =0 {{count, number, ::group-auto} caracteres} one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}}, no máximo.",
-    "validation.guest_message_token_unknown": "A mensagem não foi enviada. Uma parte não pode ser preenchida para cada convidado: remova-a e use Inserir."
+    "validation.guest_message_token_unknown": "A mensagem não foi enviada. Uma parte não pode ser preenchida para cada convidado: remova-a e use Inserir.",
+    "usage_warning.drafts.heading_part": "{organisation} utilizou {percent} dos rascunhos do assistente incluídos",
+    "usage_warning.drafts.heading_all": "{organisation} utilizou todos os rascunhos do assistente incluídos",
+    "usage_warning.storage.heading_part": "{organisation} utilizou {percent} do armazenamento incluído",
+    "usage_warning.storage.heading_all": "{organisation} utilizou todo o armazenamento incluído",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} de {included, plural, =0 {{included, number, ::group-auto} rascunhos do assistente} one {{included, number, ::group-auto} rascunho do assistente} many {{included, number, ::group-auto} de rascunhos do assistente} other {{included, number, ::group-auto} rascunhos do assistente}}",
+    "usage.storage_row": "{used} de {included} de armazenamento",
+    "usage.size.megabyte": "{size} MB",
+    "usage.size.gigabyte": "{size} GB",
+    "usage.size.terabyte": "{size} TB",
+    "usage_warning.drafts.next_part": "Esgotados os rascunhos do assistente incluídos, cada rascunho custará {count, plural, =0 {{count, number, ::group-auto} créditos} one {{count, number, ::group-auto} crédito} many {{count, number, ::group-auto} de créditos} other {{count, number, ::group-auto} créditos}}.",
+    "usage_warning.drafts.next_all": "Cada rascunho do assistente custa agora {count, plural, =0 {{count, number, ::group-auto} créditos} one {{count, number, ::group-auto} crédito} many {{count, number, ::group-auto} de créditos} other {{count, number, ::group-auto} créditos}}, até à renovação dos rascunhos incluídos.",
+    "usage_warning.drafts.reset": "Os rascunhos do assistente incluídos renovam-se a {date}.",
+    "usage_warning.storage.next": "Pode continuar a carregar ficheiros e nada é cobrado."
 }
