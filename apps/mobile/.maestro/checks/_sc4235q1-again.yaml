@@ -1,4 +1,4 @@
-# sc-4235 (qa1): a number on an account under another name; signed-out door code; a full code's holder back in after Continue; a new number at a full code refused with name and number kept. Run before _sc4235q1-holder. Pass CODE, CAP, CAP2.
+# sc-4235 (qa1): a number on an account under another name; signed-out door code; a full code's holder back in after Continue; a new number at a full code refused with name and number kept. Run before _sc4235q1-holder. Pass CODE, CAP, CAP2, TITLE (the event's title as its tile shows it).
 appId: host.exp.Exponent
 ---
 - runFlow: ../batch/sign-out.yaml
@@ -88,7 +88,7 @@ appId: host.exp.Exponent
     visible:
       id: 'redeem.event.send'
     timeout: 20000
-- tapOn: 'Kemi and Tayo'
+- tapOn: ${TITLE}
 - waitForAnimationToEnd
 - takeScreenshot: 06-full-event
 - runFlow:
@@ -104,6 +104,6 @@ appId: host.exp.Exponent
     timeout: 20000
 - assertNotVisible:
     id: 'redeem.in.open'
-- tapOn: 'Kemi and Tayo'
+- tapOn: ${TITLE}
 - waitForAnimationToEnd
 - takeScreenshot: 07-full-new-refused

@@ -1,6 +1,7 @@
-# sc-4235 (qa1): a password account that joins an event by door code, then signs out from the event's More: lands on Welcome, not on the door code. Pass CODE.
+# sc-4235 (qa1): a password account that joins an event by door code, then signs out from the event's More: lands on Welcome, not on the door code. Pass CODE and EMAIL (the password account).
 appId: host.exp.Exponent
 ---
+- runFlow: ../batch/session.yaml
 - openLink: ${METRO_URL}/--/d/${CODE}
 - extendedWaitUntil:
     visible:

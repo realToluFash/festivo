@@ -2,6 +2,10 @@
 appId: host.exp.Exponent
 ---
 - tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: ${NAME}
+- tapOn:
     id: 'redeem.event.country'
 - extendedWaitUntil:
     visible:
