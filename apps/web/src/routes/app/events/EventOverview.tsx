@@ -67,7 +67,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
 import { ThankYouCard } from './ThankYou.tsx';
 import { EventNeeds } from './EventNeeds.tsx';
-import { ComingUp, useTimeline } from './Timeline.tsx';
+import { type Beside, ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
@@ -136,11 +136,13 @@ export function Overview({
   event,
   tag,
   heading,
+  beside,
   onChange,
 }: {
   event: OrganisationEvent;
   tag: string;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
@@ -181,7 +183,7 @@ export function Overview({
   });
   const resume = useResume({ event, heading, onChange, onResumed: () => setResumed(true) });
   const comingUpHeading = useRef<HTMLHeadingElement>(null);
-  const timeline = useTimeline(event, comingUpHeading, now);
+  const timeline = useTimeline(event, comingUpHeading, now, beside);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const card = shownEvent(listEventOf({ ...event, milestones: milestones ?? [] }), phase);
 

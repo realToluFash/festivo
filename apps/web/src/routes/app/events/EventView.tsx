@@ -44,7 +44,7 @@ import { PAGE_NEEDS } from './handoff.ts';
 import { MessagesArea } from './MessagesArea.tsx';
 import { Forbidden } from '../Forbidden.tsx';
 import { typeLabel } from './eventTypes.ts';
-import { AllDates } from './Timeline.tsx';
+import { AllDates, type Beside } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { OutsideOverview } from './OutsideOverview.tsx';
 import { OutsideGone } from '../OutsideShell.tsx';
@@ -269,12 +269,13 @@ function EventOf({
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
   const answered = useRef<Date | null>(null);
-  const { watch, keep, refreshing } = useOffline({
+  const { watch, keep, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
     event: true,
   });
+  const beside: Beside = { reloads: refresh, underBand: stale != null };
 
   useEffect(() => {
     let current = true;
@@ -490,6 +491,7 @@ function EventOf({
                     event={load.event}
                     tag={load.tag}
                     heading={heading}
+                    beside={beside}
                     onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
                   />
                 )}
@@ -511,7 +513,7 @@ function EventOf({
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                <AllDatesPage event={load.event} heading={heading} />
+                <AllDatesPage event={load.event} heading={heading} beside={beside} />
               </Arrived>
             )}
           </div>
@@ -659,16 +661,18 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
 function AllDatesPage({
   event,
   heading,
+  beside,
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
 }) {
   const { t } = useTranslation();
   const now = useServerNow();
 
   usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
 
-  return <AllDates event={event} now={now} heading={heading} />;
+  return <AllDates event={event} now={now} heading={heading} beside={beside} />;
 }
 
 function PeoplePage({ event }: { event: OrganisationEvent }) {

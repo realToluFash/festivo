@@ -1,3 +1,5 @@
+import { ApiUnreachableError } from '@soirely/api-client';
+
 import { type Connection, NO_ANSWER_MS, answeredWithin } from './connection.ts';
 
 /** A load that never reached Soirely: the connection fell silent while it was out, or it had no answer for 20 s. */
@@ -11,6 +13,20 @@ export class NotReached extends Error {
 /** Whether a failed load keeps what the screen already shows: only when Soirely never answered it. */
 export function keepsWhatLoaded(error: unknown): boolean {
   return error instanceof NotReached;
+}
+
+/** Whether a load never reached Soirely, watched or not: the watch's own verdict, the fetch's failure, or the client's wrap of one. A 5xx on the load itself arrives as an `ApiError`; the wrap with no cause is the token refresh's 5xx (`client.ts`, `refresh`), an answer too. */
+export function neverReached(error: unknown): boolean {
+  return (
+    keepsWhatLoaded(error) ||
+    error instanceof TypeError ||
+    (error instanceof ApiUnreachableError && error.cause != null)
+  );
+}
+
+/** What a read beside the screen's watched load shows, the event's dates beside the event (sc-98386): what loaded stays through a read that never reached Soirely only while the band is up to say the screen is from before; once the screen's own load answers and the band clears, the read's failure, as before. */
+export function shownBeside<L>(load: L, kept: boolean, underBand: boolean, failed: L): L {
+  return kept && !underBand ? failed : load;
 }
 
 export interface OfflineState {
