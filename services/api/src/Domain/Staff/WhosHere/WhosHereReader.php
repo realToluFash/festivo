@@ -97,7 +97,7 @@ final readonly class WhosHereReader
         return [
             'now' => self::written($now, $zone),
             'timeZone' => $event->getTimeZone(),
-            'countryCode' => $event->getVenueCountryCode(),
+            'countryCode' => $event->getVenueCountryCode() ?? $event->getOrganisation()->getCountryCode(),
             'ended' => self::ended($event, $now),
             'rosterSize' => Iter\count($roster),
             'viewer' => [
