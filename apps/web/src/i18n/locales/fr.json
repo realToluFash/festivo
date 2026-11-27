@@ -2708,6 +2708,7 @@
     "failed": "Les dates n’ont pas pu être chargées.",
     "retry": "Réessayer",
     "momentInZone": "{{moment}} ({{timeZone}})",
+    "ownerMoment": "{{owner}} · {{moment}}",
     "now": "maintenant",
     "today": "aujourd’hui",
     "inDays_one": "dans {{count, number}} jour",

@@ -2708,6 +2708,7 @@
     "failed": "Não foi possível carregar as datas.",
     "retry": "Tentar novamente",
     "momentInZone": "{{moment}} ({{timeZone}})",
+    "ownerMoment": "{{owner}} · {{moment}}",
     "now": "agora",
     "today": "hoje",
     "inDays_one": "daqui a {{count, number}} dia",

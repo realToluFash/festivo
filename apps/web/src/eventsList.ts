@@ -53,6 +53,13 @@ export function listEventOf(event: ListedEvent): ListEvent {
   };
 }
 
+/** A venue as an event's strip names it (sc-98187): its name with its city when the address knows one, the name alone when typed by hand, and the address when it has no name. */
+export function venuePlace(venue: ListedEvent['venue'], t: TFunction): string | null {
+  if (venue?.name == null) return venue?.address?.formatted ?? null;
+  if (venue.address?.city == null) return venue.name;
+  return t('search.line.venueCity', { venue: venue.name, city: venue.address.city });
+}
+
 /** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */
 export function daysWords(
   event: Parameters<typeof eventDayWords>[0],
