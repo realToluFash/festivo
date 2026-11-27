@@ -4018,7 +4018,7 @@
     "call": "Appeler",
     "callLabel": "Appeler {{name}}",
     "noNumber": "Pas de numéro",
-    "addMobile": "Ajouter un numéro de portable",
+    "addMobile": "Ajouter un portable",
     "shift": "Service : {{start}} à {{end}}",
     "clockedInAt": "Arrivée pointée : {{time}}",
     "movedFrom": "Ancien poste : {{station}} (changement à {{time}})",
