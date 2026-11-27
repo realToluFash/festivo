@@ -24,6 +24,7 @@ import {
   roomCourse,
   sectionsMoved,
   stageLeftBy,
+  listFormat,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -106,7 +107,9 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
 }
 
 function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
-  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
+  return listFormat(dateLocale(), { type: 'conjunction' }).format(
+    plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')),
+  );
 }
 
 function tableName(t: TFunction, { name, seats }: FloorTable): string {
