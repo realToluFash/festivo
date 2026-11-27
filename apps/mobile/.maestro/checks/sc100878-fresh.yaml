@@ -1,0 +1,15 @@
+# sc-100878: a fresh walk, and Continue from step 1 with no country picked, opens at the top of the list.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Fresh Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: f-fresh
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: f-forward-none

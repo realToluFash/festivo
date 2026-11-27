@@ -1,0 +1,70 @@
+# sc-100878: Zimbabwe stays in view and picked on Continue from step 1, three times running and after step 3 in between; then Create.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Zimbabwe Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- waitForAnimationToEnd
+- takeScreenshot: zw-picked
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: p-step3
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-back-from-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-forward-1
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-forward-2
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-forward-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: p-step3-again
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-back-from-3-again
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: p-forward-after-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: p-ready
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-created

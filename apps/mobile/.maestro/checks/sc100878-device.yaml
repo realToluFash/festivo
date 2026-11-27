@@ -1,0 +1,29 @@
+# sc-100878: the device's own country (NG, English (Nigeria)) picked: the step opens at the top of the list with it picked, by either way back and on a fresh walk.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Lagos Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: n-fresh
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.NG', selected: true }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: n-step3
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n-back-from-3
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.NG', selected: true }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n-forward-1
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.NG', selected: true }

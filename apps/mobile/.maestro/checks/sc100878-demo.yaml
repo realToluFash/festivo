@@ -1,0 +1,69 @@
+# sc-100878: the same steps in the app's design demo, from its switcher's Create an organisation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'frame.organisation|home.switchOrganisation' }
+- scrollUntilVisible: { element: { id: 'switcher.tile.create' }, direction: DOWN, timeout: 30000 }
+- tapOn: { id: 'switcher.tile.create' }
+- extendedWaitUntil: { visible: { id: 'createWalk' }, timeout: 30000 }
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Demo Zimbabwe'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- waitForAnimationToEnd
+- takeScreenshot: zw-picked
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: d-step3
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-back-from-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-forward-1
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-forward-2
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-forward-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- takeScreenshot: d-step3-again
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-back-from-3-again
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: d-forward-after-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
