@@ -13,9 +13,14 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Recovery\PasswordRecovery;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Guest;
+use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\EventRole;
+use App\Enum\MembershipStatus;
 use App\Enum\NotificationAudienceKind;
+use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingEmailSender;
 use App\Tests\Traits\OnboardsAccounts;
@@ -280,6 +285,36 @@ final class YourMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theGuestsDetailsShowEachOptOutOnceWithGuestsManageAndNoneWithGuestsReadAlone(): void
+    {
+        $guest = $this->add('Emeka Nwosu', self::ADDRESS, '0803 123 4567');
+        $this->page('PUT', ['token' => $this->token($guest), 'channel' => 'texts', 'on' => false]);
+        $this->page('PUT', ['token' => $this->token($guest), 'channel' => 'whatsApp', 'on' => false]);
+
+        $details = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $guest)['guest'] ?? null);
+        self::assertSame(['email' => null, 'texts' => '2026-11-21T13:20:00+00:00', 'whatsApp' => '2026-11-21T13:20:00+00:00'], $details['optOuts']);
+
+        $viewer = $this->member('viewer@ire.events', EventRole::CanView);
+        $viewed = Type\dict(Type\string(), Type\mixed())->coerce($this->as($viewer, 'GET', '/api/events/' . $this->eventId . '/guests/' . $guest)['guest'] ?? null);
+        self::assertSame(200, $this->statusCode());
+        self::assertFalse(Iter\contains_key($viewed, 'optOuts'));
+    }
+
+    #[Test]
+    public function aLineGoesOnceTheRowHoldsAnotherAddress(): void
+    {
+        $guest = $this->add('Emeka Nwosu', self::ADDRESS);
+        $this->oneClick($this->token($guest));
+        self::em()->clear();
+        $this->guest($guest)->setEmail('new@example.test');
+        self::em()->flush();
+
+        $details = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $guest)['guest'] ?? null);
+
+        self::assertSame(['email' => null, 'texts' => null, 'whatsApp' => null], $details['optOuts']);
+    }
+
+    #[Test]
     public function anErasureKeepsTheOptOutSoAGuestAddedAgainWithTheAddressIsStillNotEmailed(): void
     {
         $guest = $this->add('Emeka Nwosu', self::ADDRESS);
@@ -429,6 +464,18 @@ final class YourMessagesTest extends ApiTestCase
     {
         $user = self::service(UserRegistrar::class)->register($address, 'Person', self::PASSWORD)->user;
         self::onboard($user, withOrganisation: false);
+
+        return $user;
+    }
+
+    private function member(string $address, EventRole $on): User
+    {
+        $user = $this->account($address);
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Member]);
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+        self::onEvent($user, $this->eventId, $on);
 
         return $user;
     }

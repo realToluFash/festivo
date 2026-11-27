@@ -14,6 +14,7 @@ import {
 import {
   formatPhone,
   invitationLine,
+  optOutLines,
   ownLanguageName,
   phoneE164,
   phoneFields,
@@ -703,6 +704,8 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
+  const optOuts = optOutLines(guest);
+  const dayOf = (at: string) => replyDate(at, timeZone, dateLocale());
   const replied =
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
@@ -893,6 +896,12 @@ function GuestView({
                     lines={[t('guestList.emailAddress')]}
                   />
                 </li>
+                {optOuts.email != null && (
+                  <OptOutRow
+                    title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
+                    closes={optOuts.email.closes}
+                  />
+                )}
                 <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
                   <IconLead name="phone" />
                   <RowWords
@@ -900,6 +909,21 @@ function GuestView({
                     lines={[t('guestList.mobileNumber')]}
                   />
                 </li>
+                {optOuts.texts != null && (
+                  <OptOutRow
+                    title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
+                    closes={optOuts.texts.closes}
+                  />
+                )}
+                {optOuts.whatsApp != null && (
+                  <li className="desk-row">
+                    <IconLead name="whatsApp" />
+                    <RowWords
+                      title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
+                      lines={[t('guestList.onlyTheGuest')]}
+                    />
+                  </li>
+                )}
                 <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
                   <IconLead name="globe" />
                   <div className="gs-row-words">
@@ -1086,6 +1110,18 @@ function GuestView({
 }
 
 /** Marked by the triangle and the words, not the amber alone; there when the page opens, so a region, not an alert. */
+/** sc-3969: a channel the guest stopped, under the row it concerns; a record, not a control. */
+function OptOutRow({ title, closes }: { title: string; closes: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <li className="desk-row">
+      <IconLead name="slash" />
+      <RowWords title={title} lines={closes ? [t('guestList.onlyTheGuest')] : []} />
+    </li>
+  );
+}
+
 function WrongPerson({
   name,
   heading,

@@ -4,6 +4,7 @@ import {
   companionShown,
   formatPhone,
   invitationLine,
+  optOutLines,
   ownLanguageName,
   replyDate,
   shownReply,
@@ -159,6 +160,8 @@ export function GuestDetails({
     defaultValue: organisationLanguage,
   });
   const added = replyDate(guest.added.at, timeZone, locale);
+  const optOuts = optOutLines(guest);
+  const dayOf = (at: string) => replyDate(at, timeZone, locale);
   const group = guest.group?.name ?? null;
   const groupWords = group ?? t('guestGroups.noGroup');
   const after = guestReplyBy(guest, shown, replies, manages, timeZone, locale, t);
@@ -187,6 +190,21 @@ export function GuestDetails({
             inset: 40,
             row: <ValueRow value={guest.email} label={t('guestList.emailAddress')} icon="mail" />,
           },
+          ...(optOuts.email == null
+            ? []
+            : [
+                {
+                  key: 'optOutEmail',
+                  inset: 40,
+                  row: (
+                    <OptOutRow
+                      title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
+                      closes={optOuts.email.closes}
+                      testID="guest.optOut.email"
+                    />
+                  ),
+                },
+              ]),
           {
             key: 'mobile',
             inset: 40,
@@ -198,6 +216,40 @@ export function GuestDetails({
               />
             ),
           },
+          ...(optOuts.texts == null
+            ? []
+            : [
+                {
+                  key: 'optOutTexts',
+                  inset: 40,
+                  row: (
+                    <OptOutRow
+                      title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
+                      closes={optOuts.texts.closes}
+                      testID="guest.optOut.texts"
+                    />
+                  ),
+                },
+              ]),
+          ...(optOuts.whatsApp == null
+            ? []
+            : [
+                {
+                  key: 'whatsApp',
+                  inset: 40,
+                  row: (
+                    <Row
+                      title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
+                      line={t('guestList.onlyTheGuest')}
+                      lead={<LineIcon name="chat" />}
+                      accessibilityLabel={`${t('guestList.optedOutWhatsApp', {
+                        date: dayOf(optOuts.whatsApp),
+                      })}, ${t('guestList.onlyTheGuest')}`}
+                      testID="guest.whatsApp.row"
+                    />
+                  ),
+                },
+              ]),
           {
             key: 'language',
             inset: 40,
@@ -474,6 +526,22 @@ function BlockHead({ title, right }: { title: string; right?: ReactNode }) {
       </Text>
       {right}
     </View>
+  );
+}
+
+/** sc-3969: a channel the guest stopped, under the row it concerns; a record, not a control. */
+function OptOutRow({ title, closes, testID }: { title: string; closes: boolean; testID: string }) {
+  const { t } = useTranslation();
+  const line = closes ? t('guestList.onlyTheGuest') : undefined;
+
+  return (
+    <Row
+      title={title}
+      line={line}
+      lead={<LineIcon name="slash" />}
+      accessibilityLabel={[title, line].filter(Boolean).join(', ')}
+      testID={testID}
+    />
   );
 }
 

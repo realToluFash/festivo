@@ -6,6 +6,7 @@ import {
   companionShown,
   contactOf,
   invitationLine,
+  optOutLines,
   repliedRefusal,
   rowWords,
   startTicks,
@@ -279,5 +280,39 @@ describe('the ticks Record a reply starts with (sc-3787)', () => {
 
     expect([...startTicks(dele)]).toEqual(['c1', 'c3']);
     expect(startTicks(guest()).size).toBe(0);
+  });
+});
+
+describe('optOutLines (sc-3969)', () => {
+  const at = '2026-11-01T10:00:00+00:00';
+  const all = { email: at, texts: at, whatsApp: at };
+  const contacts = { email: 'ada@example.com', mobile: '+447700900123' };
+
+  it('shows nothing without guests.manage, where the answer leaves the opt-outs out', () => {
+    expect(optOutLines(contacts)).toEqual({ email: null, texts: null, whatsApp: null });
+  });
+
+  it('closes the email row under its line, and the texts row under texts while WhatsApp is not stopped', () => {
+    expect(optOutLines({ ...contacts, optOuts: { ...all, whatsApp: null } })).toEqual({
+      email: { at, closes: true },
+      texts: { at, closes: true },
+      whatsApp: null,
+    });
+  });
+
+  it('closes the mobile row in the WhatsApp row once WhatsApp is stopped too', () => {
+    expect(optOutLines({ ...contacts, optOuts: all })).toEqual({
+      email: { at, closes: true },
+      texts: { at, closes: false },
+      whatsApp: at,
+    });
+  });
+
+  it('has no line under a row that reads None', () => {
+    expect(optOutLines({ email: null, mobile: null, optOuts: all })).toEqual({
+      email: null,
+      texts: null,
+      whatsApp: null,
+    });
   });
 });

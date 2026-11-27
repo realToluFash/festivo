@@ -292,6 +292,14 @@ export interface GuestDetails extends Guest {
   added: { at: string; by: string | null };
   /** What Not set falls back to; null as `email` is. */
   organisationLanguage: string | null;
+  /** When the address now on each row was opted out for this organisation (sc-3969), null while it is not; absent without guests.manage. */
+  optOuts?: GuestOptOuts;
+}
+
+export interface GuestOptOuts {
+  email: string | null;
+  texts: string | null;
+  whatsApp: string | null;
 }
 
 /** The whole guest as Edit saves it: each companion kept by `id`, one with no id added, one left out removed. */
@@ -950,6 +958,16 @@ export function asGuestDetails(value: unknown): GuestDetails | null {
     ...guest,
     added: { at, by: text(added?.by) },
     organisationLanguage: text((value as { organisationLanguage?: unknown }).organisationLanguage),
+    ...optOutsOf((value as { optOuts?: unknown }).optOuts),
+  };
+}
+
+function optOutsOf(value: unknown): { optOuts?: GuestOptOuts } {
+  if (typeof value !== 'object' || value == null) return {};
+  const said = value as Record<string, unknown>;
+
+  return {
+    optOuts: { email: text(said.email), texts: text(said.texts), whatsApp: text(said.whatsApp) },
   };
 }
 
