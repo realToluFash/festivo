@@ -259,11 +259,19 @@ function Night({
       </View>
       {clock}
       {nightButtonsOf(night).map(({ opens, kind }) => {
-        const Button = kind === 'primary' ? PrimaryButton : SecondaryButton;
         const { label, href, testID } = buttons[opens];
+        const press = () => router.push(href);
 
-        return (
-          <Button key={opens} label={label} onPress={() => router.push(href)} testID={testID} />
+        return kind === 'primary' ? (
+          <PrimaryButton key={opens} label={label} onPress={press} testID={testID} />
+        ) : (
+          <SecondaryButton
+            key={opens}
+            label={label}
+            onPress={press}
+            tall={opens === 'floor' && !wide}
+            testID={testID}
+          />
         );
       })}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
