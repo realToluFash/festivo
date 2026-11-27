@@ -1,6 +1,7 @@
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
+import { dateLocale } from '../../i18n/index.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { InsideEvent } from '../doorCode/Inside.tsx';
 import { EventScreen } from '../events/EventPage.tsx';
@@ -115,7 +116,7 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
       at={at}
       role={shown.role}
       who={shown.who}
-      locale="en"
+      locale={dateLocale()}
       shown={{
         id: 'evt-adaeze-tunde',
         name: EVENT,
