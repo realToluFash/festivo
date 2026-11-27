@@ -126,6 +126,8 @@ final class KitchenChangesTest extends TestCase
             KitchenSides::row('jf', 'variant', 'Fish', 41),
             KitchenSides::row('jb', 'variant', 'Beef', 7),
             KitchenSides::row('jp', 'side', 'Plantain', 33),
+            KitchenSides::row('ja', 'side', 'Akara', 5),
+            KitchenSides::row('js', 'side', 'Slaw', 9),
             KitchenSides::row('f', 'dish', 'Fish', 6),
             KitchenSides::row('q', 'dish', 'Quiet', 0),
             KitchenSides::row('b', 'dish', 'Bass', 30),
@@ -135,6 +137,8 @@ final class KitchenChangesTest extends TestCase
             KitchenSides::row('jf', 'variant', 'Sea bass', 40),
             KitchenSides::row('jc', 'variant', 'Chicken', 6),
             KitchenSides::row('jp', 'side', 'Plantain', 35),
+            KitchenSides::row('js', 'side', 'Coleslaw', 9),
+            KitchenSides::row('jd', 'side', 'Dodo', 4),
             KitchenSides::row('n', 'dish', 'Moi moi', 1),
             KitchenSides::row('b', 'dish', 'Bass', 30),
             KitchenSides::row('z', 'dish', 'Nobody yet', 0),
@@ -147,7 +151,10 @@ final class KitchenChangesTest extends TestCase
             'removed|Beef|Jollof||0|7',
             'added|Chicken|Jollof||0|6',
             'count|Plantain|Jollof||33|35',
+            'removed|Akara|Jollof||0|5',
+            'renamed|Slaw|Jollof||0|0',
             'removed|Fish|||0|6',
+            'added|Dodo|Jollof||0|4',
             'added|Moi moi|||0|1',
         ], Vec\map(KitchenChanges::between($copy, $now, []), static fn (array $line): string => Str\join([$line['kind'], $line['item']['name'] ?? '', $line['item']['parent'] ?? '', 'renamed' === $line['kind'] && null === ($line['item']['parent'] ?? null) ? $line['to'] ?? '' : '', (string) $line['old'], (string) $line['count']], '|')));
     }

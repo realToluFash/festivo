@@ -142,6 +142,16 @@ final class KitchenChangesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theTimelineIsStillReadWhenTheSheetCannotBeComparedWithItsCopy(): void
+    {
+        $this->coming([['fullName' => 'Chidi Okonkwo']]);
+        $this->give();
+        self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(sheet, \'{coming}\', \'"many"\')');
+
+        self::assertNull($this->changesMilestone());
+    }
+
+    #[Test]
     public function theChangesPageComesFirstAndAnErasedGuestBecomesACountOnIt(): void
     {
         $this->coming([['fullName' => 'Chidi Okonkwo']]);

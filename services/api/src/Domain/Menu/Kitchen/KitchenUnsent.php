@@ -15,6 +15,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
+use Throwable;
 
 /** Since when the sheet has held a change no copy has (sc-30692). Marked after every write that can move it, and checked again when one event's timeline is read, which is how a close that passes is seen; the events list and the calendar feed only read what is stored. */
 final readonly class KitchenUnsent implements TimelineOpenedInterface
@@ -26,18 +28,22 @@ final readonly class KitchenUnsent implements TimelineOpenedInterface
         private MenuSerialiser $menuSerialiser,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private LoggerInterface $logger,
     ) {
     }
 
     /** A course that has closed since the last write changed the sheet with nothing to announce it. */
     public function opened(Event $event): void
     {
-        $this->check($event, true);
+        try {
+            $this->check($event, true);
+        } catch (Throwable $e) {
+            // The next read of the timeline checks again.
+            $this->logger->error('The kitchen sheet could not be compared with its latest copy.', ['eventId' => $event->getId()->toRfc4122(), 'exception' => $e::class]);
+        }
     }
 
     /**
-     * ponytail: reads the whole sheet each time; keep a digest on the row if a timeline read gets slow.
-     *
      * @param bool $onRead no write announced this change, so a course close passed since the copy is when it happened
      */
     public function check(Event $event, bool $onRead): void
