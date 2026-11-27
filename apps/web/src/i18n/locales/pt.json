@@ -7325,7 +7325,7 @@
       "yours": "As suas mesas · {{section}}",
       "other": "Outras mesas",
       "noSection": "Ainda não tem mesas. {{lead}} vai atribuir-lhe uma zona.",
-      "seatRange": "Seats {{first}} to {{last}}",
+      "seatRange": "Lugares {{first}} a {{last}}",
       "noSectionNoLead": "Ainda não tem mesas. O chefe de sala vai atribuir-lhe uma zona.",
       "moved": "Passa a servir {{section}}.",
       "header": "{{covers}} · {{section}}",
@@ -7355,6 +7355,7 @@
       "tryAgain": "Tentar novamente",
       "listBack": "Voltar",
       "chefsChoice": "À escolha do chef",
+      "chefsChoiceInSentence": "chef’s choice",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "A sala abre com «Pode servir na sala»",

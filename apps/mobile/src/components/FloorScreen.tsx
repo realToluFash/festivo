@@ -105,6 +105,10 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
 }
 
+function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
+  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
+}
+
 function tableName(t: TFunction, { name, seats }: FloorTable): string {
   if (name != null) return name;
 
@@ -412,7 +416,7 @@ export function FloorScreen({
                 sending.plate,
                 t('service.floor.step.sentBack', {
                   guest: sending.guest,
-                  items: itemsOf(sending.plate, t),
+                  items: itemsInSentence(sending.plate, t),
                   reason: t(`service.sentBack.${reason}`),
                 }),
                 { kind: 'sendBack', was: sending.plate.owedReason },
@@ -1011,11 +1015,7 @@ function SendBackSheet({
     <View style={styles.sheet} testID="floor.sendBack.sheet">
       <View style={styles.header}>
         <Text size={22} weight="bold" accessibilityRole="header">
-          {t('service.floor.sendBackTitle', {
-            items: sending.plate.items
-              .map((one) => one.name ?? t('service.floor.chefsChoice'))
-              .join(', '),
-          })}
+          {t('service.floor.sendBackTitle', { items: itemsInSentence(sending.plate, t) })}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
           {t('service.floor.sendBackWho', { guest: sending.guest, table: sending.table })}
