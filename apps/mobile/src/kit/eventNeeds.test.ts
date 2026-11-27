@@ -43,7 +43,21 @@ const rows = (
   now: string,
   permissions: string[] = MANAGES,
   timeZone = LAGOS,
-) => eventNeeds(milestones, permissions, timeZone, new Date(now), 'en-US', day, i18n.t);
+) =>
+  eventNeeds(
+    milestones,
+    {
+      permissions,
+      status: 'live',
+      startsAt: '2026-12-01T12:00:00Z',
+      endsAt: '2026-12-01T20:00:00Z',
+    },
+    timeZone,
+    new Date(now),
+    'en-US',
+    day,
+    i18n.t,
+  );
 
 describe('an event’s Needs you rows', () => {
   it('lists a You milestone for manage and none for read only', () => {

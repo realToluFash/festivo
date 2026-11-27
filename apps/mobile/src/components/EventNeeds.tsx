@@ -32,7 +32,7 @@ export function EventNeeds({
     load.kind === 'loaded'
       ? eventNeeds(
           load.timeline.milestones,
-          event.permissions,
+          event,
           load.timeline.timeZone,
           now,
           locale,

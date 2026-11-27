@@ -72,7 +72,7 @@ export function NeedsYou({ moment }: { moment: Moment }) {
         ) : (
           <ul className="today-rows">
             {moment.needs.map((need, index) => (
-              <NeedRow key={`${need.event.id}|${need.title}`} need={need} first={index === 0} />
+              <NeedRow key={need.key} need={need} first={index === 0} />
             ))}
           </ul>
         )}
