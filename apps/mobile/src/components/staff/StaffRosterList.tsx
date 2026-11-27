@@ -261,6 +261,7 @@ export function StaffRosterList({
     <BriefingCard
       people={seen.staff}
       acts={acts}
+      manages={manages}
       openCopy={() => setSide({ kind: 'copy' })}
       openRules={() => setSide({ kind: 'rules', editing: false })}
       openPreview={

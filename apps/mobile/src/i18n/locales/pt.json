@@ -4306,6 +4306,7 @@
     "saved": "Guardado. As regras já estão na página do turno de cada pessoa.",
     "notSaved": "As regras não foram guardadas. Tente de novo dentro de momentos.",
     "previewWho": "Ver a página de",
+    "previewSearch": "Pesquisar na equipa",
     "previewBanner": "Apenas pré-visualização. Nada fica registado: nem a leitura, nem a abertura da ligação.",
     "previewNoShift": "Faz parte da equipa de {{day}}, ainda sem turno.",
     "previewPage": "Página de {{name}}",

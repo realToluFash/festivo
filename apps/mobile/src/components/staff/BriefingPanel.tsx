@@ -20,6 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../Buttons.tsx';
 import { Field, TextField } from '../Field.tsx';
 import { Glyph } from '../Glyph.tsx';
+import { ListPicker } from '../ListPicker.tsx';
 import { BoxField } from '../MomentPick.tsx';
 import { readOut } from '../ReadOut.tsx';
 import { Skeleton } from '../Skeleton.tsx';
@@ -165,7 +166,9 @@ function CopyList({
   }
 
   async function mark(entry: StaffEntry): Promise<void> {
+    if (busy != null) return;
     setMissed(null);
+    setBusy(entry.id);
     try {
       onEntry(await api.markBriefingSent(eventId, entry.id));
       if (held?.id === entry.id) setHeld(null);
@@ -173,6 +176,8 @@ function CopyList({
     } catch {
       setMissed(entry.id);
       say(t('staffLink.notIssued'));
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -468,31 +473,22 @@ function Preview({
     return () => {
       current = false;
     };
-  }, [eventId, key, one]);
+  }, [eventId, key, one?.id]);
 
   if (one == null) return null;
 
   return (
     <View style={styles.list} testID="briefing.preview.panel">
-      <Text size={15} weight="semibold">
-        {t('briefing.previewWho')}
-      </Text>
-      <View style={styles.chips}>
-        {people.map((person) => (
-          <Pressable
-            key={person.id}
-            onPress={() => onPick(person.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: person.id === one.id }}
-            style={[styles.chip, person.id === one.id && styles.chipOn]}
-            testID={`briefing.preview.pick.${person.id}`}
-          >
-            <Text size={15} weight="semibold">
-              {person.fullName}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Field label={t('briefing.previewWho')}>
+        <ListPicker
+          label={t('briefing.previewWho')}
+          searchLabel={t('briefing.previewSearch')}
+          choices={people.map((person) => ({ code: person.id, name: person.fullName }))}
+          value={one.id}
+          onChange={onPick}
+          testID="briefing.preview.who"
+        />
+      </Field>
       <View style={styles.saved}>
         <Glyph name="eye" size={16} ink={tokens.colorInkSecondary} />
         <Text size={15} weight="medium" style={[styles.secondary, styles.shrink]}>
@@ -549,15 +545,15 @@ function Preview({
                   {`${t('myNight.yourLead')}: ${shown.night.lead.name}`}
                 </Text>
               )}
-              {shown.night.rules != null && (
-                <View style={styles.rulesBlock}>
-                  <Text size={15} weight="bold">
-                    {t('myNight.beforeYouStart')}
-                  </Text>
-                  <Text size={15}>{shown.night.rules}</Text>
-                </View>
-              )}
             </>
+          )}
+          {shown.night.rules != null && (
+            <View style={styles.rulesBlock}>
+              <Text size={15} weight="bold">
+                {t('myNight.beforeYouStart')}
+              </Text>
+              <Text size={15}>{shown.night.rules}</Text>
+            </View>
           )}
         </View>
       )}
@@ -598,16 +594,6 @@ const styles = StyleSheet.create({
   held: { gap: tokens.spaceSm },
   saved: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: tokens.spaceMd },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  chip: {
-    minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceMd,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-  },
-  chipOn: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   phone: {
     width: '100%',
     maxWidth: 390,

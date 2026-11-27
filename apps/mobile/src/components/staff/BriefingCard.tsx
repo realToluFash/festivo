@@ -48,6 +48,7 @@ export function BriefWord({ briefing, size = 14 }: { briefing: StaffBriefing; si
 export function BriefingCard({
   people,
   acts,
+  manages,
   openCopy,
   openRules,
   openPreview,
@@ -58,6 +59,8 @@ export function BriefingCard({
   people: readonly StaffEntry[];
   /** staff.manage, on an event not yet finished. */
   acts: boolean;
+  /** staff.manage, finished or not: only a person without it reads the lock. */
+  manages: boolean;
   openCopy: () => void;
   openRules: () => void;
   openPreview: (() => void) | null;
@@ -76,7 +79,7 @@ export function BriefingCard({
       <Text size={15} style={styles.secondary}>
         {t('briefing.cardSub')}
       </Text>
-      {!acts && (
+      {!manages && (
         <View style={styles.lock} testID="briefing.readOnly">
           <Glyph name="lock" size={16} ink={tokens.colorInkSecondary} />
           <Text size={15} weight="medium" style={[styles.secondary, styles.shrink]}>
