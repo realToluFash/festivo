@@ -1,4 +1,4 @@
-# sc-4235 subflow: on the door code's event step, choose Nigeria, type NUMBER and NAME, Send code. Country first, so no keyboard is up to cover the picker; hideKeyboard only follows typing, since with no keyboard up it presses Back on Android.
+# sc-4235 subflow: on the door code's event step, type NAME, choose Nigeria, type NUMBER, Send code. Never hideKeyboard: with no keyboard up it presses Back on Android.
 appId: host.exp.Exponent
 ---
 - tapOn:
@@ -20,10 +20,9 @@ appId: host.exp.Exponent
     id: 'redeem.event.number'
 - eraseText: 30
 - inputText: ${NUMBER}
-- tapOn:
-    id: 'redeem.name.field'
-- eraseText: 60
-- inputText: ${NAME}
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'redeem.event.send'
+    timeout: 10000
 - tapOn:
     id: 'redeem.event.send'

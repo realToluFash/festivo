@@ -1,6 +1,7 @@
-# sc-4235 (qa1): a full code's holder (08034440721, already in at CAP) signs back in after Continue and lands on You're in; then a verified alternative number (08034440702) at CODE comes back to the event step with everything kept. Pass CODE, CAP.
+# sc-4235 (qa1): a full code's holder (08034440721, already in at CAP) signs back in after Continue and lands on You're in; then a verified alternative number (08034440702) at CODE comes back to the event step with everything kept. Run after _sc4235q1-again. Pass CODE, CAP.
 appId: host.exp.Exponent
 ---
+- runFlow: ../batch/sign-out.yaml
 - openLink: ${METRO_URL}/--/d/${CAP}
 - extendedWaitUntil:
     visible:
@@ -34,15 +35,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: sc4235/fill.yaml
     env: { NAME: 'Rita Alt', NUMBER: '08034440702' }
-- extendedWaitUntil:
-    visible:
-      id: 'redeem.code.resend'
-    timeout: 20000
-- runScript:
-    file: ../scripts/latest-sms-code.js
-    env:
-      DIGITS: '4440702'
-- inputText: ${output.code}
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440702' }
 - extendedWaitUntil:
     visible:
       id: 'redeem.event.number'

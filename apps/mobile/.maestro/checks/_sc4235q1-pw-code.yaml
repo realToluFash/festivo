@@ -30,6 +30,6 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.nav.more.signOut'
 - waitForAnimationToEnd
-- assertNotVisible:
-    id: 'redeem.enter.code'
+- assertVisible:
+    id: 'welcome.brand'
 - takeScreenshot: pw-code-more-signed-out

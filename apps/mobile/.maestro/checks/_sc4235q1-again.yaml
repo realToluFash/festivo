@@ -1,6 +1,7 @@
-# sc-4235 (qa1): a number on an account under another name; signed-out door code; a full code's holder back in after Continue; a new number at a full code refused with name and number kept. Pass CODE, CAP, CAP2.
+# sc-4235 (qa1): a number on an account under another name; signed-out door code; a full code's holder back in after Continue; a new number at a full code refused with name and number kept. Run before _sc4235q1-holder. Pass CODE, CAP, CAP2.
 appId: host.exp.Exponent
 ---
+- runFlow: ../batch/sign-out.yaml
 - openLink: ${METRO_URL}/--/d/${CODE}
 - extendedWaitUntil:
     visible:
