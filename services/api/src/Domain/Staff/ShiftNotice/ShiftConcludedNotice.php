@@ -9,6 +9,7 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Domain\Staff\Briefing\BriefingPrinter;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Enum\NotificationAudienceKind;
@@ -42,6 +43,8 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         private ShiftUrgency $shiftUrgency,
         private StaffRosterPublisher $staffRosterPublisher,
         private TranslatorInterface $translator,
+        private ToldShifts $toldShifts,
+        private BriefingPrinter $briefingPrinter,
     ) {
     }
 
@@ -142,13 +145,22 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         );
     }
 
+    /** Once it has gone it is the last thing they were told, so a change still waiting at the call-off settles with it and the roster's Changed since sent clears, as ShiftChangeNotice's does. */
     public function finished(array $payload, NotificationDeliveryStatus $status): void
     {
         $entry = $this->entry($payload);
 
-        if (null !== $entry) {
-            $this->staffRosterPublisher->publish($entry->getEvent());
+        if (null === $entry) {
+            return;
         }
+
+        if (NotificationDeliveryStatus::Sent === $status) {
+            $this->toldShifts->toldNow($entry);
+            $entry->setBrief($entry->getBriefStatus(), $this->briefingPrinter->printOf($entry));
+            $this->entityManager->flush();
+        }
+
+        $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
     /** @param array<string, mixed> $payload */
