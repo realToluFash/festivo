@@ -186,7 +186,7 @@ function courseOrder(copy: Figures, now: Figures): Course[] {
   return [...now.courses, ...copy.courses.filter((course) => !kept.has(course.id))];
 }
 
-/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows, each after its course's name. */
+/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows, each after its course's name, a course gone from the menu at 0 under the copy's name. */
 function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
   const was = new Map(copy.items.map((item) => [item.id, item]));
   const here = new Set(now.items.map((item) => item.id));
@@ -258,6 +258,15 @@ function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
   rows.filter((item) => item.kind !== 'tail').forEach(rowLines);
   gone.filter((item) => item.kind !== 'tail').forEach(goneLine);
   rows.filter((item) => item.kind === 'tail').forEach(rowLines);
+  gone
+    .filter((item) => item.kind === 'tail' && item.count > 0)
+    .forEach((item) =>
+      lines.push({
+        key: `count-${item.id}`,
+        kind: 'dish',
+        text: filled(CW.count, { dish: lineName(item), old: item.count, new: 0 }),
+      }),
+    );
 
   return lines;
 }

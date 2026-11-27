@@ -209,6 +209,27 @@ describe('Changes since: what counts as a change', () => {
       'Chocolate tart 53 to 54',
       'Removed: Pepper soup, was 52',
       'Removed: Burrata with peaches, was 41',
+      'Starter · Not chosen yet 3 to 0',
+    ]);
+  });
+
+  it('counts a removed course’s own figures as 0 now, under the copy’s name', () => {
+    const copy = {
+      ...BASE,
+      courses: BASE.courses.map((course) =>
+        course.id === 'd' ? { ...course, name: 'Pudding' } : course,
+      ),
+    };
+    const now = {
+      ...BASE,
+      courses: BASE.courses.filter((course) => course.id !== 'd'),
+      items: BASE.items.filter((one) => one.course !== 'd'),
+    };
+
+    expect(texts(copy, now)).toEqual([
+      'Removed: Chocolate tart, was 53',
+      'Removed: Fruit plate, was 40',
+      'Pudding · Not chosen yet 3 to 0',
     ]);
   });
 
