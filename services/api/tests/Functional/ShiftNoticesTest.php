@@ -272,7 +272,7 @@ final class ShiftNoticesTest extends ApiTestCase
 
         $this->editTimes($sunday, '2027-03-07T00:30', '2027-03-07T02:00');
         $this->at('2027-03-06T05:45:00Z');
-        self::assertSame([['Your shift has changed · Owambe', '/app/events/' . $this->eventId . '/my-night']], Vec\map($this->pushes(), static fn (array $push): array => [$push[0], $push[2]]));
+        self::assertSame([['Your shifts have changed · Owambe', '/app/events/' . $this->eventId . '/my-night']], Vec\map($this->pushes(), static fn (array $push): array => [$push[0], $push[2]]));
 
         $this->at('2027-03-06T09:00:00Z');
         self::assertContains(['Ada Obi', 'Your shift starts Sunday 7 Mar at 00:30 · Owambe', ['Bartender at Harbour Hall.']], $this->reminders());
@@ -281,7 +281,7 @@ final class ShiftNoticesTest extends ApiTestCase
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
         $this->at('2027-03-06T09:15:00Z');
 
-        self::assertSame(['Your shift has changed · Owambe', 'You are no longer on the staff for Owambe on Saturday 6 Mar'], Vec\map($this->pushes(), static fn (array $push): string => $push[0]));
+        self::assertSame(['Your shifts have changed · Owambe', 'You are no longer on the staff for Owambe on Saturday 6 Mar'], Vec\map($this->pushes(), static fn (array $push): string => $push[0]));
     }
 
     #[Test]
@@ -292,7 +292,7 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->markedSent($this->ada);
         $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
         $this->opened($token);
-        self::assertSame('told', $this->row($this->ada)['notice']['state'] ?? null);
+        self::assertSame('waiting', $this->row($this->ada)['notice']['state'] ?? null);
 
         $this->at('2027-03-06T05:45:00Z');
 
