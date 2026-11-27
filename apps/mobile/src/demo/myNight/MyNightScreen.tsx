@@ -155,6 +155,7 @@ export function MyNightScreen({ first }: { first: Night }) {
           <SecondaryButton
             label={openFloor.label}
             onPress={() => router.push(openFloor.href as Href)}
+            tall={!wide}
             testID="myNight.openFloor"
           />
         ))}
