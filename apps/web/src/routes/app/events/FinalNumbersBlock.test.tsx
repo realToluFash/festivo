@@ -279,7 +279,7 @@ describe('Final numbers due and the copies (sc-30812)', () => {
         ),
     });
 
-    expect(await screen.findByText('Guests can still choose until Monday, Nov 4.')).toBeDefined();
+    expect(await screen.findByText('Guests can still choose until Mon, Nov 4.')).toBeDefined();
   });
 
   it('gives final numbers: downloads the PDF, records it, and announces it', async () => {
