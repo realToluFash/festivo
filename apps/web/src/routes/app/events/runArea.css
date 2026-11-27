@@ -262,3 +262,74 @@
   color: var(--colorInkSecondary);
   font: var(--typeSmall);
 }
+
+/* sc-32279: at 320 px each item is a block of its own, the Mark button beside its start, so nothing scrolls sideways. */
+@media (width <= 40rem) {
+  .rv-track {
+    padding: var(--spaceLg);
+  }
+
+  .rv-table,
+  .rv-table tbody {
+    display: block;
+  }
+
+  .rv-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .rv-row {
+    display: grid;
+    grid-template-areas:
+      'starts act'
+      'lasts act'
+      'item item'
+      'owner owner';
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spaceXxs) var(--spaceMd);
+    padding: var(--spaceMd) var(--spaceSm);
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .rv-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .rv-row.is-now {
+    background: var(--colorAccentTint);
+  }
+
+  .rv-table .rv-row :is(td, th) {
+    width: auto;
+    padding: 0;
+    border-bottom: 0;
+    background: none;
+  }
+
+  .rv-row .rv-starts {
+    grid-area: starts;
+  }
+
+  .rv-row .rv-lasts {
+    grid-area: lasts;
+  }
+
+  .rv-row .rv-item {
+    grid-area: item;
+    margin-top: var(--spaceXs);
+  }
+
+  .rv-row .rv-owner {
+    grid-area: owner;
+  }
+
+  .rv-row .rv-act-col {
+    grid-area: act;
+    align-self: start;
+  }
+}

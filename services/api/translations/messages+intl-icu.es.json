@@ -556,5 +556,18 @@
     "saved_audience.full": "Este evento tiene {most, number, ::group-auto} públicos guardados, el máximo posible. Elimine uno para guardar otro.",
     "validation.guest_greet_as_too_long": "Acorte el nombre en el saludo a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
     "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar.",
-    "validation.your_messages_no_address": "Nothing is on record to turn off on this channel."
+    "validation.your_messages_no_address": "Nothing is on record to turn off on this channel.",
+    "usage_warning.drafts.heading_part": "{organisation} has used {percent} of its included assistant drafts",
+    "usage_warning.drafts.heading_all": "{organisation} has used all its included assistant drafts",
+    "usage_warning.storage.heading_part": "{organisation} has used {percent} of its included storage",
+    "usage_warning.storage.heading_all": "{organisation} has used all its included storage",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} of {included, plural, one {{included, number, ::group-auto} assistant draft} other {{included, number, ::group-auto} assistant drafts}}",
+    "usage.storage_row": "{used} of {included} storage",
+    "usage.size.megabyte": "{size} MB",
+    "usage.size.gigabyte": "{size} GB",
+    "usage.size.terabyte": "{size} TB",
+    "usage_warning.drafts.next_part": "After your included assistant drafts, each draft costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}}.",
+    "usage_warning.drafts.next_all": "Each assistant draft now costs {count, plural, one {{count, number, ::group-auto} credit} other {{count, number, ::group-auto} credits}} until your included drafts reset.",
+    "usage_warning.drafts.reset": "Your included assistant drafts reset on {date}.",
+    "usage_warning.storage.next": "Uploads keep working, and nothing is charged."
 }

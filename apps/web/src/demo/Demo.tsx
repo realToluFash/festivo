@@ -20,6 +20,8 @@ import { AllCredits } from './Credits.tsx';
 import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
+import { LimitReached } from './LimitReached.tsx';
+import { LIMIT_PAGES } from './limitReached.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -363,6 +365,7 @@ export default function Demo() {
       <Route path="settings/plan-and-billing" element={<Billing />} />
       <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
       <Route path="usage-warning" element={<UsageWarning />} />
+      <Route path="limit-reached" element={<LimitReached />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -712,6 +715,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CREDITS_PAGES} />
         <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
         <BoardPages pages={USAGE_WARNING_PAGES} />
+        <h3>
+          A plan’s hard limit, or the ceiling, refused (sc-3930) · desktop, and the desk reflowed at
+          320
+        </h3>
+        <BoardPages pages={LIMIT_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
