@@ -179,6 +179,9 @@ def merge(p, pr, story, row):
     elif W.design_pr(pr):
         merges = (f"merges at the passed sha once it changes only {', '.join(R.DEMO)}; "
                   f"sc-{story['id']} stays {story['state']} and no tester is told")
+    elif W.ops_pr(story, pr):
+        merges = (f"merges at the passed sha; sc-{story['id']} is "
+                  f"{R.builder_of(story['labels'])}'s story and stays {story['state']}")
     elif W.side_pr(story, pr) and not W.finished(story):
         merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
                   "stays where the linguist put it, so the merge is still yours")

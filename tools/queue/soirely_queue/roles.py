@@ -187,6 +187,13 @@ def is_design_branch(branch):
     return (branch or "").startswith(DESIGN_BRANCH)
 
 
+OPS_BRANCH = "ops/"
+
+
+def is_ops_branch(branch):
+    return (branch or "").startswith(OPS_BRANCH)
+
+
 def demo_file(path):
     return path.startswith(DEMO)
 
