@@ -343,6 +343,12 @@ function Rules({
     }
   }
 
+  const count = countLine(draft, t);
+  const atLimit = count?.limit === true;
+  useEffect(() => {
+    if (atLimit) say(t('briefing.atLimit', { max: STAFF_RULES_MAXIMUM }));
+  }, [atLimit, t]);
+
   if (!editing)
     return (
       <View style={styles.list} testID="briefing.rules.view">
@@ -379,8 +385,6 @@ function Rules({
       </View>
     );
 
-  const count = countLine(draft, t);
-
   return (
     <View style={styles.list} testID="briefing.rules.editing">
       <Field label={t('briefing.rules')} error={wrong}>
@@ -402,7 +406,6 @@ function Rules({
           size={14}
           weight="semibold"
           style={count.limit ? styles.broken : styles.secondary}
-          accessibilityLiveRegion="polite"
           testID="briefing.rules.count"
         >
           {count.words}
