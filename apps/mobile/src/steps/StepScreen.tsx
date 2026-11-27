@@ -39,7 +39,7 @@ import {
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
-import { barFits, keysOver } from '../kit/keyboard.ts';
+import { dockInline, keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -241,19 +241,13 @@ export function StepScreen({
     setSizes((was) => (was[key] === height ? was : { ...was, [key]: height }));
   };
   const [inline, setInline] = useState(false);
-  // While docked the scroll view ends at the foot, while in place at the keys.
-  const room = sizes.shown + (inline ? 0 : sizes.foot);
-  const fieldHeight = Math.max(sizes.field, sizes.group);
-  const nextInline =
-    foot != null &&
-    keysUp &&
-    fieldHeight > 0 &&
-    !barFits({
-      room,
-      field: fieldHeight,
-      bar: sizes.foot,
-      margin: tokens.spaceLg,
-    });
+  const nextInline = dockInline({
+    keysUp,
+    hasFoot: foot != null,
+    sizes,
+    inline,
+    margin: tokens.spaceLg,
+  });
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
