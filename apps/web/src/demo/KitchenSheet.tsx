@@ -615,7 +615,7 @@ function Page({
 }
 
 /** Each state a shape with its word: Needs the host a triangle, Skipped a circle with a minus, not chosen a dashed circle. Drawn in the demo, not added to the product's icon set. */
-function StateMark({ kind }: { kind: Exclude<Cell['kind'], 'dish'> }) {
+export function StateMark({ kind }: { kind: Exclude<Cell['kind'], 'dish'> }) {
   if (kind === 'host')
     return (
       <svg className="ks-mark" viewBox="0 0 16 16" aria-hidden="true">
