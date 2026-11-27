@@ -4018,7 +4018,7 @@
     "call": "Ligar",
     "callLabel": "Ligar a {{name}}",
     "noNumber": "Sem número",
-    "addMobile": "Adicionar um número de telemóvel",
+    "addMobile": "Adicionar telemóvel",
     "shift": "Turno: {{start}} a {{end}}",
     "clockedInAt": "Entrada registada: {{time}}",
     "movedFrom": "Mudou do posto {{station}} ({{time}})",
