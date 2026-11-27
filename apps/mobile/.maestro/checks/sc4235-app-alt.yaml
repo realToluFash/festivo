@@ -1,4 +1,4 @@
-# sc-4235: in the app, a door code by phone with a verified alternative number on another account: after the right code, back on the event step with the number kept and the alternative line under it. Pass CODE. Signs the session out.
+# sc-4235 (no hideKeyboard after the code: no keyboard is up, and on Android it presses Back): in the app, a door code by phone with a verified alternative number on another account: after the right code, back on the event step with the number kept and the alternative line under it. Pass CODE. Signs the session out.
 appId: host.exp.Exponent
 ---
 - runFlow: ../batch/sign-out.yaml
@@ -27,6 +27,5 @@ appId: host.exp.Exponent
     visible:
       id: 'redeem.event.number'
     timeout: 20000
-- hideKeyboard
 - waitForAnimationToEnd
 - takeScreenshot: 03-alternative
