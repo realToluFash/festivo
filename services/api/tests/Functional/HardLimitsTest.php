@@ -7,16 +7,27 @@ namespace App\Tests\Functional;
 use App\Domain\Billing\HardLimits;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
+use App\Domain\Service\ServiceSteps;
+use App\Domain\Service\ServingTables;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
+use App\Entity\Guest;
 use App\Entity\Invitation;
+use App\Entity\MenuCourse;
 use App\Entity\Organisation;
 use App\Entity\Role;
+use App\Entity\SeatAssignment;
+use App\Entity\SeatingPlan;
+use App\Entity\SeatingSection;
+use App\Entity\SeatingTable;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\InvitationStatus;
 use App\Enum\Plan;
+use App\Enum\SectionColour;
 use App\Enum\SeededRole;
+use App\Enum\TableShape;
+use App\Locale\NameNormaliser;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Traits\InvitesPeople;
@@ -25,11 +36,13 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Uid\Uuid;
 
 final class HardLimitsTest extends ApiTestCase
 {
@@ -138,7 +151,7 @@ final class HardLimitsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aLiveEventOverTheLimitStillTakesWalkInsRepliesAndArrivalsAndAsksNoLimit(): void
+    public function aLiveEventOverTheLimitStillSendsTakesRepliesWalkInsAndArrivalsAndRunsServiceAndAsksNoLimit(): void
     {
         $event = $this->event(live: true);
         $guest = Type\string()->coerce($this->add($event, 'Bisi Okoro')['id'] ?? null);
@@ -154,6 +167,12 @@ final class HardLimitsTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
         $this->client->setServerParameter('HTTP_X_DEVICE_ID', 'door-phone-0123456789');
         $this->as('POST', '/api/events/' . $event . '/check-in/arrivals', ['guestId' => $guest]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as('POST', '/api/events/' . $event . '/messages', ['audience' => 'all', 'message' => 'The doors are open.']);
+        self::assertSame(202, $this->statusCode(), Json\encode($this->last()));
+        $course = $this->fireAt($event, $guest);
+        $this->client->setServerParameter('HTTP_IDEMPOTENCY_KEY', Uuid::v4()->toRfc4122());
+        $this->as('PUT', '/api/events/' . $event . '/service/course/' . $course . '/items', ['item' => 'plantain', 'state' => 'preparing', 'readyIn' => 10, 'expected' => ['item' => 'ready']]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         self::assertSame(122, $this->people($event));
@@ -233,6 +252,26 @@ final class HardLimitsTest extends ApiTestCase
         }
 
         return $id;
+    }
+
+    /** Seats the guest at a table and fires a course there, as the kitchen starts service; returns the course. */
+    private function fireAt(string $eventId, string $guestId): string
+    {
+        $event = self::em()->find(Event::class, $eventId) ?? self::fail('no event');
+        $guest = self::em()->find(Guest::class, $guestId) ?? self::fail('no guest');
+        $course = new MenuCourse($event, 'Main', null, 0);
+        $course->listOwnItems(['Plantain']);
+        $plan = new SeatingPlan($event, null, 2000, 2000, null);
+        $section = new SeatingSection($plan, 'Section A', NameNormaliser::key('Section A'), SectionColour::Blue, null);
+        $table = new SeatingTable($plan, 'Table 1', NameNormaliser::key('Table 1'), TableShape::Round, 100, 100, null);
+        $table->setSection($section);
+        Iter\apply([$course, $plan, $section, $table, new SeatAssignment($guest, $table, 1)], static fn (object $row) => self::em()->persist($row));
+        self::em()->flush();
+
+        $serving = self::service(ServingTables::class)->find($event, 'table:' . $table->getId()->toRfc4122()) ?? self::fail('no table');
+        self::service(ServiceSteps::class)->fire($course, $serving, self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner'));
+
+        return $course->getId()->toRfc4122();
     }
 
     private function seed(string $event, int $people): void
