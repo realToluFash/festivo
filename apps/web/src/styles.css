@@ -4885,25 +4885,6 @@ button.members-row {
   color: var(--colorBroken);
 }
 
-.timeline-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXl);
-  margin: var(--spaceLg) 0 0;
-}
-
-.timeline-key div {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.timeline-key dd {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-}
-
 /* On a phone the pills leave the date line for their own, as in the app, so a far-off date in another zone and the longer fr and pt words wrap within the rows' floor rather than past it. */
 @media (width <= 40rem) {
   .coming-up-rows {

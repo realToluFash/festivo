@@ -2627,6 +2627,7 @@
     "failed": "The dates did not load.",
     "retry": "Try again",
     "momentInZone": "{{moment}} ({{timeZone}})",
+    "ownerMoment": "{{owner}} · {{moment}}",
     "now": "now",
     "today": "today",
     "inDays_one": "in {{count, number}} day",
