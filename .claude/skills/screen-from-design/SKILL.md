@@ -337,6 +337,18 @@ is held to what both can do:
 
 - Can the keyboard cover it, or the button under it? Anything low, in a sheet, or in a
   modal — assume yes, and lift or scroll it.
+- **The step's dock rule is given the focused field's whole block, label and line
+  included, measured by the lift that keeps it and never by the step from the bare
+  input.** A bar docks on the keys only while that block fits above it (`barFits`,
+  sc-7099), and `StepScreen` learns it only through `ScreenScroll.focusedGroup`: the kit's
+  `useAboveKeyboard` reports it from the group it lifts, and a lift of its own
+  (`FieldsAboveSend`) reports the focused field's block. A lift keeps more than that
+  block only inside the room the dock leaves, and never reports what it keeps: the kept
+  tier is chosen in the frame the lift measured, which an undocked bar stretches to the
+  keys, so reporting it holds the bar undocked where the field alone would fit above a
+  docked one. Without the report the step measures the bare input itself, keeps the bar
+  docked, and the block the lift keeps lands under the top bar. Two measurements of one
+  field is how sc-97734 failed QA.
 - `keyboardShouldPersistTaps="handled"`, or the first tap after typing only dismisses the
   keyboard.
 - `cursorColor` and `selectionColor` set to the input's own text colour. The platform
