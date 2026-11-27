@@ -632,7 +632,9 @@ function Roster({
                         <th scope="col">{t('roster.station')}</th>
                         <th scope="col">{t('roster.shift')}</th>
                         <th scope="col">{t('briefing.card')}</th>
-                        <th scope="col">{t('roster.link')}</th>
+                        <th scope="col" className="rs-link-col">
+                          {t('roster.link')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
