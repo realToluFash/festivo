@@ -9,6 +9,7 @@ import {
   rowLine,
   rowShows,
 } from '../station/wayIn.ts';
+import { READ_ANSWERS_IN, type ServiceLink, type WayInOverview } from '../station/wayInShown.ts';
 import { type FloorState } from './FloorModel.ts';
 import { type OnFloor, floorLine, opensFloor } from './floorWayIn.ts';
 
@@ -53,8 +54,6 @@ const DAY_BEFORE = new Date('2026-11-27T22:59:00Z');
 
 /** How long the demo waits before the floor lead moves Grace to Section D, for the `moving` state. */
 export const MOVES_IN = 3000;
-
-export const READ_ANSWERS_IN = 1500;
 
 export const LAST_READ = new Date('2026-11-28T18:38:00Z');
 
@@ -166,26 +165,7 @@ const ORGANISER: Record<OrganiserState, Sample> = {
   org_day_before: { ...RONKE, now: new Date('2026-11-04T23:59:00Z') },
 };
 
-export interface FloorLink {
-  line: string;
-  href: string;
-  /** The line after the floor lead's move, or the next read that succeeds, and when it lands. */
-  moves?: { line: string; in: number };
-  answersIn?: number;
-}
-
-interface Shown {
-  who: string;
-  rostered: boolean;
-  night: MyNightState;
-  now: Date;
-  station: { line: string; href: string } | null;
-  floor: FloorLink | null;
-}
-
-export type FloorWayInOverview =
-  | (Shown & { page: 'rows'; role: InsideLevel })
-  | (Shown & { page: 'organiser'; role: Sample['role'] });
+type Shown = Omit<WayInOverview, 'page' | 'role'>;
 
 export function floorWayInStateOf(raw: string | undefined): FloorWayInState {
   return FLOOR_WAY_IN_STATES.find((state) => state === raw) ?? 'one_section';
@@ -195,7 +175,7 @@ function isOrganiser(state: FloorWayInState): state is OrganiserState {
   return ORGANISER_STATES.some((one) => one === state);
 }
 
-function floorLink(sample: Sample, zone: string): FloorLink {
+function floorLink(sample: Sample, zone: string): ServiceLink {
   const line = floorLine(sample.on, sample.locale);
   const href = `/demo/floor?state=${sample.floor}&from=overview`;
 
@@ -234,7 +214,7 @@ function shownOf(sample: Sample, day: EventDay, zone: string): Shown {
 export function floorOverviewOf(
   state: FloorWayInState,
   zone: string = deviceZone(),
-): FloorWayInOverview {
+): WayInOverview {
   if (isOrganiser(state)) {
     const sample = ORGANISER[state];
 

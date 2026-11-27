@@ -4,11 +4,11 @@ import { checkInOf, movedToGrill, nightOf, openOf } from '../myNight/myNightMode
 import { type Access, KS, openButton, opensStations, readAt, rowLine, rowShows } from './wayIn.ts';
 import {
   KITCHEN_WAY_IN_BOARDS,
-  READ_ANSWERS_IN,
   WAY_IN_STATES,
   type WayInState,
   overviewOf,
 } from './wayInBoards.ts';
+import { READ_ANSWERS_IN } from './wayInShown.ts';
 import { stationIdOf, wayBackOf } from './wayInRoute.ts';
 
 const SAO_PAULO = {
@@ -225,5 +225,39 @@ describe('a service level’s Overview (sc-96279)', () => {
 
   it('opens a waiter’s night for Can work the floor on the roster', () => {
     expect(rows('floor')).toEqual(['Can work the floor', true, 'night', false]);
+  });
+});
+
+describe('Floor on the same Overview (sc-98893)', () => {
+  it('shows the Floor row for every account whose access opens the floor, on the event’s day', () => {
+    const lines = Object.fromEntries(
+      WAY_IN_STATES.map((state) => [state, overviewOf(state).floor?.line ?? null]),
+    );
+
+    expect(lines).toEqual({
+      own_course: null,
+      own_before: null,
+      answering: null,
+      offline: null,
+      past_midnight: null,
+      last_pick: null,
+      pick: null,
+      day_before: null,
+      finished: null,
+      floor: 'No section yet',
+      view: null,
+      floor_alone: 'No section yet',
+      pass_alone: null,
+      run_floor: 'All tables · Mains',
+      run_floor_alone: null,
+      org_night: 'All tables · Mains',
+      org_no_night: 'All tables · Mains',
+      org_day_before: null,
+    });
+  });
+
+  it('opens Floor over Overview, its ‹ reading Overview', () => {
+    expect(overviewOf('floor_alone').floor?.href).toBe('/demo/floor?state=noSection&from=overview');
+    expect(overviewOf('run_floor').floor?.href).toBe('/demo/floor?state=manage&from=overview');
   });
 });

@@ -5,26 +5,40 @@ import { goBack } from '../DemoScreen.tsx';
 import { InsideEvent } from '../doorCode/Inside.tsx';
 import { EventScreen } from '../events/EventPage.tsx';
 import { EventsShell } from '../events/Route.tsx';
+import { floorOverviewOf, floorWayInStateOf } from '../floor/floorWayInBoards.ts';
 import { nightOf, rowLineOf } from '../myNight/myNightModel.ts';
 import { EVENT } from './stationModel.ts';
-import { ORGANISER_EVENT, type WayInOverview, overviewOf, wayInStateOf } from './wayInBoards.ts';
+import { overviewOf, wayInStateOf } from './wayInBoards.ts';
+import { ORGANISER_EVENT, type ServiceLink, type WayInOverview } from './wayInShown.ts';
 
 /** /demo/kitchen-way-in: the event's Overview with Kitchen station under Your night, or in its place (sc-95382). */
 export function WayInRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
-  const shown = overviewOf(wayInStateOf(state));
 
+  return <WayIn key={state} shown={overviewOf(wayInStateOf(state))} />;
+}
+
+/** /demo/floor-way-in: the same Overview, its states drawn for Floor (sc-98893). */
+export function FloorWayInRoute() {
+  const { state } = useLocalSearchParams<{ state?: string }>();
+
+  return <WayIn key={state} shown={floorOverviewOf(floorWayInStateOf(state))} />;
+}
+
+function WayIn({ shown }: { shown: WayInOverview }) {
   return shown.page === 'organiser' ? (
-    <OrganiserOverview key={state} shown={shown} />
+    <OrganiserOverview shown={shown} />
   ) : (
-    <RowListOverview key={state} shown={shown} />
+    <RowListOverview shown={shown} />
   );
 }
 
-/** Until the stations read answers there is no row; then it fades in (sc-95382, `answering`). */
-function useAnswered(station: WayInOverview['station']): boolean {
-  const waits = station?.answersIn;
+/** No row until the read answers; then the line, and the next one when a move or a read lands. */
+function useLine(link: ServiceLink | null): string | null {
+  const waits = link?.answersIn;
+  const moves = link?.moves;
   const [answered, setAnswered] = useState(waits == null);
+  const [line, setLine] = useState(link?.line ?? null);
 
   useEffect(() => {
     if (waits == null) return;
@@ -33,40 +47,51 @@ function useAnswered(station: WayInOverview['station']): boolean {
     return () => clearTimeout(timer);
   }, [waits]);
 
-  return answered;
+  useEffect(() => {
+    if (moves == null) return;
+    const timer = setTimeout(() => setLine(moves.line), moves.in);
+
+    return () => clearTimeout(timer);
+  }, [moves]);
+
+  return answered ? line : null;
 }
 
-function stationRow(station: WayInOverview['station'], answered: boolean) {
-  return station == null || !answered
-    ? {}
+function row(link: ServiceLink | null, line: string | null) {
+  return link == null || line == null
+    ? undefined
     : {
-        station: {
-          line: station.line,
-          onOpen: () => router.push(station.href as Href),
-          fades: station.answersIn != null,
-        },
+        line,
+        onOpen: () => router.push(link.href as Href),
+        fades: link.answersIn != null,
       };
 }
 
-function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'organiser' }> }) {
+function useRows(shown: WayInOverview) {
   const night = nightOf(shown.night);
-  const answered = useAnswered(shown.station);
+  const stationLine = useLine(shown.station);
+  const floorLine = useLine(shown.floor);
+  const station = row(shown.station, stationLine);
+  const floor = row(shown.floor, floorLine);
+
+  return {
+    ...(shown.rostered && {
+      night: {
+        line: rowLineOf(night),
+        onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
+      },
+    }),
+    ...(station != null && { station }),
+    ...(floor != null && { floor }),
+  };
+}
+
+function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'organiser' }> }) {
+  const rows = useRows(shown);
 
   return (
     <EventsShell>
-      <EventScreen
-        id={ORGANISER_EVENT}
-        state={null}
-        area={null}
-        clock={shown.now}
-        {...(shown.rostered && {
-          night: {
-            line: rowLineOf(night),
-            onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
-          },
-        })}
-        {...stationRow(shown.station, answered)}
-      />
+      <EventScreen id={ORGANISER_EVENT} state={null} area={null} clock={shown.now} {...rows} />
     </EventsShell>
   );
 }
@@ -74,7 +99,7 @@ function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'o
 function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'rows' }> }) {
   const [at, setAt] = useState<'overview' | 'people'>('overview');
   const night = nightOf(shown.night);
-  const answered = useAnswered(shown.station);
+  const rows = useRows(shown);
 
   return (
     <InsideEvent
@@ -91,13 +116,7 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
         venue: 'Eko Hotel, Victoria Island',
         job: shown.rostered ? night.job : null,
       }}
-      {...(shown.rostered && {
-        night: {
-          line: rowLineOf(night),
-          onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
-        },
-      })}
-      {...stationRow(shown.station, answered)}
+      {...rows}
       onAt={setAt}
       onSignOut={goBack}
       onAccount={() => router.push('/demo/settings/account?as=noOrg')}
