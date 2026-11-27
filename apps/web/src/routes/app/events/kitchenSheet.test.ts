@@ -7,7 +7,7 @@ const AT_320 = mediaBlock('(width <= 640px)', SHEET);
 
 describe('the kitchen sheet’s widths (sc-30812)', () => {
   it('leaves scrolling to the shell’s card, so the row that opens adds no sideways scroll at 1280', () => {
-    expect(cssRule('.ks.desk-page', SHEET)).toContain('overflow: visible;');
+    expect(cssRule('.shell-content .desk-page')).toContain('overflow: visible;');
   });
 
   it('stands Final numbers under the sheet at 400% zoom, 320 CSS px', () => {

@@ -395,7 +395,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   });
 
   it('lets the card scroll the Roster, so the bar stays in view on a long roster (sc-3912)', () => {
-    expect(cssRule('.rs.desk-page', ROSTER_CSS)).toContain('overflow: visible;');
+    expect(cssRule('.shell-content .desk-page')).toContain('overflow: visible;');
     expect(cssRule('.rs-bar', ROSTER_CSS)).toContain('position: sticky;');
   });
 
