@@ -1227,50 +1227,50 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
     expect(screen.getByText(/^Told on .* at 11:15, by push\.$/)).toBeDefined();
   });
 
-  it('says the event is already over and reloads into the Finished state, with no Mark as sent, when it is pressed on a page opened before it finished', async () => {
-    signedIn();
-    const copy = { by: 'Folake Adeyemi', at: '2026-11-01T10:12:00+01:00', marked: false };
-    let staffReads = 0;
-    let phase = 'live';
-    const sent = await onRoster({
-      'GET /api/events/ev_1': () =>
-        json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase } }),
-      'GET /api/events/ev_1/staff': () => {
-        staffReads += 1;
-        return roster([
-          entry('st_1', 'Amaka Eze', {
-            mobile: '+2348031110009',
-            link: 'copied',
-            briefing: 'changed',
-            briefingCopy: copy,
-            shifts: [SHIFT],
-          }),
-        ])();
-      },
-      'POST /api/events/ev_1/staff/st_1/briefing/sent': () => {
-        phase = 'finished';
-        return problem('event_concluded', 409);
-      },
-    });
-    const readsBefore = staffReads;
+  it.each([
+    ['Mark as sent', 'Mark as sent for the briefing: Amaka Eze', 'briefing/sent'],
+    ['Copy link', 'Copy link for the briefing: Amaka Eze', 'briefing/link'],
+  ])(
+    'says the event is already over and reloads into the Finished state when %s is pressed on a page opened before it finished',
+    async (_, pressed, path) => {
+      signedIn();
+      const copy = { by: 'Folake Adeyemi', at: '2026-11-01T10:12:00+01:00', marked: false };
+      let staffReads = 0;
+      let phase = 'live';
+      const sent = await onRoster({
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase } }),
+        'GET /api/events/ev_1/staff': () => {
+          staffReads += 1;
+          return roster([
+            entry('st_1', 'Amaka Eze', {
+              mobile: '+2348031110009',
+              link: 'copied',
+              briefing: 'changed',
+              briefingCopy: copy,
+              shifts: [SHIFT],
+            }),
+          ])();
+        },
+        [`POST /api/events/ev_1/staff/st_1/${path}`]: () => {
+          phase = 'finished';
+          return problem('event_concluded', 409);
+        },
+      });
+      const readsBefore = staffReads;
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
-    );
+      fireEvent.click(await screen.findByRole('button', { name: pressed }));
 
-    await waitFor(() =>
-      expect(document.getElementById('sv-over')?.textContent).toBe('This event is already over.'),
-    );
-    expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
-    await waitFor(() => expect(staffReads).toBeGreaterThan(readsBefore));
-    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/staff/st_1/briefing/sent');
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
-      ).toBeNull(),
-    );
-    expect(screen.queryByRole('button', { name: 'Edit the rules' })).toBeNull();
-  });
+      await waitFor(() =>
+        expect(document.getElementById('sv-over')?.textContent).toBe('This event is already over.'),
+      );
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+      await waitFor(() => expect(staffReads).toBeGreaterThan(readsBefore));
+      expect(sent.map((one) => one.line)).toContain(`POST /api/events/ev_1/staff/st_1/${path}`);
+      await waitFor(() => expect(screen.queryByRole('button', { name: pressed })).toBeNull());
+      expect(screen.queryByRole('button', { name: 'Edit the rules' })).toBeNull();
+    },
+  );
 
   it('shows the reminder card, and says the switch was not saved when it fails', async () => {
     signedIn();

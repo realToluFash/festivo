@@ -20,6 +20,7 @@ use App\Entity\User;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use App\Enum\PushTargetKind;
+use App\Repository\StaffLinkTokenRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use App\Tests\Traits\OnboardsAccounts;
@@ -622,6 +623,7 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->at('2027-03-05T09:00:00Z');
 
         self::assertCount(1, $this->pushes());
+        self::assertSame('sent', $this->row($this->ada)['briefing']);
         self::assertSame([], $this->reminders());
         self::assertSame('called_off', $this->as($this->owner, 'GET', $this->path('reminder'))['concluded'] ?? null);
     }
@@ -673,6 +675,93 @@ final class ShiftNoticesTest extends ApiTestCase
 
         self::assertSame([409, 'event_concluded'], [$this->statusCode(), Str\after_last((string) ($this->last()['type'] ?? ''), '/')]);
         self::assertSame('none', $this->row($this->ada)['briefing']);
+    }
+
+    #[Test]
+    public function noBriefingLinkIsCopiedOnceTheEventIsFinished(): void
+    {
+        $this->live();
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        $before = $this->as($this->owner, 'GET', $this->path(''))['staff'] ?? null;
+        $this->as($this->owner, 'POST', $this->path($this->ada . '/briefing/link'));
+
+        self::assertSame([409, 'event_concluded'], [$this->statusCode(), Str\after_last((string) ($this->last()['type'] ?? ''), '/')]);
+        self::assertSame($before, $this->as($this->owner, 'GET', $this->path(''))['staff'] ?? null);
+        self::assertSame(0, self::service(StaffLinkTokenRepository::class)->count([]));
+    }
+
+    #[Test]
+    public function onceFinishedNoChangeMovesARowsBriefingStateOrItsToldLine(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->at('2027-03-01T10:15:00Z');
+        $kept = $this->row($this->ada);
+        self::assertSame('sent', $kept['briefing']);
+        self::mockTime(new DateTimeImmutable('2027-03-07T03:00:00Z'));
+
+        $this->editTimes($this->evening, '2027-03-06T20:00', '2027-03-06T23:00');
+        self::assertSame($kept, $this->row($this->ada));
+
+        $this->editEvent(['venue' => ['name' => 'Eko Hotel', 'address' => null]]);
+        self::assertSame($kept, $this->row($this->ada));
+
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $this->evening . '/people/' . $this->ada));
+        self::assertSame($kept, $this->row($this->ada));
+    }
+
+    #[Test]
+    public function aRowChangedBeforeTheEventFinishedKeepsItEvenWhenTheChangeIsPutBack(): void
+    {
+        $this->live();
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->assign($this->evening, $bisi);
+        $this->briefed($bisi);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        self::assertSame('changed', $this->row($bisi)['briefing']);
+        self::mockTime(new DateTimeImmutable('2027-03-07T03:00:00Z'));
+
+        $this->editTimes($this->evening, '2027-03-06T18:00', '2027-03-06T23:00');
+
+        self::assertSame('changed', $this->row($bisi)['briefing']);
+    }
+
+    #[Test]
+    public function aMoveToAnotherShiftAtTheSameHoursSendsNothingAndLeavesTheRowSent(): void
+    {
+        $sunday = $this->newShift('2027-03-07T12:00', '2027-03-07T18:00');
+        $double = $this->newShift('2027-03-07T12:00', '2027-03-07T18:00', $this->jobId, 1);
+        $this->assign($sunday, $this->ada);
+        $this->briefed($this->ada);
+
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $sunday . '/people/' . $this->ada));
+        $this->assign($double, $this->ada);
+
+        self::assertSame(['notice' => null, 'briefing' => 'sent'], $this->row($this->ada));
+        $this->at('2027-03-01T10:15:00Z');
+        self::assertSame([], $this->pushes());
+    }
+
+    #[Test]
+    public function aJobChangeOnTwoShiftsToTheSameHoursSendsTheJobLineAlone(): void
+    {
+        $sunday = $this->newShift('2027-03-07T12:00', '2027-03-07T18:00');
+        $this->assign($sunday, $this->ada);
+        $this->briefed($this->ada);
+        $mixologist = $this->newJob('Mixologist');
+
+        foreach ([$this->evening, $sunday] as $shift) {
+            $this->as($this->owner, 'DELETE', $this->path('shifts/' . $shift . '/people/' . $this->ada));
+        }
+
+        $this->as($this->owner, 'PUT', $this->path($this->ada), ['fullName' => 'Ada Obi', 'job' => $mixologist, 'mobile' => ['countryCode' => 'NG', 'number' => '0803 111 0009']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->assign($this->newShift('2027-03-06T18:00', '2027-03-06T23:00', $mixologist), $this->ada);
+        $this->assign($this->newShift('2027-03-07T12:00', '2027-03-07T18:00', $mixologist), $this->ada);
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(['Your job is now Mixologist (was Bartender).'], $this->pushes()[0][1] ?? null);
     }
 
     #[Test]
@@ -1049,13 +1138,22 @@ final class ShiftNoticesTest extends ApiTestCase
         return (Iter\search($jobs, static fn (array $job): bool => $name === $job['name']) ?? self::fail('no job ' . $name))['id'];
     }
 
-    private function newShift(string $from, string $to): string
+    private function newShift(string $from, string $to, ?string $jobId = null, int $needed = 2): string
     {
-        $this->as($this->owner, 'POST', $this->path('shifts'), ['job' => $this->jobId, 'startsAt' => $from, 'endsAt' => $to, 'needed' => 2]);
+        $known = $this->shiftIds();
+        $this->as($this->owner, 'POST', $this->path('shifts'), ['job' => $jobId ?? $this->jobId, 'startsAt' => $from, 'endsAt' => $to, 'needed' => $needed]);
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
         $shifts = Type\vec(Type\shape(['id' => Type\string(), 'startsAt' => Type\string()], true))->coerce($this->last()['shifts'] ?? null);
 
-        return (Iter\search($shifts, static fn (array $shift): bool => Str\starts_with($shift['startsAt'], $from)) ?? self::fail('no shift at ' . $from))['id'];
+        return (Iter\search($shifts, static fn (array $shift): bool => Str\starts_with($shift['startsAt'], $from) && !Iter\contains($known, $shift['id'])) ?? self::fail('no shift at ' . $from))['id'];
+    }
+
+    /** @return list<string> */
+    private function shiftIds(): array
+    {
+        $shifts = Type\vec(Type\shape(['id' => Type\string()], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['shifts'] ?? null);
+
+        return Vec\map($shifts, static fn (array $shift): string => $shift['id']);
     }
 
     private function newEvent(): string
