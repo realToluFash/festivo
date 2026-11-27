@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Invitations;
 use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\TokenIssuer;
@@ -41,6 +42,7 @@ final readonly class InvitationResponder
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private HardLimitsInterface $hardLimits,
+        private SignInRules $signInRules,
     ) {
     }
 
@@ -117,6 +119,8 @@ final readonly class InvitationResponder
         if (EmailAddressNormaliser::normalise($email) !== $invitation->getEmail()) {
             throw new ApiException(ErrorCode::InvitationNotYours, $this->translator->trans('invitations.not_yours'));
         }
+
+        $this->signInRules->refuseUnderSingleSignOn($invitation->getEmail(), null);
 
         if ($this->userRegistrar->isTaken($invitation->getEmail())) {
             throw new ApiException(ErrorCode::EmailTaken, $this->translator->trans('invitations.email_taken'));

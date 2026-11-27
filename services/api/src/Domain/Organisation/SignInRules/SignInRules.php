@@ -90,6 +90,15 @@ final readonly class SignInRules
         );
     }
 
+    public function refuseUnderSingleSignOn(?string $address, ?User $user): void
+    {
+        $refusal = null === $address ? null : $this->singleSignOnRefusal($address, $user);
+
+        if (null !== $refusal) {
+            throw $refusal;
+        }
+    }
+
     /** `oauth_only`, naming the organisation, the address and the providers to use instead: one refusal for sign-in, reset and refresh alike. */
     public function passwordRefusal(User $user): ?ApiException
     {

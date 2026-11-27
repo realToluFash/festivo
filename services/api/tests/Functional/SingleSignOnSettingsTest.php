@@ -244,6 +244,14 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         }
 
         self::assertNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress('newcomer@ire.events'), 'Google makes no account there');
+
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+
+        foreach (['julien@ire.events', 'newcomer@ire.events'] as $address) {
+            $this->send('POST', '/api/auth/register', ['email' => $address, 'name' => 'Ada', 'password' => self::PASSWORD]);
+            self::assertResponseStatusCodeSame(403);
+            self::assertSame(ErrorCode::SsoSignInRequired->type(), $this->problem()['type'], 'no password sign-up at the domain, taken or not');
+        }
     }
 
     private function passwordSignIn(string $email): int

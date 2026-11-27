@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Registration;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TokenIssuer;
@@ -32,6 +33,7 @@ final readonly class PendingRegistrations
         private UserRegistrar $userRegistrar,
         private PasswordResolver $passwordResolver,
         private RegistrationMail $registrationMail,
+        private SignInRules $signInRules,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -41,6 +43,8 @@ final readonly class PendingRegistrations
     public function start(string $email, string $name, #[SensitiveParameter] string $password, ?string $locale): string
     {
         $address = $this->userRegistrar->validated($email, $name, $password);
+        // Alike for every address at the domain, account or not.
+        $this->signInRules->refuseUnderSingleSignOn($address, null);
         // Hashed either way: a taken address must cost what a new one does.
         $passwordHash = $this->passwordResolver->hash($password);
         $taken = $this->userRegistrar->isTaken($address);
@@ -65,6 +69,7 @@ final readonly class PendingRegistrations
             $pending = $this->pendingRegistrationRepository->findForUpdate($id)
                 ?? throw new ApiException(ErrorCode::RegistrationExpired, 'registration.expired');
             $this->check($pending, $code);
+            $this->signInRules->refuseUnderSingleSignOn($pending->getEmail(), null);
 
             $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request, $pending->getLocale());
             $this->entityManager->remove($pending);
