@@ -256,6 +256,8 @@ final class WhosHereTest extends ApiTestCase
         $this->as($femi, 'GET', $this->path());
         self::assertSame(200, $this->statusCode(), 'he leads the Door');
 
+        $this->event()->makeLive(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        self::em()->flush();
         self::mockTime(new DateTimeImmutable('2027-03-07T01:30:00Z'));
         $this->as($femi, 'GET', $this->path());
         self::assertSame(404, $this->statusCode(), 'his link closed two hours after his shift, before the event ended: ' . Json\encode($this->last()));
