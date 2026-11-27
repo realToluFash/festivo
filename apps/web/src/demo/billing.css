@@ -199,6 +199,8 @@
 
 .bl-method-shape {
   display: inline-grid;
+  flex: none;
+  white-space: nowrap;
   place-items: center;
   min-width: 40px;
   height: 26px;
