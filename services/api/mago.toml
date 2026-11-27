@@ -618,10 +618,10 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:ai"]
 namespace = "App\\Integrations\\Hibp\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
-# The SMS provider. It sees the port it implements and nothing else of ours.
+# The SMS provider. It sees the ports it implements, a phone code's and messaging's, and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Twilio\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:domain_messaging"]
 
 # WhatsApp, for phone codes (sc-750). It sees the port it implements, and messaging's
 # payment refusal that every WhatsApp sender raises (sc-45470), and nothing else of ours.

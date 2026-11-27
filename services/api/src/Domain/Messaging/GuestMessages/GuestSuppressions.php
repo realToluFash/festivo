@@ -74,9 +74,48 @@ final readonly class GuestSuppressions
         );
     }
 
+    /** A STOP to Soirely's number stops every organisation's texts, those that come later too, and outdoes an earlier switch back on (sc-3946). */
+    public function stopTextsEverywhere(string $number): void
+    {
+        $hash = $this->hash($number);
+        $this->connection->transactional(function () use ($hash): void {
+            $this->connection->executeStatement(
+                'INSERT INTO text_stops (address_hash, stopped_at) VALUES (:hash, :now) ON CONFLICT (address_hash) DO NOTHING',
+                ['hash' => $hash, 'now' => $this->clock->now()],
+                ['now' => Types::DATETIME_IMMUTABLE],
+            );
+            $this->connection->executeStatement('DELETE FROM text_stop_lifts WHERE address_hash = :hash', ['hash' => $hash]);
+        });
+    }
+
+    /** START there resumes them all, one stopped by the switch too; a complaint stays (sc-3946). */
+    public function resumeTextsEverywhere(string $number): void
+    {
+        $hash = $this->hash($number);
+        $this->connection->transactional(function () use ($hash): void {
+            $this->connection->executeStatement('DELETE FROM text_stops WHERE address_hash = :hash', ['hash' => $hash]);
+            $this->connection->executeStatement('DELETE FROM text_stop_lifts WHERE address_hash = :hash', ['hash' => $hash]);
+            $this->connection->executeStatement(
+                'DELETE FROM guest_suppressions WHERE address_hash = :hash AND channel = :texts AND reason = :optedOut',
+                ['hash' => $hash, 'texts' => GuestChannel::Texts->value, 'optedOut' => GuestSuppressionReason::OptedOut->value],
+            );
+        });
+    }
+
     /** The guest's own word lifts a complaint too. */
     public function lift(Uuid $organisation, GuestChannel $channel, string $address): void
     {
+        if (GuestChannel::Texts === $channel) {
+            $this->connection->executeStatement(
+                <<<'SQL'
+                    INSERT INTO text_stop_lifts (organisation_id, address_hash)
+                    SELECT :organisation, address_hash FROM text_stops WHERE address_hash = :hash
+                    ON CONFLICT DO NOTHING
+                    SQL,
+                ['organisation' => $organisation->toRfc4122(), 'hash' => $this->hash($address)],
+            );
+        }
+
         $this->connection->executeStatement(
             'DELETE FROM guest_suppressions WHERE organisation_id = :organisation AND channel = :channel AND address_hash = :hash',
             ['organisation' => $organisation->toRfc4122(), 'channel' => $channel->value, 'hash' => $this->hash($address)],
@@ -94,7 +133,7 @@ final readonly class GuestSuppressions
             ['organisation' => $organisation->toRfc4122(), 'channel' => $channel->value, 'hash' => $this->hash($address)],
         );
 
-        return false === $at ? null : new DateTimeImmutable(Type\string()->coerce($at));
+        return false === $at ? $this->stoppedEverywhereSince($organisation, $channel, $address) : new DateTimeImmutable(Type\string()->coerce($at));
     }
 
     /** When the guest stopped this organisation's messages on the channel, by their own word; a complaint is not an opt-out, and the migration's date for one is not the guest's. */
@@ -109,7 +148,7 @@ final readonly class GuestSuppressions
             ['organisation' => $organisation->toRfc4122(), 'channel' => $channel->value, 'hash' => $this->hash($address), 'complained' => GuestSuppressionReason::Complained->value],
         );
 
-        return false === $at ? null : new DateTimeImmutable(Type\string()->coerce($at));
+        return false === $at ? $this->stoppedEverywhereSince($organisation, $channel, $address) : new DateTimeImmutable(Type\string()->coerce($at));
     }
 
     /**
@@ -133,7 +172,43 @@ final readonly class GuestSuppressions
             static fn (array $row): array => [$row['address_hash'], GuestSuppressionReason::from($row['reason'])],
         ));
 
+        if (GuestChannel::Texts === $channel) {
+            $kept += Dict\from_keys(Vec\keys($this->stoppedEverywhere($organisation, Vec\values($byHash))), static fn (): GuestSuppressionReason => GuestSuppressionReason::OptedOut);
+        }
+
         return Dict\filter_nulls(Dict\map($byHash, static fn (string $hash): ?GuestSuppressionReason => $kept[$hash] ?? null));
+    }
+
+    private function stoppedEverywhereSince(Uuid $organisation, GuestChannel $channel, string $address): ?DateTimeImmutable
+    {
+        if (GuestChannel::Texts !== $channel) {
+            return null;
+        }
+
+        $hash = $this->hash($address);
+
+        return $this->stoppedEverywhere($organisation, [$hash])[$hash] ?? null;
+    }
+
+    /**
+     * @param list<string> $hashes
+     *
+     * @return array<string, DateTimeImmutable> when each of them texted STOP to Soirely's number, less those switched back on for this organisation since
+     */
+    private function stoppedEverywhere(Uuid $organisation, array $hashes): array
+    {
+        $rows = Type\vec(Type\shape(['address_hash' => Type\string(), 'stopped_at' => Type\string()]))->coerce($this->connection->fetchAllAssociative(
+            <<<'SQL'
+                SELECT s.address_hash, s.stopped_at
+                FROM text_stops s
+                WHERE s.address_hash IN (:hashes)
+                  AND NOT EXISTS (SELECT 1 FROM text_stop_lifts l WHERE l.address_hash = s.address_hash AND l.organisation_id = :organisation)
+                SQL,
+            ['organisation' => $organisation->toRfc4122(), 'hashes' => $hashes],
+            ['hashes' => ArrayParameterType::STRING],
+        ));
+
+        return Dict\from_entries(Vec\map($rows, static fn (array $row): array => [$row['address_hash'], new DateTimeImmutable($row['stopped_at'])]));
     }
 
     private function hash(string $address): string
