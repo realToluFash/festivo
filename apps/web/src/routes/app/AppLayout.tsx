@@ -213,6 +213,33 @@ function Shell() {
     );
   }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
 
+  const named = new URLSearchParams(location.search).get(NAMES_ORGANISATION);
+  const namedInto =
+    named == null ? undefined : session.organisations.find(({ id }) => id === named);
+  const movesInto =
+    namedInto != null && (namedInto.id !== organisation?.id || session.pausedIn != null)
+      ? namedInto
+      : null;
+  if (movesInto != null && (switched?.id !== movesInto.id || switched.at !== pathname))
+    setSwitched({ id: movesInto.id, name: movesInto.name, at: pathname });
+
+  // A link naming the organisation it is about, as a usage warning's does (sc-3931), opens in that one, with Now working in; the name then leaves the address.
+  useEffect(() => {
+    if (named == null) return;
+
+    const params = new URLSearchParams(location.search);
+    params.delete(NAMES_ORGANISATION);
+    const search = params.size > 0 ? `?${params.toString()}` : '';
+
+    void navigate(
+      { pathname, search, hash: location.hash },
+      {
+        replace: true,
+        state: movesInto == null ? location.state : { switchTo: movesInto.id },
+      },
+    );
+  }, [named, movesInto, pathname, location, navigate]);
+
   const arrivedAt = useRef(pathname);
 
   // The page was read when it loaded; each move after that reads the organisations again (sc-16229).
@@ -685,6 +712,9 @@ function ShellMenu({
     </>
   );
 }
+
+/** The query parameter by which a link names the organisation it opens in. */
+const NAMES_ORGANISATION = 'organisation';
 
 function switchOf(state: unknown): string | null {
   const switchTo =
