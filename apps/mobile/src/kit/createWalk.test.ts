@@ -206,7 +206,7 @@ describe('the walk turning between steps (qa3, #39178)', () => {
   });
 
   it('turns back with the step it leaves behind it', () => {
-    const back: Walk = { ...name, cameBack: true };
+    const back: Walk = { ...name, toPick: true };
 
     expect(turnTo(turnTo(firstTurn(name), country), back)).toEqual({
       walk: back,
@@ -219,10 +219,10 @@ describe('the walk turning between steps (qa3, #39178)', () => {
   it('brings a picked country into view when Continue reaches the country step again (sc-100878)', () => {
     const zimbabwe: Walk = { ...name, country: 'ZW' };
 
-    expect(forward(zimbabwe, t).cameBack).toBe(true);
-    expect(forward(name, t).cameBack).toBe(false);
+    expect(forward(zimbabwe, t).toPick).toBe(true);
+    expect(forward(name, t).toPick).toBe(true);
     expect(forward({ ...name, country: null, step: 1 }, t).refusal).toBeNull();
-    expect(forward({ ...country, country: 'ZW' }, t).cameBack).toBe(false);
+    expect(forward({ ...country, country: 'ZW' }, t).toPick).toBe(false);
   });
 
   it('lets the leaving step go only at the end of the turn on screen', () => {

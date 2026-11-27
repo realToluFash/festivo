@@ -126,7 +126,7 @@ describe('step 2 checks the country', () => {
 describe('Back keeps everything', () => {
   it('from step 3, with the country as picked and the search cleared', () => {
     const ready = forward({ ...sample('country-picked') }, t);
-    expect(back(ready)).toMatchObject({ step: 2, country: 'BR', query: '', cameBack: true });
+    expect(back(ready)).toMatchObject({ step: 2, country: 'BR', query: '', toPick: true });
   });
 
   it('from step 2, with the name as typed', () => {
