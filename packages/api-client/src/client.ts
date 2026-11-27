@@ -13,6 +13,7 @@ import {
   EVENT_STATES,
   type EventTimeline,
   type EventsSearch,
+  type FloorRead,
   isEventType,
   type Milestone,
   MEMBERS_MOST,
@@ -4246,6 +4247,11 @@ export class ApiClient {
         headers: { 'Idempotency-Key': tap.key },
       },
     );
+  }
+
+  /** Floor (sc-4021): every course's read as the caller sees it; 403 `permission_required` at the pass's level alone. */
+  async serviceFloor(eventId: string): Promise<FloorRead> {
+    return this.get<FloorRead>(`${this.servicePath(eventId)}/floor`);
   }
 
   /** A hub token for this event's schedule topic alone. */
