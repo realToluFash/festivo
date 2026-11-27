@@ -57,6 +57,7 @@ export interface Guest {
   held: Held | null;
   owed: Owed[];
   sentBack: boolean;
+  kept: boolean;
 }
 
 export interface Tray {
@@ -158,7 +159,18 @@ function guest(
   stage: Guest['stage'],
   extra: Partial<Guest> = {},
 ): Guest {
-  return { seat, name, dish, stage, flags: [], held: null, owed: [], sentBack: false, ...extra };
+  return {
+    seat,
+    name,
+    dish,
+    stage,
+    flags: [],
+    held: null,
+    owed: [],
+    sentBack: false,
+    kept: false,
+    ...extra,
+  };
 }
 
 function many(from: number, stage: Guest['stage'], names: readonly (string | null)[]): Guest[] {
@@ -788,6 +800,7 @@ export function sendBack(f: Floor): Floor {
           ...x,
           stage: 'To serve',
           sentBack: true,
+          kept: false,
           owed: [owed(items, 'Sent back', p.course ?? ROOM_COURSE, back), ...x.owed],
         }
       : { ...x, owed: x.owed.map((o, i) => (i === sh.owed ? { ...o, ...back } : o)) };
@@ -827,7 +840,13 @@ function reversed(g: Guest, step: Step, kept: boolean): Guest {
   const plate = g.owed.find((o) => o.id === step.made);
   if (plate == null) return g;
   if (step.was == null)
-    return { ...g, stage: 'Served', sentBack: false, owed: g.owed.filter((o) => o !== plate) };
+    return {
+      ...g,
+      stage: 'Served',
+      sentBack: false,
+      kept,
+      owed: g.owed.filter((o) => o !== plate),
+    };
   const was = { ...step.was, stage: 'Served', kept, sentBack: false } as const;
   return { ...g, owed: g.owed.map((o) => (o === plate ? { ...o, ...was } : o)) };
 }
@@ -864,6 +883,7 @@ export function reconnect(f: Floor): Floor {
       ...p,
       seats: p.seats.map((g) => ({
         ...g,
+        kept: false,
         held: g.held == null ? null : { ...g.held, kept: false },
         owed: g.owed.map((o) => ({ ...o, kept: false })),
       })),
