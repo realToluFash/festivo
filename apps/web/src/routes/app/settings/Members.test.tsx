@@ -448,6 +448,44 @@ describe('Members at a desk (sc-34200)', () => {
     });
   });
 
+  it('refuses an invitation over the plan’s team seats and keeps it as written (sc-3930)', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'POST /api/orgs/org_1/members/invite': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'team_seats',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Invite somebody' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Invite somebody' }));
+    const email = dialog.getByRole<HTMLInputElement>('textbox', { name: 'Email' });
+    fireEvent.change(email, { target: { value: 'kemi@ire.events' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Send invitation' }));
+
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'Your plan allows 3 team seats' }),
+    );
+    expect(refused.getByText('3 of 3 team seats · Free plan')).toBeDefined();
+    expect(refused.getByText('The invitation is kept as you wrote it.')).toBeDefined();
+    const ways = refused.getAllByRole('link').map((one) => one.textContent);
+    expect(ways).toEqual([
+      'Withdraw an invitationAn invitation not yet accepted holds a seat.',
+      'Remove a memberA member removed frees their seat.',
+    ]);
+    expect(refused.queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(refused.queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(refused.getByRole('button', { name: 'Back to the invitation' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Your plan allows 3 team seats' })).toBeNull();
+    expect(email.value).toBe('kemi@ire.events');
+  });
+
   it('says Not delivered where Sent was, with the end kept and no reason (sc-46109)', async () => {
     signedIn();
     answering({

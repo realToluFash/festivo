@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -393,6 +393,36 @@ describe('an invitation, signed in', () => {
     });
     await waitFor(() => expect(document.activeElement).toBe(refused));
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('refuses a join when every team seat is in use, and keeps the invitation open (sc-3930)', async () => {
+    signedIn();
+    answering({
+      [LINK]: () => json({ ...PREVIEW, forYou: true, signedInAs: 'kemi.l@gmail.com' }),
+      'POST /api/invitations/inv_1/accept': () =>
+        problem(403, 'plan_limit_reached', {
+          limit: 'team_seats',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+          organisation: 'Ìrè Events',
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join' }));
+
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'Every team seat at Ìrè Events is in use' }),
+    );
+    expect(refused.getByText('Your invitation stays open. Nothing is lost.')).toBeDefined();
+    expect(refused.queryByText(/team seats ·/u)).toBeNull();
+    expect(refused.queryByRole('link')).toBeNull();
+    expect(refused.queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(refused.getByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Accept and join' })).toBeDefined();
   });
 
   it('declines, and creates nothing', async () => {

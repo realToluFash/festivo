@@ -13,14 +13,27 @@ export function LimitRefusalDialog({
   refusal,
   guestsAt,
   onBack,
+  onWay = onBack,
+  inPlace = false,
 }: {
   refusal: LimitRefusal;
+  /** In another dialog's place, as Duplicate's: the way back is that dialog's own, at its top. */
+  inPlace?: boolean;
   /** The event's guest list, for Remove a guest. */
   guestsAt?: string;
   onBack: () => void;
+  /** A way past pressed, when its page is under a dialog that has to close too. */
+  onWay?: () => void;
 }) {
   return (
-    <Dialog title={refusal.title} verb={null} cancel={false} onDismiss={onBack} onConfirm={onBack}>
+    <Dialog
+      title={refusal.title}
+      verb={null}
+      cancel={inPlace}
+      dismiss={refusal.back}
+      onDismiss={onBack}
+      onConfirm={onBack}
+    >
       <div className="lr lr-hard-limit">
         {refusal.line != null && <p className="desk-line is-ink">{refusal.line}</p>}
         {refusal.figure != null && <p className="lr-figure">{refusal.figure}</p>}
@@ -40,23 +53,34 @@ export function LimitRefusalDialog({
             )}
             {refusal.ways.map((way) => (
               <li key={way}>
-                <WayPast way={way} guestsAt={guestsAt} />
+                <WayPast way={way} guestsAt={guestsAt} onWay={onWay} />
               </li>
             ))}
           </ul>
         )}
         {refusal.untick != null && <p className="desk-line is-ink">{refusal.untick}</p>}
-        <div className="lr-back">
-          <button type="button" className="button" onClick={onBack}>
-            <span className="button-label">{refusal.back}</span>
-          </button>
-        </div>
+        {!inPlace && (
+          <div className="lr-back">
+            <button type="button" className="button" onClick={onBack}>
+              <span className="button-label">{refusal.back}</span>
+            </button>
+          </div>
+        )}
       </div>
     </Dialog>
   );
 }
 
-function WayPast({ way, guestsAt }: { way: LimitWay; guestsAt: string | undefined }) {
+/** A way past closes the refusal as it opens the page, which may be the one under it. */
+function WayPast({
+  way,
+  guestsAt,
+  onWay,
+}: {
+  way: LimitWay;
+  guestsAt: string | undefined;
+  onWay: () => void;
+}) {
   const { t } = useTranslation();
 
   if (way === 'removeGuest') {
@@ -67,7 +91,7 @@ function WayPast({ way, guestsAt }: { way: LimitWay; guestsAt: string | undefine
           <p className="desk-line is-small">{t('limitReached.removeGuestLine')}</p>
         </div>
         {guestsAt != null && (
-          <Link to={guestsAt} className="desk-text">
+          <Link to={guestsAt} className="desk-text" onClick={onWay}>
             {t('limitReached.toGuestList')}
           </Link>
         )}
@@ -78,7 +102,7 @@ function WayPast({ way, guestsAt }: { way: LimitWay; guestsAt: string | undefine
   const withdraw = way === 'withdraw';
 
   return (
-    <Link to={MEMBERS_AT} className="lr-row lr-row-link">
+    <Link to={MEMBERS_AT} className="lr-row lr-row-link" onClick={onWay}>
       <span className="lr-row-words">
         <span className="lr-row-title">
           {t(withdraw ? 'limitReached.withdraw' : 'limitReached.removeMember')}

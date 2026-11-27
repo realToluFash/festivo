@@ -42,23 +42,12 @@ export function changedSinceOpening(
   return needsHost(shown) && rereadOf(opened) !== 'noHost';
 }
 
-export type MakeLiveRefusal =
-  { kind: 'concluded' } | { kind: 'planLimit'; plan: string; limit: number } | { kind: 'failed' };
+export type MakeLiveRefusal = { kind: 'concluded' } | { kind: 'failed' };
 
 /** Going live refused once any host is saved; somebody else's change is the shared step's `stale` (sc-22143). `concluded` reads the event again. */
 export function refusalOf(error: unknown): MakeLiveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.is('event_concluded')) return { kind: 'concluded' };
-  if (error.is('plan_limit_reached')) {
-    const plan = error.problem.plan ?? '';
-
-    return {
-      kind: 'planLimit',
-      plan: plan.charAt(0).toUpperCase() + plan.slice(1),
-      limit: error.problem.allowed ?? 0,
-    };
-  }
-
   return { kind: 'failed' };
 }
 
@@ -104,13 +93,6 @@ export type LiveAsking = LiveQuestion | LiveTold;
 /** What a refusal says in the question's place; a plain failure is null, said under the question. */
 export function toldOf(refusal: MakeLiveRefusal, t: Translate): LiveTold | null {
   switch (refusal.kind) {
-    case 'planLimit':
-      return {
-        kind: 'told',
-        title: t('eventLive.planLimit', { plan: refusal.plan, count: refusal.limit }),
-        line: t('eventLive.planLimitStays'),
-        changeDates: false,
-      };
     case 'concluded':
       return {
         kind: 'told',

@@ -17,6 +17,8 @@ import {
 import {
   CHOICES,
   type Choice,
+  type LimitRefusal,
+  limitRefusalOf,
   type Counts,
   MOST_COMPANIONS,
   type Problem,
@@ -85,6 +87,7 @@ import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../t
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
 import {
   Ask,
@@ -1991,6 +1994,7 @@ function AddForm({
   const [refused, setRefused] = useState<Problems>({});
   const [duplicate, setDuplicate] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [group, setGroup] = useState<GroupChoice | undefined>(undefined);
@@ -2091,7 +2095,11 @@ function AddForm({
       setDuplicate(false);
       focus('fullName');
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'guest_already_listed') {
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) {
+        setLimited(limit);
+      } else if (error instanceof ApiError && error.code === 'guest_already_listed') {
         setDuplicate(true);
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
@@ -2264,6 +2272,16 @@ function AddForm({
       >
         {t('guestList.addGuest')}
       </button>
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          guestsAt={`/app/events/${eventId}/guests`}
+          onBack={() => {
+            setLimited(null);
+            focus('fullName');
+          }}
+        />
+      )}
     </div>
   );
 }

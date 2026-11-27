@@ -4,6 +4,11 @@
   gap: var(--spaceLg);
 }
 
+/* What a refusal covers on a page with no layers of its own, as Join; it takes no box of its own */
+.lr-under {
+  display: contents;
+}
+
 .lr p {
   margin: 0;
 }

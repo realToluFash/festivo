@@ -19,7 +19,7 @@ export interface LimitRefusal {
   ways: readonly LimitWay[];
   /** The copy's one way past, a line with no button. */
   untick: string | null;
-  /** A plan limit, so the app tells a person with billing.manage that the plan cannot be changed there. */
+  /** A plan limit a member met, so the app tells one with billing.manage that the plan cannot be changed there; an invitee holds no permission yet. */
   planLimit: boolean;
   back: string;
 }
@@ -121,7 +121,7 @@ export function limitRefusalOf(
       line: null,
       figure: null,
       ways: [],
-      planLimit: true,
+      planLimit: false,
     };
   }
 
