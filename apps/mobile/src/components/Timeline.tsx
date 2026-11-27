@@ -295,7 +295,7 @@ export function AllDates({
   );
 }
 
-function DatesLoading({ testID }: { testID: string }) {
+export function DatesLoading({ testID }: { testID: string }) {
   const { t } = useTranslation();
 
   return (
@@ -306,7 +306,7 @@ function DatesLoading({ testID }: { testID: string }) {
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */
-function DatesFailed({
+export function DatesFailed({
   announced,
   onRetry,
   wide = false,

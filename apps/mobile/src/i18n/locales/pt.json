@@ -2291,6 +2291,7 @@
     "needsHead_other": "Needs you, {{count, number}} things",
     "needsHead_many": "Needs you, {{count, number}} things",
     "needRow": "{{title}}, {{event}}, {{due}}",
+    "needRowHere": "{{title}}, {{due}}",
     "upToDate": "Tem todos os seus eventos em dia.",
     "thisWeek": "Esta semana",
     "nothingOnThisWeek": "Nada previsto para esta semana",

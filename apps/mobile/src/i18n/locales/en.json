@@ -2211,6 +2211,7 @@
     "needsHead_one": "Needs you, {{count, number}} thing",
     "needsHead_other": "Needs you, {{count, number}} things",
     "needRow": "{{title}}, {{event}}, {{due}}",
+    "needRowHere": "{{title}}, {{due}}",
     "upToDate": "You’re up to date on every event.",
     "thisWeek": "This week",
     "nothingOnThisWeek": "Nothing on this week",
