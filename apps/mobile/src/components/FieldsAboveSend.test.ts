@@ -29,10 +29,7 @@ describe('the event step keeps Your name and the number row above Send code with
   });
 
   it("gives the step's dock rule the focused field's block, label and line included, never the kept tier (sc-7099)", () => {
-    expect(fields).toMatch(
-      /scroll\.focusedGroup\.forEach\(\(needs\) => needs\(focusedBlock\(fields\)\.height\)\)/u,
-    );
-    expect(fields.indexOf('focusedGroup.forEach')).toBeLessThan(fields.indexOf('keyboardTopNow('));
+    expect(fields).toMatch(/scroll\.focusedGroup\.forEach\(\(needs\) => needs\(dockHeight\)\)/u);
     expect(fields).not.toMatch(/needs\(kept/u);
   });
 

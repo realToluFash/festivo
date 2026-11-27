@@ -16,7 +16,8 @@ import { type LiftFromTop, shownEnd } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 import {
   type EventField,
-  focusedBlock,
+  dockedHeight,
+  fieldInFocus,
   offsetAboveSend,
   type Placed,
 } from '../kit/fieldsAboveSend.ts';
@@ -68,11 +69,12 @@ async function measure(
   ]);
   if (name == null || number == null) return null;
   // The Country code list takes no input focus: coming back from it, the row it sits in keeps it.
-  if (focus != null) last.current = focus.contentY >= number.contentY ? 'number' : 'name';
+  const dockHeight = dockedHeight({ refusal, name, number }, focus, last.current);
+  last.current = fieldInFocus({ name, number }, focus, last.current);
   fieldUnderToast(focus == null ? null : { top: frame.top, height: focus.height });
   const fields = { refusal, name, number, focus: last.current };
   // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3). It is reported before any bail-out below and whether or not a field holds the focus right now (the field kept from the last measure stands in), so the dock hears what the field needs however the keys or the focus arrived (sc-97734).
-  scroll.focusedGroup.forEach((needs) => needs(focusedBlock(fields).height));
+  scroll.focusedGroup.forEach((needs) => needs(dockHeight));
   const keys = keyboardTopNow(scroll.origin.current);
   if (keys == null || scroll.answeringNow()) return null;
 
