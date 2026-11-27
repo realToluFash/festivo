@@ -254,6 +254,20 @@ export function StepScreen({
       margin: tokens.spaceLg,
     });
   if (nextInline !== inline) setInline(nextInline);
+  if (keysUp)
+    console.log(
+      '[sc-97734 barFits]',
+      JSON.stringify({
+        shown: sizes.shown,
+        foot: sizes.foot,
+        inline,
+        room,
+        field: sizes.field,
+        group: sizes.group,
+        margin: tokens.spaceLg,
+        nextInline,
+      }),
+    );
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
   const hasFoot = foot != null;
@@ -327,8 +341,10 @@ export function StepScreen({
 
   // The field's own lines, a rule or an error under it, have to fit above a docked foot too, kept apart from the input height so whichever lands last cannot undo the other.
   useEffect(() => {
-    const needs = (height: number) =>
+    const needs = (height: number) => {
+      console.log('[sc-97734 needs]', height);
       setSizes((was) => (was.group === height ? was : { ...was, group: height }));
+    };
     screenScroll.focusedGroup.add(needs);
 
     return () => {
