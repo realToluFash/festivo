@@ -7,10 +7,15 @@ import {
   deviceZone,
   opensStations,
   readAt,
-  rowLine,
   rowShows,
 } from '../station/wayIn.ts';
-import { READ_ANSWERS_IN, type ServiceLink, type WayInOverview } from '../station/wayInShown.ts';
+import {
+  READ_ANSWERS_IN,
+  type ServiceLink,
+  type WayInOverview,
+  floorLinkOf,
+  stationLinkOf,
+} from '../station/wayInShown.ts';
 import { type FloorState } from './FloorModel.ts';
 import { type OnFloor, floorLine, opensFloor } from './floorWayIn.ts';
 
@@ -176,8 +181,7 @@ function isOrganiser(state: FloorWayInState): state is OrganiserState {
 }
 
 function floorLink(sample: Sample, zone: string): ServiceLink {
-  const line = floorLine(sample.on, sample.locale);
-  const href = `/demo/floor?state=${sample.floor}&from=overview`;
+  const { line, href } = floorLinkOf({ on: sample.on, opens: sample.floor }, sample.locale);
 
   if (sample.lastRead != null) {
     const stale = { line: KS.asOf(line, readAt(sample.lastRead, zone)), href };
@@ -203,10 +207,7 @@ function shownOf(sample: Sample, day: EventDay, zone: string): Shown {
     now: sample.now,
     station:
       kitchen != null && today && opensStations(sample.role)
-        ? {
-            line: rowLine(kitchen.where),
-            href: `/demo/kitchen-station?state=here&from=overview&on=${kitchen.on}`,
-          }
+        ? stationLinkOf(kitchen.where, 'here', kitchen.on)
         : null,
     floor: today && opensFloor(sample.role) ? floorLink(sample, zone) : null,
   };

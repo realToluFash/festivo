@@ -8,7 +8,6 @@ import {
   deviceZone,
   opensStations,
   readAt,
-  rowLine,
   rowShows,
 } from './wayIn.ts';
 import {
@@ -17,6 +16,7 @@ import {
   type ServiceLink,
   type WayInOverview,
   floorLinkOf,
+  stationLinkOf,
 } from './wayInShown.ts';
 
 const ROW_STATES = [
@@ -192,15 +192,8 @@ function isOrganiser(state: WayInState): state is OrganiserState {
   return ORGANISER_STATES.some((one) => one === state);
 }
 
-function linkOf(where: Where, stationState: string, opens: string): ServiceLink {
-  return {
-    line: rowLine(where),
-    href: `/demo/kitchen-station?state=${stationState}&from=overview&on=${opens}`,
-  };
-}
-
 function sampleLink(sample: Sample, zone: string): ServiceLink {
-  const link = linkOf(sample.where, sample.stationState, sample.opens);
+  const link = stationLinkOf(sample.where, sample.stationState, sample.opens);
   if (sample.lastRead != null) {
     return { ...link, line: KS.asOf(link.line, readAt(sample.lastRead, zone)) };
   }
@@ -222,7 +215,7 @@ export function overviewOf(state: WayInState, zone: string = deviceZone()): WayI
       night: organiser.night,
       station:
         today && opensStations(organiser.role)
-          ? linkOf(organiser.where, 'here', organiser.opens)
+          ? stationLinkOf(organiser.where, 'here', organiser.opens)
           : null,
       floor: today && opensFloor(organiser.role) ? floorLinkOf(organiser.floor, 'en') : null,
     };

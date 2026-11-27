@@ -2,6 +2,7 @@ import { type InsideLevel } from '../doorCode/RedeemModel.ts';
 import { type FloorState } from '../floor/FloorModel.ts';
 import { type OnFloor, floorLine } from '../floor/floorWayIn.ts';
 import { type MyNightState } from '../myNight/myNightModel.ts';
+import { type Where, rowLine } from './wayIn.ts';
 
 /** A service row on Overview: Kitchen station (sc-95382) or Floor (sc-98893). */
 export interface ServiceLink {
@@ -38,6 +39,13 @@ export interface OnFloorAt {
   on: OnFloor;
   /** The Floor demo's state the row opens. */
   opens: FloorState;
+}
+
+export function stationLinkOf(where: Where, stationState: string, opens: string): ServiceLink {
+  return {
+    line: rowLine(where),
+    href: `/demo/kitchen-station?state=${stationState}&from=overview&on=${opens}`,
+  };
 }
 
 export function floorLinkOf(at: OnFloorAt, locale: string): ServiceLink {

@@ -62,7 +62,7 @@ export type Night = {
 export type Access =
   'Can work the floor' | 'Can work the pass' | 'Can view' | 'Can check guests in' | 'Lead';
 
-/** sc-4002: of these, who opens the floor. */
+/** sc-4002: of these, who opens the floor; the app's whole list is `opensFloor` in apps/mobile/src/demo/floor/floorWayIn.ts. */
 const OPENS_FLOOR: readonly Access[] = ['Can work the floor', 'Lead'];
 
 export const MN = {
