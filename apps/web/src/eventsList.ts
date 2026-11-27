@@ -31,7 +31,7 @@ export interface ListEvent {
   concludedAt: string | null;
   place: string | null;
   /** The venue's city, only when its name is the place: the line writes them together. */
-  city: string | null;
+  city?: string | null | undefined;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }

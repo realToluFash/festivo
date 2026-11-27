@@ -46,7 +46,7 @@ export interface ListEvent {
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
   /** The venue's city, only when its name is the place: the line writes them together. */
-  city: string | null;
+  city?: string | null | undefined;
   photo: CardPhoto | null;
   /** Null while they are still being read: an event's page reads them apart from the event. */
   milestones: readonly Milestone[] | null;
