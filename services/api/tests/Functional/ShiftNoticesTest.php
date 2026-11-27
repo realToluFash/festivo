@@ -765,6 +765,25 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aShiftSwappedForOneAtTheSameHoursThenRetimedIsToldAsThatShiftsNewTimes(): void
+    {
+        $sunday = $this->newShift('2027-03-07T12:00', '2027-03-07T18:00');
+        $this->assign($sunday, $this->ada);
+        $this->briefed($this->ada);
+        $double = $this->newShift('2027-03-06T18:00', '2027-03-06T23:00', $this->jobId, 1);
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $this->evening . '/people/' . $this->ada));
+        $this->assign($double, $this->ada);
+
+        $this->editTimes($double, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->at('2027-03-01T10:15:00Z');
+
+        $lines = $this->pushes()[0][1] ?? [];
+        self::assertCount(1, $lines, Json\encode($lines));
+        self::assertStringContainsString('19:00', $lines[0]);
+        self::assertStringContainsString('18:00', $lines[0]);
+    }
+
+    #[Test]
     public function aLiveEventIsDeletedOnlyOnceFinishedAfterABriefingWent(): void
     {
         $this->live();
