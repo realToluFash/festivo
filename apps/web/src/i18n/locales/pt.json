@@ -2727,17 +2727,17 @@
     "key_automatic": "O Soirely trata disso por si"
   },
   "eventNeeds": {
-    "nothing": "Nothing needs you",
-    "headCount_one": "Needs you, {{count, number}} thing",
-    "headCount_other": "Needs you, {{count, number}} things",
-    "headCount_many": "Needs you, {{count, number}} things",
-    "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow",
-    "dueOn": "Due {{date}}",
-    "overdue": "Overdue",
-    "overdueDays_one": "{{count, number}} day overdue",
-    "overdueDays_other": "{{count, number}} days overdue",
-    "overdueDays_many": "{{count, number}} days overdue"
+    "nothing": "Nada pendente",
+    "headCount_one": "Precisa de si, {{count, number}} tarefa",
+    "headCount_other": "Precisa de si, {{count, number}} tarefas",
+    "headCount_many": "Precisa de si, {{count, number}} de tarefas",
+    "dueToday": "Prazo: hoje",
+    "dueTomorrow": "Prazo: amanhã",
+    "dueOn": "Prazo: {{date}}",
+    "overdue": "Em atraso",
+    "overdueDays_one": "{{count, number}} dia de atraso",
+    "overdueDays_other": "{{count, number}} dias de atraso",
+    "overdueDays_many": "{{count, number}} de dias de atraso"
   },
   "calendar": {
     "title": "Calendário",

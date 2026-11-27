@@ -2727,17 +2727,17 @@
     "key_automatic": "Soirely s’en charge pour vous"
   },
   "eventNeeds": {
-    "nothing": "Nothing needs you",
-    "headCount_one": "Needs you, {{count, number}} thing",
-    "headCount_other": "Needs you, {{count, number}} things",
-    "headCount_many": "Needs you, {{count, number}} things",
-    "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow",
-    "dueOn": "Due {{date}}",
-    "overdue": "Overdue",
-    "overdueDays_one": "{{count, number}} day overdue",
-    "overdueDays_other": "{{count, number}} days overdue",
-    "overdueDays_many": "{{count, number}} days overdue"
+    "nothing": "Rien à traiter",
+    "headCount_one": "À traiter, {{count, number}} tâche",
+    "headCount_other": "À traiter, {{count, number}} tâches",
+    "headCount_many": "À traiter, {{count, number}} de tâches",
+    "dueToday": "Pour aujourd’hui",
+    "dueTomorrow": "Pour demain",
+    "dueOn": "Pour le {{date}}",
+    "overdue": "En retard",
+    "overdueDays_one": "{{count, number}} jour de retard",
+    "overdueDays_other": "{{count, number}} jours de retard",
+    "overdueDays_many": "{{count, number}} de jours de retard"
   },
   "calendar": {
     "title": "Calendrier",
