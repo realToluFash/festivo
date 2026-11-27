@@ -145,7 +145,7 @@ describe('each row’s word', () => {
 
   it('counts the served guests of the course, and a table with none fired against the room’s', () => {
     const f = floorSeed('yours');
-    expect(servedLine(at(f, 'Table 2'))).toBe('3 of 9 served');
+    expect(servedLine(at(f, 'Table 2'))).toBe('2 of 9 served');
     expect(servedLine(at(f, 'Table 10'))).toBe('0 of 10 served');
     expect(servedLine(at(f, 'Row C'))).toBe('0 of 10 served');
   });
@@ -159,7 +159,7 @@ describe('each row’s word', () => {
   it('reads a row as one button, the flagged count spoken because the icon is not', () => {
     const f = floorSeed('yours');
     expect(rowSaid(at(f, 'Table 2'), false)).toBe(
-      'Table 2, To serve, 3 of 9 served, 10 covers, 2 flagged guests still to serve',
+      'Table 2, To serve, 2 of 9 served, 10 covers, 2 flagged guests still to serve',
     );
     expect(rowSaid(at(f, 'Table 3'), true)).toBe(
       'Table 3, To serve, 2 of 8 served, 8 covers, 1 flagged guest still to serve, Section A',
@@ -233,11 +233,18 @@ describe('Send back', () => {
     expect(sendBack(open)).toBe(open);
   });
 
-  it('owes the plate again, Sent back with its reason, and offers Undo for 2 minutes', () => {
+  it('puts the order back to To serve, owed under its guest with its reason, and offers Undo for 2 minutes', () => {
     for (const reason of REASONS) {
       const f = sendBack(pickReason(openSendBack(floorSeed('table'), 'Table 2', 8, null), reason));
       const kemi = at(f, 'Table 2').seats[7];
-      expect(kemi?.owed.at(-1)).toMatchObject({ why: 'Sent back', reason, stage: 'To serve' });
+      expect(kemi?.stage).toBe('To serve');
+      expect(kemi?.owed[0]).toMatchObject({
+        items: 'Goat curry',
+        why: 'Sent back',
+        reason,
+        stage: 'To serve',
+      });
+      expect(servedLine(at(f, 'Table 2'))).toBe('1 of 9 served');
       expect(f.undo?.line).toBe(`Sent back: Kemi Oke’s Goat curry · ${reason}`);
       expect(f.undo?.until).toBe('21:06');
       expect(kemi == null ? true : canSendBack(f, at(f, 'Table 2'), kemi)).toBe(false);
@@ -247,9 +254,23 @@ describe('Send back', () => {
   it('reverses only that step on Undo', () => {
     const f = sendBack(pickReason(openSendBack(floorSeed('table'), 'Table 2', 8, null), 'Dropped'));
     const back = undo(f);
+    expect(at(back, 'Table 2').seats[7]?.stage).toBe('Served');
     expect(at(back, 'Table 2').seats[7]?.owed).toHaveLength(1);
     expect(back.undo).toBeNull();
     expect(back.heard).toBe('Undone: Sent back: Kemi Oke’s Goat curry · Dropped');
+  });
+
+  it('draws the undo board’s guest To serve, the sent-back order owed under them, until Undo', () => {
+    const f = floorSeed('undo');
+    const kemi = at(f, 'Table 2').seats[7];
+    expect(kemi?.stage).toBe('To serve');
+    expect(kemi?.owed.map((o) => owedLine(at(f, 'Table 2'), o))).toEqual([
+      'Sent back · Not right · Goat curry',
+      'Starter · Bring after · Small chops',
+    ]);
+    const back = at(undo(f), 'Table 2').seats[7];
+    expect(back?.stage).toBe('Served');
+    expect(back?.owed.map((o) => o.items)).toEqual(['Small chops']);
   });
 
   it('leaves another device’s change since the step as it is on Undo', () => {
@@ -264,7 +285,7 @@ describe('Send back', () => {
     expect(t4.seats[0]?.sentBack).toBe(false);
   });
 
-  it('sends back a Served owed plate once, and Undo makes it sendable again', () => {
+  it('sends back a Served owed plate as itself, and Undo makes it Served and sendable again', () => {
     const f = floorSeed('table');
     const kemi = at(f, 'Table 2').seats[7];
     const chops = kemi?.owed[0];
@@ -272,10 +293,10 @@ describe('Send back', () => {
     expect(canSendBackOwed(f, at(f, 'Table 2'), chops)).toBe(true);
     const sent = sendBack(pickReason(openSendBack(f, 'Table 2', 8, 0), 'Wrong dish'));
     const after = at(sent, 'Table 2').seats[7];
-    expect(after?.owed.map((o) => [o.items, o.why, o.stage])).toEqual([
-      ['Small chops', 'Bring after', 'Served'],
-      ['Small chops', 'Sent back', 'To serve'],
+    expect(after?.owed.map((o) => [o.items, o.why, o.reason, o.stage])).toEqual([
+      ['Small chops', 'Sent back', 'Wrong dish', 'To serve'],
     ]);
+    expect(after?.stage).toBe('Served');
     expect(after?.sentBack).toBe(false);
     const again = after?.owed[0];
     expect(again == null ? true : canSendBackOwed(sent, at(sent, 'Table 2'), again)).toBe(false);
@@ -283,8 +304,9 @@ describe('Send back', () => {
       steps: sent.steps,
     });
     const back = at(undo(sent), 'Table 2').seats[7];
-    expect(back?.owed).toHaveLength(1);
-    expect(back?.owed[0]?.sentBack).toBe(false);
+    expect(back?.owed.map((o) => [o.items, o.why, o.stage, o.sentBack])).toEqual([
+      ['Small chops', 'Bring after', 'Served', false],
+    ]);
   });
 });
 
@@ -314,7 +336,8 @@ describe('live and offline', () => {
     const f = floorSeed('offline');
     const t2 = at(f, 'Table 2');
     expect(t2.seats[4]?.held?.kept).toBe(true);
-    expect(t2.seats[1]?.owed.at(-1)?.kept).toBe(true);
+    expect(t2.seats[1]?.stage).toBe('To serve');
+    expect(t2.seats[1]?.owed[0]).toMatchObject({ why: 'Sent back', reason: 'Dropped', kept: true });
     const more = choose(f, 'Table 2', 5, WAIT_ALL);
     expect(stripLine(more)).toBe('No connection · as of 21:04 · 3 taps waiting');
   });
