@@ -202,8 +202,12 @@ final readonly class StaffLinks
             return false;
         }
 
-        [$from, $until] = self::span($shifts, $event);
         $endedAt = $event->getEndedAt();
+        if (EventPhase::calledOff($endedAt, $event->getStartsAt())) {
+            return false;
+        }
+
+        [$from, $until] = self::span($shifts, $event);
         $finishedAt = null !== $endedAt && $endedAt < $event->getEndsAt() ? $endedAt : $event->getEndsAt();
 
         return $from <= $finishedAt && $finishedAt <= $until;
