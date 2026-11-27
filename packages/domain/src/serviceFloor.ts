@@ -71,10 +71,23 @@ export interface ServiceCourseRead {
 }
 
 export interface FloorRead {
+  event: string;
   courses: ServiceCourseRead[];
   yours: { id: string; name: string }[];
   floorLead: string | null;
   manage: boolean;
+}
+
+/** A guest as the table's view draws them: the latest course's order, and the plates owed to them from every fired course. */
+export interface FloorGuest extends ServiceGuestRead {
+  owed: ServicePlateRead[];
+}
+
+export interface FloorTray {
+  id: string;
+  waiter: string;
+  plates: number;
+  stage: PlateStage | null;
 }
 
 export const FLOOR_WORDS = [
@@ -102,8 +115,10 @@ export interface FloorTable {
   earlierCourse: string | null;
   served: number;
   ordered: number;
-  flagged: number;
-  read: ServiceTableRead;
+  guests: FloorGuest[];
+  /** Flagged guests with a plate not yet served, in any fired course, each once. */
+  flagged: FloorGuest[];
+  trays: FloorTray[];
   courseId: string;
   mayWrite: boolean;
 }
@@ -115,6 +130,16 @@ export type FloorGroup =
 
 function plates(guest: ServiceGuestRead): ServicePlateRead[] {
   return guest.order == null ? [] : [guest.order, ...guest.order.owed];
+}
+
+/** The order is not offered Send back while the plate it made is still owed. */
+export function owesSentBack(guest: FloorGuest): boolean {
+  return guest.owed.some(
+    (plate) =>
+      plate.courseId === guest.order?.courseId &&
+      plate.owedReason === 'sentBack' &&
+      plate.stage !== 'served',
+  );
 }
 
 export function hasFlags(guest: ServiceGuestRead): boolean {
@@ -184,6 +209,23 @@ export function floorTables(floor: FloorRead): FloorTable[] {
       any,
     );
 
+    const theirs = fired.flatMap(({ table }) => table.guests);
+    const guests = latest.table.guests.map((guest) => ({
+      ...guest,
+      owed: theirs.filter((g) => g.id === guest.id).flatMap((g) => g.order?.owed ?? []),
+    }));
+    const unserved = new Set(
+      theirs.filter((g) => plates(g).some((p) => p.stage !== 'served')).map((g) => g.id),
+    );
+    const seated = reads.flatMap(({ course }) => course.tables.flatMap((t) => t.guests));
+    const trays = new Map(
+      reads.flatMap(({ course }) =>
+        course.trays
+          .filter((tray) => tray.table === any.key && !tray.done)
+          .map((tray) => [tray.id, tray] as const),
+      ),
+    );
+
     return {
       key: any.key,
       kind: any.kind,
@@ -199,10 +241,14 @@ export function floorTables(floor: FloorRead): FloorTable[] {
       served: ordered.filter((g) => g.order?.stage === 'served').length,
       // A table with no course fired counts its guests, so it reads "0 of 10 served", never "0 of 0" (Design).
       ordered: fired.length === 0 ? any.guests.length : ordered.length,
-      flagged: fired
-        .flatMap(({ table }) => table.guests)
-        .filter((g) => hasFlags(g) && plates(g).some((p) => p.stage !== 'served')).length,
-      read: latest.table,
+      guests,
+      flagged: guests.filter((g) => hasFlags(g) && unserved.has(g.id)),
+      trays: [...trays.values()].map((tray) => ({
+        id: tray.id,
+        waiter: tray.waiter.name,
+        plates: tray.plates.length,
+        stage: seated.flatMap(plates).find((plate) => plate.trayId === tray.id)?.stage ?? null,
+      })),
       courseId: latest.course.course.id,
       mayWrite: mayWriteAt(floor, any),
     };
@@ -221,6 +267,90 @@ export function floorGroups(floor: FloorRead, locale: string): FloorGroup[] {
     yours.length > 0 ? yours : floor.manage ? [] : [{ kind: 'noSection', lead: floor.floorLead }];
 
   return [...head, { kind: 'other', tables: other }];
+}
+
+export interface FloorKeptTap {
+  key: string;
+  kind: string;
+  path: string;
+  body: object;
+  tappedAt: string;
+}
+
+function onPlate(
+  floor: FloorRead,
+  id: string,
+  change: (order: ServiceOrderRead, plate: ServicePlateRead) => ServiceOrderRead,
+): FloorRead {
+  return {
+    ...floor,
+    courses: floor.courses.map((course) => ({
+      ...course,
+      tables: course.tables.map((table) => ({
+        ...table,
+        guests: table.guests.map((guest) => {
+          const order = guest.order;
+          const plate = order == null ? null : [order, ...order.owed].find((one) => one.id === id);
+
+          return order == null || plate == null ? guest : { ...guest, order: change(order, plate) };
+        }),
+      })),
+    })),
+  };
+}
+
+/** What the device holds with its kept choices and sent-back plates shown as made (sc-4028); a kept Undo takes the kept step it reverses back off. */
+export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): FloorRead {
+  // ponytail: an Undo of a step the server already has is shown once it is sent; the read doesn't say what that step replaced.
+  const standing: FloorKeptTap[] = [];
+
+  for (const tap of kept) {
+    if (tap.kind !== 'undo') {
+      standing.push(tap);
+      continue;
+    }
+
+    const { subject } = tap.body as { subject: string };
+    const at = standing.map((one) => one.path.split('/')[2]).lastIndexOf(subject);
+
+    if (at >= 0) standing.splice(at, 1);
+  }
+
+  return standing.reduce((read, tap) => {
+    const id = tap.path.split('/')[2] ?? '';
+
+    if (tap.kind === 'choice') {
+      const { choice } = tap.body as { choice: HeldChoice };
+
+      return onPlate(read, id, (order) => ({ ...order, choice }));
+    }
+
+    if (tap.kind !== 'sendBack') return read;
+    const { reason } = tap.body as { reason: SentBackReason };
+
+    return onPlate(read, id, (order, plate) => ({
+      ...order,
+      owed: [
+        ...order.owed,
+        {
+          ...plate,
+          id: tap.key,
+          isOrder: false,
+          stage: 'toServe',
+          trayId: null,
+          owedReason: 'sentBack',
+          sentBack: [{ reason, at: tap.tappedAt, by: null }],
+        },
+      ],
+    }));
+  }, floor);
+}
+
+/** The sections a waiter is on now, named, once they differ from the ones they were on: empty when none is left. */
+export function sectionsMoved(was: readonly string[], now: FloorRead['yours']): string[] | null {
+  const same = was.length === now.length && now.every((one) => was.includes(one.id));
+
+  return same ? null : now.map((one) => one.name);
 }
 
 export function withCourse(floor: FloorRead, read: ServiceCourseRead): FloorRead {

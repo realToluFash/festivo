@@ -132,6 +132,7 @@ final class ServiceAccessTest extends ServiceTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($floor));
         self::assertSame([['id' => $this->section->getId()->toRfc4122(), 'name' => 'Section A']], $floor['yours']);
         self::assertSame('Kemi Waiter', $floor['floorLead']);
+        self::assertSame($this->event->getName(), $floor['event']);
         self::assertFalse($floor['manage']);
         $read = Type\mixed_dict()->coerce(Type\vec(Type\mixed_dict())->coerce($floor['courses'])[0]);
         self::assertSame(['Table 1' => true, 'Table 2' => false, 'Table 3' => true], $this->namedTables($read), 'each course read as Bisi sees it');

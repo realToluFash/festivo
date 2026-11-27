@@ -1,6 +1,7 @@
 import type { ServiceTapStep } from '@soirely/api-client';
 import {
   type FloorGroup,
+  type FloorGuest,
   type FloorRead,
   type FloorTable,
   type FloorWord,
@@ -16,8 +17,10 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
-  hasFlags,
+  owesSentBack,
   refusalKey,
+  roomCourse,
+  sectionsMoved,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -54,6 +57,12 @@ const SHAPE_OF_STAGE: Record<PlateStage, Shape> = {
   onItsWay: 'dot',
   served: 'filled',
 };
+
+const SAID_UNREAD = {
+  loading: 'service.floor.title',
+  failed: 'service.floor.loadFailed',
+  refused: 'service.floor.refused.title',
+} as const;
 
 interface SendingBack {
   plate: ServicePlateRead;
@@ -92,6 +101,22 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
 }
 
+function listLine(t: TFunction, read: FloorRead): string {
+  const course = roomCourse(read)?.course.name;
+
+  return course == null ? read.event : t('service.floor.listLine', { event: read.event, course });
+}
+
+function movedLine(t: TFunction, sections: string[]): string {
+  const section = new Intl.ListFormat(dateLocale(), { type: 'conjunction' }).format(sections);
+
+  return t('service.floor.moved', { section });
+}
+
+function noSectionLine(t: TFunction, lead: string | null): string {
+  return lead == null ? t('service.floor.noSectionNoLead') : t('service.floor.noSection', { lead });
+}
+
 function wordSaid(t: TFunction, table: FloorTable): string {
   const word = t(`service.floor.word.${table.word}`);
 
@@ -113,7 +138,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   const [undo, setUndo] = useState<Undoable | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
   const [heard, setHeard] = useState<string | null>(null);
-  const yoursWas = useRef<string | null>(null);
+  const yoursWas = useRef<string[] | null>(null);
   const openerRef = useRef<ViewInstance | null>(null);
   const headingRef = useRef<ViewInstance | null>(null);
 
@@ -121,21 +146,19 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   useSystemBack(!wide && open != null, () => setOpen(null));
 
   const read = floor.seen.kind === 'shown' ? floor.seen.floor : null;
-  const yoursNow = read == null ? null : read.yours.map((one) => one.id).join(',');
 
   useEffect(() => {
-    if (read == null || yoursNow == null) return;
-    if (yoursWas.current != null && yoursWas.current !== yoursNow) {
-      const joined = read.yours.find((one) => !yoursWas.current?.split(',').includes(one.id));
-      const line =
-        joined == null
-          ? t('service.floor.noSectionNoLead')
-          : t('service.floor.moved', { section: joined.name });
-      setMoved(line);
-      setHeard(line);
-    }
-    yoursWas.current = yoursNow;
-  }, [read, yoursNow, t]);
+    if (read == null) return;
+    const was = yoursWas.current;
+    yoursWas.current = read.yours.map((one) => one.id);
+    const now = was == null ? null : sectionsMoved(was, read.yours);
+    if (now == null) return;
+    const line = now.length === 0 ? null : movedLine(t, now);
+    setMoved(line);
+    // Left on none, the no-tables line stands in Yours' place; it is only said here.
+    if (line != null) setHeard(line);
+    else if (!read.manage) setHeard(noSectionLine(t, read.floorLead));
+  }, [read, t]);
 
   useEffect(() => {
     if (undo == null) return;
@@ -145,13 +168,27 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
     return () => clearTimeout(timer);
   }, [undo]);
 
-  if (read == null) {
+  if (floor.seen.kind !== 'shown' || read == null) {
+    const unread = floor.seen.kind === 'shown' ? 'loading' : floor.seen.kind;
+
     return (
       <View style={[styles.page, styles.centred, { paddingTop: insets.top }]}>
         <Text size={16} weight="medium">
-          {floor.seen.kind === 'loading' ? t('service.floor.title') : t('service.floor.loadFailed')}
+          {t(SAID_UNREAD[unread])}
         </Text>
-        {floor.seen.kind !== 'loading' && (
+        {unread === 'refused' && (
+          <>
+            <Text size={15} weight="medium" style={styles.secondary}>
+              {t('service.floor.refused.line')}
+            </Text>
+            <SecondaryButton
+              label={t('service.floor.listBack')}
+              onPress={onBack}
+              testID="floor.refused.back"
+            />
+          </>
+        )}
+        {unread === 'failed' && (
           <SecondaryButton
             label={t('service.floor.tryAgain')}
             onPress={floor.retry}
@@ -167,7 +204,8 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && open != null && shown != null;
   const pad = phone ? tokens.spaceXl : 28;
-  const keptOn = new Set(floor.kept.map((tap) => tap.path.split('/')[2]));
+  // A kept Send back's own plate carries the tap's key.
+  const keptOn = new Set(floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.key]));
 
   const made = (step: ServiceTapStep, plate: ServicePlateRead, line: string) => {
     const expected = { plates: { [plate.id]: plate.stage } };
@@ -206,6 +244,9 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
               <Text size={wide ? 28 : 30} weight="bold" accessibilityRole="header">
                 {t('service.floor.title')}
               </Text>
+              <Text size={15} weight="medium" style={styles.secondary}>
+                {listLine(t, read)}
+              </Text>
               <Strip freshness={floor.freshness} />
             </View>
             {moved != null && (
@@ -240,6 +281,9 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                 phone={phone}
                 freshness={floor.freshness}
                 keptOn={keptOn}
+                notSent={
+                  <NotSent refusals={floor.notSent} read={read} onDismiss={floor.dismissNotSent} />
+                }
                 onClose={() => setOpen(null)}
                 onChoose={(order, guest, choice) =>
                   made(
@@ -456,9 +500,7 @@ function Group({
     return (
       <View style={styles.none} testID="floor.none">
         <Text size={15} weight="medium" style={styles.grow}>
-          {group.lead == null
-            ? t('service.floor.noSectionNoLead')
-            : t('service.floor.noSection', { lead: group.lead })}
+          {noSectionLine(t, group.lead)}
         </Text>
       </View>
     );
@@ -508,7 +550,9 @@ function Row({
     wordSaid(t, table),
     served,
     covers,
-    ...(table.flagged > 0 ? [t('service.floor.flaggedSaid', { count: table.flagged })] : []),
+    ...(table.flagged.length > 0
+      ? [t('service.floor.flaggedSaid', { count: table.flagged.length })]
+      : []),
     ...(other && table.section != null ? [table.section.name] : []),
   ].join(', ');
 
@@ -545,11 +589,11 @@ function Row({
           <Text size={14} weight="medium" style={styles.secondary}>
             {covers}
           </Text>
-          {table.flagged > 0 && (
+          {table.flagged.length > 0 && (
             <View style={styles.flag}>
               <Glyph name="alert" size={13} ink={tokens.colorBrokenText} />
               <Text size={14} weight="semibold" style={styles.flagText}>
-                {t('service.floor.flagged', { count: table.flagged })}
+                {t('service.floor.flagged', { count: table.flagged.length })}
               </Text>
             </View>
           )}
@@ -569,10 +613,6 @@ function Part({ title, children }: { title: string; children: React.ReactNode })
       {children}
     </View>
   );
-}
-
-function openPlates(guest: ServiceGuestRead): ServicePlateRead[] {
-  return guest.order == null ? [] : [guest.order, ...guest.order.owed];
 }
 
 function stageSaid(t: TFunction, guest: ServiceGuestRead): { shape: Shape; said: string } {
@@ -597,7 +637,9 @@ function TableView({
   onClose,
   onChoose,
   onSendBack,
+  notSent,
 }: {
+  notSent: React.ReactNode;
   read: FloorRead;
   table: FloorTable;
   wide: boolean;
@@ -613,10 +655,7 @@ function TableView({
   const course = read.courses.find((one) => one.course.id === table.courseId);
   const courseOf = (id: string) =>
     read.courses.find((one) => one.course.id === id)?.course.name ?? '';
-  const flagged = table.read.guests.filter(
-    (g) => hasFlags(g) && openPlates(g).some((p) => p.stage !== 'served'),
-  );
-  const trays = (course?.trays ?? []).filter((tray) => tray.table === table.key && !tray.done);
+  const { flagged, trays } = table;
   const section = table.section?.name ?? '';
 
   return (
@@ -649,6 +688,7 @@ function TableView({
         </Text>
         <Strip freshness={freshness} />
       </View>
+      {notSent}
       {flagged.length > 0 && (
         <Part title={t('service.floor.flaggedGuests')}>
           {flagged.map((guest) => (
@@ -673,29 +713,22 @@ function TableView({
       )}
       {trays.length > 0 && (
         <Part title={t('service.floor.trays')}>
-          {trays.map((tray) => {
-            const stage = course?.tables
-              .flatMap((one) => one.guests)
-              .flatMap(openPlates)
-              .find((plate) => plate.trayId === tray.id)?.stage;
-
-            return (
-              <View key={tray.id} style={styles.tray}>
-                <Text size={15} weight="semibold">
-                  {t('service.floor.tray', {
-                    waiter: tray.waiter.name,
-                    plates: t('service.floor.plates', { count: tray.plates.length }),
-                    stage: stage == null ? '' : t(`service.stage.${stage}`),
-                  })}
-                </Text>
-              </View>
-            );
-          })}
+          {trays.map((tray) => (
+            <View key={tray.id} style={styles.tray}>
+              <Text size={15} weight="semibold">
+                {t('service.floor.tray', {
+                  waiter: tray.waiter,
+                  plates: t('service.floor.plates', { count: tray.plates }),
+                  stage: tray.stage == null ? '' : t(`service.stage.${tray.stage}`),
+                })}
+              </Text>
+            </View>
+          ))}
         </Part>
       )}
       <Part title={t('service.floor.seats')}>
         <View style={styles.seats}>
-          {table.read.guests.map((guest) => (
+          {table.guests.map((guest) => (
             <Seat
               key={guest.id}
               guest={guest}
@@ -734,7 +767,7 @@ function Seat({
   onChoose,
   onSendBack,
 }: {
-  guest: ServiceGuestRead;
+  guest: FloorGuest;
   table: FloorTable;
   phone: boolean;
   keptOn: Set<string | undefined>;
@@ -751,9 +784,7 @@ function Seat({
   const anyReady = order != null && order.items.some((item) => item.state === 'ready');
   const readyIn = held?.holding.map((key) => ready(key)?.readyIn).find((n) => n != null) ?? null;
   const sendable = (plate: ServicePlateRead) => table.mayWrite && plate.stage === 'served';
-  const owedBack = (order?.owed ?? []).some(
-    (plate) => plate.owedReason === 'sentBack' && plate.stage !== 'served',
-  );
+  const owedBack = owesSentBack(guest);
 
   return (
     <View style={styles.seat} testID={`floor.seat.${String(guest.seat)}`}>
@@ -837,7 +868,7 @@ function Seat({
             />
           </View>
         )}
-        {(order?.owed ?? []).map((plate) => (
+        {guest.owed.map((plate) => (
           <View key={plate.id} style={styles.owed}>
             <Text size={14} weight="medium">
               {[

@@ -3791,7 +3791,7 @@
       "other": "Other tables",
       "noSection": "No tables yet. {{lead}} will put you on a section.",
       "noSectionNoLead": "No tables yet. The floor lead will put you on a section.",
-      "moved": "You're on {{section}} now.",
+      "moved": "You’re on {{section}} now.",
       "header": "{{covers}} · {{section}}",
       "flaggedGuests": "Flagged guests",
       "trays": "Trays",
@@ -3812,13 +3812,18 @@
       "undoUntil": "Undo until {{time}}",
       "undone": "Undone.",
       "step": {
-        "sentBack": "Sent back: {{guest}}'s {{items}} · {{reason}}",
+        "sentBack": "Sent back: {{guest}}’s {{items}} · {{reason}}",
         "choice": "{{guest}}: {{choice}}"
       },
-      "loadFailed": "Floor didn't load. Try again.",
+      "loadFailed": "Floor didn’t load. Try again.",
       "tryAgain": "Try again",
       "listBack": "Back",
-      "chefsChoice": "Chef's choice"
+      "chefsChoice": "Chef’s choice",
+      "listLine": "{{event}} · {{course}}",
+      "refused": {
+        "title": "Floor opens with Can work the floor",
+        "line": "Your access to this event does not include the floor."
+      }
     }
   },
   "myNight": {

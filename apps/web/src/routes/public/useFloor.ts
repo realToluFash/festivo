@@ -16,6 +16,7 @@ import {
   type TapRefusal,
   createServiceFreshness,
   tapNow,
+  withKeptTaps,
 } from '@soirely/domain';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -125,8 +126,13 @@ export function useFloor(eventId: string) {
     [eventId, flush, fresh, store],
   );
 
+  const shown = useMemo<FloorSeen>(
+    () => (seen.kind === 'shown' ? { ...seen, floor: withKeptTaps(seen.floor, kept) } : seen),
+    [seen, kept],
+  );
+
   return {
-    seen,
+    seen: shown,
     freshness,
     kept,
     notSent,

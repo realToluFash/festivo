@@ -41,6 +41,7 @@ final readonly class FloorRead
         $lead = Iter\search($this->staffMemberRepository->findOnEvent($event), static fn (StaffMember $one): bool => $one->isFloorLead());
 
         return [
+            'event' => $event->getName(),
             // ponytail: one read per course, each built in full; a read of the fired courses alone if a long menu shows up in the timings.
             'courses' => Vec\map($this->servingStations->of($event)['courses'], fn (array $entry): array => $this->serviceRead->of($entry['course'], $viewer)),
             'yours' => Vec\map(

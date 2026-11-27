@@ -1,6 +1,7 @@
 import type { ServiceTapStep } from '@soirely/api-client';
 import {
   type FloorGroup,
+  type FloorGuest,
   type FloorRead,
   type FloorTable,
   type FloorWord,
@@ -16,8 +17,10 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
-  hasFlags,
+  owesSentBack,
   refusalKey,
+  roomCourse,
+  sectionsMoved,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -27,6 +30,8 @@ import { useParams } from 'react-router';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { restoreSession, useSessionState } from '../../session.ts';
+import { NotSignedIn } from './DoorCheckIn.tsx';
 import { useFloor } from './useFloor.ts';
 import './floor.css';
 
@@ -51,6 +56,12 @@ const SHAPE_OF_STAGE: Record<PlateStage, Shape> = {
   onItsWay: 'dot',
   served: 'filled',
 };
+
+const SAID_UNREAD = {
+  loading: 'service.floor.title',
+  failed: 'service.floor.loadFailed',
+  refused: 'service.floor.refused.title',
+} as const;
 
 interface SendingBack {
   plate: ServicePlateRead;
@@ -80,16 +91,28 @@ function itemsOf(t: TFunction, plate: ServicePlateRead): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
 }
 
+function listLine(t: TFunction, read: FloorRead): string {
+  const course = roomCourse(read)?.course.name;
+
+  return course == null ? read.event : t('service.floor.listLine', { event: read.event, course });
+}
+
+function movedLine(t: TFunction, sections: string[]): string {
+  const section = new Intl.ListFormat(dateLocale(), { type: 'conjunction' }).format(sections);
+
+  return t('service.floor.moved', { section });
+}
+
+function noSectionLine(t: TFunction, lead: string | null): string {
+  return lead == null ? t('service.floor.noSectionNoLead') : t('service.floor.noSection', { lead });
+}
+
 function wordSaid(t: TFunction, table: FloorTable): string {
   const word = t(`service.floor.word.${table.word}`);
 
   return table.earlierCourse == null
     ? word
     : t('service.floor.earlier', { course: table.earlierCourse, word });
-}
-
-function openPlates(guest: ServiceGuestRead): ServicePlateRead[] {
-  return guest.order == null ? [] : [guest.order, ...guest.order.owed];
 }
 
 function useWide(): boolean {
@@ -107,6 +130,15 @@ function useWide(): boolean {
 /** /floor/:eventId (sc-4021): Floor in a signed-in staff member's browser, as the app draws it. */
 export function FloorPage() {
   const { eventId = '' } = useParams();
+  const session = useSessionState();
+
+  useEffect(() => {
+    void restoreSession();
+  }, []);
+
+  // Floor shows names, so it asks for sc-4235's sign-in before it reads anything.
+  if (session.status === 'signedOut') return <NotSignedIn />;
+  if (session.status !== 'signedIn') return null;
 
   return <Floor key={eventId} eventId={eventId} />;
 }
@@ -126,16 +158,12 @@ function Floor({ eventId }: { eventId: string }) {
 
   if (read != null) {
     const ids = read.yours.map((one) => one.id);
+    const now = yours == null ? null : sectionsMoved(yours.ids, read.yours);
     if (yours == null) setYours({ ids, moved: null });
-    else if (yours.ids.join() !== ids.join()) {
-      const joined = read.yours.find((one) => !yours.ids.includes(one.id));
-      setYours({
-        ids,
-        moved:
-          joined == null
-            ? t('service.floor.noSectionNoLead')
-            : t('service.floor.moved', { section: joined.name }),
-      });
+    else if (now != null) {
+      setYours({ ids, moved: now.length === 0 ? null : movedLine(t, now) });
+      // Left on none, the no-tables line stands in Yours' place; it is only said here.
+      if (now.length === 0 && !read.manage) setHeard(noSectionLine(t, read.floorLead));
     }
   }
 
@@ -150,25 +178,28 @@ function Floor({ eventId }: { eventId: string }) {
     if (open != null) heading.current?.focus();
   }, [open]);
 
-  if (read == null)
+  if (floor.seen.kind !== 'shown' || read == null) {
+    const unread = floor.seen.kind === 'shown' ? 'loading' : floor.seen.kind;
+
     return (
       <main id="content" className="flr flr-centred">
-        <p role="status">
-          {floor.seen.kind === 'loading' ? t('service.floor.title') : t('service.floor.loadFailed')}
-        </p>
-        {floor.seen.kind !== 'loading' && (
+        <p role="status">{t(SAID_UNREAD[unread])}</p>
+        {unread === 'refused' && <p>{t('service.floor.refused.line')}</p>}
+        {unread === 'failed' && (
           <button type="button" className="flr-button" onClick={floor.retry}>
             {t('service.floor.tryAgain')}
           </button>
         )}
       </main>
     );
+  }
 
   const groups = floorGroups(read, dateLocale());
   const tables = groups.flatMap((g) => (g.kind === 'noSection' ? [] : g.tables));
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && shown != null;
-  const keptOn = new Set(floor.kept.map((tap) => tap.path.split('/')[2]));
+  // A kept Send back's own plate carries the tap's key.
+  const keptOn = new Set(floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.key]));
 
   const made = (step: ServiceTapStep, plate: ServicePlateRead, line: string) => {
     void floor.tap(step, { plates: { [plate.id]: plate.stage } }).then((ok) => {
@@ -195,6 +226,7 @@ function Floor({ eventId }: { eventId: string }) {
         <div className="flr-list">
           <div className="flr-head">
             <h1>{t('service.floor.title')}</h1>
+            <p className="flr-quiet">{listLine(t, read)}</p>
             <Strip freshness={floor.freshness} />
           </div>
           <p className="flr-moved" role="status">
@@ -220,6 +252,9 @@ function Floor({ eventId }: { eventId: string }) {
             freshness={floor.freshness}
             keptOn={keptOn}
             heading={heading}
+            notSent={
+              <NotSent refusals={floor.notSent} read={read} onDismiss={floor.dismissNotSent} />
+            }
             onClose={() => setOpen(null)}
             onChoose={(order, guest, choice) =>
               made(
@@ -375,14 +410,7 @@ function Group({
 }) {
   const { t } = useTranslation();
 
-  if (group.kind === 'noSection')
-    return (
-      <p className="flr-none">
-        {group.lead == null
-          ? t('service.floor.noSectionNoLead')
-          : t('service.floor.noSection', { lead: group.lead })}
-      </p>
-    );
+  if (group.kind === 'noSection') return <p className="flr-none">{noSectionLine(t, group.lead)}</p>;
 
   return (
     <section className="flr-part">
@@ -426,7 +454,9 @@ function Row({
     wordSaid(t, table),
     served,
     covers,
-    ...(table.flagged > 0 ? [t('service.floor.flaggedSaid', { count: table.flagged })] : []),
+    ...(table.flagged.length > 0
+      ? [t('service.floor.flaggedSaid', { count: table.flagged.length })]
+      : []),
     ...(other && table.section != null ? [table.section.name] : []),
   ].join(', ');
 
@@ -449,10 +479,10 @@ function Row({
         <span className="flr-wrap flr-quiet">
           <span>{served}</span>
           <span>{covers}</span>
-          {table.flagged > 0 && (
+          {table.flagged.length > 0 && (
             <span className="flr-flag">
               <Glyph name="alert" size={13} />
-              <span>{t('service.floor.flagged', { count: table.flagged })}</span>
+              <span>{t('service.floor.flagged', { count: table.flagged.length })}</span>
             </span>
           )}
         </span>
@@ -486,7 +516,9 @@ function TableView({
   onClose,
   onChoose,
   onSendBack,
+  notSent,
 }: {
+  notSent: React.ReactNode;
   read: FloorRead;
   table: FloorTable;
   wide: boolean;
@@ -498,12 +530,7 @@ function TableView({
   onSendBack: SendBackPress;
 }) {
   const { t } = useTranslation();
-  const course = read.courses.find((one) => one.course.id === table.courseId);
-  const flagged = table.read.guests.filter(
-    (g) => hasFlags(g) && openPlates(g).some((p) => p.stage !== 'served'),
-  );
-  const trays = (course?.trays ?? []).filter((tray) => tray.table === table.key && !tray.done);
-  const plates = course?.tables.flatMap((one) => one.guests).flatMap(openPlates) ?? [];
+  const { flagged, trays } = table;
   const section = table.section?.name ?? '';
   const Title = wide ? 'h2' : 'h1';
 
@@ -528,6 +555,7 @@ function TableView({
         </p>
         <Strip freshness={freshness} />
       </div>
+      {notSent}
       {flagged.length > 0 && (
         <section className="flr-part">
           <h3>{t('service.floor.flaggedGuests')}</h3>
@@ -544,25 +572,21 @@ function TableView({
       {trays.length > 0 && (
         <section className="flr-part">
           <h3>{t('service.floor.trays')}</h3>
-          {trays.map((tray) => {
-            const stage = plates.find((plate) => plate.trayId === tray.id)?.stage;
-
-            return (
-              <p key={tray.id} className="flr-card">
-                {t('service.floor.tray', {
-                  waiter: tray.waiter.name,
-                  plates: t('service.floor.plates', { count: tray.plates.length }),
-                  stage: stage == null ? '' : t(`service.stage.${stage}`),
-                })}
-              </p>
-            );
-          })}
+          {trays.map((tray) => (
+            <p key={tray.id} className="flr-card">
+              {t('service.floor.tray', {
+                waiter: tray.waiter,
+                plates: t('service.floor.plates', { count: tray.plates }),
+                stage: tray.stage == null ? '' : t(`service.stage.${tray.stage}`),
+              })}
+            </p>
+          ))}
         </section>
       )}
       <section className="flr-part">
         <h3>{t('service.floor.seats')}</h3>
         <ul className="flr-seats">
-          {table.read.guests.map((guest) => (
+          {table.guests.map((guest) => (
             <li key={guest.id}>
               <Seat
                 guest={guest}
@@ -596,7 +620,7 @@ function Seat({
   onChoose,
   onSendBack,
 }: {
-  guest: ServiceGuestRead;
+  guest: FloorGuest;
   read: FloorRead;
   table: FloorTable;
   keptOn: Set<string | undefined>;
@@ -612,9 +636,7 @@ function Seat({
   const anyReady = order?.items.some((one) => one.state === 'ready') ?? false;
   const readyIn = held?.holding.map((key) => item(key)?.readyIn).find((n) => n != null);
   const sendable = (plate: ServicePlateRead) => table.mayWrite && plate.stage === 'served';
-  const owedBack = (order?.owed ?? []).some(
-    (plate) => plate.owedReason === 'sentBack' && plate.stage !== 'served',
-  );
+  const owedBack = owesSentBack(guest);
   const sendBack = (plate: ServicePlateRead) => (
     <button
       type="button"
@@ -674,7 +696,7 @@ function Seat({
           </>
         )}
         {order != null && !owedBack && sendable(order) && sendBack(order)}
-        {(order?.owed ?? []).map((plate) => {
+        {guest.owed.map((plate) => {
           const last = plate.sentBack.at(-1);
 
           return (
