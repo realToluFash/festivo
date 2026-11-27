@@ -3999,7 +3999,8 @@
       "draft": "Kept as a draft, with everything you entered.",
       "form": "The form is kept as you left it.",
       "invitation": "The invitation is kept as you wrote it.",
-      "accept": "Your invitation stays open. Nothing is lost."
+      "accept": "Your invitation stays open. Nothing is lost.",
+      "request": "{{name}}’s request keeps waiting. Nothing is lost."
     },
     "goLive": "Another event can go live when {{event}} ends, on {{date}} at {{time}}.",
     "removeGuest": "Remove a guest",

@@ -4,7 +4,15 @@ import type {
   OrganisationMember,
   OrganisationRole,
 } from '@soirely/api-client';
-import { approvalRoles, firstName, formatDay, roleName } from '@soirely/domain';
+import {
+  approvalRoles,
+  firstName,
+  formatDay,
+  type LimitRefusal,
+  limitRefusalOf,
+  roleHolds,
+  roleName,
+} from '@soirely/domain';
 import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -17,6 +25,7 @@ import { refusalFor } from '../kit/refusal.ts';
 import { roleLines, roleNamed } from '../kit/roleChoices.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FieldError } from './Field.tsx';
+import { LimitRefusalLayer } from './LimitRefusal.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Avatar } from './SettingsParts.tsx';
@@ -56,6 +65,7 @@ export function RequestScreen({
   const [asking, setAsking] = useState<Asking>('none');
   const [busy, setBusy] = useState<'approve' | 'turnDown' | null>(null);
   const [failed, setFailed] = useState<{ on: 'approve' | 'turnDown'; words: string } | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const name = member.user.name;
   const first = firstName(name);
   const face = faceOf(member);
@@ -74,11 +84,13 @@ export function RequestScreen({
     try {
       await api.approveMember(organisation.id, member.id, role.id);
     } catch (error) {
+      setBusy(null);
+      const limit = limitRefusalOf(error, 'seatApprove', t, dateLocale(), first);
+      if (limit != null) return setLimited(limit);
       setFailed({
         on: 'approve',
         words: refusalFor(error, 'roleId', t('membersScreen.actionFailed')),
       });
-      setBusy(null);
       return;
     }
     onAnswered(
@@ -174,6 +186,25 @@ export function RequestScreen({
       cancelTestID="members.approve.cancel"
       opener={opener}
       ask={ask}
+      over={
+        limited == null
+          ? null
+          : {
+              layer: (
+                <LimitRefusalLayer
+                  refusal={limited}
+                  billing={roleHolds(organisation, 'billing.manage')}
+                  onMembers={() => {
+                    setLimited(null);
+                    onClose();
+                  }}
+                  onBack={() => setLimited(null)}
+                  testID="members.approve.limit"
+                />
+              ),
+              onClose: () => setLimited(null),
+            }
+      }
     >
       <View style={styles.head}>
         <Avatar initials={face.initials} side={56} tone={face.tone} />

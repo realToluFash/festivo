@@ -1,6 +1,11 @@
-import { type InvitationOutcome, type LimitRefusal, limitRefusalOf } from '@soirely/domain';
+import {
+  type InvitationOutcome,
+  type LimitRefusal,
+  limitRefusalOf,
+  type LimitWay,
+} from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -19,6 +24,8 @@ interface RefusalProps {
   billing: boolean;
   /** Remove a guest's link, closing the refusal onto the guest list. */
   onGuestList?: (() => void) | undefined;
+  /** Withdraw an invitation's and Remove a member's rows, closing the refusal onto Members. */
+  onMembers?: (() => void) | undefined;
   onBack: () => void;
   testID?: string | undefined;
 }
@@ -84,6 +91,7 @@ function LimitRefusalBody({
   refusal,
   billing,
   onGuestList,
+  onMembers,
   onBack,
   testID = 'limitReached',
 }: RefusalProps) {
@@ -137,6 +145,12 @@ function LimitRefusalBody({
             )}
           </View>
         )}
+        {onMembers != null &&
+          refusal.ways
+            .filter((way) => way === 'withdraw' || way === 'removeMember')
+            .map((way) => (
+              <SeatWay key={way} way={way} onPress={onMembers} testID={`${testID}.${way}`} />
+            ))}
         {refusal.planLimit && billing && (
           <Text size={15} weight="medium" testID={`${testID}.inApp`}>
             {t('limitReached.inApp')}
@@ -151,6 +165,37 @@ function LimitRefusalBody({
         testID={`${testID}.back`}
       />
     </View>
+  );
+}
+
+function SeatWay({
+  way,
+  onPress,
+  testID,
+}: {
+  way: Extract<LimitWay, 'withdraw' | 'removeMember'>;
+  onPress: () => void;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      style={[styles.row, styles.rowLink]}
+      accessibilityRole="link"
+      onPress={onPress}
+      testID={testID}
+    >
+      <View style={styles.grow}>
+        <Text size={15} weight="semibold">
+          {t(`limitReached.${way}`)}
+        </Text>
+        <Text size={14} style={styles.secondary}>
+          {t(`limitReached.${way}Line`)}
+        </Text>
+      </View>
+      <Glyph name="chevron" size={16} ink={tokens.colorInkSecondary} weight={2.2} />
+    </Pressable>
   );
 }
 
@@ -200,4 +245,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
+  rowLink: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 });
