@@ -50,7 +50,7 @@ import './roster.css';
 import './jobsShifts.css';
 import '../routes/app/events/hoursWorked.css';
 
-const RETRY_MS = 1200;
+const RETRY_MS = 2200;
 
 /** /demo/events/evt-wed-4/staff/hours (sc-234): Hours worked on the event's Staff page at 1280 × 800, by ?state=. */
 export function StaffHoursPage() {
