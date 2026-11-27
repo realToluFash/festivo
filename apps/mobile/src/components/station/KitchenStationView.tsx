@@ -272,8 +272,8 @@ export function KitchenStationView({
     () =>
       loaded.state !== 'ok' || station == null
         ? null
-        : stationView(station, withMine(loaded.reads, mine), now),
-    [loaded, station, mine, now],
+        : stationView(station, withMine(loaded.reads, mine), now, t),
+    [loaded, station, mine, now, t],
   );
 
   useEffect(() => {
