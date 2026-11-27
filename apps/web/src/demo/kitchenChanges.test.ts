@@ -256,6 +256,31 @@ describe('Changes since: what counts as a change', () => {
     ]);
   });
 
+  it('counts a new course’s own figures from 0, never as Added', () => {
+    const copy = {
+      ...BASE,
+      courses: BASE.courses.filter((course) => course.id !== 's'),
+      items: BASE.items.filter((one) => one.course !== 's'),
+    };
+
+    expect(texts(copy, BASE)).toEqual([
+      'Added: Pepper soup, 52',
+      'Added: Burrata with peaches, 41',
+      'Starter · Not chosen yet 0 to 3',
+    ]);
+  });
+
+  it('says nothing of a new course’s own figure at 0', () => {
+    const copy = {
+      ...BASE,
+      courses: BASE.courses.filter((course) => course.id !== 's'),
+      items: BASE.items.filter((one) => one.course !== 's'),
+    };
+    const now = counted({ 's-none': 0 });
+
+    expect(texts(copy, now)).toEqual(['Added: Pepper soup, 52', 'Added: Burrata with peaches, 41']);
+  });
+
   it('names the course before a course’s own figure, so two courses never read alike', () => {
     const now = counted({ 's-none': 4, 'm-none': 2, 's-pepper': 51, 'm-bass': 31 });
 

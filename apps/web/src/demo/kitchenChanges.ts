@@ -186,7 +186,7 @@ function courseOrder(copy: Figures, now: Figures): Course[] {
   return [...now.courses, ...copy.courses.filter((course) => !kept.has(course.id))];
 }
 
-/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows, each after its course's name, a course gone from the menu at 0 under the copy's name. */
+/** A course's lines: its rows now, a rename before its count; then the dishes gone, as the copy named them; then the tail rows, each after its course's name and always a count, a course new since the copy from 0, one gone from the menu to 0 under the copy's name. */
 function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
   const was = new Map(copy.items.map((item) => [item.id, item]));
   const here = new Set(now.items.map((item) => item.id));
@@ -206,11 +206,19 @@ function courseLines(course: Course, copy: Figures, now: Figures): Line[] {
 
     if (before == null) {
       if (item.count > 0)
-        lines.push({
-          key: `added-${item.id}`,
-          kind: 'dish',
-          text: filled(CW.added, { dish: name, count: item.count }),
-        });
+        lines.push(
+          item.kind === 'tail'
+            ? {
+                key: `count-${item.id}`,
+                kind: 'dish',
+                text: filled(CW.count, { dish: name, old: 0, new: item.count }),
+              }
+            : {
+                key: `added-${item.id}`,
+                kind: 'dish',
+                text: filled(CW.added, { dish: name, count: item.count }),
+              },
+        );
       return;
     }
 
