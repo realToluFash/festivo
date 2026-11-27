@@ -12,6 +12,7 @@ import {
   type ItemMark,
   type ItemState,
   type ServicePhase,
+  type TapExpected,
   type TapRefusal,
   UNDO_MINUTES,
   heldUpMinutes,
@@ -358,7 +359,7 @@ export function undoOpen(mark: StationMark, now: Date): boolean {
 
 export type UndoPlan =
   | { kind: 'drop'; tapKey: string }
-  | { kind: 'send'; subject: string; expected: { item: ItemState } }
+  | { kind: 'send'; subject: string; expected: TapExpected }
   | { kind: 'unknown' };
 
 export function undoPlan(
