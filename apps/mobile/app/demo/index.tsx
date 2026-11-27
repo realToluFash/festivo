@@ -73,6 +73,7 @@ import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { KITCHEN_WAY_IN_BOARDS } from '../../src/demo/station/wayInBoards.ts';
+import { FLOOR_WAY_IN_BOARDS } from '../../src/demo/floor/floorWayInBoards.ts';
 import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
@@ -2828,6 +2829,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382), and a service level’s Overview (sc-96279) · phone, tablet portrait and landscape',
     boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · the way in to Floor, from Overview and Your night (sc-98893); Open Floor is on Your night’s section states above · phone, tablet portrait and landscape',
+    boards: FLOOR_WAY_IN_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

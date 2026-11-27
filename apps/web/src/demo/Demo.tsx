@@ -126,7 +126,7 @@ import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
 import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
 import { CHECK_IN_PAGES } from './doorCheckIn.ts';
-import { MyNight } from './MyNight.tsx';
+import { MyNight, MyNightFloor } from './MyNight.tsx';
 import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { StaffSignIn } from './StaffSignIn.tsx';
@@ -368,6 +368,7 @@ export default function Demo() {
       <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="staff-sign-in" element={<StaffSignIn />} />
       <Route path="my-night" element={<MyNight />} />
+      <Route path="my-night/floor" element={<MyNightFloor />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />

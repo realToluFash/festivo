@@ -25,7 +25,10 @@ import {
   guestCount,
   headingOf,
   moved,
+  movedOffSection,
+  movedOntoSection,
   movedToGrill,
+  openFloorOf,
   myNightStateOf,
   nightOf,
   openOf,
@@ -99,6 +102,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   );
   const checkIn = checkInOf(night);
   const open = openOf(night);
+  const openFloor = openFloorOf(night);
   const whosHere = whosHereOf(night);
 
   const left = (
@@ -137,6 +141,20 @@ export function MyNightScreen({ first }: { first: Night }) {
             label={open.label}
             onPress={() => router.push(open.href as Href)}
             testID="myNight.openStation"
+          />
+        ))}
+      {openFloor != null &&
+        (openFloor.primary ? (
+          <PrimaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            testID="myNight.openFloor"
+          />
+        ) : (
+          <SecondaryButton
+            label={openFloor.label}
+            onPress={() => router.push(openFloor.href as Href)}
+            testID="myNight.openFloor"
           />
         ))}
       {whosHere != null &&
@@ -304,6 +322,20 @@ export function MyNightScreen({ first }: { first: Night }) {
                 label={MN.demoKitchenMoveButton}
                 onPress={() => setNight(movedToGrill(night))}
                 testID="myNight.demo.moveKitchen"
+              />
+            )}
+            {night.state === 'no_station' && night.kind == null && (
+              <SecondaryButton
+                label={MN.demoOntoSectionButton}
+                onPress={() => setNight(movedOntoSection(night))}
+                testID="myNight.demo.ontoSection"
+              />
+            )}
+            {night.state === 'section_app' && night.kind != null && (
+              <SecondaryButton
+                label={MN.demoOffSectionButton}
+                onPress={() => setNight(movedOffSection(night))}
+                testID="myNight.demo.offSection"
               />
             )}
             <SecondaryButton label={MN.backToDemo} onPress={goBack} testID="myNight.demo.back" />
