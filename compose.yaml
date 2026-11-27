@@ -134,6 +134,7 @@ services:
       OAUTH_APPLE_WEB_PRIVATE_KEY: '${OAUTH_APPLE_WEB_PRIVATE_KEY:------BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgV//Z8kpJkoVvFli+\nTxeBiDJ8otbUmWCpfftEotFilymhRANCAATCeZG05l+Nq/MIdW/eBJdevaMIffGE\n7n/d8D9fZTctSiEdGxmXmjC8ZYJumSnUj8Nh31ML6Zn0k+yjQbaM7uSk\n-----END PRIVATE KEY-----\n}'
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
+      DEFAULT_URI: ${DEFAULT_URI:-http://localhost:${API_PORT:-8080}}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
