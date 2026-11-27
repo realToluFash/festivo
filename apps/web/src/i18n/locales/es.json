@@ -362,7 +362,6 @@
     "nowState_finished": "Ya ha finalizado. La página muestra su estado actual.",
     "nowState_calledOff": "Ya está cancelado. La página muestra su estado actual.",
     "notMadeLive": "No se ha publicado.",
-    "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
     "close": "Cerrar",
     "hostEmpty": "Indique el anfitrión para publicar este evento.",
     "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
@@ -7496,25 +7495,33 @@
     "title": {
       "live_one": "Your plan allows {{count, number}} live event at once",
       "live_other": "Your plan allows {{count, number}} live events at once",
+      "live_many": "Your plan allows {{count, number}} live events at once",
       "people_one": "Your plan allows {{count, number}} person per event",
       "people_other": "Your plan allows {{count, number}} people per event",
+      "people_many": "Your plan allows {{count, number}} people per event",
       "seats_one": "Your plan allows {{count, number}} team seat",
       "seats_other": "Your plan allows {{count, number}} team seats",
+      "seats_many": "Your plan allows {{count, number}} team seats",
       "accept": "Every team seat at {{organisation}} is in use",
       "ceiling": "An event can have up to {{ceiling, number}} people"
     },
     "figure": {
       "live_one": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
       "live_other": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
+      "live_many": "{{count, number}} of {{allowed, number}} live events · {{plan}} plan",
       "people_one": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
       "people_other": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
+      "people_many": "{{count, number}} of {{allowed, number}} people · companions count as people · {{plan}} plan",
       "seats_one": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
       "seats_other": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
+      "seats_many": "{{count, number}} of {{allowed, number}} team seats · {{plan}} plan",
       "ceiling_one": "{{count, number}} of {{ceiling, number}} people · companions count as people",
-      "ceiling_other": "{{count, number}} of {{ceiling, number}} people · companions count as people"
+      "ceiling_other": "{{count, number}} of {{ceiling, number}} people · companions count as people",
+      "ceiling_many": "{{count, number}} of {{ceiling, number}} people · companions count as people"
     },
     "guestFull_one": "This event already has {{count, number}} person.",
     "guestFull_other": "This event already has {{count, number}} people.",
+    "guestFull_many": "This event already has {{count, number}} people.",
     "safe": {
       "draft": "Kept as a draft, with everything you entered.",
       "form": "The form is kept as you left it.",
@@ -7532,12 +7539,16 @@
     "copy": {
       "overPlan_one": "Not created. The guest list would bring {{count, number}} person, and your plan has room for {{limit, number}} in a new event.",
       "overPlan_other": "Not created. The guest list would bring {{count, number}} people, and your plan has room for {{limit, number}} in a new event.",
+      "overPlan_many": "Not created. The guest list would bring {{count, number}} people, and your plan has room for {{limit, number}} in a new event.",
       "overCeiling_one": "Not created. The guest list would bring {{count, number}} person, more than the {{ceiling, number}} an event can hold.",
       "overCeiling_other": "Not created. The guest list would bring {{count, number}} people, more than the {{ceiling, number}} an event can hold.",
+      "overCeiling_many": "Not created. The guest list would bring {{count, number}} people, more than the {{ceiling, number}} an event can hold.",
       "figurePlan_one": "{{count, number}} person · companions count as people · {{plan}} plan",
       "figurePlan_other": "{{count, number}} people · companions count as people · {{plan}} plan",
+      "figurePlan_many": "{{count, number}} people · companions count as people · {{plan}} plan",
       "figureCeiling_one": "{{count, number}} person · companions count as people",
       "figureCeiling_other": "{{count, number}} people · companions count as people",
+      "figureCeiling_many": "{{count, number}} people · companions count as people",
       "untick": "To duplicate without guests, untick Also copy the guest list."
     },
     "back": {
