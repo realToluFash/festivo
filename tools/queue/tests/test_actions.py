@@ -7,7 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import actions, cli, github, roles, store, sync
+from soirely_queue import actions, cli, github, roles, store, sync, text
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog", "9": "Done",
@@ -2109,6 +2109,15 @@ class EditingABody(Base):
         said, new = self.add("# Risks long\n\nold\n", "Risks")
         self.assertIn("replaced Risks long", said)
         self.assertEqual(new, "# Risks long\n\nNew.\n")
+
+    def test_an_added_section_reads_back_at_once(self):
+        without = BODY.replace("## Risks\n\n- the old one\n\n", "")
+        store.put_pr(self.db, dict(pr("pass"), body=without))
+        _, new = self.add(without, "Risks")
+        stored = store.pr(self.db, 9)
+        self.assertEqual(stored["body"], new)
+        self.assertEqual(text.find(stored["body"], "Risks")[2], "New.")
+        self.assertEqual(stored["lead"], pr("pass")["lead"])
 
     def test_one_section_changes_and_reads_back_at_once(self):
         self.fake.add(1, "In Review", ["dev2"])

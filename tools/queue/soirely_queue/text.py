@@ -93,11 +93,10 @@ def add_section(markdown, heading, body, order):
             fence = not fence
         elif not fence and (found := HEADING.match(line)):
             marks.append((i, len(found.group(1)), found.group(2)))
-    earlier = {h.lower() for h in order[:order.index(heading)]}
-    before = [m for m in marks if m[2].lower() in earlier]
+    rank = {h.lower(): i for i, h in enumerate(order)}
+    before = [m for m in marks if rank.get(m[2].lower(), len(order)) < rank[heading.lower()]]
     if before:
-        start, level, name = max(before, key=lambda m: order.index(next(
-            h for h in order if h.lower() == m[2].lower())))
+        start, level, name = max(before, key=lambda m: rank[m[2].lower()])
         end = next((i for i, lv, _ in marks if i > start and lv <= level), len(lines))
         at = next((i + 1 for i in range(end - 1, start, -1) if lines[i].strip()), start + 1)
     elif marks:
