@@ -52,6 +52,7 @@ export * from './ownerClaims.ts';
 export * from './eventStates.ts';
 export * from './serviceFreshness.ts';
 export * from './serviceStages.ts';
+export * from './serviceFloor.ts';
 export * from './serviceTaps.ts';
 export * from './serverClock.ts';
 export * from './venueLookup.ts';

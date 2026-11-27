@@ -28,7 +28,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { tabBarSides } from '../../components/bodyEdges.ts';
+import { tabBarFit } from '../../components/bodyEdges.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
 import { statusFits } from '../../layout/titleFit.ts';
@@ -471,7 +471,7 @@ function EventBar({
   onTab: (area: AreaKey | null) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [slot, setSlot] = useState(0);
   const start = eventBarStart(fontScale);
@@ -481,7 +481,7 @@ function EventBar({
   const size = eventBarLabelSize(fontScale, widest, slot);
 
   return (
-    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
+    <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
       <MeasuredWords
         words={words}
         size={start}
@@ -835,13 +835,11 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     height: PHONE_TAB_BAR,
-    padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
-    gap: tokens.spaceHair,
     ...tokens.elevationNative.raised.ios,
     elevation: tokens.elevationNative.raised.android.elevation,
   },

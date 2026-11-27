@@ -11,6 +11,8 @@ vi.mock('react-native', () => ({
   AccessibilityInfo: {
     sendAccessibilityEvent: native.sendAccessibilityEvent,
     setAccessibilityFocus: native.setAccessibilityFocus,
+    isScreenReaderEnabled: () => Promise.resolve(false),
+    addEventListener: () => ({ remove: () => {} }),
   },
   findNodeHandle: () => 7,
 }));
