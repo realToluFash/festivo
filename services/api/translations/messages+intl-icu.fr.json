@@ -186,7 +186,7 @@
     "staff.shift_notice.shift_added": "Nouveau service : {start} à {end}.",
     "staff.shift_notice.shift_removed": "Vous n’avez plus ce service : {start} à {end}.",
     "staff.shift_notice.shift_retimed": "Nouvel horaire de votre service : {start} à {end} (avant : {oldStart} à {oldEnd}).",
-    "staff.shift_notice.more_changes": "{count, plural, one {{count, number, ::group-auto} autre modification figure sur la page de votre service.} many {{count, number, ::group-auto} d’autres modifications figurent sur la page de votre service.} other {{count, number, ::group-auto} autres modifications figurent sur la page de votre service.}}",
+    "staff.shift_notice.more_changes": "{count, plural, one {{count, number, ::group-auto} autre modification figure sur la page de votre service.} many {{count, number, ::group-auto} d’autres modifications figurent sur la page de votre service.} other {{count, number, ::group-auto} autres modifications figurent sur la page de votre service.}}",
     "staff.shift_notice.no_shift_left": "Vous n’avez plus de service pour l’événement {event} pour l’instant. Vous faites toujours partie du personnel.",
     "staff.shift_notice.job": "Nouvelle fonction : {new} (avant : {old}).",
     "staff.shift_notice.date": "Nouvelle date : {new} (avant : {old}).",
