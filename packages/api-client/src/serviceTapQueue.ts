@@ -1,4 +1,5 @@
 import {
+  type FloorReversed,
   type HeldChoice,
   type ItemMark,
   type ItemState,
@@ -25,6 +26,8 @@ export interface KeptServiceTap {
   body: Record<string, unknown>;
   expected: TapExpected;
   tappedAt: string;
+  /** What a Floor Undo takes back, so it shows before it is sent; never sent. */
+  reverses?: FloorReversed;
 }
 
 export type ServiceTapStep =
@@ -40,7 +43,7 @@ export type ServiceTapStep =
       state: ItemState;
       readyIn?: ReadyIn | null;
     }
-  | { kind: 'undo'; subject: string };
+  | { kind: 'undo'; subject: string; reverses?: FloorReversed };
 
 const id = encodeURIComponent;
 
@@ -112,6 +115,7 @@ export function keptServiceTap(
     expected,
     tappedAt: tappedAt.toISOString(),
     ...request(step),
+    ...(step.kind === 'undo' && step.reverses != null ? { reverses: step.reverses } : {}),
   };
 }
 

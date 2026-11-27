@@ -3,6 +3,7 @@ import {
   type FloorGroup,
   type FloorGuest,
   type FloorRead,
+  type FloorReversed,
   type FloorTable,
   type FloorWord,
   type Freshness,
@@ -10,6 +11,7 @@ import {
   type PlateStage,
   type SentBackReason,
   type ServiceGuestRead,
+  type ServiceOrderRead,
   type ServicePlateRead,
   type TapRefusal,
   HELD_CHOICES,
@@ -78,6 +80,7 @@ interface Undoable {
   stage: PlateStage;
   line: string;
   until: Date;
+  reverses: FloorReversed;
 }
 
 const hidden = {
@@ -204,15 +207,27 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && open != null && shown != null;
   const pad = phone ? tokens.spaceXl : 28;
-  // A kept Send back's own plate carries the tap's key.
-  const keptOn = new Set(floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.key]));
+  // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
+  const keptOn = new Set(
+    floor.kept.flatMap((tap) => [
+      tap.path.split('/')[2],
+      tap.key,
+      tap.body.subject as string | undefined,
+    ]),
+  );
 
-  const made = (step: ServiceTapStep, plate: ServicePlateRead, line: string) => {
+  const made = (
+    step: ServiceTapStep,
+    plate: ServicePlateRead,
+    line: string,
+    reverses: FloorReversed,
+  ) => {
     const expected = { plates: { [plate.id]: plate.stage } };
     void floor.tap(step, expected).then((ok) => {
       if (!ok) return;
       setUndo({
         subject: plate.id,
+        reverses,
         stage: plate.stage,
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
@@ -293,6 +308,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                       guest,
                       choice: t(`service.choice.${choice}`),
                     }),
+                    { kind: 'choice', was: order.choice },
                   )
                 }
                 headingRef={headingRef}
@@ -319,7 +335,10 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                 </View>
                 <Pressable
                   onPress={() => {
-                    void floor.tap({ kind: 'undo', subject: undo.subject }, {});
+                    void floor.tap(
+                      { kind: 'undo', subject: undo.subject, reverses: undo.reverses },
+                      {},
+                    );
                     setUndo(null);
                     setHeard(t('service.floor.undone'));
                   }}
@@ -359,6 +378,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                   items: itemsOf(sending.plate, t),
                   reason: t(`service.sentBack.${reason}`),
                 }),
+                { kind: 'sendBack' },
               );
               openerRef.current = headingRef.current;
               setSending(null);
@@ -648,7 +668,7 @@ function TableView({
   keptOn: Set<string | undefined>;
   headingRef: React.RefObject<ViewInstance | null>;
   onClose: () => void;
-  onChoose: (order: ServicePlateRead, guest: string, choice: HeldChoice) => void;
+  onChoose: (order: ServiceOrderRead, guest: string, choice: HeldChoice) => void;
   onSendBack: SendBackPress;
 }) {
   const { t } = useTranslation();
@@ -773,7 +793,7 @@ function Seat({
   keptOn: Set<string | undefined>;
   courseOf: (id: string) => string;
   ready: (key: string) => { readyIn: number | null; name: string | null } | undefined;
-  onChoose: (order: ServicePlateRead, guest: string, choice: HeldChoice) => void;
+  onChoose: (order: ServiceOrderRead, guest: string, choice: HeldChoice) => void;
   onSendBack: SendBackPress;
 }) {
   const { t } = useTranslation();

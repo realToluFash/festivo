@@ -267,11 +267,14 @@ export function floorGroups(floor: FloorRead, locale: string): FloorGroup[] {
   return [...head, { kind: 'other', tables: other }];
 }
 
+export type FloorReversed = { kind: 'sendBack' } | { kind: 'choice'; was: HeldChoice | null };
+
 export interface FloorKeptTap {
   key: string;
   kind: string;
   path: string;
   body: object;
+  reverses?: FloorReversed;
   tappedAt: string;
 }
 
@@ -297,9 +300,19 @@ function onPlate(
   };
 }
 
-/** What the device holds with its kept choices and sent-back plates shown as made (sc-4028); a kept Undo takes the kept step it reverses back off. */
+function withoutOwedSentBack(order: ServiceOrderRead, plate: ServicePlateRead): ServiceOrderRead {
+  const made = [...order.owed]
+    .reverse()
+    .find(
+      (one) =>
+        one.courseId === plate.courseId && one.owedReason === 'sentBack' && one.stage !== 'served',
+    );
+
+  return { ...order, owed: order.owed.filter((one) => one !== made) };
+}
+
+/** What the device holds with its kept choices, sent-back plates and Undos shown as made (sc-4028). */
 export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): FloorRead {
-  // ponytail: an Undo of a step the server already has is shown once it is sent; the read doesn't say what that step replaced.
   const standing: FloorKeptTap[] = [];
 
   for (const tap of kept) {
@@ -312,6 +325,7 @@ export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): F
     const at = standing.map((one) => one.path.split('/')[2]).lastIndexOf(subject);
 
     if (at >= 0) standing.splice(at, 1);
+    else standing.push(tap);
   }
 
   return standing.reduce((read, tap) => {
@@ -321,6 +335,18 @@ export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): F
       const { choice } = tap.body as { choice: HeldChoice };
 
       return onPlate(read, id, (order) => ({ ...order, choice }));
+    }
+
+    const { reverses } = tap;
+
+    if (reverses != null) {
+      const { subject } = tap.body as { subject: string };
+
+      return onPlate(read, subject, (order, plate) =>
+        reverses.kind === 'choice'
+          ? { ...order, choice: reverses.was }
+          : withoutOwedSentBack(order, plate),
+      );
     }
 
     if (tap.kind !== 'sendBack') return read;

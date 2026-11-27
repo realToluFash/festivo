@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type FloorRead,
+  type FloorReversed,
   type ServiceCourseRead,
   type ServiceGuestRead,
   type ServiceOrderRead,
@@ -304,5 +305,21 @@ describe('withKeptTaps', () => {
     const undone = at(withKeptTaps(read, [back, tap('undo', '/undo', { subject: 'p1' })]));
 
     expect(undone.owed).toEqual([]);
+  });
+
+  it('shows a kept Undo of a step the server already has as made', () => {
+    const owed = order('toServe', { id: 'p2', owedReason: 'sentBack' });
+    const sent = floor([
+      course('Mains', [
+        table('Table 1', [guest(1, { ...held, choice: 'waitForAll', owed: [owed] })]),
+      ]),
+    ]);
+    const undo = (reverses: FloorReversed) => ({
+      ...tap('undo', '/undo', { subject: 'p1' }),
+      reverses,
+    });
+
+    expect(at(withKeptTaps(sent, [undo({ kind: 'sendBack' })])).owed).toEqual([]);
+    expect(at(withKeptTaps(sent, [undo({ kind: 'choice', was: null })])).choice).toBeNull();
   });
 });

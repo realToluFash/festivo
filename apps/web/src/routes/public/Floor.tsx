@@ -3,6 +3,7 @@ import {
   type FloorGroup,
   type FloorGuest,
   type FloorRead,
+  type FloorReversed,
   type FloorTable,
   type FloorWord,
   type Freshness,
@@ -10,6 +11,7 @@ import {
   type PlateStage,
   type SentBackReason,
   type ServiceGuestRead,
+  type ServiceOrderRead,
   type ServicePlateRead,
   type TapRefusal,
   HELD_CHOICES,
@@ -73,6 +75,7 @@ interface Undoable {
   subject: string;
   line: string;
   until: Date;
+  reverses: FloorReversed;
 }
 
 function clock(at: Date): string {
@@ -198,14 +201,26 @@ function Floor({ eventId }: { eventId: string }) {
   const tables = groups.flatMap((g) => (g.kind === 'noSection' ? [] : g.tables));
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && shown != null;
-  // A kept Send back's own plate carries the tap's key.
-  const keptOn = new Set(floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.key]));
+  // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
+  const keptOn = new Set(
+    floor.kept.flatMap((tap) => [
+      tap.path.split('/')[2],
+      tap.key,
+      tap.body.subject as string | undefined,
+    ]),
+  );
 
-  const made = (step: ServiceTapStep, plate: ServicePlateRead, line: string) => {
+  const made = (
+    step: ServiceTapStep,
+    plate: ServicePlateRead,
+    line: string,
+    reverses: FloorReversed,
+  ) => {
     void floor.tap(step, { plates: { [plate.id]: plate.stage } }).then((ok) => {
       if (!ok) return;
       setUndo({
         subject: plate.id,
+        reverses,
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
       });
@@ -261,6 +276,7 @@ function Floor({ eventId }: { eventId: string }) {
                 { kind: 'choice', plateId: order.id, choice },
                 order,
                 t('service.floor.step.choice', { guest, choice: t(`service.choice.${choice}`) }),
+                { kind: 'choice', was: order.choice },
               )
             }
             onSendBack={(plate, guest, button) => {
@@ -279,7 +295,10 @@ function Floor({ eventId }: { eventId: string }) {
                 type="button"
                 className="flr-button"
                 onClick={() => {
-                  void floor.tap({ kind: 'undo', subject: undo.subject }, {});
+                  void floor.tap(
+                    { kind: 'undo', subject: undo.subject, reverses: undo.reverses },
+                    {},
+                  );
                   setUndo(null);
                   setHeard(t('service.floor.undone'));
                 }}
@@ -304,6 +323,7 @@ function Floor({ eventId }: { eventId: string }) {
                 items: itemsOf(t, sending.plate),
                 reason: t(`service.sentBack.${reason}`),
               }),
+              { kind: 'sendBack' },
             );
             closeSheet(heading.current);
           }}
@@ -503,7 +523,7 @@ function stageOf(t: TFunction, guest: ServiceGuestRead): { shape: Shape; said: s
   return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder ?? 'notHereYet'}`) };
 }
 
-type Choose = (order: ServicePlateRead, guest: string, choice: HeldChoice) => void;
+type Choose = (order: ServiceOrderRead, guest: string, choice: HeldChoice) => void;
 type SendBackPress = (plate: ServicePlateRead, guest: string, button: HTMLElement) => void;
 
 function TableView({
