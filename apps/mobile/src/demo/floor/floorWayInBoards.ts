@@ -54,10 +54,8 @@ const DAY_BEFORE = new Date('2026-11-27T22:59:00Z');
 /** How long the demo waits before the floor lead moves Grace to Section D, for the `moving` state. */
 export const MOVES_IN = 3000;
 
-/** How long the demo's Floor read takes to answer, for the `answering` state. */
 export const READ_ANSWERS_IN = 1500;
 
-/** When the row's last read succeeded, for the `offline` and `reconnects` states. */
 export const LAST_READ = new Date('2026-11-28T18:38:00Z');
 
 /** {time} is the device's zone, not the event's (sc-98893's With no connection). */
@@ -80,11 +78,9 @@ interface Sample<Role = InsideLevel | 'Lead' | 'Admin'> {
   floor: FloorState;
   /** The floor lead moves the person while Overview is open (sc-36034). */
   movesTo?: OnFloor;
-  /** The first Floor read has not answered yet: no row, no placeholder. */
   answering?: boolean;
-  /** Reads are failing: the row keeps its last line with "as of" this read. */
+  /** Reads are failing: the row keeps its last line, "as of" this read. */
   lastRead?: Date;
-  /** The next read succeeds while Overview is open, and "as of" goes. */
   reconnects?: boolean;
 }
 
@@ -175,7 +171,6 @@ export interface FloorLink {
   href: string;
   /** The line after the floor lead's move, or the next read that succeeds, and when it lands. */
   moves?: { line: string; in: number };
-  /** The first read answers after this long; until then there is no row. */
   answersIn?: number;
 }
 
