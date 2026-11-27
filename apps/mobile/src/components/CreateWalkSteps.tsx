@@ -482,7 +482,7 @@ export function CountryStep({
   field: RefObject<TextInputInstance | null>;
   /** The search, hidden from the screen reader, so taking input focus says nothing. */
   quiet?: boolean;
-  /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
+  /** Reached from step 1 or by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
   onPick: (code: string) => void;
