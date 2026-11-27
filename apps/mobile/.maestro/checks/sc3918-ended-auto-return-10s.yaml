@@ -1,0 +1,32 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/my-night
+- extendedWaitUntil:
+    visible:
+      id: myNight.whosHere
+    timeout: 30000
+- tapOn:
+    id: myNight.whosHere
+- extendedWaitUntil:
+    visible:
+      id: whosHere.notHere
+    timeout: 20000
+- takeScreenshot: lists-before-end
+- runScript:
+    file: sc3918/end-event.js
+    env:
+      API_URL: ${API_URL}
+      EV: ${EV}
+      OWNER_TOKEN: ${OWNER_TOKEN}
+      ORIGIN: ${ORIGIN}
+- assertTrue: ${output.ended == 200}
+- extendedWaitUntil:
+    visible:
+      id: myNight.clock
+    timeout: 12000
+- takeScreenshot: returned
+- extendedWaitUntil:
+    notVisible:
+      id: myNight.whosHere
+    timeout: 12000
+- takeScreenshot: returned-settled
