@@ -397,10 +397,13 @@ final class FinalNumbersTest extends ApiTestCase
     {
         self::service(ScriptedPdfMaker::class)->real();
         $this->coming([['fullName' => 'Chidi Okonkwo']]);
+        $this->give();
         $this->records($this->personId('Chidi Okonkwo'), ['celery']);
+        self::mockTime(new DateTimeImmutable('2026-10-04T09:00:00+00:00'));
         $this->give();
 
-        $this->as('POST', $this->copyPath($this->copyIds()[0]));
+        // The second copy, so the profile covers a changes page too (sc-30692).
+        $this->as('POST', $this->copyPath($this->copyIds()[1]));
         self::assertSame(200, $this->statusCode(), (string) $this->client->getResponse()->getContent());
         $file = Filesystem\create_temporary_file(null, 'kitchen') . '.pdf';
         File\write($file, (string) $this->client->getResponse()->getContent());

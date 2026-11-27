@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +31,10 @@ class KitchenFinalNumbers
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $revision = 0;
 
+    /** When the sheet first differed from the latest copy (sc-30692); null while it holds every change. It decides when that milestone is due. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $differsSince = null;
+
     public function __construct(Event $event)
     {
         $this->id = Uuid::v7();
@@ -53,6 +58,21 @@ class KitchenFinalNumbers
         }
 
         $this->dueOn = $day;
+        ++$this->revision;
+    }
+
+    public function getDiffersSince(): ?DateTimeImmutable
+    {
+        return $this->differsSince;
+    }
+
+    public function setDiffersSince(?DateTimeImmutable $moment): void
+    {
+        if (null === $moment && null === $this->differsSince) {
+            return;
+        }
+
+        $this->differsSince = $moment?->setTimezone(new DateTimeZone('UTC'));
         ++$this->revision;
     }
 

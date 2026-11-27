@@ -106,6 +106,14 @@ class StaffMember
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $briefCopyMarked = false;
 
+    /**
+     * What the person was last told of their shifts, job, date and venue, by their briefing or their last change notice (sc-4333); null before the briefing went.
+     *
+     * @var ?array<string, mixed>
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $told = null;
+
     /** The lead who added them at the door from Who's here (sc-3918), who may give them a number without staff.manage. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -295,6 +303,18 @@ class StaffMember
         $this->briefCopyBy = $by;
         $this->briefCopyAt = $at;
         $this->briefCopyMarked = $marked;
+    }
+
+    /** @return ?array<string, mixed> */
+    public function getTold(): ?array
+    {
+        return $this->told;
+    }
+
+    /** @param ?array<string, mixed> $told */
+    public function told(?array $told): void
+    {
+        $this->told = $told;
     }
 
     public function getWalkOnBy(): ?User

@@ -607,7 +607,6 @@
 
   .mc.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
   }
 
   .mc .ev-crumb-row {

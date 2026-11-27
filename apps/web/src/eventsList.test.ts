@@ -2,7 +2,7 @@ import { type EventPhase, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, cardStep, dayTiles, shownEvent } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, shownEvent, venuePlace } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -176,5 +176,43 @@ describe('cardStep', () => {
         withDate,
       ),
     ).toMatchObject({ kind: 'button', line: 'Wed, 5 Nov 2025' });
+  });
+});
+
+describe('venuePlace', () => {
+  const joining = ((key: string, values?: { venue?: string; city?: string }) =>
+    key === 'search.line.venueCity'
+      ? `${values?.venue}, ${values?.city}`
+      : key) as unknown as TFunction;
+  const address = (city: string | null) => ({
+    formatted: '12 Bode Thomas Street',
+    line1: null,
+    line2: null,
+    city,
+    region: null,
+    postalCode: null,
+    countryCode: null,
+    latitude: null,
+    longitude: null,
+  });
+
+  it('names a picked venue with its city', () => {
+    expect(venuePlace({ name: 'Harbour Hall', address: address('Lagos') }, joining)).toBe(
+      'Harbour Hall, Lagos',
+    );
+  });
+
+  it('names a venue typed by hand alone, with no city to add', () => {
+    expect(venuePlace({ name: 'Harbour Hall', address: address(null) }, joining)).toBe(
+      'Harbour Hall',
+    );
+    expect(venuePlace({ name: 'Harbour Hall', address: null }, joining)).toBe('Harbour Hall');
+  });
+
+  it('falls back to the address when the venue has no name, and to nothing without one', () => {
+    expect(venuePlace({ name: null, address: address('Lagos') }, joining)).toBe(
+      '12 Bode Thomas Street',
+    );
+    expect(venuePlace(null, joining)).toBeNull();
   });
 });

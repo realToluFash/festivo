@@ -2193,26 +2193,23 @@ describe("An event's page", () => {
     expect(screen.queryByText('Not yours')).toBeNull();
   });
 
-  it.each(['dates', 'people', 'reports'])(
-    'ends where Overview ends at a wide desk, on /%s (sc-59375)',
-    async (area) => {
-      signedIn();
-      answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
-      at(`/app/events/ev_1/${area}`);
+  it.each([
+    ['people', 'People'],
+    ['reports', 'Adaeze and Tunde'],
+  ])('ends where Overview ends at a wide desk, on /%s (sc-59375)', async (area, title) => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at(`/app/events/ev_1/${area}`);
 
-      const heading = await screen.findByRole('heading', {
-        level: 1,
-        name: area === 'people' ? 'People' : 'Adaeze and Tunde',
-      });
+    const heading = await screen.findByRole('heading', { level: 1, name: title });
 
-      expect(heading.closest('.event-page')).not.toBeNull();
-      expect(heading.closest('.ev')).toBeNull();
-      expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
-      expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
-      expect(cssRule('.event-page')).not.toContain('max-width');
-      expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
-    },
-  );
+    expect(heading.closest('.event-page')).not.toBeNull();
+    expect(heading.closest('.ev')).toBeNull();
+    expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
+    expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+    expect(cssRule('.event-page')).not.toContain('max-width');
+    expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
+  });
 
   it('gives way at its name in the crumb, never at Events (sc-60699, QA #63079)', () => {
     expect(cssRule('.ev-crumb-part:first-child', EVENT_PAGE_CSS)).toContain('flex-shrink: 0;');
@@ -5649,17 +5646,29 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).queryByText('Loading the dates…')).toBeNull();
   });
 
-  it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
+  it('lists every milestone in All dates under the title and the event’s strip, in its zone, whose it is with its moment on one line, Passed and Next up as tags (sc-98187)', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     answering({
-      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            venue: {
+              name: 'Harbour Hall',
+              address: {
+                ...TYPED,
+                formatted: 'Harbour Hall, 1 Quay Street, London',
+                city: 'London',
+              },
+            },
+          }),
+        }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
     at('/app/events/ev_1/dates');
 
-    const heading = await screen.findByRole('heading', { level: 2, name: 'All dates' });
-    const page = heading.closest('section')!;
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
+    const page = heading.closest('.dates')! as HTMLElement;
 
     expect(
       await within(page).findByText(
@@ -5667,14 +5676,28 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
       ),
     ).toBeDefined();
     expect(rows(page)).toEqual([
-      'Sat, Oct 10, 12:00Save the date sentAutomatic✓ Passed',
-      'Sat, Oct 17, 18:00Boda startsEventNext up',
-      'Sun, Oct 18, 09:00BrunchAutomatic',
-      'Mon, Oct 19, 12:00Balance dueYou',
-      'Tue, Oct 20, 12:00Thank-you notes sentAutomatic',
-      'Mon, Oct 26, 02:00Boda endsEvent',
+      'Save the date sentAutomatic · Sat, Oct 10, 12:00Passed',
+      'Boda startsEvent · Sat, Oct 17, 18:00Next up',
+      'BrunchAutomatic · Sun, Oct 18, 09:00',
+      'Balance dueYou · Mon, Oct 19, 12:00',
+      'Thank-you notes sentAutomatic · Tue, Oct 20, 12:00',
+      'Boda endsEvent · Mon, Oct 26, 02:00',
     ]);
+    expect(heading.tagName).toBe('H1');
+    expect(screen.queryByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Make live' })).toBeNull();
+    const strip = page.querySelector('.ev-strip')!;
+    expect(strip.querySelector('.ev-thumb')).not.toBeNull();
+    expect(within(strip as HTMLElement).getByText('Adaeze and Tunde')).toBeDefined();
+    expect(spaced(strip.textContent)).toContain(' · Harbour Hall, London');
+    expect(page.closest('.desk.ev')).not.toBeNull();
+    expect(page.closest('.event-page.ev-wide')).not.toBeNull();
+    expect(page.querySelector('ol.desk-rows.ev-details')).not.toBeNull();
+    expect(page.querySelectorAll('.dates-row .ev-lead svg')).toHaveLength(6);
     expect(within(page).getByText('Something you need to do')).toBeDefined();
+    expect(page.querySelectorAll('.dates-key-row')).toHaveLength(3);
+    expect(document.title).toContain('All dates');
   });
 
   it('reads the dates again on Call off, and the called-off moment is never Next up, even stamped a second ahead of the clock (sc-16709)', async () => {
@@ -5749,9 +5772,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     expect(await within(page).findByText('Loading the dates…')).toBeDefined();
     arrive();
@@ -5769,13 +5792,15 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
-    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00Balance dueYou⚠ OverdueNext up');
-    expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
+    expect(rows(page)[3]).toBe('Balance dueYou · Mon, Oct 19, 12:00OverdueNext up');
+    expect(rows(page)[4]).toBe('Thank-you notes sentAutomatic · Tue, Oct 20, 12:00Passed');
+    expect(page.querySelector('.dates-tag.is-overdue svg')).not.toBeNull();
+    expect(page.querySelector('.dates-tag.is-passed svg')).not.toBeNull();
   });
 
   it('marks nothing Next up in All dates once the event is over', async () => {
@@ -5788,9 +5813,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
     await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(5));
     expect(within(page).queryByText('Next up')).toBeNull();
@@ -5805,13 +5830,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     });
     at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
 
-    expect(await within(page).findByText('The dates did not load.')).toBeDefined();
-    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    const line = await within(page).findByText('The dates did not load.');
+    const failed = line.closest('.dates-failed')!;
+    expect(failed.getAttribute('role')).toBeNull();
+    expect(within(page).getByRole('button', { name: 'Try again' }).className).toBe(
+      'gs-pill is-secondary',
+    );
     expect(within(page).queryByRole('listitem')).toBeNull();
+    expect(within(page).queryByText(/earliest first/)).toBeNull();
+    expect(within(page).queryByText('Something you need to do')).toBeNull();
+  });
+
+  it('says a failed retry on All dates aloud, lands on the title, and the next loads (sc-98187)', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        ++reads < 3 ? problem(500, 'internal_error') : json(MADRID),
+    });
+    at('/app/events/ev_1/dates');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
+    const page = heading.closest('.dates')! as HTMLElement;
+    await within(page).findByText('The dates did not load.');
+
+    fireEvent.click(within(page).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    const alert = await within(page).findByRole('alert');
+    expect(alert.textContent).toContain('The dates did not load.');
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByRole('alert')).toBeNull();
   });
 
   it('links a milestone to where it is acted on under its row, on Coming up and All dates, and only the action is a link (sc-3905)', async () => {
@@ -5837,13 +5893,19 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(link.closest('li')!).getAllByRole('link')).toEqual([link]);
 
     fireEvent.click(within(panel).getByRole('link', { name: 'All dates' }));
-    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
-      'section',
-    )!;
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
     const onAllDates = await within(page).findByRole('link', { name: 'Open the menu' });
 
     expect(onAllDates.getAttribute('href')).toBe('/app/events/ev_1/menu');
     expect(within(page).getAllByRole('link', { name: 'Open the menu' })).toHaveLength(1);
+    expect(onAllDates.className).toBe('desk-text ev-maps');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'All dates' }),
+      ),
+    );
   });
 });
 
@@ -5924,18 +5986,18 @@ describe('Someone who can only view an event is never told to change its dates o
       true,
     ],
   ] as const)(
-    'words the row above Dates for %s',
+    'words the row above Reports for %s',
     async (_, who, passedLine, pausedLine, offered) => {
       signedIn(who);
       answering({ 'GET /api/events/ev_1': () => json({ event: event(PASSED) }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText(passedLine)).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Change dates' }) != null).toBe(offered);
       cleanup();
 
       answering({ 'GET /api/events/ev_1': () => json({ event: paused() }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText(pausedLine)).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Resume' }) != null).toBe(offered);
@@ -5947,7 +6009,7 @@ describe('Someone who can only view an event is never told to change its dates o
     async (who) => {
       signedIn(who);
       answering({ 'GET /api/events/ev_1': () => json({ event: event(AHEAD) }) });
-      at('/app/events/ev_1/dates');
+      at('/app/events/ev_1/reports');
 
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();

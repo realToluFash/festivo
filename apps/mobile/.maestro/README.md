@@ -350,6 +350,10 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   no Expo Go): each fills, reveals, sends or screenshots one thing, and the pass chains them,
   passing `ID`, `NEXT`, `OUT`, `EMAIL`, `PASSWORD`, `SUBMIT`, `ANSWER`, `PWD_ID` and `EMAIL_ID`
   as each needs. None is a check on its own.
+- **The `_sc4235q1-*` flows are sc-4235's qa1 app checks**, run in this order on qa1's stack.
+  `_sc4235q1-again` (`CODE`, `CAP`, `CAP2`, `TITLE`) then `_sc4235q1-holder` (`CODE`, `CAP`,
+  `TITLE`) and `_sc4235q1-pw-code` (`CODE`, `EMAIL` of the password account) are checks.
+  `sc4235/_q1-out` is the Sign out they share.
 - **On iOS, set a large text size only after the batch has signed in.** With
   `xcrun simctl ui <device> content_size` at `accessibility-extra-extra-large` or larger
   before the batch, its sign-in types the password into the email field (`--cold`) or misses

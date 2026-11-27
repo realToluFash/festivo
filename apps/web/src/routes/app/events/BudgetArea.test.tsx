@@ -374,9 +374,10 @@ describe('changing a rate in place (sc-85)', () => {
     expect(
       screen.getByRole('textbox', { name: 'Rate for Dinner' }).closest('.bt.desk-page'),
     ).not.toBeNull();
-    expect(cssRule('.bt.desk-page', BUDGET_CSS.slice(0, BUDGET_CSS.indexOf('@media')))).toContain(
-      'overflow: visible;',
-    );
+    expect(
+      screen.getByRole('textbox', { name: 'Rate for Dinner' }).closest('.shell-content .desk-page'),
+    ).not.toBeNull();
+    expect(cssRule('.shell-content .desk-page')).toContain('overflow: visible;');
   });
 
   it('Escape leaves the rate as it was and sends nothing', async () => {

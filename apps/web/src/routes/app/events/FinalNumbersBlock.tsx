@@ -18,25 +18,29 @@ export function DownloadMark() {
   );
 }
 
-type Giving = 'rest' | 'making' | 'failed';
+/** Give final numbers…'s dialog, which Give the changes… on the sheet opens too (sc-30692). */
+export type Giving = 'rest' | 'making' | 'failed';
 
 /** Final numbers beside the kitchen sheet (sc-30812): the due day edited in place, Give final numbers…, then the copies given, newest first. */
 export function FinalNumbersBlock({
   event,
   final,
   manage,
+  giving,
+  onGiving: setGiving,
   onChange,
   tell,
 }: {
   event: OrganisationEvent;
   final: FinalNumbers;
   manage: boolean;
+  giving: Giving | null;
+  onGiving: (giving: Giving | null) => void;
   onChange: (final: FinalNumbers) => void;
   tell: (words: string) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [giving, setGiving] = useState<Giving | null>(null);
   const [given, setGiven] = useState(false);
   const locale = dateLocale();
 

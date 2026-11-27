@@ -24,6 +24,10 @@ describe("a bell item's place in the app (sc-3980)", () => {
     );
   });
 
+  it("opens the person's shift page for a shift notice (sc-4333)", () => {
+    expect(appPlace('/app/events/e1/my-night')).toBe('/events/e1/my-night');
+  });
+
   it('stays in the bell for a place the app has no screen for, or none', () => {
     expect(appPlace('/app/events/e1/guests')).toBeNull();
     expect(appPlace(null)).toBeNull();

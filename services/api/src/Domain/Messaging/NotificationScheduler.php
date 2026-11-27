@@ -16,6 +16,7 @@ use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -42,8 +43,11 @@ final readonly class NotificationScheduler
     ) {
     }
 
-    /** @param array<string, mixed> $payload what the type renders from, and checks at send time */
-    public function schedule(string $type, string $cancellationKey, string $sourceId, Trigger $trigger, Audience $audience, array $payload = [], ?Event $event = null): Uuid
+    /**
+     * @param array<string, mixed> $payload what the type renders from, and checks at send time
+     * @param ?DateTimeImmutable   $sendBy  when one held past this lapses instead, for a type whose limit only its caller knows; the type's own `tooLateAt` otherwise
+     */
+    public function schedule(string $type, string $cancellationKey, string $sourceId, Trigger $trigger, Audience $audience, array $payload = [], ?Event $event = null, ?DateTimeImmutable $sendBy = null): Uuid
     {
         $definition = $this->notificationRegistry->type($type);
 
@@ -56,7 +60,7 @@ final readonly class NotificationScheduler
         $urgent = NotificationPriority::Urgent === $definition->priority() || Iter\contains($definition->channels(), NotificationChannel::InApp);
         $id = Uuid::v7();
 
-        $this->connection->transactional(function () use ($id, $type, $cancellationKey, $sourceId, $trigger, $audience, $payload, $event, $dueAt, $definition, $times, $urgent): void {
+        $this->connection->transactional(function () use ($id, $type, $cancellationKey, $sourceId, $trigger, $audience, $payload, $event, $dueAt, $definition, $times, $urgent, $sendBy): void {
             $this->remove($cancellationKey);
             $this->connection->insert('scheduled_notifications', [
                 'id' => $id->toRfc4122(),
@@ -67,7 +71,7 @@ final readonly class NotificationScheduler
                 'organisation_id' => $audience->organisationId?->toRfc4122(),
                 'trigger' => Json\encode($trigger->toArray()),
                 'due_at' => $dueAt,
-                'send_by' => $definition->tooLateAt($dueAt, $times),
+                'send_by' => $sendBy?->setTimezone(new DateTimeZone('UTC')) ?? $definition->tooLateAt($dueAt, $times),
                 'audience' => Json\encode($audience->toArray()),
                 'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
                 'priority' => ($urgent ? NotificationPriority::Urgent : $definition->priority())->value,

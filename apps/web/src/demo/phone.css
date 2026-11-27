@@ -93,6 +93,11 @@
     box-shadow: none;
   }
 
+  /* The page never scrolls itself in the demo's frame, as it never does in the product's shell (sc-98499). */
+  .dp-fit .desk-page {
+    overflow: visible;
+  }
+
   /* Settings keeps the product shell's phone gutter, where Today, Events and Calendar keep theirs. */
   .dp-fit .desk-main:has(> .desk-list) {
     padding-inline: var(--spaceXl);

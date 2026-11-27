@@ -297,11 +297,6 @@
   text-decoration: none;
 }
 
-/* The shell's card scrolls the page. The row that opens reaches 10 px past its block, and a page that scrolled itself would take that for sideways scroll. */
-.ks.desk-page {
-  overflow: visible;
-}
-
 /* From 320 px: the people table reads as one block per person, each cell under its heading. */
 @media (width <= 640px) {
   .shell-content:has(.ks.desk-page) {
@@ -610,4 +605,13 @@
 
 .ks-give {
   margin-top: var(--spaceMd);
+}
+
+/* sc-30692: a dish name runs to 120 characters and stays whole, so a line breaks anywhere rather than overflows. */
+.ks-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.ks-changes > .desk-text {
+  margin-top: var(--spaceSm);
 }
