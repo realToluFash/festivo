@@ -45,6 +45,11 @@ export type ServiceTapStep =
     }
   | { kind: 'undo'; subject: string; reverses?: FloorReversed };
 
+/** Floor's steps: its Undo has to say what it takes back. */
+export type FloorTapStep =
+  | Exclude<ServiceTapStep, { kind: 'undo' }>
+  | { kind: 'undo'; subject: string; reverses: FloorReversed };
+
 const id = encodeURIComponent;
 
 function request(step: ServiceTapStep): Pick<KeptServiceTap, 'method' | 'path' | 'body'> {

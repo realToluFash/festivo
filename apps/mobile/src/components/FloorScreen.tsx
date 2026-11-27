@@ -1,4 +1,4 @@
-import type { ServiceTapStep } from '@soirely/api-client';
+import type { FloorTapStep } from '@soirely/api-client';
 import {
   type FloorGroup,
   type FloorGuest,
@@ -217,7 +217,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   );
 
   const made = (
-    step: ServiceTapStep,
+    step: FloorTapStep,
     plate: ServicePlateRead,
     line: string,
     reverses: FloorReversed,

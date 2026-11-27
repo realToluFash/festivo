@@ -1,7 +1,7 @@
 import {
   ApiError,
   type KeptServiceTap,
-  type ServiceTapStep,
+  type FloorTapStep,
   keepServiceTap,
   keptServiceTap,
   sendServiceTaps,
@@ -100,7 +100,7 @@ export function useFloor(eventId: string) {
   }, [eventId, flush, fresh, read, store]);
 
   const tap = useCallback(
-    async (step: ServiceTapStep, expected: TapExpected): Promise<boolean> => {
+    async (step: FloorTapStep, expected: TapExpected): Promise<boolean> => {
       const now = tapNow(step.kind as KeptTap, fresh.state());
       if (typeof now === 'object') return false;
       const taps = await keepServiceTap(

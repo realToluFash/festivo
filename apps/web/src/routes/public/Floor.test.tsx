@@ -345,6 +345,41 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 
+  it('takes an owed plate away at once on an offline Undo of a sent send-back', async () => {
+    open();
+    await screen.findByRole('button', { name: /^Table 10,/ });
+    heartbeat();
+    fireEvent.click(screen.getByRole('button', { name: /^Table 10,/ }));
+    press('Send back');
+    const sheet = screen.getByRole('dialog');
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
+    const floor = structuredClone(FLOOR);
+    const order = floor.courses[0]!.tables[0]!.guests[0]!.order!;
+    order.owed = [
+      {
+        ...order,
+        id: 'owed-a',
+        isOrder: false,
+        stage: 'toServe',
+        owedReason: 'sentBack',
+        sentBack: [{ reason: 'dropped', at: '2026-11-27T19:10:00Z', by: null }],
+      },
+    ];
+    now = floor;
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    act(() => hub.message({ type: 'patch' }));
+    await screen.findByText(/Sent back · Dropped/);
+    expect(screen.queryByText('Waiting to send')).toBeNull();
+
+    act(() => void window.dispatchEvent(new Event('offline')));
+    press('Undo');
+
+    await screen.findByText(/1 tap waiting$/);
+    expect(screen.queryByText(/Sent back · Dropped/)).toBeNull();
+    expect(sent).toHaveLength(1);
+  });
+
   it('counts the kept taps on a 24-hour strip, then reads connected', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date(2026, 10, 27, 19, 5));
