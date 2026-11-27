@@ -1,7 +1,8 @@
-import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
+  PixelRatio,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -11,10 +12,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { coverRowSides, pastSides, sidePadding, tabBarFit } from './bodyEdges.ts';
+import {
+  TAB_BAR_BORDER,
+  coverRowSides,
+  pastSides,
+  sidePadding,
+  tabBarFit,
+  tabWidth,
+} from './bodyEdges.ts';
 import { BandLiveLine } from './BandLiveLine.tsx';
-import { Text, TitleCap, type TextProps } from './Text.tsx';
-import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
+import { Text, TitleCap } from './Text.tsx';
+import { CappedWholeWords, useMeasuredAt } from './Title.tsx';
 import {
   BAND_CLEAR,
   BAND_TITLE,
@@ -30,6 +38,7 @@ import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.
 import {
   atAccessibilitySizes,
   capUnderTitle,
+  fitWidest,
   wholeLineHeight,
   wordsIn,
 } from '../layout/textSize.ts';
@@ -1219,69 +1228,11 @@ interface TabBarProps<T extends string> {
   stepsBelowDefault?: boolean;
 }
 
-interface TabWords {
-  measure: ReactNode;
-  room: (width: number) => void;
-  label: Pick<TextProps, 'size' | 'maxFontSizeMultiplier' | 'allowFontScaling' | 'style'>;
-}
+/** Each tab word's width at its start, kept past the bar that measured it, so the next bar draws fitted from its first frame (sc-99214). */
+const TAB_WORDS = new Map<string, number>();
 
-export function TabBar<T extends string>(props: TabBarProps<T>) {
-  return props.stepsBelowDefault ? <SteppedTabBar {...props} /> : <DefaultTabBar {...props} />;
-}
-
-function tabLabels<T extends string>({ tabs, say = (tab) => tab }: TabBarProps<T>): string[] {
-  return tabs.map(([label, glyph]) => say(label, glyph));
-}
-
-/** Labels never drawn under the default size, stepping down from their start rather than break a word (sc-37298). */
-function DefaultTabBar<T extends string>(props: TabBarProps<T>) {
-  const { fontScale } = useWindowDimensions();
-  const words = useWholeWords(TAB_LABEL, tabLabelStart(fontScale), tabLabels(props), {
-    weight: 'semibold',
-  });
-
-  return (
-    <TabRow
-      {...props}
-      words={{
-        measure: words.measure,
-        room: words.room,
-        label: {
-          size: TAB_LABEL,
-          maxFontSizeMultiplier: words.maxFontSizeMultiplier,
-          // Hidden until it is fitted, so no frame draws a word cut at its start size.
-          style: !words.fitted && styles.waiting,
-        },
-      }}
-    />
-  );
-}
-
-/** The five labels at one size, measured at semibold so selecting a tab never moves it, and drawn at exactly that size (sc-71148). */
-function SteppedTabBar<T extends string>(props: TabBarProps<T>) {
-  const { fontScale } = useWindowDimensions();
-  const [slot, setSlot] = useState(0);
-  const start = tabLabelStart(fontScale);
-  const { widths, measure } = useMeasuredAt(start, wordsIn(tabLabels(props)));
-  const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
-
-  return (
-    <TabRow
-      {...props}
-      words={{
-        measure,
-        room: (width) => setSlot((now) => (now === width ? now : width)),
-        label: {
-          size: eventBarLabelSize(fontScale, widest, slot),
-          allowFontScaling: false,
-          style: [styles.tabLabelCentred, (widest === 0 || slot === 0) && styles.waiting],
-        },
-      }}
-    />
-  );
-}
-
-function TabRow<T extends string>({
+/** The labels at one size, never under the default, or under 10 on the event's bar (sc-37298, sc-71148). Measured at semibold, so selecting a tab never moves it, and fitted to a tab worked out from this render's window, never one measured before a turn (sc-99214). */
+export function TabBar<T extends string>({
   tabs,
   bottom,
   onTab,
@@ -1289,15 +1240,24 @@ function TabRow<T extends string>({
   say = (tab) => tab,
   ids,
   refs,
-  words,
-}: TabBarProps<T> & { words: TabWords }) {
+  stepsBelowDefault,
+}: TabBarProps<T>) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const start = tabLabelStart(fontScale);
+  const words = wordsIn(tabs.map(([label, glyph]) => say(label, glyph)));
+  const { widths, measure } = useMeasuredAt(start, words, TAB_WORDS);
+  const measured = widths.every((word) => word != null);
+  const widest = measured ? Math.max(...widths.map(Number)) : 0;
+  const slot = tabWidth(width, insets, tabs.length, PixelRatio.get());
+  const size = stepsBelowDefault
+    ? eventBarLabelSize(fontScale, widest, slot)
+    : fitWidest(TAB_LABEL, start, widest, slot);
 
   return (
     <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
-      {words.measure}
-      {tabs.map(([label, glyph], index) => {
+      {measure}
+      {tabs.map(([label, glyph]) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
@@ -1311,16 +1271,15 @@ function TabRow<T extends string>({
             accessibilityState={{ selected: on }}
             accessibilityLabel={say(label, glyph)}
             testID={ids?.[label] ?? `tab-${label.toLowerCase()}`}
-            onLayout={
-              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
-            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              {...words.label}
+              size={size}
+              allowFontScaling={false}
               weight={on ? 'semibold' : 'medium'}
               accessible={false}
-              style={[words.label.style, { color: ink }]}
+              // Hidden until its words are measured, so no frame draws one cut.
+              style={[styles.tabLabelCentred, !measured && styles.waiting, { color: ink }]}
             >
               {say(label, glyph)}
             </Text>
@@ -1636,7 +1595,7 @@ const styles = StyleSheet.create({
     height: PHONE_TAB_BAR,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
-    borderWidth: 1,
+    borderWidth: TAB_BAR_BORDER,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
     ...tokens.elevationNative.raised.ios,

@@ -18,38 +18,39 @@ describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
     expect(tabLabel).toMatch(/export const TAB_LABEL = 12;/u);
     expect(tabLabel).toMatch(/export const TAB_LABEL_MOST = 20;/u);
-    expect(cover).toMatch(
-      /useWholeWords\(TAB_LABEL, tabLabelStart\(fontScale\), tabLabels\(props\), \{\s+weight: 'semibold',\s+\}\);/u,
-    );
   });
 
   it('keeps that floor everywhere but the event’s bar (sc-71148)', () => {
     expect(cover).toMatch(
-      /props\.stepsBelowDefault \? <SteppedTabBar \{\.\.\.props\} \/> : <DefaultTabBar \{\.\.\.props\} \/>/u,
+      /stepsBelowDefault\s+\? eventBarLabelSize\(fontScale, widest, slot\)\s+: fitWidest\(TAB_LABEL, start, widest, slot\);/u,
     );
     expect(frame.match(/stepsBelowDefault/gu)).toHaveLength(1);
   });
 });
 
-describe('the event’s bar on a phone (sc-71148)', () => {
-  it('measures every word in SemiBold at the start and draws all five at exactly the size that fits', () => {
-    expect(cover).toMatch(/useMeasuredAt\(start, wordsIn\(tabLabels\(props\)\)\)/u);
+describe('the phone’s tab bars (sc-71148, sc-99214)', () => {
+  it('measures every word in SemiBold at the start and draws all labels at exactly the size that fits', () => {
     const measuredAt = /export function useMeasuredAt\([\s\S]*?\n\}\n/u.exec(title)?.[0] ?? '';
     expect(measuredAt).toMatch(
       /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight="semibold"\s+allowFontScaling=\{false\}/u,
     );
+    expect(cover).toMatch(/size=\{size\}\s+allowFontScaling=\{false\}/u);
+  });
+
+  it('fits them to a tab worked out from this render’s window, never one laid out before a turn', () => {
     expect(cover).toMatch(
-      /size: eventBarLabelSize\(fontScale, widest, slot\),\s+allowFontScaling: false,/u,
+      /const slot = tabWidth\(width, insets, tabs\.length, PixelRatio\.get\(\)\);/u,
     );
   });
-});
 
-describe('the phone’s tab bars before their words are measured (sc-99214)', () => {
-  it('hides both bars’ labels until their size is fitted', () => {
-    expect(cover).toMatch(/style: !words\.fitted && styles\.waiting,/u);
-    expect(cover).toMatch(/\(widest === 0 \|\| slot === 0\) && styles\.waiting\]/u);
-    expect(title).toMatch(/const fitted = slot > 0 && widths\.length === words\.length;/u);
-    expect(title).toMatch(/pending: look\.room !== undefined && !fitted,/u);
+  it('keeps the words’ widths past the bar, so coming back to it blanks no label', () => {
+    expect(cover).toMatch(/useMeasuredAt\(start, words, TAB_WORDS\)/u);
+    expect(title).toMatch(/\?\? kept\?\.get\(/u);
+    expect(title).toMatch(/kept\?\.set\(key, width\);/u);
+  });
+
+  it('hides the labels only while a word is unmeasured', () => {
+    expect(cover).toMatch(/!measured && styles\.waiting/u);
   });
 });
 
