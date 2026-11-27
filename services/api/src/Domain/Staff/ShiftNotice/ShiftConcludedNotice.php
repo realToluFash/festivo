@@ -9,7 +9,6 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
-use App\Domain\Staff\Briefing\BriefingPrinter;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Enum\NotificationAudienceKind;
@@ -44,7 +43,6 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         private StaffRosterPublisher $staffRosterPublisher,
         private TranslatorInterface $translator,
         private ToldShifts $toldShifts,
-        private BriefingPrinter $briefingPrinter,
     ) {
     }
 
@@ -155,8 +153,7 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         }
 
         if (NotificationDeliveryStatus::Sent === $status) {
-            $this->toldShifts->toldNow($entry);
-            $entry->setBrief($entry->getBriefStatus(), $this->briefingPrinter->printOf($entry));
+            $this->toldShifts->settled($entry);
             $this->entityManager->flush();
         }
 
