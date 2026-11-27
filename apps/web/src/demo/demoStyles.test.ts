@@ -85,7 +85,6 @@ const SHARED: readonly Family[] = [
       'share.css',
       'shareTables.css',
       'singleSignOn.css',
-      'staffHours.css',
       'stations.css',
       'thankYou.css',
       WIDE,
@@ -365,6 +364,28 @@ function demoSheets(): Map<string, string> {
   );
 }
 
+const HOURS_WORKED = 'routes/app/events/hoursWorked.css';
+
+function hwOutside(sheets: ReadonlyMap<string, string>): string[] {
+  return [...sheets]
+    .filter(([sheet]) => sheet !== HOURS_WORKED)
+    .flatMap(([sheet, css]) =>
+      selectorsOf(css)
+        .filter((selector) => [...selector.matchAll(CLASS)].some((m) => m[1]?.startsWith('hw-')))
+        .map((selector) => `${sheet}: ${selector}`),
+    );
+}
+
+function webSheets(): Map<string, string> {
+  const src = join(import.meta.dirname, '..');
+  return new Map(
+    readdirSync(src, { recursive: true, encoding: 'utf8' })
+      .filter((name) => name.endsWith('.css'))
+      .sort()
+      .map((name) => [name, readFileSync(join(src, name), 'utf8')] as const),
+  );
+}
+
 describe('demo stylesheets', () => {
   it('style only their own board, or a shared family they are listed for', () => {
     expect(collisions(demoSheets(), SHARED).join('\n')).toBe('');
@@ -419,5 +440,21 @@ describe('demo stylesheets', () => {
     expect(collisions(sheets, SHARED)).toEqual([
       '.mg-row: budget.css, messages.css (budget.css not listed for mg-)',
     ]);
+  });
+});
+
+describe('the Hours worked table', () => {
+  it('is styled by the product sheet alone, which the demo imports', () => {
+    expect(webSheets().has(HOURS_WORKED)).toBe(true);
+    expect(hwOutside(webSheets()).join('\n')).toBe('');
+  });
+
+  it('fails an hw- rule in any other sheet', () => {
+    const sheets = new Map([
+      [HOURS_WORKED, '.hw-card {}'],
+      ['demo/staffHours.css', '.page .hw-act .desk-text {}\n.sh-frame {}'],
+    ]);
+
+    expect(hwOutside(sheets)).toEqual(['demo/staffHours.css: .page .hw-act .desk-text']);
   });
 });
