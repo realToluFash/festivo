@@ -1,3 +1,4 @@
+import { MENU_COURSE_NAME_MAXIMUM } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { clockOf, eventStateOf, shownEvent } from '../events/EventsModel.ts';
@@ -276,5 +277,16 @@ describe('a course beside a linked item (sc-3898)', () => {
   it('leaves every other state without a course', () => {
     const items = nightAt('populated').night.tracks.flatMap((one) => one.items);
     expect(items.every((one) => one.course == null)).toBe(true);
+  });
+});
+
+describe('the long course names (sc-3898)', () => {
+  it('keeps each within the characters the API allows a course name', () => {
+    const names = nightAt('course_long')
+      .night.tracks.flatMap((one) => one.items)
+      .flatMap((one) => (one.course == null ? [] : [one.course]));
+    expect(names).toHaveLength(2);
+    for (const name of names)
+      expect([...name].length).toBeLessThanOrEqual(MENU_COURSE_NAME_MAXIMUM);
   });
 });
