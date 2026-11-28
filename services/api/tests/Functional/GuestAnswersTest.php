@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\Guest;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -147,6 +149,27 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame(['coming', '2026-10-19T10:00:00+01:00'], [$this->row($guest)['reply'], $this->row($guest)['repliedAt']]);
         self::assertSame($published, Iter\count(self::service(RecordingHub::class)->published));
         self::assertSame(1, Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM guests WHERE host_id IS NULL')));
+    }
+
+    #[Test]
+    public function aReplyGivenFromAnEmailAnswerLinkSaysSoAndOpeningItRecordsNothing(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $links = self::service(InvitationLinks::class)->answerLinksOf(self::em()->getRepository(Guest::class)->find($guest) ?? self::fail('no guest'));
+
+        self::assertSame(['coming', 'notComing', 'maybe'], Vec\keys($links));
+        self::assertSame($token . '?answer=notComing', Str\after($links['notComing'], '/i/'));
+
+        $this->open($token);
+        self::assertNull($this->row($guest)['reply'] ?? null);
+
+        $page = $this->anonymous('/api/guest-links/reply', ['token' => $token, 'answer' => 'notComing', 'viaAnswerLink' => true]);
+        self::assertSame(200, $this->statusCode(), Json\encode($page));
+        self::assertSame('emailLink', $this->row($guest)['replySource']);
+
+        $this->reply($token, 'coming');
+        self::assertSame('guestPage', $this->row($guest)['replySource']);
     }
 
     #[Test]

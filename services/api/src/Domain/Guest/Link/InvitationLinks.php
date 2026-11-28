@@ -12,6 +12,7 @@ use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\GuestReply;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -96,6 +97,23 @@ final readonly class InvitationLinks
     public function flaggedOn(Event $event): array
     {
         return Vec\map($this->guestRepository->findFlagged($event), static fn (Guest $guest): string => $guest->getId()->toRfc4122());
+    }
+
+    /**
+     * The guest's own link with each answer in it, `?answer=` the wire name (sc-1291); a companion has none. Opening one records nothing.
+     *
+     * @return array<string, string> the link by answer: coming, maybe, notComing
+     */
+    public function answerLinksOf(Guest $guest): array
+    {
+        $url = $this->url($this->linked($guest));
+        $links = [];
+
+        foreach ([GuestReply::Coming, GuestReply::NotComing, GuestReply::Maybe] as $answer) {
+            $links[$answer->value] = $url . '?answer=' . $answer->value;
+        }
+
+        return $links;
     }
 
     private function url(Guest $guest): string
