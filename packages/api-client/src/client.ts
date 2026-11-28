@@ -1104,6 +1104,12 @@ export interface PaymentRemindersSetting {
   inForce: boolean;
 }
 
+export interface SingleSignOnStart {
+  authorizationUrl: string;
+  organisation: string;
+  provider: string;
+}
+
 export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
@@ -1479,6 +1485,25 @@ export class ApiClient {
       '/api/auth/two-factor/verify',
       { challenge, ...factor },
       'TwoFactorSignInController',
+    );
+  }
+
+  /** Where an address at a domain with single sign-on goes to sign in, or null when its domain has none (sc-610). */
+  async startSingleSignOn(email: string, codeChallenge: string): Promise<SingleSignOnStart | null> {
+    try {
+      return await this.post<SingleSignOnStart>('/api/auth/sso/attempts', { email, codeChallenge });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+
+      throw error;
+    }
+  }
+
+  async signInWithSingleSignOn(handle: string, codeVerifier: string): Promise<SignInOutcome> {
+    return this.signedIn(
+      '/api/auth/sso/handle',
+      { handle, codeVerifier },
+      'SingleSignInController',
     );
   }
 

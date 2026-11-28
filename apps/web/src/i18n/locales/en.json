@@ -734,6 +734,10 @@
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
     "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
+    "ssoLine": "{{organisation}} signs in through {{provider}}.",
+    "ssoNotice": "{{organisation}} signs you in through {{provider}}.",
+    "ssoContinue": "Continue to {{provider}}",
+    "ssoAnother": "Sign in another way",
     "anotherAccount": "Sign in with another account",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },

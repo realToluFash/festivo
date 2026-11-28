@@ -764,6 +764,10 @@
     "providerOnlyTitle": "{{organisation}} : connexion avec Google ou Apple uniquement",
     "providerOnlyBody": "La connexion par mot de passe est désactivée dans {{organisation}}. Utilisez plutôt {{providers}}.",
     "providerOnlyCode": "Un code reçu sur votre portable ne permet pas de vous connecter à ce compte. {{organisation}} demande à tous ses membres d’utiliser {{providers}}.",
+    "ssoLine": "{{organisation}} signs in through {{provider}}.",
+    "ssoNotice": "{{organisation}} signs you in through {{provider}}.",
+    "ssoContinue": "Continue to {{provider}}",
+    "ssoAnother": "Sign in another way",
     "anotherAccount": "Se connecter avec un autre compte",
     "providerOnlyFootnote": "Une règle fixée par {{organisation}} : la connexion par mot de passe y est désactivée pour tout le monde."
   },

@@ -103,9 +103,13 @@ export function AppLayout({ bare = false, pages = [] }: { bare?: boolean; pages?
         to={state.ended ? '/sign-in?signed-out' : '/sign-in'}
         state={{
           ...(state.ended ? UNASKED : {}),
-          ...(state.timedOut == null && state.providerOnly == null
+          ...(state.timedOut == null && state.providerOnly == null && state.ssoRequired == null
             ? {}
-            : { timedOut: state.timedOut, providerOnly: state.providerOnly }),
+            : {
+                timedOut: state.timedOut,
+                providerOnly: state.providerOnly,
+                ssoRequired: state.ssoRequired,
+              }),
         }}
         replace
       />

@@ -764,6 +764,10 @@
     "providerOnlyTitle": "En {{organisation}} solo se inicia sesión con Google o Apple",
     "providerOnlyBody": "En {{organisation}} no se puede iniciar sesión con contraseña. Use {{providers}}.",
     "providerOnlyCode": "Un código enviado a su móvil no permite iniciar sesión en esta cuenta. {{organisation}} pide a todos sus miembros que usen {{providers}}.",
+    "ssoLine": "{{organisation}} signs in through {{provider}}.",
+    "ssoNotice": "{{organisation}} signs you in through {{provider}}.",
+    "ssoContinue": "Continue to {{provider}}",
+    "ssoAnother": "Sign in another way",
     "anotherAccount": "Iniciar sesión con otra cuenta",
     "providerOnlyFootnote": "Una norma de {{organisation}}: nadie en ella puede iniciar sesión con contraseña."
   },

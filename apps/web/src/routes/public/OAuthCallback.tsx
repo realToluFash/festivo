@@ -1,4 +1,4 @@
-import { type Provider, ProviderCancelled } from '@soirely/api-client';
+import { ApiError, type Provider, ProviderCancelled } from '@soirely/api-client';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -10,6 +10,7 @@ import {
   keepProviderReturn,
   returnPurpose,
 } from '../../providerSignIn.ts';
+import { ssoRequiredBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 
 const BACK_TO: Record<ReturnPurpose['kind'], string> = {
@@ -43,6 +44,12 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
     finishProviderSignIn(provider, window.location.href)
       .then((outcome) => landAfterSignIn(outcome, navigate))
       .catch((error: unknown) => {
+        const ssoRequired = error instanceof ApiError ? ssoRequiredBy(error.problem) : undefined;
+        if (ssoRequired != null) {
+          navigate('/sign-in', { replace: true, state: { ssoRequired } });
+          return;
+        }
+
         navigate(
           error instanceof ProviderCancelled
             ? '/sign-in'

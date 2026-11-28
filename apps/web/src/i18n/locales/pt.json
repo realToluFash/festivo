@@ -764,6 +764,10 @@
     "providerOnlyTitle": "{{organisation}}: início de sessão só com Google ou Apple",
     "providerOnlyBody": "O início de sessão com palavra-passe está desativado em {{organisation}}. Em vez disso, utilize {{providers}}.",
     "providerOnlyCode": "Um código enviado para o seu telemóvel não permite iniciar sessão nesta conta. {{organisation}} pede a todos os seus membros que utilizem {{providers}}.",
+    "ssoLine": "{{organisation}} signs in through {{provider}}.",
+    "ssoNotice": "{{organisation}} signs you in through {{provider}}.",
+    "ssoContinue": "Continue to {{provider}}",
+    "ssoAnother": "Sign in another way",
     "anotherAccount": "Iniciar sessão com outra conta",
     "providerOnlyFootnote": "Uma regra definida por {{organisation}}: o início de sessão com palavra-passe está desativado para todos os membros."
   },

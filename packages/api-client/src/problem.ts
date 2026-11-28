@@ -54,7 +54,7 @@ export interface Problem {
   onShift?: number;
   /** On `join_request_cooling_off`: when they may ask that organisation again (sc-562). */
   until?: string;
-  /** On `provider_kept_by_rule`: the provider that must stay linked. */
+  /** On `provider_kept_by_rule`: the provider that must stay linked. On `sso_sign_in_required`, with `organisation` and `email`: the identity provider's name (sc-610). */
   provider?: string;
   /** On `organisation_two_factor_required`: the permission kept back. */
   permission?: string;

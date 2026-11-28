@@ -25,7 +25,7 @@ import { config } from '../../config.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { useLinkRetry } from '../../linkRetry.ts';
 import { focusWhereSent } from '../../offField.ts';
-import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
+import { adoptAccount, landingFor, providerOnlyBy, ssoRequiredBy } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 import { Nobody } from './LostTwoFactor.tsx';
@@ -126,6 +126,11 @@ export function ResetPassword() {
       const providerOnly = error instanceof ApiError ? providerOnlyBy(error.problem) : undefined;
 
       // The password is set, but signs in only where a password sign-in would (sc-69).
+      const ssoRequired = error instanceof ApiError ? ssoRequiredBy(error.problem) : undefined;
+      if (ssoRequired != null) {
+        navigate('/sign-in', { replace: true, state: { ssoRequired } });
+        return;
+      }
       if (providerOnly != null) {
         navigate('/sign-in', { replace: true, state: { providerOnly } });
       } else if (dead != null) {

@@ -77,6 +77,7 @@ export type SessionState =
       arrived?: true;
       timedOut?: TimedOut;
       providerOnly?: ProviderOnly;
+      ssoRequired?: SsoRequired;
     };
 
 /** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
@@ -359,6 +360,7 @@ export function replaceOrganisation(next: Membership): void {
 export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
+  const ssoRequired = ssoRequiredBy(why);
   const arrived = ended && state.status !== 'signedIn';
 
   generation += 1;
@@ -369,6 +371,7 @@ export function forgetSession(ended = false, why?: Problem): void {
     ...(arrived ? { arrived } : {}),
     ...(timedOut == null ? {} : { timedOut }),
     ...(providerOnly == null ? {} : { providerOnly }),
+    ...(ssoRequired == null ? {} : { ssoRequired }),
   });
 }
 
@@ -391,6 +394,20 @@ export function providerOnlyBy(why: Problem | undefined): ProviderOnly | undefin
     return undefined;
 
   return { organisation: why.organisation, providers: why.providers ?? [], email: why.email ?? '' };
+}
+
+export interface SsoRequired {
+  organisation: string;
+  provider: string;
+  email: string;
+}
+
+/** Required single sign-on's refusal (sc-610), from any way in or a session it ended. */
+export function ssoRequiredBy(why: Problem | undefined): SsoRequired | undefined {
+  if (why?.organisation == null || why.provider == null) return undefined;
+  if (!new ApiError(why).is('sso_sign_in_required')) return undefined;
+
+  return { organisation: why.organisation, provider: why.provider, email: why.email ?? '' };
 }
 
 function sessionFrom(

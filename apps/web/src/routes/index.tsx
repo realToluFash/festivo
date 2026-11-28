@@ -64,6 +64,7 @@ import { RecoveryNotMe } from './public/RecoveryNotMe.tsx';
 import { Register } from './public/Register.tsx';
 import { ResetPassword } from './public/ResetPassword.tsx';
 import { SignIn } from './public/SignIn.tsx';
+import { SingleSignOnReturn } from './public/SingleSignOnReturn.tsx';
 import { TwoFactorAgain } from './public/TwoFactorAgain.tsx';
 import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
@@ -139,6 +140,7 @@ export const routes = [
       { path: '/', element: <Home /> },
       { path: '/sign-in', element: <SignIn /> },
       { path: '/sign-in/code', element: <TwoFactorSignIn /> },
+      { path: '/sign-in/sso', element: <SingleSignOnReturn /> },
       { path: '/two-factor/recovery', element: <LostTwoFactor /> },
       { path: '/two-factor/again', element: <TwoFactorAgain /> },
       { path: '/two-factor/not-me', element: <RecoveryNotMe /> },

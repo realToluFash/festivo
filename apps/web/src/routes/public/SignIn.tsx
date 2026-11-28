@@ -11,7 +11,14 @@ import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { providerList } from '../../providerList.ts';
 import { dateLocale } from '../../i18n/index.ts';
-import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
+import {
+  type ProviderOnly,
+  type SsoRequired,
+  type TimedOut,
+  providerOnlyBy,
+  ssoRequiredBy,
+} from '../../session.ts';
+import { leaveForSingleSignOn, singleSignOnAt } from '../../ssoSignIn.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
@@ -28,7 +35,8 @@ type Status =
   | { kind: 'sessionEnded' }
   | { kind: 'codeTimedOut' }
   | { kind: 'timedOut'; rule: TimedOut }
-  | ({ kind: 'providerOnly' } & ProviderOnly);
+  | ({ kind: 'providerOnly' } & ProviderOnly)
+  | ({ kind: 'ssoRequired' } & SsoRequired);
 
 export function SignIn() {
   const { t } = useTranslation();
@@ -40,6 +48,8 @@ export function SignIn() {
       providerOnly?: ProviderOnly;
       email?: string;
       codeTimedOut?: boolean;
+      ssoRequired?: SsoRequired;
+      ssoFailed?: boolean;
     } | null;
   };
   const [status, setStatus] = useState<Status>(() => {
@@ -47,6 +57,8 @@ export function SignIn() {
 
     if (provider != null) return { kind: 'providerFailed', provider };
     if (carried?.timedOut != null) return { kind: 'timedOut', rule: carried.timedOut };
+    if (carried?.ssoRequired != null) return { kind: 'ssoRequired', ...carried.ssoRequired };
+    if (carried?.ssoFailed === true) return { kind: 'failed' };
     if (carried?.providerOnly != null) return { kind: 'providerOnly', ...carried.providerOnly };
     if (carried?.codeTimedOut === true) return { kind: 'codeTimedOut' };
 
@@ -56,6 +68,9 @@ export function SignIn() {
   const [typedEmail, setTypedEmail] = useState(
     status.kind === 'timedOut' ? status.rule.email : (carried?.email ?? ''),
   );
+  const [sso, setSso] = useState<{ domain: string; organisation: string; provider: string }>();
+  const [anotherWay, setAnotherWay] = useState(false);
+  const handoff = !anotherWay && sso != null && sso.domain === domainOf(typedEmail) ? sso : null;
   const checks = useFormChecks(
     ['email', 'password'] as const,
     (field, value) =>
@@ -83,11 +98,52 @@ export function SignIn() {
     return () => window.clearTimeout(lift);
   }, [liftsAt]);
 
+  /** Asked once the address is typed: a domain with single sign-on goes to its provider instead of a password. */
+  function discover(typed: string): void {
+    const email = typed.trim();
+    if (emailMessage(email, t) != null || sso?.domain === domainOf(email)) return;
+
+    singleSignOnAt(email)
+      .then((start) => {
+        if (start != null) setSso({ ...start, domain: domainOf(email) });
+      })
+      // Left on the password form: required sign-on's own refusal still sends them on.
+      .catch(() => undefined);
+  }
+
+  const prefilled = useRef(typedEmail);
+  useEffect(() => {
+    const email = prefilled.current.trim();
+    if (!email.includes('@')) return;
+
+    singleSignOnAt(email)
+      .then((start) => {
+        if (start != null) setSso({ ...start, domain: domainOf(email) });
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function leave(email: string): Promise<void> {
+    try {
+      if (await leaveForSingleSignOn(email.trim())) return;
+    } catch (error) {
+      setStatus(refusalFrom(error, email));
+      return;
+    }
+
+    setStatus({ kind: 'failed' });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
     // Busy looks busy rather than disabled, as on register; a second press while signing in does nothing.
     if (busy) return;
+
+    if (handoff != null) {
+      await leave(typedEmail);
+      return;
+    }
 
     const typed = new FormData(event.currentTarget);
     const values = {
@@ -123,7 +179,7 @@ export function SignIn() {
         {notice != null && (
           <div className="auth-notice" role={notice.alert ? 'alert' : 'status'}>
             <p className="auth-notice-title">{notice.title}</p>
-            <p>{notice.body}</p>
+            {notice.body !== '' && <p>{notice.body}</p>}
             {status.kind === 'rateLimited' && (
               <Link
                 className="link-button"
@@ -136,6 +192,16 @@ export function SignIn() {
           </div>
         )}
       </div>
+
+      {status.kind === 'ssoRequired' && (
+        <button
+          className="button button-primary"
+          type="button"
+          onClick={() => void leave(status.email || typedEmail)}
+        >
+          {t('signIn.ssoContinue', { provider: status.provider })}
+        </button>
+      )}
 
       {/* A password cannot sign this account in, so the form gives way to the buttons it has linked. */}
       {status.kind === 'providerOnly' ? (
@@ -185,9 +251,13 @@ export function SignIn() {
                   required
                   aria-invalid={checks.errors.email != null}
                   aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
-                  onBlur={(event) => checks.left('email', event.target.value)}
+                  onBlur={(event) => {
+                    checks.left('email', event.target.value);
+                    discover(event.target.value);
+                  }}
                   onChange={(event) => {
                     setTypedEmail(event.target.value);
+                    setAnotherWay(false);
                     checks.edited('email', event.target.value);
                   }}
                 />
@@ -196,63 +266,81 @@ export function SignIn() {
                 )}
               </div>
 
-              <div className={checks.errors.password == null ? 'field' : 'field field-wrong'}>
-                <div className="field-heading">
-                  <label htmlFor="password">{t('signIn.password')}</label>
-                  <Link
-                    className="link-button"
-                    to="/forgot-password"
-                    state={{ email: typedEmail.trim() }}
-                  >
-                    {t('recovery.forgot')}
-                  </Link>
-                </div>
-                {/* A refusal turns no field red: it does not say which of the two is wrong. */}
-                <PasswordField
-                  id="password"
-                  autoComplete="current-password"
-                  wrong={checks.errors.password != null}
-                  disabled={busy}
-                  submitting={busy}
-                  describedBy={
-                    status.kind === 'refused' || checks.errors.password != null
-                      ? 'password-error'
-                      : undefined
-                  }
-                  onBlur={(value) => checks.left('password', value)}
-                  onChange={(value) => checks.edited('password', value)}
-                />
+              {handoff == null && (
+                <div className={checks.errors.password == null ? 'field' : 'field field-wrong'}>
+                  <div className="field-heading">
+                    <label htmlFor="password">{t('signIn.password')}</label>
+                    <Link
+                      className="link-button"
+                      to="/forgot-password"
+                      state={{ email: typedEmail.trim() }}
+                    >
+                      {t('recovery.forgot')}
+                    </Link>
+                  </div>
+                  {/* A refusal turns no field red: it does not say which of the two is wrong. */}
+                  <PasswordField
+                    id="password"
+                    autoComplete="current-password"
+                    wrong={checks.errors.password != null}
+                    disabled={busy}
+                    submitting={busy}
+                    describedBy={
+                      status.kind === 'refused' || checks.errors.password != null
+                        ? 'password-error'
+                        : undefined
+                    }
+                    onBlur={(value) => checks.left('password', value)}
+                    onChange={(value) => checks.edited('password', value)}
+                  />
 
-                {/* One message for a wrong address and a wrong password, because
-                      two messages answer "is this address registered". */}
-                {checks.errors.password != null ? (
-                  <FieldError id="password-error" message={checks.errors.password} />
-                ) : (
-                  status.kind === 'refused' && (
-                    <FieldError id="password-error" message={t('signIn.noMatch')} />
-                  )
-                )}
-              </div>
+                  {/* One message for a wrong address and a wrong password, because
+                        two messages answer "is this address registered". */}
+                  {checks.errors.password != null ? (
+                    <FieldError id="password-error" message={checks.errors.password} />
+                  ) : (
+                    status.kind === 'refused' && (
+                      <FieldError id="password-error" message={t('signIn.noMatch')} />
+                    )
+                  )}
+                </div>
+              )}
             </div>
 
-            <button
-              className="button button-primary"
-              type="submit"
-              aria-busy={busy}
-              {...offButton(locked)}
-            >
-              {locked
-                ? t('signIn.lockedUntil', { time: status.retryAt })
-                : busy
-                  ? t('signIn.submitting')
-                  : t('signIn.submit')}
-            </button>
+            {handoff != null ? (
+              <>
+                <p>{t('signIn.ssoLine', handoff)}</p>
+                <button className="button button-primary" type="submit">
+                  {t('signIn.ssoContinue', handoff)}
+                </button>
+                <button className="link-button" type="button" onClick={() => setAnotherWay(true)}>
+                  {t('signIn.ssoAnother')}
+                </button>
+              </>
+            ) : (
+              <button
+                className="button button-primary"
+                type="submit"
+                aria-busy={busy}
+                {...offButton(locked)}
+              >
+                {locked
+                  ? t('signIn.lockedUntil', { time: status.retryAt })
+                  : busy
+                    ? t('signIn.submitting')
+                    : t('signIn.submit')}
+              </button>
+            )}
           </form>
-          <ProviderSignIn pair />
+          {handoff == null && <ProviderSignIn pair />}
         </>
       )}
     </AuthPage>
   );
+}
+
+function domainOf(email: string): string {
+  return email.trim().toLowerCase().split('@')[1] ?? '';
 }
 
 /** The line under the title, in the words each state has always had. */
@@ -273,6 +361,15 @@ function noticeFor(
           count: status.rule.days,
         }),
         alert: false,
+      };
+    case 'ssoRequired':
+      return {
+        title: t('signIn.ssoNotice', {
+          organisation: status.organisation,
+          provider: status.provider,
+        }),
+        body: '',
+        alert: true,
       };
     case 'providerOnly':
       return {
@@ -306,6 +403,9 @@ function refusalFrom(error: unknown, typed: string): Status {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
 
   if (error.is('invalid_credentials')) return { kind: 'refused' };
+
+  const ssoRequired = ssoRequiredBy(error.problem);
+  if (ssoRequired != null) return { kind: 'ssoRequired', ...ssoRequired };
 
   const providerOnly = providerOnlyBy(error.problem);
   if (providerOnly != null)
