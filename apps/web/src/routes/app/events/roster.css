@@ -622,3 +622,27 @@
   color: var(--colorInkSecondary);
   text-align: center;
 }
+
+/* sc-102333: docked from 1280 px, the Briefing column (sc-3917) and Link's 168 px (sc-75033) left Copy link and Mark as sent past the frame's edge. While any of the Roster's own panels is docked (details, Add a person, Edit, Remove), Station and Briefing give way; the details show both, the Briefing's actions with them, and the columns come back when the panel closes. */
+.rs .bf-fact .rs-link-acts {
+  display: none;
+}
+
+@media (width >= 80rem) {
+  .rs .mn-split:has(> .mn-panel:not(.bf-panel)) .rs-frame > .rs-table .rs-gives {
+    display: none;
+  }
+
+  .rs .bf-fact .rs-link-acts {
+    display: flex;
+  }
+
+  /* The card's own actions run long in French and Spanish: they go under the title rather than break it inside a word. */
+  .rs .mn-split:has(> .mn-panel:not(.bf-panel)) .sn-card-top {
+    flex-wrap: wrap;
+  }
+
+  .rs .mn-split:has(> .mn-panel:not(.bf-panel)) .sn-card-names {
+    flex-basis: 12rem;
+  }
+}

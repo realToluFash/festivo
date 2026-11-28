@@ -1340,4 +1340,31 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('switch')).toBeNull();
   });
+
+  it("gives Station and Briefing way while a panel is docked, and shows the open person's Briefing in their details (sc-102333)", async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Sade Lawal')],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+          rules: null,
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sade Lawal' }));
+    expect(document.querySelectorAll('.rs-table th.rs-gives')).toHaveLength(2);
+    expect(document.querySelector('.rs-facts .bf-fact')).not.toBeNull();
+
+    const docked = mediaBlock('(width >= 80rem)', ROSTER_CSS);
+    expect(
+      cssRule(
+        '.rs .mn-split:has(> .mn-panel:not(.bf-panel)) .rs-frame > .rs-table .rs-gives',
+        docked,
+      ),
+    ).toContain('display: none;');
+    expect(cssRule('.rs .bf-fact .rs-link-acts', docked)).toContain('display: flex;');
+  });
 });
