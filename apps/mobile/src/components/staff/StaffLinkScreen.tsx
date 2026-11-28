@@ -31,6 +31,7 @@ import { Skeleton } from '../Skeleton.tsx';
 import { PageToast } from '../Summary.tsx';
 import { Text } from '../Text.tsx';
 import { LinkMark } from './StaffParts.tsx';
+import { openedEntry } from './openedEntry.ts';
 
 /** Under the AC's ten seconds from a change made anywhere else, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
@@ -100,7 +101,8 @@ export function StaffLinkScreen({
         if (mine !== ticket.current || gone.current) return;
         const entry = staff.find((one) => one.id === staffId);
         if (entry == null) {
-          if (latest.current != null) removed(latest.current);
+          const was = latest.current ?? openedEntry(eventId, staffId);
+          if (was != null) removed(was);
           else setSeen({ kind: 'failed' });
           return;
         }
@@ -280,7 +282,7 @@ export function StaffLinkScreen({
           <Skeleton shape="rows" rowHeight={64} rows={3} words={t('staffLink.loading')} />
         ) : (
           <View style={styles.failedBlock} testID="staffLink.loadFailed">
-            <Notice tone="broken" mark="alert" body={t('staffRoster.failed')} />
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('staffRoster.failed')} />
             <SecondaryButton
               label={t('staffRoster.tryAgain')}
               onPress={() => {
@@ -317,7 +319,7 @@ export function StaffLinkScreen({
     <View testID="staffLink.removed">
       <Notice
         tone="attention"
-        mark="alert"
+        mark="!"
         title={t('staffLink.removed', { name: entry.fullName })}
         body={t('staffLink.removedLine')}
       />
