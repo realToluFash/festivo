@@ -1,0 +1,4 @@
+appId: com.soirely.app
+---
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

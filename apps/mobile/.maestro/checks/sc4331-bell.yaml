@@ -1,0 +1,30 @@
+# sc-4331: the bell's Guest replies item, then opening it lands on Changed since you looked.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 20000
+- runFlow: ../developer-menu-close.yaml
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: bell-product
+- tapOn:
+    text: '.*coming.*|.*changed their reply.*|.*updated dietary.*'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: changed-product
+- scroll
+- takeScreenshot: changed-product-scrolled

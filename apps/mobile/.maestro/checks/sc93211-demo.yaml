@@ -1,0 +1,13 @@
+# sc-93211: the app's Today size demo, upright: /demo/today-size?Q. Vars: METRO_URL, Q.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 75%', end: '50%, 45%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: mid

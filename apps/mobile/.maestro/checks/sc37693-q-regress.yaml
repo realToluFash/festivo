@@ -1,0 +1,46 @@
+# sc-37693 regression: the Settings areas around Members.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings-account
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings-organisation
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings-sign-in-rules
+- openLink: ${METRO_URL}/--/settings/security
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings-security
+- openLink: ${METRO_URL}/--/settings/notifications
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Z'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reg-settings-notifications

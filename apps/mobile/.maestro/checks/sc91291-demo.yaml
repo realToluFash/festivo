@@ -1,0 +1,17 @@
+# sc-91291: the demo's Today at SIZE in DLANG, in ORIENT; top, middle, foot. Vars: METRO_URL, ORIENT, Q (the query after size/lang).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: d-top
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: d-mid
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: d-foot

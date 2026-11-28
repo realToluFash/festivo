@@ -1,0 +1,57 @@
+/* sc-55397: the handoff stands in for an event's page in the shell's phone bar, at 640 px or narrower. */
+.ho-main {
+  display: flex;
+  justify-content: center;
+}
+
+.ho-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  width: 100%;
+  max-width: 30rem;
+  padding-top: var(--spaceXl);
+}
+
+.ho-glyph {
+  display: grid;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-bottom: var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.ho-area {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+}
+
+.ho-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeTitlePhone);
+  letter-spacing: var(--typeTitlePhoneTracking);
+  overflow-wrap: anywhere;
+}
+
+.ho-title:focus {
+  outline: none;
+}
+
+.ho-line {
+  margin: 0 0 var(--spaceMd);
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+  letter-spacing: var(--typeBodyTracking);
+}
+
+.ho-anyway {
+  width: 100%;
+  min-height: var(--sizeHit);
+}

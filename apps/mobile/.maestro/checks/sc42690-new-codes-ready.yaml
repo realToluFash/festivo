@@ -1,0 +1,18 @@
+# sc-42690 (sc-11032 regression): Settings > Security, Recovery codes opened, Make new codes centred and not tapped, for a TalkBack double tap that opens the ask. Needs two-factor on.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.codes'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'security.codes'
+- scrollUntilVisible:
+    element:
+      id: 'security.newCodes'
+    timeout: 15000
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: new-codes-ready

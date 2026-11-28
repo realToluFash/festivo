@@ -1,0 +1,15 @@
+# sc-54292: a request's message counts visible letters. TOKEN, a link this account has not asked through.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀ẹ́ọ̀ọ́ẹ̀'
+- waitForAnimationToEnd
+- takeScreenshot: message-501
+- assertVisible: '.*501 of 500 characters.*'

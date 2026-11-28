@@ -1,0 +1,52 @@
+# sc-83081, the tablet on its side: the bell's popover from Today, Events and an event's page (EVENT), closed by Android Back and by a tap outside, and the inline Mute this event. Needs ${METRO_URL}, ${EVENT}. On a landscape Android tablet the frame.bell taps on Events and the event's page can land on Today's hidden bell; qa4 ran those two steps by hand (#89195 on sc-83081).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- tapOn: { text: '(Today|Hoy)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-today-before
+- tapOn: { text: '(Notificaciones|Notifications).*', index: 0 }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: side-bell-from-today
+- back
+- waitForAnimationToEnd
+- takeScreenshot: side-today-after-back
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: side-bell-from-events
+- tapOn: { point: '15%,85%' }
+- waitForAnimationToEnd
+- takeScreenshot: side-events-after-outside
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil: { visible: { id: 'events.page' }, timeout: 20000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: side-bell-from-event
+- tapOn: { id: 'notifications\.item\..*\.more', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: side-bellMute-product
+- back
+- waitForAnimationToEnd
+- takeScreenshot: side-event-after-back
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bell
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-bell-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellMute
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-bellMute-demo

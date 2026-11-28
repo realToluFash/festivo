@@ -1,0 +1,21 @@
+# sc-89866: Unlink… on a linked Google opens Confirm it’s you with its lead.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      text: 'Ways to sign in'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Offline.*'
+    timeout: 20000
+- tapOn: 'Google.*'
+- waitForAnimationToEnd
+- tapOn: 'Unlink….*'
+- waitForAnimationToEnd
+- takeScreenshot: unlink-ask
+- tapOn: 'Unlink Google'
+- waitForAnimationToEnd
+- takeScreenshot: unlink-prove
+- assertVisible: 'Confirm it’s you'
+- assertVisible: 'To unlink Google, confirm it’s you\. You won’t be asked again for 5 minutes\.'

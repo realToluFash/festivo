@@ -1,0 +1,11 @@
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/whos-here?state=cover_failed
+- extendedWaitUntil:
+    visible:
+      text: 'Nothing was changed.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: coverfailed-demo

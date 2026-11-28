@@ -1,0 +1,182 @@
+# sc-560: the app demo's Email domains and Data and control states, upright and on its side, for the pairs beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_empty
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_empty-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=domains
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-domains-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_proved
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_proved-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_failed
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_failed-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_lapsing
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_lapsing-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_locked
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_locked-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_downgraded
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-ed_downgraded-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=new
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-upright-new-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=quiet
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-upright-quiet-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=locked
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-upright-locked-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=downgraded
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-upright-downgraded-demo
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_empty
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_empty-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=domains
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-domains-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_proved
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_proved-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_failed
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_failed-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_lapsing
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_lapsing-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_locked
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_locked-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_downgraded
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-ed_downgraded-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=new
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-side-new-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=quiet
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-side-quiet-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=locked
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-side-locked-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control?state=downgraded
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-side-downgraded-demo
+- setOrientation: PORTRAIT

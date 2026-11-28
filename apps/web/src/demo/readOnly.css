@@ -1,0 +1,117 @@
+/* sc-3937: the billing banner in the shell, Running normally beside a live event's status, and the pages under them. */
+
+.ro-banner {
+  animation: ro-in 200ms var(--motionEase) both;
+}
+
+.ro-banner-main {
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--space3xl);
+}
+
+.ro-banner-words {
+  flex: 1 1 24rem;
+  max-width: 47.5rem;
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.ro-banner .desk-step {
+  margin-top: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.ro-banner.is-leaving,
+.ro-running.is-leaving {
+  animation: ro-out 200ms var(--motionEase) both;
+}
+
+@keyframes ro-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes ro-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ro-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ro-banner {
+    animation-name: ro-fade;
+  }
+
+  .ro-banner.is-leaving,
+  .ro-running.is-leaving {
+    animation-duration: 120ms;
+  }
+}
+
+.ro-running {
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid var(--colorAccentTintBorder);
+  background: var(--colorCard);
+  color: var(--colorAccentText);
+  font: 600 12px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.ro-running > svg {
+  flex: none;
+}
+
+.ro-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.ro-body p {
+  margin: 0;
+}
+
+.ro-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+.ro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceSm);
+}
+
+.ro-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ro-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--colorNeutralFill);
+}
+
+@media (width <= 40rem) {
+  .ro-banner .desk-step {
+    align-self: stretch;
+  }
+}

@@ -1,0 +1,34 @@
+# sc-92250: This week upright, then turned on its side, then back, at the device's text size. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: up-0
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-turned
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: side-1
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-turned
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: up-1

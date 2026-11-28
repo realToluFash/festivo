@@ -1,0 +1,14 @@
+# The night of ${EV}, with three items each linked to a menu course: the "Course · {name}" tag on Now, Next and Later, in the account's language (sc-104509).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/night
+- extendedWaitUntil:
+    visible:
+      id: night.next
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: night-top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: night-later

@@ -1,0 +1,69 @@
+# sc-101592: Zimbabwe picked from "Zimbab", then "Ni" typed and cleared each way: the list comes back with Zimbabwe picked, ZWG; then Create.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- waitForAnimationToEnd
+- takeScreenshot: p-picked
+- tapOn: { id: 'createWalk.search' }
+- eraseText: 30
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: p-ni
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- takeScreenshot: p-cleared-button-top
+- hideKeyboard: { optional: true }
+- scrollUntilVisible:
+    {
+      element: { id: 'createWalk.country.ZW', selected: true },
+      direction: DOWN,
+      timeout: 240000,
+      speed: 95,
+    }
+- assertVisible: { text: '.*ZWG.*' }
+- takeScreenshot: p-cleared-button-zw
+- scrollUntilVisible:
+    { element: { id: 'createWalk.search' }, direction: UP, timeout: 240000, speed: 95 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- hideKeyboard: { optional: true }
+- scrollUntilVisible:
+    {
+      element: { id: 'createWalk.country.ZW', selected: true },
+      direction: DOWN,
+      timeout: 240000,
+      speed: 95,
+    }
+- assertVisible: { text: '.*ZWG.*' }
+- takeScreenshot: p-cleared-delete-zw
+- hideKeyboard: { optional: true }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- assertVisible: { text: '.*ZWG.*' }
+- takeScreenshot: p-ready
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-created

@@ -1,0 +1,16 @@
+# sc-70351: the app's People from the More sheet keeps the tab bar, More lit.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more.people' }
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: p-more
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: p-more-sheet

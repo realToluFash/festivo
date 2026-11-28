@@ -1,0 +1,16 @@
+# sc-65714: the app demo's Delete organisation, open, for the side-by-side pair beside the product. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/organisation
+- scrollUntilVisible:
+    element:
+      id: 'organisation.ownership.delete'
+    timeout: 60000
+- tapOn:
+    id: 'organisation.ownership.delete'
+- scrollUntilVisible:
+    element:
+      id: 'organisation.delete.cancel'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: demo-orgdelete-top

@@ -1,0 +1,24 @@
+# Forgot your password? carries the address typed on sign-in, trimmed; Check your email; Send it again then waits. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: '  ${CARRY}  '
+- hideKeyboard
+- takeScreenshot: carried-01-sign-in-typed
+- tapOn: { id: 'signIn.forgot' }
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 15000 }
+- assertVisible: '${CARRY}'
+- takeScreenshot: carried-02-reset-carried
+- tapOn: { id: 'recovery.send' }
+- extendedWaitUntil: { visible: { id: 'recovery.sendAgain' }, timeout: 15000 }
+- takeScreenshot: carried-03-sent
+- assertVisible: '{{t:recovery.spam}}'
+- tapOn: { id: 'recovery.sendAgain' }
+- extendedWaitUntil: { visible: '{{t:recovery.sentAgain}}', timeout: 15000 }
+- takeScreenshot: carried-04-sent-again
+- tapOn: { id: 'recovery.sendAgain' }
+- takeScreenshot: carried-05-pressed-in-countdown

@@ -1,0 +1,25 @@
+# sc-99214: an outsider's bar on an event (Overview, Guests, More) at whatever width and text size the device has.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: overview
+- tapOn:
+    id: event.nav.guests
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: guests
+- tapOn:
+    id: event.nav.more
+- extendedWaitUntil:
+    visible:
+      id: event.nav.moreSheet
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: more

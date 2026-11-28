@@ -1,0 +1,31 @@
+# sc-95859: the long day (25 Nov) swiped up to its very foot, a shot every five swipes; then one drag down from the grabber's strip takes it back to its top, open; a second closes it.
+appId: host.exp.Exponent
+env:
+  DAY: '2026-11-25'
+---
+- runFlow: sc95859/open-day.yaml
+- repeat:
+    times: 8
+    commands:
+      - repeat:
+          times: 5
+          commands:
+            - swipe: { start: '50%,85%', end: '50%,20%', duration: 300 }
+      - waitForAnimationToEnd
+      - takeScreenshot: day-foot-walk
+- repeat:
+    times: 5
+    commands:
+      - swipe: { start: '50%,85%', end: '50%,20%', duration: 300 }
+- waitForAnimationToEnd
+- takeScreenshot: day-foot
+- swipe: { start: '50%,8%', end: '50%,80%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: day-strip-drag-from-foot
+- assertVisible:
+    id: 'calendar.daySheet'
+- swipe: { start: '50%,8%', end: '50%,80%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: day-strip-drag-at-top
+- assertNotVisible:
+    id: 'calendar.daySheet'

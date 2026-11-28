@@ -1,0 +1,32 @@
+# sc-16389 regression held upright: the three tabs, pull to refresh and New event on the Events list of ${ORG}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.past'
+- waitForAnimationToEnd
+- takeScreenshot: past
+- tapOn:
+    id: 'events.tab.drafts'
+- waitForAnimationToEnd
+- takeScreenshot: drafts
+- tapOn:
+    id: 'events.tab.upcoming'
+- waitForAnimationToEnd
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: refreshed
+- tapOn:
+    id: 'events.new'
+- waitForAnimationToEnd
+- takeScreenshot: new-event

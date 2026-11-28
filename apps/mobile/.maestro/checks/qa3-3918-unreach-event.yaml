@@ -1,0 +1,44 @@
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EV}?area=staff
+- extendedWaitUntil:
+    visible:
+      id: events.staff.whosHere
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: unreach-event-opener
+- runScript:
+    file: sc3918/qa3-marker.js
+    env:
+      MARK: stop
+- extendedWaitUntil:
+    visible:
+      text: 'QA3 NEVER SHOWN'
+    timeout: 6000
+    optional: true
+- tapOn:
+    id: events.staff.whosHere
+- extendedWaitUntil:
+    visible:
+      id: whosHere.unreachable.retry
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: unreachable-event-product
+- runScript:
+    file: sc3918/qa3-marker.js
+    env:
+      MARK: start
+- extendedWaitUntil:
+    visible:
+      text: 'QA3 NEVER SHOWN'
+    timeout: 20000
+    optional: true
+- openLink: ${METRO_URL}/--/demo/whos-here?state=unreachable
+- extendedWaitUntil:
+    visible:
+      id: wh.unreachable.retry
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: unreachable-event-demo

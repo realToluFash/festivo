@@ -1,0 +1,25 @@
+# sc-71: sign in by testID in any language, landing on Today or, for an account with no organisation, inside its event. Needs ${METRO_URL}, ${EMAIL}, ${PASSWORD}.
+appId: host.exp.Exponent
+---
+- launchApp: { appId: host.exp.Exponent, stopApp: true }
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'welcome.email|signIn.email' }, timeout: 60000 }
+- runFlow:
+    when: { visible: { id: 'welcome.email' } }
+    commands:
+      - tapOn: { id: 'welcome.email' }
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: { id: 'signIn.submit' }
+- extendedWaitUntil:
+    {
+      visible: { id: 'home\.openSettings|outside\.overview|completeProfile\..*|noOrganisation' },
+      timeout: 30000,
+    }
+- takeScreenshot: signedIn

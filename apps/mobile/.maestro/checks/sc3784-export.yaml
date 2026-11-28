@@ -1,0 +1,37 @@
+# sc-3784: the Guests header with Export, the dialog's default and CSV states, beside the demo's export and exportCsv.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: header
+- tapOn:
+    id: 'guests.export'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: export
+- scroll
+- takeScreenshot: export-scrolled
+- tapOn:
+    id: 'guests.export.format.csv'
+- waitForAnimationToEnd
+- takeScreenshot: exportCsv
+- openLink: ${METRO_URL}/--/demo/guests
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-header
+- openLink: ${METRO_URL}/--/demo/guests?state=export
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-export
+- scroll
+- takeScreenshot: demo-export-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=exportCsv
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-exportCsv

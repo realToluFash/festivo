@@ -1,0 +1,10 @@
+# sc-101859: a person removed while their link screen is open; needs TOKEN (owner), API_URL, WEB_ORIGIN, and a "Removable" person per language.
+appId: host.exp.Exponent
+---
+- runScript: { file: sc101859/remove.js, env: { STEP: pick, PREFIX: Removable } }
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${output.rid}
+- extendedWaitUntil: { visible: 'Removable.*', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- runScript: { file: sc101859/remove.js, env: { STEP: delete, PREFIX: Removable } }
+- extendedWaitUntil: { visible: { id: 'staffLink.removed' }, timeout: 30000 }
+- takeScreenshot: removed

@@ -1,0 +1,29 @@
+# Needs an organisation with five events typed party and one typed wedding; text size set outside the flow.
+# sc-75214: the count line with one type chosen (wedding) and the Filter menu closed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: { id: 'events.clearFilters' } }
+    commands:
+      - tapOn: { id: 'events.clearFilters' }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- repeat:
+    times: 4
+    while: { notVisible: { id: 'events.filter.type.wedding' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.wedding' }
+- waitForAnimationToEnd
+- tapOn: { point: '50%,98%' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'events.clearFilters' }, timeout: 10000 }
+- takeScreenshot: count-one

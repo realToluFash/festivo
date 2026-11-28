@@ -1,0 +1,25 @@
+# sc-70353: every row title in People on the phone, the list from its top down to its last outsider.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_MEMBER}' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_DOTTED}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: rows-mid
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_UNBROKEN}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- swipe: { direction: UP, duration: 600 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: rows-bottom

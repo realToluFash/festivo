@@ -1,0 +1,147 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { __setConfig, config } from '../config.ts';
+import { routes } from '../routes/index.tsx';
+
+const tested = config();
+
+beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+afterEach(() => __setConfig(tested));
+
+async function open(state: string): Promise<void> {
+  const router = createMemoryRouter(routes, {
+    initialEntries: [`/demo/events/evt-wed-4/staff/stations?state=${state}`],
+  });
+  render(<RouterProvider router={router} />);
+  await screen.findByRole('heading', { level: 1, name: 'Staff' }, { timeout: 8000 });
+}
+
+const button = (name: string) => screen.queryByRole('button', { name });
+const status = () => screen.getAllByRole('status').find((one) => one.classList.contains('mn-said'));
+
+describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
+  it('puts the Pass first with no Rename or Remove, and names sections with their table count', async () => {
+    await open('populated');
+    const places = screen.getByRole('region', { name: 'Places' });
+    expect(within(places).getAllByRole('heading', { level: 3 })[0]?.textContent).toContain('Pass');
+    expect(button('Rename Pass')).toBeNull();
+    expect(button('Remove Pass…')).toBeNull();
+    expect(button('Rename Grill')).toBeTruthy();
+    expect(screen.getByText('Section A · 6 tables')).toBeTruthy();
+    expect(screen.getByText('Section B · 1 table')).toBeTruthy();
+    expect(screen.getByText('Section C · No tables yet')).toBeTruthy();
+    expect(screen.getByText('2 people · Serves 3 items')).toBeTruthy();
+  });
+
+  it('offers places only for Served from, the Pass first, and joins the walking order', async () => {
+    await open('populated');
+    const select = screen.getByRole('combobox', { name: 'Served from, Salad, Main' });
+    const options = within(select)
+      .getAllByRole('option')
+      .map((one) => one.textContent);
+    expect(options[0]).toBe('Pass');
+    expect(options.some((one) => one?.startsWith('Section'))).toBe(false);
+    fireEvent.change(select, { target: { value: 'stage' } });
+    expect(status()?.textContent).toBe(
+      'Salad is served from Stage. Stage joins the walking order at stop 5.',
+    );
+    const walk = screen.getByRole('list', { name: 'Walking order' });
+    expect(within(walk).getAllByRole('listitem').at(-1)?.textContent).toContain('Stage');
+  });
+
+  it('moves a stop, announces it, and has no Move up first nor Move down last', async () => {
+    await open('populated');
+    expect(button('Move up, Kitchen')).toBeNull();
+    expect(button('Move down, Pastry')).toBeNull();
+    fireEvent.click(button('Move up, Grill') as HTMLElement);
+    expect(status()?.textContent).toBe('Grill moved to stop 2 of 4.');
+    expect(document.activeElement).toBe(button('Move down, Grill'));
+  });
+
+  it('reads the empty states', async () => {
+    await open('courseEmpty');
+    expect(screen.getByText('No dishes on this course yet.')).toBeTruthy();
+  });
+
+  it('reads a menu with no courses and a walking order of the Pass alone', async () => {
+    await open('noCourses');
+    expect(screen.getByText('This event’s menu has no courses yet.')).toBeTruthy();
+    expect(screen.getByText('Every item is served from the Pass.')).toBeTruthy();
+  });
+
+  it('asks before removing a place and sends its items to the Pass', async () => {
+    await open('removeBoth');
+    expect(
+      screen.getByText(
+        'Remove Grill? 2 people lose their station, and its 3 items go to the Pass.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(button('Remove Grill') as HTMLElement);
+    expect(status()?.textContent).toBe('Grill removed. 2 people have no station now.');
+    expect(
+      (screen.getByRole('combobox', { name: 'Served from, Chicken, Main' }) as HTMLSelectElement)
+        .value,
+    ).toBe('pass');
+  });
+
+  it('refuses a blank or taken name and sends nothing', async () => {
+    await open('addBlank');
+    expect(screen.getByText('Enter a name for the station.')).toBeTruthy();
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    fireEvent.change(name, { target: { value: 'Bar' } });
+    fireEvent.click(button('Add place') as HTMLElement);
+    expect(screen.getByText('This event already has a place called Bar.')).toBeTruthy();
+    expect(document.activeElement).toBe(name);
+    fireEvent.change(name, { target: { value: 'Cloakroom' } });
+    fireEvent.click(button('Add place') as HTMLElement);
+    expect(status()?.textContent).toBe('Cloakroom added. Nobody is on it yet.');
+  });
+
+  it('shows everything as text without staff.manage', async () => {
+    await open('readOnly');
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+    expect(button('Move up, Grill')).toBeNull();
+    expect(button('People and lead for Grill')).toBeNull();
+    expect(button('Add a place')).toBeNull();
+  });
+
+  it('has no Stations tonight while planning', async () => {
+    await open('populated');
+    expect(screen.queryByRole('region', { name: 'Stations tonight' })).toBeNull();
+  });
+
+  it('shows who is on each station during service, and Nobody on one with nobody on shift', async () => {
+    await open('tonight');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Who is on shift at each station now, 21:30.')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Section C')).toBeTruthy();
+    const bar = within(tonight).getByRole('list', { name: 'On Bar now' });
+    expect(within(bar).getByText('Sade Lawal')).toBeTruthy();
+    expect(within(bar).getAllByText('16:00 to 01:00')).toHaveLength(2);
+    expect(within(bar).getByText('Lead')).toBeTruthy();
+    const places = screen.getByRole('region', { name: 'Places' });
+    expect(within(places).queryByText('Nobody on Door')).toBeNull();
+  });
+
+  it('shows a person put on a station at once', async () => {
+    await open('tonightPeople');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Put Emeka Obi on Door' }));
+    expect(within(tonight).queryByText('Nobody on Door')).toBeNull();
+    const door = within(tonight).getByRole('list', { name: 'On Door now' });
+    expect(within(door).getByText('Emeka Obi')).toBeTruthy();
+  });
+
+  it('keeps a section’s table count on its heading and names it plainly in a sentence', async () => {
+    await open('populated');
+    fireEvent.click(button('People and lead for Section A') as HTMLElement);
+    expect(screen.getAllByText('Section A · 6 tables').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Waiter · 17:00 to 00:00 · On Section A').length).toBeGreaterThan(0);
+    fireEvent.click(button('Move Tolu Bello from Door to Section A') as HTMLElement);
+    expect(status()?.textContent).toBe('Tolu Bello moved from Door to Section A.');
+  });
+});
