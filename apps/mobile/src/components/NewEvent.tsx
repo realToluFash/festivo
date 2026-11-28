@@ -654,6 +654,7 @@ export function NewEventScreen({
               linesQuiet={quietAfter === 'type'}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.type}
                 label={t('eventForm.type')}
                 value={draft.type === '' ? null : t(`eventTypes.${draft.type}`)}
@@ -801,6 +802,7 @@ export function NewEventScreen({
               help={t('eventForm.timesIn', { zone: timeZone })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.timeZone}
                 label={t('eventForm.timeZone')}
                 value={timezoneLabel(timeZone)}
@@ -821,6 +823,7 @@ export function NewEventScreen({
               help={t('eventForm.defaultsHint', { name: organisation.name })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.currency}
                 label={t('eventForm.currency')}
                 value={currencyWords(currencies, currency)}
