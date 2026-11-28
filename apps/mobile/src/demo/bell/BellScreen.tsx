@@ -208,7 +208,7 @@ export function BellScreen({ start }: { start: BellStart }) {
             }
             scrolledOnce.current = true;
             page.current?.scrollTo({
-              y: firstItemTop({ y, height }, withoutAsk.current),
+              y: firstItemTop({ y, height }, withoutAsk.current) - tokens.spaceSm,
               animated: false,
             });
           }}
