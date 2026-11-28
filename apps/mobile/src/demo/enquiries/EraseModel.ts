@@ -376,13 +376,12 @@ export interface Landing {
   deleted: string | null;
 }
 
-/** Where Delete lands: the list as it was opened from, the Calendar, or Enquiries' Open tab for a link with nothing behind it. */
+/** Where Delete lands: the list as it was opened from, or Enquiries' Open tab for a link with nothing behind it. */
 export function landingHref(
   id: string,
   from: string | undefined,
   back: string | undefined,
 ): string {
-  if (from === 'calendar') return '/demo/consultations?state=deleted-from-calendar';
   const kept = new URLSearchParams(from === 'list' ? (back ?? '') : '');
 
   kept.set('deleted', id);

@@ -215,7 +215,6 @@ export const ERASE_WORDS = {
   offline: 'Not deleted: you’re offline. Nothing is kept to send later. Connect, then try again.',
   deleteEventFirst: 'To delete this enquiry, delete its event first.',
   deleted: 'Enquiry deleted.',
-  won: 'Won',
   nothingOnDay: 'Nothing on this day.',
 } as const;
 
@@ -250,7 +249,6 @@ export interface ErasePageStart {
   asking: Asking;
   patch: Partial<Enquiry>;
   consultations: readonly Consultation[];
-  failsOnce: boolean;
 }
 
 export function erasePageStart(state: ErasePageState): ErasePageStart {
@@ -259,7 +257,6 @@ export function erasePageStart(state: ErasePageState): ErasePageStart {
     asking: 'none',
     patch: {},
     consultations: [],
-    failsOnce: false,
   };
 
   switch (state) {

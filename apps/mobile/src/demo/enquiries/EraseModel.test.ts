@@ -99,12 +99,6 @@ describe('Delete enquiry', () => {
     expect(landingHref('enq-ada', undefined, undefined)).toBe('/demo/enquiries?deleted=enq-ada');
   });
 
-  it('lands on the Calendar when opened from it', () => {
-    expect(landingHref('enq-lucia', 'calendar', undefined)).toBe(
-      '/demo/consultations?state=deleted-from-calendar',
-    );
-  });
-
   it('drops the deleted enquiry and says so on landing', () => {
     const landed = landedStart(startOf('idle'), { tab: 'lost', mine: true, deleted: 'enq-ada' });
     expect(landed.enquiries.some((one) => one.id === 'enq-ada')).toBe(false);

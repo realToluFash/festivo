@@ -10,12 +10,8 @@ import { useStore } from './enquiryStore.ts';
 
 const DELETE_MS = 700;
 
-type From = 'list' | 'calendar' | null;
-
-function fromOf(state: unknown): From {
-  if (typeof state !== 'object' || state == null || !('from' in state)) return null;
-
-  return state.from === 'list' || state.from === 'calendar' ? state.from : null;
+function fromList(state: unknown): boolean {
+  return typeof state === 'object' && state != null && 'from' in state && state.from === 'list';
 }
 
 /** The confirm and what Delete does: back where the enquiry was opened from, with "Enquiry deleted." and no Undo. */
@@ -24,21 +20,13 @@ export function useDelete(enquiry: Enquiry, erase: ErasePageStart | null, stacks
   const location = useLocation();
   const navigate = useNavigate();
   const [asking, setAsking] = useState<Asking>(erase?.asking ?? 'none');
-  const failsOnce = useRef(erase?.failsOnce === true || erase?.asking === 'failed');
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   function deleted(): void {
-    const from = fromOf(location.state);
-
     store.remove(enquiry.id);
-    if (from === 'calendar') {
-      navigate('/demo/consultations?state=deleted-from-calendar');
-
-      return;
-    }
-    if (from === 'list') navigate(listPath(location.search));
+    if (fromList(location.state)) navigate(listPath(location.search));
     else {
       store.setTab('open');
       navigate(LIST);
@@ -48,15 +36,7 @@ export function useDelete(enquiry: Enquiry, erase: ErasePageStart | null, stacks
 
   function go(): void {
     setAsking('deleting');
-    timer.current = window.setTimeout(() => {
-      if (failsOnce.current) {
-        failsOnce.current = false;
-        setAsking('failed');
-
-        return;
-      }
-      deleted();
-    }, DELETE_MS);
+    timer.current = window.setTimeout(deleted, DELETE_MS);
   }
 
   function won(): void {

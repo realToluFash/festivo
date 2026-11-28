@@ -292,7 +292,7 @@ function LiveLoaded({
         {won ? (
           <p className="enq-page-status">
             <Mark kind="yes" />
-            {E.won}
+            {W.tabs.won}
           </p>
         ) : (
           <p className={lost == null ? 'enq-page-status' : 'enq-page-status is-lost'}>
