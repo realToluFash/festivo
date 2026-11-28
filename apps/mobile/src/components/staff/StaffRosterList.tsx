@@ -344,7 +344,7 @@ export function StaffRosterList({
               ? previewOpener
               : rulesOpener
         }
-        docked
+        docked={dock.docked}
         testID="briefing.dialog"
       >
         <View

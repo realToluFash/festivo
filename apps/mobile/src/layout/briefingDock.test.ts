@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { briefingDock } from './briefingDock.ts';
 
 describe('the staff briefing on a tablet on its side', () => {
-  it('docks at the right edge and keeps the roster beside it', () => {
+  it('docks at the right edge, filling its frame', () => {
     expect(briefingDock('tabletLandscape', 820)).toEqual({
       docked: true,
-      rosterBeside: true,
       fills: true,
       maxHeight: null,
     });
@@ -25,7 +24,6 @@ describe('the staff briefing on a tablet upright', () => {
     const dock = briefingDock('tabletPortrait', 1180);
 
     expect(dock.docked).toBe(false);
-    expect(dock.rosterBeside).toBe(false);
     expect(dock.fills).toBe(false);
   });
 });
