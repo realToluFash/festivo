@@ -36,7 +36,10 @@ class SsoHandoff
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $expiresAt;
 
-    public function __construct(SsoProvider $provider, User $user, string $handleHash, string $clientChallenge, DateTimeImmutable $expiresAt)
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $opensAccount;
+
+    public function __construct(SsoProvider $provider, User $user, string $handleHash, string $clientChallenge, DateTimeImmutable $expiresAt, bool $opensAccount)
     {
         $this->id = Uuid::v7();
         $this->provider = $provider;
@@ -44,6 +47,12 @@ class SsoHandoff
         $this->handleHash = $handleHash;
         $this->clientChallenge = $clientChallenge;
         $this->expiresAt = $expiresAt;
+        $this->opensAccount = $opensAccount;
+    }
+
+    public function opensAccount(): bool
+    {
+        return $this->opensAccount;
     }
 
     public function getId(): Uuid

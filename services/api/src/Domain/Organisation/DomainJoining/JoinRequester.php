@@ -46,6 +46,12 @@ final readonly class JoinRequester
             throw new ApiException(ErrorCode::JoinOfferUnavailable, $this->translator->trans('domain_joining.unavailable'));
         }
 
+        return $this->askAs($user, $organisation);
+    }
+
+    /** A first sign-in through the organisation's own provider (sc-610): it asks whatever domain joining offers. */
+    public function askAs(User $user, Organisation $organisation): Membership
+    {
         $membership = $this->membershipMachine->ask($organisation, $user, MembershipChannel::Domain);
         $this->auditor->record('domain_join.asked', self::SUBJECT, $membership->getId(), Actor::User, $user->getId(), $user->getName(), [
             'organisation' => [null, $organisation->getId()->toRfc4122()],

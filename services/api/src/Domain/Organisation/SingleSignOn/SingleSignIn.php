@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\SingleSignOn;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\Interfaces\OrganisationIdTokenInterface;
 use App\Domain\Organisation\SingleSignOn\Model\SingleSignOnStart;
+use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SignInGate;
+use App\Domain\User\UserRegistrar;
 use App\Entity\Organisation;
 use App\Entity\SsoAttempt;
 use App\Entity\SsoHandoff;
@@ -51,6 +54,9 @@ final readonly class SingleSignIn
         private SsoHandoffRepository $ssoHandoffRepository,
         private UserRepository $userRepository,
         private SignInGate $signInGate,
+        private UserRegistrar $userRegistrar,
+        private JoinRequester $joinRequester,
+        private KnownDevices $knownDevices,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
@@ -79,7 +85,7 @@ final readonly class SingleSignIn
     }
 
     /** The one-time handle for the client, or null when the sign-in failed, which is audited. */
-    public function receive(SsoAttempt $attempt, #[SensitiveParameter] ?string $code, ?string $providerSaid): ?string
+    public function receive(SsoAttempt $attempt, #[SensitiveParameter] ?string $code, ?string $providerSaid, Request $request): ?string
     {
         $provider = $attempt->getProvider();
         $organisation = $provider->getOrganisation();
@@ -113,14 +119,28 @@ final readonly class SingleSignIn
 
         $user = $this->userRepository->findOneByPrimaryEmailAddress($email);
 
-        // A first sign-in is not built yet; an unverified address is nobody's.
-        if (null === $user || true !== $user->getPrimaryEmailAddress()?->isVerified()) {
-            return $this->failed($organisation, 'no_account');
+        $handle = OidcExchange::random();
+        $handOff = function (User $user, bool $opensAccount) use ($provider, $handle, $clientChallenge): void {
+            $this->entityManager->persist(new SsoHandoff($provider, $user, TokenIssuer::hash($handle), $clientChallenge, $this->clock->now()->add(new DateInterval(self::HANDLE_LIFETIME)), $opensAccount));
+        };
+
+        if (null !== $user && true === $user->getPrimaryEmailAddress()?->isVerified()) {
+            $handOff($user, false);
+            $this->entityManager->flush();
+
+            return $handle;
         }
 
-        $handle = OidcExchange::random();
-        $this->entityManager->persist(new SsoHandoff($provider, $user, TokenIssuer::hash($handle), $clientChallenge, $this->clock->now()->add(new DateInterval(self::HANDLE_LIFETIME))));
-        $this->entityManager->flush();
+        // Somebody's proved address, but not their primary one: neither theirs to sign in by (sc-55) nor free for a new account.
+        if ($this->userRegistrar->isTaken($email)) {
+            return $this->failed($organisation, 'address_not_primary');
+        }
+
+        // The provider says who they are, not what they may see: the membership waits for approval (sc-392).
+        $this->userRegistrar->registerFromSingleSignOn($email, $answer->name, $request, function (User $created) use ($organisation, $handOff): void {
+            $this->joinRequester->askAs($created, $organisation);
+            $handOff($created, true);
+        });
 
         return $handle;
     }
@@ -140,6 +160,11 @@ final readonly class SingleSignIn
         }
 
         $user = $handoff->getUser();
+
+        // The device that opens the account is no news to its owner.
+        if ($handoff->opensAccount()) {
+            $this->knownDevices->remember($user, $request);
+        }
 
         return [$user, $this->signInGate->admit($user, $request, bySingleSignOn: true)];
     }

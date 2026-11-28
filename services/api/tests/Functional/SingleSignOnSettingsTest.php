@@ -16,7 +16,9 @@ use App\Domain\Organisation\SingleSignOn\SingleSignIn;
 use App\Domain\Organisation\SingleSignOn\SingleSignOnSettings;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\EmailAddress;
 use App\Entity\EmailDomain;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
@@ -27,6 +29,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Enum\SeededRole;
+use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
@@ -366,17 +369,49 @@ final class SingleSignOnSettingsTest extends ApiTestCase
     }
 
     #[Test]
-    public function theProviderSignsNobodyInOutsideItsDomainsOrWithoutAnAccount(): void
+    public function aFirstSignInCreatesAVerifiedAccountThatWaitsForApproval(): void
     {
         $this->client->disableReboot();
         [$owner, $organisation] = $this->proved();
         $this->saveGoogle($owner, $organisation);
         $this->testWorked($organisation, $owner);
         $this->send('POST', $this->path($organisation, 'on'));
-        $this->member('ada@elsewhere.example', 'Ada');
+        $this->send('POST', $this->path($organisation, 'required'));
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $verifier = Str\repeat('v', 64);
+
+        $handle = $this->signInThroughProvider($organisation, 'New.Starter@ire.events', $verifier);
+        $this->send('POST', '/api/auth/sso/handle', ['handle' => $handle, 'codeVerifier' => $verifier]);
+        self::assertResponseStatusCodeSame(200);
+        self::assertEmailCount(0);
+
+        $user = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('new.starter@ire.events') ?? static::fail('no account');
+        self::assertTrue($user->getPrimaryEmailAddress()?->isVerified());
+        $memberships = self::service(MembershipRepository::class)->findAllFor($user);
+        self::assertSame([[MembershipStatus::PendingApproval, $organisation->getId()->toRfc4122()]], Vec\map($memberships, static fn (Membership $membership): array => [$membership->getStatus(), $membership->getOrganisation()->getId()->toRfc4122()]));
+
+        $again = $this->signInThroughProvider($organisation, 'new.starter@ire.events', $verifier);
+        $this->send('POST', '/api/auth/sso/handle', ['handle' => $again, 'codeVerifier' => $verifier]);
+        self::assertResponseStatusCodeSame(200);
+        self::assertCount(1, self::service(MembershipRepository::class)->findAllFor($user));
+    }
+
+    #[Test]
+    public function theProviderSignsNobodyInOutsideItsDomainsOrByAnAlternativeAddress(): void
+    {
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->saveGoogle($owner, $organisation);
+        $this->testWorked($organisation, $owner);
+        $this->send('POST', $this->path($organisation, 'on'));
+        $ada = $this->member('ada@elsewhere.example', 'Ada');
+        $alternative = new EmailAddress($ada, 'work@ire.events');
+        $alternative->setVerifiedAt(new Clock()->now());
+        self::service(EntityManagerInterface::class)->persist($alternative);
+        self::service(EntityManagerInterface::class)->flush();
         $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
 
-        foreach (['ada@elsewhere.example' => 'other_domain', 'nobody@ire.events' => 'no_account'] as $asserted => $why) {
+        foreach (['ada@elsewhere.example' => 'other_domain', 'work@ire.events' => 'address_not_primary'] as $asserted => $why) {
             self::assertNull($this->signInThroughProvider($organisation, $asserted, 'verifier'), $why);
         }
 
@@ -385,7 +420,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
             self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findBy(['action' => SingleSignIn::FAILED, 'subjectId' => $organisation->getId()]),
             static fn (AuditEntry $entry): string => Json\encode($entry->getChanges()),
         );
-        self::assertEqualsCanonicalizing(['{"said":[null,"other_domain"]}', '{"said":[null,"no_account"]}'], $said);
+        self::assertEqualsCanonicalizing(['{"said":[null,"other_domain"]}', '{"said":[null,"address_not_primary"]}'], $said);
 
         $this->send('POST', '/api/auth/sso/attempts', ['email' => 'ada@elsewhere.example', 'codeChallenge' => 'c']);
         self::assertResponseStatusCodeSame(404);

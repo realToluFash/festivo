@@ -44,7 +44,7 @@ final readonly class SingleSignOnCallbackController
         $attempt = $this->ssoAttemptRepository->findOneBy(['stateHash' => TokenIssuer::hash($state)]);
 
         if (null !== $attempt?->getClientChallenge() && $attempt->getProvider()->getOrganisation()->getId()->equals($organisation->getId())) {
-            $handle = $this->singleSignIn->receive($attempt, $query('code'), $said);
+            $handle = $this->singleSignIn->receive($attempt, $query('code'), $said, $request);
 
             return $this->onTo('/sign-in/sso?' . \http_build_query(null === $handle ? ['error' => 'failed'] : ['handle' => $handle]));
         }

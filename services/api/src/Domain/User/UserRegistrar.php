@@ -20,6 +20,7 @@ use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
+use Closure;
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -91,6 +92,29 @@ final readonly class UserRegistrar
         $address->setVerifiedAt(new DateTimeImmutable());
 
         return $this->persist($user, $request, $provider);
+    }
+
+    /**
+     * The organisation's own provider vouched for the address (sc-610). No session: the client starts one with its handle.
+     *
+     * @param Closure(User): void $alongside what commits with the account
+     */
+    public function registerFromSingleSignOn(string $normalisedEmail, string $name, Request $request, Closure $alongside): void
+    {
+        $user = new User(Str\slice(Str\trim($name), 0, User::NAME_MAXIMUM), null, AccountOrigin::SelfRegistered);
+        $address = new EmailAddress($user, Type\non_empty_string()->assert($normalisedEmail), isPrimary: true);
+        $address->setVerifiedAt(new DateTimeImmutable());
+        AccountLanguage::rememberIfNone($user, $request);
+
+        try {
+            $this->entityManager->wrapInTransaction(function () use ($user, $normalisedEmail, $alongside): void {
+                $this->releaseFromUnverifiedHolder($normalisedEmail);
+                $this->entityManager->persist($user);
+                $alongside($user);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            throw self::taken($e);
+        }
     }
 
     /**

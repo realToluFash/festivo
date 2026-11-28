@@ -26,6 +26,7 @@ final class Version20261128110000 extends AbstractMigration
                 handle_hash      VARCHAR(64) NOT NULL,
                 client_challenge VARCHAR(128) NOT NULL,
                 expires_at       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                opens_account    BOOLEAN NOT NULL,
                 PRIMARY KEY (id)
             )
             SQL);
