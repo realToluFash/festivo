@@ -35,6 +35,7 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   id,
   name: id,
   servedAt: null,
+  scheduleItem: null,
   answer: 'choose',
   skippable: false,
   dishes,

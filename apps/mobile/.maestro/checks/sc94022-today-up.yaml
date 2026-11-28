@@ -1,0 +1,13 @@
+# sc-94022: Today's top at the device's text size (set outside the flow), PORTRAIT. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '60%, 80%', end: '60%, 40%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: mid

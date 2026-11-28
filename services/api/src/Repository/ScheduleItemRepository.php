@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Event;
+use App\Entity\MenuCourse;
 use App\Entity\ScheduleItem;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -33,6 +34,11 @@ final class ScheduleItemRepository extends ServiceEntityRepository implements Ev
     public function findOnEvent(Event $event): array
     {
         return $this->findBy(['event' => $event], ['startsAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    public function findOneByCourse(MenuCourse $course): ?ScheduleItem
+    {
+        return $this->findOneBy(['course' => $course]);
     }
 
     public function countOnEvent(Event $event): int

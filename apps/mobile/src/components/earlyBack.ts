@@ -1,37 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
-let shutPicker: (() => void) | null = null;
+let shutPicker: (() => boolean) | null = null;
 
 /** For a window under a picker: true when an open picker took this Back as its own. */
 export function pickerTookBack(): boolean {
-  if (shutPicker == null) return false;
-  shutPicker();
-  return true;
+  return shutPicker?.() ?? false;
 }
 
 // Android can deliver one early Back twice, the second copy to the window beneath, seen 0.3 s after the first had shut the picker (sc-44486).
-export const SECOND_DELIVERY_MS = 600;
+export const SECOND_DELIVERY_MS = 400;
+// A Back this long after an early one acts as usual. Counted from the tap, since a busy JS thread is handed the early Back late (sc-44486).
+export const NEXT_BACK_MS = 600;
 
-/** `close` answers Back, on the screen beneath and in a window under it. If a Back came before `opened`, the release still takes and drops Back for `SECOND_DELIVERY_MS`; any other release ends the hold at once. */
+/** `close` answers Back, on the screen beneath and in a window under it. If a Back came before `opened`, the hold, once released, still takes and drops Back until `NEXT_BACK_MS` after the tap that made it, and for at least `SECOND_DELIVERY_MS` after the first such Back; any other release ends the hold at once. */
 export function holdBack(close: () => void): { opened: () => void; release: () => void } {
+  const tappedAt = Date.now();
   let released = false;
   let open = false;
-  let early = false;
-  const shut = () => {
-    if (released) return;
-    early ||= !open;
-    close();
-  };
-  shutPicker = shut;
-  const listener = BackHandler.addEventListener('hardwareBackPress', () => {
-    shut();
+  let earlyAt: number | null = null;
+  const dropLeft = () =>
+    earlyAt == null
+      ? 0
+      : Math.max(tappedAt + NEXT_BACK_MS, earlyAt + SECOND_DELIVERY_MS) - Date.now();
+  // The clock is read too: a busy JS thread can hand over a Back before the timer that was due.
+  const take = () => {
+    if (released && dropLeft() <= 0) {
+      end();
+      return false;
+    }
+    if (!released) {
+      if (!open) earlyAt ??= Date.now();
+      close();
+    }
     return true;
-  });
+  };
+  shutPicker = take;
+  const listener = BackHandler.addEventListener('hardwareBackPress', take);
 
   const end = () => {
     listener.remove();
-    if (shutPicker === shut) shutPicker = null;
+    if (shutPicker === take) shutPicker = null;
   };
 
   return {
@@ -41,7 +50,7 @@ export function holdBack(close: () => void): { opened: () => void; release: () =
     release: () => {
       if (released) return;
       released = true;
-      if (early) setTimeout(end, SECOND_DELIVERY_MS);
+      if (dropLeft() > 0) setTimeout(end, dropLeft());
       else end();
     },
   };

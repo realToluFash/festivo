@@ -34,6 +34,7 @@ const MAIN: MenuCourse = {
   id: 'c_main',
   name: 'Main',
   servedAt: null,
+  scheduleItem: null,
   answer: 'choose',
   skippable: false,
   ownItems: [],

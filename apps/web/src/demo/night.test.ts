@@ -1,3 +1,4 @@
+import { MENU_COURSE_NAME_MAXIMUM } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -240,5 +241,16 @@ describe('the boards', () => {
   it('turns the picker into the plain place name with one track', () => {
     expect(nightAt('populated', { oneTrack: true }).night.tracks).toHaveLength(1);
     expect(nightAt('empty_track').night.tracks).toHaveLength(0);
+  });
+});
+
+describe('the long course names (sc-3898)', () => {
+  it('keeps each within the characters the API allows a course name', () => {
+    const names = nightAt('course_long')
+      .night.tracks.flatMap((one) => one.items)
+      .flatMap((one) => (one.course == null ? [] : [one.course]));
+    expect(names).toHaveLength(2);
+    for (const name of names)
+      expect([...name].length).toBeLessThanOrEqual(MENU_COURSE_NAME_MAXIMUM);
   });
 });

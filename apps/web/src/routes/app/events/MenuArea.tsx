@@ -855,7 +855,8 @@ function Courses({
       const course = openCourse;
       if (course == null) return;
       const changed = await api.changeMenuCourse(event.id, course.id, {
-        ...details,
+        name: details.name,
+        ...(course.scheduleItem == null ? { servedAt: details.servedAt } : {}),
         answer: course.answer,
         skippable: course.skippable,
         ownItems: open.own.map((one) => one.name.trim()),
@@ -924,7 +925,7 @@ function Courses({
     try {
       const changed = await api.changeMenuCourse(event.id, course.id, {
         name: course.name,
-        servedAt: course.servedAt,
+        ...(course.scheduleItem == null ? { servedAt: course.servedAt } : {}),
         answer,
         skippable,
       });
@@ -2017,6 +2018,13 @@ function Courses({
                   adding={open.kind === 'addCourse'}
                   problems={open.pressed ? courseProblems(open.form) : null}
                   zone={zoneCity(event.timeZone)}
+                  linked={
+                    open.kind === 'editCourse' &&
+                    openCourse?.scheduleItem != null &&
+                    openCourse.servedAt != null
+                      ? { time: openCourse.servedAt, title: openCourse.scheduleItem.title }
+                      : null
+                  }
                   own={open.own}
                   ownProblems={open.pressed ? ownItemProblems(open.own) : null}
                   onOwn={(own) => setOpen({ ...open, own })}

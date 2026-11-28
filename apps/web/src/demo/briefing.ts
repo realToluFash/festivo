@@ -669,9 +669,10 @@ const STATES = {
   docked: () =>
     start({
       name: 'Docked, the Briefing column with a Copied and a Shared row',
-      note: 'Open it at 1280 and 1440 × 800: Sade’s details docked, Station and Briefing give way, her Briefing in the details with Send again and Copy, Amina Copied and Emeka Shared whole in Link. Close the details and both columns are back.',
+      note: 'Open it at 1280 and 1440 × 800: Sade’s details docked, Station and Briefing give way, her Briefing in the details with Send again and Copy, Amina Copied and Emeka Shared whole in Link, and Reminder the day before between the card and the Roster, as the product has it. Close the details and both columns are back.',
       people: people().map(emekaShared),
       open: 'sade',
+      notices: notices(),
     }),
   notLive: () =>
     start({

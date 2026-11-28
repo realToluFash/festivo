@@ -30,7 +30,7 @@ export function CountryPicker({
   disabled?: boolean;
   /** For a phone: "+234 Nigeria", and only countries that can be dialled. */
   withCallingCode?: boolean;
-  /** Only the flag and the calling code, "🇬🇧 +44", beside a number. */
+  /** Only the flag and the calling code, "🇬🇧 +44", beside a number; the space does not break, so Android keeps the code beside the flag. */
   compact?: boolean;
   /** A line about it shows under it. */
   wrong?: boolean;
@@ -63,7 +63,7 @@ export function CountryPicker({
       disabled={disabled}
       wrong={wrong}
       line={line}
-      shown={compact ? `${flag(value)} ${callingCode(value) ?? ''}`.trim() : undefined}
+      shown={compact ? `${flag(value)}\u00A0${callingCode(value) ?? ''}`.trim() : undefined}
       pickerRef={pickerRef}
       testID={testID}
     />

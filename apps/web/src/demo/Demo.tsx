@@ -16,8 +16,12 @@ import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { ContractBilling } from './ContractBilling.tsx';
+import { ContractEmail } from './ContractEmail.tsx';
+import { CONTRACT_PAGES } from './contract.ts';
 import { AllCredits } from './Credits.tsx';
 import { CREDITS_PAGES } from './credits.ts';
+import { StaffContract } from './StaffContract.tsx';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { LimitReached } from './LimitReached.tsx';
@@ -78,7 +82,9 @@ import { GUESTS_PAGES } from './guests.ts';
 import { GuestsMark } from './GuestsMark.tsx';
 import { MARK_PAGES } from './guestsMark.ts';
 import { GuestsMany } from './GuestsMany.tsx';
+import { GuestsSeating } from './GuestsSeating.tsx';
 import { MANY_PAGES } from './guestsMany.ts';
+import { SEATING_PAGES as GUEST_SEATING_PAGES } from './guestsSeating.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { KitchenSheetPage } from './KitchenSheet.tsx';
 import { SHEET_PAGES, STATION_PAGES } from './kitchenSheet.ts';
@@ -102,6 +108,10 @@ import { HowItsGoingPage } from './HowItsGoing.tsx';
 import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
+import { ServiceFirePage } from './ServiceFire.tsx';
+import { AutomaticMessagesPage } from './AutomaticMessages.tsx';
+import { AUTO_STATES, AUTO_STATE_WHAT } from './automaticMessages.ts';
+import { FIRE_STATES, FIRE_STATE_WHAT } from './serviceFire.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { JobsShiftsPage } from './JobsShifts.tsx';
 import { StaffHoursPage } from './StaffHours.tsx';
@@ -366,6 +376,9 @@ export default function Demo() {
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
       <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
+      <Route path="settings/plan-and-billing/contract" element={<ContractBilling />} />
+      <Route path="support/contract" element={<StaffContract />} />
+      <Route path="contract-email" element={<ContractEmail />} />
       <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="limit-reached" element={<LimitReached />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
@@ -387,10 +400,13 @@ export default function Demo() {
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
       <Route path="guests/many" element={<GuestsMany />} />
+      <Route path="guests/seating" element={<GuestsSeating />} />
       <Route path="pass" element={<PassPage />} />
       <Route path="queue" element={<QueuePage />} />
       <Route path="team" element={<TeamPage />} />
       <Route path="how-its-going" element={<HowItsGoingPage />} />
+      <Route path="service-fire" element={<ServiceFirePage />} />
+      <Route path="automatic-messages" element={<AutomaticMessagesPage />} />
       <Route path="service-room" element={<ServiceRoomPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -518,6 +534,11 @@ function DemoHome({ from }: { from: string }) {
           Select many guests, Add to group and Remove from the list · sc-3776 · desktop and 320
         </h3>
         <BoardPages pages={MANY_PAGES} />
+        <h3>
+          The list reads the plan: Table, Unseated, Seat and Assign table · sc-4025 · desktop and
+          320
+        </h3>
+        <BoardPages pages={GUEST_SEATING_PAGES} />
         <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
@@ -631,6 +652,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={HOW_ITS_GOING_PAGES} />
         <h3>Service · the whole room as a plan or a list (sc-4026) · desktop</h3>
         <BoardPages pages={ROOM_PAGES} />
+        <h3>Service · starting service and firing each course (sc-4009) · desktop</h3>
+        <BoardPages pages={FIRE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -669,6 +692,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+        <h3>Automatic messages: Reminders to answer and Before you come (sc-3974) · desktop</h3>
+        <BoardPages pages={AUTO_PAGES} />
         <h3>The unsubscribe page, signed out · phone, tablet and desk</h3>
         <BoardPages pages={UNSUBSCRIBE_PAGES} />
       </section>
@@ -719,6 +744,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>
+          Enterprise on a contract, paid by Paddle’s invoice: the overdue banner, the staff form and
+          the emails (sc-613) · desktop, the emails at 600 px
+        </h3>
+        <BoardPages pages={CONTRACT_PAGES} />
         <h3>
           The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
           English and French
@@ -857,6 +887,26 @@ const HOW_ITS_GOING_PAGES = [
     states: SERVICE_STATES.map((state) => ({
       to: `/demo/how-its-going?state=${state}`,
       name: SERVICE_STATE_WHAT[state],
+    })),
+  },
+];
+
+const AUTO_PAGES = [
+  {
+    name: 'The host switches automatic messages on and off',
+    states: AUTO_STATES.map((state) => ({
+      to: `/demo/automatic-messages?state=${state}`,
+      name: AUTO_STATE_WHAT[state],
+    })),
+  },
+];
+
+const FIRE_PAGES = [
+  {
+    name: 'The floor lead starts service and fires each course',
+    states: FIRE_STATES.map((state) => ({
+      to: `/demo/service-fire?state=${state}`,
+      name: FIRE_STATE_WHAT[state],
     })),
   },
 ];

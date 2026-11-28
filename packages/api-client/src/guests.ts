@@ -293,6 +293,21 @@ export interface NewGuest {
   allowDuplicate?: boolean;
 }
 
+/** One row of a pick from the phone's contacts, as the review list checked it (sc-7579): `companions` is how many places. */
+export interface ContactGuest {
+  fullName: string;
+  email: string | null;
+  mobile: { countryCode: string; number: string } | null;
+  companions: number;
+}
+
+/** The plan's people per event, null for no limit, beside the people on the list. */
+export interface GuestRoom {
+  plan: string;
+  allowed: number | null;
+  people: number;
+}
+
 /** One guest as their details show them (sc-3773). */
 export interface GuestDetails extends Guest {
   added: { at: string; by: string | null };

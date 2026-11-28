@@ -156,6 +156,7 @@ export function ListPicker({
   return (
     <>
       <Pressable
+        key={focusBack.openerKey}
         ref={field}
         style={[
           styles.field,

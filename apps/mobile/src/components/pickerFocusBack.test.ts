@@ -120,6 +120,26 @@ describe('a picker hands TalkBack back to whatever opened it (sc-43908, sc-10332
     expect(device.blurred).toEqual([]);
   });
 
+  it('gives the opener a new key at each close under TalkBack, since TalkBack takes a hover only once on a view (qa4 #104048)', () => {
+    const keys = [render(true).back.openerKey];
+    for (let close = 0; close < 3; close++) {
+      render(true).back.opening(picker);
+      render(false).back.closing();
+      keys.push(render(true).back.openerKey);
+    }
+
+    expect(new Set(keys).size).toBe(4);
+  });
+
+  it('keeps the opener’s key with TalkBack off', () => {
+    device.readerOn = false;
+    const before = render(true).back.openerKey;
+    render(true).back.opening(picker);
+    render(false).back.closing();
+
+    expect(render(true).back.openerKey).toBe(before);
+  });
+
   it('changes nothing on iOS', () => {
     device.os = 'ios';
     device.focused = typedIn;
@@ -128,6 +148,7 @@ describe('a picker hands TalkBack back to whatever opened it (sc-43908, sc-10332
 
     expect(render(true).asked.answer).toBeUndefined();
     expect(device.blurred).toEqual([]);
+    expect(render(true).back.openerKey).toBe(0);
   });
 });
 
@@ -150,8 +171,21 @@ describe('New event’s Type, Time zone and Currency sheet (sc-103322)', () => {
     ['zone', 'pickers.timeZone'],
     ['currency', 'pickers.currency'],
   ])('opens %s from the picker TalkBack goes back to', (which, ref) => {
-    const box = screen.slice(screen.indexOf(`ref={${ref}}`));
+    const start = screen.lastIndexOf('<', screen.indexOf(`ref={${ref}}`));
+    const box = screen.slice(start, screen.indexOf('/>', start));
 
-    expect(box.slice(0, box.indexOf('/>'))).toContain(`openList('${which}', ${ref})`);
+    expect(box).toContain(`openList('${which}', ${ref})`);
+    expect(box).toContain('key={listFocusBack.openerKey}');
+  });
+});
+
+describe('Code and Country, the ListPicker (sc-43908)', () => {
+  const picker = readFileSync(join(import.meta.dirname, 'ListPicker.tsx'), 'utf8');
+
+  it('keys its opener, so every close hands TalkBack back to it', () => {
+    const start = picker.lastIndexOf('<Pressable', picker.indexOf('ref={field}'));
+    const opener = picker.slice(start, picker.indexOf('>', picker.indexOf('ref={field}')));
+
+    expect(opener).toContain('key={focusBack.openerKey}');
   });
 });

@@ -655,8 +655,8 @@ export const NIGHT_STATES = {
     clock: '18:44',
     hall: DINING,
     courses: {
-      dinner: 'Plat principal : filet de bœuf, purée de patates douces et sauce au poivre',
-      cake: 'Sobremesa: bolo de casamento com doce de leite e frutas vermelhas da estação',
+      dinner: 'Plat principal : filet de bœuf et purée de patates douces',
+      cake: 'Sobremesa: bolo de casamento com doce de leite e frutas',
     },
   },
   picker_earlier_day: {
