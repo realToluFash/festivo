@@ -55,10 +55,7 @@ import {
   type RunOut,
   ITEM,
   alertOf,
-  answer,
-  askedNow,
   lateArrival,
-  options,
   openPanel,
   waitingWords,
 } from './RunOutModel.ts';
@@ -223,7 +220,6 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
               testID="service.demo.late"
             />
           )}
-          {s.runOut != null && <AnswerSwitch r={s.runOut} apply={applyRunOut} />}
         </DemoOnly>
       </ScrollView>
       <TabBar
@@ -891,16 +887,3 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 });
-
-function AnswerSwitch({ r, apply }: { r: RunOut; apply: (next: RunOut) => void }) {
-  const g = askedNow(r).sort((a, b) => a.table - b.table || a.seat - b.seat)[0];
-  const o = g == null ? undefined : options(g).find((x) => x.no == null);
-  if (g == null || o == null) return null;
-  return (
-    <SecondaryButton
-      label={`At table ${g.table}, ${g.name} answers ${o.label}`}
-      onPress={() => apply(answer(r, g.id, o.item))}
-      testID="service.demo.answer"
-    />
-  );
-}
