@@ -17,12 +17,30 @@ public class ContactPickerModule: Module {
       let picker = CNContactPickerViewController()
       let picking = Picking { contacts in
         self.picking = nil
-        promise.resolve(contacts.map(Self.kept))
+        Self.once(presenter, isClearOf: picker) {
+          promise.resolve(contacts.map(Self.kept))
+        }
       }
       self.picking = picking
       picker.delegate = picking
       presenter.present(picker, animated: true)
     }.runOnQueue(.main)
+  }
+
+  /// The delegate hears Done while the picker is still going, and a window React Native puts up or takes down meanwhile is refused by UIKit (sc-7579).
+  private static func once(
+    _ presenter: UIViewController,
+    isClearOf picker: UIViewController,
+    waited: Int = 0,
+    then: @escaping () -> Void
+  ) {
+    if presenter.presentedViewController !== picker || waited >= 40 {
+      then()
+      return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+      once(presenter, isClearOf: picker, waited: waited + 1, then: then)
+    }
   }
 
   private static func kept(_ contact: CNContact) -> [String: Any] {
