@@ -4115,7 +4115,7 @@
     "saved": "Saved. The rules are on everyone’s shift page now.",
     "notSaved": "The rules were not saved. Try again in a moment.",
     "previewWho": "Whose page",
-    "previewSearch": "Search the staff",
+    "previewSearch": "Search by name",
     "previewBanner": "Preview only. Nothing is recorded: no read and no link open.",
     "previewNoShift": "You are on the staff for {{day}}, with no shift yet.",
     "previewLoading": "Loading their page…",
