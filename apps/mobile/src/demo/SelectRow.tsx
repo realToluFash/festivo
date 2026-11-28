@@ -71,7 +71,7 @@ export function SelectRow({
             {label}
           </Text>
         ) : compact ? (
-          <Text size={17} weight="semibold" accessible={false}>
+          <Text size={17} accessible={false}>
             {`${country.flag} ${country.dial}`}
           </Text>
         ) : labelled ? (

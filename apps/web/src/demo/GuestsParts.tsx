@@ -89,13 +89,14 @@ export function MarkLead({ reply }: { reply: Reply }) {
   );
 }
 
-/** The selection bar, one for sc-3776 and sc-46880: the count with its companions, Mark as invited while invites are on, Add to group, Remove from the list, Clear. Each demo passes the actions; one it does not build points to the demo that does. */
+/** The selection bar, one for sc-3776, sc-46880 and sc-4025: the count with its companions, Mark as invited while invites are on, Add to group, Assign table with seating, Remove from the list, Clear. One primary: Mark as invited, else Assign table. Each demo passes the actions; one it does not build points to the demo that does. */
 export function SelectBar({
   count,
   companions,
   pretend,
   onMark,
   onAdd,
+  onAssign = null,
   onRemove,
   onClear,
 }: {
@@ -104,6 +105,7 @@ export function SelectBar({
   pretend: number | null;
   onMark: (() => void) | null;
   onAdd: () => void;
+  onAssign?: (() => void) | null;
   onRemove: () => void;
   onClear: () => void;
 }) {
@@ -124,6 +126,16 @@ export function SelectBar({
         <button type="button" className="gs-pill is-secondary" data-focus="add" onClick={onAdd}>
           {MW.addToGroup}
         </button>
+        {onAssign != null && (
+          <button
+            type="button"
+            className={onMark == null ? 'gs-pill is-primary' : 'gs-pill is-secondary'}
+            data-focus="assign"
+            onClick={onAssign}
+          >
+            {MW.assignTable}
+          </button>
+        )}
         <button
           type="button"
           className="gs-pill is-secondary"
