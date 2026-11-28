@@ -1,0 +1,112 @@
+# sc-32801: the app demo's Needs you states beside product events E2 (overdue) and E7 (started), phone.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${E2}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'QA2 Overdue'
+    timeout: 30000
+- takeScreenshot: needsYouOverdue-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouOverdue-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouOverdue
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- takeScreenshot: needsYouOverdue-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouOverdue-demo
+- openLink: ${METRO_URL}/--/events/${E7}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'QA7 Started.*'
+    timeout: 30000
+- takeScreenshot: live-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: live-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=live
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- takeScreenshot: live-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: live-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouLoading
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- takeScreenshot: needsYouLoading-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouLoading-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouFailed
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- takeScreenshot: needsYouFailed-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouFailed-demo

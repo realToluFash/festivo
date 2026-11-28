@@ -1,0 +1,21 @@
+# sc-31163 regression: the faces on Members keep their initials. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members
+- extendedWaitUntil:
+    visible: 'Folake Adeyemi'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'FA'
+- assertVisible: 'JM'
+- takeScreenshot: members
+- openLink: ${METRO_URL}/--/demo/settings/members?state=priya
+- extendedWaitUntil:
+    visible:
+      id: 'members.person.PS'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'PS'
+- takeScreenshot: members-priya

@@ -1,0 +1,25 @@
+# sc-89866: Sign out everywhere else… opens Confirm it’s you.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      text: 'Ways to sign in'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Offline.*'
+    timeout: 20000
+- scrollUntilVisible:
+    element: 'Sign out everywhere else.*'
+    direction: DOWN
+- tapOn: 'Sign out everywhere else.*'
+- waitForAnimationToEnd
+- takeScreenshot: everywhere-ask
+- runFlow:
+    when:
+      visible: 'Sign them out'
+    commands:
+      - tapOn: 'Sign them out'
+      - waitForAnimationToEnd
+- takeScreenshot: everywhere-prove
+- assertVisible: 'Confirm it’s you'

@@ -1,0 +1,7 @@
+# sc-4002: the demo's door code form at its refused state.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people?code=refused
+- extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: code-refused-demo

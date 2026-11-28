@@ -1,0 +1,29 @@
+# sc-20824: Expo Go stopped, then opened by ${EVENT_ID}'s Edit details link, so no screen is behind it; ' Gala' typed onto the name, Save changes opens the event's page with Saved.
+appId: host.exp.Exponent
+---
+- stopApp
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- takeScreenshot: opened
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Gala'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- assertVisible: '(Saved|Cambios guardados)'
+- assertVisible: '.*Gala.*'
+- takeScreenshot: saved

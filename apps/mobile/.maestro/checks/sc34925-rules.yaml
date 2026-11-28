@@ -1,0 +1,8 @@
+# sc-34925: Sign-in rules for a member of ORG, read top to bottom: the card, Where you stand, What changed.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- runFlow: sc34925-rules-here.yaml

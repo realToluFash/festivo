@@ -1,0 +1,20 @@
+# sc-1454: a walk-in whose name is already listed gets the amber panel, the alert mark and both pills.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'Zzqx Walker'
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn' }, timeout: 10000 }
+- tapOn: { id: 'checkIn.walkIn' }
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn.name' }, timeout: 10000 }
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 80
+- inputText: 'guest NUMBER 3'
+- tapOn: { id: 'checkIn.walkIn.add' }
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn.same' }, timeout: 10000 }
+- assertVisible: { id: 'checkIn.walkIn.arrive' }
+- assertVisible: { id: 'checkIn.walkIn.new' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: duplicate

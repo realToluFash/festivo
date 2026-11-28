@@ -1,0 +1,100 @@
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'language.open'
+    timeout: 90000
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.sheet'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'language.${LANG}'
+- tapOn:
+    id: 'language.${LANG}'
+- tapOn:
+    id: 'language.done'
+    optional: true
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-1-arrival
+- tapOn:
+    id: 'redeem.event.number'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-2-number-keys-up
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-3-keys-closed
+- tapOn:
+    id: 'redeem.event.number'
+- inputText: '7700900123'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: chip-4-typed-keys-up
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: chip-5-typed-keys-closed
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.close'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: 'Portugal'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: chip-6-list-search-portugal
+- tapOn:
+    id: 'redeem.event.country.PT'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-7-pt-chosen
+- tapOn:
+    id: 'redeem.event.number'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-8-pt-number-keys-up
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: chip-9-pt-keys-closed
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.close'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: ${UK_NAME}
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'redeem.event.country.GB'
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'redeem.event.number'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: chip-10-gb-number-keys-up
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: chip-11-gb-keys-closed

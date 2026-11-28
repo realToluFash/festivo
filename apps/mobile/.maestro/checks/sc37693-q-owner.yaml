@@ -1,0 +1,25 @@
+# sc-37693: making Priya an owner asks for proof, and the proof makes her one.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'members.row.${PRIYA}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${PRIYA}' }
+- waitForAnimationToEnd
+- tapOn: { id: 'members.changeRole' }
+- waitForAnimationToEnd
+- tapOn: '.*including billing.*'
+- tapOn: { id: 'members.role.save' }
+- waitForAnimationToEnd
+- takeScreenshot: q-owner-proof
+- tapOn: { id: 'members.prove.password' }
+- waitForAnimationToEnd
+- inputText: ${PASSWORD}
+- waitForAnimationToEnd
+- takeScreenshot: q-owner-typed
+- tapOn: 'Make owner'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: q-owner-done

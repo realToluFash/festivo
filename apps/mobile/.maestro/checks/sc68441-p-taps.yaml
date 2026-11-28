@@ -1,0 +1,26 @@
+# sc-68441: at the largest sizes each sidebar row opens with one tap, and the pill opens the switcher.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd: { timeout: 10000 }
+- tapOn: { text: 'Calendar', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-calendar
+- tapOn: { text: 'Events', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-events
+- tapOn: { text: 'Ire Events', index: 0 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: tap-event
+- tapOn: { text: '.*Events', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-back
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- tapOn: { text: 'Settings', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-settings
+- swipe: { start: '10%, 15%', end: '10%, 85%', duration: 600 }
+- tapOn: { id: 'home.switchOrganisation' }
+- waitForAnimationToEnd
+- takeScreenshot: tap-switcher

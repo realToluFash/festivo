@@ -1,0 +1,23 @@
+# sc-54450: a long copied message shows six lines and Show all on Whose reply is this?; Show all shows it whole.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 10000
+- takeScreenshot: whose
+- runFlow:
+    when:
+      visible:
+        id: 'paste.quote.all'
+    commands:
+      - tapOn:
+          id: 'paste.quote.all'
+      - takeScreenshot: all

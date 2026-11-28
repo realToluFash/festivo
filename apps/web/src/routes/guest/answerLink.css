@@ -1,0 +1,54 @@
+/* sc-1291: an answer link from the invitation, as the guest demo draws it (GuestPage-AnswerLink.dc.html). */
+
+:where(.guest-page) .gp-link {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-link-was {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 12px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-link-was p {
+  margin: 0;
+}
+
+:where(.guest-page) .gp-link-picked {
+  margin-top: 12px;
+  cursor: default;
+}
+
+:where(.guest-page) .gp-link-picked .gp-now {
+  flex-shrink: 1;
+  white-space: normal;
+  text-align: right;
+}
+
+:where(.guest-page) .gp-link > .gp-notice {
+  margin-top: 12px;
+}
+
+:where(.guest-page) .gp-link > .gp-filled {
+  margin-top: 18px;
+}
+
+:where(.guest-page) .gp-link > .gp-outlined {
+  margin-top: 10px;
+}
+
+:where(.guest-page) .gp-link > .gp-greet + .gp-sub {
+  margin-top: 0;
+}
+
+:where(.guest-page) .gp-link > .gp-sub + .gp-outlined {
+  margin-top: 18px;
+}

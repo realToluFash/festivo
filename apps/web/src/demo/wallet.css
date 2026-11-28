@@ -1,0 +1,262 @@
+/* sc-9956: the wallet button in the code card, and the pass as Wallet draws it (WalletPass.dc.html). */
+
+.wl-badge {
+  display: inline-flex;
+  align-self: center;
+  margin-top: 4px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+.wl-badge:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 3px;
+}
+
+.wl-badge-art {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px dashed var(--colorInkOnDark);
+  border-radius: 10px;
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
+  font: 600 16px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.wl-badge.is-google .wl-badge-art {
+  border-radius: 24px;
+}
+
+.wl-badge-mark {
+  width: 24px;
+  height: 18px;
+  border: 1.5px solid var(--colorInkOnDark);
+  border-radius: 4px;
+}
+
+.wl-badge.is-google .wl-badge-mark {
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+}
+
+.wl-badge.is-start {
+  align-self: flex-start;
+  margin-top: 14px;
+}
+
+.wl-line {
+  margin-top: 10px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+  text-align: center;
+}
+
+.wl-line.is-start {
+  text-align: start;
+}
+
+/* The pass: Wallet renders it in the platform's type, white, as the card the guest just saw. */
+
+.wl-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--colorPage);
+}
+
+.wl-tweaks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--colorControlBorder);
+  border-radius: 12px;
+}
+
+.wl-demo-only {
+  color: var(--colorInkSecondary);
+  font: 400 13px/1.4 var(--fontFamily);
+}
+
+.wl-tweak-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wl-tweak {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 16px;
+  color: var(--colorInk);
+  font: 500 14px/1 var(--fontFamily);
+  text-decoration: none;
+}
+
+.wl-tweak[aria-current] {
+  border-color: var(--colorInk);
+  background: var(--colorInset);
+}
+
+.wl-stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.wl-pass {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 340px;
+  max-width: 100%;
+  padding: 18px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInkOnDark);
+  color: var(--colorInk);
+}
+
+.wl-pass.is-apple {
+  font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+}
+
+.wl-pass.is-google {
+  border-radius: 24px;
+  font-family: Roboto, 'Google Sans', system-ui, sans-serif;
+}
+
+.wl-a-top,
+.wl-g-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wl-issuer {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.wl-a-primary {
+  overflow: hidden;
+  font-size: 24px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-a-secondary,
+.wl-g-text {
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-door {
+  color: var(--colorInkSecondary);
+  font-size: 14px;
+}
+
+.wl-g-header {
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.wl-g-header.is-two {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wl-qr-box {
+  align-self: center;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--colorInkOnDark);
+}
+
+.wl-qr {
+  display: block;
+  fill: var(--colorInk);
+}
+
+.wl-standin {
+  display: inline-block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1.5px dashed var(--colorInkTertiary);
+}
+
+.wl-standin.is-circle {
+  border-radius: 50%;
+}
+
+.wl-standin.is-square {
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
+.wl-expired {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.wl-back {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.wl-back-row dd {
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.wl-back-line {
+  color: var(--colorInkSecondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.wl-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  padding: 12px;
+  border: 1px dashed var(--colorControlBorder);
+  border-radius: 12px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.wl-devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

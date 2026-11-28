@@ -1,0 +1,17 @@
+# sc-90463: the reference. Expo Go closed, the iPad on its side, then the app opened on an event; the sidebar at its top and foot. Vars: METRO_URL, EVENT_ID.
+appId: host.exp.Exponent
+---
+- stopApp
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: launched-top
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: launched-foot

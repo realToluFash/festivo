@@ -1,0 +1,29 @@
+# sc-4015: opens the station list from ${EVENT_ID}'s station header, picks ${PICK_ID}, then opens the station again.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+- tapOn:
+    id: 'station.title'
+- extendedWaitUntil:
+    visible:
+      id: 'station.sheet'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: sheet
+- tapOn:
+    id: 'station.pick.${PICK_ID}'
+- waitForAnimationToEnd
+- takeScreenshot: picked
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: reopened
