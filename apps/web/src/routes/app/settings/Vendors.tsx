@@ -52,6 +52,7 @@ import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { BudgetRow, Rows as RowList } from '../events/QuoteParts.tsx';
 import { vendorPagePath } from '../events/quotesArea.ts';
+import { type MenuEdge, menuEdge } from './menuEdge.ts';
 import {
   BLANK,
   type Draft,
@@ -393,7 +394,7 @@ function Loaded({
   const from = page.vendors.length === 0 ? 0 : (page.page - 1) * PAGE_SIZE + 1;
   const categoryWord = (key: VendorCategory) => t(`vendors.categories.${key}`);
   const tools = useRef<HTMLDivElement>(null);
-  const [edge, setEdge] = useState<'end' | 'start'>('end');
+  const [edge, setEdge] = useState<MenuEdge>('end');
 
   useLayoutEffect(() => {
     if (menu == null) return;
@@ -402,10 +403,9 @@ function Loaded({
       const button = list?.parentElement?.querySelector<HTMLElement>('.desk-filter');
       const pane = tools.current?.closest<HTMLElement>('.desk-page');
       if (list == null || button == null || pane == null) return;
-      const fitsAtEnd =
-        button.getBoundingClientRect().right - list.offsetWidth >=
-        pane.getBoundingClientRect().left;
-      setEdge(fitsAtEnd ? 'end' : 'start');
+      setEdge(
+        menuEdge(button.getBoundingClientRect(), list.offsetWidth, pane.getBoundingClientRect()),
+      );
     };
 
     place();

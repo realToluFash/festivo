@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { cssRule, mediaBlock, stylesheet } from '../test-styles.ts';
-import { menuEdge } from './vendors.ts';
+import { menuEdge } from '../routes/app/settings/menuEdge.ts';
 
 const tested = config();
 const WIDE = mediaBlock('(width > 40rem)', stylesheet(import.meta.dirname, 'vendorsMenu.css'));
