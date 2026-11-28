@@ -215,8 +215,10 @@ describe('the briefing on the web (sc-3917)', () => {
 
   it('keeps Reminder the day before between the card and the Roster with details docked (sc-102333)', async () => {
     await open('docked');
+    const briefing = screen.getByRole('region', { name: BW.card });
     const card = screen.getByRole('region', { name: NW.card });
     const roster = screen.getByRole('table', { name: 'Roster' });
+    expect(briefing.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(card.compareDocumentPosition(roster) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
