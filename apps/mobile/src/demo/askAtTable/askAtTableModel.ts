@@ -156,7 +156,7 @@ export const ASK_STATE_WHAT: Readonly<Record<AskStateName, readonly [string, str
   ],
   askAvailable: [
     'Chicken available again',
-    'Every ask leaves Next; one line says Chicken is available again; answers stand',
+    'Every ask leaves Next; one line says Chicken is available again; answers stand, with no Change',
   ],
   askOffline: [
     'No connection',
@@ -172,6 +172,7 @@ export function askStateOf(raw: string | undefined): AskStateName {
 export const HELD_LINE = `${RUN_OUT} has run out · waiting for the floor lead`;
 export const ASKING_LINE = `${RUN_OUT} has run out · asking at the table`;
 export const AVAILABLE_LINE = `${RUN_OUT} is available again`;
+export const AVAILABLE_REFUSED = `${RUN_OUT} is available again, so answers can’t change. Nothing changed.`;
 export const NO_ASKS = 'No asks open.';
 export const OPEN_INTRO = 'Seat order. One tap records the guest’s answer.';
 export const OFFLINE_RECORD =
@@ -362,6 +363,10 @@ export function canChange(x: Seat): boolean {
   return x.to != null && x.by === 'guest' && x.stage === 'To serve';
 }
 
+export function changeable(s: AskState, x: Seat): boolean {
+  return !s.available && canChange(x);
+}
+
 export interface Ask {
   table: number;
   item: string;
@@ -441,6 +446,7 @@ export function answer(s: AskState, guest: string, to: string): AskState {
   if (x == null) return s;
   const g = guestOf(guest);
   if (!s.online) return { ...s, refused: OFFLINE_RECORD };
+  if (s.available) return refuse(s, AVAILABLE_REFUSED);
   const opt = options(x).find((o) => o.to === to);
   if (opt == null) return s;
   if (opt.no != null) return refuse(s, `${opt.no.line}. Nothing changed.`);
@@ -458,7 +464,7 @@ export function answer(s: AskState, guest: string, to: string): AskState {
 
 export function openChange(s: AskState, guest: string): AskState {
   const x = seatOf(s, guest);
-  if (x == null || !canChange(x)) return s;
+  if (x == null || !changeable(s, x)) return s;
   return { ...s, changing: guest, refused: '' };
 }
 
@@ -514,7 +520,6 @@ export function markAvailable(s: AskState): AskState {
     available: true,
     note: '',
     open: null,
-    changing: null,
     screen: s.screen === 'ask' ? 'next' : s.screen,
     seats: s.seats.map((x) => ({ ...x, asked: false })),
     say: AVAILABLE_LINE,
@@ -541,7 +546,7 @@ export function floorSeats(s: AskState, table: number): readonly FloorSeat[] {
         guest: guestOf(x.guest),
         plate: `${items.join(' · ')} · ${x.stage}`,
         now: nowLine(x),
-        change: canChange(x),
+        change: changeable(s, x),
       };
     });
 }

@@ -5,6 +5,7 @@ import {
   ASKING_LINE,
   ASK_STATES,
   AVAILABLE_LINE,
+  AVAILABLE_REFUSED,
   HELD_LINE,
   NO_ASKS,
   OFFLINE_RECORD,
@@ -276,6 +277,24 @@ describe('Mark available again', () => {
     expect(AVAILABLE_LINE).toBe('Chicken is available again');
     expect(s.screen).toBe('next');
     expect(heldRows(s)).toEqual([]);
+  });
+
+  it('takes Change away, and refuses an answer sent after it', () => {
+    const s = seed('askAvailable');
+    expect(floorSeats(s, 9)[2]?.change).toBe(false);
+    expect(openChange(s, 'tb').changing).toBeNull();
+    const stale = markAvailable(seed('askChange'));
+    expect(stale.changing).toBe('tb');
+    const after = answer(stale, 'tb', 'Grilled fish');
+    expect(after.refused).toBe(AVAILABLE_REFUSED);
+    expect(AVAILABLE_REFUSED).toBe(
+      'Chicken is available again, so answers can’t change. Nothing changed.',
+    );
+    expect(seatOf(after, 'tb')?.to).toBe('Beef');
+    expect(after.changing).toBeNull();
+    const asked = answer(markAvailable(seed('askOpen')), 'ya', 'Beef');
+    expect(asked.refused).toBe(AVAILABLE_REFUSED);
+    expect(seatOf(asked, 'ya')?.to).toBeNull();
   });
 
   it('asks nobody once the item is available again', () => {
