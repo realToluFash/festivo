@@ -482,7 +482,7 @@ export function CountryStep({
   field: RefObject<TextInputInstance | null>;
   /** The search, hidden from the screen reader, so taking input focus says nothing. */
   quiet?: boolean;
-  /** Reached from step 1 or by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. Never on the phone with a screen reader on: the question is the list's first item there, so the list opens at its top (sc-100878). */
+  /** Reached from step 1 or by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
   onPick: (code: string) => void;
@@ -609,14 +609,16 @@ export function CountryStep({
             offset: headerHeight + failed.averageItemLength * failed.index,
             animated: false,
           });
-          setTimeout(
-            () =>
-              list.current?.scrollToIndex({
-                index: failed.index,
-                viewPosition: 0.5,
-                animated: false,
-              }),
-            tokens.motionFast,
+          [1, 2].forEach((pass) =>
+            setTimeout(
+              () =>
+                list.current?.scrollToIndex({
+                  index: failed.index,
+                  viewPosition: 0.5,
+                  animated: false,
+                }),
+              tokens.motionFast * pass,
+            ),
           );
         }}
         testID="createWalk.countries"
