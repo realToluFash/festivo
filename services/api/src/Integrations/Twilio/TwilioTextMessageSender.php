@@ -23,14 +23,14 @@ final readonly class TwilioTextMessageSender implements TextMessageSenderInterfa
     ) {
     }
 
-    public function send(string $to, string $body): void
+    public function send(string $to, string $body, ?string $statusCallback = null): ?string
     {
         $response = $this->http->request(
             'POST',
             Str\trim_right($this->apiBase, '/') . '/2010-04-01/Accounts/' . \rawurlencode($this->accountSid) . '/Messages.json',
             [
                 'auth_basic' => [$this->accountSid, $this->authToken],
-                'body' => ['To' => $to, 'From' => $this->from, 'Body' => $body],
+                'body' => ['To' => $to, 'From' => $this->from, 'Body' => $body] + (null === $statusCallback ? [] : ['StatusCallback' => $statusCallback]),
                 'timeout' => 10,
             ],
         );
@@ -38,5 +38,9 @@ final readonly class TwilioTextMessageSender implements TextMessageSenderInterfa
         if ($response->getStatusCode() >= 300) {
             throw new RuntimeException('The SMS provider refused the message with ' . $response->getStatusCode() . '.');
         }
+
+        $sid = $response->toArray(false)['sid'] ?? null;
+
+        return \is_string($sid) && '' !== $sid ? $sid : null;
     }
 }

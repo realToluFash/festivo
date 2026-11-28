@@ -6,6 +6,11 @@ namespace App\Domain\User\Interfaces;
 
 interface TextMessageSenderInterface
 {
-    /** @param non-empty-string $to E.164 */
-    public function send(string $to, string $body): void;
+    /**
+     * @param non-empty-string      $to             E.164
+     * @param non-empty-string|null $statusCallback where the provider reports the message's progress
+     *
+     * @return string|null the provider's id for the message, when it gave one
+     */
+    public function send(string $to, string $body, ?string $statusCallback = null): ?string;
 }

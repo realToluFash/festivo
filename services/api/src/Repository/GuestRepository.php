@@ -312,6 +312,12 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getResult();
     }
 
+    /** The guest added last with this number, whichever the organisation: whose language a keyword is answered in (sc-3946). */
+    public function findLatestByMobile(string $mobile): ?Guest
+    {
+        return $this->findOneBy(['mobile' => $mobile, 'removedAt' => null], ['id' => 'DESC']);
+    }
+
     /** Only through an event that is neither deleted nor a Draft, so their links answer as unknown ones and a restore brings them back (sc-1526, sc-3591). */
     public function findOneByLink(#[SensitiveParameter] string $token): ?Guest
     {

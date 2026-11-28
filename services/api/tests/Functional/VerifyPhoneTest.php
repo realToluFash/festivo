@@ -342,7 +342,7 @@ final class VerifyPhoneTest extends ApiTestCase
         return $described;
     }
 
-    /** @return list<array{to: string, body: string}> */
+    /** @return list<array{to: string, body: string, statusCallback: string|null}> */
     private function texts(): array
     {
         return self::service(RecordingTextMessageSender::class)->sent;

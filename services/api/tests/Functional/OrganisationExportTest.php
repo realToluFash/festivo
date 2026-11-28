@@ -139,6 +139,8 @@ final class OrganisationExportTest extends ApiTestCase
         'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
         'guest_reply_changes' => 'change history',
+        'text_stops' => "Soirely's own records",
+        'text_stop_lifts' => 'a keyed hash only, in no export',
         'guest_suppressions' => 'a keyed hash only, in no export: the guest\'s details show the opt-outs of the addresses on record (pm, 25 Nov, sc-3942; sc-3969)',
         'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",

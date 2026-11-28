@@ -24,7 +24,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.7",
         "elao/enum": "^3.0",
-        "giggsey/libphonenumber-for-php-lite": "^9.0",
+        "giggsey/libphonenumber-for-php": "^9.0",
         "lcobucci/jwt": "^5.6",
         "lexik/jwt-authentication-bundle": "^3.2",
         "minishlink/web-push": "^9",

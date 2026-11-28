@@ -283,7 +283,7 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         return self::service(RecordingWhatsAppSender::class);
     }
 
-    /** @return list<array{to: string, body: string}> */
+    /** @return list<array{to: string, body: string, statusCallback: string|null}> */
     private function texts(): array
     {
         return self::service(RecordingTextMessageSender::class)->sent;
