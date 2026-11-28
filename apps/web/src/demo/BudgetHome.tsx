@@ -2217,6 +2217,11 @@ interface DueItem {
 
 const GALA = { id: 'evt-gala-4', name: 'Gala Fundación Lucía', currency: 'EUR' } as const;
 const REMINDER_SENT = '2026-11-01';
+const SETTLED_SEVERAL: readonly string[] = [
+  'due_done_several',
+  'due_done_long',
+  'due_done_one_word',
+];
 const COLLEAGUE = 'Julien Moreau';
 
 const DUE_REFUSED: Record<DueRefusal, string> = {
@@ -2262,7 +2267,7 @@ function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
         currency: CURRENCY,
       },
     ];
-  if (first === 'due_several' || first.startsWith('due_done_'))
+  if (first === 'due_several' || SETTLED_SEVERAL.includes(first))
     return [
       ...wedding,
       {
@@ -2285,7 +2290,7 @@ function dueStartOf(first: string, items: readonly DueItem[]): Record<string, Du
   if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled', p9: 'gone' };
   if (first === 'due_refused') return { p6: 'owed', p7: 'cancelled' };
   if (first === 'due_refused_paid') return { p6: 'paidElsewhere', p7: 'owed' };
-  if (first === 'due_done' || first.startsWith('due_done_')) return all('paidElsewhere');
+  if (first === 'due_done' || SETTLED_SEVERAL.includes(first)) return all('paidElsewhere');
 
   return all('owed');
 }
