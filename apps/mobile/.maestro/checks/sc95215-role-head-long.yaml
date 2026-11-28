@@ -1,0 +1,23 @@
+# sc-95215: the role sheet's heading for ${PERSON2}, whose domain part is wider than the row. Its row is taller than the visible list at AX5, so it is tapped once partly in view.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.title}}.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'people.row.${PERSON2}'
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 40
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'people.row.${PERSON2}'
+- extendedWaitUntil:
+    visible:
+      id: 'people.roleSheet.scroll'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: head
