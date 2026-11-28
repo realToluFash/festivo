@@ -94,7 +94,6 @@ export interface Notes {
   shown: 'without' | 'notes';
   guest: string | null;
   draft: NoteDraft | null;
-  /** ?state=notesLive: a colleague's move mends a note while the plan is open. */
   live: boolean;
   said: string | null;
 }
