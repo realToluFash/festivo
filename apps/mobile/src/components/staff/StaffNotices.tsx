@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { type NoticeMark, reminderLines } from '@soirely/domain';
+
 import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
-import { type NoticeMark, flipReminder, reminderLines } from '../../kit/staffNotices.ts';
+import { flipReminder } from '../../kit/staffNotices.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { Notice } from '../Notice.tsx';
