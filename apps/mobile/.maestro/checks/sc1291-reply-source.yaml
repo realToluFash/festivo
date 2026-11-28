@@ -1,0 +1,44 @@
+# sc-1291: the host's list names a reply from an email answer link (${LINKED}) and gives no source for a reply on the page (${PAGE}); beside the app demo's Guests replyFromLink, at ${LAYOUT}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${LINKED}'
+    centerElement: true
+- takeScreenshot: guests-${LAYOUT}-replyFromLink-list-product
+- tapOn:
+    id: 'guests.row.${LINKED}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${LINKED}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: guests-${LAYOUT}-replyFromLink-guest-product
+- back
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${PAGE}'
+    centerElement: true
+- tapOn:
+    id: 'guests.row.${PAGE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${PAGE}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: guests-${LAYOUT}-pageReply-guest-product
+- back
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests&state=replyFromLink
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: guests-${LAYOUT}-replyFromLink-list-demo
+- tapOn: 'Sophie Laurent'
+- waitForAnimationToEnd
+- takeScreenshot: guests-${LAYOUT}-replyFromLink-guest-demo
