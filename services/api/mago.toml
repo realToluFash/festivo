@@ -370,7 +370,8 @@ permit = [
 # Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
 # change goes to the audit trail and out on the plan's topic. A duplicated event
 # copies its plan through this scope (EventDuplicator). Share by adds its milestone to
-# the event's timeline (sc-4022).
+# the event's timeline (sc-4022). It reads the headcount's Coming for the room in
+# numbers (sc-103); Budget reads those numbers.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Seating\\"
 permit = [
@@ -483,7 +484,6 @@ permit = [
 
 # Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
 # the account's parser, as a guest's is.
-# Seating reads the headcount's Coming for the room in numbers (sc-103); Budget reads those numbers.
 # Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
 # event already knows, accepted guests (sc-99), tables in the seating plan and the event's
 # days, so it reads the guest headcount and the event's day count; a price is parsed and

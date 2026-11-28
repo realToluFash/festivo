@@ -34,7 +34,7 @@ final class SeatFreeingListener
         private readonly GuestRepository $guestRepository,
         private readonly SeatingPlanRepository $seatingPlanRepository,
         private readonly SeatingSerialiser $seatingSerialiser,
-        private SeatingNumbersPublisher $seatingNumbersPublisher,
+        private readonly SeatingNumbersPublisher $seatingNumbersPublisher,
         private readonly RealtimePublisher $realtimePublisher,
         private readonly GuestPageSignal $guestPageSignal,
         private readonly CheckInSignal $checkInSignal,

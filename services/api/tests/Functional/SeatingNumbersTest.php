@@ -209,6 +209,69 @@ final class SeatingNumbersTest extends ApiTestCase
     }
 
     #[Test]
+    public function undoingAnUnseatPutsTheNumbersBack(): void
+    {
+        $this->startPlan();
+        $table = $this->addTable();
+        $ada = $this->guest('Ada Obi', ['Chidi Obi'], reply: 'coming');
+        $this->seat($ada, $table);
+        $seated = $this->slice($this->numbers()['plan'], ['taken', 'heldForCompanion', 'free']);
+
+        $this->as($this->owner, 'POST', $this->plan() . '/guests/unseat', ['guestIds' => [$ada]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $unseated = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->last()['moves']);
+        self::assertSame(['taken' => 1, 'heldForCompanion' => 0, 'free' => 9], $this->slice($this->numbers()['plan'], ['taken', 'heldForCompanion', 'free']));
+        $this->assertConsistent();
+
+        $this->undo($unseated);
+        self::assertSame($seated, $this->slice($this->numbers()['plan'], ['taken', 'heldForCompanion', 'free']));
+        self::assertSame(0, $this->numbers()['people']['withoutSeat']);
+        $this->assertConsistent();
+    }
+
+    #[Test]
+    public function anUnseatedPartyReplyingComingRaisesComingAndWithoutASeatByTheWholeParty(): void
+    {
+        $this->startPlan();
+        $this->addTable();
+        $dayo = $this->guest('Dayo Bello', ['Femi Bello', 'Gina Bello']);
+        $before = $this->numbers()['people'];
+        $this->assertConsistent();
+
+        $this->reply($dayo, 'coming');
+
+        $after = $this->numbers()['people'];
+        self::assertSame($before['coming'] + 3, $after['coming']);
+        self::assertSame($before['withoutSeat'] + 3, $after['withoutSeat']);
+        self::assertSame($before['comingAndSeated'], $after['comingAndSeated']);
+        $this->assertConsistent();
+    }
+
+    #[Test]
+    public function aSeatedCompanionRemovedOnTheirOwnLeavesTheRestOfThePartySeated(): void
+    {
+        $this->startPlan();
+        $table = $this->addTable();
+        $ada = $this->guest('Ada Obi', ['Chidi Obi', 'Nneka Obi'], reply: 'coming');
+        $this->seat($ada, $table);
+        self::assertSame(['coming' => 3, 'comingAndSeated' => 3, 'withoutSeat' => 0], $this->numbers()['people']);
+        $this->assertConsistent();
+
+        $details = $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $ada);
+        $etag = (string) $this->client->getResponse()->headers->get('ETag');
+        $chidi = Iter\first(Vec\filter(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce(Type\dict(Type\string(), Type\mixed())->coerce($details['guest'])['companions']), static fn (array $one): bool => 'Chidi Obi' === $one['fullName'])) ?? self::fail('no Chidi');
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/guests/' . $ada, [
+            'fullName' => 'Ada Obi',
+            'companions' => [['id' => Type\string()->coerce($chidi['id']), 'fullName' => 'Chidi Obi']],
+        ], $etag);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['coming' => 2, 'comingAndSeated' => 2, 'withoutSeat' => 0], $this->numbers()['people']);
+        self::assertSame(2, $this->numbers()['plan']['taken'] + $this->numbers()['plan']['heldForCompanion']);
+        $this->assertConsistent();
+    }
+
+    #[Test]
     public function aCanViewMemberReadsItSomeoneWithoutSeatingReadIsRefusedAndAnotherOrganisationGets404(): void
     {
         $this->fixedPlan();

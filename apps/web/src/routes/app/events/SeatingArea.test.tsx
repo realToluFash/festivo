@@ -2548,6 +2548,36 @@ describe('The room to scale (sc-4007)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
   });
 
+  it('reads no plan again for the room in numbers published on the topic (sc-103)', async () => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+    });
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+    await screen.findByRole('button', { name: TABLE_1 });
+    const reads = () => sent.filter((one) => one.line === 'GET /api/events/ev_1/seating-plan');
+    const readsBefore = reads().length;
+
+    seatingSource()!.publish({
+      reason: null,
+      plan: { tables: 1 },
+      sections: [],
+      noSection: { tables: 0 },
+      people: { coming: 2, comingAndSeated: 0, withoutSeat: 2 },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(reads()).toHaveLength(readsBefore);
+  });
+
   it('refuses a drag whose table a colleague moved between pointer-down and release', async () => {
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
     StubSource.made = [];
