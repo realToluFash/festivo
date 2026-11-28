@@ -43,6 +43,12 @@ public class ContactPickerModule: Module {
     }
   }
 
+  /// iOS names its labels in lower case ("mobile", "home"); the row writes them as a word starting a line, keeping "iPhone" as it is.
+  private static func firstUp(_ label: String) -> String {
+    guard let first = label.first, first.isLowercase, label != "iPhone" else { return label }
+    return first.uppercased() + label.dropFirst()
+  }
+
   private static func kept(_ contact: CNContact) -> [String: Any] {
     let formatted = contact.areKeysAvailable([CNContactFormatter.descriptorForRequiredKeys(for: .fullName)])
       ? CNContactFormatter.string(from: contact, style: .fullName)
@@ -54,7 +60,7 @@ public class ContactPickerModule: Module {
       let label = labelled.label ?? ""
       return [
         "number": labelled.value.stringValue,
-        "label": label.isEmpty ? "" : CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: label),
+        "label": label.isEmpty ? "" : Self.firstUp(CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: label)),
         "mobile": label == CNLabelPhoneNumberMobile || label == CNLabelPhoneNumberiPhone,
       ]
     }
