@@ -1,6 +1,8 @@
 import { ApiError, ApiUnreachableError, type GuestRoom } from '@soirely/api-client';
 import {
+  type ContactNumber,
   GUEST_NAME_MAXIMUM,
+  type NumberKind,
   type PickedPerson,
   type ReviewRow,
   countryChoices,
@@ -224,8 +226,15 @@ function CheckRow({
   );
 }
 
+const NUMBER_KIND_WORDS = {
+  mobile: 'fromContacts.numberType.mobile',
+  home: 'fromContacts.numberType.home',
+  work: 'fromContacts.numberType.work',
+  other: 'fromContacts.numberType.other',
+} as const satisfies Record<NumberKind, string>;
+
 function shownNumber(person: PickedPerson): string | null {
-  const mobile = person.numbers.find((one) => one.mobile) ?? person.numbers[0];
+  const mobile = person.numbers.find((one) => one.kind === 'mobile') ?? person.numbers[0];
 
   return mobile?.number ?? null;
 }
@@ -456,6 +465,8 @@ export function ContactsReview({
   const plan = room == null ? null : planRoom(room, peopleIn(rows));
   const countryName = (code: string) =>
     countryChoices(currentLocale()).find((one) => one.code === code)?.name ?? code;
+  const numberLabel = (one: ContactNumber) =>
+    one.label !== '' ? one.label : t(NUMBER_KIND_WORDS[one.kind]);
 
   useEffect(() => {
     let live = true;
@@ -636,7 +647,7 @@ export function ContactsReview({
                           style={({ pressed: down }) => [styles.numberRow, down && styles.pressed]}
                           accessibilityRole="radio"
                           accessibilityState={{ checked: choosingRow.numberAt === at }}
-                          accessibilityLabel={`${n.number}, ${n.label}`}
+                          accessibilityLabel={`${n.number}, ${numberLabel(n)}`}
                           testID={`guests.review.number.${at}`}
                         >
                           <LineIcon name="phone" />
@@ -655,7 +666,7 @@ export function ContactsReview({
                               accessible={false}
                               style={styles.secondary}
                             >
-                              {n.label}
+                              {numberLabel(n)}
                             </Text>
                           </View>
                           <RadioMark on={choosingRow.numberAt === at} />
@@ -781,6 +792,7 @@ export function ContactsReview({
             const own = rowProblems(row, rows, listedNames);
             const fix = toFix(own);
             const saved = savedAs(row);
+            const numberAtRow = row.numbers[row.numberAt];
             const named = row.name.trim() === '' ? t('account.fullName') : row.name.trim();
             return (
               <View
@@ -853,7 +865,7 @@ export function ContactsReview({
                   <View>
                     <Text size={13.5} weight="medium" style={[styles.secondary, styles.figures]}>
                       {t('fromContacts.numberOf', {
-                        label: row.numbers[row.numberAt]?.label ?? '',
+                        label: numberAtRow == null ? '' : numberLabel(numberAtRow),
                         index: row.numberAt + 1,
                         count: row.numbers.length,
                       })}

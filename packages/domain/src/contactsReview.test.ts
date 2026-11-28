@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MOST_PICKED,
+  type PickedPerson,
   contactsBody,
   peopleIn,
   planRoom,
@@ -11,11 +12,11 @@ import {
   savedAs,
 } from './contactsReview.ts';
 
-const ADAEZE = {
+const ADAEZE: PickedPerson = {
   name: 'Chief Mrs Adaeze Okonkwo',
   numbers: [
-    { number: '01 234 5678', label: 'home', mobile: false },
-    { number: '0803 123 4567', label: 'mobile', mobile: true },
+    { number: '01 234 5678', kind: 'home', label: '' },
+    { number: '0803 123 4567', kind: 'mobile', label: '' },
   ],
   email: 'adaeze@example.com',
 };
@@ -33,7 +34,7 @@ describe('the review list from a pick', () => {
       [
         {
           name: 'Lucas Moreau',
-          numbers: [{ number: '+33 6 12 34 56 78', label: 'work', mobile: false }],
+          numbers: [{ number: '+33 6 12 34 56 78', kind: 'work', label: '' }],
           email: null,
         },
       ],
@@ -62,7 +63,7 @@ describe('the review list from a pick', () => {
         { name: 'x'.repeat(201), numbers: [], email: null },
         {
           name: 'Kofi Mensah',
-          numbers: [{ number: '12', label: 'mobile', mobile: true }],
+          numbers: [{ number: '12', kind: 'mobile', label: '' }],
           email: null,
         },
         { name: 'Ama Owusu', numbers: [], email: null },

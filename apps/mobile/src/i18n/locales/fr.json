@@ -2773,6 +2773,12 @@
     "unreadable": "Ce numéro n’est pas valide dans le pays choisi ({{country}}).",
     "savedAs": "Enregistré sous {{number}}",
     "numberOf": "{{label}} · numéro {{index, number}} sur {{count, number}} de ce contact",
+    "numberType": {
+      "mobile": "Mobile",
+      "home": "Home",
+      "work": "Work",
+      "other": "Other"
+    },
     "chooseAnother": "Choisir un autre numéro",
     "clearNumber": "Effacer le numéro",
     "clearEmail": "Effacer l’adresse e-mail",
