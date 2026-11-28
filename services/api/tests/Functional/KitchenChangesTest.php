@@ -233,12 +233,22 @@ final class KitchenChangesTest extends ApiTestCase
     #[Test]
     public function aCoursesOwnFiguresNameTheirCourseOnTheChangesPage(): void
     {
+        $dessert = new MenuCourse($this->main->getEvent(), 'Dessert', null, 1);
+        self::em()->persist($dessert);
+        self::em()->persist(new MenuDish($dessert, null, 'Puff puff', null, [], [], 0));
+        self::em()->flush();
         $this->coming([['fullName' => 'Chidi Okonkwo']]);
         $this->give();
-        self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(sheet, \'{courses,0,skipped}\', \'5\')');
+        self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(jsonb_set(sheet, \'{courses,0,skipped}\', \'5\'), \'{courses,1,skipped}\', \'2\')');
         $this->give();
+        $copy = $this->copyIds()[1];
 
-        self::assertStringContainsString('<li>Main · Skipped: 5 to 0</li>', $this->copyHtml($this->copyIds()[1]));
+        $html = $this->copyHtml($copy);
+        self::assertStringContainsString('<li>Main · Skipped: 5 to 0</li>', $html);
+        self::assertStringContainsString('<li>Dessert · Skipped: 2 to 0</li>', $html);
+
+        self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(sheet, \'{changes,lines,0,item,parent}\', \'null\') WHERE id = :id', ['id' => $copy]);
+        self::assertStringContainsString('<li>Skipped: 5 to 0</li>', $this->copyHtml($copy), 'recorded before the line named its course');
     }
 
     #[Test]
