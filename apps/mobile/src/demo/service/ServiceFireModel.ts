@@ -15,6 +15,7 @@ export const RUN_ITEM = 'Speeches';
 export const RUN_COURSE = 2;
 
 export const OFFLINE_LINE = 'Firing, the next course and ending service need a connection.';
+export const OFFLINE_BEFORE_LINE = 'Starting service needs a connection.';
 export const NO_MENU_LINE = 'Add a menu to start service';
 export const NOTHING_TICKED = 'Choose at least one table. Nothing was fired.';
 
@@ -39,6 +40,7 @@ export interface FireChoice {
   scope: Scope;
   ticked: string[];
   error: boolean;
+  fromPrompt: boolean;
 }
 
 export interface FireState {
@@ -145,14 +147,16 @@ export const FIRE_STATE_WHAT: Record<FireStateName, string> = {
   fireLater: 'The course picker on Dessert: firing it moves the room on',
   suggestion: 'The next-course suggestion: “8 of 10 tables served mains”, Fire dessert now',
   notYet: 'After Not yet: the suggestion hidden, a line saying when it comes back',
-  prompt: 'The run of show’s prompt: “Speeches has started. Fire dessert?”',
+  prompt:
+    'The run of show’s prompt: “Speeches has started. Fire dessert?”, standing in for the dessert suggestion',
   thresholds: 'The thresholds open: a stepper on dessert and coffee, crossing 80% at once',
   nextConfirm: 'Next course pressed: “Move the room to dessert?”',
   lastCourse: 'On the last course, coffee: End service in place of Next course',
   endConfirm: 'End service pressed: its confirmation',
   ended: 'Ended: the service line only, orders still workable elsewhere',
   offline: 'No connection during service: every control drawn and disabled',
-  offlineBefore: 'No connection before service starts: Start service disabled',
+  offlineBefore:
+    'No connection before service starts: Start service disabled, “Starting service needs a connection.”',
   noManage: 'Without service.manage: the service line only',
 };
 
@@ -188,7 +192,7 @@ function lastCourse(): FireState {
 }
 
 function choice(course: number, scope: Scope): FireChoice {
-  return { course, scope, ticked: [], error: false };
+  return { course, scope, ticked: [], error: false, fromPrompt: false };
 }
 
 export function seed(name: FireStateName): FireState {
@@ -255,6 +259,14 @@ export function plural(n: number, one: string, many: string): string {
 
 export function isLast(s: FireState): boolean {
   return s.current === COURSES.length - 1;
+}
+
+export function offlineLine(s: FireState): string {
+  return s.phase === 'notStarted' ? OFFLINE_BEFORE_LINE : OFFLINE_LINE;
+}
+
+export function offlineTry(s: FireState): FireState {
+  return { ...s, offlineTried: true, say: offlineLine(s) };
 }
 
 export function serviceLine(s: FireState): string {
@@ -397,7 +409,7 @@ export function firstTickable(s: FireState): string {
 export function pressFire(s: FireState): FireState {
   const f = s.fire;
   if (f == null) return s;
-  if (!s.online) return { ...s, offlineTried: true, say: OFFLINE_LINE };
+  if (!s.online) return offlineTry(s);
   if (f.scope === 'choose' && f.ticked.length === 0) {
     return { ...s, fire: { ...f, error: true }, say: NOTHING_TICKED };
   }
@@ -425,6 +437,7 @@ export function pressFire(s: FireState): FireState {
     current: later ? f.course : s.current,
     since: later ? NOW : s.since,
     notYetUntil: later ? null : s.notYetUntil,
+    promptDone: s.promptDone || (f.fromPrompt && f.course === RUN_COURSE),
     fire: null,
     result,
     say: result.join(' '),
@@ -494,13 +507,23 @@ export function promptLine(): string {
   return `${RUN_ITEM} has started. Fire ${courseWord(RUN_COURSE)}?`;
 }
 
-export function dismissPrompt(s: FireState): FireState {
-  return { ...s, promptDone: true };
+/** Only one cue asks about a course: the prompt stands in for that course's suggestion until it is answered. */
+export function cues(s: FireState): { prompt: boolean; suggest: boolean } {
+  const prompt = prompting(s);
+  return { prompt, suggest: suggesting(s) && !(prompt && RUN_COURSE === s.current + 1) };
 }
 
+/** Not now answers the prompt for good, and hides the same course's suggestion as Not yet would. */
+export function dismissPrompt(s: FireState): FireState {
+  const done = { ...s, promptDone: true };
+  return RUN_COURSE === s.current + 1 ? { ...notYet(done), say: 'Prompt dismissed.' } : done;
+}
+
+/** A cue's Fire {course} now opens the choice and never fires; the cue stays until a fire answers it. */
 export function fireFrom(s: FireState, course: number, prompt: boolean): FireState {
   const opened = openFire(s, course);
-  return prompt ? { ...opened, promptDone: true } : opened;
+  if (opened.fire == null) return opened;
+  return { ...opened, fire: { ...opened.fire, fromPrompt: prompt } };
 }
 
 export function steppable(s: FireState): number[] {
@@ -528,7 +551,7 @@ export function validThreshold(v: number): boolean {
 }
 
 export function startService(s: FireState): FireState {
-  if (!s.online) return { ...s, offlineTried: true, say: OFFLINE_LINE };
+  if (!s.online) return offlineTry(s);
   if (!s.manage || s.phase !== 'notStarted' || !s.menu) return s;
   return {
     ...s,
@@ -540,7 +563,7 @@ export function startService(s: FireState): FireState {
 }
 
 export function askNext(s: FireState): FireState {
-  if (!s.online) return { ...s, offlineTried: true, say: OFFLINE_LINE };
+  if (!s.online) return offlineTry(s);
   return { ...s, fire: null, confirm: isLast(s) ? 'end' : 'next' };
 }
 
@@ -565,7 +588,7 @@ export function closeConfirm(s: FireState): FireState {
 }
 
 export function confirm(s: FireState): FireState {
-  if (!s.online) return { ...s, offlineTried: true, say: OFFLINE_LINE };
+  if (!s.online) return offlineTry(s);
   if (s.confirm === 'end') {
     return { ...s, phase: 'ended', confirm: null, fire: null, say: 'Service has ended.' };
   }

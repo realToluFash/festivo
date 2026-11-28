@@ -27,7 +27,6 @@ import {
   type FireState,
   NOTHING_TICKED,
   NO_MENU_LINE,
-  OFFLINE_LINE,
   RUN_COURSE,
   RUN_ITEM,
   SECTIONS,
@@ -46,6 +45,7 @@ import {
   courseName,
   courseOffer,
   courseWord,
+  cues,
   dismissPrompt,
   fireFrom,
   fireLabel,
@@ -54,12 +54,13 @@ import {
   isFired,
   notYet,
   notYetLine,
+  offlineLine,
+  offlineTry,
   openFire,
   pickCourse,
   pickScope,
   pressFire,
   promptLine,
-  prompting,
   runStarts,
   scopeLine,
   scopeName,
@@ -70,7 +71,6 @@ import {
   startService,
   step,
   steppable,
-  suggesting,
   suggestionLine,
   suggestionWhy,
   tableLine,
@@ -134,8 +134,7 @@ function ServiceFire({ start }: { start: ReturnType<typeof fireStateOf> }) {
   const tabs: TabId[] = s.manage ? ['next', 'floor', 'service', 'team'] : ['next', 'floor'];
   const shown = tabs.includes(tab) ? tab : (tabs[0] ?? 'next');
   const onService = shown === 'service';
-  const prompt = prompting(s);
-  const suggest = suggesting(s) && !(prompt && RUN_COURSE === s.current + 1);
+  const { prompt, suggest } = cues(s);
   const later = notYetLine(s);
 
   return (
@@ -331,7 +330,7 @@ function ServiceBar({
   const off = !s.online;
   const steps = steppable(s);
   const [open, setOpen] = useState(s.thresholdsOpen);
-  const tried = () => apply({ ...s, offlineTried: true, say: OFFLINE_LINE });
+  const tried = () => apply(offlineTry(s));
 
   return (
     <View style={styles.bar}>
@@ -401,7 +400,7 @@ function ServiceBar({
         <View style={styles.line}>
           <Glyph paths={PATHS.offline} ink={tokens.colorInk} side={16} />
           <Text size={14} weight="semibold" style={shared.grow}>
-            {OFFLINE_LINE}
+            {offlineLine(s)}
           </Text>
         </View>
       )}

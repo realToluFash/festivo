@@ -17,7 +17,6 @@ import {
   NOTHING_TICKED,
   NOW,
   NO_MENU_LINE,
-  OFFLINE_LINE,
   SECTIONS,
   type Scope,
   THRESHOLD_MAX,
@@ -35,6 +34,7 @@ import {
   courseName,
   courseOffer,
   courseWord,
+  cues,
   dismissPrompt,
   fireFrom,
   fireLabel,
@@ -43,12 +43,13 @@ import {
   isFired,
   notYet,
   notYetLine,
+  offlineLine,
+  offlineTry,
   openFire,
   pickCourse,
   pickScope,
   pressFire,
   promptLine,
-  prompting,
   RUN_COURSE,
   RUN_ITEM,
   runStarts,
@@ -61,7 +62,6 @@ import {
   startService,
   step,
   steppable,
-  suggesting,
   suggestionLine,
   suggestionWhy,
   tableLine,
@@ -113,9 +113,7 @@ function ServiceFire({ name }: { name: FireStateName }) {
   }
 
   const off = !s.online;
-  const prompt = prompting(s);
-  // The prompt names the same course as the suggestion would, so it stands in for it until it is answered.
-  const suggest = suggesting(s) && !(prompt && RUN_COURSE === s.current + 1);
+  const { prompt, suggest } = cues(s);
   const later = notYetLine(s);
 
   return (
@@ -133,7 +131,7 @@ function ServiceFire({ name }: { name: FireStateName }) {
           </Link>
           <div className="hig-event">
             <strong>{EVENT}</strong>
-            <span className="hig-live-pill" data-paused={s.paused || undefined}>
+            <span className="hig-live-pill sf-paused" data-paused={s.paused || undefined}>
               {s.paused ? 'Paused · today' : 'Live · today'}
             </span>
           </div>
@@ -377,9 +375,7 @@ function ServiceBar({ s, act }: { s: FireState; act: (n: FireState, f?: string) 
               className="button button-primary sf-control"
               data-sf="fire"
               {...offProps}
-              onClick={() =>
-                act(off ? { ...s, offlineTried: true, say: OFFLINE_LINE } : openFire(s))
-              }
+              onClick={() => act(off ? offlineTry(s) : openFire(s))}
             >
               <Glyph paths={FLAME_GLYPH} size={18} />
               <span>Fire {courseWord(s.current)}</span>
@@ -413,7 +409,7 @@ function ServiceBar({ s, act }: { s: FireState; act: (n: FireState, f?: string) 
       {off && (c.start || c.fire) && (
         <p className="sf-offline" data-tried={s.offlineTried || undefined}>
           <Glyph paths={OFFLINE_GLYPH} size={16} />
-          <span>{OFFLINE_LINE}</span>
+          <span>{offlineLine(s)}</span>
         </p>
       )}
       {c.fire && steps.length > 0 && (
@@ -436,7 +432,9 @@ function ServiceBar({ s, act }: { s: FireState; act: (n: FireState, f?: string) 
                 return (
                   <li key={i} className="sf-step-row">
                     <span className="sf-step-name">{courseName(i)}</span>
-                    <span className="hig-meta">Suggested once this share of tables is served</span>
+                    <span className="hig-meta sf-step-hint">
+                      Suggested once this share of tables is served
+                    </span>
                     <div className="sf-stepper" role="group" aria-label={label}>
                       <button
                         type="button"
@@ -618,7 +616,7 @@ function FireDialog({ s, act }: { s: FireState; act: (n: FireState, f?: string) 
         {off && (
           <p className="sf-offline" data-tried={s.offlineTried || undefined}>
             <Glyph paths={OFFLINE_GLYPH} size={16} />
-            <span>{OFFLINE_LINE}</span>
+            <span>{offlineLine(s)}</span>
           </p>
         )}
         <ActionPair

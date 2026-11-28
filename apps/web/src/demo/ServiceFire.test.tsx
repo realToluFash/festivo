@@ -89,12 +89,19 @@ describe('/demo/service-fire (sc-4009)', () => {
     expect(screen.getByRole('heading', { name: '8 of 10 tables served mains' })).toBeTruthy();
   });
 
-  it('opens the fire choice on dessert from the run of show’s prompt, once', async () => {
+  it('opens the fire choice on dessert from the run of show’s prompt, and keeps the prompt until a fire', async () => {
     await open('prompt');
     fireEvent.click(button('Fire dessert now')!);
     expect(within(dialog()).getByRole('heading', { name: 'Fire dessert' })).toBeTruthy();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Don’t fire' }));
+    expect(screen.getByText('Speeches has started. Fire dessert?')).toBeTruthy();
+  });
+
+  it('dismisses the prompt for good with Not now, and holds the dessert suggestion back too', async () => {
+    await open('prompt');
+    fireEvent.click(button('Not now')!);
     expect(screen.queryByText('Speeches has started. Fire dessert?')).toBeNull();
+    expect(screen.getByText('The dessert suggestion comes back at 20:29.')).toBeTruthy();
   });
 
   it('confirms the next course, and ends service from the last one', async () => {
@@ -122,6 +129,12 @@ describe('/demo/service-fire (sc-4009)', () => {
       screen.getAllByText('Firing, the next course and ending service need a connection.').length,
     ).toBeGreaterThan(0);
     expect(screen.queryByText('Speeches has started. Fire dessert?')).toBeNull();
+  });
+
+  it('says starting service needs a connection, offline before start', async () => {
+    await open('offlineBefore');
+    expect(button('Start service')!.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByText('Starting service needs a connection.')).toBeTruthy();
   });
 
   it('shows only the service line without service.manage', async () => {

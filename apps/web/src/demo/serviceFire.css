@@ -12,7 +12,7 @@
   gap: var(--spaceLg);
 }
 
-.hig-live-pill[data-paused] {
+.sf-paused[data-paused] {
   background: var(--colorPausedTint);
   color: var(--colorPausedText);
 }
@@ -73,8 +73,9 @@
 }
 
 /* Offline the controls stay drawn, with a dashed edge, and say why in the line under them. */
-.button[data-off],
-.button-primary[data-off] {
+.sf-control[data-off],
+.sf-step[data-off],
+.sf-fire[data-off] {
   border-style: dashed;
   border-color: var(--colorInkTertiary);
   background: var(--colorNeutralFill);
@@ -146,7 +147,7 @@
   font: var(--typeBodyStrong);
 }
 
-.sf-step-row .hig-meta {
+.sf-step-hint {
   grid-column: 1;
 }
 

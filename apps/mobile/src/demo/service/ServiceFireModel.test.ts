@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest';
 import {
   FIRE_STATES,
   NOTHING_TICKED,
+  OFFLINE_BEFORE_LINE,
   OFFLINE_LINE,
   askNext,
+  closeFire,
   confirm,
   controls,
   courseOffer,
+  cues,
+  dismissPrompt,
+  fireFrom,
   fireLabel,
   fireStateOf,
   openFire,
@@ -125,6 +130,25 @@ describe('serviceFire (sc-4009)', () => {
     expect(prompting(allDessert)).toBe(false);
   });
 
+  it('opens the choice from a cue and never fires, keeping the cue until a fire answers it', () => {
+    const s = seed('prompt');
+    const opened = fireFrom(s, 2, true);
+    expect(opened.fire).toMatchObject({ course: 2, scope: 'all' });
+    expect(opened.tables).toBe(s.tables);
+    expect(cues(closeFire(opened)).prompt).toBe(true);
+    const sectionC = pressFire(pickScope(opened, 'C'));
+    expect(cues(sectionC).prompt).toBe(false);
+  });
+
+  it('shows only the prompt when it names the suggestion’s course, and Not now holds both back', () => {
+    const s = seed('prompt');
+    expect(suggesting(s)).toBe(true);
+    expect(cues(s)).toEqual({ prompt: true, suggest: false });
+    const later = dismissPrompt(s);
+    expect(cues(later)).toEqual({ prompt: false, suggest: false });
+    expect(later.notYetUntil).toBe('20:29');
+  });
+
   it('moves on without firing, and ends service from the last course', () => {
     const moved = confirm(askNext(seed('started')));
     expect(serviceLine(moved)).toBe('Service · Dessert · course 3 of 4 since 20:24');
@@ -141,7 +165,9 @@ describe('serviceFire (sc-4009)', () => {
     const tried = pressFire(openFire(s));
     expect(tried.say).toBe(OFFLINE_LINE);
     expect(tried.tables).toBe(s.tables);
-    expect(startService(seed('offlineBefore')).phase).toBe('notStarted');
+    const before = startService(seed('offlineBefore'));
+    expect(before.phase).toBe('notStarted');
+    expect(before.say).toBe(OFFLINE_BEFORE_LINE);
     expect(askNext(s).confirm).toBeNull();
     expect(prompting(s)).toBe(false);
   });
