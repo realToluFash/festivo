@@ -494,6 +494,7 @@ export function CountryStep({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [pinned, setPinned] = useState(false);
   const scrolledToPick = useRef(false);
+  const retries = useRef(0);
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const items: readonly Item[] = searching
@@ -513,6 +514,7 @@ export function CountryStep({
     const index = all.findIndex((country) => country.code === walk.country);
     if (index < 0) return;
     scrolledToPick.current = true;
+    retries.current = 0;
     const wait = setTimeout(
       () => list.current?.scrollToIndex({ index: index + 1, viewPosition: 0.5, animated: false }),
       tokens.motionFast,
@@ -605,20 +607,20 @@ export function CountryStep({
           setPinned(pins);
         }}
         onScrollToIndexFailed={(failed) => {
+          if (retries.current >= 2) return;
+          retries.current += 1;
           list.current?.scrollToOffset({
             offset: headerHeight + failed.averageItemLength * failed.index,
             animated: false,
           });
-          [1, 2].forEach((pass) =>
-            setTimeout(
-              () =>
-                list.current?.scrollToIndex({
-                  index: failed.index,
-                  viewPosition: 0.5,
-                  animated: false,
-                }),
-              tokens.motionFast * pass,
-            ),
+          setTimeout(
+            () =>
+              list.current?.scrollToIndex({
+                index: failed.index,
+                viewPosition: 0.5,
+                animated: false,
+              }),
+            tokens.motionFast,
           );
         }}
         testID="createWalk.countries"
