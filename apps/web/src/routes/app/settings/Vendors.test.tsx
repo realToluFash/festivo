@@ -129,6 +129,10 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     open();
 
     expect(await screen.findByText('2 vendors')).toBeDefined();
+    expect(
+      document.querySelector('.settings-desk-page .desk > .desk-page > .vd-column'),
+    ).not.toBeNull();
+    expect(document.querySelectorAll('.vd-column .vd-tools > .desk-menu-at')).toHaveLength(2);
     expect(screen.getByText('2 in use')).toBeDefined();
     expect(screen.getByText('2 archived')).toBeDefined();
     expect(
