@@ -1,0 +1,13 @@
+# sc-33828: Signed in under the six boxes once a right authenticator code goes in, recorded, as it shows for half a second. EMAIL, PASSWORD and TOTP_SECRET of a two-factor account.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- startRecording: signed-in
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${output.helper.code}
+- extendedWaitUntil: { notVisible: { id: 'twoFactor.code' }, timeout: 30000 }
+- stopRecording

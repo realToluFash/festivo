@@ -1,0 +1,15 @@
+# New event on the tablet scrolls its form body to the last field under a pinned Create event. sc-48607.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.currency'
+    timeout: 20000
+- takeScreenshot: new-event-form-currency
+- assertVisible:
+    id: 'eventForm.send'

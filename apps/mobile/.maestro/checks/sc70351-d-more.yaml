@@ -1,0 +1,19 @@
+# sc-70351: the demo's People from the More sheet keeps the tab bar, More lit; foot and last row clear.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'tab-more' }, timeout: 30000 }
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.people' }, timeout: 10000 }
+- tapOn: { id: 'event.more.people' }
+- extendedWaitUntil: { notVisible: { id: 'event.more.people' }, timeout: 10000 }
+- extendedWaitUntil: { visible: 'On this event', timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-more-top
+- scrollUntilVisible:
+    { element: { text: '.*Owners.*' }, direction: DOWN, timeout: 20000, optional: true }
+- swipe: { direction: UP, duration: 400 }
+- swipe: { direction: UP, duration: 400 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: d-more-foot

@@ -1,0 +1,40 @@
+# sc-100276 on Android: the event page's Dates row of ${EVENT} (Sat 12 Dec 18:00 to Sun 13 Dec 02:00); the start date moved to ${DAY} Dec and saved; the shifts move with it, read back over the API.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      text: '.*Dates · 2 days.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: '.*Dates · 2 days.*'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    text: '.*Dates · 2 days.*'
+- waitForAnimationToEnd
+- takeScreenshot: dates-opened
+- tapOn:
+    text: 'Sat, 12 Dec 2026'
+- extendedWaitUntil:
+    visible:
+      text: 'OK'
+    timeout: 10000
+- tapOn:
+    text: '${DAY}'
+- takeScreenshot: picked
+- tapOn:
+    text: 'OK'
+- waitForAnimationToEnd
+- assertVisible:
+    text: '.*\b${DAY} Dec 2026.*'
+- takeScreenshot: before-save
+- tapOn:
+    text: 'Save'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible:
+      text: 'Cancel'
+    timeout: 20000
+- takeScreenshot: saved

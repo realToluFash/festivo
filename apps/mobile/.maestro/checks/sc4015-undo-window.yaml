@@ -1,0 +1,49 @@
+# sc-4015: marks Chicken Preparing 10 min on ${EVENT_ID}'s station, undoes it, marks it again with no time, and checks Undo is there at 113 s and gone by 125 s (it lasts 2 minutes).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'station.ready.chicken'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'station.preparing.chicken'
+- tapOn:
+    id: 'station.eta.chicken.10'
+- extendedWaitUntil:
+    visible:
+      id: 'station.undo.chicken'
+    timeout: 1500
+- takeScreenshot: prep-at-mark
+- tapOn:
+    id: 'station.undo.chicken'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'station.undo.chicken'
+- takeScreenshot: undone
+- tapOn:
+    id: 'station.preparing.chicken'
+- tapOn:
+    id: 'station.eta.chicken.none'
+- extendedWaitUntil:
+    visible:
+      id: 'station.undo.chicken'
+    timeout: 1500
+- takeScreenshot: none-at-mark
+- extendedWaitUntil:
+    visible: 'QA_NEVER_THERE'
+    timeout: 112000
+    optional: true
+- assertVisible:
+    id: 'station.undo.chicken'
+- takeScreenshot: none-at-113s
+- extendedWaitUntil:
+    notVisible:
+      id: 'station.undo.chicken'
+    timeout: 12000
+- takeScreenshot: none-closed

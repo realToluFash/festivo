@@ -1,0 +1,56 @@
+# sc-55049: a changed cover discarded keeps the saved cover; Cover reopened to show it. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc52652/open.yaml
+- takeScreenshot: before
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.change'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.change'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '16%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: uploaded
+- tapOn:
+    id: 'event.edit.cover.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'event.edit.cover.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- takeScreenshot: page-after
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'events.details.cover'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: page-cover-row
+- tapOn:
+    id: 'events.details.cover'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.save'
+    timeout: 20000
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- takeScreenshot: reopened

@@ -1,0 +1,13 @@
+# sc-71037, tablet landscape: sc71037-outside-when turned on its side, then back upright.
+appId: host.exp.Exponent
+---
+# Android's LANDSCAPE_LEFT can leave the tablet portrait: the harness turns it. sc-50565.
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc71037-outside-when.yaml
+- setOrientation: PORTRAIT

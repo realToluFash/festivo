@@ -1,0 +1,19 @@
+# sc-87242 (sc-9950's Country on Create an organisation): with Country unchosen (a device region naming no offered country), Continue on Where is it based? is refused and moves the screen reader to the picker. Run with TalkBack on or off; signed in, on Today.
+appId: host.exp.Exponent
+---
+- runFlow: open-create-organisation.yaml
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'QA Second Ltd'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd
+- hideKeyboard:
+    optional: true
+- takeScreenshot: create-at-rest
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd
+- takeScreenshot: create-country-refused

@@ -1,0 +1,14 @@
+# sc-3784: the Guests list with the Export dialog open and nothing pressed, for a step a test makes from outside (offline, a refusal).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export'
+    timeout: 30000
+- tapOn:
+    id: 'guests.export'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: open

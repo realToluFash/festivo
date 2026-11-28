@@ -1,0 +1,10 @@
+# sc-29914 subflow-free: from Events, Drafts, open Winter Gala.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd: { timeout: 6000 }
+- tapOn: { text: '(Drafts|Borradores|Brouillons|Rascunhos).*' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- tapOn: { text: '.*Winter Gala.*' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }

@@ -1,0 +1,15 @@
+# sc-89876: a live event that has not started, its Manage list: the Pause and Call off… rows and their lines, in the account's language. Pass LIVE_EVENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE_EVENT}
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    direction: DOWN
+    timeout: 30000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: manage
+- assertVisible: '{{t:eventPage.pauseLine}}'
+- assertVisible: '{{t:eventPage.callOffLine}}'

@@ -1,0 +1,20 @@
+# sc-65714: Members with one request waiting, then the request's page, waiting on the request's sentence rather than the role list. Needs MEMBER_ID.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.approve.${MEMBER_ID}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-waiting
+- tapOn:
+    id: 'members.approve.${MEMBER_ID}'
+- extendedWaitUntil:
+    visible:
+      text: '.*QA Organisation.*'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-request

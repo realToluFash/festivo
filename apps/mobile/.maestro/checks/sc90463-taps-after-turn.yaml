@@ -1,0 +1,35 @@
+# sc-90463: at AX5, after a turn from upright, each sidebar row opens with one tap and the organisation pill opens the switcher. Vars: METRO_URL. Needs the seeded 'Party on the 10' and 'QA Organisation'.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- tapOn: { text: 'Today', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-today
+- tapOn: { text: 'Events', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-events
+- tapOn: { text: 'Calendar', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-calendar
+- tapOn: { text: 'Party on the 10', index: 0 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: tap-event
+- tapOn: { text: '.*Events', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-back
+- tapOn: { text: 'Settings', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-settings
+- tapOn: { text: 'Search', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-search
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- tapOn: { text: '.*QA Organisation.*', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: tap-switcher

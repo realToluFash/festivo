@@ -1,0 +1,1006 @@
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { numberFormat } from '@soirely/domain';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+
+import { ActionPair } from './ActionPair.tsx';
+import { useDeskTop } from '../deskTop.ts';
+import { useTitleUnder } from '../deskNavForm.ts';
+import { offButton } from '../offButton.ts';
+import { Glyph } from './Glyph.tsx';
+import { LayersContext, useDeskDialog, type useDeskLayers } from '../layers.ts';
+
+export type Tell = (words: string) => void;
+
+/** A product page beside the Settings list, in B: inside the desk's look, with the layers its dialogs take turns on. */
+export function DeskPage({
+  layers,
+  children,
+}: {
+  layers: ReturnType<typeof useDeskLayers>['layers'];
+  children: ReactNode;
+}) {
+  return (
+    <LayersContext value={layers}>
+      <div className="desk">{children}</div>
+    </LayersContext>
+  );
+}
+
+export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
+
+/** The title row's bell: round and grey, a red dot for unread, the count in its name. `expanded` is set when it opens a panel. */
+export function Bell({
+  ref,
+  unread,
+  expanded,
+  onOpen,
+}: {
+  ref?: Ref<HTMLButtonElement>;
+  unread: number;
+  expanded?: boolean;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-expanded={expanded}
+      className="desk-bell"
+      aria-label={
+        unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
+      }
+      onClick={onOpen}
+    >
+      <Glyph name="bell" size={19} />
+      {unread > 0 && <span className="today-unread" aria-hidden="true" />}
+    </button>
+  );
+}
+
+/** The page's title, its one header action, and the bell: in the product the shell's, with "Now working in…" under the row. A compact row heads a column, and the bell is the page's beside it; a row under a back row leaves the bell and the offline line to that row. */
+export function TitleRow({
+  title,
+  titleRef,
+  action,
+  bell,
+  compact = false,
+  underBack = false,
+}: {
+  title: string;
+  titleRef?: Ref<HTMLHeadingElement>;
+  action?: ReactNode;
+  bell?: ReactNode;
+  compact?: boolean;
+  underBack?: boolean;
+}) {
+  const desk = useDeskTop();
+  const topped = compact || underBack;
+
+  return (
+    <>
+      {!topped && desk.above}
+      <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
+        <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
+          {title}
+        </h1>
+        {action}
+        {bell ?? (topped ? null : desk.bell)}
+      </header>
+      {desk.said}
+    </>
+  );
+}
+
+/** ‹ Members or ‹ Roles, where a person or a role opened in the list's place. */
+export function BackRow({
+  to,
+  onBack,
+  bell,
+}: {
+  to: string;
+  onBack: () => void;
+  bell?: ReactNode;
+}) {
+  const desk = useDeskTop();
+
+  return (
+    <>
+      {desk.above}
+      <div className="desk-top">
+        <button type="button" className="desk-back" onClick={onBack}>
+          <Glyph name="back" size={17} weight={2.4} />
+          {to}
+        </button>
+        <span className="today-grow" />
+        {bell}
+      </div>
+    </>
+  );
+}
+
+const PIECES = [1, 2, 3, 4, 5, 6];
+
+/** p6's rotated box, from the card's top edge down and from its right edge in. */
+const P6 = { top: 145, bottom: 163, fromRight: 219 };
+
+function wordBoxes(box: Element): Element[] {
+  return [...box.children].flatMap((child) => {
+    if (child.matches('.desk-step')) return [];
+    return child.querySelector('.desk-step') == null ? [child] : wordBoxes(child);
+  });
+}
+
+type LineBox = { top: number; bottom: number; right: number };
+
+function lineBox(glyphs: DOMRect, lineHeight: number): LineBox {
+  if (Number.isNaN(lineHeight)) return glyphs;
+  const centre = (glyphs.top + glyphs.bottom) / 2;
+  return { top: centre - lineHeight / 2, bottom: centre + lineHeight / 2, right: glyphs.right };
+}
+
+function lines(word: Element): LineBox[] {
+  const texts = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
+  const found: LineBox[] = [];
+  const range = document.createRange();
+  for (let text = texts.nextNode(); text != null; text = texts.nextNode()) {
+    const owner = text.parentElement ?? word;
+    const lineHeight = Number.parseFloat(getComputedStyle(owner).lineHeight);
+    range.selectNodeContents(text);
+    found.push(...[...range.getClientRects()].map((glyphs) => lineBox(glyphs, lineHeight)));
+  }
+  return found;
+}
+
+function onP6(line: LineBox, card: DOMRect): boolean {
+  return (
+    line.bottom - card.top > P6.top &&
+    line.top - card.top < P6.bottom &&
+    card.right - line.right < P6.fromRight
+  );
+}
+
+function useWordsOnP6(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLElement | null>) {
+  const [covered, setCovered] = useState(false);
+
+  useLayoutEffect(() => {
+    const top = card.current;
+    const box = inner.current;
+    if (top == null || box == null) return undefined;
+    let live = true;
+    const check = () => {
+      if (!live) return;
+      const edges = top.getBoundingClientRect();
+      setCovered(wordBoxes(box).some((word) => lines(word).some((line) => onP6(line, edges))));
+    };
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    const watch = () => {
+      sizes?.disconnect();
+      [box, ...wordBoxes(box)].forEach((node) => sizes?.observe(node));
+      check();
+    };
+    const changes = new MutationObserver(watch);
+    changes.observe(box, { childList: true, subtree: true, characterData: true });
+    watch();
+    void document.fonts?.ready.then(check);
+
+    return () => {
+      live = false;
+      sizes?.disconnect();
+      changes.disconnect();
+    };
+  }, [card, inner]);
+
+  return covered;
+}
+
+/** B's summary card: Confetti, what it says, and its one step at the foot. */
+export function Card({
+  size = 'page',
+  children,
+}: {
+  size?: 'page' | 'person' | 'column';
+  children: ReactNode;
+}) {
+  const card = useRef<HTMLElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const covered = useWordsOnP6(card, inner);
+
+  return (
+    <section
+      ref={card}
+      className={`desk-card desk-summary is-${size}${covered ? ' is-p6-covered' : ''}`}
+    >
+      {PIECES.map((piece) => (
+        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
+      ))}
+      <div ref={inner} className="desk-card-inner">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Focusable where an answer lands on the card, so the answer is read out. */
+export function Says({
+  children,
+  focusable = false,
+}: {
+  children: ReactNode;
+  focusable?: boolean;
+}) {
+  return (
+    <p className="desk-says" tabIndex={focusable ? -1 : undefined}>
+      {children}
+    </p>
+  );
+}
+
+export function OnCard({ children }: { children: ReactNode }) {
+  return <p className="desk-on-card">{children}</p>;
+}
+
+export function CardStep({
+  ref,
+  label,
+  busy = false,
+  onClick,
+}: {
+  ref?: RefObject<HTMLButtonElement | null> | undefined;
+  label: string;
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="desk-step"
+      aria-busy={busy || undefined}
+      onClick={busy ? undefined : onClick}
+    >
+      {label}
+      <Glyph name="arrow" size={16} weight={2.4} />
+    </button>
+  );
+}
+
+export function Avatar({
+  initials,
+  tone,
+  size = 'row',
+}: {
+  initials: string;
+  tone: number;
+  size?: 'row' | 'small' | 'face' | 'request';
+}) {
+  return (
+    <span className={`desk-avatar tone${tone % 5} is-${size}`} aria-hidden="true">
+      {initials}
+    </span>
+  );
+}
+
+export function Mark({ kind }: { kind: MarkKind }) {
+  return (
+    <span className={`desk-mark is-${kind}`} aria-hidden="true">
+      {kind === 'yes' && <Glyph name="tick" size={9} weight={3.4} />}
+      {kind === 'paused' && (
+        <>
+          <span />
+          <span />
+        </>
+      )}
+      {kind === 'ended' && <span />}
+    </span>
+  );
+}
+
+export function Tag({ kind, word }: { kind: MarkKind | 'now'; word: string }) {
+  return (
+    <span className={`desk-tag is-${kind}`}>
+      {kind !== 'now' && <Mark kind={kind} />}
+      {word}
+    </span>
+  );
+}
+
+export function Head({
+  title,
+  level = 2,
+  children,
+}: {
+  title: ReactNode;
+  level?: 2 | 3;
+  children?: ReactNode;
+}) {
+  const Heading = level === 2 ? 'h2' : 'h3';
+
+  return (
+    <div className="desk-head">
+      <Heading>{title}</Heading>
+      {children}
+    </div>
+  );
+}
+
+export function RowWords({
+  title,
+  tag,
+  lines = [],
+}: {
+  title: ReactNode;
+  tag?: ReactNode;
+  lines?: readonly ReactNode[];
+}) {
+  return (
+    <span className="desk-row-words">
+      <span className="desk-row-title">
+        <span className="desk-row-name">{title}</span>
+        {tag}
+      </span>
+      {lines.map((line, index) => (
+        <span key={index} className="desk-row-line">
+          {line}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function Chevron() {
+  return <Glyph name="chevron" size={17} weight={2.3} className="desk-chevron" />;
+}
+
+export function TextAction({
+  label,
+  red = false,
+  before,
+  after,
+  onClick,
+}: {
+  label: string;
+  red?: boolean;
+  before?: 'plus' | 'copy' | 'tick';
+  after?: 'chevron';
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={red ? 'desk-text is-red' : 'desk-text'} onClick={onClick}>
+      {before != null && <Glyph name={before} size={17} weight={2.3} />}
+      {label}
+      {after === 'chevron' && <Glyph name="chevron" size={16} weight={2.4} />}
+    </button>
+  );
+}
+
+/** `wraps` shows a long label whole, on as many lines as it needs, its last letters and "…" kept on one line. */
+export function RedAction({
+  label,
+  line,
+  wraps = false,
+  onClick,
+}: {
+  label: string;
+  line: string;
+  wraps?: boolean;
+  onClick: () => void;
+}) {
+  const [head, tail] = wraps ? tiedEnd(label) : [label, ''];
+
+  return (
+    <div className="desk-red">
+      {wraps ? (
+        <button
+          type="button"
+          className="desk-text is-red is-wraps"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {head}
+          <span className="desk-tied">{tail}</span>
+        </button>
+      ) : (
+        <TextAction label={label} red onClick={onClick} />
+      )}
+      <p className="desk-note">{line}</p>
+    </div>
+  );
+}
+
+export function tiedEnd(label: string): [string, string] {
+  const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
+  const tail = marks.slice(-3).join('');
+
+  return [label.slice(0, label.length - tail.length), tail];
+}
+
+export function Note({
+  children,
+  strong = false,
+  ref,
+  tabIndex,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  ref?: Ref<HTMLParagraphElement>;
+  tabIndex?: number | undefined;
+}) {
+  return (
+    <p ref={ref} tabIndex={tabIndex} className={strong ? 'desk-line is-ink' : 'desk-line'}>
+      {children}
+    </p>
+  );
+}
+
+export function Field({
+  label,
+  value,
+  onChange,
+  error,
+  help,
+  secret = false,
+  inputRef,
+  autoComplete,
+  inputMode,
+  placeholder,
+  action,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string | null;
+  help?: string;
+  secret?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  autoComplete?: string;
+  inputMode?: 'email' | 'numeric' | 'text';
+  placeholder?: string;
+  action?: ReactNode;
+}) {
+  const id = useId();
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className="desk-field">
+      {action == null ? (
+        <label htmlFor={id} className="desk-label">
+          {label}
+        </label>
+      ) : (
+        <div className="desk-label-row">
+          <label htmlFor={id} className="desk-label">
+            {label}
+          </label>
+          {action}
+        </div>
+      )}
+      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
+        <input
+          ref={inputRef}
+          id={id}
+          type={secret && !shown ? 'password' : inputMode === 'email' ? 'email' : 'text'}
+          value={value}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          placeholder={placeholder}
+          spellCheck={false}
+          aria-invalid={error != null}
+          aria-describedby={told === '' ? undefined : told}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {secret && (
+          <button
+            type="button"
+            className="desk-show"
+            aria-pressed={shown}
+            onClick={() => setShown((now) => !now)}
+          >
+            {shown ? t('signIn.conceal') : t('signIn.reveal')}
+          </button>
+        )}
+      </div>
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export interface Choice {
+  /** What a pick answers with, when two choices could share a name. */
+  id?: string;
+  name: string;
+  /** The language the name is in, where it is not the page's (WCAG 2.2, 3.1.2). */
+  lang?: string;
+  line?: string | null;
+  now?: boolean;
+}
+
+/** One choice of several, as radio rows: the picked one in Violet, the one held now tagged Now. */
+export function Choices({
+  legend,
+  hideLegend = false,
+  choices,
+  picked,
+  onPick,
+  foot,
+  footLive = false,
+}: {
+  legend: string;
+  hideLegend?: boolean;
+  choices: readonly Choice[];
+  picked: string;
+  onPick: (name: string) => void;
+  foot?: string;
+  footLive?: boolean;
+}) {
+  const { t } = useTranslation();
+  const name = useId();
+
+  return (
+    <fieldset className="desk-choices">
+      <legend className={hideLegend ? 'desk-unseen' : 'desk-legend'}>{legend}</legend>
+      <ul className="desk-rows">
+        {choices.map((choice) => (
+          <li key={choice.id ?? choice.name}>
+            <label
+              className={(choice.id ?? choice.name) === picked ? 'desk-row is-picked' : 'desk-row'}
+            >
+              <RowWords
+                title={
+                  choice.lang == null ? choice.name : <span lang={choice.lang}>{choice.name}</span>
+                }
+                tag={choice.now === true && <Tag kind="now" word={t('settings.choiceNow')} />}
+                lines={choice.line == null ? [] : [choice.line]}
+              />
+              <input
+                type="radio"
+                className="desk-radio"
+                name={name}
+                checked={(choice.id ?? choice.name) === picked}
+                onChange={() => onPick(choice.id ?? choice.name)}
+              />
+            </label>
+          </li>
+        ))}
+      </ul>
+      {foot != null && (
+        <p className="desk-foot" aria-live={footLive ? 'polite' : undefined}>
+          {foot}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+/** A centred 540 dialog over the dimmed desk: Cancel, the title, and the verb, then its body, which scrolls. */
+export function Dialog(props: DialogProps) {
+  const { host } = useContext(LayersContext);
+
+  return host == null ? null : createPortal(<DialogBox {...props} />, host);
+}
+
+interface DialogProps {
+  title: string;
+  /** Null while the body holds its own way on, such as Confirm it's you. */
+  verb: string | null;
+  dismiss?: string;
+  /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
+  cancel?: boolean;
+  on?: boolean;
+  red?: boolean;
+  locked?: boolean;
+  first?: RefObject<HTMLElement | null>;
+  onDismiss: () => void;
+  onConfirm: () => void;
+  children: ReactNode;
+}
+
+function DialogBox({
+  title,
+  verb,
+  dismiss,
+  cancel = true,
+  on = true,
+  red = false,
+  locked = false,
+  first,
+  onDismiss,
+  onConfirm,
+  children,
+}: DialogProps) {
+  const { t } = useTranslation();
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const none = useRef<HTMLElement>(null);
+  const covered = useDeskDialog(box, first ?? none, onDismiss, locked);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const under = useTitleUnder(heading, title);
+  const verbClass = ['desk-nav-verb', red && 'is-red', !on && 'is-off'].filter(Boolean).join(' ');
+
+  return (
+    <>
+      <div className="dialog-scrim" aria-hidden="true" />
+      <div
+        ref={box}
+        className="desk-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+        tabIndex={-1}
+        inert={covered}
+      >
+        <ActionPair
+          className={under ? 'desk-nav is-under' : 'desk-nav'}
+          stacks={false}
+          dismiss={
+            cancel ? (
+              <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
+                {dismiss ?? t('settings.dialogCancel')}
+              </button>
+            ) : (
+              <span className="desk-nav-cancel is-none" aria-hidden="true">
+                {verb}
+              </span>
+            )
+          }
+          between={
+            <h2 ref={heading} id={`${id}-title`} className="desk-nav-title">
+              {title}
+            </h2>
+          }
+          confirm={
+            verb == null ? (
+              <span className="desk-nav-verb is-none" aria-hidden="true" />
+            ) : (
+              <button
+                type="button"
+                className={verbClass}
+                {...offButton(!on || locked, { dim: false })}
+                onClick={onConfirm}
+              >
+                {verb}
+              </button>
+            )
+          }
+        />
+        <div className="desk-dialog-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+interface AskProps {
+  /** Its accessible name is its text, so a node in it must read as nothing more, as `WholeAddress` does. */
+  title: ReactNode;
+  /** None when the title says it all, as "Delete {name}?" does for a section with no tables (pm, 9 Nov 2026). */
+  line?: string | undefined;
+  keep: string;
+  /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
+  go?: string | undefined;
+  red?: boolean;
+  /** The line answers rather than asks while a verb is still offered, as Make live's end-passed refusal with Change dates does: an alert, and the title takes the focus when the dialog turns into it while open. False keeps the line plain with no verb, as Make live's offer that cannot send does. */
+  told?: boolean | undefined;
+  /** Grey until what the verb needs is there, as Delete is before the name matches; pressing it still calls onGo, to say what is missing. */
+  off?: boolean;
+  /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
+  busy?: string | undefined;
+  /** Why the answer did not go, under the line and any body; the verb tries again. */
+  failed?: string | undefined;
+  /** Where the focus starts, when not on the way back. When it leaves the dialog while the focus is outside it, the focus goes to the verb. */
+  first?: RefObject<HTMLElement | null> | undefined;
+  /** The focus starts on the way back even when the dialog opens failed or going, as Make live's does. */
+  keepFirst?: boolean | undefined;
+  /** The focus starts on the title, as a dialog that has turned into another question does, and moves there when it turns while open. */
+  titleFirst?: boolean | undefined;
+  /** More of the body under the line, which stays its description. */
+  children?: ReactNode;
+  /** The body sits at the dialog's own gap rather than its wider one, as Make live's question with Host 1 does. */
+  flat?: boolean | undefined;
+  /** Ids in that body that describe the dialog too, after the line, as Delete event's list and restore window do. */
+  describedBy?: string | undefined;
+  onKeep: () => void;
+  onGo?: () => void;
+}
+
+/** B's one confirm, 400 wide: the way back first, the verb last and red when it removes. */
+export function Ask(props: AskProps) {
+  const { host } = useContext(LayersContext);
+
+  return host == null ? null : createPortal(<AskBox {...props} />, host);
+}
+
+function AskBox(props: AskProps) {
+  const {
+    title,
+    line,
+    keep,
+    go,
+    red = true,
+    told,
+    off = false,
+    busy,
+    failed,
+    first,
+    keepFirst = false,
+    titleFirst = false,
+    children,
+    flat = false,
+    describedBy,
+    onKeep,
+    onGo,
+  } = props;
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const goButton = useRef<HTMLButtonElement>(null);
+  const [onVerb] = useState(!keepFirst && (busy != null || failed != null));
+  const waits = busy != null;
+  const said =
+    line == null ? null : (told ?? go == null) ? (
+      <AskAlert id={`${id}-line`}>{line}</AskAlert>
+    ) : (
+      <p id={`${id}-line`}>{line}</p>
+    );
+  const alert = failed != null && <AskAlert>{failed}</AskAlert>;
+
+  useDeskDialog(
+    box,
+    first ?? (titleFirst ? heading : onVerb ? goButton : keepButton),
+    onKeep,
+    waits,
+  );
+
+  const titled = titleFirst || told === true;
+  const [titledOpening] = useState(titled);
+
+  useEffect(() => {
+    if (titled && !titledOpening) heading.current?.focus();
+  }, [titled, titledOpening]);
+
+  const leads = first != null;
+  const led = useRef(leads);
+
+  useEffect(() => {
+    const left = led.current && !leads;
+    led.current = leads;
+    if (left && !(box.current?.contains(document.activeElement) ?? true)) {
+      goButton.current?.focus();
+    }
+  }, [leads]);
+
+  return (
+    <>
+      <div className="dialog-scrim is-over" aria-hidden="true" />
+      <div
+        ref={box}
+        className="desk-ask"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={
+          [line == null ? null : `${id}-line`, describedBy].filter(Boolean).join(' ') || undefined
+        }
+      >
+        <h2 ref={heading} id={`${id}-title`} tabIndex={titled ? -1 : undefined}>
+          {title}
+        </h2>
+        {children == null || flat ? (
+          <>
+            {said}
+            {children}
+            {alert}
+          </>
+        ) : (
+          <div className="desk-ask-body">
+            {said}
+            {children}
+            {alert}
+          </div>
+        )}
+        <ActionPair
+          className="desk-ask-pair"
+          stacks={false}
+          dismiss={
+            <button
+              ref={keepButton}
+              type="button"
+              className={waits ? 'desk-text desk-ask-keep is-waits' : 'desk-text desk-ask-keep'}
+              {...offButton(waits, { dim: false })}
+              onClick={onKeep}
+            >
+              {keep}
+            </button>
+          }
+          confirm={
+            go != null && (
+              <button
+                ref={goButton}
+                type="button"
+                className={
+                  waits
+                    ? 'desk-text is-busy'
+                    : off
+                      ? 'desk-text is-off'
+                      : red
+                        ? 'desk-text is-red'
+                        : 'desk-text'
+                }
+                aria-busy={waits || undefined}
+                {...offButton(waits, { dim: false })}
+                aria-disabled={waits || off}
+                onClick={onGo}
+              >
+                {waits && <span className="pending-spinner desk-turning" aria-hidden="true" />}
+                {busy ?? go}
+              </button>
+            )
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+export function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <p id={id} className="desk-ask-alert" role="alert">
+      <Glyph name="alert" size={18} weight={2.2} />
+      {children}
+    </p>
+  );
+}
+
+export interface MenuItem {
+  key: string;
+  word: string;
+  count: number;
+}
+
+/** A menu that drops from its button, its right edge on the button's: a tick on the one in use. */
+export function Menu({
+  items,
+  picked,
+  open,
+  onOpen,
+  onClose,
+  onPick,
+}: {
+  items: readonly MenuItem[];
+  picked: string;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onPick: (key: string) => void;
+}) {
+  const { i18n } = useTranslation();
+  const figure = numberFormat(i18n.language);
+  const id = useId();
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLUListElement>(null);
+  const opened = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const items = () => [
+      ...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitemradio]') ?? []),
+    ];
+    const close = (back: boolean) => {
+      onClose();
+      if (back) button.current?.focus();
+    };
+    const keys = (event: KeyboardEvent) => {
+      const all = items();
+      const at = all.indexOf(document.activeElement as HTMLElement);
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+      } else if (event.key === 'Tab') close(false);
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        const next = at < 0 ? (step > 0 ? 0 : all.length - 1) : at + step;
+        all[(next + all.length) % all.length]?.focus();
+      } else if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        (event.key === 'Home' ? all[0] : all.at(-1))?.focus();
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node;
+
+      if (!menu.current?.contains(target) && !button.current?.contains(target)) close(false);
+    };
+
+    if (opened.current)
+      (items().find((item) => item.getAttribute('aria-checked') === 'true') ?? items()[0])?.focus();
+    opened.current = false;
+    document.addEventListener('keydown', keys);
+    document.addEventListener('pointerdown', outside);
+
+    return () => {
+      document.removeEventListener('keydown', keys);
+      document.removeEventListener('pointerdown', outside);
+    };
+  }, [open, onClose]);
+
+  const word = items.find((item) => item.key === picked);
+
+  return (
+    <div className="desk-menu-at">
+      <button
+        ref={button}
+        type="button"
+        className="desk-filter"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? `${id}-menu` : undefined}
+        id={id}
+        onClick={() => {
+          if (open) onClose();
+          else {
+            opened.current = true;
+            onOpen();
+          }
+        }}
+      >
+        {word?.word} · {word == null ? null : figure.format(word.count)}
+        <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
+      </button>
+      {open && (
+        <ul ref={menu} id={`${id}-menu`} className="desk-menu" role="menu" aria-labelledby={id}>
+          {items.map((item) => (
+            <li key={item.key} role="none">
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={item.key === picked}
+                tabIndex={-1}
+                className="desk-menu-item"
+                onClick={() => {
+                  onPick(item.key);
+                  onClose();
+                  button.current?.focus();
+                }}
+              >
+                <span className="desk-menu-tick">
+                  {item.key === picked && <Glyph name="tick" size={16} weight={2.6} />}
+                </span>
+                <span className="today-grow">{item.word}</span>
+                <span className="desk-menu-count">{figure.format(item.count)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

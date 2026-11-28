@@ -1,0 +1,25 @@
+# sc-70353: amaka's Remove ask on the phone, its question carrying the address, then Keep.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_MEMBER}' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_AMAKA}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_AMAKA}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible: { element: { id: 'people.remove' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'people.remove' }
+- extendedWaitUntil: { visible: { id: 'people.remove.keep' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: ask-amaka
+- tapOn: { id: 'people.remove.keep' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: after-keep

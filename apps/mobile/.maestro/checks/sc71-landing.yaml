@@ -1,0 +1,8 @@
+# sc-71: an account with no organisation, on the event it holds, for the pair beside the demo's more-in. Needs ${ORIENT}, ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: landing

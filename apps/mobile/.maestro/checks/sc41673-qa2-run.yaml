@@ -1,0 +1,15 @@
+# sc-41673, Android phone on its side: the run that showed the defect on sc-38666. A fresh Create an organisation, the already focused name field tapped, then Ibadan Supper Club typed; pictured a second after the first letter and a second after the whole name.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'I'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: q1-letter
+- inputText: 'badan Supper Club'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: q2-whole
+- tapOn: { id: 'createWalk.cancel', optional: true }

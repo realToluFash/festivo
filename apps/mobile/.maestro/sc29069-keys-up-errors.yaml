@@ -1,0 +1,39 @@
+# sc-29069: error lines stay above the keys on sign-in and Your mobile number.
+# Run signed out. EMAIL must be fresh.
+#   node .qa/bin/qa-env.mjs maestro sc29069-keys-up-errors --android NAME=… EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- tapOn:
+    id: 'signIn.email'
+- inputText: 'not-an-address'
+- tapOn:
+    id: 'signIn.password'
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: sc29069-sign-in-error-keys-up
+- hideKeyboard
+- runFlow: verify-email.yaml
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Keys Ltd'
+- tapOn:
+    id: 'completeProfile.country'
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: 'United King'
+- tapOn:
+    id: 'completeProfile.country.GB'
+- tapOn:
+    id: 'completeProfile.save'
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 15000
+- tapOn:
+    id: 'phone.number'
+- inputText: '123'
+- takeScreenshot: sc29069-mobile-typed
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: sc29069-mobile-error-keys-up

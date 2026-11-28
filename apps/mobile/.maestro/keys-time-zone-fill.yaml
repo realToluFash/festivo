@@ -1,0 +1,10 @@
+# Find your time zone open, Lisbon picked, keys up on the field. sc-13408.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: time-zone-typed.yaml
+    env:
+      QUERY: 'Lisbon'
+- tapOn:
+    id: 'account.zone.Europe/Lisbon'
+- takeScreenshot: mobile-13408-time-zone-fill

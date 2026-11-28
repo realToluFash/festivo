@@ -1,0 +1,10 @@
+# sc-88028: a request link opened signed in, a one-word 40-character organisation name at the current text size. Pass LONG, its token after /join/.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${LONG}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.ask
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc88028-join-long-signed-in-top

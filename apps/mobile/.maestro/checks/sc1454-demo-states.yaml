@@ -1,0 +1,55 @@
+# sc-1454 demo states
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=door
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: door-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorSearch
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorSearch-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorArrived
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorArrived-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorUndone
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorUndone-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorNoMatch
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorNoMatch-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkIn
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkIn-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkInBlank
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkInBlank-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkInDuplicate
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkInDuplicate-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkInAdded
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkInAdded-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=notRecorded
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: notRecorded-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=beforeOpen
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: beforeOpen-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=ended
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: ended-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorEmpty
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorEmpty-demo

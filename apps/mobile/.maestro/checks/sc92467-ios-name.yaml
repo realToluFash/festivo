@@ -1,0 +1,27 @@
+# sc-92467, iPhone and iPad: Name opens with the keys up and takes typing with no tap, first opening only. The short form of sc91027-name.yaml for the iOS pass of this story; that check holds the Cancel and Discard openings. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: opened
+- inputText: 'Zq'
+- assertVisible:
+    id: 'account.name.field'
+    text: '.*Zq.*'
+- takeScreenshot: typed

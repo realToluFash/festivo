@@ -1,0 +1,22 @@
+# sc-85006: the held page (paused or two-factor overdue) at each tab's route, a screenshot per route.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.home'
+    timeout: 30000
+- tapOn:
+    id: 'frame.home'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-calendar
+- tapOn:
+    id: 'frame.settings'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-settings

@@ -1,0 +1,44 @@
+# sc-75689: a fresh event; Event name opened, typed into, the event deleted elsewhere, Save: the event-gone notice, no Try again, what was typed stays; Save again, the same notice.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: fresh
+- openLink: ${METRO_URL}/--/events/${output.eventId}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' typed'
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: delete
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- assertVisible: '.* typed'
+- takeScreenshot: gone
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- takeScreenshot: gone-again

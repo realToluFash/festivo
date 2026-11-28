@@ -1,0 +1,9 @@
+# sc-68417: the round + on Guests is read by its accessible name, a button.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.add' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertVisible: { id: 'guests.add', text: '${ADD_LABEL}' }
+- takeScreenshot: a-add

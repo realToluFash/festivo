@@ -1,0 +1,34 @@
+# sc-83008: an event opened from Events' list: ‹ Events, back to Events.
+# Needs: Adire Studio holding Lagos Night as a draft.
+appId: host.exp.Exponent
+---
+- runFlow: sc83008-to-adire.yaml
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-events'
+    timeout: 30000
+- tapOn:
+    id: 'tab-events'
+- tapOn: 'Drafts.*'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '.*Lagos Night.*'
+    timeout: 20000
+- tapOn: '.*Lagos Night.*'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Events.*|.*Eventos.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- assertVisible: '.*Lagos Night.*'
+- takeScreenshot: back
