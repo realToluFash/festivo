@@ -50,6 +50,8 @@ import {
 import { codeChoice, COUNTRIES, TRIES } from './rules.ts';
 import './today.css';
 import './redeem.css';
+import { PasteCode } from './PasteCode.tsx';
+import { usePasteCode } from './usePasteCode.ts';
 
 /** The redeem page in a browser, signed out, for someone without the app: 390 first, one centred column wider (sc-72). */
 export function Redeem() {
@@ -784,6 +786,7 @@ export function CodeStep({
   const busy = step.busy !== 'no';
   const lines = CODE_LINES[step.via];
   const said = step.line != null ? lines[step.line] : step.problem === 'wrong' ? lines.wrong : null;
+  const paste = usePasteCode(fieldRef, onDigits);
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -817,15 +820,17 @@ export function CodeStep({
                 autoComplete="one-time-code"
                 inputMode="numeric"
                 maxLength={PHONE_CODE_LENGTH}
-                onChange={(typed) =>
-                  onDigits(typed.replace(/\D/gu, '').slice(0, PHONE_CODE_LENGTH))
-                }
+                onChange={(typed) => {
+                  onDigits(typed.replace(/\D/gu, '').slice(0, PHONE_CODE_LENGTH));
+                  paste.typed();
+                }}
               />
               {said != null && (
                 <Says id="rd-phone-code-line" alert={step.problem === 'wrong'}>
                   {said}
                 </Says>
               )}
+              <PasteCode id="rd-phone-code-paste" paste={paste} />
             </div>
             <Primary submit busy={busy}>
               {busy ? action.busy : action.idle}
