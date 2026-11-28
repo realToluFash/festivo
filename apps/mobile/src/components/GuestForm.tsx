@@ -42,6 +42,7 @@ import { phoneProblemMessage } from '../phoneProblem.ts';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { FromContactsStart } from './GuestsFromContacts.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
 import { DoneLine } from './FormLayers.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
@@ -80,6 +81,7 @@ export function GuestForm({
   opener,
   onClose,
   onSaved,
+  fromContacts = null,
 }: {
   open: boolean;
   mode: GuestFormMode;
@@ -92,6 +94,8 @@ export function GuestForm({
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onSaved: (saved: { guest: Guest; tagged: TaggedGuest | null }) => void;
+  /** Add guest's From contacts (sc-7579); null on a build without the picker. */
+  fromContacts?: { refused: boolean; onPress: () => void } | null;
 }) {
   const { t } = useTranslation();
   const editing = mode.kind === 'edit' ? mode.tagged : null;
@@ -487,6 +491,7 @@ export function GuestForm({
           </View>
         </View>
       )}
+      {adding && fromContacts != null && <FromContactsStart {...fromContacts} />}
       <Field label={t('account.fullName')} error={words('fullName')}>
         <TextField
           ref={nameField}

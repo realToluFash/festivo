@@ -149,6 +149,8 @@ export const W = {
   onlyChosen: 'Only the number you choose is kept.',
   useThisNumber: 'Use this number',
   clearNumber: 'Clear the number',
+  clearEmail: 'Clear the email',
+  reviewNameBlank: 'Enter a full name.',
   toFix: 'To fix',
   onList: 'Already on the list',
   places: 'Places for companions',

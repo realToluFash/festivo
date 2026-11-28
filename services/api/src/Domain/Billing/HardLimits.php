@@ -78,6 +78,13 @@ final readonly class HardLimits implements HardLimitsInterface
         $this->requireRoom($event->getOrganisation(), $this->guestRepository->countPeople($event), $adding, 'guest.capacity_reached', 'guest.plan_limit');
     }
 
+    public function peopleRoom(Event $event): array
+    {
+        [$plan, $allowance] = $this->allowance($event->getOrganisation(), CatalogueLimit::GuestsPerEvent);
+
+        return ['plan' => $plan->value, 'allowed' => $allowance->amount, 'people' => $this->guestRepository->countPeople($event)];
+    }
+
     public function requireRoomForCopy(Organisation $organisation, int $people): void
     {
         if ($people <= 0) {
