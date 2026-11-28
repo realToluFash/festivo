@@ -76,3 +76,4 @@ env:
 - extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }
 - waitForAnimationToEnd
 - takeScreenshot: side-created
+- setOrientation: PORTRAIT
