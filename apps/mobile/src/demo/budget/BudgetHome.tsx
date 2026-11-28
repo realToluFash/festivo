@@ -602,7 +602,7 @@ export function BudgetHome({
   const notices = (
     <>
       {m.link !== 'live' && <Strip words={say.asOf(AS_OF.time, AS_OF.minutes)} />}
-      {m.link === 'reconnecting' && <InfoLine text={W.reconnecting} glyph="refresh" />}
+      {m.link === 'reconnecting' && <InfoLine text={W.reconnecting} glyph="refresh" status />}
     </>
   );
   const after = (
