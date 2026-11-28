@@ -222,11 +222,11 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       );
       expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
       expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
-      expect(picker).toContain('onRequestClose={close}');
+      expect(picker).toMatch(/onRequestClose=\{[^}]*if \(!pickerTookBack\(\)\) close\(\);/);
       expect(picker).toContain('onAccessibilityEscape={close}');
       expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
       expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
-      expect(picker).toContain('const takeBack = useEarlyBack(open, close);');
+      expect(picker).toContain('const takeBack = useEarlyBack(open, inPlace, close);');
       expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
     });
 

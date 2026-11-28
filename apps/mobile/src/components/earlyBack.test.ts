@@ -46,21 +46,23 @@ const {
 vi.useFakeTimers();
 
 describe('an early Back goes to the opening picker, not what is beneath (sc-44486)', () => {
-  it('takes Back from a window under it and from the screen, from the hold until its release', () => {
+  const press = () => [...listeners].map((back) => back());
+
+  it('takes Back from a window under it and from the screen, and drops a second delivery', () => {
     expect(pickerTookBack()).toBe(false);
 
     const close = vi.fn();
-    const release = holdBack(close);
+    const { release } = holdBack(close);
 
     expect(pickerTookBack()).toBe(true);
-    expect([...listeners].map((back) => back())).toEqual([true]);
+    expect(press()).toEqual([true]);
     expect(close).toHaveBeenCalledTimes(2);
 
     release();
 
     // The same Back's second delivery: taken, with nothing left to close.
     expect(pickerTookBack()).toBe(true);
-    expect([...listeners].map((back) => back())).toEqual([true]);
+    expect(press()).toEqual([true]);
     expect(close).toHaveBeenCalledTimes(2);
 
     vi.advanceTimersByTime(SECOND_DELIVERY_MS);
@@ -69,37 +71,81 @@ describe('an early Back goes to the opening picker, not what is beneath (sc-4448
     expect(listeners.size).toBe(0);
   });
 
+  it('drops nothing after a close with no Back, however soon', () => {
+    holdBack(vi.fn()).release();
+
+    expect(pickerTookBack()).toBe(false);
+    expect(listeners.size).toBe(0);
+  });
+
+  it('drops nothing after a Back on a picker that had finished opening', () => {
+    const hold = holdBack(vi.fn());
+    hold.opened();
+    press();
+    hold.release();
+
+    expect(pickerTookBack()).toBe(false);
+    expect(listeners.size).toBe(0);
+  });
+
+  it('still drops when the picker finishes opening after an early Back', () => {
+    const hold = holdBack(vi.fn());
+    press();
+    hold.opened();
+    hold.release();
+
+    expect(pickerTookBack()).toBe(true);
+    vi.advanceTimersByTime(SECOND_DELIVERY_MS);
+    expect(listeners.size).toBe(0);
+  });
+
   it('keeps a newer hold when an older one is released', () => {
     const old = holdBack(vi.fn());
+    pickerTookBack();
     const newer = holdBack(vi.fn());
-    old();
+    old.release();
     vi.advanceTimersByTime(SECOND_DELIVERY_MS);
 
     expect(pickerTookBack()).toBe(true);
-    newer();
+    newer.release();
     vi.advanceTimersByTime(SECOND_DELIVERY_MS);
     expect(pickerTookBack()).toBe(false);
   });
 });
 
 describe('the hold a picker takes at its tap (sc-44486)', () => {
-  it('is released after a Back that shuts the picker before its opening renders', () => {
-    let open = false;
-    const render = () => {
-      hook.at = 0;
-      const takeBack = hooked(open, () => (open = false));
-      hook.due.splice(0).forEach((effect) => effect());
-      return takeBack;
-    };
+  let open = false;
+  let opened = false;
+  const render = () => {
+    hook.at = 0;
+    const takeBack = hooked(open, opened, () => (open = false));
+    hook.due.splice(0).forEach((effect) => effect());
+    return takeBack;
+  };
+  const press = () => [...listeners].map((back) => back());
 
+  it('is released after a Back that shuts the picker before its opening renders', () => {
     render()();
     open = true;
-    expect([...listeners].map((back) => back())).toEqual([true]);
+    expect(press()).toEqual([true]);
     render();
     vi.advanceTimersByTime(SECOND_DELIVERY_MS);
 
     expect(listeners.size).toBe(0);
     expect(pickerTookBack()).toBe(false);
+  });
+
+  it('ends at once on a Back after the picker says it has opened', () => {
+    render()();
+    open = true;
+    render();
+    opened = true;
+    render();
+    press();
+    opened = false;
+    render();
+
+    expect(listeners.size).toBe(0);
   });
 
   const source = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
@@ -112,6 +158,18 @@ describe('the hold a picker takes at its tap (sc-44486)', () => {
     );
     expect(screen.match(/openList\('(type|zone|currency)'\)/g)).toHaveLength(3);
     expect(screen).not.toMatch(/setList\('/);
+  });
+
+  it('is told when a sheet on New event is drawn', () => {
+    expect(source('NewEvent.tsx')).toContain('useEarlyBack(list != null, listDrawn, closeList)');
+    expect(source('NewEvent.tsx')).toContain('onDrawn={() => setListDrawn(true)}');
+    expect(source('FormLayers.tsx')).toContain('onLayout={onDrawn}');
+  });
+
+  it('is told when the list menu has risen into place', () => {
+    expect(source('ListPicker.tsx')).toMatch(
+      /motion\.start\(\(\{ finished \}\) => \{\s*if \(finished && shown\) setInPlace\(true\);/,
+    );
   });
 
   it('gets the Back a window under the picker is given', () => {

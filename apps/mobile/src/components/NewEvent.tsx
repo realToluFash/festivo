@@ -136,7 +136,9 @@ export function NewEventScreen({
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
   const closeList = () => setList(null);
-  const takeBack = useEarlyBack(list != null, closeList);
+  const [listDrawn, setListDrawn] = useState(false);
+  if (list == null && listDrawn) setListDrawn(false);
+  const takeBack = useEarlyBack(list != null, listDrawn, closeList);
   const openList = (which: ListOpen) => {
     takeBack();
     setList(which);
@@ -544,7 +546,11 @@ export function NewEventScreen({
       ? null
       : {
           layer: (
-            <SheetLayer onClose={closeList} label={t('eventEdit.cancel')}>
+            <SheetLayer
+              onClose={closeList}
+              label={t('eventEdit.cancel')}
+              onDrawn={() => setListDrawn(true)}
+            >
               <SheetBody
                 title={listed.title}
                 close={t('eventEdit.cancel')}
