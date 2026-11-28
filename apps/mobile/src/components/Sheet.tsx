@@ -46,6 +46,7 @@ import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
+import { pickerTookBack } from './earlyBack.ts';
 import { useKeyboardTop, useKeysUp } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -141,6 +142,9 @@ function SheetFrame({
   children,
 }: SheetProps) {
   const close = held ? () => undefined : onClose;
+  const back = () => {
+    if (!pickerTookBack()) close();
+  };
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
@@ -193,7 +197,7 @@ function SheetFrame({
       // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={close}
+      onRequestClose={back}
       onShow={() => setOnScreen(true)}
       onDismiss={gone}
     >

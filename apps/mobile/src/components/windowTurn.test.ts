@@ -226,13 +226,13 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       expect(picker).toContain('onAccessibilityEscape={close}');
       expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
       expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
-      expect(picker).toContain('useSystemBack(open, close);');
+      expect(picker).toContain('const takeBack = useEarlyBack(open, close);');
       expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
     });
 
     it('leaves no field holding input focus for Android to hand TalkBack to as it closes, under TalkBack only (sc-44356)', () => {
       expect(picker).toMatch(
-        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
+        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*takeBack\(\);\s*setOpen\(true\);/,
       );
       expect(picker).toMatch(
         /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,

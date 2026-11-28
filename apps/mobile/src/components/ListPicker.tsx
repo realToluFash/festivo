@@ -34,7 +34,7 @@ import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
-import { useSystemBack } from './useSystemBack.ts';
+import { useEarlyBack } from './earlyBack.ts';
 
 export interface Choice {
   code: string;
@@ -120,19 +120,14 @@ export function ListPicker({
   );
 
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
-  useEffect(() => {
-    trace(testID, 'state', { open, pickerShown, windowUp, windowShown });
-  }, [testID, open, pickerShown, windowUp, windowShown]);
   const close = () => {
-    trace(testID, 'close', { open, windowUp });
     if (Platform.OS === 'android') setClosed({});
     // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Not at the tap, nor as the menu's window shows: its keyboard hide there had TalkBack say "keyboard hidden" as the menu opened (qa #50794, #52739). Natively, since the menu's search, once focused, is the field JS counts as focused.
     if (heldBehind.current != null) blurNatively(heldBehind.current);
     heldBehind.current = null;
     setOpen(false);
   };
-  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useSystemBack(open, close);
+  const takeBack = useEarlyBack(open, close);
   useFocusOnAnswer(windowShown ? undefined : closed, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
@@ -174,11 +169,11 @@ export function ListPicker({
           wrong && styles.fieldWrong,
         ]}
         onPress={() => {
-          trace(testID, 'tap', {});
           controlTaken();
           if (Platform.OS === 'android' && readerOn)
             heldBehind.current = TextInput.State.currentlyFocusedInput();
           setClosed(undefined);
+          takeBack();
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -205,10 +200,7 @@ export function ListPicker({
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={close}
-        onShow={() => {
-          trace(testID, 'onShow', { open, pickerShown, windowUp });
-          risen();
-        }}
+        onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
@@ -300,11 +292,6 @@ const SLIDES_INSIDE = Platform.OS === 'android';
 const RISE_EASING = Easing.inOut(Easing.sin);
 
 /** Whether the menu's window is up, and how far its menu has risen in it, 1 in place; on iOS the window slides itself. */
-// sc-44486: a device trace of the menu's show and close, to reproduce the early-Back window before fixing it.
-function trace(testID: string, what: string, state: object) {
-  if (__DEV__) console.log(`[sc-44486] ${Date.now()} ${testID} ${what} ${JSON.stringify(state)}`);
-}
-
 function usePickerRise(shown: boolean, reduced: boolean) {
   const [windowUp, setWindowUp] = useState(false);
   const [rise] = useState(() => new Animated.Value(SLIDES_INSIDE ? 0 : 1));
