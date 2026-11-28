@@ -61,6 +61,7 @@ export const NOTE_WORDS = {
   mended_one: '1 note is no longer broken.',
   mended_other: '{{count}} notes are no longer broken.',
   showTable: 'Show {{table}}',
+  guestOf: 'Guest of {{name}}',
 } as const;
 
 export const NW = NOTE_WORDS;
@@ -83,7 +84,7 @@ export interface NoteDraft {
   kind: NoteKind | null;
   search: string;
   guest: string | null;
-  errors: { kind?: string; guest?: string };
+  errors: { kind?: string | undefined; guest?: string | undefined };
   /** The other kind already joins the two: Replace swaps it, Cancel keeps it. */
   asking: SeatNote | null;
 }
@@ -322,3 +323,61 @@ export const NOTE_STATES: Readonly<Record<NoteStateKey, string>> = {
   notesLive: 'A colleague’s move mends a note',
   notesReadOnly: 'Without Manage seating: no tags, no Notes',
 };
+
+export function brokenByTable(plan: Plan, notes: readonly SeatNote[]): Map<string, Broken[]> {
+  const byTable = new Map<string, Broken[]>();
+
+  for (const one of brokenNotes(plan, notes))
+    for (const item of one.tables) byTable.set(item.id, [...(byTable.get(item.id) ?? []), one]);
+  return byTable;
+}
+
+export function nextId(list: readonly SeatNote[]): string {
+  const taken = list.map((note) => Number(note.id.slice(1))).filter(Number.isFinite);
+
+  return `n${Math.max(0, ...taken) + 1}`;
+}
+
+export function tablesWords(tables: readonly Item[]): string {
+  return tables.map((item) => item.name).join(' · ');
+}
+
+export function noteTags(
+  plan: Plan,
+  notes: readonly SeatNote[],
+): Map<string, { tag: string; words: string }> {
+  return new Map(
+    [...brokenByTable(plan, notes)].map(([id, broken]) => [
+      id,
+      { tag: tagWords(broken), words: broken.map((one) => one.words).join(' ') },
+    ]),
+  );
+}
+
+/** ?state=notesLive: the colleague moves a guest into a free chair at another table, as a save arriving over Mercure would. */
+export function movedInto(plan: Plan, name: string, to: string): Plan {
+  const free = plan.items
+    .find((item) => item.id === to)
+    ?.chairs.findIndex((c) => c.state === 'empty');
+
+  if (free == null || free < 0) return plan;
+  return {
+    ...plan,
+    items: plan.items.map((item) => ({
+      ...item,
+      chairs: item.chairs.map((chair, index) =>
+        item.id === to && index === free
+          ? { state: 'taken', who: name }
+          : chair.state === 'taken' && chair.who === name
+            ? { state: 'empty' }
+            : chair,
+      ),
+    })),
+  };
+}
+
+export const LIVE_MOVE = { name: 'Leila Haddad', to: 't6' } as const;
+
+export function unnamedOf(party: Party): string {
+  return say(NW.guestOf, { name: party.name });
+}

@@ -1,0 +1,271 @@
+/* sc-1364: seating notes, Notes beside Without a seat, the notched tag and a guest's notes. */
+.sn-switch {
+  flex: none;
+}
+
+.sn-switch .st-seg-one {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.sn-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sn-count.is-broken {
+  color: var(--colorBrokenText);
+}
+
+.sn-tag-mark {
+  flex: none;
+}
+
+.sn-tag-mark path {
+  fill: var(--colorBrokenTint);
+  stroke: var(--colorBroken);
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.sn-tag-mark circle {
+  fill: var(--colorBroken);
+}
+
+.sn-tag path {
+  fill: var(--colorBrokenTint);
+  stroke: var(--colorBroken);
+  stroke-width: 1.6;
+}
+
+.sn-tag circle {
+  fill: var(--colorBroken);
+}
+
+.sn-tag text {
+  fill: var(--colorBrokenText);
+  font: 700 12px var(--fontFamily);
+}
+
+.sn-with {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.sn-with > .st-party {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin-right: 0;
+}
+
+.sn-open {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--sizeHit);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--colorAccentText);
+  font: 600 14px/1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.sn-open:hover {
+  background: var(--colorNeutralFill);
+}
+
+.sn-open-n {
+  min-width: 20px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--colorNeutralFill);
+  color: var(--colorInk);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.sn-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: calc(100% + 20px);
+  min-height: var(--sizeHit);
+  margin: 0 -10px;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--radiusRow);
+  background: none;
+  color: var(--colorInk);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sn-entry:hover {
+  background: var(--colorNeutralFill);
+}
+
+.sn-entry.is-on {
+  background: var(--colorBrokenTint);
+}
+
+.sn-entry-tag,
+.sn-state.is-broken {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--colorBrokenText);
+  font: 700 13px/1.2 var(--fontFamily);
+}
+
+.sn-entry-words {
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.sn-none {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sn-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 15px/1.35 var(--fontFamily);
+}
+
+.sn-private {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.45 var(--fontFamily);
+}
+
+.sn-h {
+  flex: 1;
+  margin: 0;
+  font: 700 16px/1.3 var(--fontFamily);
+}
+
+.sn-notes,
+.sn-picks,
+.sn-card-notes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sn-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: 10px 0;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.sn-note-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sn-note-why {
+  color: var(--colorBrokenText);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.sn-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13px/1.2 var(--fontFamily);
+}
+
+.sn-state.is-kept {
+  color: var(--colorInk);
+}
+
+.sn-state.is-waiting {
+  color: var(--colorInkSecondary);
+}
+
+.sn-add,
+.sn-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceLg);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.sn-ask {
+  padding: var(--spaceLg);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: 16px;
+  background: var(--colorAttentionWash);
+}
+
+.sn-kinds {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sn-guests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.st-search.is-wrong {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
+.sn-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.st-card.is-broken {
+  box-shadow: 0 0 0 1.5px var(--colorBroken);
+}
+
+.sn-card-notes {
+  gap: 4px;
+}
+
+.sn-card-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--colorBrokenText);
+  font: 600 12px/1.4 var(--fontFamily);
+}
+
+.sn-card-note .sn-tag-mark {
+  margin-top: 1px;
+}

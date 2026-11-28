@@ -33,6 +33,8 @@ import { useSeating } from './seatingContext.ts';
 import type { ListTab } from './seatingSeed.ts';
 import { ShapeTile, Swatch } from './SeatingPanel.tsx';
 import { ChairMark, Pill, StateMark } from './SeatingRoom.tsx';
+import { CardNotes, NotesButton } from './SeatingNotes.tsx';
+import { brokenByTable } from './seatingNotes.ts';
 
 const RING_STEP = 5;
 const PILL_STEP = 24;
@@ -206,6 +208,7 @@ export function TablesView() {
     (item) => ui.tablesSection == null || item.sec === ui.tablesSection,
   );
   const picking = ui.picked != null;
+  const broken = brokenByTable(plan, ui.readOnly ? [] : ui.notes.list);
   const chairsOn = (item: Item): CardChairs | null =>
     ui.readOnly || !chairsFit(item)
       ? null
@@ -254,9 +257,14 @@ export function TablesView() {
           const marks = marksOf(ui.rings, ui.presence, item.id);
 
           return (
-            <li key={item.id} className="st-card-slot">
+            <li key={item.id} className="st-card-slot" data-card={item.id}>
               <div
-                className={['st-card', lit && 'is-lit', marks.length > 0 && 'is-marked']
+                className={[
+                  'st-card',
+                  lit && 'is-lit',
+                  marks.length > 0 && 'is-marked',
+                  broken.has(item.id) && 'is-broken',
+                ]
                   .filter(Boolean)
                   .join(' ')}
               >
@@ -288,6 +296,7 @@ export function TablesView() {
                   choices={marks}
                   chairs={chairsOn(item)}
                 />
+                <CardNotes broken={broken.get(item.id) ?? []} />
               </div>
               {marks.map(({ who }, k) => (
                 <span
@@ -417,6 +426,9 @@ export function ListView() {
                           <StateMark chair={chair} size={20} />
                           <span className="st-chair-number">{say(SW.seatN, { n: index + 1 })}</span>
                           <span className="st-row-name">{chairWord(chair)}</span>
+                          {chair.state === 'taken' && chair.who != null && picked == null && (
+                            <NotesButton name={chair.who} />
+                          )}
                           <Whos choices={marks.filter((one) => one.seat === index)} />
                           <span className="desk-unseen">{seatChosenWords(marks, index)}</span>
                         </span>

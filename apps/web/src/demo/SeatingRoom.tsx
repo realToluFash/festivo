@@ -49,6 +49,8 @@ export interface Look {
   picking?: boolean;
   /** The chair whose label shows above it, on hover or focus (sc-5030). */
   label?: { id: string; i: number } | null;
+  /** sc-1364: each table's broken notes, as the tag's short words and the full words read out. */
+  notes?: ReadonlyMap<string, { tag: string; words: string }> | undefined;
 }
 
 export interface RoomHands {
@@ -262,6 +264,7 @@ function ItemDrawing({
   const shapes: ReactNode[] = [];
   const marks: ReactNode[] = [];
   const near = detail === 'near';
+  const note = look.notes?.get(item.id);
 
   if (lit)
     shapes.push(
@@ -657,7 +660,11 @@ function ItemDrawing({
         .join(' ')}
       role={faint ? undefined : 'button'}
       tabIndex={faint ? undefined : tabbable ? 0 : -1}
-      aria-label={faint ? undefined : itemName(plan, item, chosenWords(choices))}
+      aria-label={
+        faint
+          ? undefined
+          : [itemName(plan, item, chosenWords(choices)), note?.words].filter(Boolean).join(' ')
+      }
       aria-pressed={faint ? undefined : chosen}
       aria-hidden={faint ? true : undefined}
       data-item={item.id}
@@ -677,6 +684,13 @@ function ItemDrawing({
       <g className="st-item-body">{body}</g>
       {words}
       {marks}
+      {note != null && !faint && (
+        <NoteTag
+          x={cx + Math.max(ex * s, 16) * 0.72}
+          y={cy - Math.max(ey * s, 16) * 0.72 - 6}
+          words={note.tag}
+        />
+      )}
       {!readOnly && look.handles === item.id && (
         <Handles item={item} cx={cx} cy={cy} s={s} hands={hands} />
       )}
@@ -777,6 +791,24 @@ function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
     <g className={n === 0 ? 'st-free is-full' : 'st-free'} aria-hidden="true">
       <rect x={f(x - w / 2)} y={f(y - 11)} width={f(w)} height="22" rx="11" />
       <text x={f(x)} y={f(y)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
+    </g>
+  );
+}
+
+/** sc-1364's notched tag, in a shape no seat state uses, with its words on it. */
+function NoteTag({ x, y, words }: { x: number; y: number; words: string }) {
+  const w = wordsWide(words) + 26;
+
+  return (
+    <g className="sn-tag" aria-hidden="true">
+      <path
+        d={`M${f(x)} ${f(y)} l9 -11 h${f(w - 9)} v22 h${f(-(w - 9))} z`}
+        strokeLinejoin="round"
+      />
+      <circle cx={f(x + 9)} cy={f(y)} r="2.4" />
+      <text x={f(x + 15)} y={f(y)} dominantBaseline="central">
         {words}
       </text>
     </g>

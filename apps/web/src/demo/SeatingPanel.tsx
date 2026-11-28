@@ -52,6 +52,7 @@ import { StateMark } from './SeatingRoom.tsx';
 import { SelectionPanel } from './SeatingSelection.tsx';
 import { ShareTables } from './ShareTables.tsx';
 import { AutoSeatBlock, AutoSeatTray } from './AutoSeat.tsx';
+import { GuestNotes, NotesButton, NotesList, TraySwitch } from './SeatingNotes.tsx';
 import { TRAY_SAID } from './autoSeat.ts';
 import { outsideProposal } from './autoSeatUi.ts';
 import { Mark, TextAction } from '../components/SettingsParts.tsx';
@@ -93,7 +94,15 @@ function TitleBlock({ title, line }: { title: string; line?: string | undefined 
   );
 }
 
-function BackHead({ title, line, onClose }: { title: string; line?: string; onClose: () => void }) {
+export function BackHead({
+  title,
+  line,
+  onClose,
+}: {
+  title: string;
+  line?: string;
+  onClose: () => void;
+}) {
   return (
     <div className="st-back-head">
       <div className="st-back-row">
@@ -1273,6 +1282,11 @@ function ChairFields({ item, index }: { item: Item; index: number }) {
         <StateMark chair={chair} size={22} />
         {chairWord(chair)}
       </p>
+      {chair.state === 'taken' && chair.who != null && (
+        <div className="st-acts">
+          <NotesButton name={chair.who} />
+        </div>
+      )}
       {!ui.readOnly && (
         <Acts>
           <TextAction
@@ -1405,6 +1419,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
 
   return (
     <div className="st-stack is-tray">
+      {chips && !ui.readOnly && <TraySwitch />}
       <div className="st-switch-row">
         <span id="st-unsure">{SW.showUnsure}</span>
         <button
@@ -1420,10 +1435,12 @@ function Tray({ chips = true }: { chips?: boolean }) {
           </span>
         </button>
       </div>
-      <div className="st-tray-head">
-        <h2 id="st-without">{SW.withoutSeat}</h2>
-        <span className="st-tray-count">{count}</span>
-      </div>
+      {!(chips && !ui.readOnly) && (
+        <div className="st-tray-head">
+          <h2 id="st-without">{SW.withoutSeat}</h2>
+          <span className="st-tray-count">{count}</span>
+        </div>
+      )}
       {ui.unsure && unsure > 0 && (
         <p className="st-line is-strong">{say(SW.moreUnsure, { n: unsure })}</p>
       )}
@@ -1480,7 +1497,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
           ) : (
             <ul className="st-rows" aria-labelledby="st-without">
               {shown.map((party) => (
-                <li key={party.id} className="st-party-line">
+                <li key={party.id} className="st-party-line sn-with">
                   <button
                     type="button"
                     className={ui.picked === party.id ? 'st-party is-on' : 'st-party'}
@@ -1507,6 +1524,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
                       </span>
                     </span>
                   </button>
+                  {chips && party.behind !== true && <NotesButton name={party.name} />}
                 </li>
               ))}
             </ul>
@@ -1545,7 +1563,7 @@ function TableGuests({ item }: { item: Item }) {
               const on = ui.moving?.table === item.id && ui.moving.chair === index;
 
               return (
-                <li key={index} className="st-row is-dense">
+                <li key={index} className="st-row is-dense sn-with">
                   {chair.state === 'taken' && !ui.readOnly ? (
                     <button
                       type="button"
@@ -1558,6 +1576,7 @@ function TableGuests({ item }: { item: Item }) {
                   ) : (
                     words
                   )}
+                  {chair.state === 'taken' && chair.who != null && <NotesButton name={chair.who} />}
                 </li>
               );
             })}
@@ -1597,11 +1616,15 @@ export function SeatingPanel() {
   ];
   let body: ReactNode;
 
-  if (ui.tab === 'seat') {
+  const notes = ui.readOnly ? null : ui.notes;
+
+  if (notes?.guest != null) body = <GuestNotes key={notes.guest} name={notes.guest} />;
+  else if (ui.tab === 'seat') {
+    const listing = notes?.shown === 'notes' && ui.moving == null;
     const table =
       ui.moving != null
         ? plan.items.find((item) => item.id === ui.moving?.table)
-        : chosen.length === 1 && ui.picked == null
+        : chosen.length === 1 && ui.picked == null && !listing
           ? chosen[0]
           : undefined;
 
@@ -1611,7 +1634,14 @@ export function SeatingPanel() {
       ) : (
         <>
           <AutoSeatBlock />
-          <Tray />
+          {listing ? (
+            <div className="st-stack is-tray">
+              <TraySwitch />
+              <NotesList />
+            </div>
+          ) : (
+            <Tray />
+          )}
         </>
       );
   } else if (ui.panel?.kind === 'start') body = <StartForm />;
