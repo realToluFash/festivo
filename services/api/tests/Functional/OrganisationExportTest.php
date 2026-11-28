@@ -148,6 +148,8 @@ final class OrganisationExportTest extends ApiTestCase
         'notification_items' => "notifications: one person's, or deliveries",
         'notification_preferences' => "notifications: one person's, or deliveries",
         'organisation_exports' => "Soirely's own records",
+        'organisation_sso_attempts' => "sign-in credentials (sc-611's rule)",
+        'organisation_sso_providers' => "sign-in credentials (sc-611's rule)",
         'owner_claims' => 'change history',
         'password_reset_tokens' => "sign-in credentials (sc-611's rule)",
         'password_set_codes' => "sign-in credentials (sc-611's rule)",
