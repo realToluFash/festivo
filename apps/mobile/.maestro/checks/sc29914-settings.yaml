@@ -1,0 +1,8 @@
+# sc-29914: Settings as this account, scrolled.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- takeScreenshot: settings-down

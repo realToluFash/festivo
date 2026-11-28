@@ -1,0 +1,49 @@
+# sc-68438: on a tablet on its side, a member inside an outside event (EV) opens the sidebar's person button: the sheet scrolls to Sign out, and a drag from its top does not scroll its rows.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      text: 'QA Tester.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: side-event
+- tapOn:
+    text: 'QA Tester.*'
+- extendedWaitUntil:
+    visible:
+      id: frame.side.you.close
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-sheet-top
+- scrollUntilVisible:
+    element:
+      id: frame.side.you.signOut
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-sheet-foot
+- assertVisible:
+    id: frame.side.you.account
+- swipe:
+    start: '50%, 12%'
+    end: '50%, 80%'
+    duration: 700
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-sheet-after-drag
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

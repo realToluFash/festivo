@@ -1,0 +1,7 @@
+# sc-68778: the demo's event Guests, beside the product's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests
+- extendedWaitUntil: { visible: '.*Guests.*|.*Convidados.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d-event

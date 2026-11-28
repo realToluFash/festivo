@@ -1,0 +1,31 @@
+# sc-83081 on a phone: Notifications for an account with no items (bellEmpty), then opened with the API stopped (bellFailed, and the offline band), then Try again once it is back. Needs ${METRO_URL}, ${HELPER_URL}.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- takeScreenshot: bellEmpty-product
+- back
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- takeScreenshot: bellFailed-product
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- takeScreenshot: bellOffline-product
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- takeScreenshot: after-api-up-product

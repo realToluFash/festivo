@@ -1,0 +1,11 @@
+# sc-560: Settings, the signed-in organisation, for the pair beside its demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: settings.account
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc560-settings-product

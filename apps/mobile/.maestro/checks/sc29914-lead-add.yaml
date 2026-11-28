@@ -1,0 +1,16 @@
+# sc-29914: as the Lead: own row does not open, Add people lists by name only.
+appId: host.exp.Exponent
+---
+- runFlow: sc29914-member-open.yaml
+- tapOn: { id: 'event.nav.more' }
+- tapOn: { id: 'event.nav.more.people' }
+- extendedWaitUntil: { visible: { id: 'people.add.open' }, timeout: 30000 }
+- tapOn: { id: 'people.row.${SELF}', optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: own-tapped
+- assertNotVisible: { id: 'people.roleSheet' }
+- tapOn: { id: 'people.add.open' }
+- extendedWaitUntil: { visible: { id: 'people.add.role' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: add
+- tapOn: { id: 'people.add.cancel' }

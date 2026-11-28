@@ -1,0 +1,21 @@
+# sc-1404: the run view for EVENT in its current state, shot as sc1404-run-demo-each shoots the demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/run
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: run-top
+- tapOn: { text: 'Main hall', optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: main-hall
+- scroll
+- takeScreenshot: main-hall-2
+- scroll
+- takeScreenshot: main-hall-3
+- scrollUntilVisible:
+    { element: { text: 'Garden.*' }, direction: UP, timeout: 10000, optional: true }
+- tapOn: { text: 'Garden.*', optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: garden
+- scroll
+- takeScreenshot: garden-2

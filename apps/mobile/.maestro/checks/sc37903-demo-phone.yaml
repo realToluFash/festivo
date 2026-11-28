@@ -1,0 +1,23 @@
+# sc-37903: the Focused header demo at this phone's own text size (size=phone) in DLANG, for the side-by-side pairs at the device's real step.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=name
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-name
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=password
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-password
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=timezone
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-timezone
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-back
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=due-now
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-due-now

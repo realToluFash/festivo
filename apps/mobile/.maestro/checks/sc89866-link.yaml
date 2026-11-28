@@ -1,0 +1,18 @@
+# sc-89866: Link Apple on Settings › Security opens Confirm it’s you with its lead.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      text: 'Ways to sign in'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Offline.*'
+    timeout: 20000
+- tapOn: 'Apple.*'
+- waitForAnimationToEnd
+- tapOn: '.*Link Apple.*'
+- waitForAnimationToEnd
+- takeScreenshot: link-prove
+- assertVisible: 'Confirm it’s you'
+- assertVisible: 'To link Apple, confirm it’s you\. You won’t be asked again for 5 minutes\.'

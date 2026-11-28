@@ -1,0 +1,11 @@
+# sc-71: an account with no organisation on a tablet, its account sheet open (More upright, the sidebar's person on its side), beside the demo's more-in. Needs ${ORIENT}, ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- launchApp: { appId: host.exp.Exponent, stopApp: true }
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- tapOn: { text: 'More|QA Tester', index: 0 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: sheet

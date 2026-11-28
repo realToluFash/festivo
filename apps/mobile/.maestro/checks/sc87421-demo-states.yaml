@@ -1,0 +1,21 @@
+# sc-87421: screenshots the app design demo's Menu picks in its four never-stated states.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=notStated
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Puff-puff'
+    timeout: 30000
+- takeScreenshot: notStated
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=notStatedOverride
+- waitForAnimationToEnd
+- takeScreenshot: notStatedOverride
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=notStatedSaved
+- waitForAnimationToEnd
+- takeScreenshot: notStatedSaved
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=notStatedHost
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*has no allergens stated.*'
+    timeout: 20000
+- takeScreenshot: notStatedHost

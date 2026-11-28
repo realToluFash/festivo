@@ -1,0 +1,91 @@
+# sc-85893 the door's search: both groups, each AC example
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/events/${EVENT}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: door-${LAYOUT}-unsearched
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'seun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: seun-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'seun adebayo'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: seun-adebayo-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'eun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: eun-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'kwo'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: kwo-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'sade williams'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: sade-williams-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'nedu'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: nedu-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'ne'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: ne-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'okon fola'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: okon-fola-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'segun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: segun-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'SEÚN'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: seun-caps-accent-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'williams-okon'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: hyphen-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'adebayo eun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: adebayo-eun-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'seun xyz'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: seun-xyz-${LAYOUT}

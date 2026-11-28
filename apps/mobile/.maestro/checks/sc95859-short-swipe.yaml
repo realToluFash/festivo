@@ -1,0 +1,14 @@
+# sc-95859: a day with one event (27 Nov): a swipe up does nothing, then one swipe down that starts on its strip closes it.
+appId: host.exp.Exponent
+env:
+  DAY: '2026-11-27'
+---
+- runFlow: sc95859/open-day.yaml
+- swipe: { start: '3%,88%', end: '3%,76%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: short-tried-scroll
+- swipe: { start: '50%,73%', end: '50%,98%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: short-swiped
+- assertNotVisible:
+    id: 'calendar.daySheet'

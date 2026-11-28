@@ -1,0 +1,18 @@
+# sc-4015: turned ${ORIENT}, the app demo's Kitchen station at ?state=${STATE}, top and two scrolls, for a side-by-side pair. Fails if the station draws nothing.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/kitchen-station?state=${STATE}
+- extendedWaitUntil:
+    visible:
+      id: 'station\..*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled2

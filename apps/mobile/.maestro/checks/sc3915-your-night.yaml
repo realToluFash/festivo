@@ -1,0 +1,34 @@
+# sc-3915: Your night is the first row on ${EVENT_ID}'s Overview for an account on its roster with a shift; it opens the night page, whose ‹ Overview comes back. P prefixes the screenshots. LAND=1 turns the tablet to landscape first. Needs ${METRO_URL}, ${EVENT_ID}, ${P}.
+appId: host.exp.Exponent
+---
+- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.yourNight'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${P}-overview
+- tapOn:
+    id: 'events.yourNight'
+- extendedWaitUntil:
+    visible:
+      id: 'myNight.page'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${P}-night
+- scroll
+- takeScreenshot: ${P}-night-2
+- scroll
+- takeScreenshot: ${P}-night-3
+- tapOn:
+    id: 'myNight.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.yourNight'
+    timeout: 15000
+- takeScreenshot: ${P}-back

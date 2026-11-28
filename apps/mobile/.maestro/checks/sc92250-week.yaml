@@ -1,0 +1,19 @@
+# sc-92250: Today's This week at the device's text size (set outside the flow), in ORIENT: the heading brought to the middle, then one scroll on. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: week
+- swipe: { start: '60%, 75%', end: '60%, 35%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: week-on

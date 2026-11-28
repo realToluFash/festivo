@@ -1,0 +1,25 @@
+# sc-89879: the screen that changes ${MEMBER}'s role is titled membersScreen.roleScreenTitle.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- takeScreenshot: member-page
+- scrollUntilVisible:
+    element:
+      id: 'members.changeRole'
+    timeout: 20000
+- tapOn:
+    id: 'members.changeRole'
+- waitForAnimationToEnd
+- takeScreenshot: member-role-screen

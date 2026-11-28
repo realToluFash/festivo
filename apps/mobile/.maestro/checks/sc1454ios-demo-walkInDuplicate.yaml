@@ -1,0 +1,7 @@
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkInDuplicate
+- extendedWaitUntil: { visible: 'Add as someone new', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: shot
