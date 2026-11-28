@@ -1,0 +1,16 @@
+# Stops Expo Go and opens the app again from launch, waiting for Create your account. After
+# sign-up-held-any-language.yaml and an aged hold, that is the timed-out line as the heading's
+# intro (sc-29923, sc-32449). Pass SHOT.
+#   node .qa/bin/qa-env.mjs maestro sign-up-timed-out-at-launch SHOT=…
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

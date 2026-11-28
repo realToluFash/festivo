@@ -1,0 +1,9 @@
+# sc-28230: a staff account at Can view sees My night with no Check-in.
+# Needs ${METRO_URL}, ${EV}. Expo Go signed in as a staff account at Can view on EV, in English.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/my-night
+- extendedWaitUntil: { visible: { text: 'Your shift' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertNotVisible: { id: 'myNight.checkIn' }
+- takeScreenshot: app-my-night-level-view

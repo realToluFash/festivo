@@ -1,0 +1,15 @@
+# sc-4015: opens ${EVENT_ID}'s station and scrolls to Jollof rice on Left to dish.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'station.ready.jollof rice'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: jollof

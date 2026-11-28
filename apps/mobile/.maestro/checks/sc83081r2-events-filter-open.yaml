@@ -1,0 +1,11 @@
+# sc-83081: Events on a tablet with its filter open, left open for a network change outside Maestro.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn: { text: '(Events|Eventos|Événements)' }
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 20000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: open

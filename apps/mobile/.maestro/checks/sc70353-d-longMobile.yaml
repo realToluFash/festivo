@@ -1,0 +1,7 @@
+# sc-70353: the People demo, state longMobile, on the phone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people?state=longMobile
+- extendedWaitUntil: { visible: '.*soirely.*|.*4567.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

@@ -1,0 +1,12 @@
+# sc-28230: a staff account at Can check guests in sees Check-in on the app's My night, and it opens sc-1454's check-in screen.
+# Needs ${METRO_URL}, ${EV}. Expo Go signed in as a staff account at Can check guests in on EV.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/my-night
+- extendedWaitUntil: { visible: { id: 'myNight.checkIn' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: app-my-night-check-in
+- tapOn: { id: 'myNight.checkIn' }
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: app-my-night-opens-check-in

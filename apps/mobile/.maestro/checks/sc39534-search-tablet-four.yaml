@@ -1,0 +1,69 @@
+# sc-39534: the tablet's Search on Today, Events, Calendar and Settings, wide and upright. Needs WIDE and UPRIGHT: LANDSCAPE_LEFT and PORTRAIT, swapped on a landscape-natural tablet. The member open is sc39534-search-tablet-member.
+appId: host.exp.Exponent
+---
+- setOrientation: ${WIDE}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: wide-today
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: wide-events
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: wide-calendar
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: wide-settings
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- inputText: 'ines'
+- extendedWaitUntil:
+    visible: 'Inês Duarte'
+    timeout: 15000
+- takeScreenshot: wide-mixed
+- tapOn:
+    id: 'search.scrim'
+- setOrientation: ${UPRIGHT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'today.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: upright-today
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: upright-settings
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: upright-calendar

@@ -1,0 +1,18 @@
+# sc-37693: an admin with no active owner starts the claim, then asks to withdraw it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: q-claim-card
+- tapOn: { id: 'ownerClaim.(become|open)' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: q-claim-open
+- scrollUntilVisible: { element: { id: 'ownerClaim.withdraw' }, direction: DOWN }
+- tapOn: { id: 'ownerClaim.withdraw' }
+- waitForAnimationToEnd
+- takeScreenshot: q-claim-withdraw-ask
+- tapOn: { id: 'ownerClaim.withdrawNo' }
+- waitForAnimationToEnd
+- takeScreenshot: q-claim-withdraw-kept

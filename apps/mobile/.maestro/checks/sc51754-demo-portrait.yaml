@@ -1,0 +1,15 @@
+# sc-51754, the tablet in portrait: the app demo's event page, Details' Venue row with Open in maps (its default state), for the side-by-side pair. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'event.maps'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: venue

@@ -1,0 +1,31 @@
+# sc-36347: Colours closed without saving leaves the colours as they were and restarts nothing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: before
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.berry
+- waitForAnimationToEnd
+- takeScreenshot: berry-picked
+- tapOn:
+    id: personalisation.cancel
+- extendedWaitUntil:
+    notVisible:
+      id: personalisation.colours
+    timeout: 10000
+- waitForAnimationToEnd
+- assertVisible:
+    id: personalisation.choose
+- assertNotVisible: '.*not saved.*'
+- takeScreenshot: closed

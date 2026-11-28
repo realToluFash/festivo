@@ -1,0 +1,18 @@
+# sc-36347: bring Expo Go back after the colours changed elsewhere; it starts again in the new scheme on the same event page, with no error.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: false
+- takeScreenshot: foreground-now
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertNotVisible: '.*PushNotificationIOS.*'
+- assertNotVisible: '.*native module.*'
+- assertVisible:
+    id: 'events.page'
+- takeScreenshot: event-page-cobalt

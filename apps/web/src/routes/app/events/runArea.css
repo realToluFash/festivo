@@ -1,0 +1,335 @@
+/* The run view (sc-1404), built to its demo: one table per track, the expected time under the planned one. */
+.rv-top {
+  align-items: flex-start;
+}
+
+.rv-clock {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: var(--spaceXs) var(--spaceMd);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+}
+
+.rv-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.rv-track-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.rv-track-top h2 {
+  flex: 1;
+  margin: 0;
+  font: 700 20px/1.25 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.rv-figure {
+  margin: 0;
+}
+
+.rv-figure-shown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizePill);
+  padding: 0 var(--spaceMd);
+  border-radius: var(--radiusPill);
+  font: var(--typeSmallStrong);
+}
+
+.rv-figure.is-on-time .rv-figure-shown,
+.rv-figure.is-done .rv-figure-shown {
+  border: 1.5px solid var(--markDoneRing);
+  background: var(--markDoneFill);
+  color: var(--markDoneInk);
+}
+
+.rv-figure.is-behind .rv-figure-shown {
+  border: 1.5px solid var(--colorAttentionBorder);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.rv-figure.is-last .rv-figure-shown {
+  border: 1.5px solid var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.rv-collision {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rv-collision svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--typeSmall);
+}
+
+.rv-table thead th {
+  padding: var(--spaceXs) var(--spaceMd);
+  border-bottom: 1px solid var(--colorBorder);
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  text-align: start;
+}
+
+.rv-table td,
+.rv-table tbody th {
+  padding: var(--spaceSm) var(--spaceMd);
+  border-bottom: 1px solid var(--colorBorder);
+  font-weight: inherit;
+  text-align: start;
+  vertical-align: top;
+}
+
+.rv-row.is-now td,
+.rv-row.is-now th {
+  background: var(--colorAccentTint);
+}
+
+.rv-row.is-done td,
+.rv-row.is-done th {
+  color: var(--colorInkSecondary);
+}
+
+.rv-starts {
+  width: 144px;
+}
+
+.rv-starts > .num {
+  display: block;
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.rv-second {
+  display: block;
+  font: var(--typeSmallStrong);
+  white-space: nowrap;
+}
+
+.rv-second.is-expected {
+  color: var(--colorAttentionText);
+}
+
+.rv-second.is-started {
+  color: var(--colorInkSecondary);
+}
+
+.rv-lasts {
+  width: 128px;
+}
+
+.rv-lasts.is-none,
+.rv-owner.is-none {
+  color: var(--colorInkSecondary);
+  font-style: italic;
+}
+
+.rv-item-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+.rv-title {
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+  overflow-wrap: anywhere;
+}
+
+.rv-row.is-done .rv-title {
+  color: var(--colorInkSecondary);
+}
+
+.rv-fixed,
+.rv-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  padding: var(--spaceHair) var(--spaceSm);
+  border-radius: var(--radiusPill);
+  font: var(--typePill);
+}
+
+.rv-fixed {
+  border: 1px solid var(--colorInsetBorder);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.rv-phase.is-now {
+  border: 1px solid var(--colorAccentTintBorder);
+  background: var(--colorCard);
+  color: var(--colorAccentText);
+}
+
+.rv-phase.is-done {
+  padding-inline: 0;
+  color: var(--colorInkSecondary);
+}
+
+.rv-before {
+  display: block;
+  margin-top: var(--spaceXxs);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.rv-owner {
+  width: 180px;
+}
+
+.rv-act-col {
+  width: 96px;
+  text-align: end;
+}
+
+.rv-act {
+  min-width: 72px;
+  min-height: var(--sizeControlDense);
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rv-act:hover {
+  background: var(--colorRowHover);
+}
+
+.rv-act.is-primary {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.rv-act.is-primary:hover {
+  background: var(--colorAccentHover);
+}
+
+.rv-act:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rv-table tr:last-child td,
+.rv-table tr:last-child th {
+  border-bottom: 0;
+}
+
+.rv-next {
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceMd) 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+/* sc-32279: at 320 px each item is a block of its own, the Mark button beside its start, so nothing scrolls sideways. */
+@media (width <= 40rem) {
+  .rv-track {
+    padding: var(--spaceLg);
+  }
+
+  .rv-table,
+  .rv-table tbody {
+    display: block;
+  }
+
+  .rv-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .rv-row {
+    display: grid;
+    grid-template-areas:
+      'starts act'
+      'lasts act'
+      'item item'
+      'owner owner';
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spaceXxs) var(--spaceMd);
+    padding: var(--spaceMd) var(--spaceSm);
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .rv-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .rv-row.is-now {
+    background: var(--colorAccentTint);
+  }
+
+  .rv-table .rv-row :is(td, th) {
+    width: auto;
+    padding: 0;
+    border-bottom: 0;
+    background: none;
+  }
+
+  .rv-row .rv-starts {
+    grid-area: starts;
+  }
+
+  .rv-row .rv-lasts {
+    grid-area: lasts;
+  }
+
+  .rv-row .rv-item {
+    grid-area: item;
+    margin-top: var(--spaceXs);
+  }
+
+  .rv-row .rv-owner {
+    grid-area: owner;
+  }
+
+  .rv-row .rv-act-col {
+    grid-area: act;
+    align-self: start;
+  }
+}

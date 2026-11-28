@@ -1,0 +1,23 @@
+# sc-43907: New event with Event name typed and a Type chosen, Starts and Ends blank, scrolled so Create event shows; the run then turns TalkBack on and taps Create event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.wedding
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'TalkBack check'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- takeScreenshot: ready

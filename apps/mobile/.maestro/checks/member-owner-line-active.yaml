@@ -1,0 +1,17 @@
+# sc-13023: the member page named by ${OWNER_ID} carries membersScreen.ownerOnly.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${OWNER_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${OWNER_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.ownerOnly}}'
+    timeout: 20000
+- takeScreenshot: member-owner-line-active

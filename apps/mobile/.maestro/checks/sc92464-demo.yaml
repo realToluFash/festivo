@@ -1,0 +1,9 @@
+# sc-92464: the demo /demo/top-size?Q upright, before scrolling. Vars: METRO_URL, Q.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/top-size?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top

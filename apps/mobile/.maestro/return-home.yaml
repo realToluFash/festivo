@@ -1,0 +1,50 @@
+# Home, from whatever the step before left open. `openLink` reaches a route without closing
+# what sits over it or leaving another tab, so this closes the sheets and taps Home itself.
+# Every shared flow starts here, so each can follow any other inside one flow.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- runFlow:
+    when:
+      visible:
+        id: 'createWalk'
+    commands:
+      - tapOn:
+          id: 'createWalk.cancel'
+      - runFlow:
+          when:
+            visible:
+              id: 'createWalk.discard'
+          commands:
+            - tapOn:
+                id: 'createWalk.discard'
+      - waitForAnimationToEnd
+# The switcher's scrim closes it: below the panel, which hangs from the opener at the top, and off the
+# status bar, where iOS takes a tap as scroll-to-top. 80% clears the panel only while it holds a few tiles;
+# a fuller one reaches about 88% and this tap would pick a tile instead of closing it.
+- runFlow:
+    when:
+      visible:
+        id: 'switcher\..+'
+    commands:
+      - tapOn:
+          point: '50%,80%'
+      - extendedWaitUntil:
+          notVisible:
+            id: 'switcher\..+'
+          timeout: 10000
+- runFlow:
+    when:
+      notVisible:
+        id: 'home.openSettings'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'frame.home'
+          timeout: 30000
+      - tapOn:
+          id: 'frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 30000

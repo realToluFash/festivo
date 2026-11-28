@@ -1,0 +1,20 @@
+# sc-68607: on the iPad on its side, removing someone in People opened from the card, then Overview in the sidebar: the card counts anew.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_LONG}?area=overview
+- extendedWaitUntil: { visible: '4 on this event.*', timeout: 30000 }
+- tapOn: { id: 'overview.people.open' }
+- extendedWaitUntil: { visible: { id: 'people.row.${ANA}' }, timeout: 15000 }
+- tapOn: { id: 'people.row.${ANA}' }
+- extendedWaitUntil: { visible: { id: 'people.remove' }, timeout: 10000 }
+- tapOn: { id: 'people.remove' }
+- extendedWaitUntil: { visible: { id: 'people.remove.confirm' }, timeout: 10000 }
+- tapOn: { id: 'people.remove.confirm' }
+- extendedWaitUntil: { notVisible: { id: 'people.row.${ANA}' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: 'Overview'
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: after-remove
+- assertVisible: '3 on this event.*'

@@ -1,0 +1,5 @@
+appId: com.soirely.app
+---
+- tapOn: { id: '${ID}' }
+- eraseText: 120
+- tapOn: { id: '${NEXT}' }

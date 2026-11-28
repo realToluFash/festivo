@@ -1,0 +1,49 @@
+# sc-82858: suspended from the organisation in use, the paused screen shows no Search on any frame screen (no frame.search, no today.search, no sidebar Search row). ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    when:
+      notVisible:
+        id: 'accessPaused.switch'
+    commands:
+      - runFlow:
+          file: ../switch-organisation.yaml
+          env:
+            ORG: ${PAUSED}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused.switch'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-settings
+- assertNotVisible:
+    id: 'frame.search'
+- assertNotVisible:
+    id: 'today.search'
+- assertNotVisible: 'Search|Buscar'
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-today
+- assertNotVisible:
+    id: 'frame.search'
+- assertNotVisible:
+    id: 'today.search'
+- assertNotVisible: 'Search|Buscar'
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-events
+- assertNotVisible:
+    id: 'frame.search'
+- assertNotVisible: 'Search|Buscar'
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-calendar
+- assertNotVisible:
+    id: 'frame.search'
+- assertNotVisible: 'Search|Buscar'

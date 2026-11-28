@@ -1,0 +1,142 @@
+.lr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+/* What a refusal covers on a page with no layers of its own, as Join; it takes no box of its own */
+.lr-under {
+  display: contents;
+}
+
+.lr p {
+  margin: 0;
+}
+
+/* The hard limit's ✕ leads the title, as the app's title row does; the kit dialog's title takes words only */
+.desk-dialog:has(.lr-hard-limit) .desk-nav-title::before {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-inline-end: 10px;
+  border-radius: 50%;
+  background:
+    linear-gradient(
+        45deg,
+        transparent calc(50% - 1.3px),
+        var(--colorInk) 0 calc(50% + 1.3px),
+        transparent 0
+      )
+      center / 12px 12px no-repeat,
+    linear-gradient(
+        -45deg,
+        transparent calc(50% - 1.3px),
+        var(--colorInk) 0 calc(50% + 1.3px),
+        transparent 0
+      )
+      center / 12px 12px no-repeat,
+    var(--colorInset);
+  content: '';
+  vertical-align: -5px;
+}
+
+.lr-figure {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.lr-safe {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: 10px var(--spaceMd);
+  border-radius: 10px;
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.lr-safe svg,
+.lr-inset svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.lr-ways {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lr-inset {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: 12px var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 10px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.lr-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 10px var(--spaceMd);
+  border: 1px solid var(--colorBorder);
+  border-radius: 10px;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: inherit;
+  text-align: start;
+}
+
+.lr-row-link {
+  flex-wrap: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lr-row-link:hover {
+  background: var(--colorInset);
+}
+
+.lr-row-link > svg {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.lr-row-words {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lr-row-title {
+  font: 600 15px/1.35 var(--fontFamily);
+}
+
+.lr-back {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--spaceXs);
+}
+
+@media (width <= 40rem) {
+  .lr-back {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

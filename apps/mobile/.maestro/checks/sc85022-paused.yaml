@@ -1,0 +1,46 @@
+# sc-85022: suspended from ${ORG} while it is in use, the paused page on Today, Events, Calendar and Settings, for the side-by-side pairs. ORG, ORIENT. The suspension is made from outside once `picked` is taken.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: sc85022-pick.yaml
+    env:
+      ORG: ${ORG}
+- extendedWaitUntil:
+    visible:
+      id: 'never.there'
+    timeout: 15000
+    optional: true
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/
+- scrollUntilVisible:
+    element:
+      id: 'accessPaused\..+'
+    timeout: 30000
+- swipe:
+    start: 50%,30%
+    end: 50%,80%
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: settings
+- assertVisible:
+    id: 'accessPaused\..+'
+- scrollUntilVisible:
+    element:
+      id: 'accessPaused.switch'
+    timeout: 10000
+- takeScreenshot: settings-buttons

@@ -1,0 +1,12 @@
+# sc-37693: approving Lucía from the card's step, as approved draws it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'members.answer' }
+- waitForAnimationToEnd
+- tapOn: { id: 'members.approve.confirm' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: q-approve-after
