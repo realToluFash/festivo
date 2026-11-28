@@ -27,6 +27,7 @@ import {
 } from '../../src/demo/enquiries/EnquiriesBoards.ts';
 import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
 import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
+import { ERASE_BOARDS } from '../../src/demo/enquiries/EraseModel.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
@@ -146,6 +147,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: '31221 · Enquiries · Erased after 12 months, and Delete enquiry (sc-31235)',
+    boards: ERASE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',

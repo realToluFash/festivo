@@ -445,6 +445,7 @@ export const LIST_SAMPLE: Readonly<Record<string, readonly Consultation[]>> = {
   ],
   'enq-bisi': [{ ...SAMPLE.underWay, id: 'con-bisi', startsAt: AT('2026-11-12T15:00') }],
   'enq-ada': [{ ...SAMPLE.called, id: 'con-ada', startsAt: AT('2026-11-20T10:00') }],
+  'enq-kept': [{ ...SAMPLE.later, id: 'con-kept', startsAt: AT('2026-12-02T10:00') }],
 };
 
 export function nextFor(enquiry: Enquiry, now: string = NOW): Consultation | null {
@@ -502,6 +503,7 @@ export const CONSULTATION_STATES = [
   'freeOrg',
   'notifications',
   'feed',
+  'deleted-from-calendar',
 ] as const;
 
 export type ConsultationState = (typeof CONSULTATION_STATES)[number];
@@ -525,7 +527,7 @@ export interface ConsultationStart {
   panel: Panel;
   save: Save;
   view: 'page' | 'calendar' | 'notifications' | 'feed';
-  calendar: { view: 'month' | 'agenda'; show: 'all' | 'events'; free: boolean };
+  calendar: { view: 'month' | 'agenda'; show: 'all' | 'events'; free: boolean; deleted: boolean };
 }
 
 const LUCIA = ENQUIRIES.find((one) => one.id === 'enq-lucia')!;
@@ -558,7 +560,7 @@ export function consultationStart(state: ConsultationState): ConsultationStart {
     panel: { kind: 'none' },
     save: 'idle',
     view: 'page',
-    calendar: { view: 'month', show: 'all', free: false },
+    calendar: { view: 'month', show: 'all', free: false, deleted: false },
   };
   const filled = { date: '2026-11-25', time: '15:00' };
 
@@ -653,6 +655,8 @@ export function consultationStart(state: ConsultationState): ConsultationStart {
       return { ...start, list: [SAMPLE.underWay, SAMPLE.next], panel: { kind: 'closeLost' } };
     case 'calendarEventsAndMilestones':
       return { ...start, view: 'calendar' };
+    case 'deleted-from-calendar':
+      return { ...start, view: 'calendar', calendar: { ...start.calendar, deleted: true } };
     case 'calendarAgenda':
       return { ...start, view: 'calendar', calendar: { ...start.calendar, view: 'agenda' } };
     case 'calendarEventsOnly':
