@@ -46,9 +46,12 @@ export interface Fate {
   to: string | null;
   stage: PlateStage;
   counted: 'base' | 'waiting' | 'late';
+  asked: boolean;
+  everAsked: boolean;
+  by: 'guest' | 'lead' | null;
 }
 
-export type Bulk = { kind: 'serve'; item: string } | { kind: 'without' };
+export type Bulk = { kind: 'serve'; item: string } | { kind: 'without' } | { kind: 'ask' };
 
 export interface RunOut {
   guests: Guest[];
@@ -117,10 +120,9 @@ function g(
 
 export function runOutSample(): RunOut {
   const fate: Record<string, Fate> = {};
-  for (const x of WAITING)
-    fate[x.id] = { status: 'waiting', to: null, stage: 'To serve', counted: 'waiting' };
+  for (const x of WAITING) fate[x.id] = fresh('waiting', 'waiting');
   for (const [x, stage] of CHANGED)
-    fate[x.id] = { status: 'changed', to: 'Beef', stage, counted: 'base' };
+    fate[x.id] = { ...fresh('changed', 'base'), to: 'Beef', stage, by: 'lead' };
   return {
     guests: [...WAITING, ...CHANGED.map(([x]) => x)].map((x) => structuredClone(x)),
     fate,
@@ -136,6 +138,18 @@ export function runOutSample(): RunOut {
   };
 }
 
+function fresh(status: Status, counted: Fate['counted']): Fate {
+  return {
+    status,
+    to: null,
+    stage: 'To serve',
+    counted,
+    asked: false,
+    everAsked: false,
+    by: null,
+  };
+}
+
 export function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
@@ -148,9 +162,17 @@ export function waitingWord(n: number): string {
   return plural(n, '1 waiting for a choice', `${n} waiting for a choice`);
 }
 
-export function offlineLine(what: 'choose' | 'markAvailable'): string {
-  const doing = what === 'choose' ? 'choose' : `mark ${ITEM} available again`;
-  return `Needs a connection to ${doing}. Nothing is kept to send later.`;
+type Doing = 'choose' | 'markAvailable' | 'ask' | 'answer';
+
+const DOING: Record<Doing, string> = {
+  choose: 'choose',
+  markAvailable: `mark ${ITEM} available again`,
+  ask: 'ask',
+  answer: 'record an answer',
+};
+
+export function offlineLine(what: Doing): string {
+  return `Needs a connection to ${DOING[what]}. Nothing is kept to send later.`;
 }
 
 export const NO_MANAGE_LINE =
@@ -177,13 +199,42 @@ function guestOf(ro: RunOut, id: string): Guest | undefined {
 }
 
 function fateOf(ro: RunOut, id: string): Fate {
-  return ro.fate[id] ?? { status: 'back', to: null, stage: 'To serve', counted: 'base' };
+  return ro.fate[id] ?? fresh('back', 'base');
 }
 
 export function waiting(ro: RunOut): Guest[] {
   if (ro.available) return [];
   return ro.guests.filter((x) => fateOf(ro, x.id).status === 'waiting').sort(panelOrder);
 }
+
+export function isAsked(ro: RunOut, x: Guest): boolean {
+  return !ro.available && fateOf(ro, x.id).status === 'waiting' && fateOf(ro, x.id).asked;
+}
+
+export function askedNow(ro: RunOut): Guest[] {
+  return waiting(ro).filter((x) => isAsked(ro, x));
+}
+
+export function askCount(ro: RunOut): { chosen: number; asked: number } | null {
+  if (askedNow(ro).length === 0) return null;
+  const counted = ro.guests.filter((x) => {
+    const f = fateOf(ro, x.id);
+    return f.everAsked && f.by !== 'lead';
+  });
+  const chosen = counted.filter((x) => fateOf(ro, x.id).by === 'guest').length;
+  return { chosen, asked: counted.length };
+}
+
+export function countLine(ro: RunOut): string {
+  const c = askCount(ro);
+  if (c == null) return '';
+  return c.asked === 1
+    ? `${c.chosen} of 1 guest has chosen at the table`
+    : `${c.chosen} of ${c.asked} guests have chosen at the table`;
+}
+
+export const ASKING = 'Asking at the table';
+export const STAY_ASKED = 'Guests already asked at their tables stay asked';
 
 export function changed(ro: RunOut): Guest[] {
   return ro.guests.filter((x) => fateOf(ro, x.id).status === 'changed').sort(panelOrder);
@@ -208,22 +259,24 @@ export function canChooseAgain(ro: RunOut, x: Guest): boolean {
   return fateOf(ro, x.id).stage === 'To serve';
 }
 
-/** Who a bulk choice covers now: never a flagged guest, never one whose plate already has the substitute, never one it would leave with an empty plate. */
+/** Who a bulk choice covers now. Ask: everyone waiting not asked yet, flagged guests too. Serve: never a flagged or asked guest, never one whose plate already has the substitute, never one it would leave with an empty plate. */
 export function covered(ro: RunOut, bulk: Bulk): Guest[] {
-  return waiting(ro).filter((x) => coversGuest(bulk, x));
+  return waiting(ro).filter((x) => !isAsked(ro, x) && coversGuest(bulk, x));
 }
 
 function coversGuest(bulk: Bulk, x: Guest): boolean {
+  if (bulk.kind === 'ask') return true;
   if (flagged(x)) return false;
   if (bulk.kind === 'serve') return !x.plate.includes(bulk.item);
   return x.plate.some((i) => i !== ITEM);
 }
 
 export function bulkKey(b: Bulk): string {
-  return b.kind === 'serve' ? `serve:${b.item}` : 'without';
+  return b.kind === 'serve' ? `serve:${b.item}` : b.kind;
 }
 
 export function bulkLabel(b: Bulk): string {
+  if (b.kind === 'ask') return 'Ask each guest';
   return b.kind === 'serve' ? `Serve ${b.item}` : `Serve without ${ITEM}`;
 }
 
@@ -238,6 +291,7 @@ export function bulkRows(ro: RunOut): BulkRow[] {
   const all: Bulk[] = [
     ...COURSE_ITEMS.filter((i) => i !== ITEM).map((item): Bulk => ({ kind: 'serve', item })),
     { kind: 'without' },
+    { kind: 'ask' },
   ];
   return all.map((bulk) => ({
     bulk,
@@ -249,6 +303,10 @@ export function bulkRows(ro: RunOut): BulkRow[] {
 
 export function confirmTitle(ro: RunOut, bulk: Bulk): string {
   const n = covered(ro, bulk).length;
+  if (bulk.kind === 'ask')
+    return n > 0
+      ? `Ask ${guestsWord(n)} at ${plural(n, 'their table', 'their tables')}?`
+      : 'Ask guests still to come at their tables?';
   if (bulk.kind === 'serve')
     return n > 0
       ? `Serve ${bulk.item} to ${guestsWord(n)} instead of ${ITEM}?`
@@ -256,6 +314,10 @@ export function confirmTitle(ro: RunOut, bulk: Bulk): string {
   return n > 0
     ? `Serve without ${ITEM} for ${guestsWord(n)}?`
     : `Serve without ${ITEM} for guests still to come?`;
+}
+
+export function confirmNote(ro: RunOut, bulk: Bulk): string {
+  return bulk.kind !== 'ask' && askedNow(ro).length > 0 ? STAY_ASKED : '';
 }
 
 export interface Conflict {
@@ -309,7 +371,7 @@ function refused(ro: RunOut, line: string): RunOut {
   return { ...copy(ro), refused: line, say: line };
 }
 
-function guard(ro: RunOut, a: Access, what: 'choose' | 'markAvailable'): RunOut | null {
+function guard(ro: RunOut, a: Access, what: Doing): RunOut | null {
   if (!a.online) return refused(ro, offlineLine(what));
   if (!a.manage) return refused(ro, NO_MANAGE_LINE);
   return null;
@@ -326,7 +388,7 @@ export function closePanel(ro: RunOut): RunOut {
 }
 
 export function askBulk(ro: RunOut, bulk: Bulk, a: Access): RunOut {
-  const no = guard(ro, a, 'choose');
+  const no = guard(ro, a, bulk.kind === 'ask' ? 'ask' : 'choose');
   if (no != null) return no;
   return { ...copy(ro), confirm: bulk, refused: '' };
 }
@@ -338,18 +400,25 @@ export function cancel(ro: RunOut): RunOut {
 export function confirmBulk(ro: RunOut, a: Access): RunOut {
   const bulk = ro.confirm;
   if (bulk == null) return ro;
-  const no = guard(ro, a, 'choose');
+  const no = guard(ro, a, bulk.kind === 'ask' ? 'ask' : 'choose');
   if (no != null) return no;
   const s = copy(ro);
   for (const x of covered(ro, bulk)) {
     const f = s.fate[x.id];
-    if (f != null)
-      Object.assign(f, { status: 'changed', to: bulk.kind === 'serve' ? bulk.item : null });
+    if (f == null) continue;
+    if (bulk.kind === 'ask') Object.assign(f, { asked: true, everAsked: true });
+    else
+      Object.assign(f, {
+        status: 'changed',
+        to: bulk.kind === 'serve' ? bulk.item : null,
+        by: 'lead',
+      });
   }
   s.stands = bulk;
   s.confirm = null;
   s.refused = '';
-  s.say = `${bulkLabel(bulk)}: ${guestsWord(covered(ro, bulk).length)} changed. Applies to guests still to come.`;
+  const n = guestsWord(covered(ro, bulk).length);
+  s.say = `${bulkLabel(bulk)}: ${n} ${bulk.kind === 'ask' ? 'asked' : 'changed'}. Applies to guests still to come.`;
   return s;
 }
 
@@ -375,18 +444,50 @@ export function chooseFor(ro: RunOut, id: string, to: string | null, a: Access):
     s.race = null;
     return { ...s, refused: dishingLine(x.name), say: dishingLine(x.name) };
   }
-  Object.assign(mine, { status: 'changed', to });
+  Object.assign(mine, { status: 'changed', to, asked: false, by: 'lead' });
   s.refused = '';
   s.say = `${x.name}: ${to == null ? `without ${ITEM}` : `now ${to}`}.`;
   return s;
 }
 
-/** Mark available again: the item is Ready, every guest still waiting gets it back, guests already changed keep theirs, the standing choice ends. */
+export function askOne(ro: RunOut, id: string, a: Access): RunOut {
+  const no = guard(ro, a, 'ask');
+  if (no != null) return no;
+  const x = guestOf(ro, id);
+  if (x == null || fateOf(ro, id).status !== 'waiting' || isAsked(ro, x)) return ro;
+  const s = copy(ro);
+  Object.assign(s.fate[id] as Fate, { asked: true, everAsked: true });
+  return { ...s, refused: '', say: `Asking ${x.name} at the table.` };
+}
+
+export function answer(ro: RunOut, id: string, to: string | null, a: Access): RunOut {
+  const no = guard(ro, a, 'answer');
+  if (no != null) return no;
+  const x = guestOf(ro, id);
+  if (x == null || !isAsked(ro, x) || (to != null && conflict(x, to) != null)) return ro;
+  const s = copy(ro);
+  const mine = s.fate[id] as Fate;
+  if (mine.stage !== 'To serve')
+    return { ...s, refused: dishingLine(x.name), say: dishingLine(x.name) };
+  Object.assign(mine, { status: 'changed', to, asked: false, by: 'guest' });
+  s.refused = '';
+  s.say = `${x.name}: ${to == null ? `without ${ITEM}` : `now ${to}`}.`;
+  return s;
+}
+
+export function answerOf(ro: RunOut, x: Guest): Option | null {
+  return options(ro, x).find((o) => o.no == null) ?? null;
+}
+
+/** Mark available again: the item is Ready, every guest still waiting gets it back, guests already changed keep theirs, the standing choice and every ask end. */
 export function markAvailable(ro: RunOut, a: Access): RunOut {
   const no = guard(ro, a, 'markAvailable');
   if (no != null) return no;
   const s = copy(ro);
-  for (const f of Object.values(s.fate)) if (f.status === 'waiting') f.status = 'back';
+  for (const f of Object.values(s.fate)) {
+    if (f.status === 'waiting') f.status = 'back';
+    f.asked = false;
+  }
   return {
     ...s,
     available: true,
@@ -410,28 +511,32 @@ export function raisedLine(n: number): string {
   return `${ITEM} has run out. ${STATION} · ${waitingWord(n)}.`;
 }
 
-/** A guest starts waiting late: a standing choice covers them at once and raises nothing; otherwise they wait and the alert is raised again. */
+/** A guest starts waiting late: a standing choice covers or asks them at once and raises nothing; otherwise they wait and the alert is raised again. */
 export function lateArrival(ro: RunOut, late: Guest = LATE): RunOut {
   if (ro.fate[late.id] != null) return ro;
   const s = copy(ro);
   s.guests.push(structuredClone(late));
   if (s.available) {
-    s.fate[late.id] = { status: 'back', to: null, stage: 'To serve', counted: 'late' };
+    s.fate[late.id] = fresh('back', 'late');
     s.say = `${late.name} arrived late.`;
     return s;
   }
   const stands = s.stands;
+  if (stands?.kind === 'ask') {
+    s.fate[late.id] = { ...fresh('waiting', 'late'), asked: true, everAsked: true };
+    s.say = `${late.name} arrived late: ${ASKING.toLowerCase()}.`;
+    return s;
+  }
   if (stands != null && coversGuest(stands, late)) {
     s.fate[late.id] = {
-      status: 'changed',
+      ...fresh('changed', 'late'),
       to: stands.kind === 'serve' ? stands.item : null,
-      stage: 'To serve',
-      counted: 'late',
+      by: 'lead',
     };
     s.say = `${late.name} arrived late: ${nowLine(s, late).toLowerCase()}.`;
     return s;
   }
-  s.fate[late.id] = { status: 'waiting', to: null, stage: 'To serve', counted: 'late' };
+  s.fate[late.id] = fresh('waiting', 'late');
   s.say = raisedLine(waiting(s).length);
   return s;
 }
