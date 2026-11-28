@@ -42,3 +42,27 @@ describe('The role sheet once it scrolls (sc-95217, on qa3 #95718)', () => {
     expect(row).not.toMatch(/<Pressable\b/u);
   });
 });
+
+describe('The role sheet header’s reading order (sc-95215, on lead’s review of #4319)', () => {
+  const head = between(people, 'function PersonHead(', 'export function RoleSheet<');
+
+  it('orders the words, then Done, only while there is a Done', () => {
+    expect(head).toContain('done == null ? undefined : [WORDS_ID, DONE_ID]');
+    expect(head).toContain('nativeID={WORDS_ID}');
+    expect(head).toContain('nativeID={DONE_ID}');
+  });
+
+  it('keeps one Done mounted under one parent, so moving it under the line never remounts it out of the native order', () => {
+    expect(people).toContain("const DONE_ID = 'people.role.done.slot';");
+    expect(head.match(/\{action\}/gu)).toHaveLength(1);
+    expect(head).not.toContain('under && action');
+    expect(head).not.toContain('!under && action');
+  });
+
+  it('measures Done itself, not the slot that stretches to the row once Done goes under the line', () => {
+    expect(head).toMatch(
+      /<View onLayout=\{\(event\) => setDoneWidth\(event\.nativeEvent\.layout\.width\)\}>\s*<DoneAction/u,
+    );
+    expect(head.match(/setDoneWidth/gu)).toHaveLength(2);
+  });
+});
