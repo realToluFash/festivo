@@ -499,7 +499,8 @@ export function CountryStep({
   const [rowHeight, setRowHeight] = useState(0);
   const [headingHeight, setHeadingHeight] = useState(0);
   const scrolledToPick = useRef(false);
-  const retries = useRef(0);
+  const [listHeight, setListHeight] = useState(0);
+  const offset = useRef(0);
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const shown = searching ? countrySearch(all, walk.query, naming.locale) : all;
@@ -515,20 +516,43 @@ export function CountryStep({
     onPick(code);
   };
 
+  const measured = rowHeight > 0 && headingHeight > 0 && headerHeight > 0 && listHeight > 0;
+
   useEffect(() => {
     const atTop = walk.country === device?.code;
     if (!toPick || searching || walk.country == null || atTop || scrolledToPick.current) return;
+    if (!measured) return;
     const index = all.findIndex((country) => country.code === walk.country);
     if (index < 0) return;
-    scrolledToPick.current = true;
-    retries.current = 0;
-    const wait = setTimeout(
-      () => list.current?.scrollToIndex({ index: index + 1, viewPosition: 0.5, animated: false }),
-      tokens.motionFast,
-    );
+    const middle = headerHeight + headingHeight + index * rowHeight + rowHeight / 2;
+    const target = Math.max(0, middle - listHeight / 2);
+    let passes = 0;
+    let wait: ReturnType<typeof setTimeout>;
+    const place = () => {
+      list.current?.scrollToOffset({ offset: target, animated: false });
+      passes += 1;
+      if (passes < 8) wait = setTimeout(check, tokens.motionFast);
+      else scrolledToPick.current = true;
+    };
+    const check = () => {
+      if (Math.abs(offset.current - target) < 2) scrolledToPick.current = true;
+      else place();
+    };
+    wait = setTimeout(place, tokens.motionFast);
 
     return () => clearTimeout(wait);
-  }, [toPick, searching, walk.country, device?.code, all]);
+  }, [
+    toPick,
+    searching,
+    walk.country,
+    device?.code,
+    all,
+    measured,
+    headerHeight,
+    headingHeight,
+    rowHeight,
+    listHeight,
+  ]);
 
   const top = (
     <>
@@ -628,28 +652,13 @@ export function CountryStep({
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         initialNumToRender={24}
+        onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
         onScroll={(event) => {
-          const offset = event.nativeEvent.contentOffset.y;
-          const pins = !searching && offset > headerHeight;
-          onScrolled(offset > 0 && !pins);
+          const at = event.nativeEvent.contentOffset.y;
+          offset.current = at;
+          const pins = !searching && at > headerHeight;
+          onScrolled(at > 0 && !pins);
           setPinned(pins);
-        }}
-        onScrollToIndexFailed={(failed) => {
-          if (retries.current >= 6) return;
-          retries.current += 1;
-          list.current?.scrollToOffset({
-            offset: headerHeight + failed.averageItemLength * failed.index,
-            animated: false,
-          });
-          setTimeout(
-            () =>
-              list.current?.scrollToIndex({
-                index: failed.index,
-                viewPosition: 0.5,
-                animated: false,
-              }),
-            tokens.motionFast,
-          );
         }}
         testID="createWalk.countries"
       />
