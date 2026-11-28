@@ -16,6 +16,8 @@ export interface NightItem {
   phase: Phase;
   started?: number;
   ended?: number;
+  /** sc-3898: the name of the menu course this item is linked to. */
+  course?: string;
 }
 
 export interface NightTrack {
@@ -46,6 +48,7 @@ export interface Night {
 
 export const NW = {
   title: 'Run of show',
+  courseTag: (name: string) => `Course · ${name}`,
   now: 'Now',
   next: 'Next',
   later: 'Later',
@@ -463,9 +466,25 @@ export type Marks = Readonly<
   Record<string, readonly [started: string, ended?: string] | 'skipped'>
 >;
 
-function planned(plans: readonly Plan[], marks: Marks, day = 0): NightItem[] {
+type Courses = Readonly<Record<string, string>>;
+
+function planned(
+  plans: readonly Plan[],
+  marks: Marks,
+  day = 0,
+  courses: Courses = {},
+): NightItem[] {
   return plans.map(([id, time, title, length, owner]) => {
-    const item: NightItem = { id, planned: at(time, day), title, length, owner, phase: 'waiting' };
+    const course = courses[id];
+    const item: NightItem = {
+      id,
+      planned: at(time, day),
+      title,
+      length,
+      owner,
+      phase: 'waiting',
+      ...(course == null ? {} : { course }),
+    };
     const mark = marks[id];
 
     if (mark == null) return item;
@@ -507,7 +526,11 @@ export interface Scene {
   manage?: boolean;
   chosen?: string;
   said?: string;
+  courses?: Courses;
 }
+
+const LINKED: Courses = { dinner: 'Main', cake: 'Dessert' };
+const DINING: Marks = { arrive: ['18:02', '18:31'], dinner: ['18:33'] };
 
 const SPEAKING: Marks = { ...DINED, speeches: ['19:50'] };
 export const GAP: Marks = { ...DINED, speeches: ['19:50', '20:28'] };
@@ -609,6 +632,33 @@ export const NIGHT_STATES = {
     hall: { ...DANCED, lastSong: ['00:27', '00:42'] },
     foyer: { ...FOYER_RUN, carriages: ['00:31'] },
   },
+  course_now: {
+    name: 'Course: Dinner is served is Now, linked to Main',
+    clock: '18:44',
+    hall: DINING,
+    courses: LINKED,
+  },
+  course_later: {
+    name: 'Course: Cake cutting in Later, linked to Dessert',
+    clock: '20:02',
+    hall: SPEAKING,
+    courses: LINKED,
+  },
+  course_next: {
+    name: 'Course: Cake cutting Next, linked to Dessert',
+    clock: '20:44',
+    hall: { ...GAP, dance: ['20:31', '20:44'] },
+    courses: LINKED,
+  },
+  course_long: {
+    name: 'Course: a long course name cut short beside the title',
+    clock: '18:44',
+    hall: DINING,
+    courses: {
+      dinner: 'Plat principal : filet de bœuf, purée de patates douces et sauce au poivre',
+      cake: 'Sobremesa: bolo de casamento com doce de leite e frutas vermelhas da estação',
+    },
+  },
   picker_earlier_day: {
     name: 'Saturday 09:10: Friday’s Foyer still Now, “Foyer · Friday” in the picker',
     clock: '09:10',
@@ -657,7 +707,12 @@ export function nightAt(
             { id: 'foyer', place: 'Foyer', day: 0, items: planned(FOYER, scene.foyer ?? {}) },
           ]
         : [
-            { id: 'hall', place: 'Ballroom', day: 0, items: planned(BALLROOM, scene.hall) },
+            {
+              id: 'hall',
+              place: 'Ballroom',
+              day: 0,
+              items: planned(BALLROOM, scene.hall, 0, scene.courses),
+            },
             ...(oneTrack
               ? []
               : [
@@ -742,6 +797,16 @@ export const NIGHT_BOARDS = [
     title: 'The night · fr-FR · “Foyer · vendredi” in the picker',
     what: 'The weekday in the reader’s locale; times stay on the 24-hour clock',
     href: '/demo/night?state=picker_earlier_day&locale=fr-FR',
+  },
+  {
+    title: 'The night · course_long · fr-FR',
+    what: 'sc-3898: a long course name cut short beside the title, in fr-FR',
+    href: '/demo/night?state=course_long&locale=fr-FR',
+  },
+  {
+    title: 'The night · course_long · pt-BR',
+    what: 'sc-3898: a long course name cut short beside the title, in pt-BR',
+    href: '/demo/night?state=course_long&locale=pt-BR',
   },
   {
     title: 'The night · end_behind without events.manage',
