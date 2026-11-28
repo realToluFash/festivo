@@ -1,0 +1,40 @@
+.outside-person {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.outside-menu {
+  inset: auto auto calc(100% + var(--spaceXxs)) 0;
+  width: 100%;
+  margin: 0;
+  list-style: none;
+}
+
+:where(.outside-menu) .desk-menu-item {
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.outside-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.outside-menu.is-wide {
+  position: fixed;
+  inset: auto;
+  width: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

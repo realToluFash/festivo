@@ -1,0 +1,29 @@
+# sc-5519: Edit ${GUEST_ID}'s Group picker: Return with nothing typed refuses and keeps the typing in the picker's field; a name typed next lands there.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${NAME}
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 15000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.group' }, timeout: 20000 }
+- tapOn: { id: 'guest.form.group' }
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.field' }, timeout: 10000 }
+- tapOn: { id: 'guest.groupPicker.field' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: focus-before-return
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: focus-after-return
+- inputText: 'Kids'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: focus-typed-without-tap
+- tapOn: { id: 'guest.groupPicker.field' }
+- inputText: 'Zed'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: focus-typed-after-tap

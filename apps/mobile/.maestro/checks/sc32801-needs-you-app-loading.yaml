@@ -1,0 +1,39 @@
+# sc-32801: E2's Needs you while GET /api/events/<id>/timeline is held (scripts/qa-slow-proxy.mjs --delay 15000, android started with QA_API_URL), beside the demo's needsYouLoading. Needs ${METRO_URL}, ${E2}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${E2}
+- extendedWaitUntil:
+    visible:
+      text: 'Details'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
+- takeScreenshot: needsYouLoading-product
+- extendedWaitUntil:
+    visible:
+      id: 'event.needsYou.row'
+    timeout: 30000
+- swipe:
+    start: 50%, 30%
+    end: 50%, 85%
+    duration: 800
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: needsYouLoading-refresh
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouLoading
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouLoading-demo

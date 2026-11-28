@@ -1,0 +1,23 @@
+# sc-6476: a Finished event's card with a 280-character line, top and the line. Needs ${METRO_URL}, ${EV_LONG}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_LONG}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: thankYouLong

@@ -1,0 +1,41 @@
+# sc-51754: ${EVENT_ID}'s Venue address erased and saved: Open in maps disappears from the page. Needs ${METRO_URL}, ${EVENT_ID} (a venue with a name).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.maps'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible: 'Address.*'
+    timeout: 20000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: 'event.edit.venue.address'
+          point: '97%,50%'
+      - eraseText: 200
+- tapOn:
+    id: 'event.edit.venue.save'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: removed
+- assertNotVisible:
+    id: 'events.maps'
+- assertNotVisible: '.*Venue · .*'

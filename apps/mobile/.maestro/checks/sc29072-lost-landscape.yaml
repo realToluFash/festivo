@@ -1,0 +1,7 @@
+# sc-29072: sc29072-lost on a tablet in landscape.
+appId: host.exp.Exponent
+onFlowComplete:
+  - setOrientation: PORTRAIT
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: sc29072-lost.yaml

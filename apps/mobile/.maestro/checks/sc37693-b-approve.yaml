@@ -1,0 +1,12 @@
+# sc-37693: b-approve.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: 'Answer .*'
+- waitForAnimationToEnd
+- tapOn: 'Approve'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: b-approve-after

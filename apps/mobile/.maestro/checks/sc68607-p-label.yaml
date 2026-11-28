@@ -1,0 +1,14 @@
+# sc-68607: VoiceOver reads the People card's row as one sentence, with a Lead, without one, and with nobody.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_MAIN}?area=overview
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 30000 }
+- assertVisible: '5 on this event\. Lead, Priya Shah\. Opens People\.'
+- openLink: ${METRO_URL}/--/account
+- openLink: ${METRO_URL}/--/events/${EV_NOLEAD}?area=overview
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 30000 }
+- assertVisible: '4 on this event\. Opens People\.'
+- openLink: ${METRO_URL}/--/account
+- openLink: ${METRO_URL}/--/events/${EV_NOBODY}?area=overview
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 30000 }
+- assertVisible: 'Nobody is on this event yet\. Opens People\.'

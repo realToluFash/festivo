@@ -1,0 +1,36 @@
+# sc-36347: with the API stopped, Save of Berry says it was not saved because you are offline, and nothing restarts.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.berry
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: personalisation.save
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible: '.*Berry was not saved because you are offline\. Your colours stay Violet\..*'
+    timeout: 15000
+- assertVisible:
+    id: personalisation.colours
+- takeScreenshot: offline-save

@@ -1,0 +1,114 @@
+# On an iPad at the largest accessibility text size, Sign in in the sheet scrolls under its bar and Sign in draws over
+# neither field, the eye nor Forgot your password?, top and scrolled. sc-67886.
+#
+#   xcrun simctl ui booted content_size accessibility-extra-extra-extra-large
+#   node .qa/bin/qa-env.mjs maestro sc67886-ipad-sheet-text-size
+#
+# Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
+# `qa-env ios` sets the size back to large as it starts the bundler, so set it after that.
+# Each field and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
+# a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal. The password is
+# tapped again once the keys have gone down (QA #68774), and Forgot your password? is reached with the keys down both
+# before the refusal and after it.
+# The keys go down by the iPad's hide key, never hideKeyboard, which stops the flow on an iPad.
+appId: host.exp.Exponent
+---
+# Welcome reached by a link has nothing under Sign in, which then opens full screen: sign out to reach it.
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- tapOn:
+    id: 'signIn.email'
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-top
+- tapOn:
+    id: 'signIn.email'
+    point: '50%,92%'
+- eraseText: 120
+- inputText: 'qa-sc67886@example.com'
+- assertVisible:
+    id: 'signIn.email'
+    text: 'qa-sc67886@example.com'
+- assertNotVisible: 'Enter your password.'
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-typed
+# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line, past the scroll's
+# foot under Sign in. Maestro counts the half-shown link as visible, so the scroll is swiped to its end, where the link
+# is its last row and its foot clears Sign in: the tap at that foot reaching Sign in would never open recovery.
+- runFlow: scroll-to-end-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-forgot-keys-down
+- tapOn:
+    id: 'signIn.forgot'
+    point: '50%,92%'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- tapOn:
+    id: 'recovery.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    centerElement: false
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- inputText: 'not-the-password'
+# The eye sits inside the field, which the keys' cover has lifted above the docked foot: tapped by its id.
+- tapOn:
+    id: 'signIn.password.reveal'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'signIn.password'
+    text: 'not-the-password'
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+# Turned plain by the eye, the field keeps its focus but iOS can put the iPad's keys down. Tapped again at its foot,
+# the keys are surely up, so the hide key has keys to put down instead of landing outside the sheet and closing it.
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+- takeScreenshot: sc67886-ipad-sheet-keys-up
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-keys-down-again
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    centerElement: false
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- inputText: '-again'
+- assertVisible:
+    id: 'signIn.password'
+    text: 'not-the-password-again'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match. Check both, or reset your password.'
+    timeout: 10000
+- runFlow: keys-down-ipad-sheet.yaml
+- runFlow: scroll-to-end-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-scrolled
+- tapOn:
+    id: 'signIn.forgot'
+    point: '50%,92%'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- assertVisible:
+    id: 'recovery.email'
+    text: 'qa-sc67886@example.com'
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+- takeScreenshot: sc67886-ipad-sheet-forgot

@@ -1,0 +1,14 @@
+# sc-56935 regression, iPad on its side: the event's sidebar still draws and opens Budget; the flow turns the iPad back upright at the end. Pass EVENT_ID, an event the signed-in host owns; run on an iPad simulator.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: side-overview
+- tapOn: { id: 'event.nav.budget' }
+- extendedWaitUntil: { visible: { id: 'event.nav.budget', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: side-budget
+- setOrientation: PORTRAIT

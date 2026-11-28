@@ -1,0 +1,43 @@
+# sc-48600: Event name opened by a tap on the product's page (${EVENT_ID}) and on the demo's /demo/events/evt-wed-4, keyboard up, one screenshot each, for the side-by-side pair. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.save'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: name-phone-tap-product
+- tapOn:
+    id: 'event.edit.name.cancel'
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- waitForAnimationToEnd:
+    timeout: 4000
+- scrollUntilVisible:
+    element:
+      id: 'event.row.name'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'event.row.name'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: name-phone-tap-demo

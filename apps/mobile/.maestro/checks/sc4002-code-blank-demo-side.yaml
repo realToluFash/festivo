@@ -1,0 +1,13 @@
+# sc-4002, on its side: the demo's door code form at its blank state.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/demo/people?code=blank
+- extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: code-blank-demo

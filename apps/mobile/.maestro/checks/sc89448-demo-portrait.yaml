@@ -1,0 +1,12 @@
+# sc-89448: the design demo /demo/menu-picks, populated then stale, portrait, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=populated
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: demo-populated
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=stale
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: demo-stale
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=menu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: demo-shell

@@ -1,0 +1,31 @@
+# sc-67708: on the phone, an area opened from the More sheet and from an Overview card draws ‹ Overview, which goes back to Overview.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: phone-overview
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.budget' }, timeout: 10000 }
+- takeScreenshot: phone-more-sheet
+- tapOn: { id: 'event.nav.more.budget' }
+- extendedWaitUntil: { visible: { id: 'frame.back' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'frame.back', text: '.*(Overview|Aperçu|Resumen|Vista geral).*' }
+- takeScreenshot: phone-budget-from-more
+- tapOn: { id: 'frame.back' }
+- extendedWaitUntil: { visible: { id: 'overview.guests.open' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: phone-overview-after-more-back
+- scrollUntilVisible:
+    { element: { id: 'overview.guests.open' }, centerElement: true, timeout: 20000 }
+- tapOn: { id: 'overview.guests.open' }
+- extendedWaitUntil: { visible: { id: 'frame.back' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'frame.back', text: '.*(Overview|Aperçu|Resumen|Vista geral).*' }
+- takeScreenshot: phone-guests-from-card
+- tapOn: { id: 'frame.back' }
+- extendedWaitUntil: { visible: { id: 'overview.guests.open' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: phone-overview-after-card-back

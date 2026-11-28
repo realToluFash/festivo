@@ -1,0 +1,24 @@
+# sc-23777 on an iPad: Settings > ${SECTION} beside the Settings list; the swipe does nothing, ${SECTION} stays chosen.
+appId: host.exp.Exponent
+---
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings.${SECTION}'
+    timeout: 30000
+- tapOn:
+    id: 'settings.${SECTION}'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.${SECTION}'
+    selected: true
+- takeScreenshot: ${SECTION}-before
+- runFlow: swipe.yaml
+- assertVisible:
+    id: 'settings.${SECTION}'
+    selected: true
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: ${SECTION}-after

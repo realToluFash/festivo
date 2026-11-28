@@ -1,0 +1,33 @@
+# sc-39534: the app demo's tablet Search (the 600 palette, idle and with results) and its header band, in one orientation, for side-by-side pairs. Needs ORIENT: PORTRAIT or LANDSCAPE_LEFT (swapped on a landscape-natural tablet).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/search?state=idle
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: demo-idle
+- openLink: ${METRO_URL}/--/demo/search?state=mixed
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: demo-mixed
+- openLink: ${METRO_URL}/--/demo/search-header
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.open'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: demo-header
+- openLink: ${METRO_URL}/--/demo/search-header?on=today
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.open'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: demo-header-today

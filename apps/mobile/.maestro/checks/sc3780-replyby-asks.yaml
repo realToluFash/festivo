@@ -1,0 +1,57 @@
+# sc-3780: on ${EVENT_ID} (Reply by 25 Nov, start 28 Nov, guests left to reply), the Reply by part's error, both Asks and both toasts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- tapOn:
+    text: 'Reply by.*'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '28'
+- tapOn: 'OK'
+- tapOn: 'Save'
+- waitForAnimationToEnd
+- takeScreenshot: error
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '20'
+- tapOn: 'OK'
+- tapOn: 'Save'
+- waitForAnimationToEnd
+- takeScreenshot: sooner
+- tapOn:
+    id: 'event.edit.replyBy.keep'
+- waitForAnimationToEnd
+- takeScreenshot: after-keep
+- tapOn: 'Save'
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: saved-sooner
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- takeScreenshot: row-after-sooner
+- tapOn:
+    text: 'Reply by.*'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '10'
+- tapOn: 'OK'
+- tapOn: 'Save'
+- waitForAnimationToEnd
+- takeScreenshot: now
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: saved-now
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- takeScreenshot: row-closed

@@ -1,0 +1,33 @@
+# sc-101859: share then Not yet, replace, copy, mark as sent, on P_NONE and P_COPIED; each message in the batch's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_NONE}
+- extendedWaitUntil: { visible: 'Bisi Ade', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.share' }, timeout: 30000 }
+- tapOn: { id: 'staffLink.share' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: share-sheet
+- back
+- extendedWaitUntil: { visible: { id: 'staffLink.ask' }, timeout: 15000 }
+- takeScreenshot: did-you-send
+- tapOn: { id: 'staffLink.ask.notYet' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: after-not-yet
+- scrollUntilVisible: { element: { id: 'staffLink.replace' }, direction: DOWN }
+- tapOn: { id: 'staffLink.replace' }
+- extendedWaitUntil: { visible: { id: 'staffLink.replaceSheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: replace-ask
+- tapOn: { id: 'staffLink.replace.go' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: replaced
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_COPIED}
+- extendedWaitUntil: { visible: 'Dara Ojo', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.copy' }, timeout: 30000 }
+- tapOn: { id: 'staffLink.copy' }
+- waitForAnimationToEnd: { timeout: 1500 }
+- takeScreenshot: copied-said
+- extendedWaitUntil: { visible: { id: 'staffLink.markSent' }, timeout: 10000 }
+- tapOn: { id: 'staffLink.markSent' }
+- waitForAnimationToEnd: { timeout: 1500 }
+- takeScreenshot: marked

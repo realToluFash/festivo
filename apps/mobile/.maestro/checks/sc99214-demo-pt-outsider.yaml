@@ -1,0 +1,13 @@
+# sc-99214: the narrow-bars demo on this phone's own width and text size, in pt, the outsider bar, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/narrow-bars?width=phone&size=phone&lang=pt&bar=outsider
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo
+- scroll
+- takeScreenshot: demo-down

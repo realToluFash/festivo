@@ -1,0 +1,37 @@
+# sc-48600 on Android (the keys rise on the row Add adds, sc-83720): on ${EVENT_ID} (hosts Adaeze Obi, Tunde Bakare), Hosted by filled to six one Add at a time, beside the demo's hostsSix; then Event name cleared and retyped, saved, and the page shows the new name. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=hosts
+- extendedWaitUntil: { visible: { id: 'event.edit.hosts.save' }, timeout: 30000 }
+- tapOn: { id: 'event.edit.hosts.add' }
+- inputText: 'Ngozi Obi'
+- hideKeyboard
+- scrollUntilVisible: { element: { id: 'event.edit.hosts.add' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'event.edit.hosts.add' }
+- inputText: 'Emeka Obi'
+- hideKeyboard
+- scrollUntilVisible: { element: { id: 'event.edit.hosts.add' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'event.edit.hosts.add' }
+- inputText: 'Funke Bakare'
+- hideKeyboard
+- scrollUntilVisible: { element: { id: 'event.edit.hosts.add' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'event.edit.hosts.add' }
+- inputText: 'Segun Bakare'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: hostsSix-foot-product
+- assertNotVisible: { id: 'event.edit.hosts.add' }
+- scrollUntilVisible: { element: { id: 'event.edit.hosts.field.0' }, direction: UP, timeout: 10000 }
+- takeScreenshot: hostsSix-product
+- tapOn: { id: 'event.edit.hosts.cancel' }
+- tapOn: { id: 'event.edit.hosts.discard' }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil: { visible: { id: 'event.edit.name.field' }, timeout: 30000 }
+- tapOn: { id: 'event.edit.name.field' }
+- eraseText: 200
+- inputText: 'Adaeze and Tunde Two'
+- hideKeyboard
+- takeScreenshot: name-typed
+- tapOn: { id: 'event.edit.name.save' }
+- extendedWaitUntil: { visible: '.*Adaeze and Tunde Two.*', timeout: 15000 }
+- takeScreenshot: name-saved

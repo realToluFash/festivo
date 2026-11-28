@@ -1,0 +1,245 @@
+import type { Companion, Guest, GuestNeeds, HeadcountCounts } from '@soirely/api-client';
+import { compareGuestNames } from './guestName.ts';
+import { shownReply } from './guestForm.ts';
+import { nameKey } from './nameKey.ts';
+import { phoneMatches } from './phone.ts';
+
+/** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
+export type Standing =
+  'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing' | 'walkIn';
+
+/** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. All and Invited are totals, set apart from the replies below them, which add up to All; Invited is the five replies together (sc-3786). */
+export const CHOICES = [
+  'all',
+  'invited',
+  'coming',
+  'maybe',
+  'noReply',
+  'held',
+  'notComing',
+  'notYetInvited',
+  'walkIn',
+] as const;
+export type Choice = (typeof CHOICES)[number];
+
+/** On All, the groups in the menu's order. A held companion is always under their guest, so Held has no group. */
+const GROUPS: readonly (Standing & Choice)[] = [
+  'coming',
+  'walkIn',
+  'maybe',
+  'noReply',
+  'notComing',
+  'notYetInvited',
+];
+
+export const FIRST_ROWS = 2;
+
+export function choiceOf(value: string | null): Choice {
+  return CHOICES.find((choice) => choice === value) ?? 'all';
+}
+
+export interface Person {
+  id: string;
+  standing: Standing;
+  guest: Guest;
+  companion: Companion | null;
+  at: number;
+}
+
+/** sc-3777: an allergy or a diet recorded, what the Dietary notes filter and tag keep; access needs alone are not dietary. */
+export function dietary(needs: GuestNeeds | null | undefined): boolean {
+  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
+}
+
+/** Sorted once per list the API returned, not once per keystroke (sc-3772). */
+const sorted = new WeakMap<readonly Guest[], readonly Person[]>();
+
+export function peopleOf(guests: readonly Guest[]): readonly Person[] {
+  const known = sorted.get(guests);
+
+  if (known != null) return known;
+  const people = [...guests]
+    .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
+    .flatMap((guest) => [
+      { id: guest.id, standing: shownReply(guest), guest, companion: null, at: 0 },
+      ...guest.companions.map((companion, at) => ({
+        id: companion.id,
+        standing: companion.state,
+        guest,
+        companion,
+        at,
+      })),
+    ]);
+
+  sorted.set(guests, people);
+
+  return people;
+}
+
+export type Counts = Record<Choice, number> & {
+  /** Everyone without an answer of their own: the guests who owe one and the companions held behind them. */
+  havent: number;
+  haventGuests: number;
+  haventCompanions: number;
+};
+
+/** sc-99's headcount, in the menu's choices: every choice but All adds up to All. */
+export function countsOf(headcount: HeadcountCounts): Counts {
+  return {
+    all: headcount.onList,
+    coming: headcount.accepted,
+    maybe: headcount.maybe,
+    noReply: headcount.awaitingReply,
+    held: headcount.held,
+    notComing: headcount.declined,
+    notYetInvited: headcount.notYetInvited,
+    walkIn: headcount.walkIns,
+    invited: headcount.invited,
+    havent: headcount.awaitingReply + headcount.heldBy.hostNoReply,
+    haventGuests: headcount.awaitingReply,
+    haventCompanions: headcount.heldBy.hostNoReply,
+  };
+}
+
+/** The full name, ignoring case and accents, anywhere in it; a guest's email address and mobile number too, when the reader is sent them. */
+export function matches(person: Person, q: string): boolean {
+  const typed = nameKey(q);
+
+  if (typed === '') return true;
+  const { name, email } = keysOf(person);
+
+  if (name != null && name.includes(typed)) return true;
+  if (person.companion != null) return false;
+  const { mobile } = person.guest;
+
+  return (email != null && email.includes(typed)) || (mobile != null && phoneMatches(mobile, q));
+}
+
+const keys = new WeakMap<Person, { name: string | null; email: string | null }>();
+
+function keysOf(person: Person): { name: string | null; email: string | null } {
+  const known = keys.get(person);
+
+  if (known != null) return known;
+  const name = person.companion == null ? person.guest.fullName : person.companion.fullName;
+  const email = person.companion == null ? person.guest.email : null;
+  const made = {
+    name: name == null ? null : nameKey(name),
+    email: email == null ? null : nameKey(email),
+  };
+
+  keys.set(person, made);
+
+  return made;
+}
+
+/** sc-3775's chips: a group's id, or No group; a companion is in their guest's. None on keeps everyone, several keep anyone in one of them (sc-90684). */
+export const NO_GROUP = 'none';
+
+export function inGroup(person: Person, groups: readonly string[]): boolean {
+  const id = person.guest.group?.id ?? NO_GROUP;
+
+  return groups.length === 0 || groups.includes(id);
+}
+
+export interface ViewRow {
+  person: Person;
+  indent: boolean;
+}
+
+export interface ViewGroup {
+  standing: Standing;
+  count: number;
+  rows: ViewRow[];
+  collapsed: boolean;
+  next: string | null;
+}
+
+export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
+
+/** Whether the choice, the search, Dietary notes and the group chips all keep this person. */
+function inView(
+  one: Person,
+  choice: Choice,
+  q: string,
+  dietaryOnly: boolean,
+  groups: readonly string[],
+): boolean {
+  return (
+    (choice === 'all' ||
+      (choice === 'invited' ? invited(one.standing) : one.standing === choice)) &&
+    matches(one, q) &&
+    inGroup(one, groups) &&
+    (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs))
+  );
+}
+
+/** Invited is the five replies together: not the not yet invited, and not a walk-in, who was never invited (sc-1454). */
+function invited(standing: Standing): boolean {
+  return standing !== 'notYetInvited' && standing !== 'walkIn';
+}
+
+/** sc-3784's This view: everyone the list keeps, collapsed groups included, in its order, each companion straight after their guest. */
+export function peopleInView(
+  guests: readonly Guest[],
+  choice: Choice,
+  q: string,
+  dietaryOnly = false,
+  groups: readonly string[] = [],
+): readonly Person[] {
+  return peopleOf(guests).filter((one) => inView(one, choice, q, dietaryOnly, groups));
+}
+
+/** On All or Invited with no search, no Dietary notes and no group chip on, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
+export function viewOf(
+  guests: readonly Guest[],
+  counts: Counts,
+  choice: Choice,
+  q: string,
+  expanded: ReadonlySet<Standing>,
+  dietaryOnly = false,
+  chips: readonly string[] = [],
+): { view: ListView; shown: number } {
+  const people = peopleOf(guests);
+
+  const totals = choice === 'all' || choice === 'invited';
+
+  if (!totals || q.trim() !== '' || dietaryOnly || chips.length > 0) {
+    const found = people.filter((one) => inView(one, choice, q, dietaryOnly, chips));
+    const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));
+
+    return {
+      view: {
+        kind: 'rows',
+        rows: found.map((person) => ({
+          person,
+          indent: person.companion != null && hosts.has(person.guest.id),
+        })),
+      },
+      shown: found.length,
+    };
+  }
+
+  const groups = GROUPS.filter((standing) => choice === 'all' || invited(standing))
+    .map((standing) => {
+      const heads = people.filter((one) => one.companion == null && one.standing === standing);
+      const open = expanded.has(standing) || heads.length <= FIRST_ROWS;
+      const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
+        { person: head, indent: false },
+        ...people
+          .filter((one) => one.companion != null && one.guest.id === head.id)
+          .map((person) => ({ person, indent: true })),
+      ]);
+
+      return {
+        standing,
+        count: counts[standing],
+        rows,
+        collapsed: !open,
+        next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
+      };
+    })
+    .filter((group) => group.rows.length > 0);
+
+  return { view: { kind: 'groups', groups }, shown: counts[choice] };
+}

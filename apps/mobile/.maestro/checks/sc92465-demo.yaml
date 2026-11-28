@@ -1,0 +1,13 @@
+# sc-92465: the demo /demo/today-size?Q upright, then scrolled. Vars: METRO_URL, Q.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today-size?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 75%', end: '50%, 35%', duration: 700 }
+- swipe: { start: '50%, 75%', end: '50%, 35%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: foot

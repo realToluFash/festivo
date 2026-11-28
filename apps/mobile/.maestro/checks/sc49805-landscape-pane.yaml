@@ -1,0 +1,77 @@
+# sc-49805, tablet landscape: ${GUEST_ID}'s details in the right-hand pane; the failed Mark as not invited line, then the Edit sheet's Needs. Swipes inside the pane, which scrollUntilVisible does not reach.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 75%, 85%
+          end: 75%, 25%
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-pane-foot
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 75%, 25%
+          end: 75%, 85%
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-unmark-failed
+- tapOn:
+    id: 'guest.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form.fullName'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.needs.toggle'
+    direction: DOWN
+- tapOn:
+    id: 'guest.form.needs.toggle'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-form-needs
+- repeat:
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 30%
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-form-diet
+- back
+- openLink: ${METRO_URL}/--/demo/guests?state=unmarkNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: land-demo-unmarkNotSaved
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

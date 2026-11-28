@@ -1,0 +1,34 @@
+# sc-41787: the Calendar's Agenda turned to ${O} (PORTRAIT or LANDSCAPE_LEFT), screenshotted page by page, so every row's title can be read beside or above its tag. Needs an organisation whose upcoming events carry the names under test.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.agenda
+    timeout: 30000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: agenda-1
+- scroll
+- takeScreenshot: agenda-2
+- scroll
+- takeScreenshot: agenda-3
+- scroll
+- takeScreenshot: agenda-4
+- scroll
+- takeScreenshot: agenda-5
+- scroll
+- takeScreenshot: agenda-6
+- scroll
+- takeScreenshot: agenda-7
+- scroll
+- takeScreenshot: agenda-8
