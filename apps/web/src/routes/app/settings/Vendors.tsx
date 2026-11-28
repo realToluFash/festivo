@@ -863,7 +863,11 @@ function VendorForm({
                 <p>{t('vendors.archiveRefused', { vendor: vendor.name })}</p>
               </div>
               {owing.map((event) => (
-                <Link key={event.id} className="desk-text" to={vendorPagePath(event.id, vendor.id)}>
+                <Link
+                  key={event.id}
+                  className="desk-text is-wraps"
+                  to={vendorPagePath(event.id, vendor.id)}
+                >
                   {t('vendors.owingLink', { vendor: vendor.name, event: event.name })}
                 </Link>
               ))}

@@ -106,8 +106,25 @@ export interface Tray {
 
 export type Screen = 'next' | 'floor' | 'tray';
 
+/** A waiter's step taken with no connection, kept to send (sc-4028). */
+export type KeptStep = 'notOn' | 'bringAfter' | 'takeOff' | 'held';
+
+export interface Kept {
+  guest: string;
+  step: KeptStep;
+}
+
+/** The floor lead's choice, made on the server while this phone had no connection. */
+export interface Elsewhere {
+  guest: string;
+  to: string | null;
+}
+
 export interface RunOutState {
   online: boolean;
+  kept: readonly Kept[];
+  elsewhere: readonly Elsewhere[];
+  notSent: readonly string[];
   orders: readonly Order[];
   tray: Tray | null;
   seatFour: string;
@@ -125,6 +142,7 @@ export const RUN_OUT_STATES = [
   'runOutPlateEmpty',
   'runOutLanded',
   'runOutOffline',
+  'runOutNotSent',
 ] as const;
 
 export type RunOutStateName = (typeof RUN_OUT_STATES)[number];
@@ -152,7 +170,11 @@ export const RUN_OUT_STATE_WHAT: Readonly<Record<RunOutStateName, readonly [stri
   ],
   runOutOffline: [
     'No connection',
-    'Bring after pressed with no connection: refused on the device, nothing kept',
+    'Bring after on Seat 4 with no connection: kept, marked Waiting to send',
+  ],
+  runOutNotSent: [
+    'Not sent',
+    'Beef took Chicken’s place while offline: the kept Bring after is not sent, Beef shows at the Grill',
   ],
 };
 
@@ -189,11 +211,25 @@ export function landedLine(seat: number, to: string | null): string {
     : `Seat ${seat}: ${to} instead of ${RUN_OUT}`;
 }
 
-export const OFFLINE_BRING_AFTER = `Needs a connection to bring ${RUN_OUT} after. Nothing is kept to send later.`;
-export const OFFLINE_HELD =
-  'Needs a connection to record a held guest’s choice. Nothing is kept to send later.';
 export const OFFLINE_LEAD =
   'This phone has no connection, so the floor lead’s choice shows once it reconnects.';
+export const NOT_SENT_HEAD = 'Not sent · the floor changed while you were offline';
+
+export function keptLine(n: number): string {
+  return n === 0
+    ? ''
+    : `${plural(n, 'step', 'steps')} waiting to send. ${n === 1 ? 'It sends' : 'They send'} when the connection is back.`;
+}
+
+const STEP_WORDS: Record<'notOn' | 'bringAfter', string> = {
+  notOn: `${RUN_OUT} Not on`,
+  bringAfter: `Bring after ${RUN_OUT}`,
+};
+
+export function notSentLine(step: 'notOn' | 'bringAfter', g: Guest, to: string | null): string {
+  const instead = to == null ? `served it without ${RUN_OUT}` : `served ${to} instead`;
+  return `${STEP_WORDS[step]}, Seat ${g.seat} · ${g.name}: the floor lead ${instead}, so it wasn’t sent.`;
+}
 
 const line = (item: string, mark: Mark = 'unmarked'): Line => ({ item, mark, instead: null });
 
@@ -206,6 +242,9 @@ const JOLLOF_ON = line('Jollof rice', 'on');
 function tableNine(): RunOutState {
   return {
     online: true,
+    kept: [],
+    elsewhere: [],
+    notSent: [],
     orders: [
       order('fa', 'tray', [JOLLOF_ON, line('Chicken')]),
       order('hs', 'tray', [JOLLOF_ON, line('Chicken')]),
@@ -229,6 +268,9 @@ function tableNine(): RunOutState {
 function tableThree(): RunOutState {
   return {
     online: true,
+    kept: [],
+    elsewhere: [],
+    notSent: [],
     orders: [
       order('sm', 'toServe', [
         line('Jollof rice'),
@@ -282,11 +324,57 @@ export function seed(name: RunOutStateName): RunOutState {
       const s = setMark(tableNine(), 'tb', RUN_OUT, 'notOn');
       return { ...leadChooses(s, 'tb', 'Beef'), screen: 'next' };
     }
-    case 'runOutOffline': {
-      const s = setMark(tableNine(), 'tb', RUN_OUT, 'notOn');
-      return { ...s, online: false, refused: OFFLINE_BRING_AFTER };
-    }
+    case 'runOutOffline':
+      return bringAfter(markNotOn({ ...tableNine(), online: false }, 'tb'), 'tb');
+    case 'runOutNotSent':
+      return reconnect(leadChooses(seed('runOutOffline'), 'tb', 'Beef'));
   }
+}
+
+function keep(s: RunOutState, guest: string, step: KeptStep): RunOutState {
+  if (s.online) return s;
+  const mine = (k: Kept) => k.guest === guest;
+  const rest = s.kept.filter((k) => {
+    if (!mine(k)) return true;
+    if (step === 'bringAfter' || step === 'takeOff')
+      return k.step !== 'notOn' && k.step !== 'bringAfter';
+    return k.step !== step;
+  });
+  return { ...s, kept: [...rest, { guest, step }] };
+}
+
+export function isKept(s: RunOutState, guest: string, steps: readonly KeptStep[]): boolean {
+  return s.kept.some((k) => k.guest === guest && steps.includes(k.step));
+}
+
+/** A kept step naming the run-out item on a plate a replacement has since changed is refused (sc-4028's 409). */
+export function reconnect(s: RunOutState): RunOutState {
+  let next: RunOutState = { ...s, online: true, refused: '', note: '' };
+  const notSent: string[] = [];
+  for (const e of s.elsewhere) {
+    const g = guestOf(e.guest);
+    for (const k of s.kept)
+      if (k.guest === e.guest && (k.step === 'notOn' || k.step === 'bringAfter'))
+        notSent.push(notSentLine(k.step, g, e.to));
+    next = {
+      ...next,
+      kept: next.kept.filter(
+        (k) => k.guest !== e.guest || (k.step !== 'notOn' && k.step !== 'bringAfter'),
+      ),
+    };
+    if (isKept(s, e.guest, ['notOn', 'bringAfter']))
+      next = setMark(next, e.guest, RUN_OUT, 'unmarked');
+    next = leadChooses(next, e.guest, e.to);
+  }
+  return { ...next, kept: [], elsewhere: [], notSent: [...s.notSent, ...notSent] };
+}
+
+export function goOffline(s: RunOutState): RunOutState {
+  return { ...s, online: false, refused: '', note: '' };
+}
+
+export function dismissNotSent(s: RunOutState): RunOutState {
+  return { ...s, notSent: [] };
 }
 
 export function orderOf(s: RunOutState, guest: string): Order | undefined {
@@ -337,9 +425,11 @@ export function heldRows(s: RunOutState): readonly HeldRow[] {
 }
 
 export function chooseHeld(s: RunOutState, guest: string, choice: 'now' | 'wait'): RunOutState {
-  if (!s.online) return { ...s, refused: OFFLINE_HELD };
+  const o0 = orderOf(s, guest);
+  if (o0 == null || o0.where !== 'toServe' || !isWaiting(o0)) return s;
+  if (!o0.lines.some((l) => l.item !== RUN_OUT)) return s;
   return {
-    ...s,
+    ...keep(s, guest, 'held'),
     refused: '',
     orders: s.orders.map((o) => {
       if (o.guest !== guest || o.where !== 'toServe' || !isWaiting(o)) return o;
@@ -417,7 +507,7 @@ export function toggleLine(s: RunOutState, guest: string, item: string): RunOutS
 export function markNotOn(s: RunOutState, guest: string): RunOutState {
   const l = orderOf(s, guest)?.lines.find((x) => x.item === RUN_OUT);
   if (l == null || l.mark !== 'unmarked') return s;
-  return setMark({ ...s, refused: '' }, guest, RUN_OUT, 'notOn');
+  return setMark(keep({ ...s, refused: '' }, guest, 'notOn'), guest, RUN_OUT, 'notOn');
 }
 
 /** Nothing else would go on the plate: every other item is Not on or brought after. */
@@ -430,9 +520,8 @@ export function bringAfter(s: RunOutState, guest: string): RunOutState {
   const o = orderOf(s, guest);
   const l = o?.lines.find((x) => x.item === RUN_OUT);
   if (o == null || l == null || l.mark !== 'notOn') return s;
-  if (!s.online) return { ...s, refused: OFFLINE_BRING_AFTER };
   if (wouldEmpty(o, RUN_OUT)) return { ...s, refused: plateEmptyLine(guestOf(guest).seat) };
-  return setMark({ ...s, refused: '' }, guest, RUN_OUT, 'bringAfter');
+  return setMark(keep({ ...s, refused: '' }, guest, 'bringAfter'), guest, RUN_OUT, 'bringAfter');
 }
 
 export function takeOff(s: RunOutState, guest: string): RunOutState {
@@ -440,7 +529,7 @@ export function takeOff(s: RunOutState, guest: string): RunOutState {
   if (o == null || o.where !== 'tray') return s;
   const g = guestOf(guest);
   return {
-    ...s,
+    ...keep(s, guest, 'takeOff'),
     refused: '',
     say: `Seat ${g.seat} is off the tray. ${g.name} is held.`,
     orders: s.orders.map((x) =>
@@ -562,7 +651,12 @@ export function leadChooses(s: RunOutState, guest: string, to: string | null): R
   const o = orderOf(s, guest);
   if (o == null) return s;
   const g = guestOf(guest);
-  if (!s.online) return { ...s, note: OFFLINE_LEAD };
+  if (!s.online)
+    return {
+      ...s,
+      elsewhere: [...s.elsewhere.filter((e) => e.guest !== guest), { guest, to }],
+      note: OFFLINE_LEAD,
+    };
   if (!isWaiting(o)) return { ...s, note: `${g.name} isn’t waiting for a choice.` };
   if (to == null && wouldEmpty(o, RUN_OUT) && !o.follow.some((i) => i !== RUN_OUT))
     return {
