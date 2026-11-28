@@ -503,6 +503,7 @@ export const CONSULTATION_STATES = [
   'freeOrg',
   'notifications',
   'feed',
+  'deleted-from-calendar',
 ] as const;
 
 export type ConsultationState = (typeof CONSULTATION_STATES)[number];
@@ -526,7 +527,12 @@ export interface ConsultationStart {
   panel: Panel;
   save: Save;
   view: 'page' | 'calendar' | 'notifications' | 'feed';
-  calendar: { view: 'month' | 'agenda'; show: 'all' | 'events'; free: boolean };
+  calendar: {
+    view: 'month' | 'agenda';
+    show: 'all' | 'events';
+    free: boolean;
+    deleted: string | null;
+  };
 }
 
 const LUCIA = ENQUIRIES.find((one) => one.id === 'enq-lucia')!;
@@ -559,7 +565,7 @@ export function consultationStart(state: ConsultationState): ConsultationStart {
     panel: { kind: 'none' },
     save: 'idle',
     view: 'page',
-    calendar: { view: 'month', show: 'all', free: false },
+    calendar: { view: 'month', show: 'all', free: false, deleted: null },
   };
   const filled = { date: '2026-11-25', time: '15:00' };
 
@@ -664,6 +670,12 @@ export function consultationStart(state: ConsultationState): ConsultationStart {
       return { ...start, view: 'notifications' };
     case 'feed':
       return { ...start, view: 'feed' };
+    case 'deleted-from-calendar':
+      return {
+        ...start,
+        view: 'calendar',
+        calendar: { ...start.calendar, view: 'agenda', deleted: LUCIA.client },
+      };
     default:
       return start;
   }
