@@ -57,6 +57,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { discardCoverUpload } from './CoverField.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { useEarlyBack } from './earlyBack.ts';
 import { EventCover } from './EventCover.tsx';
 import {
   ArrivalNoteField,
@@ -134,6 +135,14 @@ export function NewEventScreen({
   const [picking, setPicking] = useState<Picking | null>(null);
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const closeList = () => setList(null);
+  const [listDrawn, setListDrawn] = useState(false);
+  if (list == null && listDrawn) setListDrawn(false);
+  const takeBack = useEarlyBack(list != null, listDrawn, closeList);
+  const openList = (which: ListOpen) => {
+    takeBack();
+    setList(which);
+  };
   const [said, setSaid] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo>({ kind: 'none' });
   const [coverRefused, setCoverRefused] = useState<string | null>(null);
@@ -485,7 +494,6 @@ export function NewEventScreen({
       }
     : null;
 
-  const closeList = () => setList(null);
   const listed: { title: string; body: ReactNode } | null =
     list === 'type'
       ? {
@@ -538,7 +546,11 @@ export function NewEventScreen({
       ? null
       : {
           layer: (
-            <SheetLayer onClose={closeList} label={t('eventEdit.cancel')}>
+            <SheetLayer
+              onClose={closeList}
+              label={t('eventEdit.cancel')}
+              onDrawn={() => setListDrawn(true)}
+            >
               <SheetBody
                 title={listed.title}
                 close={t('eventEdit.cancel')}
@@ -641,7 +653,7 @@ export function NewEventScreen({
                 value={draft.type === '' ? null : t(`eventTypes.${draft.type}`)}
                 placeholder={t('eventForm.typePlaceholder')}
                 wrong={errors.type != null}
-                onPress={() => !busy && setList('type')}
+                onPress={() => !busy && openList('type')}
                 testID="eventForm.type"
               />
             </EventField>
@@ -787,7 +799,7 @@ export function NewEventScreen({
                 label={t('eventForm.timeZone')}
                 value={timezoneLabel(timeZone)}
                 wrong={errors.timeZone != null}
-                onPress={() => !busy && setList('zone')}
+                onPress={() => !busy && openList('zone')}
                 testID="eventForm.timeZone"
               />
             </EventField>
@@ -808,7 +820,7 @@ export function NewEventScreen({
                 value={currencyWords(currencies, currency)}
                 placeholder={t('orgGeneral.currencyPlaceholder')}
                 wrong={errors.currency != null}
-                onPress={() => !busy && setList('currency')}
+                onPress={() => !busy && openList('currency')}
                 testID="eventForm.currency"
               />
             </EventField>

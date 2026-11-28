@@ -64,6 +64,7 @@ import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
+import { NEXT_TRAY_BOARDS } from '../../src/demo/nextTray/NextTrayBoards.ts';
 import { ASK_AT_TABLE_BOARDS } from '../../src/demo/askAtTable/AskAtTableBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
@@ -2905,6 +2906,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
     boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · Next, the waiter’s tray from start to table (sc-1361) · phone from 320 px, tablet portrait and landscape',
+    boards: NEXT_TRAY_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the waiter’s tray when an item runs out (sc-59384) · phone, tablet portrait and landscape',
