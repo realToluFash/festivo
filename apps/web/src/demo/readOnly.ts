@@ -21,7 +21,6 @@ export const PAGES = ['events', 'eventView', 'guests', ...REFUSED] as const;
 
 export type Page = (typeof PAGES)[number];
 
-/** The page a row opens, carried in `?page=` so the state's role and status stay as they were. */
 export function pageOf(name: string | null): Page | null {
   return (PAGES as readonly (string | null)[]).includes(name) ? (name as Page) : null;
 }
