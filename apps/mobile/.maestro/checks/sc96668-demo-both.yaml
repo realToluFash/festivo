@@ -1,0 +1,21 @@
+# sc-96668: the app demo's door code both-linked states, beside the product's. Needs ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/redeem?state=provider-only-both
+- extendedWaitUntil:
+    visible: '.*{{t:any:signIn.providerOnlyTitle}}.*'
+    timeout: 30000
+- assertVisible: '.*asks everyone in it to use Google or Apple\.'
+- assertNotVisible: '.*use Apple or Google.*'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-provider-only-both
+- openLink: ${METRO_URL}/--/demo/redeem?state=code-provider-only-both
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.text'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-code-provider-only-both

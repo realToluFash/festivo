@@ -1,0 +1,45 @@
+# sc-101592, in the design demo: "Zimbab" in Search countries, then Clear search: the field empties and the whole list comes back, no error.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'frame.organisation|home.switchOrganisation' }
+- scrollUntilVisible: { element: { id: 'switcher.tile.create' }, direction: DOWN, timeout: 30000 }
+- tapOn: { id: 'switcher.tile.create' }
+- extendedWaitUntil: { visible: { id: 'createWalk' }, timeout: 30000 }
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- extendedWaitUntil: { visible: { id: 'createWalk.country.ZW' }, timeout: 5000 }
+- takeScreenshot: demo-b-typed
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- assertNotVisible: { id: 'createWalk.search.clear' }
+- takeScreenshot: demo-b-cleared
+- inputText: 'Zimbab'
+- extendedWaitUntil: { visible: { id: 'createWalk.country.ZW' }, timeout: 5000 }
+- eraseText: 6
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- takeScreenshot: demo-d-cleared

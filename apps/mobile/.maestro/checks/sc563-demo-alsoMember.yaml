@@ -1,0 +1,13 @@
+# sc-563: the app demo at /demo/settings/members?state=alsoMember, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=alsoMember
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      text: '.*other organisations.*'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-demo-alsoMember

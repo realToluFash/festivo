@@ -1,0 +1,35 @@
+.ml-cost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.desk-ask p.ml-credits {
+  color: var(--colorInk);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-ask p.mg-waits-either,
+.desk-ask p.mg-waits-line {
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-ask p.mg-waits-line {
+  font-weight: 600;
+}
+
+.toast a.ml-toast-go {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ml-demo-only {
+  margin: 0;
+  padding: var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}

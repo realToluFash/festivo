@@ -1,0 +1,24 @@
+# sc-36766: step 1's question, What's it called?, with the keyboard down, in the account's language. Pass METRO_URL, the Expo dev server for this stack.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 3000 }
+# The outcome is the keys put away by hand: on an iPhone a tap on blank page, since hideKeyboard hangs there (README).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '2%,45%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.whatTitle}}'
+- takeScreenshot: what-title

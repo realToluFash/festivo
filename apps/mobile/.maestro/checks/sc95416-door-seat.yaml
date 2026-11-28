@@ -1,0 +1,13 @@
+# sc-95416: the door's seat line and No seat yet on Check-in, top and bottom of the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: door-top
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: door-rows
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: door-bottom

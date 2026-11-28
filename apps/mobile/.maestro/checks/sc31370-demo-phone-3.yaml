@@ -1,0 +1,17 @@
+# sc-31370: the app demo's Messages (B), phone, one screenshot per state.
+appId: host.exp.Exponent
+---
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: matched, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: later, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduledEdit, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sendNow, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelAsk, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduledCancelled, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: fixed, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sentAgain, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkAll, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkNotReplied, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkChannels, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: noSubject, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: followUp, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: tellPlace, LAYOUT: phone } }

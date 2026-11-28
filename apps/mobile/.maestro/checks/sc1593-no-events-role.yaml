@@ -1,0 +1,21 @@
+# sc-1593: in ${ORG}, where the role's Events level is Nothing, Home and Settings only, and a link to the event ${EVENT} reads not found.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- extendedWaitUntil:
+    visible:
+      id: 'frame.settings'
+    timeout: 20000
+- assertNotVisible:
+    id: 'frame.events'
+- takeScreenshot: nav
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- takeScreenshot: link

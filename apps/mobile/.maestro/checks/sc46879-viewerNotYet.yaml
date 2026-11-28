@@ -1,0 +1,30 @@
+# sc-46879: as Can view, ${BRUNO}'s page (Not yet invited): the line, no buttons.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Bruno'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${BRUNO}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${BRUNO}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${BRUNO}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: viewerNotYet
+- scroll
+- takeScreenshot: viewerNotYet-scrolled

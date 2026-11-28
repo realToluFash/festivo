@@ -1,0 +1,31 @@
+# sc-39534: the app's Search matches no Invited person (Decided, 15 Nov): a term only an invitation matches shows no Members heading, and "ines" counts Members without the invitation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- inputText: 'moura'
+- extendedWaitUntil:
+    visible: 'Nothing matches.*'
+    timeout: 15000
+- assertNotVisible: 'ines.moura.*'
+- takeScreenshot: moura
+- eraseText: 20
+- inputText: 'ines'
+- extendedWaitUntil:
+    visible: 'Inês Duarte'
+    timeout: 15000
+- scrollUntilVisible:
+    element: 'Inês Suspended'
+    direction: DOWN
+    timeout: 10000
+- assertNotVisible: 'ines.moura.*'
+- takeScreenshot: ines-members

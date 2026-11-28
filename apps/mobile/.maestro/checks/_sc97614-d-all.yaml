@@ -1,0 +1,160 @@
+# sc-97614: the demo's Shift notices states, in ${ORIENT}: each top, and its foot scrolled.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=list
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: list-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: list-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=several_shifts
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: several_shifts-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: several_shifts-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=eve
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: eve-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: eve-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=reminder_off
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: reminder_off-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: reminder_off-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=switch_failed
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: switch_failed-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: switch_failed-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=none_briefed
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: none_briefed-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: none_briefed-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsReadOnly&shift=read_only
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: read_only-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: read_only-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=empty&shift=empty
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: empty-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: empty-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=called_off
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: called_off-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: called_off-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=event_ended
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: event_ended-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: event_ended-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=finished_sent
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: finished_sent-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: finished_sent-foot
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff&staff=smsOn&shift=finished_switch_off
+- extendedWaitUntil:
+    visible:
+      id: '.+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: finished_switch_off-top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: finished_switch_off-foot

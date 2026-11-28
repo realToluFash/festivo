@@ -1,0 +1,24 @@
+# sc-92090: the demo /demo/today-size?Q, its Your events tiles on the phone at the device's text size, swiped through one by one. Vars: METRO_URL, Q.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today-size?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- scrollUntilVisible: { element: { text: 'All events.*|Tout voir.*|See all.*' }, direction: DOWN }
+- swipe: { start: '80%, 85%', end: '80%, 15%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: t0
+- repeat:
+    times: 5
+    commands:
+      - swipe: { start: '85%, 50%', end: '8%, 50%', duration: 700 }
+      - waitForAnimationToEnd
+      - evalScript: ${output.t = (output.t || 0) + 1}
+      - takeScreenshot: t${output.t}
+- repeat:
+    times: 5
+    commands:
+      - swipe: { start: '8%, 50%', end: '85%, 50%', duration: 500 }
+- waitForAnimationToEnd

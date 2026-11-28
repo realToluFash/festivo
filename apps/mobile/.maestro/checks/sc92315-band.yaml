@@ -1,0 +1,15 @@
+# sc-92315: Today upright, scrolled until the band takes the top, at the device's text size (set outside the flow). Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 80%', end: '50%, 35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: band
+- swipe: { start: '50%, 80%', end: '50%, 30%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: band-more

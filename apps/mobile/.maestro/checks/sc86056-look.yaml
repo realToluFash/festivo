@@ -1,0 +1,14 @@
+# sc-86056: after a relaunch, Today as the app opens it: the paused page of the organisation this phone was last in, or the active organisation it opens, with the pill. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation|accessPaused\..+'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: today

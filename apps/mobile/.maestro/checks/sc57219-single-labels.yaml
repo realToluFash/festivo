@@ -1,0 +1,22 @@
+# sc-57219 regression: Email at sign-in keeps its floating label, large while empty and small at the top once typed. Signs out: run last.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: email-empty
+- tapOn:
+    id: 'signIn.email'
+- waitForAnimationToEnd
+- takeScreenshot: email-focused-empty
+- inputText: 'someone@soirely.test'
+- waitForAnimationToEnd
+- takeScreenshot: email-typed
+- tapOn:
+    id: 'signIn.password'
+- waitForAnimationToEnd
+- takeScreenshot: email-left

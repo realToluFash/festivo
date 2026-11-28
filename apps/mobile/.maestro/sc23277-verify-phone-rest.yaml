@@ -1,0 +1,25 @@
+# The code step after Your mobile number, from that screen: WhatsApp, the resend counting down, a wrong code, Text me instead.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.code'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'verifyPhone.resend'
+- takeScreenshot: verify-phone-whatsapp
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: '000000'
+- waitForAnimationToEnd
+- takeScreenshot: verify-phone-wrong
+- runFlow:
+    when:
+      visible:
+        id: 'verifyPhone.textInstead'
+    commands:
+      - tapOn:
+          id: 'verifyPhone.textInstead'
+      - waitForAnimationToEnd
+      - takeScreenshot: verify-phone-sms-chosen

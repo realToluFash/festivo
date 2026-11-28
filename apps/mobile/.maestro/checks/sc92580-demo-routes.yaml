@@ -1,0 +1,62 @@
+# sc-92580: the app's Design demo, The iPad bell's panel (/demo/bell-size), at each route the Design section links, upright, then ax5 es and fr on its side. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax2&lang=en
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax2-en
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax2&lang=es
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax2-es
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax2&lang=fr
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax2-fr
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=en
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-en
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=es
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-es
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=es&read=all
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-es-read
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=en&refreshing=on
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-en-refreshing
+- openLink: ${METRO_URL}/--/demo/bell-size?size=seventh&lang=es
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-seventh-es
+- openLink: ${METRO_URL}/--/demo/bell-size?size=default&lang=en
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-default-en
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=es
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-side-ax5-es
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=fr
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-side-ax5-fr
+- setOrientation: PORTRAIT

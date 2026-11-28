@@ -1,0 +1,33 @@
+# The end of the night on each track of ${EV}: on plan, 1 and 2 min behind, 2 and 620 min ahead, and a track whose one item was skipped (sc-59333).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/night
+- extendedWaitUntil:
+    visible:
+      id: night.picker
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: night.picker
+- tapOn: 'Jardin'
+- takeScreenshot: end-jardin-behind1
+- tapOn:
+    id: night.picker
+- tapOn: 'Terrasse'
+- takeScreenshot: end-terrasse-onplan
+- tapOn:
+    id: night.picker
+- tapOn: 'Salon'
+- takeScreenshot: end-salon-ahead2
+- tapOn:
+    id: night.picker
+- tapOn: 'Cave'
+- takeScreenshot: end-cave-behind2
+- tapOn:
+    id: night.picker
+- tapOn: 'Bibliothèque'
+- takeScreenshot: end-biblio-ahead620
+- tapOn:
+    id: night.picker
+- tapOn: 'Véranda'
+- takeScreenshot: end-veranda-skipped

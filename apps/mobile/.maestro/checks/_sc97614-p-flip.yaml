@@ -1,0 +1,18 @@
+# sc-97614: tap the reminder's switch once, in ${ORIENT}, and read the card.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil:
+    visible:
+      id: 'reminder\.switch'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn:
+    id: 'reminder\.switch'
+- extendedWaitUntil:
+    visible: 'Couldn.t save.*|Off|On'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: after

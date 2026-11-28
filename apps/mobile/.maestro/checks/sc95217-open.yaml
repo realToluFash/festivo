@@ -1,0 +1,30 @@
+# sc-95217: an event's People, then one person's role sheet. ${EV} is the event, ${PERSON} the person on it besides the owner.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.title}}.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'people.row.${PERSON}'
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 30
+    centerElement: true
+- swipe: { start: '50%,40%', end: '50%,75%', duration: 1500 }
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'people.row.${PERSON}'
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 100
+- waitForAnimationToEnd
+- tapOn:
+    id: 'people.row.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'people.roleSheet.scroll'
+    timeout: 10000
+- waitForAnimationToEnd

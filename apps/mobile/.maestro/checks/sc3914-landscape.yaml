@@ -1,0 +1,24 @@
+# sc-3914: turns the tablet to ${ORIENT}, opens ${EVENT_ID}'s Menu and Choose who gets it for ${VARIANT}, then turns it back.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- takeScreenshot: land-top
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- tapOn:
+    id: 'menu.who.${VARIANT}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- takeScreenshot: land-who
+- tapOn:
+    id: 'menu.who.cancel'
+- setOrientation: PORTRAIT

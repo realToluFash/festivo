@@ -1,0 +1,20 @@
+# sc-29881: the Today demo at ?${QS}, its top and Your events, for the side-by-side pair with the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?${QS}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scrollUntilVisible:
+    element: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: events

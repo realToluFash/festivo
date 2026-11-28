@@ -1,0 +1,176 @@
+/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. The page's frame carries `fits-phone`: the shell on those three pages, and their demos. Today's arrangement by the page's width, shared with a narrow desk window, is todayFit.css. */
+
+@media (width <= 40rem) {
+  .fits-phone .ev-top {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .fits-phone .ev-top::after {
+    flex-basis: 100%;
+    order: 3;
+    content: '';
+  }
+
+  .fits-phone .ev-top > .desk-title {
+    flex: 1 1 auto;
+    order: 1;
+    font-size: 30px;
+  }
+
+  /* The product's bell sits in its panel's `.notifications`; the demo's is the bare button. */
+  .fits-phone .ev-top > :is(.desk-bell, .notifications) {
+    order: 2;
+  }
+
+  .fits-phone .ev-top > :not(.desk-title, .desk-bell, .notifications) {
+    order: 4;
+    margin-top: var(--spaceMd);
+  }
+
+  .fits-phone .ev-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--spaceXxs) var(--spaceMd);
+  }
+
+  .fits-phone .ev-row > :first-child {
+    grid-row: 1 / span 2;
+  }
+
+  .fits-phone .ev-row > .desk-row-words {
+    grid-column: 2;
+  }
+
+  .fits-phone .ev-row > .ev-soon {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .fits-phone .ev-row > .desk-chevron {
+    grid-row: 1 / span 2;
+    grid-column: 3;
+  }
+
+  .fits-phone :is(.desk-row-name, .desk-row-line) {
+    overflow-wrap: break-word;
+  }
+
+  .fits-phone .ev-tab {
+    padding: 0 var(--spaceSm);
+  }
+
+  /* Filter's menu hangs from the whole search row, so it opens inside the window under Filter. */
+  .fits-phone .ev-search-row {
+    position: relative;
+    flex-wrap: wrap;
+  }
+
+  /* The whole row is Filter's room, so its picks end in "+N more" inside the window. */
+  .fits-phone .ev-filter-at {
+    position: static;
+    flex: 1 0 100%;
+  }
+
+  .fits-phone .ev-menu {
+    right: 0;
+    width: auto;
+  }
+
+  .fits-phone .desk-page {
+    padding: 0;
+  }
+
+  .fits-phone .ev-search {
+    flex: 1 0 100%;
+  }
+
+  .fits-phone :is(.today-need-title, .today-need-event, .today-item-title, .today-item-event) {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  /* This week: Today's word keeps its width and the other six days share the rest. */
+  .fits-phone .today-day {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .fits-phone .today-day.is-today {
+    flex: none;
+  }
+
+  /* A run of days is a stripe the strip's width with its name and length whole; the dots above mark its days. */
+  .fits-phone .today-bar-row {
+    height: auto;
+  }
+
+  /* Inside its row, so it outweighs the margin `.today-bar.from-N` spans its days with, whichever sheet loads first. */
+  .fits-phone .today-bar-row > .today-bar {
+    position: relative;
+    width: auto;
+    height: auto;
+    min-height: var(--space5xl);
+    margin-inline: 3px;
+    padding-block: var(--spaceXs);
+  }
+
+  .fits-phone .today-bar-words {
+    height: auto;
+  }
+
+  .fits-phone .today-bar-name {
+    overflow: visible;
+    overflow-wrap: break-word;
+  }
+
+  .fits-phone .cal-tools {
+    flex-wrap: wrap;
+  }
+
+  .fits-phone .cal-month-row {
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceSm);
+  }
+
+  .fits-phone .cal-choices {
+    position: relative;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceSm);
+  }
+
+  .fits-phone .cal-more.is-from-6 {
+    right: var(--spaceXxs);
+    left: auto;
+  }
+
+  .fits-phone .cal-show-at {
+    position: static;
+  }
+
+  .fits-phone .cal-menu {
+    left: 0;
+    width: auto;
+  }
+
+  .fits-phone .cal-page {
+    padding-bottom: var(--spaceLg);
+  }
+
+  .fits-phone .cal-body {
+    flex-direction: column;
+    gap: var(--spaceLg);
+  }
+
+  .fits-phone .cal-panel {
+    order: -1;
+    align-self: stretch;
+    width: auto;
+    max-height: 55%;
+  }
+}
