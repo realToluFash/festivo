@@ -1,0 +1,18 @@
+# sc-4015: on ${EVENT_ID}'s station, marks Chicken Ready and screenshots the Undo line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'station.ready.chicken'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'station.ready.chicken'
+- waitForAnimationToEnd
+- takeScreenshot: undo

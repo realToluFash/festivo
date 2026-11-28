@@ -1,0 +1,12 @@
+# sc-3915: an account with no shift on ${EVENT_ID}'s roster sees its Overview with no Your night row. P prefixes the screenshot. Needs ${METRO_URL}, ${EVENT_ID}, ${P}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible: 'Guests'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- assertNotVisible:
+    id: 'events.yourNight'
+- takeScreenshot: ${P}-overview

@@ -1,0 +1,56 @@
+# sc-4235: a door code by phone in the app, signed out: the event step, its checks, the API's 422, the code, You're in, Sign out. Pass CODE. Signs the session out.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: 01-event
+- tapOn:
+    id: 'redeem.event.send'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: 02-event-blank
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Wale Door', NUMBER: '0770' }
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: 03-event-short
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Wale Door', NUMBER: '0803 444' }
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- takeScreenshot: 04-short-api
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Wale Door', NUMBER: '08034440711' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.resend'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 05-code
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440711' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 06-in
+- tapOn:
+    id: 'redeem.in.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.enter.code'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 07-signed-out

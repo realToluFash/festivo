@@ -1,0 +1,42 @@
+# sc-4331: choosing Changed since you looked when it fails (the look is made to fail from outside while the flow waits), then Try again once it works.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- tapOn:
+    id: guests.filter
+- extendedWaitUntil:
+    visible:
+      id: guests.filter.changed
+    timeout: 8000
+- takeScreenshot: changedFails-product
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 12000, optional: true }
+- tapOn:
+    id: guests.filter.changed
+- extendedWaitUntil:
+    visible:
+      id: guests.changedFailed
+    timeout: 10000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: changedFailed-product
+- tapOn:
+    id: guests.filter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: changedFailed-reopened-product
+- tapOn:
+    point: '20%,20%'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 12000, optional: true }
+- tapOn:
+    id: guests.changedFailed.retry
+- extendedWaitUntil:
+    notVisible:
+      id: guests.changedFailed
+    timeout: 10000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: changedFailed-retried-product

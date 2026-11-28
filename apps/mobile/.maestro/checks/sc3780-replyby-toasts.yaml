@@ -1,0 +1,37 @@
+# sc-3780: on ${EVENT_ID} (Reply by 25 Nov, guests left to reply), the toast after Close replies sooner and after Close replies now.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- tapOn:
+    text: 'Reply by.*'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '20'
+- tapOn: 'OK'
+- tapOn: 'Save'
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: toast-sooner-0
+- assertVisible: 'Saved. Replies close on Fri, Nov 20 at 23:59, Europe/London time.'
+- takeScreenshot: toast-sooner
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    text: 'Reply by.*'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '10'
+- tapOn: 'OK'
+- tapOn: 'Save'
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: toast-now-0
+- assertVisible: 'Saved. Replies are now closed.'
+- takeScreenshot: toast-now

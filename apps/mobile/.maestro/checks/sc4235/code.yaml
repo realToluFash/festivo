@@ -1,0 +1,12 @@
+# sc-4235 subflow: on the code step, type the newest code Smocker holds for DIGITS.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.resend'
+    timeout: 20000
+- runScript:
+    file: ../../scripts/latest-sms-code.js
+    env:
+      DIGITS: ${DIGITS}
+- inputText: ${output.code}

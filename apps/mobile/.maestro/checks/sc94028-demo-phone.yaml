@@ -1,0 +1,13 @@
+# sc-94028: the app's Design demo on the phone, /demo/bell-size?read=none at AX5 in French and Spanish. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=fr&read=none
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-fr
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=es&read=none
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-es

@@ -1,0 +1,13 @@
+# sc-563: the app demo at /demo/today?switcher=managed, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?switcher=managed
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      text: 'Managed by.*'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-demo-switcher

@@ -1,0 +1,16 @@
+# sc-94028 regression: the bell with notifications in its list (rows, then the foot). Works on phone or iPad. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica(tions|ciones|ções).*'
+- takeScreenshot: loading
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: rows
+- scrollUntilVisible:
+    { element: { id: 'notifications.settings' }, direction: DOWN, timeout: 10000, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: rows-foot

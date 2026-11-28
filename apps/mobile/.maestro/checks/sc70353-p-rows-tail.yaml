@@ -1,0 +1,16 @@
+# sc-70353: the last rows in People on the phone, down to an outsider whose address ends in y (the row title's ink room on Android).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_MEMBER}' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_CITY}' },
+      direction: DOWN,
+      timeout: 20000,
+      visibilityPercentage: 100,
+    }
+- swipe: { direction: UP, duration: 600 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: rows-tail

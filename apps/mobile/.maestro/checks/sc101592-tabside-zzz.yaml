@@ -1,0 +1,5 @@
+# sc-101592, tablet on its side: sc101592-tab-zzz.yaml after turning it.
+appId: host.exp.Exponent
+---
+- runFlow: sc563-landscape.yaml
+- runFlow: sc101592-tab-zzz.yaml

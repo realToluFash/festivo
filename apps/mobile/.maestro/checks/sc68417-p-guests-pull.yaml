@@ -1,0 +1,13 @@
+# sc-68417: Guests' title row while a pull to refresh shows its spinner, and after it goes.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: r-before
+- swipe: { start: '70%,40%', end: '70%,85%', duration: 400 }
+- takeScreenshot: r-during
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: r-after

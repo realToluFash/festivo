@@ -1,0 +1,8 @@
+# sc-67665: the People demo, nobody, on the iPad in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people?state=nobody
+- extendedWaitUntil: { visible: '.*Nobody is on this event yet.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

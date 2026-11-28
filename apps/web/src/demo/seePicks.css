@@ -1,0 +1,504 @@
+/* sc-3909's See picks: the header, Needs the host, a card per course with two tables, Who hasn't picked, and the dialogs to choose for a guest; and the picks on the event Menu's rows. */
+.pk-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--spaceXxs);
+  min-height: var(--sizeHit);
+}
+
+.pk-header {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceLg);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.pk-live.is-stale {
+  color: var(--colorAttentionText);
+}
+
+.pk-held,
+.pk-all-in {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeBody);
+}
+
+.pk-all-in {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.pk-said:empty {
+  display: none;
+}
+
+.pk-said p {
+  margin: 0;
+  font: var(--typeBody);
+}
+
+.pk-said-override {
+  color: var(--colorAccentText);
+  font-weight: 600;
+}
+
+.pk-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: var(--typeTitleSection);
+}
+
+.pk-host,
+.pk-course,
+.pk-waiting,
+.pk-empty,
+.pk-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXxl);
+}
+
+/* The Menu's course card (.mn-course): a light card, so the secondary lines keep 4.5:1. */
+.pk-host,
+.pk-course,
+.pk-waiting,
+.pk-summary {
+  min-height: 0;
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.pk-host {
+  border: 2px solid var(--colorAttention);
+}
+
+.pk-mark {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.pk-mark.is-host {
+  color: var(--colorAttention);
+}
+
+.pk-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--typeBody);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-people {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pk-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceLg);
+  padding: var(--spaceMd) 0;
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.pk-person-words {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  font: var(--typeBody);
+}
+
+.pk-default-mark {
+  color: var(--colorInkSecondary);
+}
+
+.pk-act {
+  flex: none;
+  min-height: var(--sizeHit);
+}
+
+.pk-course-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceXs) var(--spaceLg);
+}
+
+.pk-answered {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.pk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--typeBody);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-table th,
+.pk-table td {
+  padding: var(--spaceSm) var(--spaceMd);
+  border-bottom: 1px solid var(--colorInsetBorder);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pk-table thead th {
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+}
+
+.pk-table tbody th {
+  font-weight: 400;
+}
+
+.pk-table td,
+.pk-table thead th + th {
+  width: 6.5rem;
+  text-align: right;
+}
+
+.pk-table .pk-room th,
+.pk-table .pk-room td {
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+.pk-row-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.pk-dish th[scope='row'] {
+  font-weight: 600;
+}
+
+.pk-inner th[scope='row'] {
+  padding-left: var(--space4xl);
+}
+
+.pk-row-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.pk-prefix {
+  color: var(--colorInkSecondary);
+}
+
+.pk-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.pk-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pk-party h3 {
+  margin: var(--spaceSm) 0 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+}
+
+.pk-empty h2 {
+  margin: 0;
+  font: var(--typeTitleSection);
+}
+
+.pk-go {
+  align-self: flex-start;
+}
+
+.pk-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg);
+  border: 1px dashed var(--colorFieldBorder);
+  border-radius: var(--radiusInset);
+}
+
+.pk-demo-label {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+}
+
+.pk-demo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+/* Under 40rem the dialog is the shell's full-width sheet, so the fixed width holds only above it. */
+@media (width > 40rem) {
+  .pk-dialog {
+    width: 36rem;
+  }
+}
+
+.pk-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.pk-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pk-field legend {
+  margin-bottom: var(--spaceSm);
+  padding: 0;
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.pk-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.pk-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceMd) var(--spaceLg);
+  box-sizing: border-box;
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  cursor: pointer;
+}
+
+.pk-tick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceXs) 0;
+  border-bottom: 1px solid var(--colorInsetBorder);
+}
+
+.pk-tick-name {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  font: var(--typeBodyStrong);
+  cursor: pointer;
+}
+
+.pk-tick-lines {
+  padding-left: var(--space5xl);
+}
+
+.pk-option.is-checked {
+  border-color: var(--colorAccent);
+  background: var(--colorRowSelected);
+}
+
+.pk-option input,
+.pk-tick-name input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--colorAccent);
+}
+
+.pk-option-words,
+.pk-tick-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  font: var(--typeBody);
+}
+
+.pk-option-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs);
+  font-weight: 600;
+}
+
+.pk-allergy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInk);
+  font: var(--typeSmall);
+}
+
+.pk-allergy-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: var(--typePill);
+}
+
+.pk-leaving {
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.pk-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: var(--typeBody);
+}
+
+.pk-error-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.pk-refused {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionWash);
+  font: var(--typeBody);
+}
+
+.pk-text {
+  min-height: var(--sizeHit);
+}
+
+.pk-over-scrim {
+  z-index: 30;
+}
+
+.pk-over {
+  z-index: 31;
+}
+
+.pk-row-picks {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-see {
+  flex: none;
+  min-height: var(--sizeHit);
+}
+
+.pk-summary {
+  position: sticky;
+  top: 0;
+  flex: none;
+  box-sizing: border-box;
+  width: 320px;
+}
+
+@media (width <= 64rem) {
+  .pk-summary {
+    position: static;
+    width: auto;
+  }
+}
+
+@media (width <= 40rem) {
+  .pk-host,
+  .pk-course,
+  .pk-waiting,
+  .pk-empty,
+  .pk-summary {
+    padding: var(--spaceLg);
+  }
+
+  .pk-table td,
+  .pk-table thead th + th {
+    width: 4.5rem;
+  }
+
+  .pk-inner th[scope='row'] {
+    padding-left: var(--spaceXl);
+  }
+}

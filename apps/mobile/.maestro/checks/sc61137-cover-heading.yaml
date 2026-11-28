@@ -1,0 +1,21 @@
+# New event, scrolled to its Cover photo heading in the batch language, with the headings either side, for a translation pass. sc-61137.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- takeScreenshot: newevent-top
+- scrollUntilVisible:
+    element: '{{t:eventForm.coverHeading}}'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: newevent-cover-heading
+- scrollUntilVisible:
+    element: '{{t:eventForm.zoneHeading}}'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: newevent-zone-heading

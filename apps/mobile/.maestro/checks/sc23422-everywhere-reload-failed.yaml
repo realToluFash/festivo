@@ -1,0 +1,60 @@
+# sc-23422: when the list cannot be loaded again after Sign out everywhere else, the success line stays, the load-failed notice and Try again show, and Try again lists this device alone. Needs ${EMAIL}, ${PASSWORD}, ${API_URL} and ${METRO_URL}, and the app's API behind .qa/sc23422/proxy.mjs.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '2'
+      WAIT_MS: '0'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: card-before
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '0'
+      WAIT_MS: '0'
+- tapOn:
+    id: 'devices.everywhere'
+- extendedWaitUntil:
+    visible: '.*(?:This device stays signed in|En este dispositivo la sesión sigue abierta|Cet appareil-ci reste connecté|Neste dispositivo, a sessão mantém-se).*'
+    timeout: 10000
+- takeScreenshot: step-offers-others
+- tapOn:
+    id: 'devices.everywhere.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '(?:Your other device is signed out\.|Your [0-9]+ other devices are signed out\.|Se cerró la sesión en su otro dispositivo\.|Se cerró la sesión en sus [0-9]+ (?:de )?otros dispositivos\.|Votre autre appareil est déconnecté\.|Vos [0-9]+ (?:d’)?autres appareils sont déconnectés\.|A sessão foi encerrada no seu outro dispositivo\.|A sessão foi encerrada nos seus [0-9]+ (?:de )?outros dispositivos\.)'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.retry'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: '{{t:devices.failedTitle}}'
+- assertVisible: '(?:Your other device is signed out\.|Your [0-9]+ other devices are signed out\.|Se cerró la sesión en su otro dispositivo\.|Se cerró la sesión en sus [0-9]+ (?:de )?otros dispositivos\.|Votre autre appareil est déconnecté\.|Vos [0-9]+ (?:d’)?autres appareils sont déconnectés\.|A sessão foi encerrada no seu outro dispositivo\.|A sessão foi encerrada nos seus [0-9]+ (?:de )?outros dispositivos\.)'
+- assertNotVisible: '(?:0 devices|0 dispositivos|0 appareils)'
+- takeScreenshot: reload-failed
+- tapOn:
+    id: 'devices.retry'
+- scrollUntilVisible:
+    element:
+      id: 'devices.here'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: '(?:1 device|1 dispositivo|1 appareil)'
+- assertNotVisible: '(?:0 devices|0 dispositivos|0 appareils)'
+- takeScreenshot: retried

@@ -1,0 +1,17 @@
+# sc-92090: Today in ORIENT at the device's text size, scrolled down step by step to show every Your events row. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: s0
+- repeat:
+    times: 9
+    commands:
+      - swipe: { start: '80%, 75%', end: '80%, 35%', duration: 900 }
+      - waitForAnimationToEnd
+      - evalScript: ${output.n = (output.n || 0) + 1}
+      - takeScreenshot: s${output.n}

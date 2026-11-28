@@ -1,0 +1,15 @@
+# sc-4331: Changed since you looked with nothing changed since the time in the link.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests&filter=changed&since=${SINCE}
+- extendedWaitUntil:
+    visible:
+      id: guests.nothingChanged
+    timeout: 20000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: changedNone-product
+- tapOn:
+    id: guests.filter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: changedNone-menu-product

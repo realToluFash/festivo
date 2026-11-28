@@ -1,0 +1,29 @@
+# Press N of Paste a reply on Guests: shot as hit-${N} when Whose reply is this? opens, then
+# left by ${BACK}; shot as miss-${N} when it does not.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      notVisible:
+        id: 'paste.whose'
+    commands:
+      - takeScreenshot: miss-${N}
+- runFlow:
+    when:
+      visible:
+        id: 'paste.whose'
+    commands:
+      - takeScreenshot: hit-${N}
+      - tapOn:
+          id: ${BACK}
+      - extendedWaitUntil:
+          visible:
+            id: 'guests.paste'
+          timeout: 10000

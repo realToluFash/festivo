@@ -1,0 +1,20 @@
+# sc-611: Export these entries on a tablet, with more than 1,000,000 entries matching: refused inside the dialog.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-export_preparing-product
+- tapOn:
+    id: audit.step
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: audit.export.send
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: audit-export_too_many-product

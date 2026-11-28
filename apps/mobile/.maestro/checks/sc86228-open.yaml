@@ -1,0 +1,9 @@
+# sc-86228: opens ${EVENT_ID}'s page and stops, for a TalkBack pass on a part's Save.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: page

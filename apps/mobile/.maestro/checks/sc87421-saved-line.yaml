@@ -1,0 +1,40 @@
+# sc-87421: on ${EVENT_ID}'s Menu picks, Choose for ${PERSON}, picks ${DISH}, answers Pick it anyway, then scrolls up to the saved line and screenshots it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.wait.${PERSON}'
+    visibilityPercentage: 50
+- tapOn:
+    id: 'menu.wait.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- tapOn:
+    id: 'menu.choose.${DISH}'
+- tapOn:
+    id: 'menu.choose.save'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.override'
+    timeout: 10000
+- takeScreenshot: override
+- tapOn:
+    id: 'menu.override.anyway'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- tapOn:
+    id: 'menu.choose.cancel'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: 'Recorded as your pick.*'
+    direction: UP
+- takeScreenshot: saved

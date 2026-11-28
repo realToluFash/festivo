@@ -1,0 +1,9 @@
+# sc-75471 regression, a screenshot for a person to read: Settings for an account in an organisation keeps its tab bar. It asserts nothing; the tab bar has no testID.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- takeScreenshot: org-settings

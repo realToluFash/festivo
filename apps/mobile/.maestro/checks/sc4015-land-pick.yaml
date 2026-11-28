@@ -1,0 +1,16 @@
+# sc-4015: someone on no station opens ${EVENT_ID}'s station on the list, picks ${PICK_ID}, and screenshots it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.pick.${PICK_ID}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: list
+- tapOn:
+    id: 'station.pick.${PICK_ID}'
+- waitForAnimationToEnd
+- takeScreenshot: picked
+- scroll
+- takeScreenshot: picked-scrolled

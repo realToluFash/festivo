@@ -1,0 +1,13 @@
+# sc-71636: at Can edit from outside, the event opens the member's Overview, with no outsider card or level line.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      text: '.*${EVENT}.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'outside\.card'
+- assertNotVisible:
+    text: '.*until Tue.*'
+- takeScreenshot: sc71636-can-edit

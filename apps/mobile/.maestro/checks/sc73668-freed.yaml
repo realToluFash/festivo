@@ -1,0 +1,26 @@
+# Freed: the pill counts both again and Lagos Hall offers Accept and join and Decline. INVITATION_ID is Lagos Hall's. sc-73668.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible: '.*2 invitations.*|.*2 invitations?.*'
+    timeout: 15000
+- takeScreenshot: pill
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- tapOn:
+    id: 'switcher.tile.${INVITATION_ID}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'switcher.invitation.${INVITATION_ID}.decline'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'switcher.invitation.${INVITATION_ID}.accept'
+- takeScreenshot: opened

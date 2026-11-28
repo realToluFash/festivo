@@ -1,0 +1,10 @@
+# sc-88028: a request link opened signed in, the title at the top at the current text size. Pass LINK, the token after /join/.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${LINK}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.ask
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc88028-join-signed-in-top

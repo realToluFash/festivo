@@ -1,0 +1,30 @@
+# The profile step after signing up, starting an organisation, with an organisation name typed and its cursor left in Organisation name, Country in sight, for a TalkBack pass on its Country picker. sc-44356.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'completeProfile.startOwn'
+    commands:
+      - tapOn:
+          id: 'completeProfile.startOwn'
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.organisation'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'Held org'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.country'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: profile-org-held

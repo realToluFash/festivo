@@ -1,0 +1,40 @@
+# sc-51870: Record a reply for ${NONE_ID} in ${EVENT_ID}: Maybe, then each how-chip chosen in turn, one screenshot each, nothing saved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${NONE_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${NONE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.card.step'
+    timeout: 20000
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.maybe'
+- tapOn:
+    id: 'guest.record.how.phone'
+- takeScreenshot: how-phone
+- tapOn:
+    id: 'guest.record.how.inPerson'
+- takeScreenshot: how-inPerson
+- tapOn:
+    id: 'guest.record.how.message'
+- takeScreenshot: how-message
+- tapOn:
+    id: 'guest.record.how.other'
+- takeScreenshot: how-other

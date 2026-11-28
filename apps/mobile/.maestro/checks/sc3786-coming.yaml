@@ -1,0 +1,12 @@
+# sc-3786: "{coming} coming" on the wedding's line opens its Guests with Coming chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.line.${EVENT}.coming'
+    timeout: 30000
+- tapOn:
+    id: 'events.line.${EVENT}.coming'
+- waitForAnimationToEnd
+- takeScreenshot: coming

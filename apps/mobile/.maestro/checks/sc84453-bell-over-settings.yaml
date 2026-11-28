@@ -1,0 +1,33 @@
+# sc-84453 regression, iPad upright: B from the bell over Settings still reads ‹ Events and opens Events.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- takeScreenshot: settings
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: frame.back
+    text: 'Back to Events'
+- takeScreenshot: b-over-settings
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- takeScreenshot: events

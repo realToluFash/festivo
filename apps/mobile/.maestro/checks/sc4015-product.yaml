@@ -1,0 +1,15 @@
+# sc-4015: the product's Kitchen station for EVENT_ID, top and one scroll.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: "station\\.(title|landing|failed|refused\\..+)"
+    timeout: 15000
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled

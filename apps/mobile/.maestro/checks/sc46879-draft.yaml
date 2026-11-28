@@ -1,0 +1,16 @@
+# sc-46879: the draft event's Guests (${DRAFT}) beside the demo's draft.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${DRAFT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: draft
+- openLink: ${METRO_URL}/--/demo/guests?state=draft
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-draft

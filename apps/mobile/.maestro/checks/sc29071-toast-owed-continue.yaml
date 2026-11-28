@@ -1,0 +1,15 @@
+# Password changed on the step still owed sits above Continue with the keys up, Continue whole. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-29071'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:any:steps.organisationTitle}}', timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- takeScreenshot: owed-01-toast-keys-up
+- assertVisible: '{{t:any:steps.continue}}'
+- takeScreenshot: owed-02-continue
+- runFlow: ../sign-out-from-complete-profile.yaml

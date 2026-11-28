@@ -1,0 +1,31 @@
+# sc-23777 on an iPhone: the swipe from each Settings section goes to the Settings list (regression).
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: account
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: security
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: notifications
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: organisation
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: signInRules
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: members
+- runFlow:
+    file: ../checks/sc23777/section-phone.yaml
+    env:
+      SECTION: roles
