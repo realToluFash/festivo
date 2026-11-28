@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract.CommonDataKinds.Email
 import android.provider.ContactsContract.CommonDataKinds.Phone
+import android.provider.ContactsContract.CommonDataKinds.StructuredName
 import android.provider.ContactsContract.Data
 import androidx.core.content.ContextCompat
 import expo.modules.interfaces.permissions.PermissionsStatus
@@ -48,7 +49,11 @@ class ContactPickerModule : Module() {
     }
 
     AsyncFunction("list") {
-      read(Data.CONTENT_URI, "${Data.MIMETYPE} IN (?, ?)", arrayOf(Phone.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE))
+      read(
+        Data.CONTENT_URI,
+        "${Data.MIMETYPE} IN (?, ?, ?)",
+        arrayOf(StructuredName.CONTENT_ITEM_TYPE, Phone.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE),
+      )
     }
 
     AsyncFunction("pickOne") { promise: Promise ->
@@ -74,13 +79,14 @@ class ContactPickerModule : Module() {
   private fun read(uri: Uri, selection: String?, args: Array<String>?): List<Map<String, Any?>> {
     val columns = arrayOf(Data.CONTACT_ID, Data.DISPLAY_NAME_PRIMARY, Data.MIMETYPE, Data.DATA1, Data.DATA2, Data.DATA3)
     val people = LinkedHashMap<Long, Person>()
-    context.contentResolver.query(uri, columns, selection, args, "${Data.DISPLAY_NAME_PRIMARY} COLLATE LOCALIZED ASC")?.use { rows ->
+    context.contentResolver.query(uri, columns, selection, args, "${Data.DISPLAY_NAME_PRIMARY} COLLATE LOCALIZED ASC, ${Data.CONTACT_ID}, ${Data.IS_PRIMARY} DESC, ${Data._ID}")?.use { rows ->
       while (rows.moveToNext()) {
         val person = people.getOrPut(rows.getLong(0)) { Person(rows.getString(1) ?: "") }
         val value = rows.getString(3) ?: continue
         when (rows.getString(2)) {
+          StructuredName.CONTENT_ITEM_TYPE -> Unit
           Email.CONTENT_ITEM_TYPE -> if (person.email == null) person.email = value
-          else -> {
+          Phone.CONTENT_ITEM_TYPE -> {
             val type = rows.getInt(4)
             val label = Phone.getTypeLabel(context.resources, type, rows.getString(5) ?: "").toString()
             person.numbers.add(mapOf("number" to value, "label" to label, "mobile" to (type == Phone.TYPE_MOBILE)))
