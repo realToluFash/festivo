@@ -11,12 +11,14 @@ use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
+use App\Entity\EmailDomain;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
 use App\Entity\ProviderIdentity;
 use App\Entity\RefreshToken;
 use App\Entity\Role;
+use App\Entity\SsoProvider;
 use App\Entity\StaffMember;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
@@ -25,6 +27,7 @@ use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\SsoProtocol;
 use App\Http\RefreshTokenCookies;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
@@ -562,6 +565,21 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLinkedMemberAtARequiredSingleSignOnDomainIsRefusedAfterTheRightCode(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $this->requireSingleSignOn($this->lumenOf($tope), 'lumen.pt');
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame([403, ErrorCode::SsoSignInRequired->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertSame(['Lumen Feiras', 'Okta'], [$answer['organisation'] ?? null, $answer['provider'] ?? null]);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertSame($tope->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122(), 'the link ties the entry to the account');
+    }
+
+    #[Test]
     public function aLinkedMemberIsRefusedTheirOwnOrganisationsLinkAsWell(): void
     {
         $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
@@ -650,6 +668,19 @@ final class StaffLinkSignInTest extends ApiTestCase
         $this->phone($tope, self::NUMBER, primary: true, verified: true);
 
         return $tope;
+    }
+
+    private function requireSingleSignOn(Organisation $organisation, string $domain): void
+    {
+        $now = new DateTimeImmutable();
+        $proved = new EmailDomain($organisation, $domain, 'record', $now);
+        $proved->found($now);
+        $provider = new SsoProvider($organisation, SsoProtocol::Oidc, 'Okta', $now);
+        $provider->setSwitchedOnAt($now);
+        $organisation->setSsoRequiredSince($now);
+        self::em()->persist($proved);
+        self::em()->persist($provider);
+        self::em()->flush();
     }
 
     private function lumenOf(User $user): Organisation
