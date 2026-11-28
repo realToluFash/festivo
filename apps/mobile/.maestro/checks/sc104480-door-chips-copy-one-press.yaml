@@ -1,3 +1,4 @@
+# sc-104480: Who's here door sheet, keyboard up in Name: one press on a Job chip and one on a Station chip select it and leave the keyboard up, then one press on Add acts; screenshots each step. Needs ${METRO_URL}, ${EV} (event id), ${NAME}, ${JOB} and ${STATION} (chip ids), ${NUMBER} (mobile number). Scroll swipes assume a phone-height sheet.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EV}/whos-here
