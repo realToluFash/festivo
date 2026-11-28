@@ -77,6 +77,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { EventMenu } from './EventMenu.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
+import { EventStrip } from './EventStrip.tsx';
 import { StaffRosterList } from './staff/StaffRosterList.tsx';
 import { Screen } from './Screen.tsx';
 import { StepScreen } from '../steps/StepScreen.tsx';
@@ -444,23 +445,14 @@ export function EventScreen({
         />
       ) : area === 'staff' && !noStaff ? (
         <View style={styles.stack} testID="events.area.staff">
-          <EventTop
-            kind={kind}
-            event={event}
-            phase={phase ?? event.phase}
-            manages={manages}
-            now={now}
-            onChange={change}
-            onEdit={onEdit == null ? undefined : (part) => onEdit(part, partRef(part))}
-            onDuplicate={onDuplicate}
-          />
-          <HoursEntry event={event} />
+          <EventStrip event={event} phase={phase ?? event.phase} now={now} />
           <StaffRosterList
             key={event.id}
             eventId={event.id}
             when={event}
             manages={event.permissions.includes('staff.manage')}
             finished={(phase ?? event.phase) === 'finished'}
+            entries={<HoursEntry event={event} />}
           />
         </View>
       ) : (
@@ -822,13 +814,13 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
   );
 }
 
-/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff. */
+/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff: two pills in a row that wraps. */
 function HoursEntry({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   if (!event.permissions.includes('staff.read')) return null;
 
   return (
-    <View style={styles.runEntry}>
+    <View style={styles.entries} testID="events.staff.entries">
       <SecondaryButton
         label={t('staffHours.open')}
         link
@@ -969,6 +961,7 @@ const PEOPLE_UNDER_NAME = StyleSheet.create({
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   nameUnderTitle: { marginTop: tokens.spaceXxs },
+  entries: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },

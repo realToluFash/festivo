@@ -4082,6 +4082,7 @@
     "readOnly": "You can see their link. Sharing it needs permission to manage staff.",
     "removed": "{{name}} is no longer on the staff.",
     "removedLine": "They were removed from the event on the web, and their link stopped working.",
+    "notOnStaff": "This person is not on the staff.",
     "loading": "Loading their link"
   },
   "briefing": {

@@ -1,6 +1,6 @@
 import { type StaffEntry, realtimeTopic } from '@soirely/api-client';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -24,6 +24,7 @@ import { BriefWord, BriefingCard } from './BriefingCard.tsx';
 import { BriefingPanel, type BriefingSide, PANEL_WIDTH } from './BriefingPanel.tsx';
 import { NoticeLines, ReminderCard } from './StaffNotices.tsx';
 import { LinkMark } from './StaffParts.tsx';
+import { openedFrom } from './openedEntry.ts';
 
 /** Under the AC's ten seconds from a change on the web, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
@@ -47,12 +48,15 @@ export function StaffRosterList({
   when,
   manages,
   finished = false,
+  entries,
 }: {
   eventId: string;
   /** The event's own days and zone, which every time on a notice line is read in. */
   when: { startsAt: string; endsAt: string; timeZone: string };
   manages: boolean;
   finished?: boolean;
+  /** Hours and Who's here: after the briefing card where it shows, and above the Roster heading in every state. */
+  entries: ReactNode;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -118,6 +122,7 @@ export function StaffRosterList({
 
   function open(entry: StaffEntry): void {
     opened.current = entry.id;
+    openedFrom(eventId, entry);
     router.push({ pathname: '/events/[id]/staff-link', params: { id: eventId, person: entry.id } });
   }
 
@@ -148,7 +153,12 @@ export function StaffRosterList({
   else if (seen.kind === 'failed')
     body = (
       <View style={styles.failed} testID="staff.failed">
-        <Notice tone="broken" mark="alert" body={t('staffRoster.failed')} answer={answer} />
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('staffRoster.failed')}
+          answer={answer}
+        />
         <SecondaryButton
           label={t('staffRoster.tryAgain')}
           onPress={() => {
@@ -273,7 +283,13 @@ export function StaffRosterList({
     </View>
   );
 
-  if (!briefs || seen.kind !== 'shown') return roster;
+  if (!briefs || seen.kind !== 'shown')
+    return (
+      <View style={styles.page}>
+        {entries}
+        {roster}
+      </View>
+    );
 
   const reminder = <ReminderCard eventId={eventId} manages={manages} roster={seen.staff} />;
   const card = (
@@ -318,6 +334,7 @@ export function StaffRosterList({
         <View style={styles.main}>
           {card}
           {reminder}
+          {entries}
           {roster}
         </View>
         {panel != null && (
@@ -329,9 +346,10 @@ export function StaffRosterList({
     );
 
   return (
-    <View style={styles.head}>
+    <View style={styles.page}>
       {card}
       {reminder}
+      {entries}
       {roster}
       <Sheet
         open={side != null}
@@ -356,6 +374,7 @@ const styles = StyleSheet.create({
   rosterBeside: { flex: 1 },
   beside: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
   main: { flex: 1, minWidth: 0, gap: tokens.spaceLg },
+  page: { gap: tokens.spaceXl },
   dock: {
     width: PANEL_WIDTH,
     padding: tokens.spaceLg,
