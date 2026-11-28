@@ -496,6 +496,8 @@ export function CountryStep({
   const list = useRef<FlatListInstance>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [pinned, setPinned] = useState(false);
+  const [rowHeight, setRowHeight] = useState(0);
+  const [headingHeight, setHeadingHeight] = useState(0);
   const scrolledToPick = useRef(false);
   const retries = useRef(0);
   const all = countries(naming.locale);
@@ -576,17 +578,34 @@ export function CountryStep({
             searching ? (
               <View />
             ) : (
-              <GroupHeading words={t('createOrganisation.allCountries')} ruled={pinned} />
+              <View onLayout={(event) => setHeadingHeight(event.nativeEvent.layout.height)}>
+                <GroupHeading words={t('createOrganisation.allCountries')} ruled={pinned} />
+              </View>
             )
           ) : (
-            <CountryRow
-              country={item.country}
-              naming={naming}
-              picked={walk.country === item.country.code}
-              ruled={index < items.length - 1}
-              onPick={pick}
-            />
+            <View
+              onLayout={(event) => {
+                if (index === 1) setRowHeight(event.nativeEvent.layout.height);
+              }}
+            >
+              <CountryRow
+                country={item.country}
+                naming={naming}
+                picked={walk.country === item.country.code}
+                ruled={index < items.length - 1}
+                onPick={pick}
+              />
+            </View>
           )
+        }
+        getItemLayout={
+          searching || rowHeight === 0 || headingHeight === 0 || headerHeight === 0
+            ? undefined
+            : (_data, index) => ({
+                length: index === 0 ? headingHeight : rowHeight,
+                offset: headerHeight + (index === 0 ? 0 : headingHeight + (index - 1) * rowHeight),
+                index,
+              })
         }
         ListHeaderComponent={header}
         ListFooterComponent={
@@ -616,7 +635,7 @@ export function CountryStep({
           setPinned(pins);
         }}
         onScrollToIndexFailed={(failed) => {
-          if (retries.current >= 2) return;
+          if (retries.current >= 6) return;
           retries.current += 1;
           list.current?.scrollToOffset({
             offset: headerHeight + failed.averageItemLength * failed.index,
