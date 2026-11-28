@@ -120,6 +120,26 @@ describe('a picker hands TalkBack back to whatever opened it (sc-43908, sc-10332
     expect(device.blurred).toEqual([]);
   });
 
+  it('gives the opener a new key at each close under TalkBack, since TalkBack takes a hover only once on a view (qa4 #104048)', () => {
+    const keys = [render(true).back.openerKey];
+    for (let close = 0; close < 3; close++) {
+      render(true).back.opening(picker);
+      render(false).back.closing();
+      keys.push(render(true).back.openerKey);
+    }
+
+    expect(new Set(keys).size).toBe(4);
+  });
+
+  it('keeps the opener’s key with TalkBack off', () => {
+    device.readerOn = false;
+    const before = render(true).back.openerKey;
+    render(true).back.opening(picker);
+    render(false).back.closing();
+
+    expect(render(true).back.openerKey).toBe(before);
+  });
+
   it('changes nothing on iOS', () => {
     device.os = 'ios';
     device.focused = typedIn;
@@ -128,6 +148,7 @@ describe('a picker hands TalkBack back to whatever opened it (sc-43908, sc-10332
 
     expect(render(true).asked.answer).toBeUndefined();
     expect(device.blurred).toEqual([]);
+    expect(render(true).back.openerKey).toBe(0);
   });
 });
 
@@ -153,5 +174,6 @@ describe('New event’s Type, Time zone and Currency sheet (sc-103322)', () => {
     const box = screen.slice(screen.indexOf(`ref={${ref}}`));
 
     expect(box.slice(0, box.indexOf('/>'))).toContain(`openList('${which}', ${ref})`);
+    expect(screen).toContain(`key={listFocusBack.openerKey}\n                ref={${ref}}`);
   });
 });
