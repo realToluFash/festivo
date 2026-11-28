@@ -80,11 +80,11 @@ export function SingleSignOn({
     setRefusal(null);
     setSso((now) => ({ ...now, test: 'running', testedAt: null }));
   };
-  const comeBack = (worked: boolean) => {
+  const comeBack = (came: 'worked' | 'failed' | 'checksFailed') => {
     setSso((now) =>
-      worked
+      came === 'worked'
         ? { ...now, test: 'passed', testedAt: clockOf(new Date()) }
-        : { ...now, test: 'failed' },
+        : { ...now, test: came },
     );
   };
   const open = (next: Form | null) => {
@@ -230,10 +230,13 @@ export function SingleSignOn({
             <DemoOnly>
               <p>{W.demoTab}</p>
               <div className="sso-buttons">
-                <button type="button" className="button" onClick={() => comeBack(false)}>
+                <button type="button" className="button" onClick={() => comeBack('failed')}>
                   {W.itFailed}
                 </button>
-                <button type="button" className="button" onClick={() => comeBack(true)}>
+                <button type="button" className="button" onClick={() => comeBack('checksFailed')}>
+                  {W.itFailedChecks}
+                </button>
+                <button type="button" className="button" onClick={() => comeBack('worked')}>
                   {W.itWorked}
                 </button>
               </div>

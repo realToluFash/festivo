@@ -2,7 +2,15 @@ import type { OutsideEvent } from '@soirely/api-client';
 import { initials, roleName } from '@soirely/domain';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import {
+  Link,
+  NavLink,
+  Navigate,
+  Outlet,
+  type RouteObject,
+  useLocation,
+  useNavigate,
+} from 'react-router';
 
 import { followSavedLanguage } from '../../accountLanguage.ts';
 import { Brand } from '../../components/Brand.tsx';
@@ -43,6 +51,7 @@ import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { AloneHeader } from '../../components/NoOrganisationParts.tsx';
 import { OutsideShell } from './OutsideShell.tsx';
+import { PageUnder } from './UnderTheSheet.tsx';
 import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { holdReturn } from '../../heldReturn.ts';
@@ -74,7 +83,7 @@ import './wideDesk.css';
  * Bare, it is the same gate around a page that is not the desk: Preview as
  * guest shows the guest's page as a guest sees it.
  */
-export function AppLayout({ bare = false }: { bare?: boolean }) {
+export function AppLayout({ bare = false, pages = [] }: { bare?: boolean; pages?: RouteObject[] }) {
   const state = useSessionState();
   const { pathname, search } = useLocation();
 
@@ -116,12 +125,12 @@ export function AppLayout({ bare = false }: { bare?: boolean }) {
 
   return (
     <ShellSearch organisationId={pausedIn == null ? (organisation?.id ?? null) : null}>
-      <Shell />
+      <Shell pages={pages} />
     </ShellSearch>
   );
 }
 
-function Shell() {
+function Shell({ pages }: { pages: RouteObject[] }) {
   const { t } = useTranslation();
   const session = useSession();
   const location = useLocation();
@@ -471,7 +480,9 @@ function Shell() {
                   {standIn}
                 </>
               ) : (
-                <Outlet context={standIn} />
+                <PageUnder pages={pages}>
+                  <Outlet context={standIn} />
+                </PageUnder>
               )}
             </ErrorBoundary>
           </DeskTopContext>

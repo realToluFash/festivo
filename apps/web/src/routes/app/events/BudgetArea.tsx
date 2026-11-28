@@ -974,12 +974,12 @@ function BudgetHome({ event }: { event: OrganisationEvent }) {
   );
 }
 
-export function Loading({ words }: { words?: string }) {
+export function Loading({ words, card = true }: { words?: string; card?: boolean }) {
   const { t } = useTranslation();
 
   return (
     <div className="bt-loading" aria-busy="true">
-      <div className="bt-bone is-card" aria-hidden="true" />
+      {card && <div className="bt-bone is-card" aria-hidden="true" />}
       <p className="desk-line" role="status">
         {words ?? t('budget.loading')}
       </p>

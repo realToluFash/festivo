@@ -11,6 +11,7 @@ use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -30,6 +31,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
@@ -207,7 +209,7 @@ final class PaymentRemindersTest extends ApiTestCase
             'Bloom & Co · Summer wedding · £1,000.00 · due Wed 10 Mar',
             'This is the last reminder about Bloom & Co: Balance.',
         ], $rendered->lines);
-        self::assertStringStartsWith('/app/events/' . $this->eventId . '/budget/vendors/', $rendered->place ?? '');
+        self::assertMatchesRegularExpression('~^/app/due/[0-9a-f-]{36}$~', $rendered->place ?? '');
     }
 
     #[Test]
@@ -255,7 +257,7 @@ final class PaymentRemindersTest extends ApiTestCase
             [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]],
         )->body;
 
-        self::assertMatchesRegularExpression('~^Open the payment: https?://\S+/app/events/' . $this->eventId . '/budget/vendors/[0-9a-f-]{36}$~m', $body);
+        self::assertMatchesRegularExpression('~^Open the payment: https?://\S+/app/due/[0-9a-f-]{36}$~m', $body);
         self::assertStringContainsString("You're getting this because you can record payments at Bloom Events. To stop these emails, turn off Money email in Notification settings.", $body);
         self::assertMatchesRegularExpression('~^Notification settings: https?://\S+/app/account/notifications$~m', $body);
         self::assertStringContainsString('Bloom & Co · £1,000.00 · due Wed 10 Mar', $body);
@@ -478,6 +480,166 @@ final class PaymentRemindersTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2027-03-01T10:15:00Z'));
         self::runUntilIdle();
         self::assertSame(['2 payments due in the next 10 days on Summer wedding'], $this->inApp()[$this->owner->getId()->toRfc4122()] ?? []);
+    }
+
+    #[Test]
+    public function theLinkOpensDueNowOnWhatTheReminderNamedInItsOrderAsItIsNow(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        $balance = $this->payment('Balance', '2027-03-05');
+        $album = $this->payment('Album', '2027-03-09');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        $place = $this->rendered(NotificationChannel::InApp, [$deposit => PaymentReminders::COMING_DUE, $balance => PaymentReminders::OVERDUE, $album => PaymentReminders::COMING_DUE]);
+        $sheet = $this->dueNow($place);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($sheet));
+        self::assertSame('2027-03-07', $sheet['sentOn'] ?? null);
+        self::assertFalse($sheet['readOnly'] ?? null);
+        self::assertSame([['id' => $this->eventId, 'name' => 'Summer wedding', 'currency' => 'GBP', 'today' => '2027-03-07']], $sheet['events'] ?? null);
+        self::assertSame([['Balance', 'owed', true], ['Album', 'owed', false], ['Deposit', 'owed', false]], self::rows($sheet));
+
+        $this->as($this->owner, 'POST', $this->payments($deposit) . '/paid', ['amount' => '1000.00', 'currency' => 'GBP', 'paidOn' => '2027-03-07']);
+        $this->as($this->owner, 'POST', $this->payments($album) . '/cancellation', ['reason' => null]);
+        $this->as($this->owner, 'DELETE', $this->payments($balance));
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        $again = $this->dueNow($place);
+        self::assertSame([['Balance', 'removed', false], ['Album', 'cancelled', false], ['Deposit', 'paid by Harriet Cole', false]], self::rows($again));
+        self::assertSame(['vendor' => 'Bloom & Co', 'amount' => '1000.00'], Type\shape(['rows' => Type\vec(Type\shape(['vendor' => Type\string(), 'amount' => Type\string()]))], true)->coerce($again)['rows'][0] ?? null);
+    }
+
+    #[Test]
+    public function openingItMarksNothingAndTheBellPushAndEmailShareOneLink(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        $named = [$deposit => PaymentReminders::COMING_DUE];
+        $place = $this->rendered(NotificationChannel::InApp, $named);
+
+        self::assertSame($place, $this->rendered(NotificationChannel::Push, $named));
+        self::assertStringContainsString($place, self::service(PaymentReminder::class)->render(NotificationChannel::Email, $this->recipient(), [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]])->body);
+
+        $this->dueNow($place);
+        $this->dueNow($place);
+        self::assertSame([['Deposit', 'owed', false]], self::rows($this->dueNow($place)));
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM scheduled_payments WHERE paid_at IS NOT NULL'));
+    }
+
+    #[Test]
+    public function onlyThoseHoldingTheBudgetNowOpenItAndEveryoneElseIsNotFoundAlike(): void
+    {
+        $editor = $this->member('edit@bloom.events', 'Ed Edit', SeededRole::Member, EventRole::CanEdit);
+        $nobody = $this->member('off@bloom.events', 'Olu Off', SeededRole::Member, null);
+        $stranger = $this->account('someone@elsewhere.example', 'Sam Else');
+        self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'GB', 'Europe/London');
+        self::em()->flush();
+        $place = $this->rendered(NotificationChannel::InApp, [$this->payment('Deposit', '2027-03-10') => PaymentReminders::COMING_DUE]);
+
+        foreach ([$editor, $nobody, $stranger] as $reader) {
+            $this->as($reader, 'GET', '/api/payment-reminders/' . self::sendId($place));
+            self::assertSame(404, $this->statusCode());
+        }
+
+        $this->as($this->owner, 'GET', '/api/payment-reminders/' . Uuid::v4()->toRfc4122());
+        self::assertSame(404, $this->statusCode());
+        $this->as($this->owner, 'GET', '/api/payment-reminders/not-a-reminder');
+        self::assertSame(404, $this->statusCode());
+
+        $this->client->request('GET', '/api/payment-reminders/' . self::sendId($place));
+        self::assertSame(401, $this->statusCode());
+    }
+
+    #[Test]
+    public function aLeadTakenOffOneOfTheEventsSeesOnlyTheRowsOfTheEventsTheyStillHold(): void
+    {
+        $lead = $this->member('lead@bloom.events', 'Lola Lead', SeededRole::Member, null);
+        $gala = $this->newEvent('Spring gala');
+        $onWedding = self::onEvent($lead, $this->eventId, EventRole::Lead);
+        self::onEvent($lead, $gala, EventRole::Lead);
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        $there = $this->payment('Catering', '2027-03-09', $gala, $this->quote($gala));
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        $place = $this->rendered(NotificationChannel::InApp, [$deposit => PaymentReminders::COMING_DUE, $there => PaymentReminders::COMING_DUE], $lead);
+
+        self::assertSame([['Catering', 'owed', false], ['Deposit', 'owed', false]], self::rows($this->dueNow($place, $lead)));
+
+        (self::em()->find(EventPerson::class, $onWedding->getId()) ?? self::fail('not on the wedding'))->setRole(EventRole::CanView);
+        self::em()->flush();
+        $sheet = $this->dueNow($place, $lead);
+        self::assertSame([['Catering', 'owed', false]], self::rows($sheet));
+        self::assertSame(['Spring gala'], Vec\map(Type\shape(['events' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($sheet)['events'], static fn (array $event): string => $event['name']));
+    }
+
+    #[Test]
+    public function afterADowngradeTheSheetIsReadOnly(): void
+    {
+        $place = $this->rendered(NotificationChannel::InApp, [$this->payment('Deposit', '2027-03-10') => PaymentReminders::COMING_DUE]);
+        $first = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19') ?? self::fail('no catalogue');
+        $terms = Type\dict(Type\string(), Type\dict(Type\string(), Type\mixed()))->coerce($first->getTerms());
+        $terms['free']['features'] = Vec\values(Vec\filter(Type\vec(Type\string())->coerce($terms['free']['features']), static fn (string $feature): bool => 'vendors' !== $feature));
+        $keeper = self::service(CatalogueKeeper::class);
+        $keeper->moveSubscribers($keeper->publish(CataloguePart::Plans, '2027-03-01', $terms, 'Vendors off Free, for a test', 'Ada at Soirely'), null, 'A downgrade, for a test', 'Ada at Soirely');
+        self::em()->clear();
+
+        self::assertTrue($this->dueNow($place)['readOnly'] ?? null);
+    }
+
+    /** @param non-empty-array<string, string> $named each payment's kind, by id, as the worker hands them over */
+    private function rendered(NotificationChannel $channel, array $named, ?User $to = null): string
+    {
+        $payloads = [];
+
+        foreach ($named as $id => $kind) {
+            $payloads[] = ['paymentId' => $id, 'kind' => $kind];
+        }
+
+        return self::service(PaymentReminder::class)->render($channel, $this->recipient($to), $payloads)->place ?? self::fail('no link');
+    }
+
+    private function recipient(?User $to = null): Recipient
+    {
+        $user = $to ?? $this->owner;
+
+        return new Recipient(NotificationAudienceKind::Member, $user->getId(), $user->getName(), 'en', 'someone@example.com');
+    }
+
+    /** @return array<string, mixed> */
+    private function dueNow(string $place, ?User $reader = null): array
+    {
+        return $this->as($reader ?? $this->owner, 'GET', '/api/payment-reminders/' . self::sendId($place));
+    }
+
+    private static function sendId(string $place): string
+    {
+        return Str\after($place, '/app/due/') ?? self::fail('not a Due now link: ' . $place);
+    }
+
+    /**
+     * @param array<string, mixed> $sheet
+     *
+     * @return list<array{string, string, bool}> each row's description, its state now, and whether it is overdue
+     */
+    private static function rows(array $sheet): array
+    {
+        $rows = Type\vec(Type\shape([
+            'description' => Type\string(),
+            'payment' => Type\nullable(Type\shape([
+                'overdue' => Type\bool(),
+                'paid' => Type\nullable(Type\shape(['by' => Type\nullable(Type\shape(['name' => Type\string()], true))], true)),
+                'cancelled' => Type\nullable(Type\mixed()),
+            ], true)),
+        ], true))->coerce($sheet['rows'] ?? null);
+
+        return Vec\map($rows, static fn (array $row): array => [
+            $row['description'],
+            match (true) {
+                null === $row['payment'] => 'removed',
+                null !== $row['payment']['paid'] => 'paid by ' . ($row['payment']['paid']['by']['name'] ?? ''),
+                null !== $row['payment']['cancelled'] => 'cancelled',
+                default => 'owed',
+            },
+            $row['payment']['overdue'] ?? false,
+        ]);
     }
 
     private function live(string $eventId): void
