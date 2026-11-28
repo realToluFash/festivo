@@ -361,7 +361,7 @@ export function StaffRosterList({
 
 const styles = StyleSheet.create({
   page: { gap: tokens.spaceXl },
-  dialog: { padding: tokens.space3xl },
+  dialog: { padding: tokens.space3xl, flexShrink: 1 },
   dialogDocked: { flex: 1 },
   head: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
