@@ -1,0 +1,27 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door
+    timeout: 30000
+- tapOn:
+    id: whosHere.door
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door.name
+    timeout: 10000
+- tapOn:
+    id: whosHere.door.job.${JOB}
+- tapOn:
+    id: whosHere.door.name
+- inputText: 'Bisi'
+- waitForAnimationToEnd
+- takeScreenshot: name-keys-up-before-press
+- tapOn:
+    point: ${EMPTYPT}
+    retryTapIfNoChange: false
+- waitForAnimationToEnd
+- assertVisible:
+    id: whosHere.door.name
+- takeScreenshot: after-one-press
