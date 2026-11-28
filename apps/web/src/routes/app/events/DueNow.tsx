@@ -337,7 +337,11 @@ function DueNowDialog({ reminderId, onClose }: { reminderId: string; onClose: ()
       </Rows>
       {settled &&
         sheet.events.map((event) => (
-          <Link key={event.id} className="desk-text is-wraps" to={`/app/events/${event.id}/budget/due`}>
+          <Link
+            key={event.id}
+            className="desk-text is-wraps"
+            to={`/app/events/${event.id}/budget/due`}
+          >
             {t('dueNow.everythingDue', { event: event.name })}
           </Link>
         ))}
