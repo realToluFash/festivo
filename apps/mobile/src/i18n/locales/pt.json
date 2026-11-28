@@ -4273,7 +4273,7 @@
     "readOnly": "Pode ver a ligação desta pessoa. Para a partilhar, precisa de permissão para gerir a equipa.",
     "removed": "{{name}} já não faz parte da equipa.",
     "removedLine": "Esta pessoa foi removida do evento na web, e a ligação deixou de funcionar.",
-    "notOnStaff": "This person is not on the staff.",
+    "notOnStaff": "Esta pessoa não faz parte da equipa.",
     "loading": "A carregar a ligação"
   },
   "briefing": {
