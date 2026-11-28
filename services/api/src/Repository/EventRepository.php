@@ -102,6 +102,23 @@ final class EventRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /** Of those {@see countActiveIn} counts, the one that closes first: its end frees a place (sc-3930). */
+    public function findFirstToCloseIn(Organisation $organisation, DateTimeImmutable $now): ?Event
+    {
+        return $this->createQueryBuilder('e')
+            ->andWhere('e.organisation = :organisation')
+            ->andWhere('e.status IN (:active)')
+            ->andWhere('e.closesAt > :now')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', [EventStatus::Live->value, EventStatus::Paused->value])
+            ->setParameter('now', $now->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable')
+            ->orderBy('e.closesAt', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     private function phaseIn(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor): QueryBuilder
     {
         $over = 'e.status = :ended OR (e.status IN (:active) AND e.closesAt <= :now)';
@@ -164,7 +181,7 @@ final class EventRepository extends ServiceEntityRepository
         if (null !== $search->term) {
             $query
                 ->andWhere('FOLDED(e.name) LIKE FOLDED(:term) OR FOLDED(e.venueName) LIKE FOLDED(:term)')
-                ->setParameter('term', '%' . \addcslashes($search->term, '\\%_') . '%');
+                ->setParameter('term', NameSearch::anywhere($search->term));
         }
 
         if ([] !== $search->types) {
@@ -197,6 +214,52 @@ final class EventRepository extends ServiceEntityRepository
         }
 
         return $query;
+    }
+
+    /**
+     * Search's events (sc-39534), matched by name or venue as Events' own field matches them.
+     *
+     * @param list<Uuid>|null $within the events the caller may open; null for every one of the organisation
+     *
+     * @return list<Event> names beginning with the term first, then the rest, each alphabetical
+     */
+    public function findNamedLike(Organisation $organisation, string $term, ?array $within, int $most): array
+    {
+        if ([] === $within) {
+            return [];
+        }
+
+        /** @var list<Event> */
+        return $this->namedLike($organisation, $term, $within)
+            ->addSelect('CASE WHEN FOLDED(e.name) LIKE FOLDED(:start) THEN 0 ELSE 1 END AS HIDDEN later')
+            ->addSelect('FOLDED(e.name) AS HIDDEN folded')
+            ->setParameter('start', NameSearch::start($term))
+            ->orderBy('later', 'ASC')
+            ->addOrderBy('folded', 'ASC')
+            ->addOrderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->setMaxResults($most)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @param list<Uuid>|null $within */
+    public function countNamedLike(Organisation $organisation, string $term, ?array $within): int
+    {
+        return [] === $within ? 0 : (int) $this->namedLike($organisation, $term, $within)
+            ->select('COUNT(e.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /** @param list<Uuid>|null $within */
+    private function namedLike(Organisation $organisation, string $term, ?array $within): QueryBuilder
+    {
+        $query = $this->searched($this->createQueryBuilder('e'), new EventSearch(term: $term))
+            ->andWhere('e.organisation = :organisation')
+            ->setParameter('organisation', $organisation);
+
+        return null === $within ? $query : $query->andWhere('e.id IN (:within)')->setParameter('within', NameSearch::ids($within));
     }
 
     private function onlyFor(QueryBuilder $query, ?Membership $member): QueryBuilder

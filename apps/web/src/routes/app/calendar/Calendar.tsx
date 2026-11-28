@@ -4,6 +4,7 @@ import {
   type CalendarShow,
   type EventPhase,
   calendarDays,
+  calendarPlaceKey,
   calledOff,
   inMonth,
   serverClock,
@@ -48,7 +49,8 @@ export function Calendar() {
 
   return (
     <CalendarOf
-      key={organisation.id}
+      key={`${session.userId}/${organisation.id}`}
+      kept={calendarPlaceKey(session.userId)}
       organisationId={organisation.id}
       organisationName={organisation.name}
       creates={can(session, 'events.create')}
@@ -57,10 +59,12 @@ export function Calendar() {
 }
 
 function CalendarOf({
+  kept,
   organisationId,
   organisationName,
   creates,
 }: {
+  kept: string;
   organisationId: string;
   organisationName: string;
   creates: boolean;
@@ -77,7 +81,7 @@ function CalendarOf({
   const [refresh, setRefresh] = useState(0);
   const [feed, setFeed] = useState(false);
   const [start] = useState<BoardStart<CalendarShow>>(() => {
-    const place = readKept();
+    const place = readKept(kept);
 
     return {
       view: place?.view ?? 'month',
@@ -133,7 +137,7 @@ function CalendarOf({
     <DeskPage layers={layers}>
       <CalendarFrameContext value={frame}>
         <div className="ev cal-page" inert={covered}>
-          {desk.offline}
+          <div className="rn-stack">{desk.above}</div>
           <CalendarTop
             titleRef={title}
             subscribe={subscribe}
@@ -150,6 +154,7 @@ function CalendarOf({
           ) : (
             <CalendarBoard
               start={start}
+              kept={kept}
               events={events}
               load={load.kind}
               shows={CALENDAR_SHOWS}

@@ -13,6 +13,7 @@ const PREVIEW = {
   organisation: { name: 'Ìrè Events' },
   standing: null,
   askAgainFrom: null,
+  managed: null,
 };
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -130,7 +131,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+        'Your request has gone to Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
     expect(sent.find((one) => one.line === ASK)?.body).toEqual({
@@ -159,7 +160,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+        'Your request has gone to Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
     expect(sent.filter((one) => one.line === ASK)).toHaveLength(1);
@@ -179,12 +180,56 @@ describe('a request link (sc-562)', () => {
     expect(sent.map((one) => one.line)).toEqual([LINK]);
   });
 
+  it('counts a message’s letters as a reader sees them (sc-54292)', async () => {
+    signedIn();
+    const sent = answering({ [LINK]: () => json(PREVIEW) });
+    open();
+    const message = await screen.findByLabelText(/Message/);
+
+    fireEvent.change(message, { target: { value: 'e\u0323\u0300'.repeat(500) } });
+    expect(screen.getByText('500 of 500 characters.')).toBeDefined();
+    fireEvent.change(message, { target: { value: '👨‍👩‍👧 🇳🇬' } });
+    expect(screen.getByText('3 of 500 characters.')).toBeDefined();
+
+    fireEvent.change(message, { target: { value: 'e\u0323\u0300'.repeat(501) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    expect(screen.getByText('Keep your message to 500 characters or fewer.')).toBeDefined();
+    expect(sent.map((one) => one.line)).toEqual([LINK]);
+  });
+
   it('tells somebody who belongs, rather than asking', async () => {
     signedIn();
     answering({ [LINK]: () => json({ ...PREVIEW, standing: 'member' }) });
     open();
 
     expect(await screen.findByText('You already belong to Ìrè Events.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull();
+  });
+
+  it('refuses a managed account in place of asking (sc-563)', async () => {
+    signedIn();
+    answering({
+      [LINK]: () =>
+        json({
+          ...PREVIEW,
+          organisation: { name: 'Lumen Feiras' },
+          managed: {
+            domain: 'ire.events',
+            organisation: { id: 'org_1', name: 'Ìrè Events' },
+            message:
+              'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+          },
+        }),
+    });
+    open();
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Managed by Ìrè Events' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+      ),
+    ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull();
   });
 
@@ -195,7 +240,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "You have already asked to join Ìrè Events. We'll email you when they answer.",
+        'You have already asked to join Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
   });
@@ -479,7 +524,7 @@ describe('a request link that did not load (sc-11488)', () => {
 
     const notice = (
       await screen.findByText(
-        "You have already asked to join Ìrè Events. We'll email you when they answer.",
+        'You have already asked to join Ìrè Events. We’ll email you when they answer.',
       )
     ).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));

@@ -115,10 +115,25 @@ product and false of either codebase on its own.
 | **Tablet portrait**  | `apps/mobile` | All of event management              |
 | **Phone**            | `apps/mobile` | All of event management              |
 
-`apps/web` also has narrow layouts, but **only** for billing, account settings,
-organisation settings, the guest pages and the marketing pages. **Event management at
-phone width in a browser is not a layout — it is the app handoff.** If you find yourself
-making a guest table work at 390px in `apps/web`, stop: that screen does not exist there.
+`apps/web` also has phone layouts, but **only** for three kinds of page:
+
+- **The pages someone opens from a link or a code with nothing to install**: the guest's
+  page, the staff link pages, redeeming a join code, check-in in a browser.
+- **The signed-out frame**: signing in, creating an account, getting back in, verifying an
+  email or a phone, Join and Request to join. The app opens none of our links itself, so a
+  reset-password link tapped on a phone finishes in its browser (epic 22091, "Decided,
+  2 Nov (pm, on ux's #28794)"). The frame keeps the phone layout it has as built
+  (sc-26511, sc-26512), nothing new is drawn for it, and a tablet's browser shows its
+  desktop card.
+- **The marketing site.**
+
+**The signed-in web has no layout for a phone's or a tablet's browser.** Billing, account
+settings and organisation settings are the desktop page reflowed down to 320 CSS px
+(WCAG 2.2 §1.4.10), with nothing lost or cut off and nothing drawn or built for a phone of
+their own (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)"). sc-13348's Settings >
+General stays as built until the owner says otherwise. **Event management at phone width
+in a browser is not a layout — it is the app handoff.** If you find yourself making a guest
+table work at 390px in `apps/web`, stop: that screen does not exist there.
 
 Within `apps/mobile` the three are **structurally different arrangements, never one
 rescaled**: phone drills in and back out; tablet portrait stacks a detail under or beside
@@ -264,6 +279,12 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   unstyled, with no error and nothing red in a test that only finds the
   text. Its test asserts the card's `.desk` ancestor, as `SecurityDesk` and
   `NotificationsDesk` do (sc-35456).
+- **On the web, a row that bleeds past its column needs that much room at the page's
+  edge.** A row whose tint or open state reaches out by a negative inline margin
+  (`spaceMd`, say) overflows a column that already fills the page, as `--evWide` columns
+  do at 1280, and focusing it scrolls the page sideways, cutting the first letter off every
+  line. The column keeps a `margin-inline-end` (or padding) of the same size, as
+  `.bt .ev-right` and the vendor list do (sc-82, sc-92).
 
 ## 7. What the stack cannot express
 
@@ -304,6 +325,11 @@ is held to what both can do:
 - **Text on web breaks words anywhere** (`apps/web/src/styles.css`), so a one-line mark of
   fixed height, such as a pill, a tag or a button's one word, sets `flex: none` and
   `white-space: nowrap`, and the text beside it gives way.
+- **On the app, a box that holds words takes a least height, never a height**: at the
+  accessibility text sizes its words outgrow it and are cut at the foot. `minHeight` and a
+  little vertical padding let it grow. Only a box whose words are capped at the default
+  size (`maxFontSizeMultiplier={1}`) or that holds a single glyph keeps a `height`, and
+  `kitGuard.test.ts` names each one that has been cut.
 
 ## 8. Inputs, accessibility, and verifying
 
@@ -311,6 +337,18 @@ is held to what both can do:
 
 - Can the keyboard cover it, or the button under it? Anything low, in a sheet, or in a
   modal — assume yes, and lift or scroll it.
+- **The step's dock rule is given the focused field's whole block, label and line
+  included, measured by the lift that keeps it and never by the step from the bare
+  input.** A bar docks on the keys only while that block fits above it (`barFits`,
+  sc-7099), and `StepScreen` learns it only through `ScreenScroll.focusedGroup`: the kit's
+  `useAboveKeyboard` reports it from the group it lifts, and a lift of its own
+  (`FieldsAboveSend`) reports the focused field's block. A lift keeps more than that
+  block only inside the room the dock leaves, and never reports what it keeps: the kept
+  tier is chosen in the frame the lift measured, which an undocked bar stretches to the
+  keys, so reporting it holds the bar undocked where the field alone would fit above a
+  docked one. Without the report the step measures the bare input itself, keeps the bar
+  docked, and the block the lift keeps lands under the top bar. Two measurements of one
+  field is how sc-97734 failed QA.
 - `keyboardShouldPersistTaps="handled"`, or the first tap after typing only dismisses the
   keyboard.
 - `cursorColor` and `selectionColor` set to the input's own text colour. The platform

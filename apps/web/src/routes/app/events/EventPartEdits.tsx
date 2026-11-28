@@ -1,8 +1,6 @@
 import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
-  HOSTS_MAXIMUM,
-  NOTHING_SEEN,
   type EventDraft,
   type EventSaveRefusal,
   type EventFormField,
@@ -10,53 +8,61 @@ import {
   type HostErrors,
   type HostRow,
   type VenueDraft,
-  addressLookup,
+  arrivalNoteTooLong,
+  coverTypeOf,
   draftOf,
   eventChanges,
   eventSaveRefusal,
+  eventSaveStoppedWords,
   eventFormErrors,
   eventNameLength,
-  hostCalled,
+  formatWallDay,
   hostErrorsOf,
   hostsChanged,
   hostsSent,
   keepsLastHost,
-  movedHost,
-  removedHost,
+  replyByAfterStart,
+  replyByAsk,
   skippedLine,
   venueDraftOf,
+  wallDay,
 } from '@soirely/domain';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import {
-  Alert,
   Broken,
   DateTime,
   EditText,
   Opened,
-  Quiet,
   Radios,
   type Wall,
 } from '../../../components/EventPageParts.tsx';
+import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
+import { type SaveAnswer, useSaveAnswer } from '../../../components/saveAnswer.ts';
+import { SaveNotice } from '../../../components/SaveNotice.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
+import { focusStep, landOnNotice } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
-import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
+import { HostFields, VenueFields } from './EventFormFields.tsx';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
+import { ReplyByAsk } from './ReplyByPart.tsx';
+import { replyBySaid, useHavent } from './replyByHavent.ts';
 
-export type Part = 'name' | 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
+export type Part = 'name' | 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
 
 export interface PartProps {
   event: OrganisationEvent;
   tag: string;
   onDirty: (dirty: boolean) => void;
   onClose: () => void;
-  onSaved: (saved: TaggedEvent) => void;
+  /** `said` is the toast, when it is more than Saved. */
+  onSaved: (saved: TaggedEvent, said?: string) => void;
   onLatest: (latest: TaggedEvent) => void;
 }
 
@@ -72,7 +78,7 @@ function typedOf(event: OrganisationEvent): Typed {
     draft: draftOf(event),
     timeZone: event.timeZone,
     currency: event.currency,
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
   };
 }
 
@@ -81,7 +87,11 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
-  async function save(typed: Typed, hosts: readonly HostRow[] | null): Promise<Saving> {
+  async function save(
+    typed: Typed,
+    hosts: readonly HostRow[] | null,
+    said?: (saved: TaggedEvent) => string | undefined,
+  ): Promise<Saving> {
     const changes = {
       ...eventChanges(event, typed),
       ...(hosts != null &&
@@ -100,7 +110,7 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
     try {
       const saved = await api.updateEvent(event.id, changes, tag);
       setBusy(false);
-      onSaved(saved);
+      onSaved(saved, said?.(saved));
 
       return { kind: 'saved' };
     } catch (error) {
@@ -133,22 +143,34 @@ function useDirty(changed: boolean, onDirty: (dirty: boolean) => void): void {
   useEffect(() => onDirty(changed), [changed, onDirty]);
 }
 
-/** The notice a save that failed for no reason the part can show leaves, and Changed elsewhere's way to the latest. */
+/** The answer a save left that no field holds — not saved, the role refused it, or changed elsewhere with its way to the latest — shown last in the part, directly above Cancel and Save (sc-74398). */
 function useOutcome(onLatest: PartProps['onLatest'], latest: ReturnType<typeof useSave>['latest']) {
-  const { t } = useTranslation();
-  const [outcome, setOutcome] = useState<'changed' | 'failed' | null>(null);
+  const answered = useSaveAnswer();
 
   return {
-    refused: outcome === 'changed',
-    failed: outcome === 'failed' ? <Broken>{t('eventEdit.notSaved')}</Broken> : null,
+    notice: (
+      <SaveNotice
+        answered={answered}
+        onLatest={() =>
+          void latest(onLatest).then((read) => {
+            if (!read) answered.give('notSaved');
+          })
+        }
+      />
+    ),
     took(saving: Saving): void {
-      setOutcome(saving.kind === 'changed' || saving.kind === 'failed' ? saving.kind : null);
-    },
-    showLatest(): void {
-      void latest(onLatest).then((read) => setOutcome(read ? null : 'failed'));
+      if (saving.kind === 'refused' || saving.kind === 'saved') answered.clear();
+      else answered.give(ANSWER[saving.kind]);
     },
   };
 }
+
+const ANSWER = {
+  changed: 'changedElsewhere',
+  failed: 'notSaved',
+  forbidden: 'forbidden',
+  gone: 'eventGone',
+} as const satisfies Record<Exclude<Saving['kind'], 'saved' | 'refused'>, SaveAnswer>;
 
 export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
   const { t } = useTranslation();
@@ -183,13 +205,10 @@ export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
     <Opened
       label={t('eventForm.name')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
       <EditText
         label={t('eventForm.name')}
         value={name}
@@ -206,6 +225,7 @@ export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
           setError(null);
         }}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -228,9 +248,7 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
     <Opened
       label={t('eventForm.type')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() =>
         void save({ ...typedOf(event), draft: { ...draftOf(event), type: picked } }, null).then(
@@ -238,7 +256,6 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
         )
       }
     >
-      {outcome.failed}
       <div className="ev-field is-small" role="search" aria-label={t('eventPage.searchTypes')}>
         <Glyph name="search" size={18} weight={2.2} />
         <input
@@ -256,6 +273,7 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
         picked={picked}
         onPick={setPicked}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -264,7 +282,8 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
 export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(event.currency);
-  const [inUse, setInUse] = useState(false);
+  const [inUse, setInUse] = useState<{ times: number; landing: boolean } | null>(null);
+  const notice = useRef<HTMLDivElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
   const locale = currentLocale();
@@ -275,30 +294,47 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
   const changed = picked !== event.currency;
 
   useDirty(changed, onDirty);
+  useLayoutEffect(() => {
+    const landed = notice.current;
+
+    if (inUse == null || !inUse.landing || landed == null) return;
+
+    focusStep(landOnNotice(landed));
+  }, [inUse]);
 
   return (
     <Opened
       label={t('eventForm.currency')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
-      onSave={() =>
+      onSave={() => {
+        const from = document.activeElement;
+
         void save({ ...typedOf(event), currency: picked }, null).then((saving) => {
+          const landing = document.activeElement === from;
+
           outcome.took(saving);
-          setInUse(saving.kind === 'refused' && saving.currencyInUse);
-        })
-      }
+          setInUse((was) =>
+            saving.kind === 'refused' && saving.currencyInUse
+              ? { times: (was?.times ?? 0) + 1, landing }
+              : null,
+          );
+        });
+      }}
     >
-      {outcome.failed}
-      {inUse && <Broken>{t('eventEdit.currencyInUse')}</Broken>}
+      {inUse != null && (
+        <Broken key={inUse.times} landing={inUse.landing ? notice : undefined}>
+          {t('eventEdit.currencyInUse')}
+        </Broken>
+      )}
       <Radios
         legend={t('eventForm.currency')}
         choices={choices.map((choice) => [choice.value, choice.label] as const)}
         picked={picked}
         onPick={setPicked}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -309,10 +345,22 @@ function wallOf(draft: EventDraft, end: boolean): Wall {
     : { date: draft.startDate, time: draft.startTime };
 }
 
-/** Dates: when it starts and ends in its zone; a new start carries the end with it. */
-export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
+/** Dates: when it starts and ends in its zone; a new start carries the end with it, and Reply by when the start reaches it (sc-3780). */
+export function DatesPart({
+  event,
+  tag,
+  now,
+  onDirty,
+  onClose,
+  onSaved,
+  onLatest,
+  focusStart = 0,
+}: PartProps & { now: Date; focusStart?: number }) {
   const { t } = useTranslation();
   const id = useId();
+  const replyBy = event.replyBy ?? null;
+  const havent = useHavent(event, replyBy != null);
+  const [asking, setAsking] = useState(false);
   const saved = draftOf(event);
   const [draft, setDraft] = useState(saved);
   const [zone, setZone] = useState(event.timeZone);
@@ -341,10 +389,12 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
   const endSkipped = skippedLine(draft.endDate, draft.endTime, zone, dateLocale(), t);
   const endWrong = errors.endsAt ?? null;
   const startWrong = errors.startsAt ?? null;
+  const replyMoved = draft.startDate === '' ? null : replyByAfterStart(replyBy, draft.startDate);
+  const ask = replyByAsk(replyBy, replyMoved, wallDay(now, zone), havent?.count ?? 1);
 
   useDirty(changed, onDirty);
 
-  async function send(): Promise<void> {
+  async function send(asked: boolean): Promise<void> {
     const typed = {
       ...typedOf(event),
       draft: { ...draftOf(event), ...pick(draft) },
@@ -354,8 +404,13 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
 
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    if (ask != null && !asked) return setAsking(true);
 
-    const saving = await save(typed, null);
+    const saving = await save(typed, null, (saved) =>
+      replyMoved == null
+        ? undefined
+        : replyBySaid(saved.event.replyBy ?? replyMoved, now, saved.event.timeZone, t),
+    );
 
     outcome.took(saving);
     if (saving.kind === 'refused') setErrors(saving.errors);
@@ -365,16 +420,14 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
     <Opened
       label={t('eventPage.dates')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
-      onSave={() => void send()}
+      onSave={() => void send(false)}
     >
-      {outcome.failed}
       <DateTime
         legend={t('eventForm.starts')}
         wall={wallOf(draft, false)}
+        focus={focusStart}
         wrong={startWrong != null}
         told={
           startWrong != null ? `${id}-start-wrong` : startSkipped != null ? `${id}-skip` : undefined
@@ -393,6 +446,27 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       {startSkipped != null && (
         <p id={`${id}-skip`} className="desk-help">
           {startSkipped}
+        </p>
+      )}
+      {asking && ask != null && replyMoved != null && (
+        <ReplyByAsk
+          asking={ask}
+          next={replyMoved}
+          havent={havent}
+          keep={t('eventEdit.keepEditing')}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            void send(true);
+          }}
+        />
+      )}
+      {replyMoved != null && replyBy != null && (
+        <p className="ev-said" role="status">
+          {t('eventReplyBy.startMoves', {
+            old: formatWallDay(replyBy, dateLocale()),
+            next: formatWallDay(replyMoved, dateLocale()),
+          })}
         </p>
       )}
       <DateTime
@@ -442,6 +516,7 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
           {errors.timeZone ?? t('eventPage.timesIn', { timeZone: zone })}
         </p>
       </div>
+      {outcome.notice}
     </Opened>
   );
 }
@@ -464,179 +539,73 @@ export function VenuePart({
 }: PartProps & { over: boolean }) {
   const { t } = useTranslation();
   const id = useId();
-  const savedVenue = venueDraftOf(event.venue);
+  const savedVenue = venueDraftOf(event.venue, event.arrivalNote);
   const [venue, setVenue] = useState(savedVenue);
   const [zone, setZone] = useState(event.timeZone);
-  const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
-  const [seen, setSeen] = useState(NOTHING_SEEN);
-  const field = useRef<HTMLInputElement>(null);
+  const [said, setSaid] = useState('');
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
-  const [lookup] = useState(() =>
-    addressLookup({
-      suggest: (query) => api.addressSuggestions(query),
-      resolve: (address) => api.address(address),
-      onVenue: (change) => setVenue((was) => ({ ...was, ...change })),
-      onSeen: setSeen,
-    }),
-  );
-  const { suggestions, down } = seen;
-  const { active, setActive, onKeyDown } = useComboboxKeys({
-    count: suggestions.length,
-    onPick: (index) => {
-      const chosen = suggestions[index];
-      if (chosen != null) void lookup.pick(chosen, zone);
-    },
-    onEscape: () => lookup.dismiss(),
-  });
-  const offer = seen.offered != null && seen.offered.zone !== zone && !over ? seen.offered : null;
   const changed =
     venue.name !== savedVenue.name ||
     venue.address !== savedVenue.address ||
+    venue.note !== savedVenue.note ||
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
-  useEffect(() => () => lookup.stop(), [lookup]);
+
+  function refused(found: Errors): void {
+    const count = Object.keys(found).length;
+
+    setErrors(found);
+    setSaid(count === 0 ? '' : t('eventForm.problems', { count }));
+    if (found.arrivalNote != null) document.getElementById(`${id}-note`)?.focus();
+  }
 
   async function send(): Promise<void> {
     const typed = { ...typedOf(event), venue, timeZone: zone };
-    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress']);
+    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress', 'arrivalNote']);
 
-    setErrors(found);
+    refused(found);
     if (Object.keys(found).length > 0) return;
 
     const saving = await save(typed, null);
 
     outcome.took(saving);
-    if (saving.kind === 'refused') setErrors(saving.errors);
+    if (saving.kind === 'refused') refused(saving.errors);
   }
 
   return (
     <Opened
       label={t('eventPage.venue')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
-      <EditText
-        label={t('eventForm.venueName')}
-        optional
-        value={venue.name}
-        error={errors.venueName ?? null}
-        input={{ autoComplete: 'off' }}
-        onChange={(name) => {
-          setVenue((was) => ({ ...was, name }));
-          setErrors((was) => ({ ...was, venueName: undefined }));
+      <VenueFields
+        venue={venue}
+        errors={errors}
+        zone={zone}
+        over={over}
+        ids={{ name: `${id}-name`, address: id, note: `${id}-note` }}
+        onVenue={(change) => {
+          setVenue((was) => ({ ...was, ...change }));
+          setErrors((was) => ({
+            ...was,
+            ...('name' in change ? { venueName: undefined } : {}),
+            ...('address' in change ? { venueAddress: undefined } : {}),
+            ...(change.note != null && !arrivalNoteTooLong(change.note)
+              ? { arrivalNote: undefined }
+              : {}),
+          }));
         }}
+        onUseZone={setZone}
       />
-      <div className="desk-field ev-combo">
-        <label htmlFor={id} className="desk-label">
-          {t('eventForm.venueAddress')}
-          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
-        </label>
-        <div className={errors.venueAddress == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            ref={field}
-            id={id}
-            type="text"
-            role="combobox"
-            value={venue.address}
-            spellCheck={false}
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-expanded={suggestions.length > 0}
-            aria-controls={suggestions.length > 0 ? `${id}-list` : undefined}
-            aria-activedescendant={active >= 0 ? `${id}-option-${active}` : undefined}
-            aria-invalid={errors.venueAddress != null}
-            aria-describedby={`${id}-help`}
-            onChange={(change) => {
-              setActive(-1);
-              setZoneSet(null);
-              setErrors((was) => ({ ...was, venueAddress: undefined }));
-              lookup.type(change.target.value);
-            }}
-            onKeyDown={onKeyDown}
-            onBlur={() => lookup.dismiss()}
-          />
-        </div>
-        {errors.venueAddress != null && <Alert>{errors.venueAddress}</Alert>}
-        {down ? (
-          <Alert>{t('eventForm.venueLookupDown')}</Alert>
-        ) : suggestions.length > 0 ? (
-          <p id={`${id}-help`} className="desk-help" role="status">
-            {t('eventForm.venueSuggestionsFound', { count: suggestions.length })}
-          </p>
-        ) : (
-          <p id={`${id}-help`} className="desk-help">
-            {t('eventForm.venueAddressHint')}
-          </p>
-        )}
-        {suggestions.length > 0 && (
-          <ul
-            id={`${id}-list`}
-            className="desk-rows ev-options"
-            role="listbox"
-            aria-label={t('eventForm.venueSuggestions')}
-          >
-            {suggestions.map((one, index) => (
-              <li
-                key={one.id}
-                id={`${id}-option-${index}`}
-                role="option"
-                aria-selected={index === active}
-                className={index === active ? 'desk-row ev-option is-active' : 'desk-row ev-option'}
-                onPointerDown={(pointer) => pointer.preventDefault()}
-                onClick={() => void lookup.pick(one, zone)}
-                onKeyDown={(key) => {
-                  if (key.key === 'Enter') void lookup.pick(one, zone);
-                }}
-              >
-                <Glyph name="pin" size={20} />
-                <RowWords
-                  title={one.text}
-                  lines={one.secondaryText == null ? [] : [one.secondaryText]}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {offer != null && (
-        <Quiet
-          action={
-            <div className="ev-pair">
-              <TextAction
-                label={t('eventForm.venueZoneUse', { zone: offer.zone })}
-                onClick={() => {
-                  setZone(offer.zone);
-                  setZoneSet(offer.zone);
-                  lookup.answered();
-                  field.current?.focus();
-                }}
-              />
-              <TextAction
-                label={t('eventForm.venueZoneKeep', { zone: offer.keep })}
-                onClick={() => {
-                  lookup.answered();
-                  field.current?.focus();
-                }}
-              />
-            </div>
-          }
-        >
-          {t('eventForm.venueZoneOffer', { zone: offer.zone })}
-        </Quiet>
-      )}
-      {zoneSet != null && (
-        <p className="ev-said" role="status">
-          {t('eventForm.venueZoneSet', { zone: zoneSet })}
-        </p>
-      )}
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
+      {outcome.notice}
     </Opened>
   );
 }
@@ -650,8 +619,6 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       : event.hosts.map((name, key) => ({ key, name })),
   );
   const [errors, setErrors] = useState<HostErrors>({});
-  const [said, setSaid] = useState('');
-  const nextKey = useRef(Math.max(0, event.hosts.length) + 1);
   const focusNext = useRef<string | null>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
@@ -667,7 +634,7 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
     focusNext.current = null;
   });
 
-  function inputId(row: HostRow): string {
+  function inputId(row: { key: number }): string {
     return `ev-host-${row.key}`;
   }
 
@@ -696,165 +663,83 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
     <Opened
       label={t('eventHosts.heading')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
-      <p className="desk-line">{t('eventHosts.explainer')}</p>
-      <ol className="ev-hosts">
-        {rows.map((row, index) => {
-          const error = errors[row.key] ?? null;
-          const alone = rows.length === 1;
-          const called = hostCalled(row, index, t);
-
-          return (
-            <li key={row.key} className="ev-host">
-              <div className="ev-host-head">
-                <label htmlFor={inputId(row)} className="desk-label">
-                  {t('eventHosts.label', { position: index + 1 })}
-                </label>
-                {!(alone && keep) && (
-                  <button
-                    type="button"
-                    className="desk-text"
-                    aria-label={t('eventHosts.removeNamed', { name: called })}
-                    onClick={() => {
-                      const change = alone ? null : removedHost(rows, index, t);
-
-                      if (change == null) {
-                        setRows([{ key: nextKey.current++, name: '' }]);
-                        setSaid(t('eventHosts.removed', { name: called }));
-                      } else {
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }
-                      const before = rows[Math.max(0, index - 1)];
-                      focusNext.current =
-                        alone || before == null
-                          ? null
-                          : inputId(index === 0 ? (rows[1] ?? before) : before);
-                    }}
-                  >
-                    {t('eventHosts.remove')}
-                  </button>
-                )}
-              </div>
-              <div className="ev-host-line">
-                <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                  <input
-                    id={inputId(row)}
-                    type="text"
-                    value={row.name}
-                    spellCheck={false}
-                    autoComplete="off"
-                    aria-invalid={error != null}
-                    aria-describedby={error == null ? undefined : `${inputId(row)}-error`}
-                    onChange={(change) => {
-                      setRows(
-                        rows.map((one) =>
-                          one.key === row.key ? { ...one, name: change.target.value } : one,
-                        ),
-                      );
-                      setErrors((was) => ({ ...was, [row.key]: undefined }));
-                    }}
-                  />
-                </div>
-                {!alone && (
-                  <>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={t('eventHosts.moveUp', { name: called })}
-                      aria-disabled={index === 0}
-                      onClick={() => {
-                        const change = index > 0 ? movedHost(rows, index, -1, t) : null;
-                        if (change == null) return;
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }}
-                    >
-                      <Glyph name="chevup" size={18} weight={2.4} />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={t('eventHosts.moveDown', { name: called })}
-                      aria-disabled={index === rows.length - 1}
-                      onClick={() => {
-                        const change =
-                          index < rows.length - 1 ? movedHost(rows, index, 1, t) : null;
-                        if (change == null) return;
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }}
-                    >
-                      <Glyph name="chevdown" size={18} weight={2.4} />
-                    </button>
-                  </>
-                )}
-              </div>
-              {error != null && (
-                <p id={`${inputId(row)}-error`} className="desk-error">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {error}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {rows.length === 1 && keep && <p className="desk-note">{t('eventHosts.lastHost')}</p>}
-      {rows.length >= HOSTS_MAXIMUM ? (
-        <p className="desk-note">{t('eventHosts.most', { most: HOSTS_MAXIMUM })}</p>
-      ) : (
-        <TextAction
-          label={t('eventHosts.add')}
-          before="plus"
-          onClick={() => {
-            const key = nextKey.current++;
-            setRows([...rows, { key, name: '' }]);
-            focusNext.current = inputId({ key, name: '' });
-          }}
-        />
-      )}
-      <p className="desk-unseen" role="status">
-        {said}
-      </p>
+      <HostFields
+        rows={rows}
+        errors={errors}
+        keep={keep}
+        inputId={inputId}
+        onRows={setRows}
+        onEdited={(key) => setErrors((was) => ({ ...was, [key]: undefined }))}
+      />
+      {outcome.notice}
     </Opened>
   );
 }
 
-/** Cover: the product's cover and its Cover photo dialog, which save as they are used, so Close is all this edit needs. */
+/** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({
   event,
+  onDirty,
   onClose,
   onCover,
-}: Pick<PartProps, 'event' | 'onClose'> & { onCover: (event: OrganisationEvent) => void }) {
+}: Pick<PartProps, 'event' | 'onDirty' | 'onClose'> & {
+  onCover: (event: OrganisationEvent) => void;
+}) {
   const { t } = useTranslation();
+  const organisationId = event.organisationId;
+
+  async function upload(file: File, shows: boolean): Promise<CoverUploaded> {
+    let key: string | null = null;
+
+    try {
+      const signed = await api.signEventCoverUpload(organisationId, {
+        contentType: coverTypeOf(file) ?? file.type,
+        size: file.size,
+        filename: file.name,
+      });
+      await api.uploadTo(signed, file);
+      key = signed.key;
+      // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
+      const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+
+      return { key: signed.key, url: shows ? URL.createObjectURL(file) : copy };
+    } catch (error) {
+      if (key != null) discardCoverUpload(organisationId, key);
+      throw new Error(refusalOf(error, t));
+    }
+  }
+
+  async function save(change: CoverEdited): Promise<OrganisationEvent> {
+    try {
+      return change.removed
+        ? await api.removeEventCover(event.id)
+        : await api.setEventCover(event.id, {
+            ...(change.upload == null ? {} : { uploadKey: change.upload.key }),
+            position: change.position,
+            description: change.description,
+          });
+    } catch (error) {
+      throw new Error(eventSaveStoppedWords(error, t) ?? refusalOf(error, t));
+    }
+  }
 
   return (
-    <div className="ev-opened" role="group" aria-label={t('eventCover.heading')}>
-      <CoverSection
-        type={event.type}
-        photo={event.cover}
-        organisationId={event.organisationId}
-        onUse={async ({ upload, position, description }) =>
-          onCover(
-            await api.setEventCover(event.id, {
-              ...(upload == null ? {} : { uploadKey: upload.key }),
-              position,
-              description,
-            }),
-          )
-        }
-        onRemove={async () => onCover(await api.removeEventCover(event.id))}
-      />
-      <div className="ev-opened-actions">
-        <TextAction label={t('eventCover.close')} onClick={onClose} />
-      </div>
-    </div>
+    <CoverEdit
+      mesh={meshFor(event.id)}
+      saved={event.cover}
+      upload={upload}
+      discard={(uploaded) => {
+        if (uploaded.url.startsWith('blob:')) URL.revokeObjectURL(uploaded.url);
+        discardCoverUpload(organisationId, uploaded.key);
+      }}
+      save={save}
+      onSaved={onCover}
+      onDirty={onDirty}
+      onClose={onClose}
+    />
   );
 }

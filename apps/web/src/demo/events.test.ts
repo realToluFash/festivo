@@ -157,6 +157,14 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
       expect(stateFits(state as EventStateName, event(id)), state).toBe(true);
   });
 
+  it('opens Dates on the draft whose end has passed too, where Change dates lands (sc-48602)', () => {
+    const links = EVENTS_PAGES.flatMap((page) => page.states.map((one) => one.to));
+
+    expect(stateFits('dates', event('evt-shower-2'))).toBe(true);
+    expect(stateFits('datesChanged', event('evt-shower-2'))).toBe(false);
+    expect(links).toContain('/demo/events/evt-shower-2?state=dates');
+  });
+
   it.each(['manyFilters', 'manyFiltersOpen', 'longHost'] as const)(
     'opens %s on results this week, not on no match',
     (state) => {

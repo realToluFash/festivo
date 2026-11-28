@@ -14,6 +14,7 @@ import {
   finalNumbersOf,
   emptyTabOf,
   eventHref,
+  eventStateBeside,
   eventStateOf,
   homeOf,
   hostNames,
@@ -38,6 +39,7 @@ import {
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
 import { seedFinalNumbers } from './FinalNumbers.ts';
 import { say } from './EventsWords.ts';
+import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { peopleOn } from '../guests/GuestsModel.ts';
 
 const LOCALE = 'en-US';
@@ -217,7 +219,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: "Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won't go ahead.",
+      line: 'Called off on Fri, Oct 30, before it started. Guests following their link are told it won’t go ahead.',
     });
   });
 
@@ -282,7 +284,10 @@ describe('the page', () => {
       line: 'Dates · Europe/Madrid',
     });
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
-      "Dates · This event is over, so its start, end and time zone can't be changed.",
+      'Dates · This event is over, so its start, end and time zone can’t be changed.',
+    );
+    expect(datesRow(shown('evt-off'), LOCALE).line).toBe(
+      "Dates · This event was called off, so its start, end and time zone can't be changed.",
     );
   });
 
@@ -477,5 +482,17 @@ describe('the tabs’ widths', () => {
 
   it('keeps every tab’s words when the room is too small for them', () => {
     expect(tabWidths(200, [128, 79, 75])).toEqual([128, 79, 75]);
+  });
+});
+
+describe('the event state beside an area (sc-31370)', () => {
+  it('leaves Messages’ loading to Messages', () => {
+    expect(eventStateOf('loading')).toBe('loading');
+    expect(eventStateBeside('loading', messagesStateOf('loading'))).toBeNull();
+  });
+
+  it('keeps the event’s own state when no area took it', () => {
+    expect(eventStateBeside('loading', null)).toBe('loading');
+    expect(eventStateBeside('now', messagesStateOf('now'))).toBe('now');
   });
 });

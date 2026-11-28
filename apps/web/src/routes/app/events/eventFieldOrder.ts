@@ -13,6 +13,7 @@ export function inputFor(field: Field, draft: EventDraft): string {
   if (field === 'currency') return 'event-currency';
   if (field === 'venueName') return 'event-venue-name';
   if (field === 'venueAddress') return 'event-venue-address';
+  if (field === 'arrivalNote') return 'event-arrival-note';
 
   const [prefix, date, time] =
     field === 'startsAt'
@@ -27,8 +28,6 @@ export function describedBy(...ids: (string | null)[]): string | undefined {
 
   return joined === '' ? undefined : joined;
 }
-
-export const ADD_HOST_ID = 'event-host-add';
 
 export function hostInputId(row: { key: number }): string {
   return `event-host-${row.key}`;

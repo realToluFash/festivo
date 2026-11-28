@@ -4,7 +4,15 @@ import type {
   OrganisationMember,
   OrganisationRole,
 } from '@soirely/api-client';
-import { approvalRoles, firstName, formatDay, roleName } from '@soirely/domain';
+import {
+  approvalRoles,
+  firstName,
+  formatDay,
+  type LimitRefusal,
+  limitRefusalOf,
+  roleHolds,
+  roleName,
+} from '@soirely/domain';
 import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -17,11 +25,13 @@ import { refusalFor } from '../kit/refusal.ts';
 import { roleLines, roleNamed } from '../kit/roleChoices.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FieldError } from './Field.tsx';
+import { LimitRefusalLayer } from './LimitRefusal.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Avatar } from './SettingsParts.tsx';
 import { type AskProps, FocusedScreen, Line, Section, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Asking = 'none' | 'turningDown' | 'discarding';
 
@@ -30,6 +40,7 @@ export function RequestScreen({
   organisation,
   member,
   list,
+  reread,
   roles,
   open,
   opener,
@@ -39,6 +50,8 @@ export function RequestScreen({
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   open: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -52,12 +65,17 @@ export function RequestScreen({
   const [asking, setAsking] = useState<Asking>('none');
   const [busy, setBusy] = useState<'approve' | 'turnDown' | null>(null);
   const [failed, setFailed] = useState<{ on: 'approve' | 'turnDown'; words: string } | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const name = member.user.name;
   const first = firstName(name);
   const face = faceOf(member);
   const role = offered.find((one) => one.id === picked);
-  const read = () => api.members(organisation.id);
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
+  const leaves = useLeaveAsk(
+    open && picked !== firstRole && busy == null,
+    () => setAsking('discarding'),
+    onClose,
+  );
 
   async function approve(): Promise<void> {
     if (role == null) return;
@@ -66,19 +84,24 @@ export function RequestScreen({
     try {
       await api.approveMember(organisation.id, member.id, role.id);
     } catch (error) {
+      setBusy(null);
+      const limit = limitRefusalOf(error, 'seatApprove', t, dateLocale(), name);
+      if (limit != null) return setLimited(limit);
       setFailed({
         on: 'approve',
         words: refusalFor(error, 'roleId', t('membersScreen.actionFailed')),
       });
-      setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(read, list, withApproved(member.id, role)), {
-      kind: 'approved',
-      member: member.id,
-      name,
-      role: roleName(t, role),
-    });
+    onAnswered(
+      await membersAfterWrite(() => reread(member.id), list, withApproved(member.id, role)),
+      {
+        kind: 'approved',
+        member: member.id,
+        name,
+        role: roleName(t, role),
+      },
+    );
   }
 
   async function turnDown(): Promise<void> {
@@ -94,7 +117,7 @@ export function RequestScreen({
       setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(read, list, withTurnedDown(member.id)), {
+    onAnswered(await membersAfterWrite(() => reread(member.id), list, withTurnedDown(member.id)), {
       kind: 'turnedDown',
       name,
     });
@@ -115,6 +138,7 @@ export function RequestScreen({
             testID: 'members.turnDown.confirm',
             removes: true,
             busy: busy === 'turnDown' ? t('membersScreen.request.turningDown') : undefined,
+            busyWords: t('membersScreen.request.turningDown'),
           },
           failed: failed?.on === 'turnDown' ? failed.words : null,
           onKeep: () => {
@@ -134,8 +158,14 @@ export function RequestScreen({
               testID: 'members.approve.discard',
               removes: true,
             },
-            onKeep: () => setAsking('none'),
-            onConfirm: onClose,
+            onKeep: () => {
+              setAsking('none');
+              leaves.keep();
+            },
+            onConfirm: () => {
+              setAsking('none');
+              leaves.discard();
+            },
           }
         : null;
 
@@ -151,11 +181,30 @@ export function RequestScreen({
         testID: 'members.approve.confirm',
       }}
       waits={busy != null}
-      onCancel={() => (picked === firstRole ? onClose() : setAsking('discarding'))}
+      onCancel={() => leaves.leave()}
       cancelLabel={t('membersScreen.awaiting.cancel')}
       cancelTestID="members.approve.cancel"
       opener={opener}
       ask={ask}
+      over={
+        limited == null
+          ? null
+          : {
+              layer: (
+                <LimitRefusalLayer
+                  refusal={limited}
+                  billing={roleHolds(organisation, 'billing.manage')}
+                  onMembers={() => {
+                    setLimited(null);
+                    onClose();
+                  }}
+                  onBack={() => setLimited(null)}
+                  testID="members.approve.limit"
+                />
+              ),
+              onClose: () => setLimited(null),
+            }
+      }
     >
       <View style={styles.head}>
         <Avatar initials={face.initials} side={56} tone={face.tone} />

@@ -224,7 +224,7 @@ describe('Settings > General', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
+    expect(screen.getByText('Enter the organisation’s name.')).toBeDefined();
     expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(screen.getByLabelText('Name'));
@@ -344,6 +344,7 @@ describe('Settings > General', () => {
         permissions: ['events.read', 'members.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        onAnEvent: [],
       }),
     );
     settings();
@@ -370,6 +371,7 @@ describe('Settings > General', () => {
         permissions: ['events.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        onAnEvent: [],
         withheldUntilTwoFactor: ['members.read', 'organisation.manage'],
       }),
     );
@@ -388,6 +390,32 @@ describe('Settings > General', () => {
     expect(within(detailsCard()).queryByText(/Your role/)).toBeNull();
   });
 
+  it('opens the two-factor choice on Security from the held Turn on two-factor, and the link step at rest', async () => {
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: ['events.read'],
+        readOnlyUntilLinked: true,
+        withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        onAnEvent: [],
+        withheldUntilTwoFactor: ['members.read', 'organisation.manage'],
+      }),
+    );
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/settings'] });
+    render(<RouterProvider router={router} />);
+    const arrivals: unknown[] = [];
+    router.subscribe((state) => arrivals.push(state.location.state));
+
+    fireEvent.click(within(detailsCard()).getByRole('link', { name: 'Link Google or Apple' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals.at(-1)).toBeNull();
+
+    await act(() => router.navigate('/app/settings'));
+    fireEvent.click(within(detailsCard()).getByRole('link', { name: 'Turn on two-factor' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals.at(-1)).toEqual({ opens: 'turnOn' });
+  });
+
   it('keeps the role line for a Member the Google-or-Apple rule also holds', () => {
     signedIn(
       membership({
@@ -395,6 +423,7 @@ describe('Settings > General', () => {
         permissions: ['events.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage'],
+        onAnEvent: [],
       }),
     );
     settings();
@@ -409,6 +438,7 @@ describe('Settings > General', () => {
       permissions: ['events.read'],
       readOnlyUntilLinked: true,
       withheldUntilLinked: ['organisation.manage'],
+      onAnEvent: [],
     });
     const refusal = {
       type: 'https://soirely.com/errors/oauth_only_unlinked',

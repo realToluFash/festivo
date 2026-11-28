@@ -109,7 +109,19 @@ final class TokenController
             return $this->refuse();
         }
 
-        return $this->endIfIdle($token) ?? $this->endIfPasswordRefused($token) ?? $this->tokenIssuer->rotate($token, $request);
+        return $this->endIfIdle($token) ?? $this->endIfPasswordRefused($token) ?? $this->endIfGrantsEnded($token) ?? $this->tokenIssuer->rotate($token, $request);
+    }
+
+    /** A browser signed in by phone code (sc-4235) is signed out with its last live grant, worked out now, so one revoked early ends it at once. */
+    private function endIfGrantsEnded(#[SensitiveParameter] RefreshToken $token): ?ApiException
+    {
+        if (!$token->endsWithGrants() || $this->tokenIssuer->grantsEndFor($token->getUser()) > $this->clock->now()) {
+            return null;
+        }
+
+        $this->tokenIssuer->revokeChain($token);
+
+        return $this->refuse();
     }
 
     /** A token is issued at each use, so its age is how long the session has gone unused. */

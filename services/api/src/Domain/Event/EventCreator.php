@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\StaffPlan;
+use App\Domain\Staff\Station\StationPlan;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -19,10 +21,12 @@ final readonly class EventCreator
         private EventRules $eventRules,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private StaffPlan $staffPlan,
+        private StationPlan $stationPlan,
     ) {
     }
 
-    /** @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: ?string, currency: ?string, venue: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields zone and currency default to the organisation's, and hosts left out are none */
+    /** @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: ?string, currency: ?string, venue: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields zone and currency default to the organisation's, and hosts left out are none */
     public function create(Organisation $organisation, User $by, array $fields): Event
     {
         $checked = $this->eventRules->check([
@@ -33,13 +37,17 @@ final readonly class EventCreator
             'timeZone' => $fields['timeZone'] ?? $organisation->getTimezone(),
             'currency' => $fields['currency'] ?? $organisation->getCurrency(),
             'venue' => $fields['venue'],
+            'arrivalNote' => $fields['arrivalNote'] ?? null,
             'hosts' => $fields['hosts'] ?? [],
         ]);
 
         $event = new Event($organisation, $checked['name'], $checked['type'], $checked['startsAt'], $checked['endsAt'], $checked['currency']);
         EventVenue::write($event, $checked['venue'] ?? null);
+        $event->setArrivalNote($checked['arrivalNote'] ?? null);
         $event->setHosts($checked['hosts'] ?? []);
         $this->entityManager->persist($event);
+        $this->staffPlan->suggest($event);
+        $this->stationPlan->suggest($event);
 
         $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), self::recorded($event));
 
@@ -60,6 +68,7 @@ final readonly class EventCreator
             'timeZone' => [null, $event->getTimeZone()],
             'currency' => [null, $event->getCurrency()],
             ...Auditor::diff([], EventEditor::venueRecorded($event)),
+            ...null === $event->getArrivalNote() ? [] : ['arrivalNote' => [null, $event->getArrivalNote()]],
             ...[] === $event->getHosts() ? [] : ['hosts' => [null, $event->getHosts()]],
         ];
     }

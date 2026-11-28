@@ -7,6 +7,7 @@ namespace App\Domain\User\TwoFactor\Recovery;
 use App\Audit\Auditor;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\PhoneCodeDispatch;
 use App\Domain\User\Verification\VerificationCodeIssuer;
@@ -21,7 +22,6 @@ use App\Enum\ErrorCode;
 use App\Enum\TwoFactorRecoveryStatus;
 use App\Http\Exception\ApiException;
 use App\Repository\TwoFactorChallengeRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
@@ -42,7 +42,7 @@ final readonly class TwoFactorRecoveries
 
     public function __construct(
         private TwoFactorChallengeRepository $twoFactorChallengeRepository,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
         private TwoFactorRecoveryRepository $twoFactorRecoveryRepository,
         private VerificationChallengeRepository $verificationChallengeRepository,
         private VerificationCodeIssuer $verificationCodeIssuer,
@@ -63,7 +63,7 @@ final readonly class TwoFactorRecoveries
     {
         $challenge = $this->twoFactorChallengeRepository->findOneByHash(TokenIssuer::hash($challengeToken));
 
-        if (null === $challenge || !$challenge->isOpenAt($this->clock->now()) || null === $this->twoFactorFactorRepository->findActiveFor($challenge->getUser())) {
+        if (null === $challenge || !$challenge->isOpenAt($this->clock->now()) || !$this->secondFactors->isOn($challenge->getUser())) {
             throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
         }
 
@@ -194,7 +194,7 @@ final readonly class TwoFactorRecoveries
     {
         $this->proving($recovery);
 
-        $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode): ?ApiException {
+        $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode, $userAgent): ?ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
 
             $past = $this->pastItsCodes($recovery);
@@ -253,6 +253,7 @@ final readonly class TwoFactorRecoveries
             $recovery->proved($now);
             $this->audit('two_factor_recovery.requested', $recovery, Actor::User, $recovery->getUser());
             $this->entityManager->flush();
+            $this->tellEveryone($recovery, $userAgent);
 
             return null;
         });
@@ -260,8 +261,6 @@ final readonly class TwoFactorRecoveries
         if ($refusal instanceof ApiException) {
             throw $refusal;
         }
-
-        $this->tellEveryone($recovery, $userAgent);
     }
 
     /** "This wasn't you? Cancel the request": whoever is on that screen has the password, so every session ends too. */
@@ -355,7 +354,7 @@ final readonly class TwoFactorRecoveries
             return null;
         }
 
-        $locale = $this->userMailer->answeredLocale();
+        $locale = $this->userMailer->answeredFormattingLocale();
 
         return ApiException::tooManyAttemptsUntil(
             'limits.recoveries_per_day',

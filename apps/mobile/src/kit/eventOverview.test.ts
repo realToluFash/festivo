@@ -3,10 +3,12 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  closesOnLatest,
   coverRow,
   datesRow,
   hostsRow,
   manageOf,
+  partLocked,
   scheduleLocked,
   venueRow,
 } from './eventOverview.ts';
@@ -18,6 +20,8 @@ const EVENT = {
   startsAt: '2026-11-14T09:00:00+01:00',
   endsAt: '2026-11-14T23:00:00+01:00',
   timeZone: 'Europe/Madrid',
+  status: 'live' as const,
+  concludedAt: null,
 };
 const venue = (name: string | null) =>
   ({ name, address: { formatted: 'Calle 1' } }) as unknown as EventVenue;
@@ -53,6 +57,23 @@ describe('datesRow', () => {
     expect(scheduleLocked('finished')).toBe(true);
     expect(scheduleLocked('live')).toBe(false);
     expect(datesRow(EVENT, 'finished', 'en', t).line).toBe('eventPage.datesLocked');
+  });
+
+  it('says a called-off event was called off, and an ended one that it is over (sc-45141)', () => {
+    const calledOff = {
+      ...EVENT,
+      status: 'ended' as const,
+      concludedAt: '2026-11-10T12:00:00+01:00',
+    };
+    const ended = { ...EVENT, status: 'ended' as const, concludedAt: '2026-11-14T20:00:00+01:00' };
+    expect(datesRow(calledOff, 'finished', 'en', t).line).toBe('eventPage.datesCalledOff');
+    expect(datesRow(ended, 'finished', 'en', t).line).toBe('eventPage.datesLocked');
+  });
+
+  it('keeps a link from opening Dates once the event is over, and nothing else (sc-48600)', () => {
+    expect(partLocked('dates', 'finished')).toBe(true);
+    expect(partLocked('dates', 'live')).toBe(false);
+    expect(partLocked('venue', 'finished')).toBe(false);
   });
 });
 
@@ -91,5 +112,14 @@ describe('coverRow', () => {
       title: 'eventPage.yourPhoto',
       line: `eventPage.coverLine ${JSON.stringify({ showing: 'eventCover.showing_top' })}`,
     });
+  });
+});
+
+describe('closesOnLatest', () => {
+  it('closes Dates on a finished event, and leaves a Live one and every other part open', () => {
+    expect(closesOnLatest('dates', 'finished')).toBe(true);
+    expect(closesOnLatest('dates', 'live')).toBe(false);
+    expect(closesOnLatest('dates', 'happening_now')).toBe(false);
+    expect(closesOnLatest('venue', 'finished')).toBe(false);
   });
 });

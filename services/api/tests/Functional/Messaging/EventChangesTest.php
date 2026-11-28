@@ -120,6 +120,33 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function anArrivalNoteAloneTellsNobodyAfterTheWindow(): void
+    {
+        $event = $this->liveEvent();
+
+        $this->edit($event, $this->ada, ['arrivalNote' => 'Use the side gate on Marylebone Road.']);
+        self::runUntilIdle();
+        self::at('2026-11-02 10:30');
+        self::runUntilIdle();
+
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM event_changes'));
+        self::assertSame([], $this->items($this->bola));
+        self::assertSame([], self::pushedTo());
+        self::assertSame([], self::sentTo());
+    }
+
+    #[Test]
+    public function aMovedAddressWithANoteTellsOfTheAddressAlone(): void
+    {
+        $event = $this->liveEvent(venue: ['name' => 'Hall A', 'address' => '3 Bourdillon Road, Ikoyi']);
+
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall A', 'address' => '12 Admiralty Way, Lekki'], 'arrivalNote' => 'Gate 2']);
+        self::runUntilIdle();
+
+        self::assertSame([['The venue is now 12 Admiralty Way, Lekki (was 3 Bourdillon Road, Ikoyi).']], Vec\map($this->items($this->bola), static fn (array $item): array => $item['lines']));
+    }
+
+    #[Test]
     public function aFinishedEventsCorrectionTellsNobody(): void
     {
         $event = $this->liveEvent();
@@ -160,6 +187,24 @@ final class EventChangesTest extends MessagingTestCase
         self::assertSame('Gala', $this->pushes($this->bola)[0]->subject);
         self::assertSame('Changed: Gala', $this->email($this->bola)->subject);
         self::assertCount(1, $this->items($this->bola), 'Both edits are one item.');
+    }
+
+    #[Test]
+    public function aMemberAndAnEventNamedToTheirLimitInMarkedLettersAreRecordedAndDelivered(): void
+    {
+        $actorName = Str\repeat("e\u{0323}\u{0300}", User::NAME_MAXIMUM);
+        $eventName = Str\repeat("e\u{0323}\u{0300}", Event::NAME_MAXIMUM);
+        $this->ada->setName($actorName);
+        $event = $this->liveEvent();
+        $event->setName($eventName);
+        self::em()->flush();
+
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([$actorName], self::connection()->fetchFirstColumn('SELECT actor_name FROM event_changes'));
+        self::assertSame([$eventName], self::connection()->fetchFirstColumn('SELECT event_name FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        self::assertSame($actorName . ' changed the event', $this->items($this->bola)[0]['title']);
     }
 
     #[Test]
@@ -788,7 +833,7 @@ final class EventChangesTest extends MessagingTestCase
         return $event;
     }
 
-    /** @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields */
+    /** @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields */
     private function edit(Event $event, User $by, array $fields): void
     {
         self::service(EventEditor::class)->edit($event, EntityTag::of($event->getVersion()), $by, $fields);

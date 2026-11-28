@@ -3,6 +3,7 @@ import i18next from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import '../../../i18n/index.ts';
+import { membersPage } from '../../../test-members.ts';
 import { membersCard } from './membersCard.ts';
 
 function member(
@@ -25,18 +26,20 @@ function member(
     self: false,
     history: [],
     suspension: null,
+    alsoMemberOf: null,
   };
 }
 
-const LIST: MembersList = {
-  members: [
-    member('folake', 'Folake Adeyemi', 'active'),
-    member('bisi', 'Bisi Ade', 'suspended'),
-    member('lucia', 'Lucía Gómez', 'pending_approval'),
-    member('chidi', 'Chidi Okoro', 'left_or_removed'),
-  ],
-  invitations: [],
-};
+const URL_ALL = 'https://api.test/api/orgs/org_1/members';
+const listOf = (members: OrganisationMember[]) =>
+  membersPage({ members, invitations: [] }, URL_ALL) as unknown as MembersList;
+
+const LIST: MembersList = listOf([
+  member('folake', 'Folake Adeyemi', 'active'),
+  member('bisi', 'Bisi Ade', 'suspended'),
+  member('lucia', 'Lucía Gómez', 'pending_approval'),
+  member('chidi', 'Chidi Okoro', 'left_or_removed'),
+]);
 
 const card = (manages: boolean, notice: Parameters<typeof membersCard>[0]['notice'] = null) =>
   membersCard({ list: LIST, manages, notice, organisation: 'Ìrè Events', t: i18next.t });
@@ -117,7 +120,7 @@ describe('Members’ summary card', () => {
     });
 
     it('has no second line while only one kind waits', () => {
-      const noJoin = { ...LIST, members: LIST.members.filter((one) => one.id !== 'lucia') };
+      const noJoin = listOf(LIST.members.filter((one) => one.id !== 'lucia'));
 
       expect(withRecoveries([KOFI], null, noJoin)).toMatchObject({
         says: '2 people · 1 waiting',

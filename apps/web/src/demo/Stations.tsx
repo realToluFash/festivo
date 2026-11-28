@@ -4,6 +4,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { Glyph } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, sampleEvent } from './events.ts';
@@ -14,6 +16,7 @@ import { keptInbox, waitingLine } from './messages.ts';
 import {
   type Changed,
   type Panel,
+  type Person,
   type Station,
   type Stations,
   type StationsStart,
@@ -44,13 +47,18 @@ import {
   stationsStart,
   toggle,
   dishesLine,
+  inService,
+  clockMinutes,
+  onNow,
+  tonightSub,
 } from './stations.ts';
+import { type StaffLang, staffLangOf, staffQuery, staffTabWords } from './staffTabs.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
 import './stations.css';
 
-/** /demo/events/evt-wed-4/staff (sc-3910): Stations on the event's Staff page at 1280 × 800, by ?state=. */
+/** /demo/events/evt-wed-4/staff/stations (sc-3910): Stations on the event's Staff page at 1280 × 800, by ?state=. */
 export function StationsPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -63,36 +71,41 @@ export function StationsPage() {
 function StationsAt({ id, raw }: { id: string | undefined; raw: string | null }) {
   const [event] = useState(() => sampleEvent(id));
   const [first] = useState(() => stationsStart(raw));
+  const clock = first.clock ?? clockOfKitchen();
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== STATIONS_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=staff`} replace />;
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="staff"
-          now={clockOfKitchen()}
-          tell={tell}
-          inert={covered}
-          waiting={waitingLine(keptInbox())}
-        />
-      )}
-    >
-      {(tell) => <StationsView first={first} event={event} tell={tell} />}
-    </EventsShell>
+    <KeptArea eventId={event.id} area="staff" at={clockWords(clock, event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="staff"
+            now={clock}
+            tell={tell}
+            inert={covered}
+            waiting={waitingLine(keptInbox())}
+          />
+        )}
+      >
+        {(tell) => <StationsView first={first} event={event} clock={clock} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
 function StationsView({
   first,
   event,
+  clock,
   tell,
 }: {
   first: StationsStart;
   event: SampleEvent;
+  clock: Date;
   tell: Tell;
 }) {
   const [state, setState] = useState<Stations>(first.state);
@@ -198,6 +211,7 @@ function StationsView({
   return (
     <div className="desk-page ev-page gs mn sn">
       <div className="ev-wide mn-page">
+        <KeptHere />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label="Breadcrumb">
             <ol>
@@ -224,24 +238,7 @@ function StationsView({
             <p className="mn-sub">{SW.sub}</p>
           </div>
         </header>
-        <nav className="sn-tabs" aria-label={SW.title}>
-          {SW.tabs.map((tab) =>
-            tab === 'Stations' ? (
-              <span key={tab} className="sn-tab" aria-current="page">
-                {tab}
-              </span>
-            ) : (
-              <button
-                key={tab}
-                type="button"
-                className="sn-tab"
-                onClick={() => tell(`${tab} has its own design (sc-3906, sc-3908, sc-101).`)}
-              >
-                {tab}
-              </button>
-            ),
-          )}
-        </nav>
+        <StaffTabs on="Stations" eventId={event.id} tell={tell} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />
@@ -272,6 +269,9 @@ function StationsView({
                   Got it
                 </button>
               </div>
+            )}
+            {inService(event, clock) && (
+              <Tonight state={state} clock={clock} timeZone={event.timeZone} />
             )}
             <FloorCard state={state} manage={manage} onOpen={() => open({ kind: 'floor' })} />
             <section className="sn-card" aria-labelledby="sn-places">
@@ -450,6 +450,54 @@ function StationsView({
   );
 }
 
+function Tonight({ state, clock, timeZone }: { state: Stations; clock: Date; timeZone: string }) {
+  const now = clockMinutes(clock, timeZone);
+
+  return (
+    <section className="sn-card" aria-labelledby="sn-tonight">
+      <div className="sn-card-names">
+        <h2 id="sn-tonight">{SW.tonight}</h2>
+        <p className="mn-sub">{tonightSub(clockWords(clock, timeZone))}</p>
+      </div>
+      <ul className="sn-rows">
+        {state.stations.map((station) => {
+          const label = labelOf(station);
+          const on = onNow(station, now);
+
+          return (
+            <li key={station.id} className="sn-row">
+              <h3>{label}</h3>
+              {on.length > 0 ? (
+                <ul className="sn-people" aria-label={`On ${station.name} now`}>
+                  {on.map((one) => (
+                    <PersonLine key={one.id} person={one} lead={station.lead === one.id} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="sn-nobody">
+                  <span className="sn-nobody-mark" aria-hidden="true" />
+                  Nobody on {station.name}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="sn-foot">{SW.tonightFoot}</p>
+    </section>
+  );
+}
+
+function PersonLine({ person, lead }: { person: Person; lead: boolean }) {
+  return (
+    <li className="sn-person">
+      <span className="sn-person-name">{person.name}</span>
+      <span className="sn-time">{shiftOf(person)}</span>
+      {lead && <span className="sn-lead">{SW.lead}</span>}
+    </li>
+  );
+}
+
 function FloorCard({
   state,
   manage,
@@ -528,7 +576,7 @@ function StationRow({
               id={`sn-people-${station.id}`}
               type="button"
               className="sn-act"
-              aria-label={`${SW.peopleAndLead} for ${label}`}
+              aria-label={`${SW.peopleAndLead} for ${station.name}`}
               onClick={onPeople}
             >
               {SW.peopleAndLead}
@@ -559,23 +607,15 @@ function StationRow({
         )}
       </div>
       {station.people.length > 0 ? (
-        <ul className="sn-people" aria-label={`People on ${label}`}>
-          {station.people.map((id) => {
-            const one = personById(id);
-
-            return (
-              <li key={id} className="sn-person">
-                <span className="sn-person-name">{one.name}</span>
-                <span className="sn-time">{shiftOf(one)}</span>
-                {station.lead === id && <span className="sn-lead">{SW.lead}</span>}
-              </li>
-            );
-          })}
+        <ul className="sn-people" aria-label={`People on ${station.name}`}>
+          {station.people.map((id) => (
+            <PersonLine key={id} person={personById(id)} lead={station.lead === id} />
+          ))}
         </ul>
       ) : (
         <p className="sn-nobody">
           <span className="sn-nobody-mark" aria-hidden="true" />
-          Nobody on {station.kind === 'section' ? station.name : label}
+          Nobody on {station.name}
         </p>
       )}
       {station.people.length > 0 && station.lead == null && (
@@ -790,13 +830,13 @@ function PeoplePanel({
           {ROSTER.map((one) => {
             const at = stationOf(state, one.id);
             const here = at?.id === station.id;
-            const where = here ? `On ${label}` : at == null ? SW.noStation : `On ${labelOf(at)}`;
+            const where = here ? `On ${station.name}` : at == null ? SW.noStation : `On ${at.name}`;
             const cta = here ? 'Take off' : at == null ? 'Put on' : 'Move here';
             const aria = here
-              ? `Take ${one.name} off ${label}`
+              ? `Take ${one.name} off ${station.name}`
               : at == null
-                ? `Put ${one.name} on ${label}`
-                : `Move ${one.name} from ${labelOf(at)} to ${label}`;
+                ? `Put ${one.name} on ${station.name}`
+                : `Move ${one.name} from ${at.name} to ${station.name}`;
 
             return (
               <li key={one.id} className="sn-roster-row">
@@ -829,13 +869,72 @@ function PeoplePanel({
   );
 }
 
-function PanelTop({
+/** The Staff page's tabs, in the product's words for ?locale= (sc-99786): each opens its page in the same language. */
+export function StaffTabs({
+  on,
+  eventId,
+  tell,
+  lang,
+}: {
+  on: string;
+  eventId: string;
+  tell: Tell;
+  /** The Roster's own language; the other pages take ?locale=. */
+  lang?: StaffLang;
+}) {
+  const [params] = useSearchParams();
+  const shownLang = lang ?? staffLangOf(params.get('locale')) ?? 'en';
+  const words = staffTabWords(shownLang);
+  const query = staffQuery(shownLang);
+  const pages: Record<string, string> = {
+    Roster: `/demo/events/${eventId}/staff/roster${query}`,
+    'Jobs and shifts': `/demo/events/${eventId}/staff/jobs${query}`,
+    Stations: `/demo/events/${eventId}/staff/stations${query}`,
+    'Hours worked': `/demo/events/${eventId}/staff/hours${query}`,
+  };
+
+  return (
+    <nav className="sn-tabs" aria-label={words.title}>
+      {SW.tabs.map((tab, at) => {
+        const to = pages[tab];
+        const shown = words.tabs[at] ?? tab;
+        if (tab === on)
+          return (
+            <span key={tab} className="sn-tab" aria-current="page">
+              {shown}
+            </span>
+          );
+        if (to != null)
+          return (
+            <Link key={tab} className="sn-tab" to={to}>
+              {shown}
+            </Link>
+          );
+
+        return (
+          <button
+            key={tab}
+            type="button"
+            className="sn-tab"
+            onClick={() => tell(`${shown} has its own design (sc-101).`)}
+          >
+            {shown}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function PanelTop({
   title,
   eyebrow,
+  close = SW.close,
   onClose,
 }: {
   title: string;
   eyebrow?: string;
+  close?: string;
   onClose: () => void;
 }) {
   return (
@@ -846,19 +945,21 @@ function PanelTop({
           {title}
         </h2>
       </div>
-      <button type="button" className="ev-round mn-close" aria-label={SW.close} onClick={onClose}>
+      <button type="button" className="ev-round mn-close" aria-label={close} onClick={onClose}>
         <Glyph name="clear" size={16} weight={2.4} />
       </button>
     </div>
   );
 }
 
-function PanelFoot({
+export function PanelFoot({
   cta,
+  cancel = SW.cancel,
   onSave,
   onCancel,
 }: {
   cta: string;
+  cancel?: string;
   onSave: () => void;
   onCancel: () => void;
 }) {
@@ -866,7 +967,7 @@ function PanelFoot({
     <div className="mn-panel-foot">
       <div className="mn-panel-acts">
         <button type="button" className="desk-text" onClick={onCancel}>
-          {SW.cancel}
+          {cancel}
         </button>
         <Pill label={cta} primary onClick={onSave} />
       </div>
@@ -874,11 +975,12 @@ function PanelFoot({
   );
 }
 
-function Select({
+export function Select({
   id,
   value,
   shown,
   options,
+  groups = [],
   label,
   describedBy,
   wrong = false,
@@ -889,6 +991,7 @@ function Select({
   value: string;
   shown: string;
   options: readonly { value: string; label: string }[];
+  groups?: readonly { label: string; options: readonly { value: string; label: string }[] }[];
   label?: string;
   describedBy?: string;
   wrong?: boolean;
@@ -915,6 +1018,15 @@ function Select({
           <option key={one.value} value={one.value}>
             {one.label}
           </option>
+        ))}
+        {groups.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((one) => (
+              <option key={one.value} value={one.value}>
+                {one.label}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>

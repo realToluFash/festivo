@@ -2,7 +2,12 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ScrollViewInstance,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +18,7 @@ import {
 } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 
+import { OfflineBand } from '../events/EventsList.tsx';
 import { Landscape, SeenBy } from './Frame.tsx';
 import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
@@ -44,6 +50,8 @@ import {
   membersStart,
   membersStateOf,
   membersViewerOf,
+  type More,
+  nearsEnd,
   type Person,
   PROOF_MINUTES,
   reachableState,
@@ -56,6 +64,8 @@ import { memberLooking } from './sample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 import { Ask, FailedBlock, LoadingBlock, SummaryColumn } from '../../components/Summary.tsx';
+
+const MORE_MS = 1200;
 
 const PLAIN: PersonOpening = {
   step: 'resting',
@@ -93,6 +103,10 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [people, setPeople] = useState<Person[]>(start.people);
   const [leads, setLeads] = useState<Leads>(start.leads);
   const [filter, setFilter] = useState<Filter>(start.filter);
+  const [paging, setPaging] = useState({ filter: start.filter, pages: 1, more: start.more });
+  const [moreAsked, setMoreAsked] = useState(0);
+  const [offline, setOffline] = useState(start.offline);
+  const page = paging.filter === filter ? paging : { filter, pages: 1, more: 'idle' as More };
   const [request, setRequest] = useState<Request>(start.request);
   const [requestVisit, setRequestVisit] = useState(0);
   const [open, setOpen] = useState<string | null>(start.open);
@@ -168,6 +182,27 @@ function MembersScreen({ start }: { start: MembersStart }) {
   }, [provedAt]);
 
   useEffect(() => () => clearTimeout(lighting.current), []);
+
+  useEffect(() => {
+    if (moreAsked === 0) return;
+    const timer = setTimeout(() => {
+      setPaging((now) => ({ ...now, pages: now.pages + 1, more: 'idle' }));
+      setOffline(false);
+    }, MORE_MS);
+
+    return () => clearTimeout(timer);
+  }, [moreAsked]);
+
+  /** The next page of People: asked for as the list's end nears, or by Try again after a failure. */
+  function loadMore(): void {
+    if (page.more === 'loading') return;
+    setPaging({ ...page, more: 'loading' });
+    setMoreAsked((count) => count + 1);
+  }
+
+  function onScroll({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>): void {
+    if (page.more === 'idle' && nearsEnd(nativeEvent)) loadMore();
+  }
 
   /** An answer, a removal or a withdrawn claim stays on the card until the person moves on. */
   function moveOn(): void {
@@ -337,8 +372,11 @@ function MembersScreen({ start }: { start: MembersStart }) {
         open={landscape ? open : null}
         dense={landscape}
         manages={viewer.manages}
+        pages={page.pages}
+        more={page.more}
         onFilter={showFilter}
         onOpen={(id) => openPerson(id)}
+        onTryAgain={loadMore}
       />
     </>
   );
@@ -376,6 +414,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
     </>
   );
 
+  // The band's Try again reloads what is shown: the rows and the place stay, and the failure block keeps its own Try again for the next page.
+  const band = offline ? <OfflineBand onRetry={() => setOffline(false)} /> : null;
+
   if (load !== 'loaded') {
     const block =
       load === 'failed' ? (
@@ -399,7 +440,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
   }
 
   const column = landscape ? (
-    <SummaryColumn title={t('settings.members')} scrollRef={listScroll}>
+    <SummaryColumn title={t('settings.members')} scrollRef={listScroll} onScroll={onScroll}>
       {list}
     </SummaryColumn>
   ) : undefined;
@@ -446,11 +487,16 @@ function MembersScreen({ start }: { start: MembersStart }) {
   return (
     <>
       {landscape ? (
-        <Landscape column={column}>
+        <Landscape column={column} band={band}>
           <NobodyPicked />
         </Landscape>
       ) : (
-        <SummaryPage title={t('settings.members')} scrollRef={listScroll}>
+        <SummaryPage
+          title={t('settings.members')}
+          scrollRef={listScroll}
+          onScroll={onScroll}
+          band={band}
+        >
           {list}
         </SummaryPage>
       )}

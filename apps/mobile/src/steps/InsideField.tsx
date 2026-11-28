@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -14,12 +14,12 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
-import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
+import { FocusEdge, useHeld, useRevealed } from '../components/Field.tsx';
+import { fieldFocused, fieldLeft, focusOwed } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import {
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   passwordProps,
   refusedHint,
@@ -32,7 +32,7 @@ import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const HEIGHT = 56;
-const LABEL_LARGE = 17;
+export const LABEL_LARGE = 17;
 const LABEL_SMALL = tokens.typeSmall.size;
 
 export type FieldState = 'plain' | 'blank';
@@ -47,7 +47,6 @@ export function InsideField({
   state = 'plain',
   line,
   submitting = false,
-  multiline = false,
   ref,
   testID,
   ...rest
@@ -64,7 +63,6 @@ export function InsideField({
   line?: string | null | undefined;
   /** A request runs: what was typed is held, and the focus and the keys stay. */
   submitting?: boolean;
-  multiline?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
 }) {
@@ -75,16 +73,21 @@ export function InsideField({
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
   const bold = useBoldText();
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useRevealed(submitting);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
-  const raised = focused || (value ?? typed) !== '' || multiline;
+  const raised = focused || (value ?? typed) !== '';
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
   const holding = useHeld(submitting, value, defaultValue, (text) => {
     setTyped(text);
     onChangeText?.(text);
   });
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
+  const [labelHeight, setLabelHeight] = useState(LABEL_LARGE * 1.3 * fontScale);
+  const restingHeight = Math.max(HEIGHT - 2, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
+  const [focusesItself] = useState(rest.autoFocus === true);
+
+  useLayoutEffect(() => (focusesItself ? focusOwed(box.current) : undefined), [focusesItself]);
 
   useEffect(() => {
     const mounted = box.current;
@@ -105,7 +108,7 @@ export function InsideField({
   });
   const translateY = lift.interpolate({
     inputRange: [0, 1],
-    outputRange: [(HEIGHT - 2 - LABEL_LARGE * 1.3 * fontScale) / 2, tokens.spaceSm],
+    outputRange: [(restingHeight - labelHeight) / 2, tokens.spaceSm],
   });
 
   return (
@@ -113,17 +116,16 @@ export function InsideField({
       ref={box}
       onFocus={() => fieldFocused(box.current)}
       onBlur={() => fieldLeft(box.current)}
-      style={[styles.box, multiline && styles.tall, state === 'blank' && styles.blank]}
+      style={[styles.box, state === 'blank' && styles.blank]}
     >
       <TextInput
-        {...FIELD_DEFAULTS}
-        {...(password && passwordProps(revealed))}
+        {...fieldDefaults(Platform.OS)}
+        {...(password && passwordProps(Platform.OS, revealed))}
         {...rest}
         {...refusedName(Platform.OS, fieldName(Platform.OS, label, { labelID }), refused, label)}
         accessibilityHint={refusedHint(refused, rest.accessibilityHint)}
         {...holding}
         ref={ref}
-        multiline={multiline}
         onFocus={(event) => {
           setFocused(true);
           rest.onFocus?.(event);
@@ -135,8 +137,11 @@ export function InsideField({
         style={inputFaced(
           [
             styles.input,
-            { paddingTop: tokens.spaceSm + labelLine },
-            multiline && styles.inputTall,
+            {
+              minHeight: restingHeight,
+              paddingTop:
+                tokens.spaceSm + Math.max(labelLine, (labelHeight * LABEL_SMALL) / LABEL_LARGE),
+            },
             password && styles.inputBeside,
           ],
           'sans',
@@ -156,7 +161,7 @@ export function InsideField({
           nativeID={labelID}
           size={LABEL_LARGE}
           weight="medium"
-          numberOfLines={1}
+          onLayout={(event) => setLabelHeight(event.nativeEvent.layout.height)}
           style={state === 'blank' ? styles.labelBlank : styles.labelText}
           accessible={false}
         >
@@ -165,7 +170,7 @@ export function InsideField({
       </Animated.View>
       {password && (
         <Pressable
-          style={styles.eye}
+          style={[styles.eye, { top: (restingHeight - tokens.sizeHit) / 2 }]}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
           accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
@@ -236,7 +241,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     justifyContent: 'center',
   },
-  tall: { minHeight: 132 },
   blank: { borderColor: tokens.colorBroken },
   input: {
     minHeight: HEIGHT - 2,
@@ -245,7 +249,6 @@ const styles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: LABEL_LARGE,
   },
-  inputTall: { minHeight: 130, textAlignVertical: 'top' },
   inputBeside: { paddingRight: tokens.sizeHit + tokens.spaceXxs },
   label: {
     position: 'absolute',
@@ -259,7 +262,6 @@ const styles = StyleSheet.create({
   eye: {
     position: 'absolute',
     right: tokens.spaceXxs,
-    top: (HEIGHT - 2 - tokens.sizeHit) / 2,
     width: tokens.sizeHit,
     height: tokens.sizeHit,
     alignItems: 'center',

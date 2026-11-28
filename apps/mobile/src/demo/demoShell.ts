@@ -3,7 +3,7 @@ import { useOrgOpener } from './OrgSwitcher.tsx';
 import { SAMPLE } from './samples.ts';
 import { EVENTS, type EventKey } from './today.ts';
 
-const DEMO_WORDS: Record<Exclude<Opens['to'], 'event'>, string> = {
+const DEMO_WORDS: Record<Exclude<Opens['to'], 'event' | 'runOfShow'>, string> = {
   calendar: 'Calendar has its own design.',
   events: 'Events has its own design.',
   create: 'Create an event has its own design.',
@@ -34,13 +34,14 @@ export function demoShell(tell: (words: string) => void, drawn: DemoOpens = {}):
     search: true,
     useOrgOpener,
     open: (opens) => {
-      const key = opens.to === 'event' ? eventKeyOf(opens.id) : undefined;
+      const named = opens.to === 'event' || opens.to === 'runOfShow';
+      const key = named ? eventKeyOf(opens.id) : undefined;
 
       if (opens.to === 'events' && drawn.events != null) drawn.events();
       else if (opens.to === 'calendar' && drawn.calendar != null) drawn.calendar();
       else if (opens.to === 'search' && drawn.search != null) drawn.search();
       else if (key != null && drawn.event != null) drawn.event(key);
-      else tell(opens.to === 'event' ? `${opens.name} has its own design.` : DEMO_WORDS[opens.to]);
+      else tell(named ? `${opens.name} has its own design.` : DEMO_WORDS[opens.to]);
     },
   };
 }

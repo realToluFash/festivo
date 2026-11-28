@@ -29,8 +29,10 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from './Glyph.tsx';
+import { SearchField } from './SearchField.tsx';
 import { Head, TextAction } from './SettingsParts.tsx';
 import './EventsSearch.css';
+import './phoneFit.css';
 
 /** How long typing rests before it searches; Return searches at once. */
 const TYPING_PAUSE = 300;
@@ -227,7 +229,6 @@ export function EventsSearchRow({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const field = useRef<HTMLInputElement>(null);
   const [typed, setTyped] = useState(look.q);
   const [given, setGiven] = useState(look.q);
   const off = offline || waiting;
@@ -254,45 +255,16 @@ export function EventsSearchRow({
   return (
     <div className="ev-search-row">
       <div className="ev-search" role="search">
-        <div className={off ? 'ev-field is-off' : 'ev-field'}>
-          <Glyph name="search" size={18} weight={2.2} />
-          <input
-            ref={field}
-            type="search"
-            aria-label={t('eventsSearch.label')}
-            placeholder={t('eventsSearch.label')}
-            value={typed}
-            readOnly={off}
-            aria-disabled={off}
-            aria-describedby={offline ? `${id}-off` : undefined}
-            spellCheck={false}
-            onChange={(event) => setTyped(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                search(typed, true);
-              } else if (event.key === 'Escape' && typed !== '') {
-                event.preventDefault();
-                search('', true);
-              }
-            }}
-          />
-          {typed !== '' && !off && (
-            <button
-              type="button"
-              className="ev-clear"
-              aria-label={t('eventsSearch.clearSearch')}
-              onClick={() => {
-                search('', false);
-                field.current?.focus();
-              }}
-            >
-              <span className="ev-clear-disc" aria-hidden="true">
-                <Glyph name="clear" size={12} weight={3} />
-              </span>
-            </button>
-          )}
-        </div>
+        <SearchField
+          label={t('eventsSearch.label')}
+          clearLabel={t('eventsSearch.clearSearch')}
+          value={typed}
+          off={off}
+          describedBy={offline ? `${id}-off` : undefined}
+          onChange={setTyped}
+          onClear={(by) => search('', by === 'key')}
+          onEnter={() => search(typed, true)}
+        />
         {offline && (
           <p id={`${id}-off`} className="desk-note">
             {t('eventsSearch.searchOff')}

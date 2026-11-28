@@ -1,10 +1,11 @@
-import { Glyph } from '../components/Glyph.tsx';
-import type { Tell } from '../components/SettingsParts.tsx';
-import { EventCover, Head } from '../components/TodayParts.tsx';
-import { EVENTS, type Moment, type Need, shown } from './today.ts';
+import { Link, useNavigate } from 'react-router';
 
-function NeedRow({ need, first, tell }: { need: Need; first: boolean; tell: Tell }) {
-  const event = EVENTS[need.event].name;
+import { Glyph } from '../components/Glyph.tsx';
+import { EventCover } from '../components/TodayParts.tsx';
+import { actionWords, headWords, type Moment, type Need, rowWords } from './today.ts';
+
+function NeedRow({ need, first }: { need: Need; first: boolean }) {
+  const navigate = useNavigate();
   const due = need.late ? 'today-due is-late' : first ? 'today-due is-first' : 'today-due';
 
   return (
@@ -12,48 +13,53 @@ function NeedRow({ need, first, tell }: { need: Need; first: boolean; tell: Tell
       <button
         type="button"
         className="today-need-open"
-        onClick={() => tell(`${need.title} opens in ${event}, which has its own design.`)}
+        aria-label={rowWords(need)}
+        onClick={() => void navigate(`/demo/events/${need.event.id}`)}
       >
-        <EventCover event={shown(need.event)} className="today-need-cover" />
+        <EventCover event={need.event} className="today-need-cover" />
         <span className="today-need-words">
           <span className="today-need-title">{need.title}</span>
-          <span className="today-need-event">{event}</span>
+          <span className="today-need-event">{need.event.name}</span>
         </span>
         <span className={due}>
           {need.late && <Glyph name="clock" size={14} weight={2.4} />}
           {need.due}
         </span>
       </button>
-      <span className="today-need-act">
-        <button
-          type="button"
-          className={first ? 'today-act is-primary' : 'today-act'}
-          aria-label={`${need.action}, ${need.title}`}
-          onClick={() => tell(`${need.action} opens in ${event}, which has its own design.`)}
-        >
-          <span className="today-act-pill">{need.action}</span>
-        </button>
-      </span>
+      {need.action != null && (
+        <span className="today-need-act">
+          <Link
+            className={first ? 'today-act is-primary' : 'today-act'}
+            to={need.action.link}
+            aria-label={actionWords(need) ?? undefined}
+          >
+            <span className="today-act-pill">{need.action.label}</span>
+          </Link>
+        </span>
+      )}
     </li>
   );
 }
 
-/** Needs you stays the demo's: the product has nothing to fill it from yet (sc-29884). */
-export function NeedsYou({ moment, tell }: { moment: Moment; tell: Tell }) {
+/** Needs you (sc-61015): sc-29884's rows, with a button where the milestone carries an action. */
+export function NeedsYou({ moment }: { moment: Moment }) {
   if (moment.needs == null) return null;
 
   const count = moment.needs.length;
 
   return (
-    <section className="today-section" aria-labelledby="today-needs">
-      <Head
-        id="today-needs"
-        title="Needs you"
-        count={count}
-        countWords={`, ${count} ${count === 1 ? 'thing' : 'things'}`}
-      />
+    <section className="today-section" aria-label="Needs you">
+      {/* The heading is read with its count from one key, "Needs you, 1 thing"; the product's Head reads the count after it. */}
+      <div className="today-head">
+        <h2 aria-label={count > 0 ? headWords(count) : undefined}>Needs you</h2>
+        {count > 0 && (
+          <span className="today-count" aria-hidden="true">
+            {count}
+          </span>
+        )}
+      </div>
       <div className="today-panel today-needs">
-        {moment.needs.length === 0 ? (
+        {count === 0 ? (
           <div className="today-clear">
             <span className="today-tick" aria-hidden="true">
               <Glyph name="tick" size={19} weight={2.6} />
@@ -66,7 +72,7 @@ export function NeedsYou({ moment, tell }: { moment: Moment; tell: Tell }) {
         ) : (
           <ul className="today-rows">
             {moment.needs.map((need, index) => (
-              <NeedRow key={need.title} need={need} first={index === 0} tell={tell} />
+              <NeedRow key={need.key} need={need} first={index === 0} />
             ))}
           </ul>
         )}

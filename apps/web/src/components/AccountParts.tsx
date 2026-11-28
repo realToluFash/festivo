@@ -1,9 +1,12 @@
-import { primaryFirst } from '@soirely/domain';
+import { LOCALES, primaryFirst } from '@soirely/domain';
 import { type ReactNode, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type ContactKind, type ContactRow } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import { Card, CardStep, Chevron, Head, OnCard, RowWords } from './SettingsParts.tsx';
+import { chooseLanguage } from '../accountLanguage.ts';
+import { useShownLanguage } from '../i18n/index.ts';
+import { Card, CardStep, Chevron, Choices, Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './AccountParts.css';
 
 const ICONS: Record<ContactKind, GlyphName> = { email: 'mail', phone: 'phone' };
@@ -189,6 +192,51 @@ export function ContactsBlock<Row extends ContactRow>({
   );
 }
 
+/** Closing Email addresses: one line per address Soirely stopped sending to (sc-44949), each with Change email. */
+export function UndeliverableLines({
+  rows,
+  onChange,
+}: {
+  rows: readonly ContactRow[];
+  onChange: (row: ContactRow) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (rows.length === 0) return null;
+
+  return (
+    <ul className="undeliverable-lines" data-testid="account.undeliverable">
+      {rows.map((row) => (
+        <li key={row.id} className="undeliverable-line">
+          <span className="undeliverable-lead" aria-hidden="true">
+            <span className="undeliverable-mark">
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path
+                  d="M2.2 2.2l5.6 5.6M7.8 2.2l-5.6 5.6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </span>
+          <div className="undeliverable-words">
+            <p>{t('account.undeliverable', { address: row.shown })}</p>
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={t('account.changeEmailFor', { address: row.shown })}
+              onClick={() => onChange(row)}
+            >
+              {t('account.changeEmail')}
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** An opened row's actions, then the line that says what Remove does. */
 export function RowOffers({ line, children }: { line: string; children: ReactNode }) {
   return (
@@ -206,5 +254,39 @@ export function ExpiredCode({ title, line }: { title: string; line: string }) {
       <p className="account-expired-title">{title}</p>
       <p className="desk-line">{line}</p>
     </div>
+  );
+}
+
+/** The account's language, each named in its own: a pick redraws the page in it and saves it to the account, as the pill did (sc-39509). `said` takes the foot's place, and is read out, where the page has no card to say it on. */
+export function LanguageBlock({
+  onChosen,
+  said,
+}: {
+  onChosen: (name: string) => void;
+  said?: string | null;
+}) {
+  const { t } = useTranslation();
+  const picked = useShownLanguage();
+
+  return (
+    <section className="desk-block">
+      <Head title={t('language.label')} />
+      <Choices
+        legend={t('language.label')}
+        hideLegend
+        choices={LOCALES.map((locale) => ({
+          id: locale.code,
+          name: locale.nativeName,
+          lang: locale.code,
+        }))}
+        picked={picked}
+        onPick={(code) => {
+          onChosen(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code);
+          void chooseLanguage(code, true);
+        }}
+        foot={said ?? t('account.languageFoot')}
+        footLive={said !== undefined}
+      />
+    </section>
   );
 }

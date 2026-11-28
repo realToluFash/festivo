@@ -57,7 +57,6 @@ describe('the sample’s instants, each derived and written as the server writes
     expect(say.day(DERIVED.onlySince)).toBe('Saturday, Oct 3');
     expect(say.at(DERIVED.stopped)).toBe('Monday, Oct 12 at 09:30 WAT');
     expect(say.at(DERIVED.putBackBy)).toBe('Saturday, Oct 31 at 14:20 WAT');
-    expect(say.day(AT.leftEnterprise)).toBe('Sunday, Oct 18');
     expect(say.exact('2026-10-17T08:12:44Z')).toBe('Saturday, Oct 17, 2026 at 09:12:44 WAT');
   });
 
@@ -109,6 +108,15 @@ describe('who looks, and where each page is', () => {
     for (const [file, page] of files)
       expect(readFileSync(join(dir, file), 'utf8')).toContain(`data="${page}"`);
     expect(existsSync(join('app', 'demo', 'settings', '[section].tsx'))).toBe(true);
+  });
+
+  it('names its Settings row in the app’s words, so each locale reads as the app does', () => {
+    const home = readFileSync(join('src', 'demo', 'settings', 'SettingsHome.tsx'), 'utf8');
+    const words = readFileSync(join('src', 'demo', 'settings', 'DataWords.ts'), 'utf8');
+
+    expect(home).toContain("title: t('settings.dataAndControl')");
+    expect(home).toContain("line: t('settings.dataAndControlLine')");
+    expect(words).not.toContain('settingsLine');
   });
 
   it('links every state from the demo’s home', () => {
@@ -192,7 +200,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
     expect(hubCard(hubStart('locked'), say)).toMatchObject({
       says: 'These come with Enterprise',
       line: 'Email domains and the audit log.',
-      step: { label: 'Contact Soirely about Enterprise', go: { kind: 'contact' } },
+      step: null,
     });
     expect(hubRows(hubStart('locked'), 'locked')).toMatchObject([
       {
@@ -206,11 +214,15 @@ describe('the hub in the app: Control only, its card the soonest instant that as
 
   it('keeps everything as it was once Ire Events has left Enterprise', () => {
     expect(hubCard(hubStart('downgraded'), say)).toMatchObject({
-      says: 'Ire Events left Enterprise on Sunday, Oct 18',
-      step: { label: 'Contact Soirely about Enterprise' },
+      says: 'Ire Events left Enterprise',
+      step: null,
     });
     expect(hubRows(hubStart('downgraded'), 'downgraded')).toMatchObject([
-      { line: 'ire.events kept as it was', locked: true, opens: 'ed_downgraded' },
+      {
+        line: 'ire.events kept as it was · ireevents.com kept as it was',
+        locked: true,
+        opens: 'ed_downgraded',
+      },
       { locked: true, opens: 'locked' },
     ]);
   });
@@ -375,11 +387,12 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
     expect(card('ed_locked')).toMatchObject({
       says: 'Available on Enterprise',
       line: 'Prove that Ire Events owns its domain, then limit the accounts at it to Ire Events.',
-      step: { label: 'Contact Soirely about Enterprise' },
+      step: null,
     });
     expect(card('ed_downgraded')).toMatchObject({
-      says: 'Switched off on Sunday, Oct 18',
+      says: 'Switched off',
       line: 'Ire Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
+      step: null,
     });
     expect(rows('ed_downgraded')).toEqual([
       {
@@ -392,6 +405,13 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
           control: null,
           on: false,
         },
+      },
+      {
+        name: 'ireevents.com',
+        tag: { kind: 'kept', word: 'Kept' },
+        line: 'Not proved',
+        action: null,
+        only: null,
       },
     ]);
   });

@@ -1,5 +1,13 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -8,14 +16,22 @@ import {
   StyleSheet,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Sheet } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { MeasuredWords, PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
+import { tabBarFit } from '../../components/bodyEdges.ts';
+import { wordsIn } from '../../layout/textSize.ts';
+import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
+import { statusFits } from '../../layout/titleFit.ts';
 import {
   SidebarBack,
   SidebarColumn,
@@ -27,31 +43,65 @@ import {
 } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
+import { stripRest } from '../../components/stripRest.ts';
 import { demoShell } from '../demoShell.ts';
-import { LineIcon } from '../../components/AccountCard.tsx';
 import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import { type Shown, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
+import { SecondaryButton } from '../../components/Buttons.tsx';
+import { RUN_EVENT, RW as RUN_WORDS } from '../runView/runViewModel.ts';
+import { NW, nightWayIn } from '../night/nightModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
+import { ActionToast } from './ActionToast.tsx';
 
 const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   ...PHONE_TABS.map((area) => [AREA_WORDS[area], AREA_GLYPH[area]] as const),
   [W.more, 'dots'],
 ];
 
-/** People is built, as People A: it opens the People demo, with no event around it. */
-export function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
-  if (area === 'people') router.push('/demo/people');
-  else onArea(area);
-}
-
 export function backToEvents(): void {
   router.dismissTo('/demo/events');
 }
+
+export interface EventToast {
+  words: string;
+  onClose: () => void;
+  action?: { label: string; onPress: () => void; testID?: string } | null;
+}
+
+/** On its side the frame draws no top of its own, so the area's title row ends with the bell, at the pane's top right (sc-68052). */
+const PaneBellAt = createContext<{ bell: ReactNode } | null>(null);
+
+export function useBellInPane(): boolean {
+  return useContext(PaneBellAt) != null;
+}
+
+/** The event's bell where an area's title row ends, on an iPad on its side; elsewhere the frame's own top has it. */
+export function PaneBell() {
+  return useContext(PaneBellAt)?.bell ?? null;
+}
+
+/** A title the pane's bell ends, the title wrapping to its left at the largest sizes, in a row as tall as the bell's target. */
+export function BellRow({ children }: { children: ReactNode }) {
+  if (!useBellInPane()) return children;
+  return (
+    <View style={styles.bellRow}>
+      <View style={styles.besideBell}>{children}</View>
+      <PaneBell />
+    </View>
+  );
+}
+
+/** The bell an event's page lends to every area's frame on an iPad, so an area drawn by its own screen, as Guests, opens it too (sc-84453). A frame given its own `onBell`, as Messages', keeps that. */
+export const EventBellAt = createContext<{
+  onBell?: (() => void) | undefined;
+  bellRef?: Ref<ViewInstance> | undefined;
+  place: ReactNode;
+} | null>(null);
 
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
 export interface AreaBadge {
@@ -77,6 +127,8 @@ export function EventFrame({
   bellRef,
   back: pushed,
   phoneBack,
+  behind,
+  besideBack,
   without,
   loading = false,
   children,
@@ -88,7 +140,8 @@ export function EventFrame({
   more: boolean;
   onMore: (open: boolean) => void;
   overlay?: ReactNode;
-  toast?: { words: string; onClose: () => void } | null;
+  /** With an action, the house toast that carries one. */
+  toast?: EventToast | null;
   scrollRef?: Ref<ScrollViewInstance>;
   fill?: boolean;
   badge?: AreaBadge | null;
@@ -96,8 +149,12 @@ export function EventFrame({
   bellRef?: Ref<ViewInstance> | undefined;
   /** A page an area pushes in its own column: ‹ and the area it goes back to. */
   back?: { label: string; onPress: () => void } | null;
-  /** On the phone, a way back other than Overview, as Seating's ‹ More. */
+  /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
+  /** On Overview, ‹ and the screen the event was opened over, in place of Events (sc-83008). */
+  behind?: { label: string; onPress: () => void } | undefined;
+  /** A status beside Back, as Guests' Refreshing… and Overview's; pass it on a phone or upright only, since landscape has no ‹ to sit beside. Told whether it had room there (sc-71821, sc-83008). */
+  besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
   /** While the event loads its top is already the loaded page's; only its card in the sidebar waits. */
@@ -106,55 +163,81 @@ export function EventFrame({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
+  const large = useAccessibilitySizes();
+  const lent = useContext(EventBellAt);
+  const ownBell = onBell != null;
+  const bellPress = ownBell ? onBell : lent?.onBell;
+  const bellAt = ownBell ? bellRef : lent?.bellRef;
+  const bellPlace = ownBell ? null : lent?.place;
   const phone = shell.layout === 'phone';
-  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
-  const told = toast != null && (
-    <PageToast
-      words={toast.words}
-      onClose={toast.onClose}
-      bottom={
-        phone
-          ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
-          : Math.max(insets.bottom, tokens.spaceLg)
-      }
-    />
+  const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
+  // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
+  const capped = (node: ReactNode) => (
+    <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+      <TitleCap.Provider value={titleCap.drawn ? titleCap.cap : null}>{node}</TitleCap.Provider>
+    </PageTitleDrawn.Provider>
   );
+  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
+  const toastBottom = phone
+    ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
+    : Math.max(insets.bottom, tokens.spaceLg);
+  const told =
+    toast == null ? null : toast.action == null ? (
+      <PageToast words={toast.words} onClose={toast.onClose} bottom={toastBottom} />
+    ) : (
+      <ActionToast
+        words={toast.words}
+        action={toast.action}
+        onClose={toast.onClose}
+        bottom={toastBottom}
+      />
+    );
 
   if (shell.layout === 'landscape')
     return (
       <Landscape
         column={null}
         sidebar={
-          <EventSidebar
-            event={event}
-            now={now}
-            area={area}
-            onArea={onArea}
-            badge={badge}
-            without={without}
-            loading={loading}
-          />
+          // As the product's sidebar in an event: nothing in it outgrows the area's title at the accessibility sizes (sc-68052, sc-67659).
+          <TitleCap.Provider value={large ? titleCap.cap : null}>
+            <EventSidebar
+              event={event}
+              now={now}
+              area={area}
+              onArea={onArea}
+              badge={badge}
+              without={without}
+              loading={loading}
+            />
+          </TitleCap.Provider>
         }
         overlay={
           <>
             {overlay}
+            {bellPlace}
             {told}
           </>
         }
       >
-        {fill ? (
-          <View style={styles.grow}>{children}</View>
-        ) : (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.grow}
-            contentContainerStyle={styles.pane}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {children}
-          </ScrollView>
-        )}
+        <PaneBellAt.Provider
+          value={{ bell: <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} /> }}
+        >
+          {capped(
+            fill ? (
+              <View style={styles.grow}>{children}</View>
+            ) : (
+              <ScrollView
+                ref={scrollRef}
+                style={styles.grow}
+                contentContainerStyle={styles.pane}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ),
+          )}
+        </PaneBellAt.Provider>
       </Landscape>
     );
 
@@ -164,7 +247,7 @@ export function EventFrame({
       ? phoneBack
       : phone && area !== 'overview'
         ? { label: W.overview, onPress: () => onArea('overview') }
-        : { label: W.backToEvents, onPress: backToEvents });
+        : (behind ?? { label: W.backToEvents, onPress: backToEvents }));
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (
@@ -177,58 +260,48 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <Back label={back.label} onPress={back.onPress} />
-        <View style={styles.grow} />
-        <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
+        <BackSlot beside={besideBack} capped={capped}>
+          <Back label={back.label} onPress={back.onPress} />
+        </BackSlot>
+        <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
-      {fill ? (
-        <View style={styles.grow}>{children}</View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.grow}
-          contentContainerStyle={[
-            styles.blocks,
-            phone
-              ? {
-                  paddingHorizontal: tokens.spaceXxl,
-                  paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-                }
-              : {
-                  paddingTop: tokens.space3xl,
-                  paddingHorizontal: tokens.space5xl,
-                  paddingBottom: insets.bottom + tokens.space6xl * 2,
-                },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+      {capped(
+        fill ? (
+          <View style={styles.grow}>{children}</View>
+        ) : (
+          <ScrollView
+            ref={scrollRef}
+            style={styles.grow}
+            contentContainerStyle={[
+              styles.blocks,
+              phone
+                ? {
+                    paddingHorizontal: tokens.spaceXxl,
+                    paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
+                  }
+                : {
+                    paddingTop: tokens.space3xl,
+                    paddingHorizontal: tokens.space5xl,
+                    paddingBottom: insets.bottom + tokens.space6xl * 2,
+                  },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ),
       )}
       {phone && (
         <>
           <TabBarFade />
-          {badge == null ? (
-            <TabBar
-              tabs={PHONE_BAR}
-              bottom={foot}
-              at={at}
-              onTab={(label) => {
-                const chosen = PHONE_TABS.find((one) => AREA_WORDS[one] === label);
-                if (chosen == null) onMore(true);
-                else onArea(chosen);
-              }}
-            />
-          ) : (
-            <BadgedTabBar
-              bottom={foot}
-              at={at}
-              badge={badge}
-              onTab={(chosen) => (chosen == null ? onMore(true) : onArea(chosen))}
-            />
-          )}
+          <EventBar
+            bottom={foot}
+            at={at}
+            badge={badge}
+            onTab={(chosen) => (chosen == null ? onMore(true) : onArea(chosen))}
+          />
           <MoreSheet
             open={more}
             onClose={() => onMore(false)}
@@ -239,7 +312,65 @@ export function EventFrame({
         </>
       )}
       {overlay}
+      {bellPlace}
       {told}
+    </View>
+  );
+}
+
+export interface BesideBackStatus {
+  node: ReactNode;
+  onPlaced: (beside: boolean) => void;
+}
+
+/** Back, and beside it a status only where the pill stays whole with it, as on main where it fits; else the area draws the status under its heading (sc-71821). The drawn status is out of the row's flow, as the app's GivingWay draws it, so a pill that grows after the status is placed is never squeezed into reading as room for both (sc-74113). */
+function BackSlot({
+  beside,
+  capped,
+  children,
+}: {
+  beside: BesideBackStatus | undefined;
+  capped: (node: ReactNode) => ReactNode;
+  children: ReactNode;
+}) {
+  const [slot, setSlot] = useState(0);
+  const [back, setBack] = useState(0);
+  const [status, setStatus] = useState(0);
+  const fits =
+    beside != null && statusFits({ room: slot, lead: back, ends: [], status, gap: tokens.spaceMd });
+  const placed = beside?.onPlaced;
+
+  useEffect(() => {
+    placed?.(fits);
+  }, [fits, placed]);
+
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+
+  if (beside == null)
+    return (
+      <>
+        {capped(children)}
+        <View style={styles.grow} />
+      </>
+    );
+
+  return (
+    <View style={styles.backSlot} onLayout={widthOf(setSlot)}>
+      <View style={styles.backWhole} onLayout={widthOf(setBack)}>
+        {capped(children)}
+      </View>
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View style={styles.offBell} onLayout={widthOf(setStatus)}>
+          {capped(beside.node)}
+        </View>
+      </View>
+      {fits && <View style={[styles.offBell, styles.atEnd]}>{capped(beside.node)}</View>}
     </View>
   );
 }
@@ -296,12 +427,12 @@ function MoreSheet({
             row: (
               <Row
                 title={AREA_WORDS[one]}
-                lead={<LineIcon name={AREA_GLYPH[one]} />}
+                lead={<MoreGlyph name={AREA_GLYPH[one]} on={one === area} />}
                 opens
                 selected={one === area}
                 onPress={() => {
                   onClose();
-                  toArea(one, onArea);
+                  onArea(one);
                 }}
                 testID={`event.more.${one}`}
               />
@@ -313,8 +444,22 @@ function MoreSheet({
   );
 }
 
-/** The event's tab bar as TabBar draws it, with Messages' count on its tab and its name in words. */
-function BadgedTabBar({
+/** A More row's glyph, 20 pt, in its name's colour: accent on the chosen area, as in the sidebar. */
+function MoreGlyph({ name, on }: { name: GlyphName; on: boolean }) {
+  return (
+    <View style={styles.moreGlyph}>
+      <Glyph
+        name={name}
+        size={20}
+        ink={on ? tokens.colorAccentText : tokens.colorInkSecondary}
+        weight={2}
+      />
+    </View>
+  );
+}
+
+/** The event's tab bar, its five labels at one size, stepped down to 10 where that keeps every word whole, and Messages' count on its tab (sc-71148). */
+function EventBar({
   bottom,
   at,
   badge,
@@ -322,15 +467,35 @@ function BadgedTabBar({
 }: {
   bottom: number;
   at: string;
-  badge: AreaBadge;
+  badge: AreaBadge | null;
   onTab: (area: AreaKey | null) => void;
 }) {
+  const insets = useSafeAreaInsets();
+  const { fontScale, width } = useWindowDimensions();
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [slot, setSlot] = useState(0);
+  const start = eventBarStart(fontScale);
+  const words = wordsIn(PHONE_BAR.map(([label]) => label));
+  const widths = words.map((word) => measured[`${start}|${word}`]);
+  const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
+  const size = eventBarLabelSize(fontScale, widest, slot);
+
   return (
-    <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {PHONE_BAR.map(([label, glyph]) => {
+    <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
+      <MeasuredWords
+        words={words}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+      {PHONE_BAR.map(([label, glyph], index) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-        const counted = label === AREA_WORDS.messages;
+        const counted = badge != null && label === AREA_WORDS.messages;
 
         return (
           <Pressable
@@ -341,13 +506,22 @@ function BadgedTabBar({
             accessibilityState={{ selected: on }}
             accessibilityLabel={counted ? badge.name : label}
             testID={`tab-${label.toLowerCase()}`}
+            onLayout={
+              index === 0
+                ? (event) => {
+                    const width = event.nativeEvent.layout.width;
+                    setSlot((now) => (now === width ? now : width));
+                  }
+                : undefined
+            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={12}
+              size={size}
               weight={on ? 'semibold' : 'medium'}
+              allowFontScaling={false}
               accessible={false}
-              style={{ color: ink }}
+              style={[styles.tabLabel, { color: ink }]}
             >
               {label}
             </Text>
@@ -381,13 +555,19 @@ function AreaPills({
   without: AreaKey | undefined;
 }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const ends = useRef<Partial<Record<AreaKey, number>>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
   const reveal = (one: AreaKey) => {
-    const x = starts.current[one];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = ends.current[one];
+    if (end != null && shown.current > 0 && content.current > 0)
+      strip.current?.scrollTo({
+        x: stripRest(end, shown.current, content.current),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge, and the strip
+  // moves no further than that, so it opens at Overview wherever the chosen pill fits (sc-31370).
   useEffect(() => reveal(area), [area]);
 
   return (
@@ -396,9 +576,17 @@ function AreaPills({
         ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.pillsBar}
-        contentContainerStyle={styles.pills}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
+        onLayout={(event: LayoutChangeEvent) => {
+          shown.current = event.nativeEvent.layout.width;
+          reveal(area);
+        }}
+        onContentSizeChange={(width: number) => {
+          content.current = width;
+          reveal(area);
+        }}
       >
         {AREAS.filter((one) => one !== without).map((one) => {
           const on = one === area;
@@ -408,12 +596,12 @@ function AreaPills({
           return (
             <Pressable
               key={one}
-              onPress={() => toArea(one, onArea)}
+              onPress={() => onArea(one)}
               onLayout={(event: LayoutChangeEvent) => {
-                starts.current[one] = event.nativeEvent.layout.x;
+                ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
-              style={[styles.pill, on && styles.pillOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={counted ? badge.name : AREA_WORDS[one]}
@@ -474,19 +662,14 @@ function EventSidebar({
         <SidebarPlaces>
           {AREAS.filter((one) => one !== without).map((one) =>
             one === 'messages' && badge != null ? (
-              <CountedPlace
-                key={one}
-                badge={badge}
-                on={one === area}
-                onPress={() => toArea(one, onArea)}
-              />
+              <CountedPlace key={one} badge={badge} on={one === area} onPress={() => onArea(one)} />
             ) : (
               <SidebarPlace
                 key={one}
                 label={AREA_WORDS[one]}
                 glyph={AREA_GLYPH[one]}
                 on={one === area}
-                onPress={() => toArea(one, onArea)}
+                onPress={() => onArea(one)}
                 testID={`event.side.${one}`}
               />
             ),
@@ -553,22 +736,27 @@ export function AreaPage({
   area,
   event,
   locale,
+  children,
 }: {
   area: Exclude<AreaKey, 'overview' | 'people'>;
   event: Shown;
   locale: string;
+  /** The area's own content in place of the card that says it is coming. */
+  children?: ReactNode;
 }) {
   const { layout } = useShell();
   return (
     <>
-      <Text
-        size={30}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
-      >
-        {AREA_WORDS[area]}
-      </Text>
+      <BellRow>
+        <Text
+          size={30}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
+        >
+          {AREA_WORDS[area]}
+        </Text>
+      </BellRow>
       <View style={styles.strip}>
         <EventThumb event={event} side={40} radius={12} />
         <View style={[styles.grow, styles.stripWords]}>
@@ -580,14 +768,34 @@ export function AreaPage({
           </Text>
         </View>
       </View>
-      <View style={styles.coming} testID={`event.coming.${area}`}>
-        <Text size={17} weight="semibold" style={styles.comingTitle}>
-          {AREA_WORDS[area]}
-        </Text>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
-          {COMING[area]}
-        </Text>
-      </View>
+      {children ?? (
+        <View style={styles.coming} testID={`event.coming.${area}`}>
+          <Text size={17} weight="semibold" style={styles.comingTitle}>
+            {AREA_WORDS[area]}
+          </Text>
+          <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
+            {COMING[area]}
+          </Text>
+          {area === 'schedule' && event.id === RUN_EVENT && (
+            <View style={styles.comingAct}>
+              {nightWayIn(event) && (
+                <SecondaryButton
+                  label={NW.title}
+                  link
+                  onPress={() => router.push('/demo/night')}
+                  testID="event.schedule.night"
+                />
+              )}
+              <SecondaryButton
+                label={RUN_WORDS.openRun}
+                link
+                onPress={() => router.push('/demo/run-view')}
+                testID="event.schedule.run"
+              />
+            </View>
+          )}
+        </View>
+      )}
     </>
   );
 }
@@ -600,21 +808,38 @@ const AREA_TITLE = {
   landscape: {},
 };
 
+export const areaTrack = StyleSheet.create({
+  bar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
+  row: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+  },
+  tab: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 14,
+    paddingRight: tokens.spaceXl,
+    borderRadius: 22,
+  },
+  on: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+});
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   figures: { fontVariant: ['tabular-nums'] },
   tabBar: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    height: 64,
-    padding: 5,
+    height: PHONE_TAB_BAR,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
-    gap: tokens.spaceHair,
     ...tokens.elevationNative.raised.ios,
     elevation: tokens.elevationNative.raised.android.elevation,
   },
@@ -627,6 +852,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tabOn: { backgroundColor: tokens.colorAccentTint },
+  tabLabel: { textAlign: 'center' },
   badge: {
     position: 'absolute',
     left: '50%',
@@ -659,9 +885,24 @@ const styles = StyleSheet.create({
   },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   secondary: { color: tokens.colorInkSecondary },
+  moreGlyph: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: tokens.opacityPressed },
   title: { letterSpacing: -0.6 },
   top: { flexDirection: 'row', alignItems: 'center' },
+  backSlot: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceMd,
+  },
+  offBell: { paddingRight: tokens.spaceMd },
+  atEnd: { position: 'absolute', top: 0, right: 0, bottom: 0, justifyContent: 'center' },
+  backWhole: { flexShrink: 1, minWidth: 0 },
+  measure: { position: 'absolute', opacity: 0 },
+  bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
+  besideBell: { flex: 1, minWidth: 0, minHeight: tokens.sizeHit, justifyContent: 'center' },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   more: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
@@ -676,23 +917,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
-  pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
-  pills: {
-    minHeight: 52,
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-  },
-  pill: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 14,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 22,
-  },
-  pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,
@@ -706,6 +930,7 @@ const styles = StyleSheet.create({
   stripLine: { lineHeight: 14 * 1.4 },
   comingTitle: { lineHeight: 17 * 1.3 },
   comingLine: { lineHeight: 15 * 1.45 },
+  comingAct: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   coming: {
     gap: tokens.spaceXxs,
     paddingVertical: 18,

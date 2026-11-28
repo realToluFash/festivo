@@ -1,0 +1,43 @@
+# sc-14445: a guest made Invited while the name screen is open; Delete shows the refusal, never the 409's detail. Needs ${METRO_URL}, ${EV}, ${NAME}, ${GUEST}, ${API}, ${EMAIL}, ${PASSWORD}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- takeScreenshot: name-screen
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ${NAME}
+- hideKeyboard
+- runScript:
+    file: ../scripts/sc14445-mark.js
+    env:
+      API: ${API}
+      EV: ${EV}
+      GUEST: ${GUEST}
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertTrue: ${output.mark == 200}
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteRefused'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: '.*Call it off or end it first.*'
+- takeScreenshot: refused

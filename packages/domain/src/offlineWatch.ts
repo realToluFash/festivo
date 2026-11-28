@@ -1,3 +1,5 @@
+import { ApiUnreachableError } from '@soirely/api-client';
+
 import { type Connection, NO_ANSWER_MS, answeredWithin } from './connection.ts';
 
 /** A load that never reached Soirely: the connection fell silent while it was out, or it had no answer for 20 s. */
@@ -13,6 +15,20 @@ export function keepsWhatLoaded(error: unknown): boolean {
   return error instanceof NotReached;
 }
 
+/** Whether a load never reached Soirely, watched or not: the watch's own verdict, the fetch's failure, or the client's wrap of one. A 5xx on the load itself arrives as an `ApiError`; the wrap with no cause is the token refresh's 5xx (`client.ts`, `refresh`), an answer too. */
+export function neverReached(error: unknown): boolean {
+  return (
+    keepsWhatLoaded(error) ||
+    error instanceof TypeError ||
+    (error instanceof ApiUnreachableError && error.cause != null)
+  );
+}
+
+/** What a read beside the screen's watched load shows, the event's dates beside the event (sc-98386): what loaded stays through a read that never reached Soirely only while the band is up to say the screen is from before; once the screen's own load answers and the band clears, the read's failure, as before. */
+export function shownBeside<L>(load: L, kept: boolean, underBand: boolean, failed: L): L {
+  return kept && !underBand ? failed : load;
+}
+
 export interface OfflineState {
   /** When Soirely last answered a load of this screen: the band's "since". */
   at: Date | null;
@@ -26,6 +42,8 @@ export interface OfflineWatch {
   /** Every load of the screen goes through here, or the band never learns that Soirely answered again. */
   watch<T>(load: Promise<T>): Promise<T>;
   retry(): void;
+  /** The screen shows what an earlier load kept, because this one never reached Soirely (sc-65646): stale as of that load, until one answers. */
+  keep(at: Date): void;
   /** Something new happened, so a screen under the band loads once; a load out is joined, and one that ends unanswered is not followed by another (sc-27673). */
   askAgain(): void;
   /** The screen's own reason to load, band or no band: coming back to it, or to the foreground. A load out is joined. */
@@ -114,6 +132,9 @@ export function createOfflineWatch({
       pressed = true;
       // A press while a load is out joins it: no second load, and its 20 s keep counting from the first.
       freshen();
+    },
+    keep(at) {
+      if (state.at == null) set({ at, stale: true });
     },
     askAgain,
     freshen,

@@ -28,7 +28,7 @@ class EventChange
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $actor;
 
-    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 720, nullable: true)]
     private ?string $actorName;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: EventChangeKind::class)]

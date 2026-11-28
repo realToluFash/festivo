@@ -10,26 +10,65 @@ import { takeHeldLink } from './heldLink.ts';
 import { type Landing, landingFor } from './landing.ts';
 
 let held: TwoFactorChallenge | null = null;
+let heldAlone = false;
+let heldTyped: string | null = null;
+let heldCarryOn: CarryOn | null = null;
+
+/** The screen a provider sign-in began on, carrying on as the account (sc-94849). */
+export type CarryOn = (account: Account) => Promise<void>;
 
 /** In memory only: a route parameter would put a credential where logs and history keep it. */
-export function holdChallenge(challenge: TwoFactorChallenge): void {
+export function holdChallenge(
+  challenge: TwoFactorChallenge,
+  {
+    alone = false,
+    typed = null,
+    carryOn = null,
+  }: { alone?: boolean; typed?: string | null; carryOn?: CarryOn | null } = {},
+): void {
   held = challenge;
+  heldAlone = alone;
+  heldTyped = typed;
+  heldCarryOn = carryOn;
 }
 
 export function heldChallenge(): TwoFactorChallenge | null {
   return held;
 }
 
+/** Whether the held sign-in began on a Sign in with nothing under it, as a cold `soirely://sign-in` opens one (sc-67606). */
+export function challengeBeganAlone(): boolean {
+  return heldAlone;
+}
+
+/** The address typed on the Sign in the held sign-in began on, or null when it began with Google or Apple (sc-67828). */
+export function challengeTypedEmail(): string | null {
+  return heldTyped;
+}
+
+/** The screen under the code screen that carries on as the account once the code passes, or null when the account goes where it belongs (sc-94849). */
+export function challengeCarryOn(): CarryOn | null {
+  return heldCarryOn;
+}
+
 export function dropChallenge(): void {
   held = null;
+  heldAlone = false;
+  heldTyped = null;
+  heldCarryOn = null;
 }
 
 /** Where any sign-in goes next: the code screen when two-factor asks for one, else where the account belongs. */
 export async function nextAfterSignIn(
   outcome: SignInOutcome,
+  {
+    alone = false,
+    typed = null,
+    carryOn = null,
+  }: { alone?: boolean; typed?: string | null; carryOn?: CarryOn | null } = {},
 ): Promise<Landing | '/sign-in-code' | '/two-factor-again' | `/join/${string}`> {
   if ('challenge' in outcome) {
-    holdChallenge(outcome);
+    holdChallenge(outcome, { alone, typed, carryOn });
     return '/sign-in-code';
   }
 
@@ -45,6 +84,16 @@ export async function nextAfterSignIn(
   const link = landing === '/verify-email' ? null : await takeHeldLink();
 
   return link == null ? landing : `/join/${link}`;
+}
+
+/** A provider sign-in from a screen that carries on as the account (sc-94849): there when nothing comes first, else over it, so the screen stays under whatever is asked first. */
+export function carryOnAfter<To extends string>(
+  outcome: SignInOutcome,
+  next: To,
+): { kind: 'here'; account: Account } | { kind: 'over'; to: To } {
+  return 'challenge' in outcome || next !== '/'
+    ? { kind: 'over', to: next }
+    : { kind: 'here', account: outcome.account };
 }
 
 /** Where a registration goes once its code is accepted: back to a request link it started from (sc-562), else where the account belongs. */

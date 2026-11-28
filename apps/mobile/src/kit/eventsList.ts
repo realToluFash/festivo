@@ -1,5 +1,6 @@
-import type { EventCover, OrganisationEvent } from '@soirely/api-client';
+import type { EventCover, EventGuestFigures, OrganisationEvent } from '@soirely/api-client';
 import {
+  calledOffDay,
   type CardStepAction,
   type EventPhase,
   type EventState,
@@ -7,13 +8,14 @@ import {
   type Milestone,
   calledOff,
   eventDayWords,
-  formatEventDate,
   milestoneDistance,
   nextStep,
   milestoneMoment,
   numberFormat,
   shownDays,
   stepAwaitsMilestones,
+  placeWords,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -45,9 +47,13 @@ export interface ListEvent {
   concludedAt: string | null;
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   /** Null while they are still being read: an event's page reads them apart from the event. */
   milestones: readonly Milestone[] | null;
+  /** Its guest line's figures on Events (sc-3786); absent where nothing read them. */
+  guests?: EventGuestFigures | null | undefined;
 }
 
 export interface Shown extends ListEvent {
@@ -65,6 +71,7 @@ export function listEventOf(event: OrganisationEvent & Pick<ListEvent, 'mileston
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: venueCity(event.venue),
     photo: event.cover == null ? null : { cover: event.cover, type: event.type },
   };
 }
@@ -77,7 +84,7 @@ export function daysWords(
   list: boolean,
   t: TFunction,
 ): string {
-  const days = eventDayWords(event, now, locale, !list);
+  const days = eventDayWords(event, now, locale, { keepDays: !list });
 
   switch (days.kind) {
     case 'calledOffOn':
@@ -98,7 +105,7 @@ export function rowLine(
 ): string {
   return t('todayScreen.dayAndPlace', {
     day: daysWords(event, now, locale, list, t),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 
@@ -221,9 +228,18 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
 
 export type StepAction = CardStepAction;
 
+export interface ButtonStep {
+  kind: 'button';
+  line: string;
+  label: string;
+  action: StepAction;
+}
+
 export type CardStep =
-  | { kind: 'button'; line: string; label: string; action: StepAction }
-  | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
+  | ButtonStep
+  | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean }
+  /** On with nothing ahead: no step, in the room its finished step takes, so nothing below moves when it comes (sc-93858). */
+  | { kind: 'none'; keeps: ButtonStep };
 
 /** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. Null while a live event's milestones are still unread. */
 export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep | null {
@@ -264,17 +280,35 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
         you: step.milestone.owner === 'you',
         overdue: step.milestone.owner === 'you' && Date.parse(step.milestone.at) < now.getTime(),
       };
-    case undefined: {
-      const line =
-        event.calledOff && event.concludedAt != null
-          ? t('eventEnd.calledOffNotice', {
-              date: formatEventDate(event.concludedAt, event.timeZone, locale),
-            })
-          : t('timeline.finished');
-
-      return { kind: 'button', line, label: t('eventDuplicate.open'), action: 'duplicate' };
-    }
+    case 'over':
+      return overStep(event, now, locale, t);
+    case undefined:
+      return { kind: 'none', keeps: overStep(event, now, locale, t) };
   }
+}
+
+function overStep(event: Shown, now: Date, locale: string, t: TFunction): ButtonStep {
+  const line =
+    event.calledOff && event.concludedAt != null
+      ? t('eventEnd.calledOffNotice', {
+          date: calledOffDay(event.concludedAt, event.timeZone, now, locale),
+        })
+      : t('timeline.finished');
+
+  return { kind: 'button', line, label: t('eventDuplicate.open'), action: 'duplicate' };
+}
+
+/** How far the tabs' words step down together so that every tab fits `room`: each tab `widths` wide at its size, of which `fixed` does not scale with the text, plus its `pad`. 1 where they already fit. */
+export function tabsFit(
+  room: number,
+  widths: readonly number[],
+  fixed: readonly number[],
+  pad: number,
+): number {
+  const said = widths.reduce((sum, width, i) => sum + width - (fixed[i] ?? 0), 0);
+  const left = room - widths.length * pad - fixed.reduce((sum, width) => sum + width, 0);
+
+  return said <= left || said <= 0 ? 1 : Math.max(0, left) / said;
 }
 
 /** Each tab's width as CSS shares a row: an equal share of the room, or the tab's own words where they need more. */

@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -23,18 +23,21 @@ import {
 } from '../../components/Summary.tsx';
 import {
   type Counts,
-  type FilterKey,
+  type ListFilter,
   GROUPS,
   type GroupKey,
   type Person,
   filterCount,
   filterWord,
   filtersFor,
-  showAllWords,
+  inViewOf,
 } from './GuestsModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { MarkSlot } from './ReplyMark.tsx';
+import { MarkSlot } from '../../components/ReplyMark.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
+import { NW } from './GuestNeeds.ts';
+import { AllergyMark } from './GuestNeedsParts.tsx';
 
 const MENU_AFTER_MS = 700;
 
@@ -42,25 +45,28 @@ const MENU_AFTER_MS = 700;
 function FilterChoice({
   filter,
   counts,
+  changed,
   start,
   off,
   onChoose,
 }: {
-  filter: FilterKey;
+  filter: ListFilter;
   counts: Counts;
+  changed: number;
   start: boolean;
   off: boolean;
-  onChoose: (key: FilterKey) => void;
+  onChoose: (key: ListFilter) => void;
 }) {
   const trigger = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   const word = filterWord(filter);
-  const count = filterCount(filter, counts);
+  const count = filter === 'changed' ? changed : filterCount(filter, counts);
+  const apart = changed > 0 || filter === 'changed';
+  const keys: ListFilter[] = [...(apart ? ['changed' as const] : []), ...filtersFor(counts)];
 
   useEffect(() => {
     if (!start) return;
-    const wait = setTimeout(() => anchorUnder(trigger, setAt), MENU_AFTER_MS);
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(trigger, then), setAt, MENU_AFTER_MS);
   }, [start]);
 
   return (
@@ -79,12 +85,12 @@ function FilterChoice({
         at={at}
         onClose={() => setAt(null)}
         opener={trigger}
-        width={230}
+        width={apart ? 300 : 230}
         testID="guests.filter.menu"
       >
-        {filtersFor(counts).map((key) => {
+        {keys.map((key) => {
           const on = key === filter;
-          const n = filterCount(key, counts);
+          const n = key === 'changed' ? changed : filterCount(key, counts);
           return (
             <Pressable
               key={key}
@@ -92,7 +98,11 @@ function FilterChoice({
                 setAt(null);
                 onChoose(key);
               }}
-              style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
+              style={({ pressed }) => [
+                styles.menuRow,
+                (key === 'changed' || key === 'invited') && styles.menuApart,
+                pressed && styles.menuPressed,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${filterWord(key)}, ${n}`}
@@ -133,18 +143,22 @@ function personRow(
   wide: boolean,
 ) {
   const selected = lit === p.key;
+  const allergy = p.allergy === true;
   const row = (
     <Row
       ref={refFor(p.key)}
       title={p.name}
       line={p.line}
+      below={allergy ? <AllergyMark testID={`guests.row.${p.key}.allergy`} /> : undefined}
       lead={<MarkSlot kind={p.kind} />}
       opens
       selected={selected}
       gutter={wide ? 10 : 0}
       pad={p.companion ? 8 : 11}
       onPress={() => onOpen(p.guest, p.key)}
-      accessibilityLabel={[p.name, p.line].join('. ')}
+      accessibilityLabel={[p.name, p.line, allergy ? NW.allergy : null]
+        .filter((part) => part != null)
+        .join('. ')}
       testID={`guests.row.${p.key}`}
     />
   );
@@ -160,8 +174,13 @@ export interface ListProps {
   layout: Layout;
   counts: Counts;
   total: number;
-  filter: FilterKey;
-  onFilter: (key: FilterKey) => void;
+  filter: ListFilter;
+  /** sc-4331: the guests Changed since you looked would list; its menu row shows while above 0 or in use. */
+  changed: number;
+  onFilter: (key: ListFilter) => void;
+  /** sc-4331: choosing Changed since you looked failed; the list stays as it was. */
+  changeFailed: boolean;
+  onRetryChanged: () => void;
   typed: string;
   onTyped: (typed: string) => void;
   searched: string;
@@ -176,15 +195,21 @@ export interface ListProps {
   onOpen: (guest: string, from: string) => void;
   refFor: (key: string) => Ref<ViewInstance>;
   fieldRef: RefObject<TextInputInstance | null>;
+  /** sc-54450: Paste a reply, in the row on an upright iPad, and under it on a phone and in the list pane. */
+  pasteInRow?: ReactNode;
+  paste?: ReactNode;
 }
 
-/** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
+/** Find a guest and the filter as one row, the filter under the field when it does not fit beside it (Events' rule), then the groups by reply, or the rows a filter or search leaves. */
 export function GuestsRows({
   layout,
   counts,
   total,
   filter,
+  changed,
   onFilter,
+  changeFailed,
+  onRetryChanged,
   typed,
   onTyped,
   searched,
@@ -199,6 +224,8 @@ export function GuestsRows({
   onOpen,
   refFor,
   fieldRef,
+  pasteInRow = null,
+  paste = null,
 }: ListProps) {
   const looking = filter !== 'all' || searched.trim() !== '';
   const wide = layout === 'landscape';
@@ -224,25 +251,31 @@ export function GuestsRows({
         <FilterChoice
           filter={filter}
           counts={{ ...counts, list: total }}
+          changed={changed}
           start={menu}
           off={false}
           onChoose={onFilter}
         />
+        {pasteInRow}
       </View>
+      {paste}
+      {changeFailed && <ChangedFailed onRetry={onRetryChanged} />}
       {looking ? (
         <View>
           <ShownLine
-            shown={
-              rows.length === 0
-                ? 0
-                : searched.trim() === ''
-                  ? filterCount(filter, counts)
-                  : rows.length
-            }
+            shown={inViewOf({
+              filter,
+              searched,
+              rows: rows.length,
+              filtered: filter === 'changed' ? rows.length : filterCount(filter, counts),
+              total,
+            })}
             total={total}
             onClear={clear}
           />
-          {rows.length === 0 ? (
+          {filter === 'changed' && changed === 0 ? (
+            <NothingChanged onShowAll={clear} />
+          ) : rows.length === 0 ? (
             <NoMatch onClear={clear} />
           ) : (
             <View style={wide && styles.reach}>
@@ -270,7 +303,7 @@ export function GuestsRows({
                 </View>
                 {count > shown.length && !expanded.includes(group) && (
                   <TextAction
-                    label={showAllWords(group, count)}
+                    label={say.showAll(count)}
                     figures
                     onPress={() => onShowAll(group)}
                     testID={`guests.showAll.${group}`}
@@ -293,6 +326,42 @@ export function GuestsRows({
         </>
       )}
     </>
+  );
+}
+
+/** sc-4331: choosing Changed since you looked failed: nothing is marked read, and Try again chooses it again. */
+function ChangedFailed({ onRetry }: { onRetry: () => void }) {
+  useReadOut(W.changedFailed);
+
+  return (
+    <View style={styles.changedFailed} accessibilityRole="alert" testID="guests.changedFailed">
+      <View style={styles.changedFailedLine}>
+        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
+        <Text size={14} weight="medium" style={styles.grow}>
+          {W.changedFailed}
+        </Text>
+      </View>
+      <TextAction
+        label={W.tryAgain}
+        glyph="refresh"
+        onPress={onRetry}
+        testID="guests.changedFailed.retry"
+      />
+    </View>
+  );
+}
+
+/** sc-4331: nothing changed since the last look, and Show all guests, which does what Clear does. */
+function NothingChanged({ onShowAll }: { onShowAll: () => void }) {
+  useReadOut(W.nothingChanged);
+
+  return (
+    <View style={styles.noMatch} testID="guests.nothingChanged">
+      <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
+        {W.nothingChanged}
+      </Text>
+      <TextAction label={W.showAllGuests} onPress={onShowAll} testID="guests.nothingChanged.all" />
+    </View>
   );
 }
 
@@ -364,7 +433,13 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   lines: { lineHeight: 15 * 1.45 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: tokens.spaceXxs,
+  },
   indent: { paddingLeft: 40 },
   reach: { marginHorizontal: -10 },
   menuRow: {
@@ -375,8 +450,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
   },
   menuPressed: { backgroundColor: tokens.colorInset },
+  menuApart: {
+    marginBottom: tokens.spaceXs,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorBorder,
+  },
   menuTick: { width: 18, alignItems: 'center' },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },
+  changedFailed: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
+  changedFailedLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   noMatchTitle: { lineHeight: 18 * 1.3 },
   loading: { gap: 18 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

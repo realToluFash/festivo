@@ -127,6 +127,21 @@ describe('a new organisation', () => {
     expect(names(tilesOf(founded(none, lumen), ''))).toEqual(['Lumen Feiras', CREATE]);
   });
 
+  it('waits with her two invitations from no organisation, and Open moves into the one joined (sc-75471)', () => {
+    const none = withoutPlaces(sessionFor('one'), true);
+
+    expect(placeOf(none)).toBeNull();
+    expect(none.invitations.map((invite) => invite.name)).toEqual([
+      'Celebraciones Alameda',
+      'Bluebird Gatherings',
+    ]);
+    expect(waitingOf(none)).toBe(2);
+
+    const joined = answer(none, 'org-celebraciones-alameda', true);
+    expect(placeOf(joined)).toBeNull();
+    expect(placeOf(pick(joined, 'org-celebraciones-alameda'))?.name).toBe('Celebraciones Alameda');
+  });
+
   it('takes amber from the id the walk gives it', () => {
     expect(orgMesh(lumen.id)).toBe('amber');
   });
@@ -305,10 +320,10 @@ describe('the grid', () => {
         'org-atelier-celeste-receptions',
         'org-harbourlight',
       ].map(orgMesh),
-    ).toEqual(['accent', 'rose', 'teal', 'amber']);
+    ).toEqual(['party', 'rose', 'teal', 'amber']);
     expect(
       ['org-celebraciones-alameda', 'org-bluebird-gatherings', 'org-ire-weddings'].map(orgMesh),
-    ).toEqual(['amber', 'accent', 'rose']);
+    ).toEqual(['amber', 'party', 'rose']);
   });
 });
 

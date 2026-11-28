@@ -1,5 +1,6 @@
 import datetime
 import unittest
+from unittest import mock
 
 from soirely_queue import roles, work
 from soirely_queue import text as T
@@ -412,16 +413,16 @@ class Queue(unittest.TestCase):
             items = work.queue_items([story(state=state)])
             self.assertEqual(sorted(r for i in items for r in i["roles"]), ["dev"], state)
 
-    def test_ready_for_qa_is_one_item_for_the_three_testers(self):
+    def test_ready_for_qa_is_one_item_for_every_tester(self):
         items = work.queue_items([story(state="Ready For QA")])
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_story_that_needs_ios_is_no_tester_s_without_xcode(self):
         labelled = story(1, state="Ready For QA", labels=["needs ios"])
         named = {**story(2, state="Ready For QA"), "name": "On an iPhone and an iPad, it reads"}
         self.assertEqual(work.queue_items([labelled, named], ios=False), [])
         items = work.queue_items([labelled, named], ios=True)
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]] * 2)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]] * 2)
 
     def test_a_story_naming_an_iphone_later_is_still_offered_without_xcode(self):
         later = {**story(state="Ready For QA"), "name": "Cancel is off on an iPhone and Android"}
@@ -447,7 +448,7 @@ class Queue(unittest.TestCase):
     def test_needs_xcode_holds_back_no_tester(self):
         ready = story(state="Ready For QA", labels=["needs xcode"])
         items = work.queue_items([ready], ios=False)
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
@@ -494,7 +495,7 @@ class Queue(unittest.TestCase):
         soon = work.queue_items([back], now=at + 10 * 60)
         self.assertEqual([i["roles"] for i in soon], [["qa2"]])
         later = work.queue_items([back], now=at + (roles.RETEST_MINUTES + 1) * 60)
-        self.assertEqual([sorted(i["roles"]) for i in later], [["qa", "qa2", "qa3"]])
+        self.assertEqual([sorted(i["roles"]) for i in later], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_story_never_failed_is_for_any_tester(self):
         fresh = story(state="Ready For QA", comments=[comment(1, "QA claim: qa2")])
@@ -579,7 +580,7 @@ class EveryWakeStillHappens(unittest.TestCase):
         found = self.woken([waiting], moves={(1, "Ready For QA", "t1"): "dev2"}, last_runs={})
         for role in ("pm", "ux", "bm", "ops", "l10n", "cd"):
             self.assertIn(("sweep", role), found)
-        for role in ("qa", "qa2", "qa3"):
+        for role in ("qa", "qa2", "qa3", "qa4", "qa5"):
             self.assertIn(("pick", role), found)
 
     def test_a_developer_s_heartbeat_after_moving_its_own_story(self):
@@ -620,6 +621,38 @@ class Heartbeat(unittest.TestCase):
         items = work.heartbeat_items([story(state="To Do")], {"pm": now - 121 * 60}, set(), now,
                                      last_sweeps={"pm": now - 60})
         self.assertEqual([i["kind"] for i in items if i["roles"] == ["pm"]], ["sweep"])
+
+    def test_the_designer_sweeps_once_overdue_though_busy_and_ahead_of_its_comments(self):
+        now = 10_000_000
+        waiting = [story(state="Needs Design")]
+
+        def ux(swept, busy=("ux",), ran=now - 60):
+            return [(i["kind"], i["priority"], i["fingerprint"])
+                    for i in work.heartbeat_items(waiting, {"ux": ran}, set(busy), now,
+                                                  last_sweeps={"ux": swept})
+                    if i["roles"] == ["ux"]]
+        self.assertEqual(ux(now - 239 * 60), [])
+        late = now - 241 * 60
+        self.assertEqual(ux(late), [("sweep", work.INBOX - 1, f"ux:sweep:overdue:{late}")])
+        self.assertEqual(ux(None), [("sweep", work.INBOX - 1, "ux:sweep:overdue:0")])
+        # Quiet as well as overdue, it is still one sweep, not two.
+        self.assertEqual(len(ux(late, busy=(), ran=now - 121 * 60)), 1)
+        # Not overdue, the quiet spell's sweep comes as before.
+        self.assertEqual([k for k, _, _ in ux(now - 60, busy=(), ran=now - 121 * 60)], ["sweep"])
+
+    def test_the_product_manager_sweeps_once_overdue_though_busy(self):
+        now = 10_000_000
+        waiting = [story(state="Backlog")]
+
+        def pm(swept):
+            return [(i["kind"], i["priority"], i["fingerprint"])
+                    for i in work.heartbeat_items(waiting, {"pm": now - 60}, {"pm"}, now,
+                                                  last_sweeps={"pm": swept})
+                    if i["roles"] == ["pm"]]
+        self.assertEqual(pm(now - 239 * 60), [])
+        late = now - 241 * 60
+        self.assertEqual(pm(late), [("sweep", work.INBOX - 1, f"pm:sweep:overdue:{late}")])
+        self.assertEqual(pm(None), [("sweep", work.INBOX - 1, "pm:sweep:overdue:0")])
 
     def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
         items = work.heartbeat_items([], {}, set(), 10_000_000)
@@ -1087,6 +1120,46 @@ class DesignPullRequests(unittest.TestCase):
         self.assertFalse(work.side_pr(ticket, self.design()))
         self.assertEqual(work.builder(ticket, self.design()), "ux")
 
+class OpsPullRequests(unittest.TestCase):
+    """Ops's pull request on another role's story, from an ops/ branch, is ops's to finish:
+    the story's developer is not woken for it, and the story keeps its state."""
+    passed = [verdict("pass", HEAD[:7])]
+
+    def ops(self, **kw):
+        return dict(pr(**kw), branch="ops/sc-1-two-checks")
+
+    def test_its_open_threads_and_its_merge_wake_ops_not_the_developer(self):
+        for state in ("In Progress", "In Review", "Failed QA", "Ready For QA"):
+            on = story(1, state, labels=["dev2"])
+            held = self.ops(lead=self.passed, threads=[thread("should: assert first")])
+            self.assertEqual([(i["kind"], i["roles"]) for i in work.developer_items([on], [held])],
+                             [("answer-threads", ["ops"])])
+            self.assertEqual([(i["kind"], i["roles"])
+                              for i in work.developer_items([on], [self.ops(lead=self.passed)])],
+                             [("merge", ["ops"])])
+            self.assertEqual(work.waits_on(on, self.ops(lead=self.passed)),
+                             ("ops", "ops to merge it"))
+
+    def test_it_never_moves_the_developers_story(self):
+        building = story(1, "In Progress", labels=["dev2"])
+        self.assertEqual(work.developer_items([building], [self.ops()]), [])
+        self.assertEqual(work.waits_on(building, self.ops()), ("lead", "lead to review it"))
+        merged = dict(self.ops(lead=self.passed), state="merged")
+        self.assertEqual(work.developer_items([story(1, "Passed Code Review", labels=["dev2"])],
+                                              [merged]), [])
+
+    def test_the_lead_reviews_it_in_any_state(self):
+        for state in ("In Progress", "Ready For QA"):
+            self.assertEqual(kinds(work.review_items([story(1, state, labels=["dev2"])],
+                                                     [self.ops()])), ["review"])
+
+    def test_an_ops_branch_on_ops_own_story_is_routed_as_before(self):
+        own = story(1, "In Progress", labels=["ops"])
+        self.assertFalse(work.ops_pr(own, self.ops()))
+        self.assertFalse(work.side_pr(own, self.ops()))
+        self.assertEqual(kinds(work.developer_items([own], [self.ops()])), ["to-review"])
+
+
 class DemoOnlyStories(unittest.TestCase):
     """A story labelled `demo only` with no pull request off ux/ is built once its demo
     merges: the product manager moves it to Ready For QA, and no developer is handed it."""
@@ -1164,6 +1237,50 @@ class DemoOnlyStories(unittest.TestCase):
                            if i["kind"] in ("story", "pick")]
                 self.assertEqual([r for i in offered for r in i["roles"] if work.builds(r)],
                                  [], (state, prs))
+
+    def woken(self, stories, prs, role="ux"):
+        return [(i["reason"], i["priority"]) for i in work.derive(stories, prs)
+                if i["kind"] == "story" and role in i["roles"]]
+
+    def test_in_failed_qa_ux_who_built_it_is_woken_without_a_tag(self):
+        failed = self.on("Failed QA", moved_at="2026-10-19T09:00:00Z")
+        for prs in ([self.demo()], []):
+            self.assertEqual([reason for reason, _ in self.woken([failed], prs)],
+                             ["sc-1 moved to Failed QA"], prs)
+        drawing = dict(self.on("Needs Design"), id=2)
+        (_, rework), (_, draw) = sorted(
+            self.woken([failed, drawing], [self.demo()]), key=lambda x: x[0])
+        self.assertLess(rework, draw)
+
+    def test_ux_is_not_offered_a_failed_story_a_developer_built(self):
+        own, later = pr(41, 1, state="merged"), "2026-10-19T09:00:00Z"
+        for stories, prs in (([self.on("Failed QA", ("dev2",), moved_at=later)], [self.demo()]),
+                             ([self.on("Failed QA", moved_at=later)], [self.demo(), own])):
+            self.assertEqual(self.woken(stories, prs), [], (stories, prs))
+            self.assertEqual(work.queued("ux", stories, prs=prs), [])
+            self.assertIn("dev2", self.builders(stories, prs))
+
+    def test_uxs_hold_ends_while_its_fix_is_open_and_once_it_merges_after_the_failure(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        before = self.demo(merged_at="2026-10-18T09:00:00Z")
+        self.assertEqual(len(work.queued("ux", [failed], prs=[before])), 1)
+        fixing = self.demo(41, state="open")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixing]), [])
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixed]), [])
+        self.assertEqual([i["roles"] for i in self.pm_items([failed], [before, fixed])],
+                         [["pm"]])
+
+    def test_uxs_hold_ends_only_where_pms_item_begins(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        with mock.patch.object(work, "demo_items", return_value=[]):
+            self.assertEqual(len(work.queued("ux", [failed], prs=[fixed])), 1)
+        self.assertEqual(work.queued("ux", [failed], prs=[fixed]), [])
+
+    def test_ux_is_offered_it_only_in_failed_qa(self):
+        for state in self.WAITING + self.LATER:
+            self.assertEqual(work.queued("ux", [self.on(state)], prs=[self.demo()]), [], state)
 
     def test_the_lead_is_not_told_it_has_no_pull_request(self):
         items = work.review_items([self.on("In Review")], [self.demo()])
@@ -1409,3 +1526,36 @@ class People(unittest.TestCase):
         self.assertEqual(roles.last_tester(s), "qa2")
         self.assertIsNone(roles.planner(s))
         self.assertFalse(roles.kept_for_person(s, TESTERS))
+
+
+class DemoNotMerged(unittest.TestCase):
+    DRAWN = "# AC\n- shows it\n\n# Design\n**Artboard:** `It.dc.html`\n\n"
+
+    def drawn(self, demo_line, state="Ready For Dev"):
+        return dict(story(1, state), description=self.DRAWN + demo_line)
+
+    def offered(self, stories, prs, role="dev"):
+        return [s["id"] for s in work.queued(role, stories, prs=prs)]
+
+    def test_a_story_whose_demo_is_open_is_offered_to_no_builder(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        for role in roles.ROLES:
+            if work.builds(role):
+                self.assertEqual(self.offered(stories, [pr(40, state="open")], role), [], role)
+
+    def test_a_story_whose_demo_merged_is_offered(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged")]), [1])
+
+    def test_a_demo_half_merged_across_the_clients_still_holds_it(self):
+        stories = [self.drawn("**Demo:** app PR #40 · web PR #41")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged"), pr(41, state="open")]),
+                         [])
+
+    def test_a_demo_line_reading_none_is_offered_whatever_it_cites(self):
+        stories = [self.drawn("**Demo:** none: copy only, see #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])
+
+    def test_rework_is_offered_whatever_its_demo_line_says(self):
+        stories = [self.drawn("**Demo:** PR #40", state="Failed QA")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])

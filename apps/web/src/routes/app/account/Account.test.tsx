@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -394,7 +395,7 @@ describe('the time zone list after a language change', () => {
     await act(async () => release(json({ timezones: ZONES_FR })));
 
     expect(await screen.findByText('Calcutta (UTC+05:30)')).toBeDefined();
-    expect(asked).toEqual(['en', 'fr']);
+    expect(asked).toEqual(['en-US', 'fr']);
   });
 
   it('keeps the query and the rows shown until the new rows arrive, then shows those', async () => {
@@ -438,7 +439,7 @@ describe('the time zone list after a language change', () => {
     fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
 
     await act(() => setLanguage('fr'));
-    await waitFor(() => expect(asked).toEqual(['en', 'fr']));
+    await waitFor(() => expect(asked).toEqual(['en-US', 'fr']));
 
     expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ })).toBeDefined();
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => (init?.method ?? 'GET') !== 'GET')).toBe(
@@ -485,7 +486,7 @@ describe('the time zone list after a language change', () => {
         'Time zone changed to Kolkata (UTC+05:30). Times in your emails now use it.',
       ),
     ).toBeDefined();
-    expect(asked).toEqual(['en', 'fr', 'en']);
+    expect(asked).toEqual(['en-US', 'fr', 'en-US']);
     expect(zoneChange()).toBeDefined();
   });
 
@@ -518,5 +519,29 @@ describe('the time zone list after a language change', () => {
     await act(() => setLanguage('fr'));
 
     await waitFor(() => expect(zoneInput().value).toBe('Londres (UTC+01:00)'));
+  });
+});
+
+describe('the Language row at phone width (sc-57225)', () => {
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  it('says the pick was saved in the foot’s place, in the new language, with no list bullets', async () => {
+    answering({ 'PUT /api/auth/locale': () => new Response(null, { status: 204 }) });
+    open();
+    const group = await screen.findByRole('group', { name: 'Language' });
+    expect(within(group).getByText(/^Every device you sign in on/)).toBeDefined();
+    expect(group.closest('.desk')).not.toBeNull();
+    expect(group.querySelector('.desk-foot')?.getAttribute('aria-live')).toBe('polite');
+
+    fireEvent.click(within(group).getByRole('radio', { name: /Français/ }));
+
+    const french = await screen.findByRole('group', { name: 'Langue' });
+    await waitFor(() =>
+      expect(french.querySelector('.desk-foot')?.textContent).toBe(
+        i18next.t('account.languageSaved', { language: 'Français' }),
+      ),
+    );
   });
 });

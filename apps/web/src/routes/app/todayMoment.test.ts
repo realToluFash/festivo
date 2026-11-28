@@ -33,7 +33,9 @@ function event(name: string, rest: Partial<ListedEvent> = {}): ListedEvent {
     currency: 'GBP',
     cover: null,
     venue: { name: 'The Landmark', address: null },
+    arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: '2026-10-01T00:00:00Z',
     pausedAt: null,
     concludedAt: null,
@@ -95,6 +97,7 @@ describe('todayMoment', () => {
           owner: 'automatic',
           area: 'guests',
           action: null,
+          done: false,
         },
       ],
     });
@@ -178,6 +181,13 @@ describe('todayMoment', () => {
       sub: 'New year starts on Sat, 13 Feb 2027.',
       nextUp: { name: 'New year', when: 'Sat, 13 Feb 2027 · in 102 days' },
     });
+  });
+
+  it('writes each day’s narrow weekday and the full one a screen reader hears (sc-61548)', () => {
+    const plan = moment([event('Wedding')]);
+
+    expect(plan.days.map(({ narrow }) => narrow).join(' ')).toBe('T W T F S S M');
+    expect(plan.days.map(({ spoken, number }) => `${spoken} ${number}`)[3]).toBe('Friday 6');
   });
 
   it("takes this year from today in the event's zone, not the reader's", () => {

@@ -7,6 +7,7 @@ import {
   filtersFor,
   grantable,
   invitationRow,
+  invited,
   inviteProblem,
   KOFI,
   LONG_NAME,
@@ -27,6 +28,7 @@ import {
   sampleRecoveries,
   tagOf,
   TOM,
+  undeliveredInvitations,
 } from './members.ts';
 import { SAMPLE } from './rules.ts';
 import { SETTINGS_PAGES, settingsSayIn, VIEWERS } from './settings.ts';
@@ -155,9 +157,36 @@ describe('Members at a desk (sc-29708)', () => {
     expect(invitationRow(pending, samplePeople(), VIEWERS.folake, say)).toEqual({
       tag: null,
       line: 'Member · invited by you',
-      dates: 'Sent Nov 2, 2026 · expires Nov 9, 2026',
+      sent: 'Sent Nov 2, 2026',
+      ended: 'expires Nov 9, 2026',
+      notDelivered: false,
     });
     expect(invitationRow(expired, samplePeople(), VIEWERS.folake, say).tag).toBe('Expired');
+  });
+
+  it('says Not delivered where Sent was, keeping the end and the tag (sc-46109)', () => {
+    const rows = undeliveredInvitations().map((one) =>
+      invitationRow(one, samplePeople(), VIEWERS.folake, say),
+    );
+
+    expect(rows.map((row) => [row.tag, row.sent, row.ended, row.notDelivered])).toEqual([
+      [null, 'Sent Nov 2, 2026', 'expires Nov 9, 2026', false],
+      [null, 'Not delivered', 'expires Nov 11, 2026', true],
+      ['Expired', 'Not delivered', 'expired Oct 21, 2026', true],
+      ['Revoked', 'Not delivered', 'revoked Nov 3, 2026', true],
+      ['Declined', 'Not delivered', 'declined Oct 3, 2026', true],
+    ]);
+  });
+
+  it('is not delivered again when the address is still held back, and sent when it is not (sc-46109)', () => {
+    const again = (email: string) =>
+      invited(undeliveredInvitations(), email, 'Member', VIEWERS.folake.id).find(
+        (one) => one.email === email,
+      );
+
+    expect(again('ines.duarte@gmail.com')).toMatchObject({ status: 'pending', notDelivered: true });
+    expect(again('yusuf.bello@outlook.com')?.notDelivered).toBeUndefined();
+    expect(card('notDeliveredAgain').says).toBe('Invitation sent to ines.duarte@gmail.com');
   });
 
   it('asks for an address that looks like one', () => {
@@ -378,5 +407,26 @@ describe('sc-40153’s organisation names', () => {
     expect(organisationOf('oneWordName')).toBe(ONE_WORD_NAME);
     expect(organisationOf('oneWordNameAt320')).toBe(ONE_WORD_NAME);
     expect(organisationOf('priya')).toBe('Ire Events');
+  });
+});
+
+describe("Members' card with more people than its chip writes (sc-48825)", () => {
+  it('has 99 beyond the five faces at 104 people', () => {
+    expect(card('ninetyNine')).toMatchObject({ says: '104 people · 1 waiting', more: 99 });
+    expect(card('ninetyNine').faces).toHaveLength(5);
+  });
+
+  it('has 1,321 beyond the faces at 1,326 people, and the sentence groups the figure', () => {
+    expect(card('crowd')).toMatchObject({ says: '1,326 people · 1 waiting', more: 1321 });
+  });
+
+  it('keeps the first five faces as they were', () => {
+    expect(card('crowd').faces.map((one) => one.id)).toEqual(card('').faces.map((one) => one.id));
+  });
+
+  it('counts the crowd under the People filter', () => {
+    const start = membersStart('crowd', VIEWERS.folake);
+
+    expect(counts(start.people, start.invitations)).toMatchObject({ all: 1326, waiting: 1 });
   });
 });

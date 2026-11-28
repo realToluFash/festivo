@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Invitations;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -15,9 +16,7 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
 use App\Repository\InvitationRepository;
@@ -26,10 +25,10 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
+use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Translation\TranslatorInterface;
-use Throwable;
 
 /** Sending, re-sending and revoking an invitation (sc-67). */
 final readonly class InvitationSender
@@ -43,10 +42,11 @@ final readonly class InvitationSender
         private RoleManager $roleManager,
         private RecentProof $recentProof,
         private InvitationMailer $invitationMailer,
-        private AfterResponse $afterResponse,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -71,7 +71,17 @@ final readonly class InvitationSender
 
         $token = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
         $expiresAt = new DateTimeImmutable()->modify(Str\format('+%d days', Invitation::LIFETIME_DAYS));
+
+        return $this->entityManager->wrapInTransaction(fn (): Invitation => $this->write($organisation, $address, $role, $by, $token, $expiresAt, $request));
+    }
+
+    private function write(Organisation $organisation, string $address, Role $role, User $by, #[SensitiveParameter] string $token, DateTimeImmutable $expiresAt, ?Request $request): Invitation
+    {
         $invitation = $this->invitationRepository->findPending($organisation, $address);
+
+        if (null === $invitation || $invitation->getExpiresAt() <= $this->clock->now()) {
+            $this->hardLimits->requireSeatToInvite($organisation);
+        }
 
         if (null === $invitation) {
             $invitation = new Invitation($organisation, $address, $role, $by, TokenIssuer::hash($token), $expiresAt);
@@ -82,8 +92,6 @@ final readonly class InvitationSender
             $invitation->setRole($role);
             $invitation->setInvitedBy($by);
             $invitation->setOrganisationName($organisation->getName());
-            $invitation->setDelivery(InvitationDelivery::Queued);
-            $invitation->setSentAt(null);
         }
 
         $this->auditor->record('invitation.sent', 'Invitation', $invitation->getId(), Actor::User, $by->getId(), $by->getName(), [
@@ -94,8 +102,7 @@ final readonly class InvitationSender
 
         $held = $this->emailAddressRepository->findOneByAddress($address);
         $recipient = true === $held?->isVerified() ? $held->getUser() : null;
-        $asked = $request?->getLocale();
-        $this->afterResponse->defer(fn () => $this->deliver($invitation, $token, $recipient, $asked));
+        $this->invitationMailer->send($invitation, $token, $recipient, $request?->getLocale());
 
         return $invitation;
     }
@@ -111,22 +118,6 @@ final readonly class InvitationSender
         $this->auditor->record('invitation.revoked', 'Invitation', $invitation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'status' => [InvitationStatus::Pending->value, InvitationStatus::Revoked->value],
         ]);
-        $this->entityManager->flush();
-    }
-
-    private function deliver(Invitation $invitation, #[SensitiveParameter] string $token, ?User $recipient, ?string $asked): void
-    {
-        try {
-            $this->invitationMailer->send($invitation, $token, $recipient, $asked);
-            $invitation->setDelivery(InvitationDelivery::Sent);
-            $invitation->setSentAt(new DateTimeImmutable());
-        } catch (Throwable $e) {
-            $invitation->setDelivery(InvitationDelivery::Failed);
-            $this->entityManager->flush();
-
-            throw $e;
-        }
-
         $this->entityManager->flush();
     }
 

@@ -138,12 +138,13 @@
   min-width: 0;
 }
 
+/* The list still clips what does not fit, but its padding gives a focused link's desk ring (2 px line, halo reaching 5 px) room on all four sides; the negative margin keeps the band's layout as it was (sc-57088). */
 .st-crumb ol {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
-  margin: 0;
-  padding: 0;
+  margin: calc(-1 * var(--spaceXs));
+  padding: var(--spaceXs);
   overflow: hidden;
   color: var(--colorInkSecondary);
   font: 500 15px/1.3 var(--fontFamily);
@@ -153,9 +154,45 @@
 
 .st-crumb li {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
+}
+
+/* At 320 px the trail takes its own line above the plan's tools and wraps, so no step is clipped (sc-32279). */
+@media (width <= 40rem) {
+  .st-top {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .st-crumb {
+    flex: 1 0 100%;
+  }
+
+  .st-crumb ol {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+.st-crumb svg {
+  flex: none;
+}
+
+/* Only the event name gives way (sc-55300): the chevrons, Events and Seating keep their size. */
+.st-crumb .st-crumb-event {
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.st-crumb-event a {
+  min-width: 0;
+}
+
+.st-crumb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .st-crumb a {
@@ -171,8 +208,13 @@
   text-decoration: underline;
 }
 
+.st-crumb a.is-ring {
+  box-shadow: var(--deskRing);
+}
+
 .st-crumb h1 {
   margin: 0;
+  white-space: nowrap;
   outline: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
@@ -448,6 +490,13 @@
   fill: var(--colorCard);
   stroke: var(--colorAttention);
   stroke-dasharray: 3 2.5;
+}
+
+.st-chair-q {
+  fill: var(--colorAttention);
+  font-family: var(--fontFamily);
+  font-weight: 700;
+  pointer-events: none;
 }
 
 .st-chair.is-unusable {
@@ -758,7 +807,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
+  padding: var(--spaceXxs);
   border-radius: 26px;
   background: var(--colorCard);
   box-shadow: var(--stShadow);
@@ -871,6 +920,7 @@
   display: flex;
   flex-direction: column;
   width: 380px;
+  max-width: calc(100% - 2 * var(--spaceLg));
   box-sizing: border-box;
   padding: 6px;
   border-radius: 18px;
@@ -889,6 +939,7 @@
   background: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
+  white-space: normal;
   text-align: left;
   cursor: pointer;
 }
@@ -916,8 +967,14 @@
 .st-bar.is-floor {
   top: 50%;
   left: 50%;
+  align-items: flex-start;
   width: min(470px, calc(100% - 2 * var(--spaceLg)));
   transform: translate(-50%, -50%);
+}
+
+/* sc-92210: on two lines or three the info icon stays at the start of the first. */
+.st-bar.is-floor > :first-child {
+  margin-top: calc(var(--spaceLg) + (14.5px * 1.4 - 17px) / 2);
 }
 
 .st-bar.is-inline {
@@ -925,8 +982,18 @@
   width: auto;
 }
 
-.st-bar p {
+/* sc-57282: the words keep a readable measure beside the actions; when the actions, as drawn in the page's language, leave less, they step together onto a line under the words. */
+.st-bar-body {
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 0;
+}
+
+.st-bar p {
+  flex: 1 1 13em;
   min-width: 0;
   margin: 0;
   padding: var(--spaceLg) 0;
@@ -952,7 +1019,10 @@
 
 .st-bar-acts {
   display: flex;
-  gap: 18px;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0 18px;
+  min-width: 0;
 }
 
 .st-keys {
@@ -966,6 +1036,20 @@
   border-radius: var(--spaceLg);
   background: var(--stSurface);
   box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+/* sc-55937: when even the folded bar meets the zoom, the zoom steps up one line at the floor's right, and whatever stood on that line steps up with it. */
+.is-zoom-up .st-zoom {
+  bottom: 80px;
+}
+
+.is-zoom-up .st-minimap,
+.is-zoom-up .st-another {
+  bottom: 144px;
+}
+
+.is-zoom-up .st-keys {
+  bottom: 142px;
 }
 
 .st-key {
@@ -1575,6 +1659,11 @@
   margin-top: 2px;
 }
 
+.st-box.is-select select {
+  padding-right: 28px;
+  text-overflow: ellipsis;
+}
+
 .st-box.is-select svg {
   position: absolute;
   right: 12px;
@@ -1870,12 +1959,30 @@
   background: var(--colorAccentTint);
 }
 
+.st-party.is-seat {
+  gap: 10px;
+  min-height: var(--sizeHit);
+  padding: 2px 10px;
+}
+
 .st-party:disabled {
   cursor: default;
 }
 
 .st-party:disabled:hover {
   background: none;
+}
+
+.st-party.is-left {
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+}
+
+.st-party.is-left svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--colorAttention);
 }
 
 .st-avatar {
@@ -1893,13 +2000,29 @@
 
 .st-view-wrap {
   position: absolute;
-  inset: 0;
+  inset: 72px 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-  padding: 72px var(--spaceLg) var(--spaceLg);
+  padding: 0 var(--spaceLg) var(--spaceLg);
   overflow-y: auto;
+}
+
+/* sc-4013: the cards scroll under the view switch, and the step's message, with a choice it asks for (Seat just, Swap with, Move everyone to…), stays at the top of what is shown, so a card tapped far down the grid never scrolls its answer away. */
+.st-view-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.st-view-top > .st-bar.is-inline {
+  align-self: stretch;
 }
 
 .st-canvas.is-list {
@@ -1914,30 +2037,148 @@
 
 .st-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 212px);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, 242px);
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .st-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 212px;
   box-sizing: border-box;
   padding: 12px;
-  border: 0;
   border-radius: 20px;
   background: var(--colorCard);
   box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+/* sc-4013: the card's name is its button and reaches over the whole card, so a press anywhere but a chair is the table's; the chairs sit above it as targets of their own, never inside it. */
+.st-card-hit {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
+.st-card-hit::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+}
+
+.st-card-hit:focus-visible {
+  outline: none;
+}
+
+.st-card-hit:focus-visible::after {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+  border-radius: 20px;
+}
+
+.st-card-art .st-chair-hit.is-card {
+  pointer-events: auto;
+}
+
+.st-card-art .st-chair-hit.is-card:hover,
+.st-card-art .st-chair-hit.is-card[aria-pressed='true'] {
+  stroke: var(--colorAccent);
+  stroke-width: 2;
+}
+
 .st-card.is-lit {
   background: var(--colorAccentTint);
+}
+
+.st-whos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.st-who {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--ring);
+  color: var(--colorInkOnDark);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+/* sc-60717: a colleague's ring outside the card, as on the plan: 2 px white, then 3 px in their colour, each further colleague 5 px out. Every slot reserves three rings and their pills, as on the iPad, so a live choice only paints. */
+.st-card-slot {
+  position: relative;
+  padding: 27px 15px 15px;
+}
+
+.st-card.is-marked .st-card-hit:focus-visible::after {
+  outline-offset: -6px;
+}
+
+.st-card-ring {
+  position: absolute;
+  inset: calc(27px - var(--out)) calc(15px - var(--out)) calc(15px - var(--out));
+  border: 3px solid var(--ring);
+  box-shadow: inset 0 0 0 2px var(--colorCard);
+  pointer-events: none;
+}
+
+.st-card-ring.is-k0 {
+  --out: 5px;
+
+  border-radius: 25px;
+}
+
+.st-card-ring.is-k1 {
+  --out: 10px;
+
+  border-radius: 30px;
+}
+
+.st-card-ring.is-k2 {
+  --out: 15px;
+
+  border-radius: 35px;
+}
+
+.st-card-ring.is-k3 {
+  --out: 20px;
+
+  border-radius: 40px;
+}
+
+.st-card-ring .st-who {
+  position: absolute;
+  top: -12px;
+}
+
+.st-card-ring.is-k0 .st-who {
+  left: 14px;
+}
+
+.st-card-ring.is-k1 .st-who {
+  left: 58px;
+}
+
+.st-card-ring.is-k2 .st-who {
+  left: 102px;
+}
+
+.st-card-ring.is-k3 .st-who {
+  left: 146px;
 }
 
 .st-card-top {
@@ -1974,7 +2215,11 @@
 }
 
 .st-card-art {
+  position: relative;
+  z-index: 1;
   display: block;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .st-seg.is-list {
@@ -2016,7 +2261,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 180px;
+  min-width: 180px;
   min-height: 56px;
   padding: 0;
   border: 0;
@@ -2362,6 +2607,285 @@
   font: 500 12px/1 var(--fontFamily);
 }
 
+/* Choosing many (sc-4717): the toolbar under the views, the box, the grid's outline and the Selection panel. */
+.st-under-views {
+  top: 72px;
+  left: var(--spaceLg);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  width: min(520px, calc(100% - 2 * var(--spaceLg)));
+  pointer-events: none;
+}
+
+.st-under-views > * {
+  pointer-events: auto;
+}
+
+.st-under-views .st-bar.is-inline {
+  align-self: stretch;
+}
+
+.st-choose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-choice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  padding: 0 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 22px;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 500 14px/1 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.st-choice.is-on {
+  padding: 0 13px;
+  border: 2px solid var(--deskGreen);
+  background: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  font-weight: 600;
+}
+
+.st-choice.is-on svg {
+  color: var(--deskGreen);
+}
+
+.st-hint {
+  margin: 0;
+  padding: var(--spaceMd) 14px;
+  border-radius: var(--spaceLg);
+  background: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.st-kind-menu {
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--colorCard);
+  box-shadow: var(--stLift);
+}
+
+.st-menu-head {
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg) 4px;
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+.st-kind-row {
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--sizeHit);
+}
+
+.st-kind-row:disabled {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.st-kind-count {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-rules .st-key svg {
+  flex: none;
+  color: var(--deskGreen);
+}
+
+.st-key.is-touch {
+  display: none;
+}
+
+@media (any-pointer: coarse), (width < 1280px) {
+  .st-key.is-touch {
+    display: flex;
+  }
+}
+
+.st-box-drawn {
+  fill: color-mix(in srgb, var(--deskGreen) 10%, transparent);
+  stroke: var(--deskGreen);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-outline {
+  fill: none;
+  stroke: var(--colorInkSecondary);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+.st-outline.is-amber {
+  stroke: var(--colorAttention);
+  stroke-width: 2.5;
+}
+
+.st-tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.st-tool-head {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.st-align {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.st-align-one {
+  position: relative;
+  display: flex;
+}
+
+.st-align-button {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 13px/1.2 var(--fontFamily);
+  cursor: pointer;
+}
+
+.st-align-button:disabled {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.st-align-button:hover:not(:disabled) {
+  background: var(--stSurface);
+}
+
+.st-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 8;
+  display: none;
+  width: max-content;
+  max-width: 200px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  font: 500 12.5px/1.35 var(--fontFamily);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.st-align-one:nth-child(3n + 1) .st-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.st-align-one:nth-child(3n) .st-tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.st-align-one:hover .st-tooltip,
+.st-align-one:has(:focus-visible) .st-tooltip {
+  display: block;
+}
+
+.st-folds {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.st-fold {
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.st-fold-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 600 14.5px/1.3 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+}
+
+.st-fold.is-open .st-fold-head svg {
+  transform: rotate(180deg);
+}
+
+.st-fold-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spaceMd);
+  padding: 0 0 var(--spaceLg);
+}
+
+@media (width < 960px) {
+  .st-main:not(.is-none) {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .st-main:not(.is-none) .st-canvas {
+    flex: none;
+    height: 560px;
+  }
+
+  .st-main:not(.is-none) .st-panel {
+    width: auto;
+    border-top: 1px solid var(--colorBorder);
+    border-left: 0;
+  }
+}
+
 @media print {
   .sp-page {
     padding: 0;
@@ -2379,4 +2903,136 @@
 
 .desk-ask p:empty {
   display: none;
+}
+
+.st-widths {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space6xl);
+  padding: var(--space6xl) 24px;
+  color: var(--colorInk);
+  font-family: var(--fontFamily);
+}
+
+.st-widths > h1 {
+  margin: 0;
+  font: 600 22px/1.3 var(--fontFamily);
+}
+
+.st-widths-line {
+  max-width: 40rem;
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.5 var(--fontFamily);
+}
+
+.st-width {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+}
+
+.st-width figcaption {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+}
+
+.st-window {
+  box-sizing: border-box;
+  padding: 0 var(--spaceXl);
+  border-radius: var(--radiusCardDesktop);
+  outline: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+}
+
+.st-width.is-320 .st-window {
+  width: 320px;
+}
+
+.st-width.is-375 .st-window {
+  width: 375px;
+}
+
+.st-width.is-1280 .st-window {
+  padding: 0;
+}
+
+/* At 60rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name and the item that flexes around it both stop at 44 px (sc-55300). */
+.st-window .st-top {
+  padding-inline: 0;
+}
+
+.st-width.is-1280 .st-top {
+  padding-inline: 24px var(--spaceLg);
+}
+
+.st-window .st-crumb-event,
+.st-window .st-crumb-event a {
+  min-width: var(--sizeHit);
+}
+
+/* sc-57282: when the views and Saved · Print would come within 12 px, Saved · Print step down a line at the floor's right, and what stood on that line steps down with them. */
+.is-row-down .st-top-right {
+  top: 72px;
+}
+
+.is-row-down .st-print {
+  top: 130px;
+}
+
+.is-row-down .st-under-views {
+  top: 132px;
+}
+
+.is-row-down .st-view-wrap {
+  top: 132px;
+}
+
+/* sc-5030: while a guest is picked, every table says whether it has room, by outline and by word. */
+.st-room-for {
+  fill: none;
+  stroke: var(--deskGreen);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-room-for.is-full {
+  stroke: var(--colorInkTertiary);
+}
+
+.st-free {
+  pointer-events: none;
+}
+
+.st-free rect {
+  fill: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  stroke: var(--deskGreen);
+}
+
+.st-free text {
+  fill: var(--colorInk);
+  font: 600 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-free.is-full rect {
+  fill: var(--stSunk);
+  stroke: var(--colorInkTertiary);
+}
+
+.st-kept {
+  flex: none;
+  padding: var(--spaceMd) var(--spaceLg) 0 24px;
+}
+
+.st-avatar.is-proposed {
+  border: 1.5px dashed var(--colorAttention);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.st-row-line.is-amber {
+  color: var(--colorAttentionText);
 }

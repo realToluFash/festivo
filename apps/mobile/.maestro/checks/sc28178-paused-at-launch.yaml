@@ -15,6 +15,7 @@ appId: host.exp.Exponent
     env:
       ORG: Alpha
       FROM: tab-events
+      AT: frame.events
       CHANGE: pause
       MOVE: frame.settings
 - extendedWaitUntil:
@@ -33,6 +34,11 @@ appId: host.exp.Exponent
     timeout: 30000
 - assertVisible: '.*Alpha.*'
 - takeScreenshot: launch-paused
+- scrollUntilVisible:
+    element:
+      id: 'accessPaused.switch'
+    centerElement: true
+    timeout: 15000
 - tapOn:
     id: 'accessPaused.switch'
 - waitForAnimationToEnd:

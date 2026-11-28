@@ -1,0 +1,93 @@
+# sc-46879, tablet (the guest pane scrolled by a swipe on its own side): ${BRUNO} (Not yet invited) on the Live event: the sheet, the empty refusal, a WhatsApp mark, then Mark as not invited; beside the demo.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Bruno'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${BRUNO}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${BRUNO}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${BRUNO}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: notYetInvited
+- swipe:
+    start: 75%, 80%
+    end: 75%, 25%
+- swipe:
+    start: 75%, 80%
+    end: 75%, 25%
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: notYetInvited-scrolled
+- tapOn:
+    id: 'guest.mark'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: markAsInvited
+- tapOn:
+    id: 'guest.markSheet.do'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: markRefused
+- tapOn:
+    id: 'guest.markSheet.whatsapp'
+- tapOn:
+    id: 'guest.markSheet.do'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.invited'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: marked
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: marked-top
+- swipe:
+    start: 75%, 80%
+    end: 75%, 25%
+- swipe:
+    start: 75%, 80%
+    end: 75%, 25%
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: unmarked
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: unmarked-top
+- openLink: ${METRO_URL}/--/demo/guests?state=markRefused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-markRefused

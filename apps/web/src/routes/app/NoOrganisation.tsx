@@ -1,14 +1,18 @@
 import type { Membership } from '@soirely/api-client';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { CreateOrganisation, StartYourOwn } from '../../components/CreateOrganisation.tsx';
-import { InvitationRows } from '../../components/InvitationRows.tsx';
+import { ManagedBanner, useManaged } from '../../components/Managed.tsx';
+import { SignedIn, WaitingList, WaitingRow } from '../../components/NoOrganisationParts.tsx';
+import { InvitationPanel } from '../../components/OrganisationSwitcher.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import type { WaitingInvitations } from '../../invitations.ts';
 import { joinOrganisation, useSession } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 
-/** Where an account in no organisation lands, with any invitation waiting for it and a way to start its own. Its own account pages still work from here. */
+/** Where an account in no organisation lands, as `/demo/today?orgs=none` draws it: any invitation waiting for it, a way to start its own or sc-563's banner in its place, and Your account and Sign out (sc-75471). */
 export function NoOrganisation({
   waiting,
   onOpen,
@@ -20,29 +24,44 @@ export function NoOrganisation({
 }) {
   const { t } = useTranslation();
   const session = useSession();
+  const managed = useManaged();
+  const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const { signOut, unreached } = useSignOut(() => void navigate('/sign-in'));
 
   return (
-    <section className="card no-organisation" aria-labelledby="no-organisation-title">
+    <div className="cw-none">
       <h1 id="no-organisation-title" tabIndex={-1}>
         {t('noOrganisation.title')}
       </h1>
-      <p>{t('noOrganisation.body')}</p>
+      <p className="cw-none-body">{t('noOrganisation.body')}</p>
       {waiting.invitations.length > 0 ? (
-        <div className="no-organisation-invitations">
-          <p className="no-organisation-heading">{t('invitations.heading')}</p>
-          <InvitationRows waiting={waiting} place="page" after={{ open: onOpen }} />
-        </div>
+        <WaitingList>
+          {waiting.invitations.map((invitation) => (
+            <WaitingRow key={invitation.id} name={invitation.organisation.name}>
+              <InvitationPanel invitation={invitation} waiting={waiting} onOpen={onOpen} />
+            </WaitingRow>
+          ))}
+        </WaitingList>
       ) : (
-        <p>{t('noOrganisation.wayOn', { email: session.email })}</p>
+        <p className="cw-none-body is-quiet">
+          {t('noOrganisation.wayOn', { email: session.email })}
+        </p>
       )}
-      <StartYourOwn onStart={() => setCreating(true)} />
-      <div className="auth-footnote no-organisation-footnote">
-        <span>{t('noOrganisation.signedInAs', { email: session.email })}</span>
-        <Link className="link-button" to="/app/account/security">
+      {managed != null ? (
+        <ManagedBanner managed={managed} />
+      ) : (
+        managed === null && <StartYourOwn onStart={() => setCreating(true)} />
+      )}
+      <SignedIn line={t('noOrganisation.signedInAs', { email: session.email })}>
+        <Link className="desk-text" to="/app/account/security">
           {t('noOrganisation.account')}
         </Link>
-      </div>
+        <button type="button" className="desk-text" onClick={() => void signOut()}>
+          {t('nav.signOut')}
+        </button>
+      </SignedIn>
+      {unreached && <StillSignedIn />}
       {creating && (
         <CreateOrganisation
           email={session.email}
@@ -54,6 +73,6 @@ export function NoOrganisation({
           }}
         />
       )}
-    </section>
+    </div>
   );
 }

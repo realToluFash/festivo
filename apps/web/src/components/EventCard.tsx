@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import {
+  type ButtonStep,
   type CardPhoto,
-  type CardStep,
   type PhaseMark,
   type Shown,
   cardStep,
@@ -30,7 +30,7 @@ function usePhoto(photo: CardPhoto | null): [CardPhoto | null, () => void] {
 }
 
 /** The organiser's photo over the whole box, decorative: the event's name is beside it. */
-function Photo({
+export function Photo({
   photo,
   sizes,
   onFail,
@@ -91,7 +91,7 @@ export function EventThumb({
   );
 }
 
-function GlassMark({ mark }: { mark: PhaseMark }) {
+export function GlassMark({ mark }: { mark: PhaseMark }) {
   switch (mark) {
     case 'paused':
       return (
@@ -111,7 +111,7 @@ function GlassMark({ mark }: { mark: PhaseMark }) {
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-export type ButtonStep = Extract<CardStep, { kind: 'button' }>;
+export type { ButtonStep };
 
 /** The cover card: the phase and how soon on its glass, the name, its days and place, a tile per day, and its one step, offered only to a role that can take it (sc-30413). */
 export function EventCard({
@@ -150,7 +150,7 @@ export function EventCard({
   const [photo, failed] = usePhoto(event.photo);
   const tags = cardTags(event, now, t);
   const tiles = dayTiles(event, now, locale);
-  const step = cardStep(event, now, locale, t);
+  const foot = held ? null : cardStep(event, now, locale, t);
   const Name = level === 1 ? 'h1' : 'h2';
 
   return (
@@ -215,29 +215,61 @@ export function EventCard({
             )}
           </ul>
         )}
-        <div className="ev-card-foot">
-          {held ? null : step.kind === 'next' ? (
-            (nextUp ?? (
-              <>
-                <p className="ev-card-next">{step.title}</p>
-                <p className="desk-on-card">{step.line}</p>
-              </>
-            ))
-          ) : (
-            <>
-              <p className="desk-on-card">{step.line}</p>
-              {takes(step.action) && (
-                <StepButton
-                  ref={stepRef}
-                  label={sending ?? step.label}
-                  busy={sending != null}
-                  onClick={() => onStep(step)}
-                />
-              )}
-            </>
-          )}
-        </div>
+        {foot?.kind === 'none' ? (
+          <div className="ev-card-foot is-unseen" aria-hidden="true">
+            <ButtonFoot step={foot.keeps} takes={takes} />
+          </div>
+        ) : (
+          <div className="ev-card-foot">
+            {foot == null ? null : foot.kind === 'next' ? (
+              (nextUp ?? (
+                <>
+                  <p className="ev-card-next">{foot.title}</p>
+                  <p className="desk-on-card">{foot.line}</p>
+                </>
+              ))
+            ) : (
+              <ButtonFoot
+                step={foot}
+                takes={takes}
+                onStep={onStep}
+                stepRef={stepRef}
+                sending={sending}
+              />
+            )}
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function ButtonFoot({
+  step,
+  takes,
+  onStep,
+  stepRef,
+  sending = null,
+}: {
+  step: ButtonStep;
+  takes: (action: CardStepAction) => boolean;
+  onStep?: (step: ButtonStep) => void;
+  stepRef?: RefObject<HTMLButtonElement | null> | undefined;
+  sending?: string | null;
+}) {
+  return (
+    <>
+      <p className="desk-on-card">
+        {takes(step.action) ? step.line : (step.readerLine ?? step.line)}
+      </p>
+      {takes(step.action) && (
+        <StepButton
+          ref={stepRef}
+          label={sending ?? step.label}
+          busy={sending != null}
+          onClick={() => onStep?.(step)}
+        />
+      )}
+    </>
   );
 }

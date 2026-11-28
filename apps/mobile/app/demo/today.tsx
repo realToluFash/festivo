@@ -12,10 +12,10 @@ import { useLayout } from '../../src/layout/useLayout.ts';
 import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
+import { noOrgBoardOf } from '../../src/demo/settings/fromNone.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { INVITES_NOT_SENT, isNeedsState, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
-import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
+import { isNeedsState, MOMENTS, momentOf, planGuests, sayIn } from '../../src/demo/today.ts';
 import {
   ARRIVED_AT,
   type ArrivedState,
@@ -28,8 +28,11 @@ import {
 } from '../../src/demo/today/arrived.ts';
 import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
 import { PlanTodayLandscape } from '../../src/demo/today/PlanToday.tsx';
+import { useTodayRead, WaitingTodayScreen } from '../../src/demo/today/WaitingToday.tsx';
+import { readEnds, waitingCover, waitingOf } from '../../src/demo/today/waiting.ts';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
+import { isReadsState, useNowReads } from '../../src/demo/today/nowReads.tsx';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
 import type { Tell } from '../../src/components/TodayParts.tsx';
@@ -37,6 +40,7 @@ import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
 import { TodayShellProvider } from '../../src/components/todayShell.ts';
 import { demoShell } from '../../src/demo/demoShell.ts';
 import { openEvent } from '../../src/demo/events/openEvent.ts';
+import { openedOver } from '../../src/demo/events/opener.ts';
 import { openSearch } from '../../src/demo/search/SearchHeader.tsx';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
@@ -91,8 +95,13 @@ function DemoTodayScreen() {
     arrived?: string;
     numbers?: string;
     invites?: string;
+    figures?: string;
     needs?: string;
     starts?: string;
+    reads?: string;
+    state?: string;
+    load?: string;
+    retry?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -103,7 +112,7 @@ function DemoTodayScreen() {
   const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
   // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
-  const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
+  const guests = name === 'plan' ? planGuests(params.invites, params.figures) : undefined;
   const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
   const later = name === 'plan' && params.starts === 'later';
   const moment = useMemo(
@@ -124,6 +133,17 @@ function DemoTodayScreen() {
         : null,
     [moment, params.now, arrivedState, live, numbers, say],
   );
+  const readsState = run != null && isReadsState(params.reads) ? params.reads : null;
+  // Now's own reads aging (sc-62416): `?reads=` shows the line, or runs the reads live; without it Now is as sc-29875 left it.
+  const reads = useNowReads(readsState, run?.time ?? '16:40', say.locale);
+  const shownRun =
+    run == null || readsState == null ? run : reads.built ? null : { ...run, asOf: reads.asOf };
+  const built = readsState != null && reads.built;
+  // A refused read, or a first read that never lands, leaves Now as the product builds it today: `?moment=dayNow`'s.
+  const drawn = useMemo(
+    () => (built ? momentOf('dayNow', say, i18n.getFixedT('en')) : moment),
+    [built, say, i18n, moment],
+  );
   const arrived = useMemo(
     () =>
       name !== 'dayNow' || arrivedState == null
@@ -132,6 +152,9 @@ function DemoTodayScreen() {
     [name, arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
+  // Today's events loading, or refused (sc-87600): `?load=`, and `?retry=fails` keeps refusing.
+  const read = useTodayRead(waitingOf(params.load), readEnds(params.retry), place?.id);
+  const cover = useMemo(() => waitingCover(moment), [moment]);
   const [told, setTold] = useState(params.toast);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const shell = useMemo(
@@ -139,7 +162,7 @@ function DemoTodayScreen() {
       demoShell(tell, {
         events: toEvents,
         calendar: toCalendar,
-        event: (key) => openEvent(EVENT_OF_KEY[key]),
+        event: (key) => openEvent(EVENT_OF_KEY[key], openedOver('today')),
         search: openSearch,
       }),
     [tell],
@@ -162,7 +185,10 @@ function DemoTodayScreen() {
   useCoverStatusBar(bar, false);
 
   const notices = (
-    <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+    <>
+      <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+      {reads.controls}
+    </>
   );
 
   const onTab = useCallback((tab: Tab) => {
@@ -174,27 +200,37 @@ function DemoTodayScreen() {
   return (
     <OrgSwitcherProvider
       // A deep link to another state starts it afresh, as opening it from the index does.
-      key={[params.switcher, params.create, params.orgs].join('|')}
+      key={[params.switcher, params.create, params.orgs, params.state, params.load].join('|')}
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}
+      invited={params.state === 'invitations'}
       statusBar={bar}
       tell={tell}
     >
       <TodayShellProvider value={shell}>
         <View style={styles.fill}>
           {place == null ? (
-            <NoOrganisation tell={tell} />
-          ) : run != null ? (
-            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+            <NoOrganisation tell={tell} board={noOrgBoardOf(params.state)} />
+          ) : read.shown !== 'loaded' ? (
+            <WaitingTodayScreen
+              moment={cover}
+              waiting={read.shown}
+              onTab={onTab}
+              onRetry={read.retry}
+              switched={read.switched}
+              notices={notices}
+            />
+          ) : shownRun != null ? (
+            <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
-            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
-          ) : moment.needs != null ? (
-            <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
+            <TodayScreen moment={arrived} onTab={onTab} notices={notices} />
+          ) : drawn.needs != null ? (
+            <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (
-            <PlanTodayLandscape moment={moment} onTab={onTab} notices={notices} />
+            <PlanTodayLandscape moment={drawn} onTab={onTab} notices={notices} />
           ) : (
-            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
+            <TodayScreen moment={drawn} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

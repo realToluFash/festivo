@@ -7,6 +7,8 @@ import {
   sheetDragStarts,
   sheetKeysCover,
   sheetPadding,
+  sheetStripHas,
+  sheetTouchHolds,
   sheetUnderKeys,
   sheetWindows,
 } from './sheet.ts';
@@ -101,6 +103,25 @@ describe('one sheet window at a time', () => {
     expect(windows.waits('create')).toBe(false);
   });
 
+  it('is clear at once with no window up', async () => {
+    await expect(sheetWindows().cleared()).resolves.toBeUndefined();
+  });
+
+  it('is clear only once the last window up has gone (sc-72136)', async () => {
+    const windows = sheetWindows();
+    let clear = false;
+    windows.raise('export');
+    windows.raise('switcher');
+    void windows.cleared().then(() => (clear = true));
+
+    windows.lower('switcher');
+    await Promise.resolve();
+    expect(clear).toBe(false);
+    windows.lower('export');
+    await Promise.resolve();
+    expect(clear).toBe(true);
+  });
+
   it('tells its listeners only when a window comes or goes', () => {
     const windows = sheetWindows();
     let heard = 0;
@@ -123,6 +144,30 @@ describe('dragging a sheet down', () => {
     expect(sheetDragStarts({ from: -10, dx: 0, dy: 20 })).toBe(false);
     expect(sheetDragStarts({ from: 10, dx: 30, dy: 20 })).toBe(false);
     expect(sheetDragStarts({ from: 10, dx: 0, dy: 4 })).toBe(false);
+  });
+
+  it('holds a finger that lands in the strip, from the top edge to 44 pt below it', () => {
+    expect(sheetStripHas(0)).toBe(true);
+    expect(sheetStripHas(44)).toBe(true);
+    expect(sheetStripHas(45)).toBe(false);
+    expect(sheetStripHas(-1)).toBe(false);
+  });
+
+  it('holds no drag while the sheet is scrolled from its top, even from the strip', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 1, scrolled: true })).toBe(false);
+  });
+
+  it('holds a drag from the strip with the sheet at its top', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 1, scrolled: false })).toBe(true);
+  });
+
+  it('holds no drag outside the strip, scrolled or not', () => {
+    expect(sheetTouchHolds({ from: 45, touches: 1, scrolled: false })).toBe(false);
+    expect(sheetTouchHolds({ from: 45, touches: 1, scrolled: true })).toBe(false);
+  });
+
+  it('holds no drag for a second finger', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 2, scrolled: false })).toBe(false);
   });
 
   it('reads the speed over the last tenth of a second before the finger lifts', () => {

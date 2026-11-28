@@ -7,6 +7,7 @@ import {
   languageChoices,
   listFormat,
   numberFormat,
+  ownLanguageName,
   pluralLocale,
 } from './locales.ts';
 
@@ -74,6 +75,15 @@ describe('languageChoices', () => {
       { code: 'fr', name: 'Français' },
       { code: 'pt', name: 'Portugais · Português' },
     ]);
+  });
+});
+
+describe('ownLanguageName', () => {
+  it('names each language in itself, and nothing for a code Soirely does not offer', () => {
+    expect(ownLanguageName('fr')).toBe('Français');
+    expect(ownLanguageName('pt')).toBe('Português');
+    expect(ownLanguageName('de')).toBeNull();
+    expect(ownLanguageName(null)).toBeNull();
   });
 });
 
@@ -145,6 +155,8 @@ describe('formattingLocale', () => {
     ['en', 'en-US', 'en-US'],
     ['pt', 'pt-BR', 'pt-BR'],
     ['pt', 'pt_PT', 'pt-PT'],
+    ['es', 'es-MX', 'es-MX'],
+    ['fr', 'fr-FR', 'fr-FR'],
   ])(
     'keeps the device region when the screen is in its language: %s on %s',
     (shown, device, tag) => {
@@ -156,12 +168,28 @@ describe('formattingLocale', () => {
     expect(formattingLocale('es', 'en-GB')).toBe('es');
   });
 
-  it('writes the screen language when the device speaks one we have no catalogue for', () => {
-    expect(formattingLocale('en', 'de-DE')).toBe('en');
-  });
+  it.each(['de-DE', 'fr-FR', 'es-MX', 'pt-PT', 'pt-BR'])(
+    'writes English as en-GB when the device speaks %s',
+    (device) => {
+      expect(formattingLocale('en', device)).toBe('en-GB');
+    },
+  );
 
-  it.each([null, undefined, '', 'en-!!'])('falls back to the screen language for %j', (device) => {
-    expect(formattingLocale('en', device)).toBe('en');
+  it.each([null, undefined, '', 'en-!!', 'en', 'EN'])(
+    'writes English as en-GB when the device names no English region: %j',
+    (device) => {
+      expect(formattingLocale('en', device)).toBe('en-GB');
+    },
+  );
+
+  it.each([
+    ['es', 'es'],
+    ['fr', 'fr'],
+    ['pt', 'pt'],
+    ['es', null],
+    ['fr', 'de-DE'],
+  ])('leaves %s plain when the device names no region of it: %j', (shown, device) => {
+    expect(formattingLocale(shown, device)).toBe(shown);
   });
 
   it('writes an en-GB date in British order and an en-US one in American order', () => {
@@ -173,6 +201,9 @@ describe('formattingLocale', () => {
     );
     expect(new Intl.DateTimeFormat(formattingLocale('en', 'en-US'), day).format(moment)).toBe(
       'Saturday, Oct 24',
+    );
+    expect(new Intl.DateTimeFormat(formattingLocale('en', 'de-DE'), day).format(moment)).toBe(
+      'Saturday 24 Oct',
     );
   });
 });

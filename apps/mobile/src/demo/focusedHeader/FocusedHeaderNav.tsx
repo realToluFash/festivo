@@ -5,6 +5,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { type WeightName } from '../../theme/fonts.ts';
+import { LABEL_LINE } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   BACK_GLYPH,
@@ -25,8 +26,6 @@ import {
   pillTextSize,
   titleOnItsRow,
 } from '../../layout/focusedHeader.ts';
-
-const LINE = 1.22;
 
 export interface NavSide {
   word: string;
@@ -243,7 +242,7 @@ export function DemoBack({
         accessibilityLabel={heard}
         testID={testID}
       >
-        <View style={[styles.backGlyph, { height: size * LINE }]}>
+        <View style={[styles.backGlyph, { height: size * LABEL_LINE }]}>
           <Glyph
             name="back"
             size={(PILL_GLYPH / PILL_TEXT) * size}

@@ -29,6 +29,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,
@@ -302,5 +303,180 @@ describe('Duplicate an event (sc-3593)', () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Duplicate' })),
     );
+  });
+});
+
+describe('Duplicate can also copy the guest list (sc-3656)', () => {
+  const listed = (guests: number) => () =>
+    json({ guests: [], counts: { people: guests + 24, guests, companions: 24 } });
+
+  function list(dialog: HTMLElement, heading: string): string[] {
+    let around: HTMLElement | null = within(dialog).getByRole('heading', {
+      level: 3,
+      name: heading,
+    });
+    while (around != null && around.querySelector('ul') == null) around = around.parentElement;
+
+    return [...(around?.querySelector('ul')?.querySelectorAll('li') ?? [])].map(
+      (item) => item.textContent ?? '',
+    );
+  }
+
+  it('offers the tick off, with its hint, and leaves the lists as they were', async () => {
+    signedIn();
+    const { dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(1180) });
+
+    const box = await within(dialog).findByRole('checkbox', {
+      name: 'Also copy the guest list (1,180 guests)',
+    });
+
+    expect((box as HTMLInputElement).checked).toBe(false);
+    expect(document.getElementById(box.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Replies are not copied, and nobody is invited or contacted.',
+    );
+    expect(list(dialog, 'Not copied')).toEqual(expect.arrayContaining(['Guests', 'Replies']));
+  });
+
+  it('moves the guests to Copied and replies to what is never copied once ticked', async () => {
+    signedIn();
+    const { dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(1) });
+
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: 'Also copy the guest list (1 guest)' }),
+    );
+
+    expect(list(dialog, 'Copied')).toContain('1 guest: name, contact details and companions');
+    expect(list(dialog, 'Not copied')).not.toContain('Guests');
+    expect(list(dialog, 'Not copied')).not.toContain('Replies');
+    expect(list(dialog, 'Not copied')).toContain(
+      'Replies, invitations, invitation links, check-ins, meal choices, seating, messages and history',
+    );
+  });
+
+  it('shows no tick on an event with no guests', async () => {
+    signedIn();
+    const { sent, dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(0) });
+
+    await waitFor(() =>
+      expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/guests')).toBe(true),
+    );
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+  });
+
+  it('shows no tick, and asks for no list, without guests.manage', async () => {
+    signedIn();
+    const { sent, dialog } = await opened(
+      event({
+        permissions: OWNER_PERMISSIONS.filter((permission) => permission !== 'guests.manage'),
+      }),
+      { 'GET /api/events/ev_1/guests': listed(3) },
+    );
+
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+    expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('refuses a copy over the plan’s people per event in the dialog’s place, and goes back with the tick kept (sc-3930)', async () => {
+    signedIn();
+    const { dialog } = await opened(live(), {
+      'GET /api/events/ev_1/guests': listed(118),
+      'POST /api/events/ev_1/duplicate': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/plan_limit_reached',
+            title: 'No.',
+            status: 403,
+            limit: 'guests_per_event',
+            plan: 'free',
+            used: 0,
+            allowed: 100,
+            adding: 142,
+          },
+          403,
+        ),
+    });
+
+    start(dialog, '2027-05-15', '16:00');
+    fireEvent.click(await within(dialog).findByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
+
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'Your plan allows 100 people per event' }),
+    );
+    expect(
+      refused.getByText(
+        'Not created. The guest list would bring 142 people, and your plan has room for 100 in a new event.',
+      ),
+    ).toBeDefined();
+    expect(refused.getByText('142 people · companions count as people · Free plan')).toBeDefined();
+    expect(refused.getByText('The form is kept as you left it.')).toBeDefined();
+    expect(
+      refused.getByText('To duplicate without guests, untick Also copy the guest list.'),
+    ).toBeDefined();
+    expect(refused.queryByText('Remove a guest')).toBeNull();
+    expect(refused.queryByRole('button', { name: 'Change plan' })).toBeNull();
+    fireEvent.click(refused.getByRole('button', { name: 'Back to the form' }));
+
+    const back = await screen.findByRole('dialog', { name: 'Duplicate' });
+    expect(within(back).getByRole<HTMLInputElement>('checkbox').checked).toBe(true);
+  });
+
+  it('refuses a copy over the ceiling with no plan named (sc-3930)', async () => {
+    signedIn();
+    const { dialog } = await opened(live(), {
+      'GET /api/events/ev_1/guests': listed(118),
+      'POST /api/events/ev_1/duplicate': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/event_capacity_reached',
+            title: 'No.',
+            status: 403,
+            ceiling: 10000,
+            onEvent: 0,
+            adding: 10040,
+          },
+          403,
+        ),
+    });
+
+    start(dialog, '2027-05-15', '16:00');
+    fireEvent.click(await within(dialog).findByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
+
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'An event can have up to 10,000 people' }),
+    );
+    expect(
+      refused.getByText(
+        'Not created. The guest list would bring 10,040 people, more than the 10,000 an event can hold.',
+      ),
+    ).toBeDefined();
+    expect(refused.getByText('10,040 people · companions count as people')).toBeDefined();
+  });
+
+  it('sends the tick and says on the copy how many guests came and that nobody was contacted', async () => {
+    signedIn();
+    const copy = event({ id: 'ev_2', startsAt: '2027-05-15T16:00:00+01:00' });
+    const { sent, dialog } = await opened(live(), {
+      'GET /api/events/ev_1/guests': listed(118),
+      'POST /api/events/ev_1/duplicate': () => json({ event: copy, guestsCopied: 118 }, 201),
+      'GET /api/events/ev_2': () => json({ event: copy }),
+    });
+
+    start(dialog, '2027-05-15', '16:00');
+    fireEvent.click(await within(dialog).findByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
+
+    expect(
+      (
+        await screen.findByText(
+          'Draft created. Opening it. 118 guests copied. Nobody was invited or contacted.',
+        )
+      ).closest('.toast'),
+    ).not.toBeNull();
+    expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/duplicate')?.body).toEqual({
+      startsAt: '2027-05-15T16:00',
+      copyGuests: true,
+    });
   });
 });

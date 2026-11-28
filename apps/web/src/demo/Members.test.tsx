@@ -10,7 +10,7 @@ const tested = config();
 const OFF = 'They’re emailed now, and every session they had has ended.';
 const DOWN = 'Two-factor stays on for them, and they’re emailed.';
 const INTRO =
-  'They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.';
+  'They lost their two-factor methods and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.';
 
 async function members(path: string) {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
@@ -486,5 +486,150 @@ describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () =
     await members('/demo/settings/members?state=priya');
 
     expect(screen.getByRole('button', { name: 'Remove from Ire Events…' })).toBeDefined();
+  });
+});
+
+describe('An invitation whose email never arrived (sc-46109)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  function row(email: string): HTMLElement {
+    const name = screen.getAllByText(email).find((one) => one.closest('li') != null);
+    const line = name?.closest('li');
+    if (line == null) throw new Error(`no row for ${email}`);
+
+    return line;
+  }
+
+  it('says Not delivered with the broken mark where Sent was, beside one that arrived', async () => {
+    await members('/demo/settings/members?state=notDelivered');
+
+    expect(row('nnamdi.eze@ire.events').textContent).toContain(
+      'Sent Nov 2, 2026 · expires Nov 9, 2026',
+    );
+    expect(row('nnamdi.eze@ire.events').querySelector('.mark-broken')).toBeNull();
+
+    const ada = row('ada.obi@ire.events');
+    expect(ada.textContent).toContain('Not delivered · expires Nov 11, 2026');
+    expect(ada.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(ada).getByRole('button', { name: 'Revoke' })).toBeDefined();
+
+    for (const [email, dates] of [
+      [
+        'ines.duarte@gmail.com',
+        'ExpiredMember · invited by you✕Not delivered · expired Oct 21, 2026',
+      ],
+      ['lena.vogel@web.de', 'RevokedAdmin · invited by you✕Not delivered · revoked Nov 3, 2026'],
+      [
+        'yusuf.bello@outlook.com',
+        'DeclinedMember · invited by Julien Moreau✕Not delivered · declined Oct 3, 2026',
+      ],
+    ] as const) {
+      expect(row(email).textContent).toContain(dates);
+      expect(within(row(email)).getByRole('button', { name: 'Invite again' })).toBeDefined();
+    }
+  });
+
+  it('lists the same rows on the Invited filter, counting the pending ones', async () => {
+    await members('/demo/settings/members?state=notDeliveredInvited');
+
+    expect(row('ada.obi@ire.events').textContent).toContain('Not delivered · expires Nov 11, 2026');
+    expect(screen.getByRole('button', { name: /Invited · 2/u })).toBeDefined();
+  });
+
+  it('reads Not delivered again after Invite again to an address still held back', async () => {
+    await members('/demo/settings/members?state=notDelivered');
+
+    fireEvent.click(
+      within(row('ines.duarte@gmail.com')).getByRole('button', { name: 'Invite again' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send invitation' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Invitation sent to ines.duarte@gmail.com').length,
+      ).toBeGreaterThan(0),
+    );
+    expect(row('ines.duarte@gmail.com').textContent).toContain(
+      'Not delivered · expires Nov 11, 2026',
+    );
+  });
+
+  it('opens notDeliveredAgain with the notice unchanged and the row not delivered', async () => {
+    await members('/demo/settings/members?state=notDeliveredAgain');
+
+    expect(screen.getAllByText('Invitation sent to ines.duarte@gmail.com').length).toBeGreaterThan(
+      0,
+    );
+    expect(row('ines.duarte@gmail.com').textContent).toContain(
+      'Not delivered · expires Nov 11, 2026',
+    );
+  });
+});
+
+describe('The card’s chip at the crowd (sc-48825)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  it('writes 99+ inside its circle for the 1,321 its faces leave out', async () => {
+    await members('/demo/settings/members?state=crowd');
+
+    expect(document.querySelector('.desk-more')?.textContent).toBe('99+');
+  });
+});
+
+describe('People a page at a time at 12,345 (sc-49170)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  const peopleRows = () =>
+    document.querySelectorAll('.desk-block:has(.members-more) > .desk-rows > li').length;
+
+  it('counts the whole organisation and shows Invitations after the first page', async () => {
+    await members('/demo/settings/members?state=largest');
+
+    expect(screen.getByText('Showing 50 of 12,345')).toBeTruthy();
+    expect(peopleRows()).toBe(50);
+    expect(screen.getByRole('heading', { name: 'Invitations' })).toBeTruthy();
+  });
+
+  it('loads the next page under Show more and gives the focus to its first row', async () => {
+    await members('/demo/settings/members?state=largest');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getByText('Loading more people…').getAttribute('role')).toBe('status');
+    await waitFor(() => expect(screen.getByText('Showing 100 of 12,345')).toBeTruthy(), {
+      timeout: 3000,
+    });
+    expect(peopleRows()).toBe(100);
+    await waitFor(() =>
+      expect(document.activeElement?.closest('li')).toBe(
+        document.querySelectorAll('.desk-block:has(.members-more) > .desk-rows > li')[50],
+      ),
+    );
+  });
+
+  it('keeps the people shown when more did not load, and tries again under Show more', async () => {
+    await members('/demo/settings/members?state=moreFailed');
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'More people did not load. Check your connection and try again.',
+    );
+    expect(peopleRows()).toBe(50);
+    expect(screen.queryByText('We could not load the members.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(screen.getByText('Showing 100 of 12,345')).toBeTruthy(), {
+      timeout: 3000,
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('holds the loading state with the rows already shown', async () => {
+    await members('/demo/settings/members?state=moreLoading');
+
+    expect(screen.getByText('Loading more people…')).toBeTruthy();
+    expect(peopleRows()).toBe(50);
   });
 });

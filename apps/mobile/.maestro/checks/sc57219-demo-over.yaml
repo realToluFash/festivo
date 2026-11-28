@@ -1,0 +1,13 @@
+# sc-57219: the demo past 500, Ask pressed with the keys up, beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/join-message?message=over
+- extendedWaitUntil:
+    visible:
+      id: demo.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: demo.ask
+- waitForAnimationToEnd
+- takeScreenshot: demo-over

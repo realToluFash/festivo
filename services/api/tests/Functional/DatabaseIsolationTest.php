@@ -25,7 +25,8 @@ final class DatabaseIsolationTest extends FunctionalTestCase
         $name = $em->getConnection()->getDatabase();
 
         self::assertNotNull($name);
-        self::assertStringEndsWith('_test', $name, 'The suite is pointed at a non-test database');
+        // ParaTest's processes each have their own, _test1 to _testN.
+        self::assertMatchesRegularExpression('/_test\d*$/', $name, 'The suite is pointed at a non-test database');
     }
 
     #[Test]

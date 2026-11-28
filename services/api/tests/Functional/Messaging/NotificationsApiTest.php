@@ -115,6 +115,36 @@ final class NotificationsApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function anItemOfACategoryNoClientKnowsIsInTheFeedLiveAndReadsAsAnyItem(): void
+    {
+        $event = $this->event();
+        $this->as($this->owner, 'PUT', '/api/events/' . $event->getId()->toRfc4122() . '/mute', ['muted' => true]);
+        $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find('app:dev:unknown-bell-item'));
+
+        $tester->execute(['email' => 'folake@ire.events', '--event' => $event->getId()->toRfc4122()]);
+
+        $tester->assertCommandIsSuccessful();
+        $published = $this->lastPublished();
+        $feed = $this->as($this->owner, 'GET', '/api/notifications');
+        self::assertSame(200, $this->statusCode(), Json\encode($feed));
+        self::assertSame(1, $feed['unreadCount']);
+        $item = self::items($feed)[0];
+        self::assertSame(
+            ['category' => 'venue_news', 'title' => 'Ana Souza added a note to the event', 'lines' => [], 'eventId' => $event->getId()->toRfc4122(), 'eventName' => 'Gala', 'eventAvailable' => true, 'muted' => true, 'place' => '/app/events/' . $event->getId()->toRfc4122(), 'read' => false],
+            Dict\filter_keys($item, static fn (string $key): bool => !Iter\contains(['id', 'createdAt'], $key)),
+        );
+        self::assertSame([...$item, 'unreadCount' => 1], $published);
+
+        $read = $this->as($this->owner, 'POST', '/api/notifications/' . Type\string()->coerce($item['id']) . '/read');
+        self::assertSame(0, $read['unreadCount']);
+        self::assertSame('venue_news', Type\dict(Type\string(), Type\mixed())->coerce($read['item'])['category']);
+
+        $tester->execute(['email' => 'folake@ire.events']);
+        self::assertSame(1, $this->as($this->owner, 'GET', '/api/notifications')['unreadCount']);
+        self::assertSame(['unreadCount' => 0], $this->as($this->owner, 'POST', '/api/notifications/read-all'));
+    }
+
+    #[Test]
     public function aReadIsPublishedToTheMembersOtherBellsWithTheCountLeft(): void
     {
         $this->notify('one', null);
@@ -217,7 +247,7 @@ final class NotificationsApiTest extends ApiTestCase
 
         $this->notify('quiet', null);
 
-        self::assertSame(['in_app'], Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn('SELECT channel FROM notification_deliveries')));
+        self::assertSame(['in_app'], Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn("SELECT channel FROM notification_deliveries WHERE recipient_kind <> 'person'")));
     }
 
     #[Test]

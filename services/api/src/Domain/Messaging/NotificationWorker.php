@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\Unreachable;
+use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
+use App\Domain\Messaging\Interfaces\FollowsDeliveryInterface;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventState;
 use App\Domain\Messaging\Model\EventVerdict;
+use App\Domain\Messaging\Model\Recipient;
+use App\Enum\DeliveryNotSentReason;
 use App\Enum\EventStatus;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
@@ -22,6 +27,7 @@ use App\Repository\EventMuteRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use LogicException;
@@ -46,6 +52,8 @@ final class NotificationWorker
 
     public const string HOLD_RECHECK = 'PT60S';
 
+    public const string SUPPRESSED = 'address suppressed';
+
     /** @var array<string, AudienceResolverInterface> */
     private array $resolvers = [];
 
@@ -56,6 +64,8 @@ final class NotificationWorker
         private readonly ChannelSelector $channelSelector,
         private readonly EventMuteRepository $eventMuteRepository,
         private readonly NotificationPreferencesInterface $notificationPreferences,
+        private readonly EmailSuppressions $emailSuppressions,
+        private readonly GuestMessagesChanged $guestMessagesChanged,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -183,7 +193,7 @@ final class NotificationWorker
                 return;
             }
 
-            $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy);
+            $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy, $type->collapseKey(self::dict($row['payload'])));
 
             if (Iter\count($recipients) < self::CHUNK) {
                 $this->finishScheduled($id, ScheduledNotificationStatus::FannedOut, null);
@@ -221,46 +231,59 @@ final class NotificationWorker
     }
 
     /** @param list<Uuid> $recipients */
-    private function writeDeliveries(string $scheduledId, NotificationTypeInterface $type, NotificationAudienceKind $kind, array $recipients, ?string $eventId, DateTimeImmutable $dueAt, ?DateTimeImmutable $sendBy): void
+    private function writeDeliveries(string $scheduledId, NotificationTypeInterface $type, NotificationAudienceKind $kind, array $recipients, ?string $eventId, DateTimeImmutable $dueAt, ?DateTimeImmutable $sendBy, ?string $collapseKey): void
     {
         $sourceId = Type\string()->coerce($this->connection->fetchOne('SELECT source_id FROM scheduled_notifications WHERE id = :id', ['id' => $scheduledId]));
         $now = $this->clock->now();
         $muted = null === $eventId || NotificationAudienceKind::Member !== $kind ? [] : $this->eventMuteRepository->findMutedAmong($eventId, $recipients);
 
+        $values = [];
+        $parameters = [
+            'scheduled' => $scheduledId,
+            'event' => $eventId,
+            'type' => $type->name(),
+            'source' => $sourceId,
+            'kind' => $kind->value,
+            'collapse' => $collapseKey,
+            'pending' => NotificationDeliveryStatus::Pending->value,
+            'due' => $dueAt,
+            'sendBy' => $sendBy,
+            'now' => $now,
+        ];
+
         foreach ($recipients as $recipient) {
             foreach ($this->channelSelector->select($kind, $recipient, $type->category(), $type->channels(), Iter\contains($muted, $recipient->toRfc4122())) as $channel) {
+                $row = Iter\count($values);
                 $urgent = NotificationPriority::Urgent === $type->priority() || NotificationChannel::InApp === $channel;
-                $this->connection->executeStatement(
-                    <<<'SQL'
-                        INSERT INTO notification_deliveries (
-                            id, scheduled_notification_id, event_id, type, source_id, recipient_kind, recipient_id, channel,
-                            priority, collapse_key, status, due_at, next_attempt_at, send_by, attempts, created_at
-                        ) VALUES (
-                            :id, :scheduled, :event, :type, :source, :kind, :recipient, :channel,
-                            :priority, :collapse, :pending, :due, :due, :sendBy, 0, :now
-                        )
-                        ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
-                        SQL,
-                    [
-                        'id' => Uuid::v7()->toRfc4122(),
-                        'scheduled' => $scheduledId,
-                        'event' => $eventId,
-                        'type' => $type->name(),
-                        'source' => $sourceId,
-                        'kind' => $kind->value,
-                        'recipient' => $recipient->toRfc4122(),
-                        'channel' => $channel->value,
-                        'priority' => ($urgent ? NotificationPriority::Urgent : $type->priority())->value,
-                        'collapse' => $type->collapseKey(),
-                        'pending' => NotificationDeliveryStatus::Pending->value,
-                        'due' => $dueAt,
-                        'sendBy' => $sendBy,
-                        'now' => $now,
-                    ],
-                    ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE],
+                $values[] = Str\format(
+                    '(:id%1$d, :scheduled, :event, :type, :source, :kind, :recipient%1$d, :channel%1$d, :priority%1$d, :collapse, :pending, :due, :due, :sendBy, 0, :now)',
+                    $row,
                 );
+                $parameters['id' . $row] = Uuid::v7()->toRfc4122();
+                $parameters['recipient' . $row] = $recipient->toRfc4122();
+                $parameters['channel' . $row] = $channel->value;
+                $parameters['priority' . $row] = ($urgent ? NotificationPriority::Urgent : $type->priority())->value;
             }
         }
+
+        if ([] === $values) {
+            return;
+        }
+
+        $this->connection->executeStatement(
+            Str\format(
+                <<<'SQL'
+                    INSERT INTO notification_deliveries (
+                        id, scheduled_notification_id, event_id, type, source_id, recipient_kind, recipient_id, channel,
+                        priority, collapse_key, status, due_at, next_attempt_at, send_by, attempts, created_at
+                    ) VALUES %s
+                    ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
+                    SQL,
+                Str\join($values, ', '),
+            ),
+            $parameters,
+            ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE],
+        );
     }
 
     private function sendNext(NotificationPriority $atMost): bool
@@ -334,7 +357,20 @@ final class NotificationWorker
             return;
         }
 
+        $fixed = Type\nullable(Type\string())->coerce($row['address']);
+
+        if (null !== $fixed) {
+            $recipient = new Recipient($recipient->kind, $recipient->id, $recipient->name, $recipient->locale, $fixed);
+        }
+
         $channel = NotificationChannel::from(Type\string()->coerce($row['channel']));
+
+        if (NotificationChannel::Email === $channel && !$type->reachesSuppressed() && null !== $recipient->emailAddress && $this->emailSuppressions->isSuppressed($recipient->emailAddress)) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, self::SUPPRESSED);
+
+            return;
+        }
+
         $sender = $this->notificationRegistry->sender($channel);
 
         if (null === $sender) {
@@ -343,14 +379,22 @@ final class NotificationWorker
             return;
         }
 
-        $collapsed = null === $type->collapseKey() ? [] : $this->claimCollapsible($row, $type, $now);
+        $collapseKey = $type->collapseKey(self::dict($row['payload']));
+        $collapsed = null === $collapseKey ? [] : $this->claimCollapsible($row, $collapseKey, $now);
         $payloads = [self::dict($row['payload']), ...Vec\map($collapsed, static fn (array $sibling): array => self::dict($sibling['payload']))];
 
         try {
-            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $type->collapseKey());
+            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $collapseKey);
         } catch (Unreachable $unreachable) {
+            if ($unreachable->providerBlocked && GuestMessageNotice::NAME !== $type->name()) {
+                $this->failed($id, Type\int()->coerce($row['attempts']) + 1, $unreachable->getPrevious() ?? $unreachable);
+                $this->release($collapsed);
+
+                return;
+            }
+
             if (!$this->forgetIfCancelled($id)) {
-                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
+                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true, notSent: $unreachable->providerBlocked ? DeliveryNotSentReason::ProviderBlocked : null);
             }
 
             $this->release($collapsed);
@@ -390,7 +434,9 @@ final class NotificationWorker
         $sendBy = self::moment($row['send_by']);
 
         if (null !== $sendBy && $sendBy < $now) {
-            $this->finishDelivery($id, NotificationDeliveryStatus::TooLate, 'too late');
+            $type->carriesCode()
+                ? $this->finishDelivery($id, NotificationDeliveryStatus::Failed, 'code expired')
+                : $this->finishDelivery($id, NotificationDeliveryStatus::TooLate, 'too late');
 
             return EventVerdict::Cancel;
         }
@@ -564,7 +610,7 @@ final class NotificationWorker
      *
      * @return list<array<string, mixed>>
      */
-    private function claimCollapsible(array $row, NotificationTypeInterface $type, DateTimeImmutable $now): array
+    private function claimCollapsible(array $row, string $collapseKey, DateTimeImmutable $now): array
     {
         $ids = $this->connection->fetchFirstColumn(
             <<<'SQL'
@@ -593,7 +639,7 @@ final class NotificationWorker
                 'kind' => $row['recipient_kind'],
                 'recipient' => $row['recipient_id'],
                 'channel' => $row['channel'],
-                'collapse' => $type->collapseKey(),
+                'collapse' => $collapseKey,
             ],
             ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
         );
@@ -672,29 +718,53 @@ final class NotificationWorker
         );
     }
 
-    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null): void
+    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null, ?DeliveryNotSentReason $notSent = null): void
     {
-        $this->connection->executeStatement(
+        $finished = $this->connection->fetchAssociative(
             <<<'SQL'
                 UPDATE notification_deliveries
                 SET status = :status,
                     last_error = COALESCE(:reason, last_error),
+                    not_sent_reason = COALESCE(:notSent, not_sent_reason),
                     attempts = attempts + :attempted,
                     provider_message_id = :provider,
                     held = NULL,
                     finished_at = :now,
                     claimed_until = NULL
                 WHERE id = :id
+                RETURNING type, event_id, scheduled_notification_id
                 SQL,
             [
                 'status' => $status->value,
                 'reason' => $reason,
+                'notSent' => $notSent?->value,
                 'attempted' => $attempted ? 1 : 0,
                 'provider' => $providerId,
                 'now' => $this->clock->now(),
                 'id' => $id,
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        if (false !== $finished) {
+            $typeName = Type\string()->coerce($finished['type']);
+            $this->guestMessagesChanged->afterFinished($typeName, Type\nullable(Type\string())->coerce($finished['event_id']));
+            $type = $this->notificationRegistry->has($typeName) ? $this->notificationRegistry->type($typeName) : null;
+
+            if ($type instanceof FollowsDeliveryInterface) {
+                $type->finished(self::dict($this->connection->fetchOne('SELECT payload FROM scheduled_notifications WHERE id = :id', ['id' => $finished['scheduled_notification_id']])), $status);
+            }
+        }
+
+        // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE scheduled_notifications s SET payload = '{}'
+                FROM notification_deliveries d
+                WHERE d.id = :id AND s.id = d.scheduled_notification_id AND s.type IN (:codeTypes)
+                SQL,
+            ['id' => $id, 'codeTypes' => $this->notificationRegistry->codeTypes()],
+            ['codeTypes' => ArrayParameterType::STRING],
         );
     }
 
@@ -716,7 +786,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
+                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.address, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id

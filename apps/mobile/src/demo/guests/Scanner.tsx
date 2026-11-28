@@ -25,7 +25,8 @@ import { clockOf, countAfter, replyLine } from './GuestsModel.ts';
 import { GuestsCard } from './GuestsParts.tsx';
 import { ARRIVALS, GUESTS, READER, WEDDING, replyByOf } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { DoorGlyph, MarkSlot } from './ReplyMark.tsx';
+import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
+import { type Seating, seatLineOf } from './DoorSeats.ts';
 import {
   NOW_AT,
   OFFLINE_SINCE,
@@ -39,6 +40,8 @@ import {
   scannedOf,
   searchHref,
   tell,
+  type DoorFrom,
+  doorHref,
   type Told,
 } from './ScanModel.ts';
 
@@ -47,14 +50,14 @@ const UP_PANEL = 540;
 /** The held code the stand-in camera shows: a code holds nothing a camera could read out, so the drawn one is a pattern. */
 const HELD = 'K7Q2-M9XR';
 
-function leave(): void {
+function leave(from: DoorFrom): void {
   if (router.canGoBack()) router.back();
-  else router.replace('/demo/guests/check-in?state=door' as Href);
+  else router.replace(doorHref(from) as Href);
 }
 
 /** Search by name: back on Check-in, in its search, as sc-1301's not-on-list answer says; each tap a new ask. */
-function toSearch(): void {
-  router.dismissTo(searchHref(Date.now()) as Href);
+function toSearch(from: DoorFrom): void {
+  router.dismissTo(searchHref(Date.now(), from) as Href);
 }
 
 function lineOf(p: Scanned, locale: string, twice: boolean): string {
@@ -68,15 +71,17 @@ function lineOf(p: Scanned, locale: string, twice: boolean): string {
   return g == null ? REPLY_WORD[p.kind] : replyLine(g, locale, replyByOf(WEDDING));
 }
 
-function saidOf(result: ScanResult, locale: string): string {
+function saidOf(result: ScanResult, locale: string, seating: Seating): string {
   if (result.kind === 'notOnList') return W.notOnList;
   if (result.kind === 'noList') return `${W.noListTitle}. ${W.noListBody}`;
   if (result.kind === 'cameraOff') return `${W.cameraOffTitle}. ${W.cameraOffBody}`;
   const [host, ...rest] = result.people;
   if (host == null) return '';
+  const said = (p: Scanned, line: string) =>
+    [p.name, seatLineOf(p.key, seating), line].filter((one) => one != null).join(', ');
   return [
-    `${host.name}, ${lineOf(host, locale, result.twice)}`,
-    ...rest.map((p) => `${p.name}, ${lineOf(p, locale, false)}`),
+    said(host, lineOf(host, locale, result.twice)),
+    ...rest.map((p) => said(p, lineOf(p, locale, false))),
   ]
     .concat(result.twice ? [W.nothingNew] : [])
     .join('. ');
@@ -128,17 +133,21 @@ function WarningMark() {
 function Result({
   result,
   locale,
+  seating,
   big,
   onArrive,
   onUndo,
   onNext,
+  onSearch,
 }: {
   result: ScanResult;
   locale: string;
+  seating: Seating;
   big: boolean;
   onArrive: (key: string) => void;
   onUndo: (key: string) => void;
   onNext: () => void;
+  onSearch: () => void;
 }) {
   const buttonHeight = big ? tokens.sizeHitPhoneHero : 48;
   const next = (
@@ -169,7 +178,7 @@ function Result({
           label={W.searchByName}
           glyph="search"
           height={buttonHeight}
-          onPress={toSearch}
+          onPress={onSearch}
           testID="scan.searchByName"
         />
         {next}
@@ -209,7 +218,7 @@ function Result({
               kind="secondary"
               glyph="search"
               height={buttonHeight}
-              onPress={toSearch}
+              onPress={onSearch}
               testID="scan.searchByName"
             />
           </>
@@ -234,6 +243,14 @@ function Result({
       />
     );
   };
+  const seatOf = (p: Scanned, size: number) => {
+    const seat = seatLineOf(p.key, seating);
+    return seat == null ? null : (
+      <Text size={size} weight="semibold" style={styles.seat} testID={`scan.seat.${p.key}`}>
+        {seat}
+      </Text>
+    );
+  };
   const lead = (p: Scanned) => (
     <MarkSlot kind={p.arrivedAt != null ? 'arrived' : p.kind} side={p.companion ? 22 : 24} />
   );
@@ -252,6 +269,7 @@ function Result({
                   <Text size={20} weight="bold" accessibilityRole="header" style={styles.name}>
                     {host.name}
                   </Text>
+                  {seatOf(host, 15)}
                   <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
                     {lineOf(host, locale, result.twice)}
                   </Text>
@@ -270,6 +288,7 @@ function Result({
                   <Text size={16} weight="semibold" style={styles.compName}>
                     {p.name}
                   </Text>
+                  {seatOf(p, 14)}
                   <Text size={14} weight="medium" style={[styles.secondary, styles.figures]}>
                     {lineOf(p, locale, false)}
                   </Text>
@@ -352,12 +371,12 @@ function Hint() {
 }
 
 /** ‹ Check-in on the camera: the house's back, in glass and white. */
-function GlassBack() {
+function GlassBack({ from }: { from: DoorFrom }) {
   const { t } = useTranslation();
 
   return (
     <Pressable
-      onPress={leave}
+      onPress={() => leave(from)}
       style={({ pressed }) => [styles.glassBack, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={t('frame.backTo', { place: W.checkIn })}
@@ -373,10 +392,10 @@ function GlassBack() {
   );
 }
 
-function CameraTop({ landscape }: { landscape: boolean }) {
+function CameraTop({ landscape, from }: { landscape: boolean; from: DoorFrom }) {
   return (
     <View style={[styles.top, landscape && styles.topWide]}>
-      <GlassBack />
+      <GlassBack from={from} />
       <View style={styles.title} pointerEvents="none">
         <Text size={17} weight="bold" accessibilityRole="header" style={styles.white}>
           {W.scanCode}
@@ -387,7 +406,17 @@ function CameraTop({ landscape }: { landscape: boolean }) {
 }
 
 /** Scan a code (sc-1301): the camera, the count, the viewfinder, and a result as the door's own row, larger. */
-export function ScannerScreen({ state, waiting }: { state: ScanState | null; waiting: number }) {
+export function ScannerScreen({
+  state,
+  waiting,
+  seating,
+  from,
+}: {
+  state: ScanState | null;
+  waiting: number;
+  seating: Seating;
+  from: DoorFrom;
+}) {
   useCoverStatusBar('light', false);
   const { layout } = useShell();
   const insets = useSafeAreaInsets();
@@ -410,7 +439,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     if (first == null) return null;
     const host = first.kind === 'guest' ? first.people[0] : undefined;
     if (state === 'arrivedFromScan' && host != null) return tell(null, say.arrivedName(host.name));
-    return tell(null, saidOf(first, locale));
+    return tell(null, saidOf(first, locale, seating));
   });
   useReadOut(told?.words ?? null, { answer: told?.tap });
   const camera = state !== 'offlineNoList' && state !== 'cameraOff';
@@ -437,7 +466,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     const read = readOf(key);
     setLast(key);
     setResult(read);
-    setTold(tell(told, saidOf(read, locale)));
+    setTold(tell(told, saidOf(read, locale, seating)));
   };
   const onNext = () => setResult(null);
 
@@ -447,10 +476,12 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
         key={`${result.kind}.${result.kind === 'guest' ? result.people[0]?.key : ''}`}
         result={result}
         locale={locale}
+        seating={seating}
         big={big}
         onArrive={(key) => change(key, 1)}
         onUndo={(key) => change(key, -1)}
         onNext={onNext}
+        onSearch={() => toSearch(from)}
       />
     );
   const strip =
@@ -468,7 +499,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
             { paddingTop: insets.top },
           ]}
         >
-          <CameraTop landscape />
+          <CameraTop landscape from={from} />
           {camera && (
             <View style={styles.room}>
               <Viewfinder side={360} onRead={onRead} open={result == null} />
@@ -512,7 +543,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
       style={[styles.camera, camera ? null : styles.closed, { paddingTop: insets.top }]}
       testID="scan.screen"
     >
-      <CameraTop landscape={false} />
+      <CameraTop landscape={false} from={from} />
       <View style={[styles.under, portrait && [styles.underWide, { top: insets.top + 10 }]]}>
         {showChip && <CountChip {...count} />}
         {strip}
@@ -557,6 +588,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
   secondary: { color: tokens.colorInkSecondary },
+  seat: { lineHeight: 15 * 1.35, marginBottom: 2 },
   figures: { fontVariant: ['tabular-nums'] },
   body: { lineHeight: 15 * 1.45 },
   head: { lineHeight: 25, letterSpacing: 20 * -0.01 },

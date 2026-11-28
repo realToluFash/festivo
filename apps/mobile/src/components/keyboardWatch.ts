@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { codegenNativeCommands, type HostInstance, Keyboard, Platform } from 'react-native';
+import {
+  codegenNativeCommands,
+  type HostInstance,
+  Keyboard,
+  type KeyboardEvent,
+  Platform,
+} from 'react-native';
 
 import { keyboardInWindow, keyboardLift, keysDownThen } from '../kit/keyboard.ts';
 
@@ -16,18 +22,32 @@ export function keyboardTopNow(origin: number): number | null {
   return screenY == null ? null : keyboardInWindow(screenY, origin);
 }
 
-/** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
+/** Calls `changed` with the keyboard's new top edge each time the keys go up, move or go down. Returns the unsubscribe. */
 export function watchKeyboardTop(
   origin: () => number,
   changed: (top: number | null) => void,
 ): () => void {
-  const shown = Keyboard.addListener('keyboardDidShow', (event) =>
-    changed(keyboardInWindow(event.endCoordinates.screenY, origin())),
-  );
-  const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
+  let up = Keyboard.isVisible();
+  const keysAt = (event: KeyboardEvent) => {
+    up = true;
+    changed(keyboardInWindow(event.endCoordinates.screenY, origin()));
+  };
+  const shown = Keyboard.addListener('keyboardDidShow', keysAt);
+  // The iPad's hide key shrinks the keys to their bar and says so only as a frame change (sc-67886).
+  const moved =
+    Platform.OS === 'ios'
+      ? Keyboard.addListener('keyboardDidChangeFrame', (event) => {
+          if (up) keysAt(event);
+        })
+      : null;
+  const hidden = Keyboard.addListener('keyboardDidHide', () => {
+    up = false;
+    changed(null);
+  });
 
   return () => {
     shown.remove();
+    moved?.remove();
     hidden.remove();
   };
 }
@@ -96,6 +116,11 @@ export function raiseKeysOn(field: HostInstance): void {
   textInput.focus(field);
 }
 
+/** Gives up a field's input focus natively. TextInput's blur() skips a field JS no longer counts as focused, as one left behind a menu's own search field is (sc-44356). */
+export function blurNatively(field: HostInstance): void {
+  textInput.blur(field);
+}
+
 /** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, as `keysDownThen`. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
 export function putKeysDownThen(
   then: () => void,
@@ -106,13 +131,44 @@ export function putKeysDownThen(
     {
       up: () => Keyboard.isVisible(),
       hide: () => (field == null ? Keyboard.dismiss() : textInput.blur(field)),
-      onHidden: (hidden) => {
-        const listener = Keyboard.addListener('keyboardDidHide', hidden);
-
-        return () => listener.remove();
-      },
+      onHidden: onKeysHidden,
     },
     then,
     settledMs,
   );
+}
+
+/** Calls `then` once keys something else is putting down have gone and `settledMs` has passed since, as `keysDownThen`, but asks nothing of them: TalkBack's focus moves as the window grows under keys that close late, and what was timed from the tap lands before that (sc-43907). The form grows only once the avoiding view has heard the keys went down and laid out again, which can come well after, so a screen's scroll resizing meanwhile starts the settle again. Returns what cancels the call still to come. */
+export function onceKeysDownThen(then: () => void, settledMs: number): () => void {
+  return keysDownThen(
+    { up: () => Keyboard.isVisible(), hide: () => {}, onHidden: onKeysHiddenOrGrown },
+    then,
+    settledMs,
+  );
+}
+
+const scrollResizes = new Set<() => void>();
+const scrollHeights = new WeakMap<object, number>();
+
+/** A screen's scroll view has been laid out at `height`; only a new height counts, as a layout also comes when the view only moves, and each screen still mounted lays out its own. */
+export function scrollLaidOut(scroll: object, height: number): void {
+  if (scrollHeights.get(scroll) === height) return;
+  scrollHeights.set(scroll, height);
+  scrollResizes.forEach((resized) => resized());
+}
+
+function onKeysHiddenOrGrown(changed: () => void): () => void {
+  const unwatchHidden = onKeysHidden(changed);
+  scrollResizes.add(changed);
+
+  return () => {
+    unwatchHidden();
+    scrollResizes.delete(changed);
+  };
+}
+
+function onKeysHidden(hidden: () => void): () => void {
+  const listener = Keyboard.addListener('keyboardDidHide', hidden);
+
+  return () => listener.remove();
 }

@@ -10,6 +10,8 @@ import { AppState, Platform } from 'react-native';
 import { api } from './api.ts';
 import { config } from './config.ts';
 import { appPlace } from './kit/notificationPlace.ts';
+import { leaveThen } from './leaveHeld.ts';
+import { RUN_OF_SHOW_CHANNEL, openedFromCard } from './runOfShowCards.ts';
 
 const ASKED = 'soirely.pushAsked';
 
@@ -26,6 +28,11 @@ export async function registerAppPush(): Promise<void> {
       name: t('notificationSettings.category.event_day'),
       importance: AndroidImportance.HIGH,
     });
+    // The run-of-show card's: no sound and no pop-up (sc-66580).
+    await Notifications.setNotificationChannelAsync(RUN_OF_SHOW_CHANNEL, {
+      name: t('runOfShowCard.channel'),
+      importance: AndroidImportance.LOW,
+    });
   }
 
   const { data } = await Notifications.getExpoPushTokenAsync({ projectId: config.easProjectId });
@@ -33,9 +40,16 @@ export async function registerAppPush(): Promise<void> {
   await api.registerPushTarget({ kind: 'expo', address: data });
 }
 
+/** A QA build asks on a simulator without a project id, so the banners can be tested there; only a device registers a token. */
+function canAsk(): boolean {
+  if (config.environment === 'qa') return true;
+
+  return Device.isDevice && config.easProjectId != null;
+}
+
 /** Whether the bell offers push on this opening: the phone has not been asked, and the card has not shown here before. */
 export async function pushAskDue(): Promise<boolean> {
-  if (!Device.isDevice || config.easProjectId == null) return false;
+  if (!canAsk()) return false;
 
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'undetermined') return false;
@@ -44,7 +58,7 @@ export async function pushAskDue(): Promise<boolean> {
 }
 
 async function pushPermission(): Promise<{ blocked: boolean; granted: boolean }> {
-  if (!Device.isDevice) return { blocked: false, granted: false };
+  if (!Device.isDevice && config.environment !== 'qa') return { blocked: false, granted: false };
 
   const { status, granted } = await Notifications.getPermissionsAsync();
 
@@ -90,11 +104,11 @@ export async function turnOnAppPush(): Promise<void> {
   if (granted) await registerAppPush();
 }
 
-/** A push that arrives with the app open still shows, quietly: the bell counts the same item. */
+/** A push that arrives with the app open still shows, quietly: the bell counts the same item. A run-of-show card goes to the list alone (sc-66580). */
 export function showPushInForeground(): void {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
+    handleNotification: async (notification?: Notifications.Notification) => ({
+      shouldShowBanner: notification?.request.content.data?.silent !== true,
       shouldShowList: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
@@ -122,7 +136,12 @@ function openPushed(response: Notifications.NotificationResponse): void {
   }
   Notifications.clearLastNotificationResponse();
   if (response.notification.request.content.data?.recipient !== signedInAs) return;
-  router.push(pushedPlace(response));
+  const place = pushedPlace(response);
+  const night = typeof place === 'string' ? /^\/events\/([^/?#]+)\/night/.exec(place) : null;
+  if (response.notification.request.content.data?.silent === true && night?.[1] != null)
+    openedFromCard(night[1]);
+  // A form holding a change asks first, and the place then takes the discarded form's place (sc-82245).
+  leaveThen((discarding) => (discarding ? router.dismissTo(place) : router.push(place)));
 }
 
 /** In the signed-in frame, so a tap that launched the app opens once the account is known; every screen has a frame, and they share one listener. */

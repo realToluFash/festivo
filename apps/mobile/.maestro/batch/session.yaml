@@ -4,6 +4,8 @@
 # the four languages, since the last batch may have left the account in any of them. The card's
 # heading is waited for rather than the Signed in as line, which a long organisation name
 # or a large text size puts below the fold. sc-18454.
+# At AX5 the account card is taller than the space above the tab bar, so the scrolls for its
+# line stop at half of it. sc-67202.
 appId: host.exp.Exponent
 ---
 # A tablet in landscape shows no Signed in as line in Settings, so the session is read upright.
@@ -16,9 +18,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
     timeout: 60000
     optional: true
 # The two-factor overdue screen names no account, so the batch signs out there and back in. sc-28435.
@@ -26,14 +28,37 @@ appId: host.exp.Exponent
     when:
       visible: '{{t:any:signInRules.overdueTitle}}'
     file: sign-out.yaml
+# The paused card names no account and has no Settings, so the batch signs out from Security's
+# This device row and back in; sign-in-form.yaml counts the card as signed in. By its Paused since line,
+# which every paused card carries whatever the reason, since Paused is also the tag on a paused
+# event in the Events list. sc-85683.
+- runFlow:
+    when:
+      visible: '{{t:any:accessPaused.since}}'
+    file: ../sign-out-held.yaml
+# The profile step after signing up names no account either, so the batch signs out there and
+# back in; sign-in-form.yaml counts that step as signed in. sc-44356.
+- runFlow:
+    when:
+      visible: '{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+    file: ../sign-out-from-complete-profile.yaml
 # The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
-      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
     file: reopen.yaml
-# Today names no account, so whose session it is is read in Settings. sc-30091.
+# An account in no organisation that holds an event from outside lands inside it, which names
+# no account: Settings does. sc-68438.
 - runFlow:
     when:
+      visible:
+        id: 'event\.nav\..*'
+    file: to-settings.yaml
+# Today names no account, so whose session it is is read in Settings. sc-30091.
+# The paused page shows Today too, and has no Settings. sc-86367.
+- runFlow:
+    when:
+      notVisible: '{{t:any:accessPaused.badge}}'
       visible: '{{t:any:todayScreen.tab.today}}'
     file: to-settings.yaml
 # Settings by a section's id, not its title: the signed-out sign-in screen also holds a
@@ -47,6 +72,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:
@@ -56,6 +82,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:noOrganisation.signedInAs}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:

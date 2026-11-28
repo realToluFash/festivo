@@ -14,7 +14,7 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHost'
+      id: 'events.makeLive.host'
     timeout: 10000
 - runScript:
     file: ../scripts/change-event-elsewhere.js
@@ -26,10 +26,10 @@ appId: host.exp.Exponent
     label: 'Hosts saved elsewhere, answered ${output.changed}'
 - inputText: Tolu Fash
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHostsNow'
+      id: 'events.makeLive.hostsNow'
     timeout: 15000
 - assertVisible: '{{t:eventLive.notSavedChanged}}'
 - assertVisible: '{{t:eventLive.hostsNow}}'
@@ -38,4 +38,4 @@ appId: host.exp.Exponent
     direction: DOWN
 - takeScreenshot: hosts-now-2
 - tapOn:
-    id: 'events.makeLiveNo'
+    id: 'events.makeLive.keep'

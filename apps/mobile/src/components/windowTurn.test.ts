@@ -104,7 +104,7 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
 
   it('gives every Android window it opens, an ask and a menu too, a name TalkBack speaks as nothing, above every other text in it (#41817)', () => {
     expect(screen).toMatch(
-      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}\s*\{children\}/,
+      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}\s*<WindowArriving\.Provider value=\{windowArrival\(slidesIn, arriving\)\}>\s*\{children\}/,
     );
     expect(screen.match(/<SilentWindowName \/>/g)).toHaveLength(1);
   });
@@ -218,7 +218,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
     it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
       expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*setOpen\(false\);\s*\};/,
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*setOpen\(false\);\s*\};/,
       );
       expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
       expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
@@ -228,6 +228,36 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
       expect(picker).toContain('useSystemBack(open, close);');
       expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
+    });
+
+    it('leaves no field holding input focus for Android to hand TalkBack to as it closes, under TalkBack only (sc-44356)', () => {
+      expect(picker).toMatch(
+        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
+      );
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
+      );
+    });
+
+    it('blurs nothing as the menu’s window shows, where the keyboard hide had TalkBack say "keyboard hidden" at the open (qa #52739)', () => {
+      expect(picker.match(/blurNatively\(/g)).toHaveLength(1);
+    });
+
+    it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
+      expect(picker).not.toMatch(/\.blur\(\)/);
+      const watch = readFileSync(join(import.meta.dirname, 'keyboardWatch.ts'), 'utf8');
+      expect(watch).toMatch(
+        /export function blurNatively\(field: HostInstance\): void \{\s*textInput\.blur\(field\);\s*\}/,
+      );
+      expect(watch).toMatch(/const textInput = codegenNativeCommands</);
+    });
+
+    it('blurs nothing at the tap, where hiding the keyboard behind the opening menu made TalkBack say "keyboard hidden" (qa #50794)', () => {
+      const press = picker.slice(
+        picker.indexOf('onPress={() => {'),
+        picker.indexOf('setOpen(true);'),
+      );
+      expect(press).not.toContain('blur');
     });
 
     it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
@@ -244,30 +274,109 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const pill = read('OrgPill.tsx');
 
     expect(pill).toContain('{...quietTap(onPress, expanded)}');
-    expect(pill).toContain(
-      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    expect(pill).toContain("if (Platform.OS !== 'android' || expanded == null) return {};");
+    expect(pill).toContain('return pressOnDoubleTap(onPress);');
+    expect(read('screenReaderFocus.ts')).toContain(
+      "if (event.nativeEvent.actionName === 'activate') onPress();",
     );
-    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
   });
 
   it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
     expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
   });
 
-  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+  it('has Create an organisation’s search field take the keys while hidden on the tablet, then TalkBack’s focus on it (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
-    expect(walk).toContain(
-      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
+    expect(walk).toMatch(
+      /const unnamed = useUnnamedWindow\(\s*talkBack && shown,\s*onScreen,\s*null,\s*phone \? WINDOW_ARRIVES_MS : arriving,\s*\);/,
     );
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus !== 'search'\) return;\s+const keys = setTimeout\(\(\) => search\.current\?\.focus\(\), arriving\);/,
+    );
+  });
+
+  it('with TalkBack on, moves only TalkBack’s focus onto Create an organisation’s name field, named throughout, and leaves its keys to a double tap (qa3 #53015, Decided, 15 Nov)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
+    expect(walk).toMatch(
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+\/\/ .*\s+if \(opening\.focus === 'name'\) \{\s+moveScreenReaderFocus\(field\.current\);\s+return;\s+\}\s+const input = opening\.focus === 'search' \? search\.current : null;/,
+    );
+    expect(walk).not.toContain('nameless');
+    expect(walk.match(/field\.current\?\.focus\(\)/g)).toHaveLength(1);
+    expect(steps).toContain("accessibilityLabel={t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={refusal ?? help}');
+  });
+
+  it('raises the keys on Create an organisation’s search field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
+    expect(read('CreateWalkWindow.tsx')).toMatch(
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
+    );
+  });
+
+  it('on the phone, hides Create an organisation’s search field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto either (qa4 #48525, #48921, #52119, qa2 #49329, #49366, #49942, #50682)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
+    expect(walk).toMatch(
+      /const quiet =\s+talkBack && phone && !voiced && opening\.focus === 'search' && !opening\.walk\.asking;/,
+    );
+    expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
+    expect(walk).not.toContain('voice()');
+    expect(steps).not.toContain('onTaken');
+    expect(walk).not.toContain('voicing');
+    expect(walk).toMatch(
+      /const taken = \(\) => \{\s+if \(quiet && onScreen && !unnamed\) setNamed\(true\);/,
+    );
+    expect(walk).toContain('if (focused && live) taken();');
+    expect(walk).toMatch(
+      /if \(!quiet \|\| !onScreen \|\| unnamed \|\| named\) return;\s+const reachable = setTimeout\(\(\) => setNamed\(true\), KEYS_AWAITED_MS\);/,
     );
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus === 'search'\) moveScreenReaderFocus\(search\.current\);\s+else if \(opening\.focus === 'name'\) moveScreenReaderFocus\(field\.current\);/,
+      /if \(!quiet \|\| !named\) return;\s+const settled = setTimeout\(\(\) => setVoiced\(true\), NAMED_SETTLES_MS\);/,
+    );
+    expect(walk).toMatch(
+      /if \(!quiet \|\| !named\) \{\s+raiseKeysOn\(input\);\s+return;\s+\}\s+regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/,
+    );
+    expect(walk).toMatch(
+      /if \(!quiet \|\| named \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet, named\]\);/,
+    );
+    expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(1);
+  });
+
+  it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+holding\.current = null;/,
+    );
+    expect(walk).toMatch(
+      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input == null \|\| !open \|\| walk\.asking\) return;/,
+    );
+    expect(walk).toContain('onLeft={live ? keysLost : undefined}');
+    expect(walk).toContain('if (!focused && live) keysLost();');
+    expect(walk.match(/^ {4}holding\.current = null;$/gm)).toHaveLength(3);
+    expect(read('CreateWalkSteps.tsx')).toMatch(/setFocused\(false\);\s+onLeft\?\.\(\);/);
+  });
+
+  it('with TalkBack on, gives Create an organisation’s buttons and the tablet’s scrim no input focus to take from its field as it is revealed (qa2 #46600)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const parts = read('CreateWalkParts.tsx');
+
+    expect(walk.match(/<NavAction\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<WalkButton\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<(NavAction|WalkButton)\b/g)).toHaveLength(6);
+    expect(parts.match(/\{\.\.\.takingFocus\(takesFocus, /g)).toHaveLength(2);
+    expect(walk).toContain('{...takingFocus(!talkBack, creating ? undefined : cancel)}');
+  });
+
+  it('presses a button left without input focus from TalkBack’s double tap, which its click no longer reaches (lead, PR #2155)', () => {
+    expect(read('CreateWalkParts.tsx')).toContain(
+      'return { focusable: false, ...pressOnDoubleTap(onPress) };',
     );
   });
 
@@ -280,5 +389,97 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain(
       'const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;',
     );
+  });
+});
+
+describe('an anchored menu starts TalkBack on its first row (sc-52641)', () => {
+  const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+  const overlays = read('SummaryOverlays.tsx');
+
+  it('hides the menu on Android from when its window is up until it has arrived', () => {
+    expect(overlays).toMatch(
+      /useUnnamedWindow\(\s*Platform\.OS === 'android' && first != null,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+    );
+    expect(overlays).toContain('onShow={() => setOnScreen(true)}');
+    expect(overlays).toMatch(/<MenuLayer\s+\{\.\.\.menu\}\s+hidden=\{arriving\}/);
+    expect(overlays).toContain("const reach = hidden ? 'no-hide-descendants' : 'auto';");
+    expect(overlays.match(/importantForAccessibility=\{reach\}/g)).toHaveLength(1);
+  });
+
+  it('keeps Close the menu out of reach until focus is on the first row, so TalkBack never reads it first (#53461)', () => {
+    expect(overlays).toContain(
+      "importantForAccessibility={outsideHidden ? 'no-hide-descendants' : reach}",
+    );
+    expect(overlays).toContain(
+      "outsideHidden={Platform.OS === 'android' && first != null && !focused}",
+    );
+    expect(overlays).toContain('const reached = setTimeout(() => setFocused(true), SETTLED_MS);');
+    expect(overlays).toContain('if (!landed && focused) setFocused(false);');
+  });
+
+  it('then moves TalkBack’s focus to its first row, on Android only', () => {
+    expect(overlays).toContain('const landed = onScreen && first != null && !arriving;');
+    expect(overlays).toMatch(
+      /if \(!landed \|\| Platform\.OS !== 'android'\) return;\s*const wait = setTimeout\(\(\) => moveScreenReaderFocus\(first\.current\)\);/,
+    );
+  });
+
+  it.each([
+    ['SummaryOverlays.tsx', 'FilterMenu'],
+    ['CalendarControls.tsx', 'ShowMenu'],
+    ['EventGuests.tsx', 'FilterChoice'],
+    ['EventsSearch.tsx', 'EventsFilterMenu'],
+  ])('in %s, %s hands its first row to the menu', (file, menu) => {
+    const text = read(file);
+    const body = text.slice(text.indexOf(`function ${menu}`));
+    const opened = body.slice(0, body.indexOf('</AnchoredMenu>'));
+
+    expect(opened).toContain('const first = useRef<ViewInstance>(null);');
+    const [tag = ''] = opened.match(/<AnchoredMenu\b[\s\S]*?(\n\s*>|\/>)/) ?? [];
+
+    expect(tag).toContain('first={first}');
+    expect(opened).toMatch(/ref=\{(index === 0 \? first : undefined|first)\}/);
+  });
+});
+
+describe('going back up from a level of Events’ Filter (sc-53520)', () => {
+  const search = readFileSync(join(import.meta.dirname, 'EventsSearch.tsx'), 'utf8');
+  const menu = search.slice(search.indexOf('function EventsFilterMenu'));
+  const body = menu.slice(0, menu.indexOf('</AnchoredMenu>'));
+
+  it.each([
+    ['type', 'first'],
+    ['when', 'whenRow'],
+    ['hosts', 'hostsRow'],
+  ])('puts TalkBack’s focus back on the row the %s level came from', (level, row) => {
+    expect(body).toContain(`onBack={() => back('${level}')}`);
+    expect(body).toContain(`${level}: ${row}`);
+    expect(body).toMatch(
+      new RegExp(`ref=\\{${row}\\}[\\s\\S]*?testID="events\\.filter\\.${level}"`),
+    );
+  });
+
+  it('moves it on Android only, once the menu’s rows are back', () => {
+    expect(body).toMatch(
+      /if \(Platform\.OS !== 'android' \|\| level !== 'top' \|\| cameFrom == null\) return;[\s\S]*?const wait = setTimeout\(\(\) => moveScreenReaderFocus\(row\.current\)\);/,
+    );
+  });
+
+  it('forgets the level as the menu closes, so Android’s Back still hands focus to Filter', () => {
+    expect(body).toMatch(/const close = \(\) => \{\s*setLevel\('top'\);\s*setCameFrom\(null\);/);
+  });
+});
+
+describe('the country list’s sticky heading (sc-101592)', () => {
+  const steps = readFileSync(join(import.meta.dirname, 'CreateWalkSteps.tsx'), 'utf8');
+
+  it('pins the same index whether searching or not, which threw addViewAt on Android', () => {
+    expect(steps).toContain('const STICKY = [1];');
+    expect(steps).toContain('stickyHeaderIndices={STICKY}');
+    expect(steps).not.toMatch(/stickyHeaderIndices=\{(?!STICKY\})/);
+  });
+
+  it('keeps the heading first in the items, searching or not', () => {
+    expect(steps).toMatch(/const items: readonly Item\[\] = \[\s*HEADING,\s*\.\.\.shown\.map/);
   });
 });

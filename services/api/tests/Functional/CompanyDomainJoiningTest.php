@@ -25,6 +25,7 @@ use App\Repository\JoinOfferDismissalRepository;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ProvesDomains;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -38,6 +39,7 @@ use Psl\Vec;
 final class CompanyDomainJoiningTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use ProvesDomains;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -51,7 +53,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($organisation), ['domain' => '  IRE.events ']);
 
         self::assertResponseStatusCodeSame(201);
-        self::assertSame([['domain' => 'ire.events', 'stopped' => false]], $body['domains']);
+        self::assertSame([['domain' => 'ire.events', 'stopped' => false, 'proved' => false]], $body['domains']);
         self::assertSame('folake@ire.events', $body['ownAddress']);
         self::assertSame(5, $body['most']);
         self::assertSame(['domain' => [null, 'ire.events']], $this->audited('organisation_domain.added', $organisation)->getChanges());
@@ -213,14 +215,15 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     {
         [, $events] = $this->organisation('folake@ire.events', 'Ìrè Events');
         [$kitchenOwner, $kitchen] = $this->organisation('bisi@ire.events', 'Ìrè Events Kitchen');
-        $this->list($events, 'ire.events')->setProvedAt(new DateTimeImmutable());
+        $this->list($events, 'ire.events');
+        self::proveDomain($events, 'ire.events');
         $this->list($kitchen, 'ire.events');
         $this->signIn($this->newcomer('ada@ire.events'));
 
         self::assertSame(['Ìrè Events'], Vec\map($this->offers(), static fn (array $offer): mixed => $offer['name']));
 
         $this->signIn($kitchenOwner);
-        self::assertSame([['domain' => 'ire.events', 'stopped' => true]], $this->send('GET', $this->domains($kitchen))['domains']);
+        self::assertSame([['domain' => 'ire.events', 'stopped' => true, 'proved' => false]], $this->send('GET', $this->domains($kitchen))['domains']);
     }
 
     #[Test]
@@ -228,7 +231,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     {
         [, $events] = $this->organisation('folake@ire.events', 'Ìrè Events');
         [$kitchenOwner, $kitchen] = $this->organisation('bisi@ire.events', 'Ìrè Events Kitchen');
-        $this->list($events, 'ire.events')->setProvedAt(new DateTimeImmutable());
+        self::proveDomain($events, 'ire.events');
         $this->signIn($kitchenOwner);
 
         $body = $this->send('POST', $this->domains($kitchen), ['domain' => 'ire.events']);
@@ -584,7 +587,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
 
         return Vec\map(
-            Type\vec(Type\shape(['status' => Type\string()], true))->coerce($body['members']),
+            Type\vec(Type\shape(['status' => Type\string()], true))->coerce($body['waiting']),
             static fn (array $member): string => $member['status'],
         );
     }

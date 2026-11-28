@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { config } from '../../src/config.ts';
 import { useStepsInSheet } from '../../src/demo/DemoScreen.tsx';
 import { demoOpens } from '../../src/demo/gate.ts';
-import { forgetName } from '../../src/demo/settings/savedName.ts';
+import { forgetName, startAgain } from '../../src/demo/settings/savedName.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { useReducedMotion } from '../../src/reducedMotion.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -18,7 +18,7 @@ export default function DemoLayout() {
 
   useEffect(() => {
     forgetName();
-    const link = Linking.addEventListener('url', forgetName);
+    const link = Linking.addEventListener('url', startAgain);
 
     return () => link.remove();
   }, []);

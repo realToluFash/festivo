@@ -8,7 +8,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { demoOpens } from './gate.ts';
+import { PASSKEY_WORDS as P } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
+import { readAddressesInline } from '../components/wholeAddressTesting.ts';
 
 const tested = config();
 
@@ -551,6 +553,16 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(screen.getByRole('link', { name: /This link has already been used/ })).toBeDefined();
   });
 
+  it('names the passkeys and the app in the lost link at the code step after a passkey (sc-86885)', async () => {
+    await page('?page=code&state=has-passkey', 'Enter your code');
+
+    expect(
+      screen.getByRole('link', {
+        name: 'Lost your passkeys, your authenticator and your recovery codes?',
+      }),
+    ).toBeDefined();
+  });
+
   it('opens from sign-in with the email typed there, and Back returns to that sign-in', async () => {
     await signInBoard('signed-out');
     type('Email', 'ade@ire.events');
@@ -865,6 +877,52 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     ).toBeNull();
   });
 
+  it.each([
+    ['?page=recovery&state=passkeys-only', 'Lost your passkeys and your recovery codes?'],
+    [
+      '?page=recovery&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+  ])('names the factors the member has in the lost link, at %s (sc-86885)', async (query, lost) => {
+    await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+
+    expect(screen.getByRole('link', { name: lost })).toBeDefined();
+  });
+
+  it.each([
+    [
+      '?page=recovery&state=passkeys-only',
+      'Lost your passkeys and your recovery codes?',
+      'Get back in without your passkeys',
+      'For when you have lost your passkeys and your recovery codes.',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+      'Get back in without your passkeys or authenticator',
+      'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+    ],
+    [
+      '?page=code',
+      'Lost your authenticator and your recovery codes?',
+      'Get back in without your authenticator',
+      'For when you have lost your authenticator app and your recovery codes.',
+    ],
+  ])(
+    'opens the lost page named for the factors the link named, from %s (sc-86885, #87331)',
+    async (query, lost, title, line) => {
+      await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+      fireEvent.click(screen.getByRole('link', { name: lost }));
+
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+      expect(screen.getByText(line)).toBeDefined();
+    },
+  );
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
@@ -1041,6 +1099,28 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+
+  it('says a refused passkey until Use a passkey, and pauses after the fifth with a code still offered (sc-86885)', async () => {
+    await page('?page=passkey&state=refused', P.waitTitle);
+    expect(screen.getByText(P.refused).closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+    expect(screen.queryByText(P.refused)).toBeNull();
+
+    for (let refusal = 2; refusal <= TRIES; refusal += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Demo: a passkey that does not work' }));
+      if (refusal < TRIES) {
+        expect(screen.getByText(P.refused)).toBeDefined();
+        fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+      }
+    }
+
+    expect(screen.getByText(P.pausedTitle)).toBeDefined();
+    expect(screen.queryByText(P.refused)).toBeNull();
+    expect(screen.getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
   });
 });
 
@@ -1480,6 +1560,22 @@ describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
     expect(screen.queryByText('New to Soirely?')).toBeNull();
   });
 
+  it('refuses an invitation to a phone-only account until it adds the email (sc-4235)', async () => {
+    await open('/demo/ways-in?page=invitation&state=no-email', 'Add your email address first');
+
+    expect(
+      screen.getByText(
+        `This invitation is for ${SAMPLE.email}. Add that address to your account and verify it, then accept the invitation.`,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('+44 ••• ••• 3456')).toBeDefined();
+    expect(screen.queryByText(SAMPLE.email, { selector: 'span' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Add an email address' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
+  });
+
   it('lands A few details saved with no number on Today', async () => {
     await open('/demo/create-account?page=details', 'A few details');
     type('Organisation name', SAMPLE.organisation);
@@ -1536,21 +1632,36 @@ describe('Today at a desk (sc-29092)', () => {
   beforeEach(() => inEnvironment('development'));
 
   async function today(moment: string) {
-    at(`/demo/today?moment=${moment}`);
+    const router = at(`/demo/today?moment=${moment}`);
     await screen.findByRole('navigation', { name: 'Soirely' });
+
+    return router;
   }
 
-  it('opens a planning day with Needs you first, its late item in words, and one filled button', async () => {
+  it('opens a planning day with Needs you first, its overdue row in words, and a button only where a row has an action', async () => {
     await today('plan');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Good morning, Folake' })).toBeDefined();
-    expect(screen.getByText('4 things need you.')).toBeDefined();
+    expect(screen.getByText('5 things need you.')).toBeDefined();
     const needs = screen.getByRole('region', { name: 'Needs you' });
+    expect(within(needs).getByRole('heading', { name: 'Needs you, 5 things' })).toBeDefined();
     const rows = within(needs).getAllByRole('listitem');
-    expect(rows).toHaveLength(4);
-    expect(within(rows[0] as HTMLElement).getByText('3 days late')).toBeDefined();
+    expect(rows).toHaveLength(5);
+    expect(within(rows[0] as HTMLElement).getByText('3 days overdue')).toBeDefined();
     expect(needs.querySelectorAll('.today-act.is-primary')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Chase, Chase 19 replies' })).toBeDefined();
+    expect(within(needs).getAllByRole('link')).toHaveLength(4);
+    expect(
+      within(needs)
+        .getByRole('link', { name: 'Open the kitchen sheet, Ire Events end-of-year party' })
+        .getAttribute('href'),
+    ).toBe('/demo/events/evt-party-2/kitchen');
+    const band = rows.find((row) => within(row).queryByText('Pay the band’s balance') != null);
+    expect(band && within(band).queryByRole('link')).toBeNull();
+    expect(
+      within(needs).getByRole('button', {
+        name: 'Give final numbers to the kitchen, Ire Events end-of-year party, 3 days overdue',
+      }),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: 'New event' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
   });
@@ -1567,8 +1678,7 @@ describe('Today at a desk (sc-29092)', () => {
     await today('plan&invites=none');
 
     expect(screen.getByText('Invitations not sent')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
+    expect(screen.queryByText('Send the invitations')).toBeNull();
   });
 
   it('opens an event starting later today as a planning day, from the demo home', async () => {
@@ -1611,13 +1721,59 @@ describe('Today at a desk (sc-29092)', () => {
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Review, Final numbers to the caterer' }));
-    expect(
-      screen.getByText('Review opens in Adaeze & Tunde’s wedding, which has its own design.'),
-    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^New event/ }));
+    expect(screen.getByText('Create an event has its own design.')).toBeDefined();
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(screen.getByRole('dialog', { name: 'Search' })).toBeDefined();
+  });
+
+  it('opens a row’s event from the row (sc-61015)', async () => {
+    const router = at('/demo/today?moment=plan&needs=one');
+    await screen.findByRole('navigation', { name: 'Soirely' });
+
+    expect(screen.getByText('1 thing needs you.')).toBeDefined();
+    const needs = screen.getByRole('region', { name: 'Needs you' });
+    expect(within(needs).getByRole('heading', { name: 'Needs you, 1 thing' })).toBeDefined();
+    fireEvent.click(
+      within(needs).getByRole('button', {
+        name: 'Give final numbers to the kitchen, Adaeze & Tunde’s wedding, Due today',
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4'));
+  });
+
+  it('opens Kitchen sheet from a row’s button (sc-61015)', async () => {
+    const router = at('/demo/today?moment=plan&needs=one');
+    await screen.findByRole('navigation', { name: 'Soirely' });
+
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Open the kitchen sheet, Adaeze & Tunde’s wedding' }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/kitchen'),
+    );
+  });
+
+  it('leads with the overdue rows in every form (sc-61015)', async () => {
+    await today('plan&needs=overdue');
+
+    const rows = within(screen.getByRole('region', { name: 'Needs you' })).getAllByRole('listitem');
+    expect(rows.map((row) => row.querySelector('.today-due')?.textContent)).toEqual([
+      '2 days overdue',
+      '1 day overdue',
+      'Overdue',
+      'Due tomorrow',
+      'Due Thu, Nov 5',
+    ]);
+  });
+
+  it('shows the tick and no cover line when nothing needs you (sc-61015)', async () => {
+    await today('plan&needs=none');
+
+    expect(screen.getByText('Nothing needs you')).toBeDefined();
+    expect(screen.getByText('You’re up to date on every event.')).toBeDefined();
+    expect(screen.queryByText(/needs? you\./)).toBeNull();
   });
 
   it('shows only what the product can say, built now', async () => {
@@ -1628,14 +1784,75 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByText(/replied/)).toBeNull();
   });
 
-  it('makes the banner Now on the event day, with the run of show', async () => {
+  it('makes the banner Now on the event day, with the run of show and Next alone', async () => {
     await today('day');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
     expect(screen.getByText('Live now')).toBeDefined();
-    expect(screen.getByRole('img', { name: '87 of 99 arrived' })).toBeDefined();
-    expect(screen.getByRole('img', { name: /^14:00 Ceremony, 15:00 Photos/ })).toBeDefined();
+    expect(screen.getByText('until 17:30')).toBeDefined();
+    expect(document.querySelector('.tn-figure')?.textContent).toBe(
+      '10 min behind10 minutes behind',
+    );
+    expect(
+      screen.getByText('Guests take their seats', { selector: '.today-next-what' }),
+    ).toBeDefined();
+    expect(document.querySelector('.today-now .today-arrived')).toBeNull();
+    expect(
+      screen.getByRole('img', {
+        name: '15:00 Photos, done; 16:00 Drinks reception, now; 17:20 Guests take their seats, next; 18:00 Dinner is served, still to come; 19:30 Speeches, still to come; 21:00 Cake cutting, still to come',
+      }),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it.each([
+    ['over', 'Drinks reception', '12 min over', '22 min behind'],
+    ['open', 'Speeches', null, 'On time'],
+    ['last', 'First dance', 'until 22:05', 'Last item under way'],
+    ['between', 'Nothing is on', null, '18 min behind'],
+    ['before', 'Nothing is on', null, 'On time'],
+    ['done', 'That’s everything.', null, null],
+  ])('draws Now %s', async (state, headline, until, figure) => {
+    await today(`day&now=${state}`);
+    const now = document.querySelector('.today-now');
+
+    expect(screen.getByRole('heading', { level: 1, name: headline })).toBeDefined();
+    const line = now?.querySelector('.today-now-until');
+
+    expect((line?.querySelector('[aria-hidden]') ?? line)?.textContent ?? null).toBe(until);
+    expect(now?.querySelector('.tn-figure [aria-hidden]')?.textContent ?? null).toBe(figure);
+    expect(now?.querySelector('.tn-next') == null).toBe(state === 'last' || state === 'done');
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('says the minutes over in full to a screen reader', async () => {
+    await today('day&now=over');
+
+    expect(document.querySelector('.today-now-until .visually-hidden')?.textContent).toBe(
+      '12 minutes over',
+    );
+  });
+
+  it('draws Now long, the 120-character title whole in the heading', async () => {
+    await today('day&now=long');
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Drinks reception on the garden terrace with the string quartet, canapés from the Lagos kitchen and the first photographs',
+      }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('opens the run of show from Now on the event day', async () => {
+    const router = await today('day');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open run of show' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toMatch(/^\/demo\/events\/[^/]+\/night$/),
+    );
   });
 
   it('opens the event from Now, built now', async () => {
@@ -1870,6 +2087,8 @@ describe('Settings at a desk (sc-29708)', () => {
 });
 
 describe('People on an event at a desk (sc-29915)', () => {
+  readAddressesInline();
+
   beforeEach(() => inEnvironment('development'));
 
   async function people(state?: string) {
@@ -1880,6 +2099,36 @@ describe('People on an event at a desk (sc-29915)', () => {
   function role(name: RegExp): HTMLInputElement {
     return within(screen.getByRole('dialog', { name: 'Role on this event' })).getByRole('radio', {
       name,
+    });
+  }
+
+  for (const [state, event, id] of [
+    [undefined, 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['loading', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['failed', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['readOnly', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['nobody', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['code', 'Joana & Rui’s wedding', 'evt-joana-rui-2'],
+  ] as const) {
+    it(`opens ${state ?? 'populated'} under the crumb row, which runs the event page's width with the bell at its end, and People as its only title (sc-69635)`, async () => {
+      await people(state);
+
+      const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+      expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+        '/demo/events',
+      );
+      expect(within(crumb).getByRole('link', { name: event }).getAttribute('href')).toBe(
+        `/demo/events/${id}`,
+      );
+      expect(crumb.querySelector('[aria-current="page"]')?.textContent).toBe('People');
+      expect(crumb.parentElement?.querySelector(':scope > .desk-bell')).not.toBeNull();
+      expect(crumb.closest('.desk-column')).toBeNull();
+      expect(crumb.parentElement?.parentElement?.classList.contains('event-page')).toBe(true);
+      expect(
+        within(screen.getByRole('main'))
+          .getAllByRole('heading', { level: 1 })
+          .map((one) => one.textContent),
+      ).toEqual(['People']);
     });
   }
 
@@ -1959,18 +2208,22 @@ describe('People on an event at a desk (sc-29915)', () => {
     expect(screen.getByText('Tom Becker is off this event.')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Tom Becker/u })).toBeNull();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add by name' })),
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Add by name, email or mobile' }),
+      ),
     );
   });
 
   it('adds members by name, with the role picked, and never offers you', async () => {
     await people();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add by name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add by name, email or mobile' }));
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
     expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
     expect(add.queryByRole('checkbox', { name: /Julien Moreau/u })).toBeNull();
-    fireEvent.change(add.getByLabelText('Name'), { target: { value: 'ko' } });
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), {
+      target: { value: 'ko' },
+    });
     fireEvent.click(add.getByRole('checkbox', { name: /Kofi Mensah/u }));
     fireEvent.click(add.getByRole('radio', { name: /^Can edit/u }));
     fireEvent.click(add.getByRole('button', { name: 'Add' }));
@@ -1982,11 +2235,13 @@ describe('People on an event at a desk (sc-29915)', () => {
   it('says nobody matches, and asks before it drops a tick', async () => {
     await people();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add by name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add by name, email or mobile' }));
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
-    fireEvent.change(add.getByLabelText('Name'), { target: { value: 'zzz' } });
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), {
+      target: { value: 'zzz' },
+    });
     expect(add.getByText('Nobody in Ire Events matches “zzz”.')).toBeDefined();
-    fireEvent.change(add.getByLabelText('Name'), { target: { value: '' } });
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), { target: { value: '' } });
     fireEvent.click(add.getByRole('checkbox', { name: /Folake Adeyemi/u }));
     fireEvent.click(add.getByRole('button', { name: 'Cancel' }));
 
@@ -1996,7 +2251,7 @@ describe('People on an event at a desk (sc-29915)', () => {
   it('shows a member who can edit the list, read only, with who sees every event', async () => {
     await people('readOnly');
 
-    expect(screen.queryByRole('button', { name: 'Add by name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add by name, email or mobile' })).toBeNull();
     expect(within(screen.getByRole('main')).queryByRole('button', { name: /^Priya/u })).toBeNull();
     expect(
       screen.getByText('Only owners, admins and the lead change who’s on this event.'),
@@ -2008,10 +2263,19 @@ describe('People on an event at a desk (sc-29915)', () => {
     ).toBeDefined();
   });
 
+  it('shows someone not joined yet without their address to a member who can edit (pm #67966)', async () => {
+    await people('readOnly');
+
+    const main = within(screen.getByRole('main'));
+    expect(main.getByText('Not joined yet')).toBeDefined();
+    expect(main.getByText('Can check guests in · Lighting')).toBeDefined();
+    expect(document.body.innerHTML).not.toContain('lagoslights');
+  });
+
   it('lets the lead change everybody but themselves', async () => {
     await people('lead');
 
-    expect(screen.getByRole('button', { name: 'Add by name' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add by name, email or mobile' })).toBeDefined();
     expect(within(screen.getByRole('main')).queryByRole('button', { name: /^Priya/u })).toBeNull();
     expect(screen.getByRole('button', { name: /^Ana Souza/u })).toBeDefined();
   });
@@ -2031,5 +2295,122 @@ describe('People on an event at a desk (sc-29915)', () => {
     await act(() => vi.advanceTimersByTimeAsync(1200));
 
     expect(screen.getByRole('heading', { name: 'On this event' })).toBeDefined();
+  });
+
+  it('adds someone from outside by email address, ticked, with a job label (sc-71)', async () => {
+    await people('addOutside');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.queryByText(/Nobody in Ire Events matches/u)).toBeNull();
+    const address = add.getByRole('checkbox', { name: /bisi@lagoslights\.example/u });
+    expect((address as HTMLInputElement).checked).toBe(true);
+    fireEvent.change(add.getByLabelText('Job label (optional)'), {
+      target: { value: 'Lighting' },
+    });
+    expect(
+      add.getByText('What they’re there for, shown beside their name. It grants nothing. 8 of 60.'),
+    ).toBeDefined();
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('bisi@lagoslights.example can view now.')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /^bisi@lagoslights\.example.*Can view · Lighting/u }),
+    ).toBeDefined();
+  });
+
+  it('reads a mobile number for the organisation’s country, in E.164 (sc-71)', async () => {
+    await people('addMobile');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+    expect(screen.getByText('+234 803 555 0142 can view now.')).toBeDefined();
+  });
+
+  it('says half an address is neither, and keeps Add off (sc-71)', async () => {
+    await people('addUnusable');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByText('Nobody in Ire Events matches “bisi@lagos”.')).toBeDefined();
+    expect(
+      add.getByText('That is not an email address or a mobile number we can use.'),
+    ).toBeDefined();
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('keeps Lead for members, and finds by name only under it (sc-71)', async () => {
+    await people('addLeadOutside');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByLabelText('Name')).toBeDefined();
+    expect(
+      add.getByText('For members of Ire Events only.', { selector: '.desk-empty-title' }),
+    ).toBeDefined();
+    expect(add.getByText('Pick another role to add someone from outside.')).toBeDefined();
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(add.getByRole('radio', { name: /^Can view/u }));
+    expect(add.getByRole('checkbox', { name: /bisi@lagoslights\.example/u })).toBeDefined();
+  });
+
+  it('shows the server’s already_a_member for a member’s own address (sc-71)', async () => {
+    await people('addMemberAddress');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+    expect(add.getByText('That person is already a member of this organisation.')).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Add people' })).toBeDefined();
+  });
+
+  it('gives someone from outside a service level from Add people (sc-4002, #93365)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByText('For the service')).toBeDefined();
+    expect(
+      (add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('bisi@lagoslights.example can work the floor now.')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /^bisi@lagoslights\.example.*Can work the floor/u }),
+    ).toBeDefined();
+  });
+
+  it('offers the service levels only while it sends outside, never to a ticked member (sc-4002)', async () => {
+    await people('addOutside');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByRole('radio', { name: /^Can run the floor/u })).toBeDefined();
+    const field = add.getByLabelText('Name, email or mobile number');
+    fireEvent.change(field, { target: { value: '' } });
+    expect(add.queryByText('For the service')).toBeNull();
+    const [member] = add.getAllByRole('checkbox');
+    if (member == null) throw new Error('no member offered');
+    fireEvent.click(member);
+    fireEvent.change(field, { target: { value: 'bisi@lagoslights.example' } });
+
+    const floor = add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement;
+    expect(floor.disabled).toBe(true);
+    expect(
+      add.getAllByText('For someone from outside only. Untick the members to give it.'),
+    ).toHaveLength(3);
+  });
+
+  it('keeps members off while a service level is picked (sc-4002)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), {
+      target: { value: '' },
+    });
+    expect(
+      add.getByText('Members take one of the four roles above. Pick one to add them as well.'),
+    ).toBeDefined();
+    for (const box of add.getAllByRole('checkbox')) {
+      expect((box as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(add.getByRole('radio', { name: /^Can view/u }));
+    expect(add.queryByText('For the service')).toBeNull();
   });
 });

@@ -44,7 +44,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
   it('says where an owner stands, in the app’s order, and what changed, newest first', async () => {
     await rules('/demo/settings/sign-in-rules');
 
-    expect(screen.getByText('You meet Ire Events’ rules')).toBeDefined();
+    expect(screen.getByText('You meet Ire Events’s rules')).toBeDefined();
     expect(screen.getByText('As an owner, you can change them below.')).toBeDefined();
     expect(titles('Where you stand')).toEqual([
       'Sign in any way',
@@ -62,7 +62,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
   it('opens a state it does not know as the page with no state', async () => {
     await rules('/demo/settings/sign-in-rules?state=rules');
 
-    expect(screen.getByText('You meet Ire Events’ rules')).toBeDefined();
+    expect(screen.getByText('You meet Ire Events’s rules')).toBeDefined();
     expect(screen.getAllByText('Change')).toHaveLength(3);
   });
 
@@ -87,7 +87,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: /Apple/ }));
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: 'Link Apple' }));
-    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 
   it('holds an admin’s changes until their own two-factor is on', async () => {
@@ -200,6 +200,29 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
       'Two-factor for everyone: on',
     ]);
     expect(titles('Where you stand')[2]).toBe('Two-factor not required');
+  });
+
+  it('counts the people a pick leaves short past three, and names them up to three (sc-18317)', async () => {
+    await rules('/demo/settings/sign-in-rules?state=everyoneMillion');
+    const million = screen.getByRole('dialog', { name: 'Two-factor' });
+
+    expect(within(million).getByText('1,000,000 people don’t have it yet.')).toBeDefined();
+    cleanup();
+
+    await rules('/demo/settings/sign-in-rules?state=everyoneThree');
+    const three = screen.getByRole('dialog', { name: 'Two-factor' });
+
+    expect(
+      within(three).getByText('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.'),
+    ).toBeDefined();
+    cleanup();
+
+    await rules('/demo/settings/sign-in-rules?state=methodFour');
+    const four = screen.getByRole('dialog', { name: 'How people sign in' });
+
+    expect(within(four).getByText(/^4 people can read but not change anything/u)).toBeDefined();
+    fireEvent.click(within(four).getByRole('radio', { name: /^Any method/u }));
+    expect(within(four).queryByText(/^4 people/u)).toBeNull();
   });
 
   it('holds every change while the viewer’s own two-factor is due under the managers rule', async () => {

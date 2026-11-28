@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useState } from 'react';
 import { Animated, StyleSheet, View, type ViewStyle, useWindowDimensions } from 'react-native';
 
 import {
@@ -29,7 +29,9 @@ export function Skeleton({
   ...shape
 }: Shape & { words: string; inCard?: boolean; edgeToEdge?: boolean }) {
   const shown = useShownAfter(SKELETON_AFTER_MS);
+  const appear = useAppear();
   const pulse = usePulse(shown);
+  const [blocksOpacity] = useState(() => Animated.multiply(appear, pulse));
   const { kind } = useLayout();
   const { height } = useWindowDimensions();
 
@@ -71,15 +73,19 @@ export function Skeleton({
 
   return (
     <View accessibilityState={{ busy: true }} style={styles.skeleton}>
-      {shown && (
+      <Animated.View
+        accessibilityElementsHidden={!shown}
+        importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
+        style={{ opacity: appear }}
+      >
         <Text size={tokens.typeBodyPhone.size} muted style={edgeToEdge && styles.wordsInset}>
           {words}
         </Text>
-      )}
+      </Animated.View>
       <Animated.View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={[styles.blocks, { opacity: shown ? pulse : 0 }]}
+        style={[styles.blocks, { opacity: blocksOpacity }]}
       >
         {blocks}
       </Animated.View>
@@ -117,23 +123,43 @@ const LINE_WIDTHS = ['92%', '78%', '64%'] as const;
 export function Arrived({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const reduced = useReducedMotion();
   const [shown] = useState(() => new Animated.Value(0));
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    if (reduced) {
-      shown.setValue(1);
-      return;
-    }
+    if (settled) return;
     const run = Animated.timing(shown, {
       toValue: 1,
-      duration: tokens.motionBase,
+      duration: reduced ? 0 : tokens.motionBase,
+      useNativeDriver: true,
+    });
+    run.start(({ finished }) => {
+      if (finished) setSettled(true);
+    });
+
+    return () => run.stop();
+  }, [settled, reduced, shown]);
+
+  // A native opacity never reaches the view's committed props, so letting go of it short of 1 leaves the page unseen until something re-commits it (sc-48600): it goes only once a run has carried it to 1, the reduced-motion run included.
+  return <Animated.View style={[style, !settled && { opacity: shown }]}>{children}</Animated.View>;
+}
+
+/** 0 for SKELETON_AFTER_MS, then 1, played on the UI thread: a JS timer here fired seconds late on a cold start, leaving the loading state blank (sc-83081). */
+function useAppear(): Animated.Value {
+  const [appear] = useState(() => new Animated.Value(0));
+
+  useLayoutEffect(() => {
+    const run = Animated.timing(appear, {
+      toValue: 1,
+      duration: SKELETON_AFTER_MS,
+      easing: (progress) => (progress < 1 ? 0 : 1),
       useNativeDriver: true,
     });
     run.start();
 
     return () => run.stop();
-  }, [reduced, shown]);
+  }, [appear]);
 
-  return <Animated.View style={[style, { opacity: shown }]}>{children}</Animated.View>;
+  return appear;
 }
 
 function usePulse(running: boolean): Animated.Value {

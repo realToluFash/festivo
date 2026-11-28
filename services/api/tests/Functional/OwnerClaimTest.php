@@ -25,11 +25,11 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\OwnerClaimOutcome;
 use App\Enum\SeededRole;
-use App\Http\AfterResponse;
 use App\Repository\MembershipRepository;
 use App\Repository\OwnerClaimRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ProvesDomains;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -47,6 +47,7 @@ use Symfony\Component\Mime\Email;
 final class OwnerClaimTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use ProvesDomains;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -102,7 +103,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $prover = self::service(OrganisationFounder::class)->found($this->member('bisi.group@ire.events'), 'Ìrè Group', 'NG', 'Africa/Lagos');
-        $this->list($prover, 'ire.events')->setProvedAt(new DateTimeImmutable());
+        self::proveDomain($prover, 'ire.events');
         $this->signIn($administrator);
 
         $body = $this->send('POST', $this->claimPath($organisation));
@@ -822,10 +823,11 @@ final class OwnerClaimTest extends ApiTestCase
         }
 
         $entityManager->flush();
-        Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
-        self::service(DomainSuspender::class)->addressChanged($user);
-        $entityManager->flush();
-        self::service(AfterResponse::class)->reset();
+        $entityManager->wrapInTransaction(static function () use ($entityManager, $user, $address): void {
+            Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
+            self::service(DomainSuspender::class)->addressChanged($user);
+            $entityManager->flush();
+        });
     }
 
     private function demote(User $user, Organisation $organisation): void

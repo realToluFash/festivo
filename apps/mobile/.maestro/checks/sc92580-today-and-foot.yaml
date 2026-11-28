@@ -1,0 +1,20 @@
+# sc-92580 regression: on the iPad upright at the device's text size (set outside the flow), Today's top with the organisation pill beside the tabs, then the bell's panel scrolled to its foot (Notification settings). Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: '.*Today.*'
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: today
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: '.*Ada Obi replied yes.*', timeout: 20000 }
+- repeat:
+    times: 6
+    commands:
+      - swipe: { start: '80%,85%', end: '80%,30%', duration: 400 }
+- extendedWaitUntil: { visible: 'Notification settings.*', timeout: 5000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: foot

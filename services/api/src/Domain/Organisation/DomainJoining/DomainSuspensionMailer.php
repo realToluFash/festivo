@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\DomainJoining;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Enum\Suspension;
 use Psl\Str;
 
@@ -45,7 +46,7 @@ final readonly class DomainSuspensionMailer
 
             $locale = $this->userMailer->localeFor($administrator);
 
-            $this->userMailer->send($address, $locale, 'domainSuspended.subject', [
+            $this->userMailer->send(AccountMail::DomainSuspended, $address, $locale, 'domainSuspended.subject', [
                 $this->userMailer->line($reason, $locale, $named),
                 ...(null === $removesAt ? [
                     $this->userMailer->line('domainSuspended.keptOnlyOwner', $locale, $named),

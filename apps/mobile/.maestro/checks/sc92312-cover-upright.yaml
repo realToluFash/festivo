@@ -1,0 +1,13 @@
+# sc-92312: Today upright at the device's text size; the live cover at the top, then scrolled until the band takes the top. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 80%', end: '50%, 35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: band

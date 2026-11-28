@@ -19,6 +19,7 @@ use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -27,6 +28,7 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -129,15 +131,70 @@ final class GuestLinksTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode());
         self::assertSame([
-            'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'companions' => 0],
-            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null],
+            'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'needs' => ['allergies' => [], 'diet' => [], 'access' => [], 'otherAllergy' => null, 'otherDiet' => null, 'otherAccess' => null, 'changed' => null], 'places' => 0, 'companions' => [], 'unnamed' => []],
+            'language' => ['chosen' => null, 'host' => null, 'organisation' => 'en'],
+            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'organisation' => 'Ìrè Events', 'thankYou' => null, 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null, 'arrivalNote' => null, 'replyBy' => null],
             'phase' => 'live',
             'started' => false,
+            'onTheDay' => false,
             'answersOpen' => true,
+            'answersClosedOn' => null,
+            'calendarFeed' => null,
+            'checkInCode' => null,
+            'programme' => [],
+            'meals' => ['you' => $guest, 'courses' => [], 'answers' => [], 'excluded' => []],
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());
         self::assertSame($before, self::em()->getConnection()->fetchAssociative('SELECT * FROM guests'));
+    }
+
+    #[Test]
+    public function theGuestsChoiceIsKeptOnTheGuestBesideTheHostsLanguageAndNeverOnAnAccount(): void
+    {
+        $guest = $this->add(self::ADAEZE, language: 'pt');
+        $token = $this->token($guest);
+        $accounts = self::em()->getConnection()->fetchAllAssociative('SELECT id, locale FROM users ORDER BY id');
+
+        self::assertSame(['chosen' => null, 'host' => 'pt', 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+
+        $this->choose($token, 'fr');
+
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['chosen' => 'fr', 'host' => 'pt', 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+        self::assertSame($accounts, self::em()->getConnection()->fetchAllAssociative('SELECT id, locale FROM users ORDER BY id'));
+
+        $details = Type\shape(['guest' => Type\dict(Type\string(), Type\mixed())], true)->coerce($this->as($this->owner, 'GET', $this->guests() . '/' . $guest));
+        self::assertSame(['pt', 'fr', 'fr'], [$details['guest']['language'] ?? null, $details['guest']['chosenLanguage'] ?? null, $details['guest']['messageLanguage'] ?? null]);
+    }
+
+    #[Test]
+    public function aLanguageSoirelyDoesNotOfferIsRefusedAndAnUnknownLinkIsNotFound(): void
+    {
+        $token = $this->token($this->add(self::ADAEZE));
+
+        $this->choose($token, 'de');
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['chosen' => null, 'host' => null, 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+
+        $this->choose(Str\repeat('x', 43), 'fr');
+        self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function replacingEndsTheCheckInCodeTheOldLinksPageShowed(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $old = $this->checkInCode($guest);
+
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
+        self::assertSame(204, $this->statusCode());
+        $new = $this->checkInCode($guest);
+        $door = Json\encode($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/check-in'));
+
+        self::assertNotSame($old, $new);
+        self::assertStringNotContainsString(\hash('sha256', $old), $door);
+        self::assertStringContainsString(\hash('sha256', $new), $door);
     }
 
     #[Test]
@@ -228,6 +285,27 @@ final class GuestLinksTest extends ApiTestCase
 
         $this->anonymous('/api/guest-links/wrong-person', $this->token($guest));
         self::assertSame(['guests' => [$guest]], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
+    }
+
+    #[Test]
+    public function aTellAndAReplaceArePublishedToThisEventsListSoAnOpenListReadsTheFlagsAgain(): void
+    {
+        $guest = $this->add('Bisi Adewale');
+        $token = $this->token($guest);
+        $hub = self::service(RecordingHub::class);
+        $topic = 'events/' . $this->eventId . '/guests';
+
+        $before = Iter\count($hub->published);
+        $this->anonymous('/api/guest-links/wrong-person', $token);
+        self::assertNotNull($hub->lastOn($topic));
+        $afterTell = Iter\count($hub->published);
+        self::assertGreaterThan($before, $afterTell);
+
+        $this->anonymous('/api/guest-links/wrong-person', $token);
+        self::assertSame($afterTell, Iter\count($hub->published));
+
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
+        self::assertGreaterThan($afterTell, Iter\count($hub->published));
     }
 
     #[Test]
@@ -344,11 +422,12 @@ final class GuestLinksTest extends ApiTestCase
     }
 
     /** @param list<string> $companions */
-    private function add(string $name, array $companions = [], ?string $eventId = null, ?string $email = null): string
+    private function add(string $name, array $companions = [], ?string $eventId = null, ?string $email = null, ?string $language = null): string
     {
         $body = $this->as($this->owner, 'POST', $this->guests($eventId), [
             'fullName' => $name,
             'email' => $email,
+            'language' => $language,
             'companions' => Vec\map($companions, static fn (string $companion): array => ['fullName' => $companion]),
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
@@ -369,6 +448,11 @@ final class GuestLinksTest extends ApiTestCase
         return Str\after(Type\string()->coerce($this->link($guest, $eventId)), '/i/') ?? self::fail('no token');
     }
 
+    private function checkInCode(string $guest): string
+    {
+        return Type\string()->coerce(self::em()->getConnection()->fetchOne('SELECT check_in_code FROM guests WHERE id = :id', ['id' => $guest]));
+    }
+
     private function flagged(string $guest): bool
     {
         return Type\bool()->coerce(self::em()->getConnection()->fetchOne('SELECT link_flagged FROM guests WHERE id = :id', ['id' => $guest]));
@@ -383,6 +467,11 @@ final class GuestLinksTest extends ApiTestCase
     private function open(#[SensitiveParameter] string $token): array
     {
         return $this->anonymous('/api/guest-links/page', $token);
+    }
+
+    private function choose(#[SensitiveParameter] string $token, string $language): void
+    {
+        $this->client->request('POST', '/api/guest-links/language', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode(['token' => $token, 'language' => $language]));
     }
 
     /** @return array<string, mixed> */

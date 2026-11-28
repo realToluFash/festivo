@@ -7,6 +7,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { resetInbox } from './messages.ts';
+import { lastLooked, resetLooked } from './changedSince.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -69,13 +70,13 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(107);
+    expect(links).toHaveLength(147);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
-    expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
-    expect(links[52]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
-    expect(links[54]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
-    expect(links[79]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
+    expect(links.some((one) => one.getAttribute('href') === `${AT}?state=bell`)).toBe(false);
+    expect(links[56]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
+    expect(links[58]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
+    expect(links[83]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
@@ -547,7 +548,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   );
 
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 96 guests, under the first message on their page.';
+
     await messages('sent');
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(within(mini as HTMLElement).queryByRole('button', { name: /Everyone/ })).toBeNull();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
       target: { value: 'One more thing.' },
@@ -557,6 +565,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     expect(within(thread).getByText('Parking and the dress code')).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Message' }).textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(
+      within(screen.getByRole('textbox', { name: 'Message' }).closest('form')!).getByText(goes),
+    ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Send to 96 people' }));
@@ -564,14 +577,33 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const log = await screen.findByRole('log', { name: 'Parking and the dress code' });
 
     expect(within(log).getByText('One more thing.')).toBeDefined();
-    expect(
-      within(log).getByText(
-        'A follow-up goes to the same 96 guests, under the first message on their page.',
-      ),
-    ).toBeDefined();
+    expect(within(log).getByText(goes)).toBeDefined();
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Parking and the dress code, Follow-up · Sending in 10…/,
     );
+  });
+
+  it('follows Parking at The Landmark with no To and no Subject', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 142 guests, under the first message on their page.';
+
+    await messages(null);
+    fireEvent.click(row(/^Parking at The Landmark/));
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(mini.querySelector('.mg-to-chip')).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
+      target: { value: 'One more thing.' },
+    });
+
+    const field = await screen.findByRole('textbox', { name: 'Message' });
+
+    expect(field.textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(within(field.closest('form')!).getByText(goes)).toBeDefined();
   });
 
   it('names a message with no Subject by its first line, shortened', SLOW, async () => {
@@ -605,7 +637,9 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(
         within(check).getByText('9 can’t be told · it is on their page if they open it'),
       ).toBeDefined();
-      expect(within(check).getByText('Sophie Laurent · Unsubscribed · Texted STOP')).toBeDefined();
+      expect(
+        within(check).getByText('Sophie Laurent · Unsubscribed · Stopped texts'),
+      ).toBeDefined();
       expect(within(check).getByRole('button', { name: 'See all 9' })).toBeDefined();
       expect(
         within(check).getByText('Texts use 39 credits. Credits after sending: 1,461.'),
@@ -1202,6 +1236,121 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(within(dialog).getByText('The start time is now 17:30 (was 18:00).')).toBeDefined();
   });
 
+  it(
+    'draws an item of each of the six kinds in the bell, the security one with no More',
+    SLOW,
+    async () => {
+      await messages('bell');
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+      for (const title of [
+        'Ana Souza paused the event',
+        'Ana Souza changed the event',
+        '1 payment overdue on Adaeze & Tunde’s wedding',
+        'New sign-in to Soirely',
+      ])
+        expect(within(bell).getByText(title)).toBeDefined();
+      expect(within(bell).queryByRole('button', { name: /^More for New sign-in/u })).toBeNull();
+      expect(within(bell).getByRole('link', { name: 'Notification settings' })).toBeDefined();
+    },
+  );
+
+  it('asks to turn on push, and Not now takes the ask away', SLOW, async () => {
+    await messages('bellPush');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByRole('heading', { name: 'Turn on push?' })).toBeDefined();
+    fireEvent.click(within(bell).getByRole('button', { name: 'Not now' }));
+    expect(within(bell).queryByRole('heading', { name: 'Turn on push?' })).toBeNull();
+  });
+
+  it('says the bell did not load, and Try again loads it', SLOW, async () => {
+    await messages('bellFailed');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByText('Your notifications did not load.')).toBeDefined();
+    fireEvent.click(within(bell).getByRole('button', { name: 'Try again' }));
+    expect(within(bell).getByRole('list', { name: 'Loading notifications' })).toBeDefined();
+    await within(bell).findByText('New sign-in to Soirely', {}, WAIT);
+  });
+
+  it('draws the empty bell in its words', SLOW, async () => {
+    await messages('bellEmpty');
+
+    expect(
+      screen.getByText('Nothing yet. Replies, changes and reminders for your events show up here.'),
+    ).toBeDefined();
+  });
+
+  it('shows two older notifications under Show more, or says they did not load', SLOW, async () => {
+    await messages('bellMore');
+    let bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    fireEvent.click(within(bell).getByRole('button', { name: 'Show more' }));
+    await within(bell).findByText('Ana Souza made the event live', {}, WAIT);
+    expect(within(bell).queryByRole('button', { name: 'Show more' })).toBeNull();
+
+    cleanup();
+    await messages('bellMoreFailed');
+    bell = screen.getByRole('dialog', { name: 'Notifications' });
+    expect(
+      within(bell).getByText('More notifications did not load. Try again in a moment.'),
+    ).toBeDefined();
+  });
+
+  it('mutes the event from an item’s More, and marks no item already shown', SLOW, async () => {
+    await messages('bellMute');
+    let bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).queryByText('Muted')).toBeNull();
+    const mute = within(bell).getByRole('switch', { name: 'Mute this event' });
+    mute.focus();
+    fireEvent.click(mute);
+    expect(mute.getAttribute('aria-checked')).toBe('true');
+    expect(within(bell).queryByText('Muted')).toBeNull();
+    expect(document.activeElement).toBe(mute);
+
+    cleanup();
+    await messages('bellMuted');
+    bell = screen.getByRole('dialog', { name: 'Notifications' });
+    expect(within(bell).getAllByText('Muted').length).toBe(1);
+  });
+
+  it(
+    'shows an item of a category it does not know, with Unread and Muted (sc-84143)',
+    SLOW,
+    async () => {
+      await messages('bellUnknown');
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+      const item = within(bell).getByRole('button', {
+        name: /^Ana Souza added a note to the event/u,
+      });
+
+      expect(item.querySelector('.bell-glyph svg')).not.toBeNull();
+      expect(within(item).getByText('Unread')).toBeDefined();
+      expect(within(item).getByText('Muted')).toBeDefined();
+      expect(
+        within(bell).getByRole('button', {
+          name: /^More for Ana Souza added a note to the event/u,
+        }),
+      ).toBeDefined();
+      fireEvent.click(within(bell).getByRole('button', { name: 'Mark all read' }));
+      expect(within(item).queryByText('Unread')).toBeNull();
+    },
+  );
+
+  it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {
+    await messages('bellGone');
+    expect(screen.getByText('This event is no longer available.')).toBeDefined();
+
+    cleanup();
+    await messages('bellRefreshing');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByText('Refreshing…')).toBeDefined();
+    expect(within(bell).getByText(/^Offline · as of/u)).toBeDefined();
+  });
+
   it('opens the bell with the batched replies and a message that missed people', SLOW, async () => {
     await messages('bell');
     const bell = screen.getByRole('dialog', { name: 'Notifications' });
@@ -1210,11 +1359,58 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     fireEvent.click(within(bell).getByRole('button', { name: 'Mark all read' }));
     expect(within(bell).queryByText('Unread')).toBeNull();
 
-    fireEvent.click(within(bell).getByRole('button', { name: /11 people didn’t get it/ }));
+    fireEvent.click(
+      within(bell).getByRole('button', { name: /^Parking[^,]*: 11 people didn’t get it/u }),
+    );
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Reached 131 of 142' }),
     ).toBeDefined();
   });
+
+  it('opens the guest list on Changed since you looked from the bell (sc-4331)', SLOW, async () => {
+    resetLooked();
+    const router = await messages('bell');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    fireEvent.click(
+      within(bell).getByRole('button', { name: /^3 coming, 1 not coming, 1 changed their reply/u }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT),
+    ).toBeDefined();
+    expect(router.state.location.search).toBe('?filter=changed');
+    expect(lastLooked()).toBe('2026-11-03T09:41:00.000Z');
+  });
+
+  it(
+    'reads the replies item once it is opened, and the missed one stays unread (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await messages('bell');
+      const replies = /^3 coming, 1 not coming, 1 changed their reply/u;
+
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Notifications' })).getByRole('button', {
+          name: replies,
+        }),
+      );
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT);
+
+      await act(() => router.navigate(AT));
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
+      fireEvent.click(screen.getByRole('button', { name: /^Notifications/u }));
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+      expect(within(bell).getByRole('button', { name: replies }).textContent).not.toContain(
+        'Unread',
+      );
+      expect(
+        within(bell).getByRole('button', { name: /^Parking[^,]*: 11 people didn’t get it/u })
+          .textContent,
+      ).toContain('Unread');
+    },
+  );
 
   it(
     'shows invitations as Soirely’s own card, its reach and who is now Invited',
@@ -1419,13 +1615,20 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       expectFieldOff(field);
       expectOff(screen.getByRole('button', { name: 'Send' }));
-      const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
-      expectOff(to);
-      fireEvent.click(to);
       expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
       expect(screen.getAllByTestId('messages-closed')).toHaveLength(1);
     },
   );
+
+  it('turns off the invitation’s To on closedEnded', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Invitation/));
+
+    const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
+    expectOff(to);
+    fireEvent.click(to);
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+  });
 
   it('turns off a guest’s answer on closedEnded, and offers no R', SLOW, async () => {
     await messages('closedEnded');
@@ -1552,6 +1755,138 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       ).toBeDefined();
     },
   );
+
+  it('says under the ticks how many WhatsApp tells instead of SMS (sc-3954)', SLOW, async () => {
+    await messages('channelsWrite');
+    const head = screen.getByRole('group', { name: 'Let them know by' })
+      .parentElement as HTMLElement;
+
+    expect(within(head).getByText(/^WhatsApp reaches 3 of 96/)).toBeDefined();
+    expect(within(head).getByText('3 by WhatsApp instead of SMS')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'SMS' }));
+    expect(screen.queryByText('3 by WhatsApp instead of SMS')).toBeNull();
+    expect(within(head).getByText(/^WhatsApp reaches 3 of 96/)).toBeDefined();
+  });
+
+  it(
+    'checks SMS and WhatsApp: the SMS count leaves WhatsApp’s out, the credits count each once',
+    SLOW,
+    async () => {
+      await messages('channelsCheck');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(document.activeElement?.textContent).toBe('Sending to 96 people cannot be undone.');
+      for (const pill of ['Email · 92', 'SMS · 28', 'WhatsApp · 3'])
+        expect(within(check).getByText(pill)).toBeDefined();
+      expect(within(check).getByText('3 by WhatsApp instead of SMS')).toBeDefined();
+      expect(
+        within(check).getByText(
+          'Texts and WhatsApp messages use 39 credits. Credits after sending: 1,461.',
+        ),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'says nobody is told with nothing ticked, and a tick brings the figures back (sc-3954)',
+    SLOW,
+    async () => {
+      await messages('channelsNone');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(
+        within(check).getByText(
+          'Your message goes on their page. Soirely tells nobody it is there. Guests see it only if they open their page.',
+        ),
+      ).toBeDefined();
+      expect(within(check).queryByRole('list')).toBeNull();
+      expect(within(check).queryByText(/can’t be told/)).toBeNull();
+      expect(within(check).queryByText(/credits/)).toBeNull();
+      expect(within(check).getByRole('button', { name: 'Send to 96 people' })).toBeDefined();
+
+      fireEvent.click(within(check).getByRole('checkbox', { name: 'Email' }));
+      expect(
+        within(check).getByText(
+          'Your message goes on their page. Soirely tells them it is there by email.',
+        ),
+      ).toBeDefined();
+      expect(within(check).getByText('Email · 92')).toBeDefined();
+      expect(
+        within(check).getByText('4 can’t be told · it is on their page if they open it'),
+      ).toBeDefined();
+      expect(within(check).getByText('Email uses no credits.')).toBeDefined();
+    },
+  );
+
+  it(
+    'opens See all in the check, by name with why, and Escape or Back returns to it',
+    SLOW,
+    async () => {
+      await messages('channelsCant');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(
+        within(check).getByText('Tomás Ferreira · Address is bouncing · No phone number'),
+      ).toBeDefined();
+      fireEvent.click(within(check).getByRole('button', { name: 'See all 9' }));
+      const all = within(check).getByRole('list', {
+        name: '9 can’t be told · it is on their page if they open it',
+      });
+
+      await vi.waitFor(() =>
+        expect(document.activeElement?.textContent).toBe(
+          '9 can’t be told · it is on their page if they open it',
+        ),
+      );
+      expect(
+        within(all)
+          .getAllByRole('listitem')
+          .map((one) => one.firstChild?.textContent),
+      ).toEqual([
+        'Diego Herrera',
+        'Fatima Zahra El Idrissi',
+        'Joaquín Ruiz',
+        'Lars Johansson',
+        'Mei Lin Chen',
+        'Oluwaseun Adebayo',
+        'Sophie Laurent',
+        'Tomás Ferreira',
+        'Yuki Tanaka',
+      ]);
+      expect(within(check).queryByRole('checkbox', { name: 'Email' })).toBeNull();
+      expect(within(check).getByRole('button', { name: 'Send to 142 people' })).toBeDefined();
+
+      press('Escape');
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(check).getByRole('button', { name: 'See all 9' }),
+        ),
+      );
+      expect(screen.getByRole('alertdialog', { name: 'Check it before it goes' })).toBe(check);
+
+      fireEvent.click(within(check).getByRole('button', { name: 'See all 9' }));
+      fireEvent.click(within(check).getByRole('button', { name: 'Back to the check' }));
+      expect(within(check).getByRole('checkbox', { name: 'Email' })).toBeDefined();
+    },
+  );
+
+  it('reads See all at 93 names: WhatsApp alone, each why', SLOW, async () => {
+    await messages('channelsMany');
+    const all = screen.getByRole('list', {
+      name: '93 can’t be told · it is on their page if they open it',
+    });
+    const whys = within(all)
+      .getAllByRole('listitem')
+      .map((one) => one.lastChild?.textContent);
+
+    expect(whys).toHaveLength(93);
+    expect(whys.filter((why) => why === 'No phone number')).toHaveLength(65);
+    expect(whys.filter((why) => why === 'Stopped WhatsApp · SMS is off')).toHaveLength(1);
+    expect(whys.filter((why) => why === 'Has not agreed to WhatsApp · SMS is off')).toHaveLength(
+      27,
+    );
+  });
 
   it(
     'shows WhatsApp’s receipts: Sent, Delivered, Read with its time, Failed, and Not sent with its reason',

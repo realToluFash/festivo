@@ -1,7 +1,8 @@
+import { listFormat } from '@soirely/domain';
+
 /** Seating A's English, word for word from the boards and seating-a-spec; the linguist takes the four locales when the product is built. */
 export const W = {
   seating: 'Seating',
-  more: 'More',
   floorPlan: 'Floor plan',
   tables: 'Tables',
   list: 'List',
@@ -59,7 +60,7 @@ export const W = {
   colour: 'Colour',
   deleteSectionOpener: 'Delete section…',
   deleteSection: 'Delete section',
-  sectionStays: 'Its tables stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and single seats stay where they are, with no section.',
   keepIt: 'Keep it',
   enterSectionName: 'Enter a name for the section.',
   sectionLimit: 'A plan can have up to 30 sections. Delete one to add another.',
@@ -106,6 +107,9 @@ export const W = {
   sectionTooLong: 'Use 40 characters or fewer.',
   sizeMin: 'Use 30 cm or more.',
   sizeMinFeet: 'Use 1 ft or more.',
+  tableBlank: 'Enter a name for the table.',
+  seatsRange: 'Enter a number of seats from 1 to 30.',
+  placesRange: 'Enter a number of places from 1 to 30.',
   undo: 'Undo',
   allSections: 'All sections',
   full: 'Full',
@@ -149,7 +153,7 @@ export const say = {
   startLine: (venue: string, town: string, org: string) =>
     `At ${venue}, ${town}. Sizes are in metres, the units used where ${org} is based.`,
   outside: (n: number, w: string, l: string) =>
-    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move them first.`,
+    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move ${n === 1 ? 'it' : 'them'} first.`,
   deletePlanBody: (counts: string, seated: number) => {
     const guests =
       seated === 0
@@ -162,12 +166,18 @@ export const say = {
     `${colour} · ${plural(tables, 'table', 'tables')} · ${plural(seats, 'seat', 'seats')}`,
   sectionTaken: (name: string) => `This plan already has a section called ${name}.`,
   deleteAsk: (name: string) => `Delete ${name}?`,
-  sectionDeleteBody: (n: number) =>
-    n === 0
-      ? ''
-      : n === 1
-        ? 'Its 1 table stays where it is, with no section.'
-        : `Its ${n} tables stay where they are, with no section.`,
+  sectionDeleteBody: (tables: number, rows: number, singles: number) => {
+    const parts = [
+      tables === 0 ? null : plural(tables, 'table', 'tables'),
+      rows === 0 ? null : plural(rows, 'row', 'rows'),
+      singles === 0 ? null : plural(singles, 'single seat', 'single seats'),
+    ].filter((part): part is string => part != null);
+    if (parts.length === 0) return '';
+    const counts = listFormat('en', { style: 'long', type: 'conjunction' }).format(parts);
+    return tables + rows + singles === 1
+      ? `Its ${counts} stays where it is, with no section.`
+      : `Its ${counts} stay where they are, with no section.`;
+  },
   sectionsCount: (n: number) => `Sections · ${n}`,
   placeBar: (shape: string) =>
     `Tap the floor to place a ${shape.toLowerCase()}. It snaps to the grid.`,
@@ -181,6 +191,9 @@ export const say = {
     `Size reset to the ${shape} default, ${size}. Seats kept at ${seats}.`,
   squeeze: (seats: number, size: string) => `${seats} seats will be tight at a ${size} table.`,
   tableTaken: (name: string) => `This plan already has a table called ${name}.`,
+  tableSize: (min: string, max: string) => `Enter a size from ${min} to ${max}.`,
+  feetInches: (feet: string, inches: string) => `${feet} ${inches}`,
+  endsRange: (max: number) => `Enter 0 to ${max}, no more than the table has seats.`,
   belowSeated: (n: number, keep: number) =>
     `${plural(n, 'guest is', 'guests are')} seated here. Move them first, or keep ${keep} seats.`,
   chairTitle: (table: string, n: number) => `${table} · Seat ${n}`,
@@ -191,6 +204,8 @@ export const say = {
       : `${plural(n, 'guest is', 'guests are')} seated here. They go back to Without a seat.`,
   deleteVerb: (name: string) => `Delete ${name}`,
   tableChanged: (name: string) => `${name} just changed this table. Your change was not saved.`,
+  rowChanged: (name: string) => `${name} just changed this row. Your change was not saved.`,
+  seatChanged: (name: string) => `${name} just changed this seat. Your change was not saved.`,
   rowSeat: (label: string, n: number, word: string) => `Row ${label}, seat ${n} · ${word}`,
   takenBy: (name: string) => `Taken by ${name}`,
   moreRight: (n: number) => `+${n} to the right`,
@@ -211,6 +226,9 @@ export const say = {
   bothChose: (name: string) =>
     `${name} has chosen this too. You can still change it. If you both save, the later change is refused and says why.`,
   chosenBy: (name: string) => `, chosen by ${name}`,
+  seatChosenBy: (n: number, name: string) => `, seat ${n} chosen by ${name}`,
+  names: (names: readonly string[]) =>
+    listFormat('en', { style: 'long', type: 'conjunction' }).format(names),
   left: (name: string) => `${name} left the plan.`,
   party: (lead: string, plus: number) => (plus > 0 ? `${lead} + ${plus}` : lead),
   guestOf: (name: string) => `Guest of ${name}`,
@@ -233,7 +251,8 @@ export const say = {
   emptyNow: (table: string) => `${table} is empty now.`,
   movedAll: (n: number, table: string) => `${plural(n, 'guest', 'guests')} moved to ${table}.`,
   race: (lead: string) => `Someone just took that seat. ${lead} is still without a seat.`,
-  roomForAll: (n: number) => `Tables with room for all ${n}.`,
+  roomForAll: (n: number) =>
+    n === 1 ? 'Tables with a free seat for them.' : `Tables with room for all ${n}.`,
   moreNotYet: (n: number) => `${n} more: Not sure yet or No reply`,
   tab: (word: string, n: number) => `${word} · ${n}`,
   summary: (tables: number, seated: number, coming: number, free: number) =>

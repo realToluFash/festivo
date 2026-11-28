@@ -1,19 +1,33 @@
 import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
+import { type ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { Title, useTitleCap } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { frameTitleSize } from '../../layout/textSize.ts';
+import { useLayout } from '../../layout/useLayout.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
-import { type Held, HeldStandIn } from './Held.tsx';
+import {
+  Bell,
+  HeldPortraitTop,
+  Landscape,
+  OrgPill,
+  PortraitTop,
+  SearchAndBell,
+  SettingsTabBar,
+} from './Frame.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
+import { HeldStandIn } from './Held.tsx';
+import { type Held, pausedGroups } from './HeldModel.ts';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { dataHref } from './DataModel.ts';
 import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
-import { DATA_WORDS } from './DataWords.ts';
 import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import {
@@ -26,18 +40,21 @@ import {
 import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
-import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
+import { PausedHere } from '../OrgSwitcher.tsx';
+import { PAGE_TITLE, TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
 const DATA_ROW = 'dataAndControl';
 
 /** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
-function groupsFor(viewer: Viewer) {
-  return demoGroups(viewer).map(({ heading, sections }) => ({
+function groupsFor(viewer: Viewer, paused: boolean) {
+  const groups = demoGroups(viewer);
+
+  return (paused ? pausedGroups(groups) : groups).map(({ heading, sections }) => ({
     heading,
     sections: sections.filter((section): section is Listed => section !== 'account'),
-    data: heading === 'organisationHeading' && managesOrganisation(viewer),
+    data: heading === 'organisationHeading' && managesOrganisation(viewer) && !paused,
   }));
 }
 
@@ -89,6 +106,7 @@ function PersonCard({
 /** Data and control, a row of the demo's own: on its side it changes the page beside the list. */
 function useDataRow(dense: boolean) {
   const shell = useShell();
+  const { t } = useTranslation();
   const lit = useDataOpen();
   const nav = useDataNav();
   const href = dataHref('hub', { as: nav.viewer }) as Href;
@@ -97,8 +115,8 @@ function useDataRow(dense: boolean) {
     lit: lit != null,
     row: {
       key: DATA_ROW,
-      title: DATA_WORDS.title,
-      line: DATA_WORDS.settingsLine,
+      title: t('settings.dataAndControl'),
+      line: t('settings.dataAndControlLine'),
       tile: <DataTile side={rowSide(dense)} />,
     },
     open: () => {
@@ -121,7 +139,8 @@ function useDemoList(
   const rowOf = useSectionRows(YOU.organisation, useHeldChoice());
   const dataRow = useDataRow(dense);
   const side = rowSide(dense);
-  const groups = groupsFor(shell.viewer).map(({ heading, sections, data }) => {
+  const paused = useContext(PausedHere);
+  const groups = groupsFor(shell.viewer, paused).map(({ heading, sections, data }) => {
     const rows = sections.map((section) => rowOf(section, side));
 
     return { heading: t(`settings.${heading}`), rows: data ? [...rows, dataRow.row] : rows };
@@ -148,23 +167,55 @@ function useDemoList(
   };
 }
 
-/** Settings itself: on a phone one column; upright your account's group beside the organisation's. */
+/** Settings itself: on a phone one column; upright your account's group beside the organisation's. While paused the list stays Settings' home, and `over` is the paused page a row of the organisation's opened (sc-86077). */
 export function SettingsHome({
   onSignOut,
   onDemo,
   held = null,
-}: Handlers & { held?: Held | null }) {
+  back,
+  over = false,
+}: Handlers & { held?: Held | null; back?: (() => void) | undefined; over?: boolean }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const list = useDemoList(false, null, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
+  const backToNone = fromNone != null && (
+    <Back label={t('noOrganisation.wayBack')} onPress={fromNone} testID="settings.fromNone.back" />
+  );
+  // As the product's frame: the title keeps its words whole, and nothing under it draws larger than it drew (sc-13496, sc-67338).
+  const titleCap = useTitleCap(`${shell.layout}|${t('settings.title')}`, PAGE_TITLE);
+  const title = (
+    <Title size={TOP_TITLE} accessibilityRole="header" style={topTitle} onDrawn={titleCap.onDrawn}>
+      {t('settings.title')}
+    </Title>
+  );
 
-  if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
+  const paused = held === 'paused';
+
+  if (held === 'overdue' || (paused && (over || shell.layout === 'landscape')))
+    return (
+      <PausedHere.Provider value={held === 'paused'}>
+        <HeldSettings
+          held={held}
+          back={back}
+          onSignOut={onSignOut}
+          title={
+            held === 'overdue' ? (
+              <HeldTitle onDrawn={titleCap.onDrawn}>{t('settings.title')}</HeldTitle>
+            ) : null
+          }
+          cap={titleCap.cap}
+        />
+      </PausedHere.Provider>
+    );
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={shell.listColumn}>
-        <ChooseASection />
+      <Landscape column={shell.listColumn} search={!paused}>
+        <TitleCap.Provider value={titleCap.cap}>
+          <ChooseASection />
+        </TitleCap.Provider>
       </Landscape>
     );
 
@@ -178,30 +229,29 @@ export function SettingsHome({
           contentContainerStyle={{
             paddingTop: insets.top + tokens.spaceXs,
             paddingHorizontal: tokens.spaceXxl,
-            paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
+            paddingBottom: foot + (fromNone == null ? PHONE_TAB_BAR : 0) + tokens.space6xl,
           }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.orgRow}>
-            <OrgPill />
+            {backToNone || <OrgPill />}
             <View style={styles.grow} />
-            <Bell tell={shell.tell} />
+            {backToNone || paused ? (
+              <Bell tell={shell.tell} />
+            ) : (
+              <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+            )}
           </View>
           <View style={styles.titleRow}>
-            <Text
-              size={TOP_TITLE}
-              weight="bold"
-              accessibilityRole="header"
-              style={[styles.grow, topTitle]}
-            >
-              {t('settings.title')}
-            </Text>
+            <View style={styles.grow}>{title}</View>
           </View>
-          <SwitchedNotice style={styles.switched} />
-          <SettingsListBody size="phone" {...list} />
+          <TitleCap.Provider value={titleCap.cap}>
+            <SwitchedNotice style={styles.switched} />
+            <SettingsListBody size="phone" {...list} />
+          </TitleCap.Provider>
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-        <TabBarFade />
+        {fromNone == null && <TabBarFade />}
         <SettingsTabBar bottom={foot} />
       </View>
     );
@@ -209,7 +259,8 @@ export function SettingsHome({
 
   return (
     <View style={styles.page}>
-      <PortraitTop at="Settings" />
+      <PortraitTop at="Settings" search={!paused} />
+      {backToNone !== false && <View style={styles.portraitBack}>{backToNone}</View>}
       <ScrollView
         style={styles.grow}
         contentContainerStyle={{
@@ -218,38 +269,79 @@ export function SettingsHome({
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          size={TOP_TITLE}
-          weight="bold"
-          accessibilityRole="header"
-          style={[topTitle, styles.portraitTitle]}
-        >
-          {t('settings.title')}
-        </Text>
-        <SwitchedNotice style={styles.switched} />
-        <SettingsListBody size="portrait" {...list} />
+        <View style={styles.portraitTitle}>{title}</View>
+        <TitleCap.Provider value={titleCap.cap}>
+          <SwitchedNotice style={styles.switched} />
+          <SettingsListBody size="portrait" {...list} />
+        </TitleCap.Provider>
       </ScrollView>
     </View>
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. */
-function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
-  const shell = useShell();
-  const insets = useSafeAreaInsets();
-  const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
+/** The overdue page's title as the product's frame draws it, which is not the unheld Settings title: 30 on a tablet or a small phone, 34 on a phone, untracked (sc-85022). */
+function HeldTitle({ children, onDrawn }: { children: string; onDrawn: (size: number) => void }) {
+  const { kind, width, height } = useLayout();
 
+  return (
+    <Title
+      size={frameTitleSize(kind !== 'phone', Math.min(width, height))}
+      accessibilityRole="header"
+      onDrawn={onDrawn}
+    >
+      {children}
+    </Title>
+  );
+}
+
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused draws no page title, and on its side the bell alone heads the content's right; it has no Search in any layout (sc-82858, sc-83881). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). Overdue keeps the page's title above its card, on its side with the bell, as the product does (sc-85006). Every layout pads the card once, at the product's inset (sc-85022). */
+function HeldSettings({
+  held,
+  back,
+  onSignOut,
+  title,
+  cap,
+}: {
+  held: Held;
+  back?: (() => void) | undefined;
+  onSignOut: () => void;
+  title: ReactNode;
+  cap: number | null;
+}) {
+  const shell = useShell();
+  const search = held !== 'paused';
+  const insets = useSafeAreaInsets();
+  const standIn = (
+    <TitleCap.Provider value={title == null ? null : cap}>
+      <HeldStandIn held={held} onSignOut={onSignOut} />
+    </TitleCap.Provider>
+  );
+
+  // Paused sits beside the Settings list, where Choose a section sits otherwise, and the list's column carries the bell (sc-86077).
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null}>
-        <View style={styles.heldSide}>{standIn}</View>
+      <Landscape column={held === 'paused' ? shell.listColumn : null} search={search}>
+        <View style={styles.heldSide}>
+          <View style={styles.heldSideTop}>
+            {title != null && <View style={styles.grow}>{title}</View>}
+            {held !== 'paused' && <Bell tell={shell.tell} />}
+          </View>
+          {standIn}
+        </View>
       </Landscape>
     );
 
   if (shell.layout === 'portrait')
     return (
       <View style={styles.page}>
-        <PortraitTop at="Settings" />
+        <HeldPortraitTop search={search}>
+          {back != null && (
+            <View style={styles.heldBack}>
+              <Back onPress={back} testID="settings.held.back" />
+            </View>
+          )}
+          {title}
+        </HeldPortraitTop>
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
@@ -264,10 +356,34 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
           { paddingTop: insets.top + tokens.spaceXs, paddingBottom: foot + PHONE_TAB_BAR },
         ]}
       >
-        <View style={styles.orgRow}>
-          <OrgPill />
-          <View style={styles.grow} />
-          <Bell tell={shell.tell} />
+        <View style={styles.heldRows}>
+          {back != null ? (
+            <>
+              <View style={styles.orgRow}>
+                <OrgPill />
+              </View>
+              <View style={styles.orgRow}>
+                <Back onPress={back} testID="settings.held.back" />
+                <View style={styles.grow} />
+                <Bell tell={shell.tell} />
+              </View>
+            </>
+          ) : (
+            <View style={styles.orgRow}>
+              <OrgPill />
+              <View style={styles.grow} />
+              {search ? (
+                <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+              ) : (
+                <Bell tell={shell.tell} />
+              )}
+            </View>
+          )}
+          {title != null && (
+            <View style={styles.titleRow}>
+              <View style={styles.grow}>{title}</View>
+            </View>
+          )}
         </View>
         {standIn}
       </View>
@@ -282,6 +398,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const { t } = useTranslation();
   const list = useDemoList(true, shell.open, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
 
   return (
     <SettingsListBody
@@ -289,6 +406,15 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
       {...list}
       top={
         <>
+          {fromNone != null && (
+            <View style={styles.columnBack}>
+              <Back
+                label={t('noOrganisation.wayBack')}
+                onPress={fromNone}
+                testID="settings.fromNone.back"
+              />
+            </View>
+          )}
           <View style={styles.columnTop}>
             <Text
               size={TOP_TITLE}
@@ -320,9 +446,23 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
-  heldPhone: { flex: 1, paddingHorizontal: tokens.spaceXxl },
-  heldUpright: { flex: 1, paddingHorizontal: tokens.space5xl },
-  heldSide: { flex: 1, paddingHorizontal: 30 },
+  heldPhone: { flex: 1 },
+  // The pill and the bell at the header's edge; the stand-in keeps its own, as in the product (sc-85022).
+  heldRows: { paddingHorizontal: tokens.spaceXxl },
+  heldUpright: { flex: 1 },
+  // Upright, ‹ sits in the top's band, on the pill's, the bell's and the card's 28pt edge (sc-85022).
+  heldBack: { flexDirection: 'row' },
+  heldSide: { flex: 1 },
+  // The product's side header, 30pt in: overdue's title then the bell, or paused's bell alone at the content's top right (sc-83881, sc-85006, sc-85022).
+  heldSideTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spaceLg,
+    paddingTop: 26,
+    paddingHorizontal: 30,
+    paddingBottom: tokens.spaceLg,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,6 +477,8 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     marginBottom: tokens.spaceLg,
   },
+  portraitBack: { flexDirection: 'row', paddingHorizontal: tokens.space5xl },
+  columnBack: { flexDirection: 'row', marginBottom: tokens.spaceXs },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
   switched: { marginBottom: tokens.spaceXl },
   legal: { marginTop: tokens.spaceXs },

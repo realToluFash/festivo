@@ -13,6 +13,7 @@
  * for the design rather than a number to invent.
  */
 
+@import url('./fonts.css');
 @import url('./tokens.css');
 @import url('./brand.css');
 
@@ -301,7 +302,7 @@ span {
   background: var(--colorNeutralFill);
 }
 
-/* Page 29's header band: the crumb, the bell and the language (sc-26270). */
+/* At a phone, the bell beside the bar (sc-26270); wider, each page's own top has the bell (sc-39509, sc-60699). */
 .shell-band {
   display: flex;
   align-items: center;
@@ -314,20 +315,6 @@ span {
   border: 1px solid var(--colorBorder);
   border-bottom: var(--borderHeader);
   border-radius: var(--radiusCardLarge) var(--radiusCardLarge) 0 0;
-}
-
-.shell-crumb {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font: var(--typeBody);
-  color: var(--colorInkSecondary);
-  overflow-wrap: anywhere;
-}
-
-.shell-crumb b {
-  font-weight: 600;
-  color: var(--colorInk);
 }
 
 /* Today's desk frame (sc-30410): the sidebar stays in view on the fill while the page scrolls in its card,
@@ -365,8 +352,14 @@ span {
   background: var(--colorCard);
 }
 
-@media (width > 60rem) {
-  /* At a desk Events, the Calendar and Settings have no band (sc-39471): the page is one card 10 from the window's edges, and it scrolls inside the card. */
+/* In the shell a page that borrows Settings' .desk-page never scrolls itself: the card scrolls it from 641 px and the window under that. A page that scrolled itself would clip a part opened past its rows into sideways scroll, and hold its sticky bars and panels where they sit (sc-98499). */
+.shell-content .desk-page {
+  overflow: visible;
+}
+
+/* From 641 px the sidebar is beside the page (sc-60699). */
+@media (width > 40rem) {
+  /* At a desk no page has the band (sc-39471, sc-39509): the page is one card 10 from the window's edges, and it scrolls inside the card. */
   .shell.is-bandless {
     grid-template-rows: 1fr;
   }
@@ -386,6 +379,7 @@ span {
   .shell-content.is-card:has(.cal-page) {
     display: flex;
     flex-direction: column;
+    padding-bottom: var(--space3xl);
     overflow: hidden;
   }
 
@@ -399,6 +393,44 @@ span {
   .shell-content.is-card .cal-page {
     flex: 1;
     height: auto;
+  }
+
+  /* The card already pads the page, so a page that borrows Settings' padded .desk-page is padded once (sc-57523). */
+  .shell-content.is-card .desk-page {
+    padding: 0;
+  }
+
+  /* Seating and Messages fill their card edge to edge, as their demos' desk-main does (sc-58064, sc-3942): the room is the card's, not a band inside it. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .shell-content.is-card > .st .st-main {
+    min-height: 0;
+  }
+
+  .shell-content.is-card > .ev-msgs {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* What the shell puts above Seating or Messages keeps the card's padding the room gave up. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) > :not(.st, .ev-msgs) {
+    flex-shrink: 0;
+    margin-inline: var(--space6xl);
+  }
+
+  /* The offline band's wrapper stays in the page while online, holding only its hidden announcer: it takes no room, so the first notice after it does. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :not(.st, .ev-msgs):first-child:not(:has(> .visually-hidden:only-child)),
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :first-child:has(> .visually-hidden:only-child)
+    + :not(.st, .ev-msgs) {
+    margin-top: var(--space3xl);
   }
 }
 
@@ -755,22 +787,22 @@ span {
   }
 }
 
-/* ── Narrower than a tablet ───────────────────────────────────────────────────
- *
- * Only the surfaces that exist at this width: billing, account and
- * organisation settings, the guest pages and the public pages. Event
- * management is not responsive down to a phone — it is in the app, and a
- * narrow browser reaching for it gets the handoff rather than a cramped table.
- */
-
 @media (width <= 60rem) {
-  /* One column filling the window would share the spare height with the sidebar. */
+  .public-header {
+    padding: var(--spaceXl);
+  }
+}
+
+/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
+
+@media (width <= 40rem) {
+  /* The bar keeps the bell at its end (the language picker is in Menu's sheet). */
   .shell {
     --shellBlock: var(--spaceXl);
     --shellInline: var(--spaceXl);
 
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
   }
 
   .shell-sidebar {
@@ -778,10 +810,6 @@ span {
     grid-row: auto;
     height: auto;
     border-bottom: var(--borderCard);
-  }
-
-  .shell-sidebar .today-side {
-    height: auto;
   }
 
   .shell-sidebar .today-places {
@@ -804,32 +832,9 @@ span {
   }
 
   .shell-band {
-    border-bottom: var(--borderHeader);
-  }
-
-  .public-header {
-    padding: var(--spaceXl);
-  }
-}
-
-/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
-
-@media (width <= 40rem) {
-  /* The bar keeps the bell at its end; the crumb and the language go (the picker is in Menu's sheet). */
-  .shell {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 1fr;
-  }
-
-  .shell-band {
     padding: 0 var(--spaceLg) 0 0;
     background: var(--colorCard);
     border-bottom: var(--borderCard);
-  }
-
-  .shell-crumb,
-  .shell-band .language-pill {
-    display: none;
   }
 
   .shell-content {
@@ -838,6 +843,7 @@ span {
 
   .shell-sidebar .today-side {
     flex-direction: row;
+    height: auto;
     align-items: center;
     gap: var(--spaceMd);
     padding: var(--spaceSm) var(--spaceLg);
@@ -881,6 +887,44 @@ span {
 .shell-menu-button svg {
   width: 16px;
   height: 16px;
+}
+
+/* Today, Events and Calendar fill the window under the bar, their bell in their own top and no card frame (sc-57468); their parts are `components/phoneFit.css`. */
+@media (width <= 40rem) {
+  .shell.fits-phone .shell-sidebar {
+    grid-column: 1 / -1;
+  }
+
+  .shell.fits-phone .shell-content {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+  }
+
+  /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
+  .shell.fits-phone:has(.cal-page) {
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .shell.fits-phone .shell-content:has(.cal-page) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .shell.fits-phone .shell-content > .desk:has(> .cal-page) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .shell.fits-phone .shell-content .cal-page {
+    flex: 1;
+    height: auto;
+    padding-bottom: var(--spaceLg);
+  }
 }
 
 .shell-menu {
@@ -1330,6 +1374,13 @@ span {
   .shell-content.is-card .settings-desk-page {
     padding: var(--space3xl) var(--space6xl) 48px;
     overflow-y: auto;
+  }
+}
+
+/* At a phone the page's gutter is the frame's own, so a desk page inside Settings adds none (sc-91831). */
+@media (width <= 40rem) {
+  .settings-desk-page .desk > .desk-page {
+    padding-inline: 0;
   }
 }
 
@@ -2166,24 +2217,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.no-organisation-invitations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-}
-
-.no-organisation-footnote {
-  justify-content: space-between;
-}
-
-.no-organisation .no-organisation-heading {
-  margin-top: var(--spaceXs);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-  color: var(--colorInkSecondary);
-}
-
 /* A dialog over the whole shell: centred on a desk, a sheet at phone width. */
 .dialog-scrim {
   position: fixed;
@@ -2362,53 +2395,20 @@ span {
 
 /* ── The sign-in rule notices and the overdue card (sc-23252) ─────────────── */
 
-.shell-content > .notice-rule:has(+ :not(.notice)) {
+.shell-content > .rn-box:has(+ :not(.rn-box)) {
   margin-bottom: var(--space3xl);
 }
 
-.notice-rule .notice-body {
-  flex: 1;
-  min-width: 0;
-  gap: var(--spaceSm);
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
 }
 
-.notice-words {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  max-width: 47.5rem;
-  border-radius: var(--radiusCheckbox);
-  font: var(--typeBody);
-}
-
-/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not.
+   Important, because a page heading's own :focus { outline: none } would otherwise hide it (sc-74701);
+   a scope whose ring is another colour sets --noticeRing. */
 [data-notice-landing]:focus {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
-}
-
-.notice-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXxs) var(--spaceSm);
-}
-
-.notice-actions .button {
-  padding: var(--spaceMd) var(--spaceXl);
-  overflow-wrap: anywhere;
-}
-
-.notice-text-action {
-  max-width: 100%;
-  padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusPill);
-  line-height: 1.3;
-  text-align: start;
-}
-
-.notice-text-action:hover {
-  background: var(--colorInsetBorder);
+  outline: 2px solid var(--noticeRing, var(--colorAccent)) !important;
+  outline-offset: 2px !important;
 }
 
 .two-factor-overdue {
@@ -2450,7 +2450,7 @@ span {
 }
 
 @media (width <= 40rem) {
-  .shell-content > .notice-rule:has(+ :not(.notice)) {
+  .shell-content > .rn-box:has(+ :not(.rn-box)) {
     margin-bottom: var(--spaceXl);
   }
 
@@ -2965,7 +2965,7 @@ span {
 }
 
 .no-organisation-main {
-  padding: var(--space6xl) var(--spaceXl);
+  padding: 0 var(--spaceXl);
 }
 
 .no-organisation-account {
@@ -2979,16 +2979,6 @@ span {
 /* The Settings list takes its 272 beside the account page, which keeps the width it had alone. */
 .no-organisation-account:has(> .settings-desk) {
   max-width: calc(47.5rem + 2 * var(--space5xl) + 17rem);
-}
-
-.no-organisation {
-  max-width: 35rem;
-  margin: 0 auto;
-}
-
-.no-organisation h1,
-.no-organisation p {
-  margin: 0;
 }
 
 /* ── A phone number: its country code, then the number ───────────────────── */
@@ -3859,10 +3849,6 @@ button.members-row {
 }
 
 .event-form-page {
-  max-width: 47.5rem;
-}
-
-.event-page {
   max-width: 72rem;
 }
 
@@ -3939,17 +3925,15 @@ button.members-row {
   align-self: flex-start;
 }
 
-.event-crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXl);
-}
-
 .event-form {
   display: flex;
   flex-direction: column;
   gap: var(--spaceXxl);
+}
+
+/* The crumb row spans the page, so the bell ends it as on an event's page; the form keeps its width (sc-39509). */
+.event-form-page > .event-form {
+  max-width: 47.5rem;
 }
 
 .event-form .field {
@@ -4826,7 +4810,12 @@ button.members-row {
   font: var(--typeSmall);
 }
 
-.timeline-row > .link-button {
+.timeline-action {
+  text-decoration: none;
+}
+
+.timeline-row > .link-button,
+.timeline-row > .timeline-action {
   grid-area: action;
   justify-self: start;
 }
@@ -4903,25 +4892,6 @@ button.members-row {
   color: var(--colorBroken);
 }
 
-.timeline-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXl);
-  margin: var(--spaceLg) 0 0;
-}
-
-.timeline-key div {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.timeline-key dd {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-}
-
 /* On a phone the pills leave the date line for their own, as in the app, so a far-off date in another zone and the longer fr and pt words wrap within the rows' floor rather than past it. */
 @media (width <= 40rem) {
   .coming-up-rows {
@@ -4994,254 +4964,6 @@ button.members-row {
   font: var(--typePill);
   line-height: 18px;
   text-align: center;
-}
-
-.notifications-panel {
-  position: absolute;
-  top: calc(100% + var(--spaceSm));
-  left: 0;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  width: 24rem;
-  max-width: calc(100vw - 48px);
-  max-height: 80vh;
-  overflow-y: auto;
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  box-shadow: var(--shadowPopover);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-/* It opens from the header band's or the title row's end, so it reaches back across the page. */
-:is(.shell-band, .notifications.is-desk) .notifications-panel {
-  right: 0;
-  left: auto;
-}
-
-.notifications-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spaceSm);
-  padding: var(--spaceLg) var(--spaceXl);
-  border-bottom: var(--borderCard);
-}
-
-.notifications-header h2 {
-  flex: none;
-  margin: 0;
-  font: var(--typeTitleSection);
-}
-
-.notifications-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXs) var(--spaceMd);
-}
-
-/* The feed's own band (sc-27096): under the popover's header, at its width, with the popover's sides. */
-.notifications-band {
-  flex: none;
-  margin: 0;
-  padding-inline: var(--spaceXl);
-}
-
-.notifications-band.still {
-  animation: none;
-}
-
-.notifications-header .link-button {
-  text-align: start;
-}
-
-.notifications-header [aria-disabled='true'] {
-  color: var(--colorInkSecondary);
-  cursor: default;
-}
-
-.notifications-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.notifications-list[aria-busy='true'] {
-  padding-block: var(--spaceSm);
-}
-
-.notification-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  width: 100%;
-  min-height: var(--sizeHit);
-  padding: var(--spaceLg) var(--spaceXl);
-  border: 0;
-  background: var(--colorCard);
-  color: var(--colorInk);
-  font: var(--typeBody);
-  text-align: left;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.notification-item:hover {
-  background: var(--colorInset);
-}
-
-.notification-title {
-  font: var(--typeBodyPhone);
-}
-
-.notification-item.unread .notification-title {
-  font-weight: 700;
-}
-
-.notification-where {
-  font: var(--typeMeta);
-  color: var(--colorInkSecondary);
-}
-
-.notification-marks {
-  display: flex;
-  gap: var(--spaceLg);
-  font: var(--typeMeta);
-}
-
-.notification-unread,
-.notification-muted {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceXxs);
-}
-
-.notification-unread {
-  color: var(--colorAccentText);
-  font-weight: 600;
-}
-
-.notification-muted {
-  color: var(--colorInkSecondary);
-}
-
-.notification-muted .bell-mark {
-  width: 14px;
-  height: 14px;
-}
-
-.notification-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radiusPill);
-  background: var(--colorAccent);
-}
-
-.notification-gone {
-  margin: 0;
-  padding: 0 var(--spaceXl) var(--spaceLg);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.notifications-skeleton {
-  height: 64px;
-  margin: var(--spaceSm) var(--spaceXl);
-  border-radius: var(--radiusSmall);
-  background: var(--colorInset);
-  animation: skeleton-pulse var(--motionPulse) ease-in-out var(--motionPulseTimes);
-}
-
-.notifications-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spaceSm);
-  padding: var(--space3xl) var(--spaceXl);
-  color: var(--colorInkSecondary);
-  text-align: center;
-}
-
-.notifications-empty p {
-  margin: 0;
-}
-
-.notifications-failed {
-  margin: var(--spaceLg) var(--spaceXl);
-  padding: var(--spaceLg);
-  animation: drop-in var(--motionFast) var(--motionEase);
-}
-
-.notifications-failed .notice-body {
-  flex: 1;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.notifications-failed .notice-title {
-  font: var(--typeBody);
-  font-weight: 600;
-}
-
-/* The bell's two failure lines, Mark all read's and Show more's. */
-.notifications-failure-line {
-  gap: var(--spaceSm);
-  padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusRow);
-  color: var(--colorAttentionText);
-  font: var(--typeBody);
-  font-weight: 600;
-  animation: drop-in var(--motionFast) var(--motionEase);
-}
-
-.notifications-panel > .notifications-failure-line {
-  flex: none;
-  margin: var(--spaceLg) var(--spaceXl) 0;
-}
-
-.notifications-failure-line .mark {
-  width: var(--sizeMark);
-  height: var(--sizeMark);
-  background: var(--colorAttention);
-  color: var(--colorInkOnDark);
-}
-
-.notifications-failure-line p {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-}
-
-.notifications-more {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-  padding: var(--spaceSm) var(--spaceXl);
-  border-top: var(--borderCard);
-}
-
-.notifications-more button {
-  min-height: var(--sizeHit);
-}
-
-.notifications-more p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.notifications-settings {
-  display: flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceXl);
-  border-top: var(--borderCard);
-  color: var(--colorAccentText);
-  font: var(--typeButton);
-  text-decoration: none;
 }
 
 /* One card with no padding of its own: the blocked line is an inset band, rows divide, the footer sits under a rule. */
@@ -5321,19 +5043,6 @@ button.members-row {
   border-top: var(--borderInset);
   font: var(--typeSmall);
   color: var(--colorInkSecondary);
-}
-
-.notification-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  min-width: 88px;
-  min-height: var(--sizeHit);
-}
-
-.notification-switch span {
-  overflow-wrap: normal;
-  white-space: nowrap;
 }
 
 /* The checkbox lies over the pill it draws, so a click and Space still switch it. */
@@ -5422,12 +5131,6 @@ button.members-row {
   .notification-settings-grid .notification-settings-channel {
     padding-inline: var(--spaceXxs);
     text-align: center;
-  }
-
-  .notification-switch {
-    flex-direction: column;
-    justify-content: center;
-    min-width: var(--sizeHit);
   }
 
   .notification-settings-switch {
@@ -5527,163 +5230,6 @@ button.members-row {
   }
 }
 
-.notification-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  border-top: var(--borderInset);
-}
-
-.notification-row > :not(.notification-item, .notification-more) {
-  grid-column: 1 / -1;
-}
-
-.notification-more {
-  width: var(--sizeHit);
-  height: var(--sizeHit);
-  margin: var(--spaceSm) var(--spaceSm) 0 0;
-  border: 0;
-  border-radius: var(--radiusNav);
-  background: var(--colorCard);
-  color: var(--colorInk);
-  cursor: pointer;
-}
-
-.notification-more:hover {
-  background: var(--colorInset);
-}
-
-.notification-mute {
-  padding: var(--spaceSm) var(--spaceXl) var(--spaceLg);
-  background: var(--colorInset);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-.notification-switch-track {
-  display: none;
-}
-
-/* In More the name comes first and the switch is drawn at the row's end; the checkbox lies over the row, so a click and Space still switch it. */
-.notification-mute .notification-switch {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  gap: var(--spaceLg);
-  font: var(--typeButton);
-}
-
-.notification-mute .notification-switch input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.notification-mute .notification-switch input:disabled,
-.notification-mute .notification-switch input[aria-disabled='true'] {
-  cursor: default;
-}
-
-.notification-mute .notification-switch-name {
-  flex: 1;
-  order: -1;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.notification-mute .notification-switch-track {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  width: var(--sizeToggleW);
-  height: var(--sizeToggleH);
-  padding: var(--spaceHair);
-  border-radius: var(--radiusPill);
-  background: var(--colorMarkEmpty);
-  transition: background var(--motionBase) var(--motionEase);
-}
-
-.notification-mute .notification-switch-knob {
-  width: var(--sizeToggleKnob);
-  height: var(--sizeToggleKnob);
-  border-radius: var(--radiusPill);
-  background: var(--colorCard);
-  box-shadow: var(--shadowKnob);
-  transition: transform var(--motionBase) var(--motionEase);
-}
-
-.notification-mute .notification-switch:has(input:checked) .notification-switch-track {
-  background: var(--colorAccent);
-}
-
-.notification-mute .notification-switch:has(input:checked) .notification-switch-knob {
-  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
-}
-
-.notification-mute .notification-switch:has(input:disabled) .notification-switch-track {
-  background: var(--colorInset);
-  box-shadow: inset 0 0 0 1px var(--colorBorder);
-}
-
-.notification-mute .notification-switch:has(input:disabled) .notification-switch-knob {
-  background: var(--colorBorder);
-}
-
-.notification-mute .notification-switch:has(input:focus-visible) .notification-switch-track {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .notifications-panel,
-  .notification-mute,
-  .notifications-failure-line,
-  .notifications-failed {
-    animation-name: fade-in;
-  }
-
-  .notifications-skeleton {
-    animation: none;
-  }
-
-  .notification-mute .notification-switch-track,
-  .notification-mute .notification-switch-knob {
-    transition: none;
-  }
-}
-
-.notifications-push-ask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: var(--spaceLg) var(--spaceXl) 0;
-  padding: var(--spaceLg);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  background: var(--colorInset);
-}
-
-.notifications-push-ask h3,
-.notifications-push-ask p {
-  margin: 0;
-}
-
-.notifications-push-ask h3 {
-  font: var(--typeRowTitle);
-  font-weight: 700;
-}
-
-.notifications-push-ask-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceLg);
-}
-
 /* ── Toast (sc-22092): the dark surface, its Undo a text action on it ───────── */
 
 .toast {
@@ -5731,6 +5277,25 @@ button.members-row {
 .toast-undo {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* A counted toast (sc-3774): its seconds beside Undo, and at 320 CSS px it spans the screen. */
+.toast.is-counted {
+  gap: var(--spaceXs);
+}
+
+.toast-count {
+  flex: none;
+  min-width: 3ch;
+  font: var(--typeButton);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 40rem) {
+  .toast.is-counted {
+    width: calc(100% - var(--spaceXl) * 2);
+    max-width: none;
+  }
 }
 
 .toast-undo:hover,
@@ -6279,6 +5844,13 @@ button.members-row {
 .skeleton-field {
   height: 44px;
   border-radius: var(--radiusRow);
+}
+
+/* A list's search field, where it will stand above the rows (sc-3772). */
+.skeleton-find {
+  height: 48px;
+  margin-bottom: 18px;
+  border-radius: var(--radiusInset);
 }
 
 .skeleton-option {
@@ -7233,6 +6805,12 @@ button.members-row {
   max-width: 680px;
 }
 
+@media (width > 60rem) {
+  .account.personalisation {
+    gap: 18px;
+  }
+}
+
 .scheme-ground,
 .scheme-pieces {
   position: absolute;
@@ -7370,6 +6948,7 @@ button.members-row {
 
 .dialog.colours-dialog {
   top: 50%;
+  animation: none;
   gap: 0;
   width: 540px;
   max-height: calc(100% - 2 * var(--space6xl));
@@ -7597,4 +7176,58 @@ button.members-row {
   color: var(--colorInk);
   font: 600 15.5px/1.2 var(--fontFamily);
   overflow-wrap: break-word;
+}
+
+/* sc-55397: at 640 px or narrower an event's page opens on its handoff to the app, under the shell's phone bar. */
+.ho-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-top: var(--spaceXl);
+}
+
+.ho-glyph {
+  display: grid;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-bottom: var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.ho-area {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+}
+
+.ho-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeTitlePhone);
+  letter-spacing: var(--typeTitlePhoneTracking);
+  overflow-wrap: anywhere;
+}
+
+.ho-title:focus {
+  outline: none;
+}
+
+.ho-line {
+  margin: 0 0 var(--spaceMd);
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+  letter-spacing: var(--typeBodyTracking);
+}
+
+.ho-anyway {
+  width: 100%;
+  min-height: var(--sizeHit);
 }

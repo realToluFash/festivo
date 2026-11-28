@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Messaging;
 
 use App\Domain\Messaging\ChannelSelector;
+use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\ProductDefaultPreferences;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationCategory;
@@ -35,6 +36,21 @@ final class ChannelSelectorTest extends TestCase
     {
         self::assertSame([], $this->select(NotificationCategory::EventDay, [NotificationChannel::Push, NotificationChannel::Email]));
         self::assertSame([NotificationChannel::Email, NotificationChannel::Push], $this->select(NotificationCategory::Money, [NotificationChannel::Push, NotificationChannel::Email]));
+    }
+
+    #[Test]
+    public function aTypeOfferingPushAloneGoesOnPushWhileItsCategoryAllowsIt(): void
+    {
+        self::assertSame([NotificationChannel::Push], $this->select(NotificationCategory::EventDay, [NotificationChannel::Push]));
+        self::assertSame([NotificationChannel::Push], $this->select(NotificationCategory::EventDay, [NotificationChannel::Push], muted: true));
+        $pushOff = new class implements NotificationPreferencesInterface {
+            public function allows(Uuid $userId, NotificationCategory $category, NotificationChannel $channel): bool
+            {
+                return NotificationChannel::Push !== $channel;
+            }
+        };
+
+        self::assertSame([], new ChannelSelector($pushOff)->select(NotificationAudienceKind::Member, Uuid::v7(), NotificationCategory::EventDay, [NotificationChannel::Push], false));
     }
 
     #[Test]

@@ -172,6 +172,21 @@ class Shortcut:
                          content_type=f"multipart/form-data; boundary={boundary}")
 
 
+VCS_KINDS = ("pull-request", "branch", "commit")
+
+
+def history_moves(entry):
+    """The workflow state changes of a story history entry, each as {"old": id, "new": id}."""
+    return [change for action in entry.get("actions", [])
+            if (change := (action.get("changes") or {}).get("workflow_state_id"))]
+
+
+def history_vcs(entry):
+    """The branches, pull requests and commits a story history entry names."""
+    return [thing for thing in [*entry.get("references", []), *entry.get("actions", [])]
+            if thing.get("entity_type") in VCS_KINDS]
+
+
 def slim(raw, states, epics):
     """The parts of a story the roles read, small enough to keep many of."""
     epic = epics.get(str(raw.get("epic_id"))) if raw.get("epic_id") else None

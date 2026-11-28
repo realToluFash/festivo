@@ -4,15 +4,15 @@ import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { focusWhenFree } from '../../../layers.ts';
 
 export type Confirming<C> = { kind: 'confirm'; pending: boolean; failed: boolean } & C;
 
-/** What a refusal says once the dialog has turned into one: a title, its lines, and Close. */
+/** What a refusal says once the dialog has turned into one: a title, its line, and Close. */
 export interface Refused {
   kind: 'refused';
   title: string;
-  lines: string[];
-  link?: { label: string; to: string };
+  line: string;
 }
 
 export type Asking<C> = Confirming<C> | Refused;
@@ -53,7 +53,7 @@ export function useLifecycleAction<C extends object>({
     then: (latest) => {
       const [title, line] = changedWords(latest);
 
-      return { title: t(title), lines: [t(line)] };
+      return { title: t(title), line: t(line) };
     },
   };
 
@@ -73,7 +73,7 @@ export function useLifecycleAction<C extends object>({
         setAsking(null);
         onChange(moved.event, moved.tag);
         onDone();
-        window.setTimeout(() => heading.current?.focus(), 0);
+        focusWhenFree(() => heading.current);
       },
       (error: unknown) => {
         const refusal = !(error instanceof ApiError)

@@ -1,6 +1,11 @@
+import type { Provider } from '@soirely/api-client';
 import { type RefObject, useRef, useState } from 'react';
-import type { TextInputInstance } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+
+import type { SignedIn } from '../kit/waysProof.ts';
+import { PROVIDER_NAMES } from '../providerSignIn.ts';
+import { tokens } from '../theme/tokens.ts';
 
 import {
   CodeField,
@@ -12,6 +17,7 @@ import {
 } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { ProviderButton } from './ProviderSignIn.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line } from './Summary.tsx';
 
@@ -26,6 +32,10 @@ export interface ProofAsks {
   codeHelp: string | readonly string[];
   /** The provider confirming in the password's place, named; null with a password. */
   instead: string | null;
+  /** With no password: only the provider's own button opens its trip, and what it brought back heads the code step (sc-22601). */
+  trip?: { provider: Provider; signedIn: SignedIn | null } | undefined;
+  /** Too many tries: the notice says when, and nothing sends until the caller lifts it. */
+  limited?: { title: string; body: string } | undefined;
 }
 
 /** Why Continue did not prove it: per field, `checked` when the client found it before asking. */
@@ -67,7 +77,7 @@ export function ConfirmScreen({
   const [checking, setChecking] = useState(false);
 
   async function proceed(): Promise<void> {
-    if (checking) return;
+    if (checking || asks.limited != null) return;
     keysStayDown();
     setChecking(true);
     const next = await onContinue(password.current, code.current);
@@ -80,17 +90,24 @@ export function ConfirmScreen({
     else focusRefused(field);
   }
 
+  const trip = asks.trip;
+  const beforeTrip = trip != null && !asks.code;
+
   return (
     <FocusedScreen
       open={open}
       title={title ?? t('waysCard.proveTitle')}
-      verb={{
-        label: verb ?? t('waysCard.continue'),
-        on: true,
-        busy: checking,
-        onPress: () => void proceed(),
-        testID: `${testID}.continue`,
-      }}
+      verb={
+        beforeTrip
+          ? null
+          : {
+              label: verb ?? t('waysCard.continue'),
+              on: asks.limited == null,
+              busy: checking,
+              onPress: () => void proceed(),
+              testID: `${testID}.continue`,
+            }
+      }
       waits={checking}
       onCancel={onClose}
       cancelTestID={`${testID}.cancel`}
@@ -102,6 +119,26 @@ export function ConfirmScreen({
         <Notice tone="attention" mark="!" body={asks.expired.text} answer={asks.expired.answer} />
       )}
       {asks.note != null && <Line size={14} text={asks.note} />}
+      {asks.limited != null && (
+        <Notice
+          tone="attention"
+          mark="!"
+          title={asks.limited.title}
+          body={asks.limited.body}
+          answer={asks.limited}
+        />
+      )}
+      {trip?.signedIn != null && asks.code && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.done.glyph}
+          markTone="done"
+          title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[trip.provider] })}
+          accentTitle
+          detail={trip.signedIn.email}
+          announce
+        />
+      )}
       {says.other != null && <FieldError message={says.other} answer={says} />}
       {asks.password && (
         <Field label={t('waysCard.yourPassword')} error={says.password}>
@@ -146,6 +183,22 @@ export function ConfirmScreen({
           />
         </Field>
       )}
+      {beforeTrip && (
+        <View style={styles.trip}>
+          <ProviderButton
+            provider={trip.provider}
+            label={t('waysCard.continueWith', { provider: PROVIDER_NAMES[trip.provider] })}
+            onPress={() => void proceed()}
+            busy={checking}
+            off={asks.limited != null}
+            testID={`${testID}.provider`}
+          />
+        </View>
+      )}
     </FocusedScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  trip: { paddingTop: tokens.spaceSm },
+});

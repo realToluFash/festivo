@@ -47,6 +47,7 @@ final readonly class OrganisationController
         private DomainSuspender $domainSuspender,
         private MemberSuspension $memberSuspension,
         private OwnerClaimDescriber $ownerClaimDescriber,
+        private OrganisationSerialiser $organisationSerialiser,
     ) {
     }
 
@@ -64,15 +65,16 @@ final readonly class OrganisationController
         $memberships = $user instanceof User ? $this->membershipRepository->findActiveFor($user) : [];
 
         return new JsonResponse([
-            'organisations' => Vec\map($memberships, fn (Membership $membership): array => OrganisationSerialiser::membership(
+            'organisations' => Vec\map($memberships, fn (Membership $membership): array => $this->organisationSerialiser->membership(
                 $membership,
                 $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
                 $this->signInRules->twoFactorDue($membership),
+                $this->membershipDirectory->eventScopeIn($membership->getUser(), $membership->getOrganisation()->getId())?->onAnEvent() ?? [],
             )),
             'paused' => Vec\map(
                 $user instanceof User ? $this->membershipRepository->findPausedFor($user) : [],
                 fn (Membership $membership): array => [
-                    ...OrganisationSerialiser::organisation($membership->getOrganisation()),
+                    ...$this->organisationSerialiser->organisation($membership->getOrganisation()),
                     'suspension' => $user instanceof User ? $this->memberSuspension->describe($membership, $user) : null,
                     'ownerClaim' => $user instanceof User ? $this->ownerClaimDescriber->forSuspendedOwner($membership->getOrganisation(), $user) : null,
                 ],
@@ -101,10 +103,11 @@ final readonly class OrganisationController
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
             ?? throw new LogicException('A created organisation has its creator as a member.');
 
-        return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
+        return new JsonResponse(['organisation' => $this->organisationSerialiser->membership(
             $membership,
             $this->membershipDirectory->grantsIn($user, $organisation->getId()) ?? Grants::only([]),
             $this->signInRules->twoFactorDue($membership),
+            [],
         )], Response::HTTP_CREATED);
     }
 
@@ -142,6 +145,6 @@ final readonly class OrganisationController
         $organisation->setLocale($fields['locale']);
         $this->entityManager->flush();
 
-        return new JsonResponse(OrganisationSerialiser::organisation($organisation));
+        return new JsonResponse($this->organisationSerialiser->organisation($organisation));
     }
 }

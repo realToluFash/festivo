@@ -251,15 +251,25 @@ export const COUNTRY_CODES: readonly string[] = [
   'ZW',
 ];
 
-/** Each code with its name in the reader's language, sorted as that language sorts; the code where the engine cannot name it. */
-export function countryChoices(locale: string): { code: string; name: string }[] {
+const choicesIn = new Map<string, readonly { code: string; name: string }[]>();
+
+/** Each code with its name in the reader's language, sorted as that language sorts; the code where the engine cannot name it. Made once per language, with one collator: on an Android phone a `localeCompare` builds its own each call, and naming and sorting all 249 that way held Add a phone number's opening past two seconds (sc-91027). */
+export function countryChoices(locale: string): readonly { code: string; name: string }[] {
+  const made = choicesIn.get(locale) ?? namedCountries(locale);
+  choicesIn.set(locale, made);
+
+  return made;
+}
+
+function namedCountries(locale: string): readonly { code: string; name: string }[] {
   const names =
     typeof Intl.DisplayNames === 'function'
       ? new Intl.DisplayNames([locale], { type: 'region' })
       : null;
+  const order = new Intl.Collator(locale);
 
   return COUNTRY_CODES.map((code) => ({ code, name: names?.of(code) ?? code })).sort((a, b) =>
-    a.name.localeCompare(b.name, locale),
+    order.compare(a.name, b.name),
   );
 }
 
@@ -457,11 +467,19 @@ const RECENT_CURRENCY_NAMES: Readonly<Record<string, Readonly<Record<string, str
   },
 };
 
-/** "Nigerian Naira (NGN)", in the reader's language. */
-export function currencyLabel(code: string, locale: string): string {
+/** "Nigerian Naira", in the reader's language, or none when nothing names the code. */
+function currencyName(code: string, locale: string): string | null {
   const recent = RECENT_CURRENCY_NAMES[code];
   const engine = new Intl.DisplayNames([locale], { type: 'currency' }).of(code);
-  const name = engine !== code ? engine : (recent?.[locale.split('-')[0] ?? locale] ?? recent?.en);
+
+  return engine !== code
+    ? (engine ?? null)
+    : (recent?.[locale.split('-')[0] ?? locale] ?? recent?.en ?? null);
+}
+
+/** "Nigerian Naira (NGN)", in the reader's language. */
+export function currencyLabel(code: string, locale: string): string {
+  const name = currencyName(code, locale);
 
   return name == null ? code : `${name} (${code})`;
 }
@@ -490,6 +508,23 @@ export function currencyChoices(
   return held === '' || CURRENCY_CODES.includes(held)
     ? offered
     : [{ code: held, name: heldCurrencyLabel(held, locale, retired) }, ...offered];
+}
+
+/** An event's currency first, then the rest by name, each named without its code for a row that shows the code beside it. */
+export function heldFirstCurrencyChoices(
+  held: string,
+  locale: string,
+  retired: string,
+): { code: string; name: string }[] {
+  const named = currencyChoices(held, locale, () => retired).map(({ code }) => ({
+    code,
+    name: CURRENCY_CODES.includes(code) ? (currencyName(code, locale) ?? code) : retired,
+  }));
+
+  return [
+    ...named.filter(({ code }) => code === held),
+    ...named.filter(({ code }) => code !== held),
+  ];
 }
 
 /** The device's country, for a form that starts on it: the first language that names one, else its likeliest. */

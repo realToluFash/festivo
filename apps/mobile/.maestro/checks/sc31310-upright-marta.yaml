@@ -1,0 +1,8 @@
+# sc-31310, upright: the app demo state marta, for the side-by-side pair beside board e28.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/members?state=marta
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: marta

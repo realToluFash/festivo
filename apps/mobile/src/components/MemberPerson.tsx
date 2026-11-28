@@ -8,10 +8,13 @@ import {
 import {
   firstName,
   formatDay,
+  type LimitRefusal,
+  limitRefusalOf,
   type MemberStanding,
   memberChannelWords,
   memberStanding,
   memberStatusWord,
+  roleHolds,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type Ref, useRef, useState } from 'react';
@@ -24,6 +27,7 @@ import { membersAfterWrite, withRemoved, withRestored } from '../kit/membersAfte
 import { memberMark, memberRole, whenKey } from '../kit/membersSummary.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { FieldError } from './Field.tsx';
+import { LimitRefusalSheet } from './LimitRefusal.tsx';
 import { RoleScreen } from './MemberRole.tsx';
 import { readOut } from './ReadOut.tsx';
 import {
@@ -47,6 +51,7 @@ export function PersonBody({
   organisation,
   member,
   list,
+  reread,
   roles,
   withheld,
   manages,
@@ -54,11 +59,15 @@ export function PersonBody({
   onChanged,
   onRemoved,
   onGoToOrganisation,
+  onMembers,
 }: {
   pane: boolean;
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** Every row the screen holds, as they now are. */
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   withheld: readonly OrganisationRole[];
   manages: boolean;
@@ -66,10 +75,12 @@ export function PersonBody({
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList, name: string) => void;
   onGoToOrganisation: () => void;
+  /** Withdraw an invitation and Remove a member, from a restore the seats refused. */
+  onMembers: () => void;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, {
+  const standing = memberStanding(member, list.owners, {
     owns: callerOwns,
     manages,
     withholds: withheld,
@@ -88,6 +99,7 @@ export function PersonBody({
   const [removeBusy, setRemoveBusy] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [refused, setRefused] = useState<{ on: 'restore' | 'remove'; words: string } | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const stepRef = useRef<ViewInstance>(null);
   const removeRef = useRef<ViewInstance>(null);
   const named = {
@@ -102,8 +114,7 @@ export function PersonBody({
   }
 
   function changedElsewhere(): void {
-    void api
-      .members(organisation.id)
+    void reread(member.id)
       .then(onChanged)
       .catch(() => undefined)
       .finally(() => tell([t('membersScreen.accessConflict', { name })]));
@@ -121,21 +132,22 @@ export function PersonBody({
         changedElsewhere();
         return;
       }
+      const limit = limitRefusalOf(error, 'seatRestore', t, dateLocale(), name);
+      if (limit != null) {
+        setLimited(limit);
+        return;
+      }
       setRefused({
         on: 'restore',
         words:
           error instanceof ApiError && error.is('restore_needs_address')
             ? t('membersScreen.restoreNeedsAddress', named)
-            : error instanceof ApiError && error.is('team_seats_in_use')
-              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
-              : refusalTitle(error, t('membersScreen.actionFailed')),
+            : refusalTitle(error, t('membersScreen.actionFailed')),
       });
       return;
     }
     const role = memberRole(t, member);
-    onChanged(
-      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
-    );
+    onChanged(await membersAfterWrite(() => reread(member.id), list, withRestored(member.id)));
     setRestoring(false);
     tell(
       byHand
@@ -157,10 +169,7 @@ export function PersonBody({
       setRefused({ on: 'remove', words: refusalTitle(error, t('membersScreen.actionFailed')) });
       return;
     }
-    onRemoved(
-      await membersAfterWrite(() => api.members(organisation.id), list, withRemoved(member.id)),
-      name,
-    );
+    onRemoved(await membersAfterWrite(() => reread(member.id), list, withRemoved(member.id)), name);
   }
 
   const step = changes
@@ -211,6 +220,9 @@ export function PersonBody({
           <OnCard key={line} text={line} />
         ))}
       </SummaryCard>
+      {(member.alsoMemberOf ?? 0) > 0 && (
+        <Line text={t('membersScreen.alsoMemberOf', { count: member.alsoMemberOf })} />
+      )}
       {refused?.on === 'restore' && (
         <View accessibilityRole="alert">
           <FieldError message={refused.words} />
@@ -295,6 +307,7 @@ export function PersonBody({
           testID: 'members.remove.confirm',
           removes: true,
           busy: removeBusy ? t('membersScreen.removing') : undefined,
+          busyWords: t('membersScreen.removing'),
         }}
         failed={!onlyOwnerSuspended && refused?.on === 'remove' ? refused.words : null}
         onKeep={() => {
@@ -305,12 +318,24 @@ export function PersonBody({
         onConfirm={() => void remove()}
         testID="members.remove.ask"
       />
+      <LimitRefusalSheet
+        refusal={limited}
+        billing={roleHolds(organisation, 'billing.manage')}
+        opener={stepRef}
+        onMembers={() => {
+          setLimited(null);
+          onMembers();
+        }}
+        onBack={() => setLimited(null)}
+        testID="members.restore.limit"
+      />
       {changes && (
         <RoleScreen
           key={roleVisit}
           organisation={organisation}
           member={member}
           list={list}
+          reread={reread}
           roles={roles}
           open={roleOpen}
           opener={stepRef}

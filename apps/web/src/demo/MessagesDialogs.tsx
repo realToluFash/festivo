@@ -10,20 +10,26 @@ const FOLD = (text: string) =>
     .replaceAll(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
-/** Who is this? (sc-3976): a guest for a sender Soirely could not match, found by name. */
+/** Who is this? (sc-3976): a guest for a sender Soirely could not match, or for a number guests share, found by name. */
 export function MatchPicker({
   onMatch,
   onCancel,
+  picks = MATCHES,
+  first = { query: 'Dubois', picked: 'Camille Dubois' },
+  hinted = true,
 }: {
   onMatch: (name: string) => void;
   onCancel: () => void;
+  picks?: readonly { name: string; line: string }[];
+  first?: { query: string; picked: string };
+  hinted?: boolean;
 }) {
   const search = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState('Dubois');
-  const [picked, setPicked] = useState('Camille Dubois');
+  const [query, setQuery] = useState(first.query);
+  const [picked, setPicked] = useState(first.picked);
   const name = useId();
   const hintId = useId();
-  const found = MATCHES.filter((one) => FOLD(one.name).includes(FOLD(query.trim())));
+  const found = picks.filter((one) => FOLD(one.name).includes(FOLD(query.trim())));
 
   return (
     <Dialog
@@ -47,7 +53,7 @@ export function MatchPicker({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <fieldset className="mg-radios" aria-describedby={hintId}>
+        <fieldset className="mg-radios" aria-describedby={hinted ? hintId : undefined}>
           <legend className="desk-unseen">{MW.whoIsThis}</legend>
           {found.map((one) => (
             <label key={one.name} className="mg-radio-row is-person">
@@ -63,9 +69,11 @@ export function MatchPicker({
             </label>
           ))}
         </fieldset>
-        <p id={hintId} className="mg-tell-hint">
-          {filled(MW.matchHint, { address: UNKNOWN.address, name: picked })}
-        </p>
+        {hinted && (
+          <p id={hintId} className="mg-tell-hint">
+            {filled(MW.matchHint, { address: UNKNOWN.address, name: picked })}
+          </p>
+        )}
       </div>
     </Dialog>
   );

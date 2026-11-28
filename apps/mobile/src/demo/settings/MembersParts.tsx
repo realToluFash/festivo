@@ -1,9 +1,11 @@
 import { type Ref, useRef } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
+import { titleSize } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type CardStep,
@@ -11,7 +13,10 @@ import {
   FILTERS,
   type MembersCard,
   type MembersSay,
+  type More,
+  MORE_WORDS,
   ORGANISATION,
+  PEOPLE_PAGE,
   type Person,
   personLine,
   tagOf,
@@ -27,7 +32,9 @@ import {
   OnCard,
   Row,
   RowList,
+  RowShapes,
   Section,
+  SectionFailed,
   SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
@@ -178,8 +185,11 @@ export function People({
   open,
   dense,
   manages,
+  pages,
+  more,
   onFilter,
   onOpen,
+  onTryAgain,
 }: {
   listed: readonly Person[];
   counts: Record<Filter, number>;
@@ -188,13 +198,21 @@ export function People({
   open: string | null;
   dense: boolean;
   manages: boolean;
+  /** Pages of People shown so far; the next comes as the list's end nears. */
+  pages: number;
+  more: More;
   onFilter: (filter: Filter) => void;
   onOpen: (id: string) => void;
+  onTryAgain: () => void;
 }) {
   const side = dense ? 36 : 40;
   const gutter = dense ? 10 : 0;
-  const items: ListItem[] = listed.map((person) => {
+  const drawn = Math.min(listed.length, pages * PEOPLE_PAGE);
+  const seen = new Map<string, number>();
+  const items: ListItem[] = listed.slice(0, drawn).map((person) => {
     const selected = person.id === open;
+    const twin = (seen.get(person.initials) ?? 0) + 1;
+    seen.set(person.initials, twin);
 
     return {
       key: person.id,
@@ -210,7 +228,9 @@ export function People({
           selected={selected}
           gutter={gutter}
           onPress={person.status === 'former' ? undefined : () => onOpen(person.id)}
-          testID={`members.row.${person.initials}`}
+          testID={
+            twin === 1 ? `members.row.${person.initials}` : `members.row.${person.initials}.${twin}`
+          }
         />
       ),
     };
@@ -239,6 +259,19 @@ export function People({
       ) : (
         <View style={dense && styles.bleed}>
           <RowList items={items} gutter={gutter} />
+          {drawn < listed.length &&
+            (more === 'failed' ? (
+              <SectionFailed
+                title={MORE_WORDS.failed}
+                line={MORE_WORDS.failedLine}
+                onRetry={onTryAgain}
+                testID="members.more.retry"
+              />
+            ) : more === 'loading' ? (
+              <View style={styles.more} testID="members.more.loading">
+                <RowShapes count={2} words={MORE_WORDS.loading} />
+              </View>
+            ) : null)}
         </View>
       )}
     </Section>
@@ -267,12 +300,17 @@ function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () 
 
 /** Nobody opens by themselves on its side: the pane says what to do. */
 export function NobodyPicked() {
+  const { fontScale } = useWindowDimensions();
+
+  // The product's frame caps the pane beside the column too, so it draws no larger than the page title (sc-67338).
   return (
-    <View style={styles.nobody}>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.centred]}>
-        Choose somebody in the list to see them here.
-      </Text>
-    </View>
+    <TitleCap.Provider value={titleSize(PAGE_TITLE, fontScale)}>
+      <View style={styles.nobody}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.centred]}>
+          Choose somebody in the list to see them here.
+        </Text>
+      </View>
+    </TitleCap.Provider>
   );
 }
 
@@ -280,6 +318,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
   bleed: { marginHorizontal: -10 },
+  more: { paddingTop: tokens.spaceSm },
   empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   nobody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space5xl },
 });

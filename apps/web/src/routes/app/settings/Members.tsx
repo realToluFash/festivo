@@ -1,6 +1,7 @@
 import {
   type Membership,
   type MembersList,
+  type MembersShow,
   type OrganisationMember,
   type OrganisationRole,
   type RecoveryRequest,
@@ -15,24 +16,33 @@ import {
   memberIsShown,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  MEMBERS_PAGE,
+  type MembersMore,
+  rereadLimit,
   roleName,
+  withChanged,
+  withNextPage,
+  withPagesSince,
 } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import {
+  memo,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
-  Avatar,
   BackRow,
-  Card,
-  CardStep as Step,
-  Chevron,
   Head,
   Menu,
-  OnCard,
-  RowWords,
-  Says,
   Tag,
   TextAction,
   TitleRow,
@@ -52,11 +62,20 @@ import {
   type RecoveryAnswer,
   waitingMembers,
 } from './membersCard.ts';
+import {
+  InvitationLine,
+  MemberRow,
+  MembersCardView,
+  MembersEmpty,
+  MembersFailed,
+  MembersLoading,
+} from '../../../components/MembersParts.tsx';
 import { useOwnerClaim } from './MembersClaim.tsx';
 import { InviteDialog, RequestDialog } from './MembersDialogs.tsx';
 import { RecoveryAsk, RecoveryBlock } from './MembersRecovery.tsx';
 import { backToMakeOwner } from './ownerReturn.ts';
 import { memberTag } from './memberWords.ts';
+import { SEARCHED_MEMBER } from '../../../searchLinks.ts';
 import '../../../components/SettingsParts.css';
 import './members.css';
 
@@ -66,9 +85,14 @@ type Load =
   | {
       kind: 'loaded';
       list: MembersList;
+      /** The option under Show whose people `list.members` holds. */
+      listed: MembersShow;
       roles: OrganisationRole[];
       recoveries: RecoveryRequest[];
     };
+
+/** The next page of People: on its way, or failed with the rows already shown kept (sc-49170). */
+type More = MembersMore;
 
 type Dialog =
   | { kind: 'invite'; email: string; roleId: string | null; again: string | null }
@@ -104,6 +128,7 @@ export function Members() {
   const [refresh, setRefresh] = useState(0);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const shown = useRef<{ list: MembersList; listed: MembersShow } | null>(null);
   const retrying = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedTitle = useRef<HTMLHeadingElement>(null);
@@ -118,10 +143,15 @@ export function Members() {
     if (organisationId == null) return;
     let current = true;
     const askedAgain = loadedFor.current === organisationId;
+    // Asked again, it reads what is on screen: the option under Show, and every row its pages brought.
+    const again = askedAgain ? shown.current : null;
+    const listed = again?.listed ?? 'all';
 
     watch(
       Promise.all([
-        api.members(organisationId),
+        again == null
+          ? api.members(organisationId)
+          : api.members(organisationId, { show: listed, limit: rereadLimit(again.list) }),
         api.roles(organisationId),
         manages ? api.recoveryRequests() : Promise.resolve([]),
       ]),
@@ -129,12 +159,16 @@ export function Members() {
       ([list, catalogue, recoveries]) => {
         if (!current) return;
         loadedFor.current = organisationId;
-        setLoad({
+        setLoad((before) => ({
           kind: 'loaded',
-          list,
+          list:
+            again != null && before.kind === 'loaded' && before.listed === listed
+              ? withPagesSince(list, before.list)
+              : list,
+          listed,
           roles: catalogue.roles,
           recoveries: recoveryShownIn(recoveries, organisationId),
-        });
+        }));
         if (retrying.current) focusWhenFree(title);
         retrying.current = false;
       },
@@ -155,8 +189,20 @@ export function Members() {
   }, [organisationId, manages, attempt, refresh, language, watch]);
 
   useEffect(() => {
+    shown.current = load.kind === 'loaded' ? { list: load.list, listed: load.listed } : null;
+  }, [load]);
+
+  useEffect(() => {
     heading.current = title() as HTMLHeadingElement | null;
   });
+
+  const onChange = useCallback(
+    (list: MembersList, listed?: MembersShow) =>
+      setLoad((was) =>
+        was.kind === 'loaded' ? { ...was, list, listed: listed ?? was.listed } : was,
+      ),
+    [],
+  );
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -169,26 +215,21 @@ export function Members() {
           {load.kind === 'loading' && (
             <Column>
               <TitleRow title={t('membersScreen.title')} />
-              <Loading />
+              <MembersLoading words={t('membersScreen.loading')} />
             </Column>
           )}
           {load.kind === 'failed' && (
             <Column>
               <TitleRow title={t('membersScreen.title')} />
-              <div className="desk-failed" role={load.retried ? undefined : 'alert'}>
-                <h2 ref={failedTitle} tabIndex={-1}>
-                  {t('membersScreen.failedTitle')}
-                </h2>
-                <p className="desk-line">{t('membersScreen.failedLine')}</p>
-                <TextAction
-                  label={t('membersScreen.retry')}
-                  onClick={() => {
-                    retrying.current = true;
-                    setLoad({ kind: 'loading' });
-                    setAttempt((n) => n + 1);
-                  }}
-                />
-              </div>
+              <MembersFailed
+                heading={failedTitle}
+                alert={!load.retried}
+                onRetry={() => {
+                  retrying.current = true;
+                  setLoad({ kind: 'loading' });
+                  setAttempt((n) => n + 1);
+                }}
+              />
             </Column>
           )}
           {load.kind === 'loaded' && (
@@ -196,12 +237,11 @@ export function Members() {
               key={organisation.id}
               organisation={organisation}
               list={load.list}
+              listed={load.listed}
               roles={load.roles}
               recoveries={load.recoveries}
               manages={manages}
-              onChange={(list) =>
-                setLoad((was) => (was.kind === 'loaded' ? { ...was, list } : was))
-              }
+              onChange={onChange}
               onRecoveries={(recoveries) =>
                 setLoad((was) => (was.kind === 'loaded' ? { ...was, recoveries } : was))
               }
@@ -214,37 +254,41 @@ export function Members() {
   );
 }
 
-function Column({ children }: { children: ReactNode }) {
-  return <div className="desk-column">{children}</div>;
+/** A member Search opened (sc-39534): their row, or their invitation's, in view and focused, once. */
+function useSearchedMember(): void {
+  const [params, setParams] = useSearchParams();
+  const searched = params.get(SEARCHED_MEMBER);
+
+  useEffect(() => {
+    if (searched == null) return;
+
+    const row = () =>
+      document.querySelector<HTMLElement>(
+        `[data-member="${CSS.escape(searched)}"], [data-invitation="${CSS.escape(searched)}"]`,
+      );
+
+    row()?.scrollIntoView?.({ block: 'center' });
+    focusWhenFree(row);
+    setParams(
+      (now) => {
+        const next = new URLSearchParams(now);
+        next.delete(SEARCHED_MEMBER);
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searched, setParams]);
 }
 
-function Loading() {
-  const { t } = useTranslation();
-
-  return (
-    <div className="desk-loading" role="status" aria-label={t('membersScreen.loading')}>
-      <span className="desk-unseen" data-page-waits>
-        {t('membersScreen.loading')}
-      </span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows has-lead" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk is-face" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function Column({ children }: { children: ReactNode }) {
+  return <div className="desk-column">{children}</div>;
 }
 
 function MembersLoaded({
   organisation,
   list,
+  listed,
   roles,
   recoveries,
   manages,
@@ -253,10 +297,11 @@ function MembersLoaded({
 }: {
   organisation: Membership;
   list: MembersList;
+  listed: MembersShow;
   roles: OrganisationRole[];
   recoveries: RecoveryRequest[];
   manages: boolean;
-  onChange: (list: MembersList) => void;
+  onChange: (list: MembersList, listed?: MembersShow) => void;
   onRecoveries: (recoveries: RecoveryRequest[]) => void;
 }) {
   const { t } = useTranslation();
@@ -284,12 +329,82 @@ function MembersLoaded({
   const moved = useRef(false);
   const toSays = useRef(false);
   const granted = grantableRoles(roles, organisation);
-  const person = open == null ? null : (list.members.find((one) => one.id === open) ?? null);
+  const [more, setMore] = useState<More>('idle');
+  const [switched, setSwitched] = useState(0);
+  // A pick made with more than a page held reads its option again from the first page, so its time does not grow with the rows shown before.
+  const [restart, setRestart] = useState(false);
+  const rows = useRef<HTMLUListElement>(null);
+  const wanted: MembersShow | null = filter === 'invited' || filter === 'waiting' ? null : filter;
+  const switching = wanted != null && (wanted !== listed || restart);
+  const held = [...list.members, ...list.waiting, ...list.faces];
+  const found = open == null ? null : (held.find((one) => one.id === open) ?? null);
+  // A change can take an open person out of the option being read; their page stays as last read.
+  const [seen, setSeen] = useState<OrganisationMember | null>(null);
+  if (found != null && found !== seen) setSeen(found);
+  const person = found ?? (seen != null && seen.id === open ? seen : null);
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
     if (returned != null) dropProviderReturn();
   }, [returned]);
+
+  // Another option under Show starts again from its own first page (sc-49170).
+  useEffect(() => {
+    if (wanted == null || !switching) return;
+    let current = true;
+
+    api.members(organisation.id, { show: wanted }).then(
+      (page) => {
+        if (!current) return;
+        setMore('idle');
+        setRestart(false);
+        onChange(page, wanted);
+      },
+      () => current && setMore('failed'),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id, wanted, switching, switched, onChange]);
+
+  const reread = (changed: string) =>
+    Promise.all([
+      api.members(organisation.id, { show: listed, limit: rereadLimit(list) }),
+      api.member(organisation.id, changed),
+    ]).then(([again, one]) => withChanged(again, list, one, listed));
+
+  /** The next 50 under the rows shown; the focus goes to the first of them. A press while they load does nothing. */
+  const showMore = async () => {
+    if (more === 'loading') return;
+    if (switching) {
+      setMore('idle');
+      setSwitched((n) => n + 1);
+      return;
+    }
+
+    const first = list.members.length;
+    setMore('loading');
+
+    try {
+      const page = await api.members(organisation.id, { show: listed, after: list.next });
+      onChange(withNextPage(list, page), listed);
+      setMore('idle');
+      focusWhenFree(
+        () => rows.current?.children[first]?.querySelector<HTMLElement>('button, a') ?? null,
+      );
+    } catch {
+      setMore('failed');
+    }
+  };
+  const pick = (next: MemberFilter) => {
+    setMore('idle');
+    if (next === filter) return;
+    setRestart(next !== 'invited' && next !== 'waiting' && list.members.length > MEMBERS_PAGE);
+    setFilter(next);
+  };
+
+  useSearchedMember();
 
   useEffect(() => {
     if (!moved.current) return;
@@ -299,16 +414,16 @@ function MembersLoaded({
     toSays.current = false;
   }, [open, split]);
 
-  const openPerson = (id: string) => {
+  const openPerson = useCallback((id: string) => {
     moved.current = true;
     setOpen(id);
     setNotice(null);
-  };
+  }, []);
   const back = () => {
     moved.current = true;
     setOpen(null);
   };
-  const answer = (id: string) => setDialog({ kind: 'request', id });
+  const answer = useCallback((id: string) => setDialog({ kind: 'request', id }), []);
   const step = (does: CardStep) => {
     switch (does.does) {
       case 'answer':
@@ -320,7 +435,7 @@ function MembersLoaded({
         return openPerson(does.member);
       case 'former':
         setNotice(null);
-        return setFilter('former');
+        return pick('former');
       case 'become':
         return claim.become();
       case 'check':
@@ -328,8 +443,7 @@ function MembersLoaded({
     }
   };
   const close = useCallback(() => setDialog(null), []);
-  const asking =
-    dialog?.kind === 'request' ? list.members.find((one) => one.id === dialog.id) : undefined;
+  const asking = dialog?.kind === 'request' ? held.find((one) => one.id === dialog.id) : undefined;
   const recovering =
     dialog?.kind === 'recovery' ? recoveries.find((one) => one.id === dialog.id) : undefined;
   const settle = (id: string) => {
@@ -356,7 +470,11 @@ function MembersLoaded({
     menu,
     picked: open,
     onMenu: setMenu,
-    onFilter: setFilter,
+    onFilter: pick,
+    switching,
+    more,
+    rowsRef: rows,
+    onMore: () => void showMore(),
     onPerson: openPerson,
     onAnswer: answer,
     onRecovery: (id: string, answer: RecoveryAnswer) => setDialog({ kind: 'recovery', id, answer }),
@@ -399,7 +517,7 @@ function MembersLoaded({
               ],
             });
             setNotice({ kind: 'sent', email: invitation.email });
-            setFilter('all');
+            pick('all');
             close();
           }}
         />
@@ -409,6 +527,7 @@ function MembersLoaded({
           organisation={organisation}
           member={asking}
           roles={granted}
+          reread={reread}
           onClose={close}
           onAnswered={(changed, answered) => {
             onChange(changed);
@@ -461,7 +580,8 @@ function MembersLoaded({
             ? returned
             : null
         }
-        onChanged={onChange}
+        reread={reread}
+        onChanged={(changed) => onChange(changed)}
         onRemoved={(changed, name) => {
           onChange(changed);
           onRecoveries(recoveryEndedByRemoval(recoveries, person.user.id));
@@ -477,11 +597,12 @@ function MembersLoaded({
       <div className="members-split">
         <div className="desk-split">
           <TitleRow title={t('membersScreen.title')} action={invite} compact />
-          <MembersCardView card={card} size="column" onStep={step} />
+          <MembersCard card={card} size="column" onStep={step} />
           {claim.under}
           <MembersBlocks {...blocks} column />
         </div>
         <div className="members-side">
+          {desk.above}
           {desk.bell != null && <div className="desk-top is-end">{desk.bell}</div>}
           {page}
         </div>
@@ -499,7 +620,7 @@ function MembersLoaded({
   return (
     <Column>
       <TitleRow title={t('membersScreen.title')} action={invite} />
-      <MembersCardView card={card} onStep={step} />
+      <MembersCard card={card} onStep={step} />
       {claim.under}
       <MembersBlocks {...blocks} column={false} />
       {dialogs}
@@ -507,7 +628,7 @@ function MembersLoaded({
   );
 }
 
-function MembersCardView({
+function MembersCard({
   card,
   size = 'page',
   onStep,
@@ -517,25 +638,18 @@ function MembersCardView({
   onStep: (step: CardStep) => void;
 }) {
   return (
-    <Card size={size}>
-      <div className="desk-said-lines" tabIndex={-1}>
-        <Says focusable>{card.says}</Says>
-        {card.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
-      </div>
-      {card.faces.length > 0 && (
-        <div className="desk-faces" aria-hidden="true">
-          {card.faces.map((face, tone) => (
-            <Avatar key={face.id} initials={initials(face.user.name)} tone={tone} size="face" />
-          ))}
-          {card.more > 0 && <span className="desk-more">+{card.more}</span>}
-        </div>
-      )}
-      {card.step != null && (
-        <Step label={card.step.label} onClick={() => card.step != null && onStep(card.step)} />
-      )}
-    </Card>
+    <MembersCardView
+      card={{
+        ...card,
+        faces: card.faces.map((face, tone) => ({
+          key: face.id,
+          initials: initials(face.user.name),
+          tone,
+        })),
+      }}
+      size={size}
+      onStep={onStep}
+    />
   );
 }
 
@@ -549,6 +663,11 @@ interface BlocksProps {
   menu: boolean;
   picked: string | null;
   column: boolean;
+  /** The option picked is not yet the one whose people the list holds. */
+  switching: boolean;
+  more: More;
+  rowsRef: RefObject<HTMLUListElement | null>;
+  onMore: () => void;
   onMenu: (open: boolean) => void;
   onFilter: (filter: MemberFilter) => void;
   onPerson: (id: string) => void;
@@ -565,11 +684,16 @@ function MembersBlocks(props: BlocksProps) {
   const { t } = useTranslation();
   const waiting = waitingMembers(list, manages);
   const invitations = list.invitations.filter((one) => one.status !== 'accepted');
-  const shown = list.members.filter((one) => memberIsShown(one.status, filter));
+  const { switching, more } = props;
+  const listed = list.members.filter((one) => memberIsShown(one.status, filter));
+  const shown =
+    filter === 'waiting' ? list.waiting : switching ? listed.slice(0, MEMBERS_PAGE) : listed;
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? invitations.filter((invitation) => invitation.status === 'pending').length
-      : list.members.filter((member) => memberIsShown(member.status, one)).length;
+      : list.counts[one];
+  const total = count(filter);
+  const moreToShow = switching ? more === 'failed' : list.next != null && shown.length < total;
   const items = FILTERS.filter((one) => manages || one !== 'waiting').map((key) => ({
     key,
     word: t(`membersScreen.filter.${key}`),
@@ -629,25 +753,31 @@ function MembersBlocks(props: BlocksProps) {
             <InvitationRows {...props} invitations={invitations} />
             <p className="desk-foot">{t('membersScreen.invitationsNote')}</p>
           </>
-        ) : filter !== 'invited' && shown.length > 0 ? (
-          <PeopleRows {...props} shown={shown} />
+        ) : filter !== 'invited' && (shown.length > 0 || moreToShow) ? (
+          <>
+            {shown.length > 0 && <PeopleRows key={filter} {...props} shown={shown} />}
+            {moreToShow && (
+              <MorePeople shown={shown.length} total={total} more={more} onMore={props.onMore} />
+            )}
+          </>
         ) : (
-          filter !== 'all' && (
-            <div className="desk-empty">
-              <p className="desk-empty-title">
-                {filter === 'invited'
+          filter !== 'all' &&
+          !switching && (
+            <MembersEmpty
+              title={
+                filter === 'invited'
                   ? t('membersScreen.noInvitations')
-                  : t(`membersScreen.empty.${filter}.title`)}
-              </p>
-              {filter !== 'invited' && (
-                <p className="desk-line">
-                  {t(`membersScreen.empty.${filter}.body`, {
-                    organisation: props.organisation.name,
-                  })}
-                </p>
-              )}
-              <TextAction label={t('membersScreen.showEveryone')} onClick={() => onFilter('all')} />
-            </div>
+                  : t(`membersScreen.empty.${filter}.title`)
+              }
+              line={
+                filter === 'invited'
+                  ? undefined
+                  : t(`membersScreen.empty.${filter}.body`, {
+                      organisation: props.organisation.name,
+                    })
+              }
+              onEveryone={() => onFilter('all')}
+            />
           )
         )}
       </section>
@@ -676,24 +806,62 @@ function WaitingRow({
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
 
   return (
-    <button
-      type="button"
-      className="desk-row"
-      data-member={member.id}
-      onClick={() => onAnswer(member.id)}
-    >
-      <Avatar initials={initials(member.user.name)} tone={tone} />
-      <RowWords
-        title={member.user.name}
-        tag={<Tag {...tag} />}
-        lines={[
-          [member.user.email, t('membersScreen.when.asked', { date: asked })]
-            .filter((one) => one != null && one !== '')
-            .join(' · '),
-        ]}
-      />
-      <Chevron />
-    </button>
+    <MemberRow
+      member={member.id}
+      initials={initials(member.user.name)}
+      tone={tone}
+      name={member.user.name}
+      tag={<Tag {...tag} />}
+      line={[member.user.email, t('membersScreen.when.asked', { date: asked })]
+        .filter((one) => one != null && one !== '')
+        .join(' · ')}
+      onPress={() => onAnswer(member.id)}
+    />
+  );
+}
+
+/** Under the rows while more remain: their shapes while the next page comes, Show more, why it failed, and how far down the list is (sc-49170). */
+function MorePeople({
+  shown,
+  total,
+  more,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  more: More;
+  onMore: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="members-more">
+      {more === 'loading' && (
+        <ul className="desk-rows has-lead" aria-hidden="true">
+          {[1, 2].map((bar) => (
+            <li key={bar} className="desk-row is-bones">
+              <span className="desk-sunk is-face" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bar}`} />
+                <span className={`desk-sunk is-line b${bar}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <TextAction label={t('membersScreen.more.showMore')} onClick={onMore} />
+      {more === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('membersScreen.more.failed')}
+        </p>
+      )}
+      <p className="desk-note" role="status">
+        {more === 'loading'
+          ? t('membersScreen.more.loading')
+          : t('membersScreen.more.showing', { shown, total })}
+      </p>
+    </div>
   );
 }
 
@@ -701,53 +869,69 @@ function PeopleRows({
   shown,
   picked,
   column,
+  rowsRef,
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly OrganisationMember[] }) {
-  const { t } = useTranslation();
-
   return (
-    <ul className="desk-rows has-lead">
-      {shown.map((one, tone) => {
-        const tag = one.status === 'active' ? undefined : <Tag {...memberTag(t, one)} />;
-        const line = [
-          memberHeldNoRole(one) ? t('membersScreen.noRoleYet') : roleName(t, one.role),
-          ...(one.self ? [t('membersScreen.you')] : []),
-        ].join(' · ');
-        const on = column && one.id === picked;
-
-        return (
-          <li key={one.id}>
-            {one.status === 'pending_approval' ? (
-              <WaitingRow member={one} tone={tone} onAnswer={onAnswer} />
-            ) : one.status === 'left_or_removed' ? (
-              <div className="desk-row" data-member={one.id}>
-                <Avatar initials={initials(one.user.name)} tone={tone} />
-                <RowWords title={one.user.name} tag={tag} lines={[line]} />
-              </div>
-            ) : (
-              <button
-                type="button"
-                className={on ? 'desk-row is-on' : 'desk-row'}
-                aria-current={on || undefined}
-                data-member={one.id}
-                onClick={() => onPerson(one.id)}
-              >
-                <Avatar
-                  initials={initials(one.user.name)}
-                  tone={tone}
-                  size={column ? 'small' : 'row'}
-                />
-                <RowWords title={one.user.name} tag={tag} lines={[line]} />
-                <Chevron />
-              </button>
-            )}
-          </li>
-        );
-      })}
+    <ul className="desk-rows has-lead" ref={rowsRef}>
+      {shown.map((one, tone) => (
+        <li key={one.id}>
+          <PersonRow
+            member={one}
+            tone={tone}
+            column={column}
+            on={column && one.id === picked}
+            onPerson={onPerson}
+            onAnswer={onAnswer}
+          />
+        </li>
+      ))}
     </ul>
   );
 }
+
+/** Drawn again only when its props change, so a page added under thousands of rows costs its own 50 (sc-49170). */
+const PersonRow = memo(function PersonRow({
+  member,
+  tone,
+  column,
+  on,
+  onPerson,
+  onAnswer,
+}: {
+  member: OrganisationMember;
+  tone: number;
+  column: boolean;
+  on: boolean;
+  onPerson: (id: string) => void;
+  onAnswer: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (member.status === 'pending_approval') {
+    return <WaitingRow member={member} tone={tone} onAnswer={onAnswer} />;
+  }
+
+  const line = [
+    memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role),
+    ...(member.self ? [t('membersScreen.you')] : []),
+  ].join(' · ');
+
+  return (
+    <MemberRow
+      member={member.id}
+      initials={initials(member.user.name)}
+      tone={tone}
+      name={member.user.name}
+      tag={member.status === 'active' ? undefined : <Tag {...memberTag(t, member)} />}
+      line={line}
+      {...(member.status === 'left_or_removed'
+        ? {}
+        : { size: column ? 'small' : 'row', on, onPress: () => onPerson(member.id) })}
+    />
+  );
+});
 
 /** An invitation's address, its role and sender, when it was sent and ends; Revoke while it is pending, Invite again after. */
 function InvitationRows({
@@ -824,25 +1008,25 @@ function InvitationRow({
   }
 
   return (
-    <li className="desk-row">
-      <RowWords
-        title={invitation.email}
-        tag={
-          pending ? undefined : (
-            <Tag kind="ended" word={t(`membersScreen.invitationState.${invitation.status}`)} />
-          )
-        }
-        lines={[
-          invitation.invitedBy?.id === caller
-            ? t('membersScreen.invitedAsByYou', { role })
-            : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' }),
+    <InvitationLine
+      invitation={invitation.id}
+      email={invitation.email}
+      ended={pending ? undefined : t(`membersScreen.invitationState.${invitation.status}`)}
+      lines={[
+        invitation.invitedBy?.id === caller
+          ? t('membersScreen.invitedAsByYou', { role })
+          : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' }),
+        invitation.undelivered && invitation.status !== 'accepted' ? (
+          <NotDelivered status={invitation.status} ended={day(ended[invitation.status] ?? null)} />
+        ) : (
           t(`membersScreen.dates.${invitation.status}`, {
             sent: day(invitation.sentAt),
             ended: day(ended[invitation.status] ?? null),
-          }),
-          ...(failed ? [t('membersScreen.revokeFailed')] : []),
-        ]}
-      />
+          })
+        ),
+        ...(failed ? [t('membersScreen.revokeFailed')] : []),
+      ]}
+    >
       {manages && (
         <span data-invite-again={pending ? undefined : invitation.id}>
           {pending ? (
@@ -852,6 +1036,24 @@ function InvitationRow({
           )}
         </span>
       )}
-    </li>
+    </InvitationLine>
+  );
+}
+
+/** The broken mark before the words, as a field error has it: the mark is a shape, the words are read (sc-46109). */
+function NotDelivered({ status, ended }: { status: SentInvitation['status']; ended: string }) {
+  return (
+    <span className="not-delivered">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <span>
+        <Trans
+          i18nKey={`membersScreen.notDelivered.${status}`}
+          values={{ ended }}
+          components={{ word: <span className="not-delivered-word" /> }}
+        />
+      </span>
+    </span>
   );
 }

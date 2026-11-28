@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import { PANE_TITLE_ROW, SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
 import { AccountPage } from '../../src/components/AccountPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
@@ -62,9 +62,9 @@ export default function Account() {
     >
       <SettingsSplit open="account">
         <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(SETTINGS_PAGE[kind])} />}
           {!alone && (
-            <View style={besideRow.row}>
+            <View style={[besideRow.row, PANE_TITLE_ROW]}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}

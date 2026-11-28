@@ -256,7 +256,7 @@ describe('email addresses and phone numbers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
 
     expect(
-      await screen.findByText("Confirm it's you before changing the address you sign in with."),
+      await screen.findByText('Confirm it’s you before changing the address you sign in with.'),
     ).toBeDefined();
     expect(sent.some((s) => s.call.startsWith('PATCH'))).toBe(false);
     fireEvent.change(screen.getByLabelText('Your password'), {
@@ -567,7 +567,7 @@ describe('focus after a step on the cards closes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Make primary' }));
     fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
-    await screen.findByText("Confirm it's you before changing the address you sign in with.");
+    await screen.findByText('Confirm it’s you before changing the address you sign in with.');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make primary' }));

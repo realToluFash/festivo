@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\EmailAddressNormaliser;
+use App\Domain\User\Http\SecondFactorInput;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Recovery\PasswordRecovery;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\AfterResponse;
-use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -30,7 +31,8 @@ final readonly class PasswordRecoveryController
         private SignInResponse $signInResponse,
         private RateLimiterFactoryInterface $passwordResetAddressLimiter,
         private RateLimiterFactoryInterface $passwordResetIpLimiter,
-        private CodeField $codeField,
+        private SecondFactorInput $secondFactorInput,
+        private SecondFactors $secondFactors,
     ) {
     }
 
@@ -68,28 +70,26 @@ final readonly class PasswordRecoveryController
         return new JsonResponse([
             'email' => $user->getPrimaryEmailAddress()?->getAddress(),
             'twoFactor' => $this->passwordRecovery->asksForSecondFactor($user),
+            'factors' => $this->secondFactors->askable($user),
         ]);
     }
 
     #[Route('/api/auth/password/reset/code', name: 'auth_password_reset_code', methods: ['POST'])]
     public function code(Request $request): Response
     {
-        $body = Input::body($request, Type\shape([
-            'token' => Type\string(),
-            'code' => Type\optional(Type\mixed()),
-            'recoveryCode' => Type\optional(Type\mixed()),
-        ]));
-        $code = $this->codeField->optional($body, 'code', CodeField::FROM_APP);
-        $recoveryCode = $this->codeField->optional($body, 'recoveryCode', CodeField::RECOVERY);
-
-        // Neither sent is the app's code missing, the field the screen asks for first.
-        if (null === $code && null === $recoveryCode) {
-            $code = $this->codeField->required($body, 'code', CodeField::FROM_APP);
-        }
-
-        $this->passwordRecovery->passSecondFactor($body['token'], $code, $recoveryCode);
+        $body = Input::body($request, Type\shape(['token' => Type\string(), ...SecondFactorInput::fields()]));
+        $this->passwordRecovery->passSecondFactor($body['token'], $this->secondFactorInput->separate($body));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** A new challenge for the passkey sheet at the code step, each time it opens. */
+    #[Route('/api/auth/password/reset/passkey-options', name: 'auth_password_reset_passkey_options', methods: ['POST'])]
+    public function passkeyOptions(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['token' => Type\string()]));
+
+        return new JsonResponse($this->passwordRecovery->passkeyOptions($body['token']));
     }
 
     #[Route('/api/auth/password/reset', name: 'auth_password_reset', methods: ['POST'])]

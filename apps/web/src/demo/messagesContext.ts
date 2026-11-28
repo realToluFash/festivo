@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 import type { Mesh } from '../mesh.ts';
+import type { BellState } from './bellFeed.ts';
 import { type Change, type Delivery, type Inbox, type Where, whereWord } from './messages.ts';
 import type { ToApi } from './messagesTo.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -15,7 +16,7 @@ export interface InboxApi {
   keys: boolean;
   /** The id of the sentence under New on an event that can't send: every composer and send control is off and points at it. */
   whyOff: string | undefined;
-  bell: { read: boolean; markRead: () => void; takeFirst: () => boolean };
+  bell: { read: boolean; markRead: () => void; takeFirst: () => boolean; state: BellState };
   /** Who gets it's saved audiences and groups (sc-3957), and whether the reader may send. */
   to: ToApi;
 }
@@ -34,6 +35,7 @@ export interface Bit {
   words: string;
   where?: Where;
   mark?: Delivery;
+  clip?: boolean;
 }
 
 export function whereBits(where: Where, at: string): Bit[] {

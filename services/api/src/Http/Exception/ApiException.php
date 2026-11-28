@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Exception;
 
 use App\Enum\ErrorCode;
+use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psl\Math;
@@ -14,10 +16,10 @@ use Throwable;
 class ApiException extends RuntimeException
 {
     /**
-     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations each message a key, its slots in parameters
-     * @param array<string, string>                                                                                $headers    Retry-After on a 429, and little else
-     * @param array<string, int|string|list<string>>                                                               $members    extra problem members, such as the permission
-     * @param array<string, int|string>                                                                            $parameters the slots in the message's key
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations each message a key, its slots in parameters
+     * @param array<string, string>                                                                                    $headers    Retry-After on a 429, and little else
+     * @param array<string, mixed>                                                                                     $members    extra problem members, such as the permission, or a 412's item as it now stands
+     * @param array<string, int|string>                                                                                $parameters the slots in the message's key
      */
     public function __construct(
         public readonly ErrorCode $errorCode,
@@ -46,7 +48,23 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::Conflict, $message);
     }
 
-    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations */
+    /** @param array<string, string> $members */
+    public static function permissionRequired(Permission $permission, array $members = []): self
+    {
+        return new self(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => $permission->value, ...$members], ['{permission}' => $permission->value]);
+    }
+
+    public static function planRequired(PlanFeature $feature): self
+    {
+        return new self(ErrorCode::PlanRequired, 'access.plan_required', [], null, [], ['feature' => $feature->value]);
+    }
+
+    public static function twoFactorRequired(Permission $permission): self
+    {
+        return new self(ErrorCode::OrganisationTwoFactorRequired, 'access.two_factor_required', [], null, [], ['permission' => $permission->value]);
+    }
+
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations */
     public static function validation(array $violations, string $message = ''): self
     {
         return new self(ErrorCode::ValidationFailed, $message, $violations);
@@ -105,8 +123,8 @@ class ApiException extends RuntimeException
         );
     }
 
-    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
-    private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
+    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. A screen naming the same window's end writes this minute too. */
+    public static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
     {
         $lifts = $windowEnd->getTimestamp() + 1;
 

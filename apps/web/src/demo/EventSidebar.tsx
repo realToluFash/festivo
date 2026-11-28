@@ -5,12 +5,14 @@ import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.
 import { EventSideCard } from '../components/EventSideCard.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
-import { guestsAt, hasGuests } from './guests.ts';
+import { areaPath } from './handoff.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
-import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
+import './narrowDesk.css';
+import './wideDesk.css';
+import './deskReflow.css';
 
 interface Reader {
   name: string;
@@ -32,6 +34,7 @@ export function EventSidebar({
   tell,
   inert,
   waiting = null,
+  menuLine = null,
   without = [],
   reader = OWNER,
 }: {
@@ -41,8 +44,10 @@ export function EventSidebar({
   tell: Tell;
   inert: boolean;
   waiting?: { line: string; name: string } | null;
+  /** The Menu link's line while a course isn't ready (sc-3902). */
+  menuLine?: string | null;
   without?: readonly Area[];
-  reader?: Reader;
+  reader?: Reader | undefined;
 }) {
   return (
     <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
@@ -62,44 +67,37 @@ export function EventSidebar({
         />
       </div>
       <ul className="today-places">
-        {AREAS.filter((one) => !without.includes(one.area)).map((one) => (
-          <li key={one.area}>
-            <Link
-              className={[
-                'today-place',
-                one.area === area && 'is-on',
-                one.area === 'messages' && waiting != null && 'has-line',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              to={
-                one.area === 'people'
-                  ? '/demo/people'
-                  : one.area === 'overview'
-                    ? `/demo/events/${event.id}`
-                    : one.area === 'messages' ||
-                        one.area === 'seating' ||
-                        (one.area === 'staff' && event.id === STATIONS_EVENT)
-                      ? `/demo/events/${event.id}/${one.area}`
-                      : one.area === 'guests' && hasGuests(event.id)
-                        ? guestsAt(event.id)
-                        : `/demo/events/${event.id}?area=${one.area}`
-              }
-              aria-current={one.area === area ? 'page' : undefined}
-              aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
-            >
-              <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
-              {one.area === 'messages' && waiting != null ? (
-                <span className="ev-side-two">
-                  <span>{one.name}</span>
-                  <span className="ev-side-sub">{waiting.line}</span>
-                </span>
-              ) : (
-                one.name
-              )}
-            </Link>
-          </li>
-        ))}
+        {AREAS.filter((one) => !without.includes(one.area)).map((one) => {
+          const sub =
+            one.area === 'messages'
+              ? (waiting?.line ?? null)
+              : one.area === 'menu'
+                ? menuLine
+                : null;
+
+          return (
+            <li key={one.area}>
+              <Link
+                className={['today-place', one.area === area && 'is-on', sub != null && 'has-line']
+                  .filter(Boolean)
+                  .join(' ')}
+                to={areaPath(event.id, one.area)}
+                aria-current={one.area === area ? 'page' : undefined}
+                aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
+              >
+                <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
+                {sub != null ? (
+                  <span className="ev-side-two">
+                    <span>{one.name}</span>
+                    <span className="ev-side-sub">{sub}</span>
+                  </span>
+                ) : (
+                  one.name
+                )}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       <div className="today-grow" />
       <div className="today-places">

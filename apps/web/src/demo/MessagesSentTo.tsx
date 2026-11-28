@@ -4,6 +4,7 @@ import { useInbox } from './messagesContext.ts';
 import { DayRule, HostBubble, LeadMark, Words } from './MessagesParts.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { Head, MiniComposer } from './MessagesThread.tsx';
+import { newestInView } from './newestInView.ts';
 import {
   type SentToId,
   REPLY_BY_SEEN,
@@ -37,7 +38,7 @@ export function SentToThread({ id }: { id: SentToId }) {
         title={message.subject}
         line={sentToHead(id, to.book.groups)}
       />
-      <ol className="mg-stream" role="log" aria-label={message.subject}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={message.subject}>
         <DayRule>{message.day}</DayRule>
         <HostBubble
           subject={message.subject}
@@ -63,7 +64,9 @@ export function SentToThread({ id }: { id: SentToId }) {
         </HostBubble>
         {outsIn(inbox, id).length > 0 && <StreamItems thread={id} />}
       </ol>
-      {!nobody && <MiniComposer to={message.to} placeholder={MW.writeFollowUp} thread={id} />}
+      {!nobody && (
+        <MiniComposer to={message.to} placeholder={MW.writeFollowUp} thread={id} follows={count} />
+      )}
     </div>
   );
 }

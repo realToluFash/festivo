@@ -1,12 +1,12 @@
 import { ApiError, type JoinOffers, type JoinRequest } from '@soirely/api-client';
 import {
-  ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   countryChoices,
   deviceCountry,
   followCountry,
   formatDay,
   formatTimeOfDay,
+  initials,
   phoneLengthProblem,
   pickPhoneCountry,
   startingPhoneCountry,
@@ -15,6 +15,7 @@ import {
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { ManagedBanner } from '../../components/Managed.tsx';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
@@ -29,7 +30,7 @@ import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
-import { useWaitingInvitations } from '../../invitations.ts';
+import { useInvitationAnswers } from '../../invitations.ts';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
@@ -245,7 +246,7 @@ function Details({
   const [askingToJoin, setAskingToJoin] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
-  const waiting = useWaitingInvitations(needsOrganisation);
+  const waiting = useInvitationAnswers(needsOrganisation);
   // Finishing lands in the first one accepted; another is a membership reached from the switcher.
   const firstJoined = waiting.firstJoined;
   const stillOpen = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -286,8 +287,10 @@ function Details({
   }, [needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  const showOffers = asksForOrganisation && offers.length > 0 && !own;
-  const founding = asksForOrganisation && !showOffers;
+  // A managed account (sc-563) is never offered Start my own organisation: the refusal takes its place.
+  const managed = offered?.managed ?? null;
+  const showOffers = asksForOrganisation && offers.length > 0 && (!own || managed != null);
+  const founding = asksForOrganisation && !showOffers && managed == null;
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
     setValues((previous) => {
@@ -383,7 +386,7 @@ function Details({
         phoneNumber: values.phoneNumber.trim(),
       });
 
-      if (firstJoined != null) rememberOrganisation(firstJoined);
+      if (firstJoined != null) rememberOrganisation(saved.account.id, firstJoined);
       // Before the session says it is waiting, so the waiting screen knows a click brought it as it mounts.
       if (askToJoin != null) onAsked();
       await adoptAccount(saved.account);
@@ -439,7 +442,6 @@ function Details({
             autoComplete="name"
             autoCorrect="off"
             spellCheck={false}
-            maxLength={ACCOUNT_NAME_MAXIMUM}
             value={values.name}
             {...offField(saving)}
             aria-invalid={errors.name != null}
@@ -495,12 +497,17 @@ function Details({
               <p className="join-offers-heading" id="join-offers-heading">
                 {t('domainJoining.heading')}
               </p>
-              <p className="field-help">
-                {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
-              </p>
+              {managed == null && (
+                <p className="field-help">
+                  {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+                </p>
+              )}
             </div>
             {offers.map((offer) => (
               <div className="join-offer" key={offer.id}>
+                <span className="org-tile" aria-hidden="true">
+                  {initials(offer.name)}
+                </span>
                 <div className="join-offer-text">
                   <p className="join-offer-title">
                     {t('domainJoining.usesSoirely', { organisation: offer.name })}
@@ -519,19 +526,27 @@ function Details({
                 </button>
               </div>
             ))}
-            <button
-              ref={startOwnButton}
-              className="button"
-              type="button"
-              disabled={saving}
-              onClick={() => {
-                setOwn(true);
-                land(() => organisationInput.current);
-              }}
-            >
-              {t('domainJoining.startOwn')}
-            </button>
+            {managed != null ? (
+              <ManagedBanner managed={managed} level={3} way={false} />
+            ) : (
+              <button
+                ref={startOwnButton}
+                className="button"
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setOwn(true);
+                  land(() => organisationInput.current);
+                }}
+              >
+                {t('domainJoining.startOwn')}
+              </button>
+            )}
           </div>
+        )}
+
+        {asksForOrganisation && !showOffers && managed != null && (
+          <ManagedBanner managed={managed} level={3} way={false} />
         )}
 
         {asksForOrganisation && offers.length > 0 && own && (
@@ -559,7 +574,6 @@ function Details({
                 autoComplete="organization"
                 autoCorrect="off"
                 spellCheck={false}
-                maxLength={100}
                 value={values.organisationName}
                 {...offField(saving)}
                 aria-invalid={errors.organisationName != null}
@@ -608,25 +622,27 @@ function Details({
           </>
         )}
 
-        <PhoneEntry
-          label={
-            <span className="auth-label-row">
-              {t('verifyPhone.numberLabel')}
-              <span className="auth-optional">{t('completeProfile.optional')}</span>
-            </span>
-          }
-          country={values.phoneCountryCode}
-          number={values.phoneNumber}
-          error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
-          disabled={saving}
-          help={t('completeProfile.mobileHelp')}
-          inputRef={phoneInput}
-          onCountry={(code) => {
-            setPhonePicked(pickPhoneCountry(code).picked);
-            change('phoneCountryCode', code);
-          }}
-          onNumber={(typed) => change('phoneNumber', typed)}
-        />
+        {!showOffers && (
+          <PhoneEntry
+            label={
+              <span className="auth-label-row">
+                {t('verifyPhone.numberLabel')}
+                <span className="auth-optional">{t('completeProfile.optional')}</span>
+              </span>
+            }
+            country={values.phoneCountryCode}
+            number={values.phoneNumber}
+            error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
+            disabled={saving}
+            help={t('completeProfile.mobileHelp')}
+            inputRef={phoneInput}
+            onCountry={(code) => {
+              setPhonePicked(pickPhoneCountry(code).picked);
+              change('phoneCountryCode', code);
+            }}
+            onNumber={(typed) => change('phoneNumber', typed)}
+          />
+        )}
       </div>
 
       {!showOffers && (

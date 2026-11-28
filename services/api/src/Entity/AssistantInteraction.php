@@ -32,7 +32,7 @@ class AssistantInteraction
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $actorId;
 
-    #[ORM\Column(type: Types::STRING, length: 180, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 720, nullable: true)]
     private ?string $actorLabel;
 
     #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]

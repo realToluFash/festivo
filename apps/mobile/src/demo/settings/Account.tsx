@@ -1,13 +1,20 @@
-import { firstUnverified, primaryOf, zoneLabel } from '@soirely/domain';
+import {
+  changeEmail,
+  firstUnverified,
+  primaryOf,
+  undeliverableAddresses,
+  zoneLabel,
+} from '@soirely/domain';
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { type ScrollViewInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AddScreen } from '../../components/AccountAdd.tsx';
 import { AboutSection, YouCard } from '../../components/AccountCard.tsx';
 import { ConfirmScreen } from '../../components/AccountConfirm.tsx';
 import { ContactsSection } from '../../components/AccountContacts.tsx';
+import { UndeliverableLines } from '../../components/AccountUndeliverable.tsx';
 import { NameScreen } from '../../components/AccountName.tsx';
 import { VerifyScreen } from '../../components/AccountVerify.tsx';
 import { ZoneScreen } from '../../components/AccountZone.tsx';
@@ -47,21 +54,31 @@ import {
 } from './AccountModel.ts';
 import { useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
-import { saveName, savedName } from './savedName.ts';
+import { saveName, useSavedName, useStarts } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
 
 type Target =
-  'card' | 'step' | 'name' | 'zone' | 'addEmail' | 'addPhone' | 'send' | 'promote' | 'remove';
+  | 'card'
+  | 'step'
+  | 'name'
+  | 'zone'
+  | 'addEmail'
+  | 'addPhone'
+  | 'send'
+  | 'promote'
+  | 'remove'
+  | 'change';
 
 /** Settings › Your account in B, summary first, on sample data that stays on the device. */
 export function AccountSection() {
   const { t } = useTranslation();
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = accountStateOf(state);
+  const starts = useStarts();
 
-  return <AccountPage key={name} start={accountStart(name, t)} />;
+  return <AccountPage key={`${name}:${starts}`} start={accountStart(name, t)} />;
 }
 
 function AccountPage({ start }: { start: AccountStart }) {
@@ -69,10 +86,13 @@ function AccountPage({ start }: { start: AccountStart }) {
   const shell = useShell();
   const clear = useRowClear();
   const yours = shell.viewer !== 'member';
-  const [name, setName] = useState<string>(() => (yours ? savedName() : null) ?? SAMPLE.name);
+  const saved = useSavedName();
+  const [theirs, setTheirs] = useState<string>(SAMPLE.name);
+  const name = yours ? (saved ?? SAMPLE.name) : theirs;
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
+  const [suppressed, setSuppressed] = useState(start.undeliverable);
   const [said, setSaid] = useState(start.said);
   const [opened, setOpened] = useState(start.opened);
   const [ask, setAsk] = useState(start.ask);
@@ -82,6 +102,8 @@ function AccountPage({ start }: { start: AccountStart }) {
   const zoneWaiting = useZoneHeld(start.zoneHeld);
   const scroll = useRef<ScrollViewInstance>(null);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const changes = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const changed = useRef('');
   const [targets] = useState(() => ({
     card: createRef<TextHandle>(),
     step: createRef<ViewInstance>(),
@@ -92,6 +114,11 @@ function AccountPage({ start }: { start: AccountStart }) {
     send: createRef<ViewInstance>(),
     promote: createRef<ViewInstance>(),
     remove: createRef<ViewInstance>(),
+    change: {
+      get current() {
+        return changes.current[changed.current] ?? null;
+      },
+    },
   }));
   const from = useRef<Target>(startTarget(start));
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -168,6 +195,7 @@ function AccountPage({ start }: { start: AccountStart }) {
   function remove(kind: ContactKind, row: Contact, atOnce: boolean): void {
     const [rows, setRows] = rowsOf(kind);
     setRows(rows.filter((each) => each.id !== row.id));
+    setSuppressed((ids) => ids.filter((id) => id !== row.id));
     const words = t('contacts.removed', { address: row.shown });
     if (atOnce) doneAtOnce(words);
     else done(words);
@@ -206,6 +234,23 @@ function AccountPage({ start }: { start: AccountStart }) {
     );
   };
 
+  function change(row: Contact): void {
+    changed.current = row.id;
+    const goes = changeEmail(emails);
+    if (goes.to === 'add') {
+      show('addEmail', 'change');
+      return;
+    }
+    from.current = 'change';
+    setOpened(goes.id);
+    bringIntoView(blocks.current[goes.id], scroll.current, clear, true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(
+      () => moveScreenReaderFocus(blocks.current[goes.id] ?? null),
+      SETTLED_MS,
+    );
+  }
+
   const openedKind: ContactKind = emails.some((row) => row.id === opened) ? 'email' : 'phone';
   const proof = accountProof(t);
 
@@ -237,7 +282,18 @@ function AccountPage({ start }: { start: AccountStart }) {
           onName={() => show('name', 'name')}
           onZone={() => show('zone', 'zone')}
         />
-        {contacts('email')}
+        <View>
+          {contacts('email')}
+          <UndeliverableLines
+            rows={undeliverableAddresses(
+              emails.map((row) => ({ ...row, undeliverable: suppressed.includes(row.id) })),
+            )}
+            onChange={change}
+            onAction={(id, action) => {
+              changes.current[id] = action;
+            }}
+          />
+        </View>
         {contacts('phone')}
       </SummaryPage>
       <Ask
@@ -281,8 +337,8 @@ function AccountPage({ start }: { start: AccountStart }) {
         opener={opener}
         onClose={() => setScreen(null)}
         onSave={(next) => {
-          setName(next);
           if (yours) saveName(next);
+          else setTheirs(next);
           done(t('nameCard.saved', { name: next }));
 
           return Promise.resolve(null);
@@ -351,6 +407,7 @@ function AccountPage({ start }: { start: AccountStart }) {
           onVerified={(row) => {
             const [rows, setRows] = rowsOf(verifying.kind);
             setRows(rows.map((each) => (each.id === row.id ? { ...each, verified: true } : each)));
+            setSuppressed((ids) => ids.filter((id) => id !== row.id));
             done(verifiedWords(row, verifying.kind, t));
           }}
         />

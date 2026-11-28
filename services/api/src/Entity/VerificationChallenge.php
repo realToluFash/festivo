@@ -10,6 +10,7 @@ use App\Enum\VerificationChannel;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Psl\Type;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
@@ -19,6 +20,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_verification_challenge_phone', columns: ['phone_number_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_live_challenge_per_email', columns: ['email_address_id'], options: ['where' => '(revoked_at IS NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_live_challenge_per_phone', columns: ['phone_number_id'], options: ['where' => '(revoked_at IS NULL)'])]
+#[ORM\Index(name: 'idx_verification_challenge_phone_sign_in', columns: ['phone_sign_in_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_live_challenge_per_phone_sign_in', columns: ['phone_sign_in_id'], options: ['where' => '(revoked_at IS NULL)'])]
 class VerificationChallenge
 {
     use Timestampable;
@@ -42,6 +45,10 @@ class VerificationChallenge
     #[ORM\ManyToOne(targetEntity: PhoneNumber::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?PhoneNumber $phoneNumber = null;
+
+    #[ORM\ManyToOne(targetEntity: PhoneSignIn::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?PhoneSignIn $phoneSignIn = null;
 
     #[ORM\Column(type: Types::STRING, length: 64)]
     private string $codeHash;
@@ -71,7 +78,7 @@ class VerificationChallenge
     private bool $whatsAppDelivered = false;
 
     public function __construct(
-        EmailAddress|PhoneNumber $subject,
+        EmailAddress|TextableContact $subject,
         string $codeHash,
         DateTimeImmutable $expiresAt,
     ) {
@@ -82,9 +89,12 @@ class VerificationChallenge
         if ($subject instanceof EmailAddress) {
             $this->channel = VerificationChannel::Email;
             $this->emailAddress = $subject;
-        } else {
+        } elseif ($subject instanceof PhoneNumber) {
             $this->channel = VerificationChannel::Phone;
             $this->phoneNumber = $subject;
+        } else {
+            $this->channel = VerificationChannel::Phone;
+            $this->phoneSignIn = Type\instance_of(PhoneSignIn::class)->assert($subject);
         }
     }
 
@@ -106,6 +116,17 @@ class VerificationChallenge
     public function getPhoneNumber(): ?PhoneNumber
     {
         return $this->phoneNumber;
+    }
+
+    public function getPhoneSignIn(): ?PhoneSignIn
+    {
+        return $this->phoneSignIn;
+    }
+
+    /** Where a phone's code goes, whichever of the two it hangs on. */
+    public function getTextable(): ?TextableContact
+    {
+        return $this->phoneNumber ?? $this->phoneSignIn;
     }
 
     public function getCodeHash(): string

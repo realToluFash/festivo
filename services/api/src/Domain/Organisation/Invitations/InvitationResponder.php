@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Invitations;
 
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Model\RegistrationResult;
@@ -34,9 +36,11 @@ final readonly class InvitationResponder
     public function __construct(
         private InvitationRepository $invitationRepository,
         private MembershipMachine $membershipMachine,
+        private ManagedAccounts $managedAccounts,
         private UserRegistrar $userRegistrar,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -76,6 +80,7 @@ final readonly class InvitationResponder
     public function accept(Invitation $invitation, User $user): Membership
     {
         $this->refuseUnless($invitation, $user);
+        $this->managedAccounts->refuseUnlessHome($user, $invitation->getOrganisation(), MembershipChannel::Invitation->value);
 
         return $this->entityManager->wrapInTransaction(function () use ($invitation, $user): Membership {
             $membership = $this->join($invitation, $user);
@@ -117,6 +122,8 @@ final readonly class InvitationResponder
             throw new ApiException(ErrorCode::EmailTaken, $this->translator->trans('invitations.email_taken'));
         }
 
+        $this->managedAccounts->refuseInvitedAddress($invitation, $name);
+
         return $this->entityManager->wrapInTransaction(function () use ($invitation, $name, $password, $request): RegistrationResult {
             $result = $this->userRegistrar->registerFromInvitation($invitation, $name, $password, $request);
             $this->join($invitation, $result->user);
@@ -126,9 +133,19 @@ final readonly class InvitationResponder
         });
     }
 
-    /** Whose it is first: somebody else is told it is not theirs, not what became of it. */
+    /** A phone-only account (sc-4235) joins an organisation only once it holds the invited address, verified. */
+    public function needsEmail(User $user): bool
+    {
+        return !$user->hasVerifiedEmailAddress() && true === $user->getPrimaryPhoneNumber()?->isVerified();
+    }
+
+    /** A phone-only account is asked for the address before anything, as it can match no invitation yet; then whose it is: somebody else is told it is not theirs, not what became of it. */
     private function refuseUnless(Invitation $invitation, User $user): void
     {
+        if ($this->needsEmail($user)) {
+            throw new ApiException(ErrorCode::InvitationNeedsEmail, $this->translator->trans('invitations.needs_email'));
+        }
+
         if (!$this->isFor($invitation, $user)) {
             throw new ApiException(ErrorCode::InvitationNotYours, $this->translator->trans('invitations.not_yours'));
         }
@@ -155,6 +172,7 @@ final readonly class InvitationResponder
     {
         $organisation = Type\instance_of(Organisation::class)->coerce($invitation->getOrganisation());
         $role = Type\instance_of(Role::class)->coerce($invitation->getRole());
+        $this->hardLimits->requireSeatToAccept($organisation);
 
         $membership = $this->membershipMachine->join($organisation, $user, $role, MembershipStatus::Active, MembershipChannel::Invitation, $user);
         $invitation->setStatus(InvitationStatus::Accepted);

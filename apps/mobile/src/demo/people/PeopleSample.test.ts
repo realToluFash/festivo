@@ -1,13 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_ROLES,
   ADD_PROMPT,
   addedToast,
   addRefusedLine,
   addView,
+  ALREADY_A_MEMBER,
+  AMAKA,
+  DOTTED,
+  LONG_MOBILE,
+  LONG_ORGANISATION,
+  ONE_WORD_ORGANISATION,
+  outsideTag,
+  UNBROKEN,
+  outsideRefusal,
+  outsideView,
+  readTyped,
+  calledIn,
   firstName,
+  keepWords,
   listed,
+  longOutsiders,
   manages,
+  NOT_JOINED,
+  seenBy,
   noMatchLine,
   notChangedLine,
   offeredMembers,
@@ -27,8 +44,10 @@ import {
   savedWords,
   seesEveryEvent,
   sheetLine,
+  sheetWords,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './PeopleSample.ts';
 
@@ -68,6 +87,20 @@ describe('People on an event in the demo, as one list', () => {
       'Sade Bello',
       'Tom Becker',
       'Kemi Okafor',
+    ]);
+  });
+
+  it('places a service level after Can check guests in, as the web demo does (sc-4002)', () => {
+    const ana = on('Ana Souza');
+    const order = listed(withRole(onEvent, ana.id, 'Can run the floor'));
+
+    expect(order[0]?.role).toBe('Lead');
+    expect(names(order)).toEqual([
+      'Priya Shah',
+      'Sade Bello',
+      'Kemi Okafor',
+      'Tom Becker',
+      'Ana Souza',
     ]);
   });
 
@@ -192,9 +225,42 @@ describe('a person’s sheet', () => {
   });
 });
 
+describe('someone with no account name on the Remove ask (sc-91678)', () => {
+  const [amaka, , , mobile] = longOutsiders();
+  const joined: OnEvent = {
+    id: 'ada@ire.events',
+    name: 'Ada Obiageli Chukwuemeka Oluwaseun Obi',
+    initials: 'AO',
+    tone: 2,
+    role: 'Can edit',
+    outside: false,
+    label: null,
+  };
+
+  it('keeps them as Keep them, never part of an address or a number', () => {
+    expect(amaka && keepWords(amaka)).toBe('Keep them');
+    expect(mobile && keepWords(mobile)).toBe('Keep them');
+    expect(sheetWords(joined).keep).toBe('Keep Ada');
+    expect(mobile && sheetWords(mobile).keep).toBe('Keep them');
+  });
+
+  it('names them whole when their role change does not save', () => {
+    expect(mobile && notChangedLine(mobile)).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
+    expect(amaka && calledIn(amaka)).toBe(AMAKA);
+    expect(calledIn(joined)).toBe('Ada');
+  });
+
+  it('counts a withheld outsider as unnamed too', () => {
+    const [hidden] = seenBy(longOutsiders(), false);
+    expect(hidden && keepWords(hidden)).toBe('Keep them');
+  });
+});
+
 describe('adding people', () => {
-  it('adds members only, found by name, until sc-71', () => {
-    expect(ADD_PROMPT).toBe('Add by name');
+  it('finds members by name and someone from outside by their address (sc-71)', () => {
+    expect(ADD_PROMPT).toBe('Add by name, email or mobile');
   });
 
   it('offers active members not on the event, members first, filtered by name', () => {
@@ -278,6 +344,181 @@ describe('Add people refused part way', () => {
   it('says only the refusal when nobody went in', () => {
     expect(addRefusedLine('Lead', [], ['Julien Moreau'])).toBe(
       'We couldn’t add Julien Moreau, so they’re still ticked. Check your connection and press Add again.',
+    );
+  });
+});
+
+describe('adding someone from outside (sc-71)', () => {
+  it('reads an @ as an email address, digits as a mobile number, and letters as a name', () => {
+    expect(readTyped('Kofi', 'NG')).toEqual({ kind: 'name' });
+    expect(readTyped('  ', 'NG')).toEqual({ kind: 'name' });
+    expect(readTyped('bisi@lagoslights.example', 'NG')).toEqual({
+      kind: 'address',
+      address: {
+        kind: 'email',
+        address: 'bisi@lagoslights.example',
+        shown: 'bisi@lagoslights.example',
+      },
+    });
+    expect(readTyped('bisi@lagos', 'NG')).toEqual({ kind: 'unusable' });
+    expect(readTyped('kofi@', 'NG')).toEqual({ kind: 'unusable' });
+  });
+
+  it('checks a mobile number by the country’s lengths and keeps it in E.164', () => {
+    expect(readTyped('0803 555 0142', 'NG')).toEqual({
+      kind: 'address',
+      address: { kind: 'mobile', address: '+2348035550142', shown: '+234 803 555 0142' },
+    });
+    expect(readTyped('+351 912 345 678', 'NG')).toMatchObject({
+      address: { address: '+351912345678' },
+    });
+    expect(readTyped('0803 12', 'NG')).toEqual({ kind: 'unusable' });
+    expect(readTyped('0803 555 0142 9999 9999 99', 'NG')).toEqual({ kind: 'unusable' });
+  });
+
+  it('offers the address under any role but Lead, and says so under Lead', () => {
+    const email = 'bisi@lagoslights.example';
+
+    expect(outsideView(email, 'NG', 'Can view').kind).toBe('offer');
+    expect(outsideView(email, 'NG', 'Can edit').kind).toBe('offer');
+    expect(outsideView(email, 'NG', 'Lead')).toEqual({ kind: 'leadOff' });
+    expect(outsideView('Kofi', 'NG', 'Lead')).toEqual({ kind: 'none' });
+    expect(outsideView('bisi@', 'NG', 'Can view')).toEqual({ kind: 'unusable' });
+  });
+
+  it('does not offer someone already on the event', () => {
+    expect(outsideView('Kemi.Okafor@example.com', 'NG', 'Can view', onEvent)).toEqual({
+      kind: 'onEvent',
+      name: 'Kemi Okafor',
+    });
+  });
+
+  it('leaves already_a_member to the server, in its own words', () => {
+    const address = {
+      kind: 'email',
+      address: 'Kofi@ire.events',
+      shown: 'Kofi@ire.events',
+    } as const;
+
+    expect(outsideRefusal(address, members)).toBe(ALREADY_A_MEMBER);
+    expect(addRefusedLine('Can view', [], ['Kofi@ire.events'], ALREADY_A_MEMBER)).toBe(
+      'That person is already a member of this organisation.',
+    );
+    expect(outsideRefusal({ ...address, address: 'bisi@lagoslights.example' }, members)).toBeNull();
+  });
+
+  it('puts them on the list as Outside, with their job label, and counts the label to 60', () => {
+    const address = {
+      kind: 'mobile',
+      address: '+2348035550142',
+      shown: '+234 803 555 0142',
+    } as const;
+    const after = withOutside(onEvent, 'Can check guests in', address, ' Bar and drinks ');
+    const added = after.find((one) => one.id === '+2348035550142');
+
+    expect(added).toMatchObject({
+      outside: true,
+      label: 'Bar and drinks',
+      name: '+234 803 555 0142',
+    });
+    expect(rowLine(added as OnEvent, PEOPLE_VIEWERS.julien)).toBe(
+      'Can check guests in · Bar and drinks',
+    );
+    expect(withOutside([], 'Can view', address, '  ')[0]?.label).toBeNull();
+  });
+
+  it('opens each Add state from its link', () => {
+    expect(peopleStart(peopleStateOf('addOutside'))).toMatchObject({
+      adding: true,
+      addTyped: 'bisi@lagoslights.example',
+    });
+    expect(peopleStart(peopleStateOf('addLeadOutside'))).toMatchObject({ addRole: 'Lead' });
+    expect(peopleStart(peopleStateOf('addMemberAddress')).addTyped).toBe('kofi@ire.events');
+  });
+
+  it('names someone not joined yet by their address only to an owner, an admin or the lead (pm #67966)', () => {
+    const start = peopleStart('readOnly');
+    expect(manages(start.viewer, start.onEvent)).toBe(false);
+    const bisi = seenBy(start.onEvent, false).find((one) => one.initials == null);
+    expect(bisi).toMatchObject({
+      name: NOT_JOINED,
+      role: 'Can check guests in',
+      outside: true,
+      label: 'Lighting',
+    });
+    expect(seenBy(start.onEvent, false).some((one) => one.name.includes('lagoslights'))).toBe(
+      false,
+    );
+    expect(bisi?.withheld).toBe(true);
+    expect(JSON.stringify(seenBy(start.onEvent, false))).not.toContain('lagoslights');
+    expect(rowLine(bisi as OnEvent, start.viewer)).toBe('Can check guests in · Lighting');
+    expect(seenBy(start.onEvent, true).find((one) => one.initials == null)?.name).toBe(
+      'bisi@lagoslights.example',
+    );
+    expect(seenBy(start.onEvent, false).filter((one) => one.name === NOT_JOINED)).toHaveLength(1);
+  });
+  it('opens an outsider with a long address on their role sheet, each by its link (sc-70353)', () => {
+    const opened = (state: string) => {
+      const start = peopleStart(peopleStateOf(state));
+
+      return start.onEvent.find((one) => one.id === start.opened?.id);
+    };
+    expect(opened('longAddress')).toMatchObject({ name: AMAKA, outside: true, initials: null });
+    expect(opened('longAddressDots')?.name).toBe(DOTTED);
+    expect(opened('longAddressUnbroken')?.name).toBe(UNBROKEN);
+    expect(opened('longMobile')).toMatchObject({ id: LONG_MOBILE, name: '+234 803 123 4567' });
+    expect(peopleStart('longAddressRemove').opened).toEqual({ id: AMAKA, removing: 'ask' });
+    expect(peopleStart('longMobileRemove').opened).toEqual({ id: LONG_MOBILE, removing: 'ask' });
+    expect(sheetWords(opened('longMobileRemove') as OnEvent).keep).toBe('Keep them');
+    expect(sheetWords(opened('joinedRemove') as OnEvent).keep).toBe('Keep Kemi');
+    expect(peopleStart('longMobileRoleFails')).toMatchObject({
+      roleFails: true,
+      opened: { id: LONG_MOBILE, removing: null },
+    });
+    expect(sheetWords(opened('longMobileRoleFails') as OnEvent).notChanged('Can view')).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
+    expect(peopleStart('longAddress').opened?.removing).toBeNull();
+    expect(sheetWords(opened('longAddress') as OnEvent).removeTitle).toBe(
+      `Remove ${AMAKA} from this event?`,
+    );
+    expect(
+      peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
+    ).toHaveLength(4);
+  });
+});
+
+describe('an organisation name wider than the tag’s line (sc-90472)', () => {
+  it('tags everyone from outside with the long name, and keeps the list as People’s', () => {
+    for (const [state, name] of [
+      ['longOrganisation', LONG_ORGANISATION],
+      ['oneWordOrganisation', ONE_WORD_ORGANISATION],
+    ] as const) {
+      const start = peopleStart(peopleStateOf(state));
+
+      expect(start.world?.organisation).toBe(name);
+      expect(start.onEvent).toEqual(peopleStart('people').onEvent);
+      expect(outsideTag(name)).toBe(`Outside ${name}`);
+    }
+    expect(ONE_WORD_ORGANISATION).toHaveLength(50);
+    expect(ONE_WORD_ORGANISATION).not.toMatch(/\s/u);
+  });
+});
+
+describe('the service levels on someone from outside (sc-4002)', () => {
+  it('offers them to someone from outside, after the event roles, and never to a member', () => {
+    const start = peopleStart(peopleStateOf('longAddress'));
+    const one = start.onEvent.find((each) => each.id === start.opened?.id) as OnEvent;
+
+    expect(sheetWords({ ...one, outside: true }).roles).toEqual([
+      ...EVENT_ROLES,
+      'Can work the floor',
+      'Can work the pass',
+      'Can run the floor',
+    ]);
+    expect(sheetWords({ ...one, outside: false }).roles).toEqual(EVENT_ROLES);
+    expect(sheetWords(one).means('Can run the floor')).toBe(
+      'Starts service, fires courses and acts on any table. Nothing else of the event.',
     );
   });
 });

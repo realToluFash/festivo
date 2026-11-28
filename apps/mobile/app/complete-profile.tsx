@@ -6,7 +6,6 @@ import {
   awaiting,
 } from '@soirely/api-client';
 import {
-  ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   deviceRegion,
   formatDay,
@@ -29,8 +28,10 @@ import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx'
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
+import { ManagedBanner } from '../src/components/ManagedBanner.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OrgTile } from '../src/components/OrgTile.tsx';
+import { Pending } from '../src/components/Pending.tsx';
 import {
   type StepClosed,
   stepClosed,
@@ -48,9 +49,6 @@ import { InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
-
-/** The API's OrganisationRules::NAME_MAXIMUM. */
-const ORGANISATION_NAME_MAXIMUM = 100;
 
 type Errors = Partial<
   Record<'name' | 'organisationName' | 'countryCode' | 'timezone', string | undefined>
@@ -310,7 +308,6 @@ function FoundOrganisation() {
             wrong={errors.organisationName != null}
             submitting={saving}
             value={name}
-            maxLength={ORGANISATION_NAME_MAXIMUM}
             onChangeText={(text) => {
               setName(text);
               setErrors((previous) => ({ ...previous, organisationName: undefined }));
@@ -431,6 +428,15 @@ function Details({
   }, [account.needsOrganisation]);
 
   const offers = offered?.offers ?? [];
+  const managed = offered?.managed ?? null;
+  const managedBanner = managed != null && (
+    <ManagedBanner
+      organisation={managed.organisation.name}
+      message={managed.message}
+      way={false}
+      testID="completeProfile.managed"
+    />
+  );
   const step = organisationStep({
     needsOrganisation: account.needsOrganisation,
     invitations: loaded.invitations.length,
@@ -438,6 +444,7 @@ function Details({
     offers: offers.length,
     own,
     joined: firstJoined != null,
+    managed: managed != null,
   });
   const { invited, listsInvitations, asksForOrganisation, showsOffers: showOffers } = step;
   const single = step.showsSingleInvitation ? loaded.invitations[0] : undefined;
@@ -515,7 +522,7 @@ function Details({
       });
 
       const landsIn = joined ?? firstJoined;
-      if (landsIn != null) await rememberOrganisation(landsIn);
+      if (landsIn != null) await rememberOrganisation(saved.account.id, landsIn);
       // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
       if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
         router.replace('/phone?from=onboarding');
@@ -577,13 +584,19 @@ function Details({
           busy={saving}
           testID={`completeProfile.ask.${singleOffer.id}`}
         />
-        {startOwnButton}
+        {managed == null && startOwnButton}
       </>
     );
   } else if (invited || showOffers) foot = undefined;
 
   // Organisation name focuses as it mounts, so a step that turns out to list invitations must not mount it first: Android's keys stay bound to it once gone, and swallow Tab (sc-41296).
-  if (!loaded.read || !offersRead) return null;
+  if (!loaded.read || !offersRead) {
+    return (
+      <StepScreen nav={nav} waiting>
+        <Pending />
+      </StepScreen>
+    );
+  }
 
   return (
     <StepScreen nav={nav} foot={foot}>
@@ -592,13 +605,15 @@ function Details({
       ) : step.heading === 'offers' ? (
         <Heading
           title={t('steps.organisationTitle')}
-          intro={t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+          {...(managed == null
+            ? { intro: t('domainJoining.intro', { domain: offered?.domain ?? '' }) }
+            : {})}
           answer={askedInstead}
         />
       ) : (
         <Heading title={t('steps.organisationTitle')} />
       )}
-      <View style={styles.form}>
+      <View style={[styles.form, styles.details]}>
         {children}
         {failed != null && (
           <Notice
@@ -626,7 +641,6 @@ function Details({
               autoComplete="name"
               textContentType="name"
               autoCapitalize="words"
-              maxLength={ACCOUNT_NAME_MAXIMUM}
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => organisationInput.current?.focus()}
@@ -675,11 +689,14 @@ function Details({
         )}
 
         {singleOffer != null && (
-          <Panel
-            organisation={singleOffer.name}
-            title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
-            line={t('domainJoining.approvesFirst')}
-          />
+          <View style={styles.offerAndBanner}>
+            <Panel
+              organisation={singleOffer.name}
+              title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
+              line={t('domainJoining.approvesFirst')}
+            />
+            {managedBanner}
+          </View>
         )}
 
         {showOffers && singleOffer == null && (
@@ -703,11 +720,11 @@ function Details({
                 />
               </View>
             ))}
-            {startOwnButton}
+            {managedBanner || startOwnButton}
           </View>
         )}
 
-        {needsOne && stillOpen === 0 && offers.length > 0 && own && (
+        {needsOne && stillOpen === 0 && offers.length > 0 && own && managed == null && (
           <QuietButton
             label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
             onPress={() => {
@@ -718,6 +735,8 @@ function Details({
             testID="completeProfile.askInstead"
           />
         )}
+
+        {step.managedInstead && managedBanner}
 
         {asksForOrganisation && (
           <View style={styles.fields}>
@@ -733,7 +752,6 @@ function Details({
                 state={errors.organisationName != null ? 'blank' : 'plain'}
                 line={errors.organisationName}
                 submitting={saving}
-                maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"
                 textContentType="organizationName"
                 autoCapitalize="words"
@@ -853,7 +871,9 @@ function SingleInvitation({
 
 const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
+  details: { marginTop: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
+  offerAndBanner: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
   offers: { gap: tokens.spaceMd },
   offer: {

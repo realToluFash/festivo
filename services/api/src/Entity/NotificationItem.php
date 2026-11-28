@@ -27,8 +27,9 @@ class NotificationItem
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
-    #[ORM\Column(type: Types::STRING, length: 30, enumType: NotificationCategory::class)]
-    private NotificationCategory $category;
+    /** A NotificationCategory's value, read as stored: a value the enum lacks still reaches the bell (sc-84143). */
+    #[ORM\Column(type: Types::STRING, length: 30)]
+    private string $category;
 
     #[ORM\Column(type: Types::TEXT)]
     private string $title;
@@ -40,7 +41,7 @@ class NotificationItem
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $eventId;
 
-    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 480, nullable: true)]
     private ?string $eventName;
 
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
@@ -79,7 +80,7 @@ class NotificationItem
     ) {
         $this->id = $id;
         $this->user = $user;
-        $this->category = $category;
+        $this->category = $category->value;
         $this->title = $title;
         $this->lines = $lines;
         $this->eventId = $eventId;
@@ -99,7 +100,7 @@ class NotificationItem
         return $this->user;
     }
 
-    public function getCategory(): NotificationCategory
+    public function getCategory(): string
     {
         return $this->category;
     }

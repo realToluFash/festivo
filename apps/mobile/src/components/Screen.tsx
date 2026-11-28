@@ -1,6 +1,7 @@
 import {
   type ReactElement,
   type ReactNode,
+  type Ref,
   type RefCallback,
   type RefObject,
   createContext,
@@ -14,6 +15,7 @@ import {
 } from 'react';
 import {
   AccessibilityInfo,
+  FlatList,
   type HostInstance,
   Keyboard,
   type LayoutChangeEvent,
@@ -23,6 +25,7 @@ import {
   type RefreshControlProps,
   ScrollView,
   type ScrollViewInstance,
+  type ScrollViewProps,
   type StyleProp,
   StyleSheet,
   TextInput,
@@ -41,15 +44,10 @@ import {
   keysOver,
   liftNeeded,
   liftUnderFocus,
-  type InContent,
-  type IntoView,
   type LiftFromTop,
   offsetAboveKeyboard,
   scrollInsets,
   settleLifts,
-  settledAnswer,
-  settledOffsetKeeping,
-  shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
@@ -75,11 +73,15 @@ import {
   keyboardTopNow,
   settledLift,
   putKeysDownThen,
+  scrollLaidOut,
   useKeysUp,
   watchKeyboardTop,
 } from './keyboardWatch.ts';
+import { type Sight, SETTLED_MS, bringIntoView, followIntoView } from './intoView.ts';
 
-interface ScreenScrollView {
+export { SETTLED_MS } from './intoView.ts';
+
+export interface ScreenScrollView {
   ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
@@ -93,6 +95,8 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
+  /** Called with each offset the native scroll view reports. */
+  scrolled: Set<(y: number) => void>;
   /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or, once no step is closing, the keys come up again or a field takes focus. */
   hold(more: number): void;
   /** Scrolls to `y` without letting the hold go, as a scroll a close makes for itself (sc-22357). */
@@ -104,7 +108,6 @@ interface ScreenScrollView {
   /** Whether any answer is coming into view now. */
   answeringNow(): boolean;
 }
-
 export const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
 interface ScreenDock {
@@ -147,6 +150,9 @@ export function WindowOrigin({ children }: { children: ReactNode }) {
     </View>
   );
 }
+
+/** Where the frame's body starts under its header, lower while the offline band shows (sc-83081). */
+export const BodyTop = createContext(0);
 
 /** Where the app's root starts in measureInWindow's frame, for reading the keys' top against it. */
 export function useWindowOrigin(): number {
@@ -313,6 +319,28 @@ export function useFocusedFieldAboveToast(scroll: ScreenScrollView): void {
   }, [scroll]);
 }
 
+/** Keeps the focused field above the keys each time the scroll view resizes under them, where no lift group will: in a sheet the page pads for the keys only after the keys' own scroll to the field has run, and a group held still leaves the field under the docked foot (sc-67886). */
+export function useFocusedFieldAboveKeys(scroll: ScreenScrollView, on: boolean): void {
+  useEffect(() => {
+    if (!on) return undefined;
+    const lift = () => {
+      const keyboardTop = keyboardTopNow(scroll.origin.current);
+      if (keyboardTop == null) return;
+      const groups = [...scroll.lifts].map(
+        (measure) => new Promise<LiftFromTop>((resolve) => measure(resolve)),
+      );
+      void Promise.all(groups).then((ys) => {
+        if (ys.every((y) => y == null)) liftAboveKeyboard(scroll, focusedField(), keyboardTop);
+      });
+    };
+    scroll.resized.add(lift);
+
+    return () => {
+      scroll.resized.delete(lift);
+    };
+  }, [scroll, on]);
+}
+
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
   const room = useContext(Dock)?.room;
@@ -379,74 +407,13 @@ export function useScrolledToTop(
   return top;
 }
 
-// VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
-export const SETTLED_MS = 500;
-
-interface Sight {
-  when?: IntoView;
-  /** The sight ends at the keys while they are up. */
-  aboveKeys?: boolean;
-  /** Stays wholly in sight as the scroll goes back up, when the view can show with it. */
-  keep?: ScreenReaderTarget | null;
-  /** The scroll keeps the hold, as `scrollHolding`. */
-  holding?: boolean;
-}
-
-function bringIntoView(
-  scroll: ScreenScrollView | null,
-  line: ScreenReaderTarget | null,
-  animated: boolean,
-  { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
-  measured: () => void = () => {},
-): void {
-  const view = scroll?.ref.current;
-  const content = view?.getInnerViewRef();
-  const scrollHost = view?.getNativeScrollRef();
-  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return measured();
-
-  const kept = (then: (at: InContent | null) => void) =>
-    keep == null
-      ? then(null)
-      : keep.measureLayout(
-          content,
-          (_x, contentY, _w, height) => then({ contentY, height }),
-          () => then(null),
-        );
-
-  // A field in another screen's scroll fails to measure here, and that screen brings it.
-  line.measureLayout(
-    content,
-    (_x, contentY, _w, height) => {
-      kept((keptAt) =>
-        scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
-          const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
-          const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
-          const at = {
-            contentY,
-            height,
-            offset: scroll.offset.current,
-            shown,
-            margin: tokens.spaceLg,
-          };
-          const to = settledOffsetKeeping(at, when, keptAt);
-          if (to != null && holding) scroll.scrollHolding(to);
-          else if (to != null) view.scrollTo({ y: to, animated });
-          measured();
-        }),
-      );
-    },
-    () => measured(),
-  );
-}
-
 /** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
 function useCheckedFieldInView(scroll: ScreenScrollView): void {
   useEffect(() => {
     let cancel = () => {};
-    const unwatch = watchCheckedField((field) => {
+    const unwatch = watchCheckedField((field, inView, jump) => {
       cancel();
-      cancel = followIntoView(scroll, () => field);
+      cancel = followIntoView(scroll, () => field, { inView, jump });
     });
 
     return () => {
@@ -454,32 +421,6 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
       unwatch();
     };
   }, [scroll]);
-}
-
-/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does and returns what stops it sooner. */
-function followIntoView(
-  scroll: ScreenScrollView,
-  shown: () => ScreenReaderTarget | null,
-  {
-    alsoOnHide = false,
-    answering = () => {},
-  }: { alsoOnHide?: boolean; answering?: (on: boolean) => void } = {},
-): () => void {
-  const sight = { aboveKeys: true };
-  const bring = () => bringIntoView(scroll, shown(), true, sight);
-  // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
-  const keys = [Keyboard.addListener('keyboardDidShow', bring)];
-  if (alsoOnHide) keys.push(Keyboard.addListener('keyboardDidHide', bring));
-  scroll.resized.add(bring);
-  const unwatch = () => {
-    keys.forEach((key) => key.remove());
-    scroll.resized.delete(bring);
-  };
-
-  return settledAnswer(bring, SETTLED_MS, (on) => {
-    answering(on);
-    if (!on) unwatch();
-  });
 }
 
 /** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
@@ -509,6 +450,27 @@ function settleOnto(
 export interface BroughtIntoView {
   shown: RefObject<ViewInstance | null>;
   read: RefObject<ViewInstance | null>;
+}
+
+/** Keeps the control under TalkBack's focus in sight each time `asked` is a new answer that grows the page above it: pushed wholly out of sight, TalkBack moves its focus to the nearest view still in sight and reads it before anything said (sc-43907, sc-22357). Null or false asks nothing. */
+export function useKeptInSight(
+  asked: object | boolean | null,
+  { aboveKeys = false, holding = false }: Pick<Sight, 'aboveKeys' | 'holding'> = {},
+): RefObject<ViewInstance | null> {
+  const scroll = useContext(ScreenScroll);
+  const kept = useRef<ViewInstance>(null);
+
+  useLayoutEffect(() => {
+    if (asked == null || asked === false) return;
+
+    const keep = () =>
+      bringIntoView(scroll, kept.current, false, { when: 'outOfSight', aboveKeys, holding });
+    keep();
+    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the control under the keys (sc-18587).
+    return afterMount(keep);
+  }, [asked, scroll, aboveKeys, holding]);
+
+  return kept;
 }
 
 /** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read` (`readRef` when given). */
@@ -696,7 +658,8 @@ export function useStepClose(
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
   const holder = useRef<ViewInstance | null>(null);
-  const closer = useRef<ViewInstance | null>(null);
+  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack read the step's nearest view still in sight before the opener takes focus.
+  const closer = useKeptInSight(closing, { aboveKeys: true, holding: true });
   const toBlur = useRef<HostInstance | null>(null);
   const stepField = useRef<HostInstance | null>(null);
   const stepFieldRef = useCallback((shown: HostInstance | null) => {
@@ -821,7 +784,7 @@ export function useStepClose(
 
       return () => cancels.forEach((stop) => stop());
     },
-    [scroll, to],
+    [closer, scroll, to],
   );
 
   useEffect(() => () => cancel.current(), []);
@@ -842,21 +805,6 @@ export function useStepClose(
       changed.remove();
     };
   }, []);
-
-  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
-  useLayoutEffect(() => {
-    if (!closing) return;
-
-    const keepCloser = () =>
-      bringIntoView(scroll, closer.current, false, {
-        when: 'outOfSight',
-        aboveKeys: true,
-        holding: true,
-      });
-    keepCloser();
-    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the closer under the keys; TalkBack then reads the step's top as the keys go (sc-18587).
-    return afterMount(keepCloser);
-  }, [closing, scroll]);
 
   useEffect(() => {
     if (!closing) return;
@@ -1018,9 +966,9 @@ export function FocusBack({
   return children(useFocusBackToOpener(closed, fallback, 'page'));
 }
 
-/** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
-export function useScreenScrollView() {
-  const windowOrigin = useContext(Origin);
+/** The scroll context a ScrollView provides, and the props that keep it in step with that view; `top` is how far below the window's top the frame measureInWindow reads starts, as an iPad's sheet does. */
+export function useScreenScrollView(top = 0) {
+  const windowOrigin = useContext(Origin) - top;
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
@@ -1047,6 +995,7 @@ export function useScreenScrollView() {
     focusedGroup: new Set(),
     origin,
     offset,
+    scrolled: new Set(),
     answering: (on) => {
       answers.current += on ? 1 : -1;
     },
@@ -1087,6 +1036,7 @@ export function useScreenScrollView() {
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     offset.current = contentOffset.y;
+    screenScroll.scrolled.forEach((scrolled) => scrolled(contentOffset.y));
     const asked = scrollAsked(askedTo.current, contentOffset.y);
     if (asked) askedTo.current = null;
     if (
@@ -1102,7 +1052,10 @@ export function useScreenScrollView() {
     screenScroll,
     scrollProps: {
       ref: scrollView,
-      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onLayout: (event: LayoutChangeEvent) => {
+        screenScroll.resized.forEach((resized) => resized());
+        scrollLaidOut(screenScroll, event.nativeEvent.layout.height);
+      },
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
@@ -1112,16 +1065,33 @@ export function useScreenScrollView() {
     onContentLayout: (event: LayoutChangeEvent) => {
       contentHeight.current = event.nativeEvent.layout.height;
     },
+    contentSized: (height: number) => {
+      contentHeight.current = height;
+    },
   };
 }
 
+export interface ColumnRows<Item> {
+  data: readonly Item[];
+  keyOf: (item: Item) => string;
+  render: (item: Item, index: number) => ReactElement;
+  foot?: ReactNode;
+  /** The rows' end has come within a screen of the bottom. */
+  onEndNear?: () => void;
+}
+
+// Hold five screens of rows mounted, not the default 21 (sc-49170).
+const ROWS_FIRST = 12;
+const ROWS_WINDOW = 5;
+
 /** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
-export function ScrollColumn({
+export function ScrollColumn<Item>({
   children,
   style,
   contentContainerStyle,
   refreshControl,
   away = false,
+  rows,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -1129,8 +1099,11 @@ export function ScrollColumn({
   refreshControl?: ReactElement<RefreshControlProps> | undefined;
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
+  /** Under the children, virtualised rather than every row mounted (sc-49170). */
+  rows?: ColumnRows<Item> | undefined;
 }) {
-  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout, contentSized } =
+    useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
   const underTabs = useUnderTabs();
   const left = useRef<number | null>(null);
@@ -1145,38 +1118,96 @@ export function ScrollColumn({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [away]);
 
+  const { ref: held, ...scrolls } = scrollProps;
+  const shared = {
+    ...scrolls,
+    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (away) return;
+      scrollProps.onScroll(event);
+      if (left.current != null && Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1) {
+        left.current = null;
+      }
+    },
+    onScrollBeginDrag: () => {
+      left.current = null;
+    },
+    style,
+    refreshControl,
+    keyboardShouldPersistTaps: 'handled' as const,
+    showsVerticalScrollIndicator: underTabs === 0,
+    ...scrollInsets(LIFT, docked),
+  };
+  const tabsGap = underTabs > 0 && <View style={{ height: underTabs }} />;
+
+  if (rows != null) {
+    // The column's gap would fall between every row, so it stays on what stands above them.
+    const { gap, rowGap, ...column } = StyleSheet.flatten(contentContainerStyle) ?? {};
+
+    return (
+      <ScreenScroll.Provider value={screenScroll}>
+        <FlatList
+          {...shared}
+          renderScrollComponent={(props) => <HeldScroll {...props} held={held} />}
+          data={rows.data}
+          keyExtractor={rows.keyOf}
+          renderItem={({ item, index }) => rows.render(item, index)}
+          onEndReached={rows.onEndNear}
+          onEndReachedThreshold={1}
+          initialNumToRender={ROWS_FIRST}
+          maxToRenderPerBatch={ROWS_FIRST}
+          windowSize={ROWS_WINDOW}
+          onContentSizeChange={(_, height) => {
+            contentSized(height);
+            restore();
+          }}
+          contentContainerStyle={[styles.grow, heldStyle, column]}
+          ListHeaderComponent={<View style={{ gap, rowGap }}>{children}</View>}
+          ListFooterComponent={
+            <>
+              {rows.foot}
+              {tabsGap}
+            </>
+          }
+        />
+      </ScreenScroll.Provider>
+    );
+  }
+
   return (
     <ScreenScroll.Provider value={screenScroll}>
       <ScrollView
-        {...scrollProps}
-        onScroll={(event) => {
-          if (away) return;
-          scrollProps.onScroll(event);
-          if (
-            left.current != null &&
-            Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1
-          ) {
-            left.current = null;
-          }
-        }}
-        onScrollBeginDrag={() => {
-          left.current = null;
-        }}
+        {...shared}
+        ref={held}
         onContentSizeChange={restore}
-        style={style}
         contentContainerStyle={[styles.grow, heldStyle]}
-        refreshControl={refreshControl}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={underTabs === 0}
-        {...scrollInsets(LIFT, docked)}
       >
         <View onLayout={onContentLayout} style={contentContainerStyle}>
           {children}
         </View>
-        {underTabs > 0 && <View style={{ height: underTabs }} />}
+        {tabsGap}
       </ScrollView>
     </ScreenScroll.Provider>
   );
+}
+
+/** FlatList puts its own ref on the scroll it renders, and the screen's scroll needs that same view. */
+function HeldScroll({
+  held,
+  ref,
+  ...props
+}: ScrollViewProps & {
+  held: RefObject<ScrollViewInstance | null>;
+  ref?: Ref<ScrollViewInstance>;
+}) {
+  return <ScrollView {...props} ref={bothRefs(held, ref)} />;
+}
+
+export function bothRefs<T>(held: RefObject<T | null>, ref: Ref<T> | undefined): RefCallback<T> {
+  return (view) => {
+    held.current = view;
+    if (typeof ref === 'function') ref(view);
+    else if (ref != null) ref.current = view;
+  };
 }
 
 /**
@@ -1203,6 +1234,8 @@ export interface ScreenProps {
   edges?: readonly ('top' | 'bottom' | 'left' | 'right')[];
   style?: ViewStyle;
   contentStyle?: ViewStyle;
+  /** Pull to refresh on a scrolling screen. */
+  refreshControl?: ReactElement<RefreshControlProps> | undefined;
 }
 
 const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const;
@@ -1213,6 +1246,7 @@ export function Screen({
   edges = ALL_EDGES,
   style,
   contentStyle,
+  refreshControl,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
@@ -1275,6 +1309,7 @@ export function Screen({
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={underTabs === 0}
+      refreshControl={refreshControl}
       {...scrollInsets(LIFT, docked != null)}
     >
       <View onLayout={onContentLayout} style={[styles.content, contentStyle]}>

@@ -34,6 +34,10 @@ class Event implements SoftDeletableInterface
 
     public const int HOSTS_MAXIMUM = 6;
 
+    public const int ARRIVAL_NOTE_MAXIMUM = 500;
+    public const int THANK_YOU_MAXIMUM = 280;
+    public const int STAFF_RULES_MAXIMUM = 2000;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -42,7 +46,7 @@ class Event implements SoftDeletableInterface
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Organisation $organisation;
 
-    #[ORM\Column(type: Types::STRING, length: 120)]
+    #[ORM\Column(type: Types::STRING, length: 480)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: EventType::class)]
@@ -88,10 +92,10 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::STRING, length: 3)]
     private string $currency;
 
-    #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 480, nullable: true)]
     private ?string $venueName = null;
 
-    #[ORM\Column(type: Types::STRING, length: 300, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 1200, nullable: true)]
     private ?string $venueAddress = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
@@ -118,9 +122,39 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
 
+    /** The host's, not the venue's: it stays when the venue has neither name nor address (sc-24385). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $arrivalNote = null;
+
+    /** A day in the event's own zone: replies close at its last second (sc-3780). */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $replyBy = null;
+
+    /** The day a save closed replies before the end of Reply by, in the event's zone; null when they close at the end of Reply by (sc-3780). */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $repliesClosedOn = null;
+
     /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
     private array $hosts = [];
+
+    #[ORM\Column(type: Types::STRING, length: self::THANK_YOU_MAXIMUM, nullable: true)]
+    private ?string $thankYou = null;
+
+    /** The staff's house rules (sc-3917), shown as Before you start on everyone's shift page; plain text, at most STAFF_RULES_MAXIMUM code points. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $staffRules = null;
+
+    /** The staffing page's Reminder the day before (sc-4333): on by default. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $staffReminder = true;
+
+    /** Moved by CalendarChangeListener only when what a guest's calendar shows changes, so a pause leaves a subscribed calendar as it was (sc-3627). */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $calendarSequence = 0;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $calendarChangedAt = null;
 
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
@@ -293,6 +327,53 @@ class Event implements SoftDeletableInterface
         $this->pausedAt = null;
     }
 
+    public function getThankYou(): ?string
+    {
+        return $this->thankYou;
+    }
+
+    /** Only ThankYouEditor calls this, once the event is Finished and the line is cleaned (sc-6476). */
+    public function setThankYou(?string $thankYou): void
+    {
+        $this->thankYou = $thankYou;
+    }
+
+    public function getStaffRules(): ?string
+    {
+        return $this->staffRules;
+    }
+
+    public function setStaffRules(?string $staffRules): void
+    {
+        $this->staffRules = $staffRules;
+    }
+
+    public function remindsStaff(): bool
+    {
+        return $this->staffReminder;
+    }
+
+    public function setStaffReminder(bool $on): void
+    {
+        $this->staffReminder = $on;
+    }
+
+    public function getCalendarSequence(): int
+    {
+        return $this->calendarSequence;
+    }
+
+    public function getCalendarChangedAt(): DateTimeImmutable
+    {
+        return $this->calendarChangedAt ?? $this->getCreatedAt();
+    }
+
+    public function calendarChanged(DateTimeImmutable $at): void
+    {
+        ++$this->calendarSequence;
+        $this->calendarChangedAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
     public function setName(string $name): void
     {
         $this->name = $name;
@@ -308,6 +389,36 @@ class Event implements SoftDeletableInterface
     public function setHosts(array $hosts): void
     {
         $this->hosts = $hosts;
+    }
+
+    public function getArrivalNote(): ?string
+    {
+        return $this->arrivalNote;
+    }
+
+    public function setArrivalNote(?string $note): void
+    {
+        $this->arrivalNote = $note;
+    }
+
+    public function getReplyBy(): ?DateTimeImmutable
+    {
+        return $this->replyBy;
+    }
+
+    public function setReplyBy(?DateTimeImmutable $day): void
+    {
+        $this->replyBy = $day;
+    }
+
+    public function getRepliesClosedOn(): ?DateTimeImmutable
+    {
+        return $this->repliesClosedOn;
+    }
+
+    public function setRepliesClosedOn(?DateTimeImmutable $day): void
+    {
+        $this->repliesClosedOn = $day;
     }
 
     public function setType(EventType $type): void

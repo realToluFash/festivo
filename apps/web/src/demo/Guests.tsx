@@ -13,8 +13,18 @@ import {
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
+import { EventNotLoaded, KeptBox } from './KeptOffline.tsx';
+import { type Kept, clockWords, tabStartOf, useKept } from './tabKept.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
+import {
+  EVENT_WORDS,
+  type SampleEvent,
+  TODAY_IDS,
+  eventStateOf,
+  localDay,
+  readsOnly,
+  sampleEvent,
+} from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
@@ -25,25 +35,30 @@ import { ExportDialog } from './GuestExport.tsx';
 import { XW, narrowing } from './guestExport.ts';
 import {
   CHOICES,
+  type CardStepDoes,
   LINK,
-  type Choice,
+  type Filter,
   type Guest,
   type GuestsStart,
   type Invite,
   type ListRow,
   type Pane,
   type Reply,
+  type Values,
   type ViewInAddress,
   addGuest,
   agreeToWhatsApp,
+  changedView,
   choiceWord,
   countsOf,
   guestsAt,
   guestsCardOf,
   guestsStart,
   guestsStateOf,
+  invitesOn,
   markInvited,
   markNotInvited,
+  notYetInvited,
   recordReply,
   reopen,
   replaceLink,
@@ -54,6 +69,13 @@ import {
   viewOf,
 } from './guests.ts';
 import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
+import {
+  CHANGES_EVENT,
+  changesSince,
+  lastLooked,
+  markLooked,
+  resetLooked,
+} from './changedSince.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
 import {
   EMEKA,
@@ -65,19 +87,26 @@ import {
   theirViewerKey,
 } from './guestRequest.ts';
 import { zoneFor } from './dataControl.ts';
-import { SIDEBAR_EVENTS, type Viewer, viewerOf } from './settings.ts';
+import { SIDEBAR_EVENTS, VIEWERS, type Viewer, viewerOf } from './settings.ts';
 import { TheirData } from './TheirData.tsx';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
 import {
+  type Audience,
   MESSAGES_AT,
   NOT_REPLIED,
   changed,
   draftOf,
   freshId,
+  SAMPLE_EVENT,
+  changeId,
+  inviteDraftOf,
   keepInbox,
   keptInbox,
 } from './messages.ts';
+import { NOT_YET_INVITED, oneGuestOf } from './messagesInvite.ts';
+import { changeFor, linkFigures, toldOfKind } from './messagesTell.ts';
+import { TellDialog } from './MessagesTell.tsx';
 import {
   Ask,
   Chevron,
@@ -90,6 +119,26 @@ import { DemoBell } from './DemoBell.tsx';
 import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { GroupChips, GroupsColumn } from './GuestGroups.tsx';
+import {
+  GGW,
+  type GuestGroup,
+  deleteGroup,
+  groupChipsOn,
+  groupNameOf,
+  makeGroup,
+  renameGroup,
+  settleGroup,
+} from './guestGroups.ts';
+import { RemoveAsk, UndoMessage } from './GuestRemove.tsx';
+import {
+  type Removed,
+  type Removing,
+  arrivedIn,
+  companionArrivedIn,
+  putBack,
+  removeGuest,
+} from './guestRemove.ts';
 import './guests.css';
 
 const FOCUSABLE = 'button, a[href], input, textarea, select, [tabindex]';
@@ -98,6 +147,8 @@ const FOCUSABLE = 'button, a[href], input, textarea, select, [tabindex]';
 function firstFocus(start: GuestsStart): string[] {
   const pane = start.pane;
 
+  if (start.undo != null) return ['undo'];
+  if (pane.kind === 'guest' && pane.note === 'backOnList') return ['guest-heading'];
   if (pane.kind === 'edit') {
     if (pane.start.conflict === true) return ['conflict'];
     if (pane.start.duplicate === true) return ['duplicate'];
@@ -131,17 +182,37 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
   const [start] = useState(() => {
     const opened = guestsStart(guestsStateOf(params.get('state')), params);
 
+    if (params.get('state') != null) {
+      if (opened.looked === null) resetLooked();
+      else markLooked(opened.looked === undefined ? opened.clock : new Date(opened.looked));
+    }
+
     return their.state === 'erased' ? { ...opened, list: erasedIn(opened.list, EMEKA.id) } : opened;
   });
   const event = params.get('state') === 'eventDeleted' ? null : sampleEvent(start.event);
+  const kept = useKept(
+    start.event,
+    'guests',
+    clockWords(start.clock, sampleEvent(start.event)?.timeZone ?? 'UTC'),
+    tabStartOf(params.get('state'), params.get('tab')),
+  );
 
   if (event == null) return <EventGone id={start.event} />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={start.event} onRetry={kept.retry} />;
 
   return (
     <EventsShell
       told={start.told}
       renderSide={(tell, covered) => (
-        <EventSidebar event={event} area="guests" now={start.clock} tell={tell} inert={covered} />
+        <EventSidebar
+          event={event}
+          area="guests"
+          now={start.clock}
+          tell={tell}
+          inert={covered}
+          {...(readsOnly(eventStateOf(params.get('state'))) ? { reader: VIEWERS.ana } : {})}
+        />
       )}
     >
       {(tell) => (
@@ -151,6 +222,8 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
           base={viewBase(guestsStateOf(params.get('state')))}
           their={their}
           tell={tell}
+          tellLink={params.get('tell') === 'link'}
+          kept={kept}
         />
       )}
     </EventsShell>
@@ -189,7 +262,8 @@ function EventGone({ id }: { id: string }) {
   );
 }
 
-type Leaving = { then: 'back' } | { then: 'open'; id: string } | { then: 'add' } | null;
+type Leaving =
+  { then: 'back' } | { then: 'open'; id: string } | { then: 'add' } | { then: 'groups' } | null;
 
 function GuestsPage({
   event: sample,
@@ -197,13 +271,18 @@ function GuestsPage({
   base,
   their,
   tell,
+  tellLink,
+  kept,
 }: {
   event: SampleEvent;
   start: GuestsStart;
   base: ViewInAddress;
   their: { state: TheirState; viewer: Viewer };
   tell: Tell;
+  tellLink: boolean;
+  kept: Kept;
 }) {
+  const [linkTold, setLinkTold] = useState<string | null>(tellLink ? 'Kwame Mensah' : null);
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [erase, setErase] = useState<'erasing' | 'erased' | null>(
     their.state === 'erasing' || their.state === 'erased' ? their.state : null,
@@ -214,9 +293,15 @@ function GuestsPage({
   const pending = useRef<string[]>(firstFocus(start));
   const [, rerender] = useReducer((count: number) => count + 1, 0);
   const [list, setList] = useState<Guest[]>(start.list);
-  const [status, setStatus] = useState(start.status);
-  const { choice, q, setChoice, setQ, clear } = useGuestsAddress(base);
+  const [loaded, setStatus] = useState(start.status);
+  const status = kept.offline && !kept.areaKept ? 'failed' : loaded;
+  const { choice, q, since, setChoice, setQ, clear } = useGuestsAddress(base);
+  const [looked, setLooked] = useState(lastLooked);
+  const changeFails = useRef(start.changeFails !== null);
+  const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [dietaryOnly, setDietary] = useState(start.dietary);
+  const [groups, setGroups] = useState<GuestGroup[]>(start.groups);
+  const [groupFilters, setGroupFilters] = useState(start.groupFilters);
   const [menu, setMenu] = useState(start.menu);
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
@@ -228,6 +313,11 @@ function GuestsPage({
     () => new Set(start.asked ?? keptAsked(sample.id)),
   );
   const markEnds = useRef(start.markEnds);
+  const [removing, setRemoving] = useState<Removing | null>(start.removing);
+  const removeEnds = useRef(start.removing?.ends ?? 'removes');
+  const [undo, setUndo] = useState<Removed | null>(start.undo);
+  const removingGuest =
+    removing == null ? null : (list.find((one) => one.id === removing.id) ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<Leaving>(
     start.pane.kind === 'edit' && start.pane.start.discard === true ? { then: 'back' } : null,
@@ -235,20 +325,37 @@ function GuestsPage({
   const lastRow = useRef<string | null>(start.pane.kind === 'guest' ? start.pane.id : null);
   const away = useLeaveAsk(dirty);
   const { stack } = useContext(LayersContext);
-  const manages = start.role === 'owner';
+  const manages = start.role === 'owner' || start.role === 'host';
   const today = todayOf(start.clock);
   const counts = countsOf(list);
-  const card = guestsCardOf(event, list, start.card, start.clock, manages);
-  const { view, shown } = viewOf(
-    list,
-    choice,
-    q,
-    expanded,
-    replyByOf(event.id),
-    manages,
-    dietaryOnly,
-  );
-  const looking = choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly);
+  const plans = start.role === 'owner' || start.role === 'planner';
+  const card = guestsCardOf(event, list, start.card, start.clock, manages, plans);
+  const changes = sample.id === CHANGES_EVENT;
+  const listed = changes ? changesSince(since) : [];
+  const unseen = changes ? changesSince(looked).length : 0;
+  const { view, shown } =
+    choice === 'changed'
+      ? changedView(list, listed, q, start.clock, manages)
+      : viewOf(list, choice, q, expanded, replyByOf(event.id), manages, dietaryOnly, groupFilters);
+  const looking =
+    choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly) || groupFilters.length > 0;
+  const nothingChanged = choice === 'changed' && listed.length === 0;
+
+  /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. A failed fetch leaves the filter, the rows and the read mark as they were. */
+  function choose(next: Filter): void {
+    if (next === choice) return;
+    setChangeFailed(false);
+    if (next !== 'changed') return setChoice(next);
+    if (changeFails.current) return setChangeFailed(true);
+    setChoice('changed', looked);
+    markLooked(start.clock);
+    setLooked(lastLooked());
+  }
+
+  function retryChanged(): void {
+    changeFails.current = false;
+    choose('changed');
+  }
   const open = pane.kind === 'guest' ? pane.id : null;
   const paneGuest = 'id' in pane ? (list.find((one) => one.id === pane.id) ?? null) : null;
 
@@ -279,6 +386,7 @@ function GuestsPage({
     setDirty(false);
     if (next.then === 'open') openGuest(next.id, true);
     else if (next.then === 'add') startAdd(true);
+    else if (next.then === 'groups') openGroups(true);
     else back();
   }
 
@@ -295,8 +403,27 @@ function GuestsPage({
   }
 
   function close(): void {
+    const from = pane.kind;
+
     setPane({ kind: 'none' });
-    focus(`row:${lastRow.current ?? ''}`, 'title');
+    if (from === 'groups') focus('groups', 'title');
+    else focus(`row:${lastRow.current ?? ''}`, 'title');
+  }
+
+  /** sc-3775: a new name on the form becomes a group as the guest is saved. */
+  function settled(values: Values): Values {
+    if (values.group === undefined) return values;
+    const { groups: next, id } = settleGroup(groups, values.group);
+
+    if (next.length !== groups.length) setGroups(next);
+
+    return { ...values, group: id == null ? null : { id } };
+  }
+
+  function openGroups(sure = false): void {
+    if (!sure) return guarded({ then: 'groups' });
+    setPane({ kind: 'groups', start: {} });
+    focus('form-heading');
   }
 
   /** Cancel, Done, Keep their reply: back to where the form opened from. */
@@ -306,7 +433,7 @@ function GuestsPage({
       focus('edit');
     } else if (pane.kind === 'record') {
       setPane({ kind: 'guest', id: pane.id });
-      focus('record', 'step');
+      focus('record', 'record-not-yet', 'step');
     } else if (pane.kind === 'whatsApp') {
       setPane({ kind: 'guest', id: pane.id });
       focus('whatsapp-agree');
@@ -336,7 +463,11 @@ function GuestsPage({
 
   /** sc-26025: the guest just marked leaves a Not yet invited list; the focus goes to the row that took their place. */
   function markedFromQuestion(id: string): void {
-    const rows = viewOf(list, choice, q, expanded, replyByOf(event.id), manages).view;
+    const rows = (
+      choice === 'changed'
+        ? changedView(list, listed, q, start.clock, manages)
+        : viewOf(list, choice, q, expanded, replyByOf(event.id), manages)
+    ).view;
     const ids = rows.kind === 'rows' ? rows.rows.map((row) => row.person.id) : [];
     const at = ids.indexOf(id);
 
@@ -350,6 +481,65 @@ function GuestsPage({
 
     setPane({ kind: 'none' });
     focus(next == null ? 'none-heading' : `row:${next}`, 'title');
+  }
+
+  /** sc-3774: Remove takes them and their companions off at once, Undo open; a 409 or a 404 takes the question's place. */
+  function remove(): void {
+    if (removing == null) return;
+    const { id, ends } = removing;
+
+    removeEnds.current = 'removes';
+    if (ends === 'arrived') {
+      setList((was) => arrivedIn(was, id, '18:05'));
+      setRemoving({ id, ends, refused: 'arrived' });
+      return;
+    }
+    if (ends === 'companionArrived') {
+      setList((was) => companionArrivedIn(was, id, '18:05'));
+      setRemoving({ id, ends, refused: 'companionArrived' });
+      return;
+    }
+    if (ends === 'gone') {
+      setRemoving({ id, ends, refused: 'gone' });
+      return;
+    }
+    const after = removeGuest(list, id);
+
+    setList(after.list);
+    setRemoving(null);
+    setPane({ kind: 'none' });
+    setUndo(after.removed);
+    focus('undo');
+  }
+
+  function removeRefused(): void {
+    if (removing == null) return;
+    const { id, refused } = removing;
+
+    setRemoving(null);
+    if (refused === 'arrived' || refused === 'companionArrived') {
+      setPane({ kind: 'guest', id });
+      focus('arrival', 'guest-heading');
+      return;
+    }
+    const ids = view.kind === 'rows' ? view.rows.map((row) => row.person.id) : [];
+    const at = ids.indexOf(id);
+    const next = at < 0 ? undefined : (ids[at + 1] ?? ids[at - 1]);
+
+    setList((was) => removeGuest(was, id).list);
+    setPane({ kind: 'none' });
+    focus(next == null ? 'title' : `row:${next}`, 'title');
+  }
+
+  function undone(): void {
+    if (undo == null) return;
+    const id = undo.guest.id;
+
+    setList((was) => putBack(was, undo));
+    setUndo(null);
+    lastRow.current = id;
+    setPane({ kind: 'guest', id, note: 'backOnList' });
+    focus('guest-heading');
   }
 
   function invite(id: string, next: Invite | null): void {
@@ -375,6 +565,11 @@ function GuestsPage({
 
       if (navigator.clipboard == null) refused();
       else void navigator.clipboard.writeText(LINK).then(() => invite(id, 'copied'), refused);
+    },
+    onSendInvitation: () => {
+      const one = list.find((guest) => guest.id === id);
+
+      if (one != null) sendInvitations({ kind: 'guest', guest: oneGuestOf(one) });
     },
     onReplace: () => setAsking('replace'),
     onInvite: (next) => invite(id, next),
@@ -421,6 +616,7 @@ function GuestsPage({
       markedFromQuestion(id);
       return true;
     },
+    onRemove: () => setRemoving({ id, ends: removeEnds.current }),
   });
 
   function writeToThem(): void {
@@ -435,9 +631,18 @@ function GuestsPage({
     void navigate(MESSAGES_AT);
   }
 
-  function onStep(): void {
-    if (card.step === 'add') startAdd();
-    else if (card.step === 'write') writeToThem();
+  function sendInvitations(to: Audience): void {
+    const inbox = keptInbox();
+
+    keepInbox(changed(inbox, { kind: 'compose', draft: inviteDraftOf(to, freshId(inbox)) }));
+    void navigate(MESSAGES_AT);
+  }
+
+  function onStep(does: CardStepDoes | null | undefined): void {
+    if (does === 'add') startAdd();
+    else if (does === 'write') writeToThem();
+    else if (does === 'changeDates')
+      void navigate(`/demo/events/${event.id}`, { state: { open: 'dates' } });
     else tell('Make live has its own design.');
   }
 
@@ -464,21 +669,29 @@ function GuestsPage({
     return () => at?.removeEventListener('keydown', listen);
   });
 
-  const plus = manages && status === 'ready' && list.length > 0;
+  const plus = manages && status === 'ready' && card.step !== 'add';
   const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
-  const columns = list.length > 0 || pane.kind === 'add';
-  const stepWord =
-    card.step === 'add'
+  const inviting =
+    manages &&
+    status === 'ready' &&
+    invitesOn(event, start.clock) &&
+    notYetInvited(list).length > 0;
+  const columns = list.length > 0 || pane.kind === 'add' || pane.kind === 'groups';
+  const wordOf = (does: CardStepDoes | null | undefined) =>
+    does === 'add'
       ? GW.addGuest
-      : card.step === 'write'
+      : does === 'write'
         ? GW.writeToThem
-        : card.step === 'makeLive'
+        : does === 'makeLive'
           ? GW.makeLive
-          : null;
+          : does === 'changeDates'
+            ? EVENT_WORDS.changeDates
+            : null;
 
   return (
     <div ref={root} className="desk-page ev-page gs">
       <div className="ev-wide gs-page">
+        <KeptBox kept={kept} />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label={GW.crumb}>
             <ol>
@@ -503,6 +716,17 @@ function GuestsPage({
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
+          {status === 'ready' && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              aria-pressed={pane.kind === 'groups'}
+              data-focus="groups"
+              onClick={() => openGroups()}
+            >
+              {GGW.groups}
+            </button>
+          )}
           {exports && (
             <button
               type="button"
@@ -511,6 +735,16 @@ function GuestsPage({
               onClick={() => setExporting({})}
             >
               {XW.export}
+            </button>
+          )}
+          {inviting && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="send-invitations"
+              onClick={() => sendInvitations(NOT_YET_INVITED)}
+            >
+              {GW.sendInvitations}
             </button>
           )}
           {plus && (
@@ -526,11 +760,24 @@ function GuestsPage({
           <div className="desk-failed gs-failed" role="alert">
             <h2>{GW.loadFailed}</h2>
             <p className="desk-line">{GW.loadFailedLine}</p>
-            <TextAction label={GW.retry} onClick={() => setStatus('ready')} />
+            <TextAction
+              label={GW.retry}
+              onClick={() => {
+                if (kept.offline) kept.retry();
+                setStatus('ready');
+              }}
+            />
           </div>
         ) : (
           <>
-            <GuestsCardView card={card} mesh={event.mesh} step={stepWord} onStep={onStep} />
+            <GuestsCardView
+              card={card}
+              mesh={event.mesh}
+              step={wordOf(card.step)}
+              also={wordOf(card.also)}
+              onStep={() => onStep(card.step)}
+              onAlso={() => onStep(card.also)}
+            />
             {columns && (
               <div className="gs-cols">
                 <section className="gs-list" aria-label={GW.title}>
@@ -540,9 +787,10 @@ function GuestsPage({
                         q={q}
                         choice={choice}
                         counts={counts}
+                        changed={choice === 'changed' ? listed.length : unseen}
                         menu={menu}
                         onQ={setQ}
-                        onChoice={setChoice}
+                        onChoice={choose}
                         onMenu={setMenu}
                       />
                       {manages && (
@@ -559,6 +807,21 @@ function GuestsPage({
                           </button>
                         </div>
                       )}
+                      <GroupChips
+                        groups={groups}
+                        list={list}
+                        filter={groupFilters}
+                        onFilter={setGroupFilters}
+                      />
+                      {changeFailed && (
+                        <div className="gs-shown gs-changed-failed" role="alert">
+                          <p>
+                            <Glyph name="alert" size={18} weight={2.2} />
+                            {GW.changedFailed}
+                          </p>
+                          <TextAction label={GW.retry} onClick={retryChanged} />
+                        </div>
+                      )}
                       {looking && (
                         <div className="gs-shown">
                           <p role="status">{GW.shown(shown, counts.all)}</p>
@@ -567,11 +830,27 @@ function GuestsPage({
                             onClick={() => {
                               clear();
                               setDietary(false);
+                              setGroupFilters([]);
                             }}
                           />
                         </div>
                       )}
-                      {shown === 0 ? (
+                      {nothingChanged ? (
+                        <div className="gs-none" role="status">
+                          <h2 tabIndex={-1} data-focus="none-heading">
+                            {GW.nothingChanged}
+                          </h2>
+                          <TextAction
+                            label={GW.showAllGuests}
+                            onClick={() => {
+                              clear();
+                              setDietary(false);
+                              setGroupFilters([]);
+                              focus('find');
+                            }}
+                          />
+                        </div>
+                      ) : shown === 0 ? (
                         <div className="gs-none" role="status">
                           <h2 tabIndex={-1} data-focus="none-heading">
                             {GW.noMatch}
@@ -582,12 +861,19 @@ function GuestsPage({
                             onClick={() => {
                               clear();
                               setDietary(false);
+                              setGroupFilters([]);
                               focus('find');
                             }}
                           />
                         </div>
                       ) : view.kind === 'rows' ? (
-                        <Rows rows={view.rows} open={open} event={event.id} onOpen={openGuest} />
+                        <Rows
+                          rows={view.rows}
+                          open={open}
+                          event={event.id}
+                          groups={groups}
+                          onOpen={openGuest}
+                        />
                       ) : (
                         view.groups.map((group) => (
                           <Group
@@ -598,6 +884,7 @@ function GuestsPage({
                             collapsed={group.collapsed}
                             open={open}
                             event={event.id}
+                            groups={groups}
                             onOpen={openGuest}
                             onAll={() => {
                               setExpanded((was) => new Set([...was, group.reply]));
@@ -612,7 +899,7 @@ function GuestsPage({
                 <section
                   ref={column}
                   className="gs-column"
-                  aria-label={paneGuest?.name ?? GW.title}
+                  aria-label={pane.kind === 'groups' ? GGW.groups : (paneGuest?.name ?? GW.title)}
                 >
                   {pane.kind === 'none' && shown > 0 && event.status !== 'draft' && (
                     <p className="gs-pick">{GW.pick}</p>
@@ -633,6 +920,7 @@ function GuestsPage({
                     <GuestView
                       key={paneGuest.id}
                       guest={paneGuest}
+                      group={groupNameOf(groups, paneGuest.group)}
                       event={event}
                       clock={start.clock}
                       manages={manages}
@@ -668,12 +956,15 @@ function GuestsPage({
                       key={paneGuest.id}
                       guest={paneGuest}
                       list={list}
+                      groups={groups}
                       start={pane.start}
                       focus={focus}
                       onDirty={setDirty}
                       onCancel={() => guarded({ then: 'back' })}
                       onSave={(values) => {
-                        setList((was) => saveGuest(was, paneGuest.id, values));
+                        const saved = settled(values);
+
+                        setList((was) => saveGuest(was, paneGuest.id, saved, today));
                         setDirty(false);
                         setPane({ kind: 'guest', id: paneGuest.id });
                         tell(GW.saved);
@@ -717,10 +1008,34 @@ function GuestsPage({
                   {pane.kind === 'add' && (
                     <AddForm
                       list={list}
+                      groups={groups}
                       start={pane.start}
                       focus={focus}
                       onDone={back}
-                      onAdd={(values) => setList((was) => addGuest(was, values, today))}
+                      onAdd={(values) => {
+                        const added = settled(values);
+
+                        setList((was) => addGuest(was, added, today));
+                      }}
+                    />
+                  )}
+                  {pane.kind === 'groups' && (
+                    <GroupsColumn
+                      groups={groups}
+                      list={list}
+                      manages={manages}
+                      start={pane.start}
+                      focus={focus}
+                      onMake={(name) => setGroups((was) => makeGroup(was, name).groups)}
+                      onRename={(id, name) => setGroups((was) => renameGroup(was, id, name))}
+                      onDelete={(id) => {
+                        const after = deleteGroup(groups, list, id);
+
+                        setGroups(after.groups);
+                        setList(after.list);
+                        setGroupFilters((was) => was.filter((one) => one !== id));
+                      }}
+                      onDone={close}
                     />
                   )}
                 </section>
@@ -742,6 +1057,46 @@ function GuestsPage({
             setAsking(null);
             setPane({ kind: 'guest', id: paneGuest.id, note: 'linkReplaced' });
             focus('replace');
+            if (sample.id === SAMPLE_EVENT) setLinkTold(paneGuest.name);
+          }}
+        />
+      )}
+      {removing != null && removingGuest != null && (
+        <RemoveAsk
+          guest={removingGuest}
+          removing={removing}
+          onKeep={() => {
+            setRemoving(null);
+            focus('remove');
+          }}
+          onRemove={remove}
+          onBack={removeRefused}
+        />
+      )}
+      {undo != null && (
+        <UndoMessage
+          key={undo.guest.id}
+          removed={undo}
+          onUndo={undone}
+          onGone={() => setUndo(null)}
+        />
+      )}
+      {linkTold != null && (
+        <TellDialog
+          tell={tell}
+          changes={[toldOfKind('link', linkTold)]}
+          figures={linkFigures(linkTold)}
+          onNotNow={() => setLinkTold(null)}
+          onSent={(sent) => {
+            const was = keptInbox();
+            const told = [toldOfKind('link', linkTold)];
+
+            setLinkTold(null);
+            if (!sent.allTold)
+              keepInbox({
+                ...was,
+                outs: [...was.outs, changeFor(told, sent.figures, sent.note, changeId(was))],
+              });
           }}
         />
       )}
@@ -752,7 +1107,10 @@ function GuestsPage({
           day={localDay(start.clock, event.timeZone)}
           inView={shown}
           everyone={counts.all}
-          narrowing={narrowing(choice, q)}
+          narrowing={narrowing(choice, q, [
+            ...(manages && dietaryOnly ? [GW.dietaryNotes] : []),
+            ...groupChipsOn(groups, list, groupFilters),
+          ])}
           needs={manages}
           onClose={() => {
             setExporting(null);
@@ -797,31 +1155,33 @@ function GuestsPage({
   );
 }
 
-function SearchRow({
+export function SearchRow({
   q,
   choice,
   counts,
+  changed,
   menu,
   onQ,
   onChoice,
   onMenu,
 }: {
   q: string;
-  choice: Choice;
+  choice: Filter;
   counts: ReturnType<typeof countsOf>;
+  changed: number;
   menu: boolean;
   onQ: (q: string) => void;
-  onChoice: (choice: Choice) => void;
+  onChoice: (choice: Filter) => void;
   onMenu: (open: boolean) => void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  const items = CHOICES.filter(
-    (key) => (key !== 'walkIn' && key !== 'notYet') || counts[key] > 0,
-  ).map((key) => ({
-    key,
-    word: choiceWord(key),
-    count: counts[key],
-  }));
+  const apart = changed > 0 || choice === 'changed';
+  const items = [
+    ...(apart ? [{ key: 'changed', word: choiceWord('changed'), count: changed }] : []),
+    ...CHOICES.filter((key) => (key !== 'walkIn' && key !== 'notYet') || counts[key] > 0).map(
+      (key) => ({ key, word: choiceWord(key), count: counts[key] }),
+    ),
+  ];
 
   return (
     <div className="ev-search-row gs-search-row">
@@ -861,14 +1221,14 @@ function SearchRow({
           )}
         </div>
       </div>
-      <div className="gs-menu">
+      <div className={apart ? 'gs-menu has-apart' : 'gs-menu'}>
         <Menu
           items={items}
           picked={choice}
           open={menu}
           onOpen={() => onMenu(true)}
           onClose={() => onMenu(false)}
-          onPick={(key) => onChoice(key as Choice)}
+          onPick={(key) => onChoice(key as Filter)}
         />
       </div>
     </div>
@@ -882,6 +1242,7 @@ function Group({
   collapsed,
   open,
   event,
+  groups,
   onOpen,
   onAll,
 }: {
@@ -891,6 +1252,7 @@ function Group({
   collapsed: boolean;
   open: string | null;
   event: string;
+  groups: readonly GuestGroup[];
   onOpen: (id: string) => void;
   onAll: () => void;
 }) {
@@ -903,7 +1265,7 @@ function Group({
         {word}
         <span className="gs-group-count"> · {figure(count)}</span>
       </h2>
-      <Rows rows={rows} open={open} event={event} onOpen={onOpen} />
+      <Rows rows={rows} open={open} event={event} groups={groups} onOpen={onOpen} />
       {collapsed && <TextAction label={GW.showAll(count)} onClick={onAll} />}
     </section>
   );
@@ -914,24 +1276,27 @@ function Rows({
   rows,
   open,
   event,
+  groups,
   onOpen,
 }: {
   rows: readonly ListRow[];
   open: string | null;
   event: string;
+  groups: readonly GuestGroup[];
   onOpen: (id: string) => void;
 }) {
   return (
     <ul className="desk-rows gs-rows">
       {rows.map((row) => {
         const on = row.person.companion == null && row.person.id === open;
+        const group = row.indent ? null : groupNameOf(groups, row.person.guest.group);
 
         return (
           <li key={row.person.id} className={row.indent ? 'is-companion' : undefined}>
             <a
               href={guestsAt(event, { guest: row.person.guest.id })}
               className={on ? 'desk-row gs-row is-on' : 'desk-row gs-row'}
-              aria-label={row.label}
+              aria-label={group == null ? row.label : `${row.label}, ${GGW.inGroup(group)}`}
               aria-current={on ? 'true' : undefined}
               data-focus={`row:${row.person.id}`}
               onClick={(click) => {
@@ -940,13 +1305,19 @@ function Rows({
               }}
             >
               <MarkLead reply={row.person.reply} />
-              <RowWords title={row.person.name} lines={[row.line]} />
-              {(row.allergy || row.dietary) && (
-                <span className="gs-row-tags" aria-hidden="true">
-                  {row.allergy && <AllergyMark />}
-                  {row.dietary && <span className="gs-tag">{GW.dietaryNotes}</span>}
-                </span>
-              )}
+              <span className="gs-row-mid">
+                <RowWords
+                  title={row.person.name}
+                  lines={row.contact == null ? [row.line] : [row.line, row.contact]}
+                />
+                {(row.allergy || row.dietary || group != null) && (
+                  <span className="gs-row-tags" aria-hidden="true">
+                    {row.allergy && <AllergyMark />}
+                    {row.dietary && <span className="gs-tag">{GW.dietaryNotes}</span>}
+                    {group != null && <span className="gs-tag gg-tag">{group}</span>}
+                  </span>
+                )}
+              </span>
               <Chevron />
             </a>
           </li>

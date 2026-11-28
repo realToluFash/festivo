@@ -12,6 +12,10 @@ import { routes } from '../../index.tsx';
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
 const ADMIN = { id: 'role_2', seededAs: 'administrator', name: null };
 const MEMBER = { id: 'role_4', seededAs: 'member', name: null };
+
+function named<Member>(...members: Member[]): { count: number; named: Member[] } {
+  return { count: members.length, named: members };
+}
 const READER = { role: MEMBER, permissions: ['events.read', 'events.manage'] };
 
 const PAGE = {
@@ -39,20 +43,30 @@ const PAGE = {
       was: null,
     },
   ],
-  passwordOnly: [
+  passwordOnly: named(
     { userId: 'user_2', name: 'Priya Shah', role: ADMIN },
     { userId: 'user_3', name: 'Ana Souza', role: MEMBER },
-  ],
-  withoutTwoFactor: [],
+  ),
+  withoutTwoFactor: named(),
   twoFactorDeadline: { at: '2026-11-11T10:00:00+00:00', written: 'unused' },
   inactivityLimit: { organisationId: 'org_1', organisation: 'Ìrè Events', days: 30 },
   ownTwoFactor: true,
   ownProvider: true,
 };
 
+const PASSED = {
+  at: '2026-10-24T13:20:00+00:00',
+  written: 'Saturday, Oct 24 at 14:20 WAT',
+  overdue: true,
+};
+
 const GOOGLE: LinkedProvider = { provider: 'google', email: 'folake@gmail.com' };
 
-function signedIn(organisation: Membership, providers: LinkedProvider[] = [GOOGLE]): void {
+function signedIn(
+  organisation: Membership,
+  providers: LinkedProvider[] = [GOOGLE],
+  others: Membership[] = [],
+): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -64,7 +78,7 @@ function signedIn(organisation: Membership, providers: LinkedProvider[] = [GOOGL
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: 'Africa/Lagos',
     waitingFor: null,
@@ -191,6 +205,8 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
     );
     answering({ ...PAGE, ownTwoFactor: false });
     const router = open();
+    const arrivals: unknown[] = [];
+    router.subscribe((state) => arrivals.push(state.location.state));
 
     expect(await screen.findByText('1 rule needs you')).toBeDefined();
     expect(
@@ -211,6 +227,7 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals).toContainEqual({ opens: 'turnOn' });
   });
 
   it('under Google or Apple only, a member with none linked gets the step, and the hold says why', async () => {
@@ -263,10 +280,10 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
       ...PAGE,
       everyoneNeedsTwoFactor: true,
       ownTwoFactor: false,
-      withoutTwoFactor: [
+      withoutTwoFactor: named(
         { userId: 'user_2', name: 'Priya Shah', role: ADMIN },
         { userId: 'user_3', name: 'Ana Souza', role: MEMBER },
-      ],
+      ),
     });
     open();
 
@@ -507,7 +524,7 @@ describe('changing a rule (sc-30192)', () => {
     signedIn(membership());
     answering({
       ...PAGE,
-      withoutTwoFactor: [{ userId: 'user_3', name: 'Ana Souza', role: MEMBER }],
+      withoutTwoFactor: named({ userId: 'user_3', name: 'Ana Souza', role: MEMBER }),
     });
     open();
 
@@ -521,6 +538,58 @@ describe('changing a rule (sc-30192)', () => {
       'Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.',
       'Ana Souza doesn’t have it yet.',
     ]);
+  });
+
+  it('picking For everyone names three without two-factor, and counts four or more', async () => {
+    signedIn(membership());
+    answering({
+      ...PAGE,
+      withoutTwoFactor: named(
+        { userId: 'user_2', name: 'Priya Shah', role: ADMIN },
+        { userId: 'user_3', name: 'Ana Souza', role: MEMBER },
+        { userId: 'user_4', name: 'Tunde Bakare', role: MEMBER },
+      ),
+    });
+    open();
+
+    fireEvent.click(await row(/Two-factor for managers/));
+    fireEvent.click(dialog().getByRole('radio', { name: /For everyone/ }));
+
+    expect(
+      dialog().getByText('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.'),
+    ).toBeDefined();
+  });
+
+  it.each([
+    [4, '4 people don’t have it yet.'],
+    [1_000_000, '1,000,000 people don’t have it yet.'],
+  ])(
+    'picking For everyone with %i without two-factor gives their number, no names',
+    async (count, line) => {
+      signedIn(membership());
+      answering({ ...PAGE, withoutTwoFactor: { count, named: [] } });
+      open();
+
+      fireEvent.click(await row(/Two-factor for managers/));
+      fireEvent.click(dialog().getByRole('radio', { name: /For everyone/ }));
+
+      expect(dialog().getByText(line)).toBeDefined();
+    },
+  );
+
+  it('picking Google or Apple only with a million who sign in with a password gives their number', async () => {
+    signedIn(membership());
+    answering({ ...PAGE, passwordOnly: { count: 1_000_000, named: [] } });
+    open();
+
+    fireEvent.click(await row(/Sign in any way/));
+    fireEvent.click(dialog().getByRole('radio', { name: /Google or Apple only/ }));
+
+    expect(
+      dialog().getByText(
+        '1,000,000 people can read but not change anything until they link Google or Apple. Their password still signs them in.',
+      ),
+    ).toBeDefined();
   });
 
   it('a pick the viewer does not meet is refused in place of what happens, with its step, and Save stays off', async () => {
@@ -774,15 +843,92 @@ describe('what the rules ask of a member, on every page', () => {
     expect(
       screen.getByText('Ìrè Events requires two-factor, and the time to turn it on has passed.'),
     ).toBeDefined();
-    expect(
-      screen.getByText('Your other organisations and single-event access are not affected.'),
-    ).toBeDefined();
+    expect(screen.getByText('Your single-event access is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Sign-in rules' })).toBeNull();
 
     fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
+  });
+
+  it('past the deadline, a member of another organisation is told it is not affected', async () => {
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+      [GOOGLE],
+      [membership({ id: 'org_2', name: 'Okafor Family' })],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
+  });
+
+  it('past the deadline, a member past it in every other organisation is told only of single events', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [membership({ id: 'org_2', name: 'Okafor Family', twoFactorDue: PASSED })],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(screen.getByText('Your single-event access is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
+  });
+
+  it('past the deadline, another organisation with no two-factor to meet still counts', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [
+        membership({ id: 'org_2', name: 'Okafor Family', twoFactorDue: PASSED }),
+        membership({ id: 'org_3', name: 'Bello Socials', twoFactorDue: null }),
+      ],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
+  });
+
+  it('past the deadline, another organisation whose deadline is tomorrow still counts', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [
+        membership({
+          id: 'org_2',
+          name: 'Okafor Family',
+          twoFactorDue: {
+            at: new Date(Date.now() + 86_400_000).toISOString(),
+            written: 'Tomorrow',
+            overdue: false,
+          },
+        }),
+      ],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
   });
 
   it('past the deadline, stays signed in and says so when signing out cannot reach Soirely', async () => {

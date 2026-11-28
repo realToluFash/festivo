@@ -132,10 +132,9 @@ Two things to know before changing it:
   deployed build while working perfectly in `vite dev`, where no policy is served. The
   `react/forbid-dom-props` rule in `eslint.config.mjs` is what keeps that from being
   found in production instead of at commit time.
-- **Google Fonts is the one third party the page loads** — the stylesheet from
-  `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
-  Instrument Sans would remove both sources and is the better end
-  state.
+- **The page loads no third party, its fonts included.** Instrument Sans and Google Sans
+  are served from the web client's own origin (`apps/web/src/fonts.css`), so `style-src`
+  and `font-src` are `'self'` alone (sc-80882).
 - The object store's public origin is in `connect-src`, because the browser uploads a cover
   or avatar with a `PUT` to it, and in `img-src` beside `'self' data: blob:`, because it
   serves them. The container takes it from `SOIRELY_STORAGE_URL` (compose passes
@@ -207,7 +206,8 @@ told apart from an unknown one: delete it and a replay no longer revokes the cha
 thief keeps the newest token, and the response looks exactly the same.
 
 **It runs once a day, at 03:00 UTC**, from `services/api/config/crontab`, alongside
-`app:prune-unverified-accounts` at 03:10 and `app:prune-pending-registrations` at 03:20.
+`app:prune-unverified-accounts` at 03:10, `app:prune-pending-registrations` at 03:20 and
+`app:prune-phone-sign-ins` at 03:25.
 The prod image carries [supercronic](https://github.com/aptible/supercronic), pinned by
 version and checksum; every deployed environment runs one more container from that image
 with `supercronic /app/config/crontab` as its command. Each run logs its count, 0 included;
@@ -263,9 +263,9 @@ outcome: the alternative is writing a thirty-day credential somewhere readable.
 `POST /api/auth/password/forgot` always answers `202 {}`, so it cannot be used to find out
 who has an account: a password account is emailed a link, an account with no password is
 told how it signs in, and an unknown address is sent nothing. The answer is also the same
-in time: the lookup and the email happen on `kernel.terminate`, after the response has
-gone (`AfterResponse`, the one home for work the client must not wait for), so a
-registered address is no slower to answer. Under
+in time: the lookup and the queueing of the email happen on `kernel.terminate`, after the
+response has gone (`AfterResponse`, the one home for work the client must not wait for), so a
+registered address is no slower to answer. The worker sends it (notifications.md). Under
 FrankenPHP that needs `FinishResponseListener`, which ends the response first: Symfony
 only does so itself for FastCGI and LiteSpeed. It is limited per
 address (keyed on what was typed) and per IP, and a refusal states a time.
@@ -298,7 +298,7 @@ answers `{signedOut}`, the number of other sessions it ended.
   every live refresh token but the chain of the session named, in the same transaction as
   the new hash. A `sessionId` that is not this account's keeps nothing. Other devices are
   refused on their next request (see above).
-- **The primary address is emailed** after the response (`AfterResponse`): when, and the
+- **The primary address is emailed** through the notification queue: when, and the
   device as the devices card reads it (`ReadableAgent`, the PHP twin of `readableAgent()`)
   with the network address and no place, and to reset by "Forgot your password?" if it was
   not them. It links only to sign-in, carries no part of either password, and a failed send
@@ -367,8 +367,8 @@ address is proved first:
 
 A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`
 answers `202 {registration, email}` for every address, new or held by an account, with the
-same shape and in the same time: the password is hashed either way, and every email goes
-after the response (`RegistrationMail`, through `AfterResponse`). The handle lasts 24 hours and works once.
+same shape and in the same time: the password is hashed either way, and either email is one
+queued row (`RegistrationMail`), sent by the worker. The handle lasts 24 hours and works once.
 
 - **New address:** the code goes to it. `POST /api/auth/register/verify` with the handle and
   the code makes the account, its address verified, and signs it in. An unverified holder of
@@ -438,8 +438,12 @@ the same checks, nonce binding and account paths. What differs is what Apple sen
 - **Production values:** `OAUTH_APPLE_ISSUERS` is `https://appleid.apple.com`,
   `OAUTH_APPLE_JWKS_URIS` is `https://appleid.apple.com/auth/keys`, `OAUTH_APPLE_TOKEN_URI`
   is `https://appleid.apple.com/auth/token`, and the client ids are the Services ID (web) and
-  the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
-  team's Sign in with Apple key, which expires within six months and has to be issued again.
+  the bundle id (iOS). Apple's client secret is not a fixed string but an ES256 JWT, which
+  the API signs itself for each web redemption (`AppleClientSecret`, five minutes) from the
+  Sign in with Apple key: `OAUTH_APPLE_WEB_PRIVATE_KEY` (the `.p8`, with its newlines or as
+  `\n`), `OAUTH_APPLE_WEB_KEY_ID` and `OAUTH_APPLE_TEAM_ID`. A missing or unreadable key is
+  logged and answers web sign-in with Apple with `provider.code_not_redeemed`; Google and the
+  app are unaffected (sc-80881).
 
 - **Android.** Apple will not redirect to an app's custom scheme, and returns the name only
   by `form_post`, so on Android the app starts an attempt with the API first

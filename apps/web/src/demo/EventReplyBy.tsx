@@ -8,12 +8,14 @@ import {
   REPLY_BY_WORDS as R,
   type ReplyByCheck,
   haventRepliedOf,
-  replyByCheck,
+  replyByCheckAt,
   showsPreview,
   haventCountOf,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
+import { DemoSaveNotice } from './DemoSaveNotice.tsx';
+import { useDemoAnswer } from './saveAnswer.ts';
 
 const GUEST_WORDS = wordsFor('en');
 const LOCALE = 'en-US';
@@ -24,6 +26,8 @@ function typedFor(state: EditState | null, was: string | null): string {
     case 'replyByError':
       return '2026-11-05';
     case 'replyBySooner':
+    case 'replyByForbidden':
+    case 'replyByGone':
       return '2026-11-03';
     case 'replyByNow':
       return '2026-11-02';
@@ -61,10 +65,11 @@ export function ReplyByPart({
   const [tried, setTried] = useState(state === 'replyByError');
   const [asking, setAsking] = useState<ReplyByCheck | null>(askedFor(state));
   const [askedFirst] = useState(asking != null);
+  const refused = useDemoAnswer();
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
-  const check = replyByCheck({
+  const check = replyByCheckAt({
     next,
     was: replyBy,
     startsAt: event.startsAt,
@@ -81,6 +86,14 @@ export function ReplyByPart({
     if (!askedFirst) field.current?.focus();
   }, [askedFirst]);
 
+  function commit(): void {
+    if (state === 'replyByForbidden' || state === 'replyByGone') {
+      refused.give(state === 'replyByGone' ? 'eventGone' : 'forbidden');
+      return;
+    }
+    onSave(next);
+  }
+
   function save(): void {
     setTried(true);
     if (check === 'tooLate') {
@@ -91,7 +104,7 @@ export function ReplyByPart({
       setAsking(check);
       return;
     }
-    onSave(next);
+    commit();
   }
 
   return (
@@ -112,6 +125,7 @@ export function ReplyByPart({
           onChange={(change) => {
             setTyped(change.target.value);
             setTried(false);
+            refused.clear();
           }}
         />
         {wrong && (
@@ -129,6 +143,7 @@ export function ReplyByPart({
             onClick={() => {
               setTyped('');
               setTried(false);
+              refused.clear();
               field.current?.focus();
             }}
           />
@@ -147,12 +162,13 @@ export function ReplyByPart({
           onKeep={() => setAsking(null)}
           onGo={() => {
             setAsking(null);
-            onSave(next);
+            commit();
           }}
         >
           <p>{asking === 'sooner' ? R.soonerLine : R.nowLine}</p>
         </Ask>
       )}
+      <DemoSaveNotice answered={refused} />
     </Opened>
   );
 }

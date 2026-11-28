@@ -52,6 +52,9 @@ services:
       # service-floor update.
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:-dev-publisher-key-change-me-in-production}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:-dev-subscriber-key-change-me-in-production}
+      # The hub keeps every update for Last-Event-ID replays, and the service heartbeat (sc-4028) adds
+      # six a minute per live event: history is capped at a fixed size. A device that misses more reads again.
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db?size=1000
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins ${MERCURE_CORS_ORIGINS:-http://localhost:5173 http://localhost:8081 http://localhost:19006}
         subscriptions
@@ -81,7 +84,8 @@ services:
       LOCALES_FILE: /locales.json
       EVENT_STATES_FILE: /event-states.json
       QUIET_HOURS_FILE: /quiet-hours.json
-      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
+      GUEST_LANGUAGE_FILE: /guest-language.json
+      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT:-http://smocker:8080/nominatim}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
       STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT}
@@ -94,6 +98,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      MAIL_WEBHOOK_SECRET: ${MAIL_WEBHOOK_SECRET:-postmark:development-webhook-secret}
+      MAIL_WEBHOOK_ALLOWED_RANGES: ${MAIL_WEBHOOK_ALLOWED_RANGES:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       DNS_TXT_ENDPOINT: ${DNS_TXT_ENDPOINT:-http://smocker:8080/dns-query}
       SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
@@ -123,16 +129,20 @@ services:
       OAUTH_APPLE_CLIENT_IDS: ${OAUTH_APPLE_CLIENT_IDS:-soirely-web,soirely-app,com.soirely.app,host.exp.Exponent}
       OAUTH_APPLE_TOKEN_URI: ${OAUTH_APPLE_TOKEN_URI:-http://oidc:8080/apple/token}
       OAUTH_APPLE_WEB_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:-soirely-web}
-      OAUTH_APPLE_WEB_CLIENT_SECRET: ${OAUTH_APPLE_WEB_CLIENT_SECRET:-development-secret}
+      OAUTH_APPLE_TEAM_ID: ${OAUTH_APPLE_TEAM_ID:-DEVTEAM000}
+      OAUTH_APPLE_WEB_KEY_ID: ${OAUTH_APPLE_WEB_KEY_ID:-DEVKEY0000}
+      OAUTH_APPLE_WEB_PRIVATE_KEY: '${OAUTH_APPLE_WEB_PRIVATE_KEY:------BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgV//Z8kpJkoVvFli+\nTxeBiDJ8otbUmWCpfftEotFilymhRANCAATCeZG05l+Nq/MIdW/eBJdevaMIffGE\n7n/d8D9fZTctSiEdGxmXmjC8ZYJumSnUj8Nh31ML6Zn0k+yjQbaM7uSk\n-----END PRIVATE KEY-----\n}'
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
+      DEFAULT_URI: ${DEFAULT_URI:-http://localhost:${API_PORT:-8080}}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
-      TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       MINIMUM_APP_VERSION_IOS: ${MINIMUM_APP_VERSION_IOS:-}
       MINIMUM_APP_VERSION_ANDROID: ${MINIMUM_APP_VERSION_ANDROID:-}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
       REDIS_PORT_INTERNAL: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL}
       MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY}
@@ -163,6 +173,8 @@ services:
       - ./event-states.json:/event-states.json:ro
       # The hours only Event day pushes come through, which the clients' footer reads too (sc-20494).
       - ./quiet-hours.json:/quiet-hours.json:ro
+      # Which language a guest reads in, whose cases the clients test against too (sc-3790).
+      - ./guest-language.json:/guest-language.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:
@@ -207,6 +219,39 @@ services:
     stop_grace_period: 10s
     restart: unless-stopped
 
+  # Beats on each service topic while service is on (sc-4028), so a station's strip knows it is connected.
+  service-heartbeat:
+    build: *api-build
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        until php bin/console doctrine:migrations:up-to-date --quiet; do sleep 2; done;
+        exec php bin/console app:service:heartbeat --time-limit=3600 --memory-limit=128
+    labels:
+      soirely.after-migrations: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      # Healthy once the worker has replaced the shell that waits for migrations.
+      test:
+        [
+          'CMD-SHELL',
+          "tr '\\0' ' ' < /proc/1/cmdline | grep -q '^php bin/console app:service:heartbeat'",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    restart: unless-stopped
+
   # S3, locally.
   #
   # LocalStack rather than MinIO: MinIO's images are no longer pullable from
@@ -217,9 +262,11 @@ services:
     environment:
       SERVICES: s3
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       PERSISTENCE: 1
+      # Checked, so a URL signed for one host and sent to another is refused here as it is on S3 (sc-1055).
+      S3_SKIP_SIGNATURE_VALIDATION: 0
     ports:
       - '${STORAGE_PORT:-4566}:4566'
     volumes:
@@ -249,8 +296,8 @@ services:
     environment:
       BUCKET_PRIVATE: ${STORAGE_BUCKET_PRIVATE:-soirely-private}
       BUCKET_PUBLIC: ${STORAGE_BUCKET_PUBLIC:-soirely-public}
-      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
-      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-test}
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
       # The api's own default, so the bucket and the api never admit different origins.
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
@@ -374,7 +421,7 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Loads the SMS mock definitions, then exits. `docker compose up smocker-init`
+  # Loads the provider mock definitions, then exits. `docker compose up smocker-init`
   # re-loads them after editing infra/smocker/mocks.yml.
   smocker-init:
     image: curlimages/curl:8.11.0
@@ -388,7 +435,7 @@ services:
       - -c
       - 'curl -fsS -XPOST --header "Content-Type: application/x-yaml"
         --data-binary "@/mocks/mocks.yml"
-        "http://smocker:8081/mocks?reset=true" && echo "SMS mocks loaded"'
+        "http://smocker:8081/mocks?reset=true" && echo "Mocks loaded"'
     restart: 'no'
 
   oidc:

@@ -20,7 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { focusChecked, focusRefused } from './Field.tsx';
-import { useKeysUp } from './keyboardWatch.ts';
+import { raiseKeysOn, useKeysUp } from './keyboardWatch.ts';
 import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import {
@@ -61,8 +61,9 @@ import {
   turnEnded,
   turnTo,
   typed,
+  scrollsToPick,
 } from '../kit/createWalk.ts';
-import { Bars, NavAction, Progress, WalkButton } from './CreateWalkParts.tsx';
+import { Bars, NavAction, Progress, WalkButton, takingFocus } from './CreateWalkParts.tsx';
 import {
   Brings,
   type CardFrame,
@@ -73,8 +74,11 @@ import {
   WideCard,
 } from './CreateWalkSteps.tsx';
 import { AskLayer } from './AskLayer.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const GROW_FROM = 0.96;
+const KEYS_AWAITED_MS = 5000;
+const NAMED_SETTLES_MS = 300;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -159,9 +163,20 @@ export function CreateWalkWindow<Made>({
   if (!shown && onScreen) setOnScreen(false);
   const readerOn = useScreenReaderOn();
   const talkBack = Platform.OS === 'android' && readerOn;
+  const [voiced, setVoiced] = useState(false);
+  if (!shown && voiced) setVoiced(false);
+  const [named, setNamed] = useState(false);
+  if (!shown && named) setNamed(false);
+  // On the phone TalkBack sometimes spoke a field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the search field stays hidden from TalkBack until its keys are up.
+  const quiet = talkBack && phone && !voiced && opening.focus === 'search' && !opening.walk.asking;
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
-  const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);
+  const unnamed = useUnnamedWindow(
+    talkBack && shown,
+    onScreen,
+    null,
+    phone ? WINDOW_ARRIVES_MS : arriving,
+  );
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
   const [frame, setFrame] = useState({ panel: 0, stage: 0 });
@@ -171,8 +186,14 @@ export function CreateWalkWindow<Made>({
   const question = useRef<TextHandle>(null);
   const nobody = useRef<ScreenReaderTarget>(null);
   const focusing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holding = useRef<TextInputInstance | null>(null);
   const creating = walk.sent === 'creating';
   const searching = walk.query.trim() !== '';
+  const leaves = useLeaveAsk(
+    open && !creating && newOrganisationEntered(walk),
+    () => setWalk((now) => ({ ...now, asking: true })),
+    onCancel,
+  );
 
   useFocusBack(open || landed, opening.opener ?? nobody);
   useSendingWords(creating ? t('createOrganisation.creating') : undefined);
@@ -215,23 +236,77 @@ export function CreateWalkWindow<Made>({
     return () => clearTimeout(wait);
   }, [talkBack, shown, opening]);
 
-  // The field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690).
+  // The tablet's search field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690). On the phone a field focused while hidden lost its keys as the window was shown (qa3 #47084), so it takes them once, as it is shown.
   useEffect(() => {
-    if (!talkBack || !onScreen || !unnamed || opening.walk.asking) return;
-    const keys = setTimeout(() => {
-      if (opening.focus === 'search') search.current?.focus();
-      else if (opening.focus === 'name') field.current?.focus();
-    }, arriving);
+    if (!talkBack || phone || !onScreen || !unnamed || opening.walk.asking) return;
+    if (opening.focus !== 'search') return;
+    const keys = setTimeout(() => search.current?.focus(), arriving);
 
     return () => clearTimeout(keys);
-  }, [talkBack, onScreen, unnamed, arriving, opening]);
+  }, [talkBack, phone, onScreen, unnamed, arriving, opening]);
 
   useEffect(() => {
     if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
-    if (opening.focus === 'search') moveScreenReaderFocus(search.current);
-    else if (opening.focus === 'name') moveScreenReaderFocus(field.current);
-    else moveScreenReaderFocus(question.current);
-  }, [talkBack, onScreen, unnamed, opening]);
+    // With TalkBack on, the name field's keys wait for a double tap on it: its input focus and its name reached TalkBack in either order, so raised as it opened, it was read twice (qa3 #53015, Decided, 15 Nov).
+    if (opening.focus === 'name') {
+      moveScreenReaderFocus(field.current);
+      return;
+    }
+    const input = opening.focus === 'search' ? search.current : null;
+    if (input == null) {
+      moveScreenReaderFocus(question.current);
+      return;
+    }
+    // A hover and then the focus command on an unfocused field read it twice (qa3 #45182): the command alone moves TalkBack's focus with it and reads it once.
+    if (input.isFocused()) moveScreenReaderFocus(input);
+    if (phone) holding.current = input;
+    raiseKeysOn(input);
+  }, [talkBack, onScreen, unnamed, opening, phone]);
+
+  // The search field is named while still hidden, once it has taken input focus, and shown to TalkBack only NAMED_SETTLES_MS later (qa2 #49942). One that never takes focus is named after KEYS_AWAITED_MS.
+  const taken = () => {
+    if (quiet && onScreen && !unnamed) setNamed(true);
+  };
+  useEffect(() => {
+    if (!quiet || !onScreen || unnamed || named) return;
+    const reachable = setTimeout(() => setNamed(true), KEYS_AWAITED_MS);
+
+    return () => clearTimeout(reachable);
+  }, [quiet, onScreen, unnamed, named]);
+  useEffect(() => {
+    if (!quiet || !named) return;
+    const settled = setTimeout(() => setVoiced(true), NAMED_SETTLES_MS);
+
+    return () => clearTimeout(settled);
+  }, [quiet, named]);
+
+  useEffect(() => {
+    const up = Keyboard.addListener('keyboardDidShow', () => {
+      holding.current = null;
+    });
+
+    return () => up.remove();
+  }, []);
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084). The search field is unnamed again first while still hidden, as a named one had that focus voiced (qa4 #48921); once shown to TalkBack it keeps its name: unnamed and named again, the name was said after its reading (qa2 #50682).
+  const regaining = useRef<TextInputInstance | null>(null);
+  const keysLost = () => {
+    const input = holding.current;
+    holding.current = null;
+    if (input == null || !open || walk.asking) return;
+    if (!quiet || !named) {
+      raiseKeysOn(input);
+      return;
+    }
+    regaining.current = input;
+    setNamed(false);
+    setVoiced(false);
+  };
+  useEffect(() => {
+    const input = regaining.current;
+    if (!quiet || named || input == null) return;
+    regaining.current = null;
+    raiseKeysOn(input);
+  }, [quiet, named]);
 
   useEffect(
     () => () => {
@@ -253,6 +328,7 @@ export function CreateWalkWindow<Made>({
       setWalk(() => next);
       return;
     }
+    holding.current = null;
     Keyboard.dismiss();
     if (!phone && !reduced)
       LayoutAnimation.configureNext({
@@ -303,13 +379,15 @@ export function CreateWalkWindow<Made>({
   }, [creating]);
   const cancel = () => {
     if (creating) return;
-    if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
-    else onCancel();
+    leaves.leave();
   };
-  const keep = () => setWalk((now) => ({ ...now, asking: false }));
+  const keep = () => {
+    setWalk((now) => ({ ...now, asking: false }));
+    leaves.keep();
+  };
   const discard = () => {
-    keep();
-    onCancel();
+    setWalk((now) => ({ ...now, asking: false }));
+    leaves.discard();
   };
   const goBack = () => {
     if (!creating) goTo(back(walk));
@@ -321,6 +399,7 @@ export function CreateWalkWindow<Made>({
     else goBack();
   };
   const onPrimary = () => {
+    holding.current = null;
     if (creating) return;
     if (walk.step === 3) {
       setWalk((now) => ({ ...now, sent: 'creating' }));
@@ -367,6 +446,7 @@ export function CreateWalkWindow<Made>({
         <Brings walk={walk} naming={naming} />
       )}
       <WalkButton
+        takesFocus={!talkBack}
         label={primaryLabel}
         busy={creating}
         reduced={reduced}
@@ -396,6 +476,7 @@ export function CreateWalkWindow<Made>({
           field={live ? field : spare}
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
+          onLeft={live ? keysLost : undefined}
         />
       );
     if (shownWalk.step === 2)
@@ -403,10 +484,15 @@ export function CreateWalkWindow<Made>({
         <CountryStep
           {...shared}
           field={live ? search : spare}
-          toPick={shownWalk.cameBack || opening.toPick}
+          toPick={scrollsToPick(shownWalk.toPick, opening.toPick, { phone, readerOn })}
+          quiet={live && quiet && opening.focus === 'search'}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}
-          onSearchFocused={setSearchFocused}
+          onSearchFocused={(focused) => {
+            setSearchFocused(focused);
+            if (focused && live) taken();
+            if (!focused && live) keysLost();
+          }}
         />
       );
 
@@ -453,11 +539,22 @@ export function CreateWalkWindow<Made>({
   const refusal = (
     <View style={[styles.refusal, phone && styles.refusalPhone]}>{managedBanner}</View>
   );
+  // With TalkBack on, its focus landing on a button as the window is revealed took input focus from the field, and the app put the keys down (qa2 #46600).
   const closeAction = (
-    <NavAction label={t('switcher.close')} onPress={onCancel} testID="createWalk.close" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('switcher.close')}
+      onPress={onCancel}
+      testID="createWalk.close"
+    />
   );
   const cancelAction = (
-    <NavAction label={t('createOrganisation.cancel')} onPress={cancel} testID="createWalk.cancel" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('createOrganisation.cancel')}
+      onPress={cancel}
+      testID="createWalk.cancel"
+    />
   );
   const fills = walk.step === 2 && !searching;
 
@@ -498,6 +595,7 @@ export function CreateWalkWindow<Made>({
                       cancelAction
                     ) : (
                       <NavAction
+                        takesFocus={!talkBack}
                         label={t('steps.back')}
                         back
                         onPress={goBack}
@@ -530,6 +628,7 @@ export function CreateWalkWindow<Made>({
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={cancel}
+              {...takingFocus(!talkBack, creating ? undefined : cancel)}
               disabled={creating}
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
@@ -592,6 +691,7 @@ export function CreateWalkWindow<Made>({
                     <View style={[styles.wideFoot, managed && styles.hidden]}>
                       {!creating && walk.step > 1 && (
                         <WalkButton
+                          takesFocus={!talkBack}
                           label={t('steps.back')}
                           kind="secondary"
                           reduced={reduced}
@@ -603,6 +703,7 @@ export function CreateWalkWindow<Made>({
                         />
                       )}
                       <WalkButton
+                        takesFocus={!talkBack}
                         label={primaryLabel}
                         busy={creating}
                         reduced={reduced}

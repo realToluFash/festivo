@@ -7,16 +7,21 @@ namespace App\Domain\Messaging;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\EventTimes;
+use App\Domain\Messaging\Model\PlannedDelivery;
 use App\Domain\Messaging\Model\Trigger;
 use App\Entity\Event;
+use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
 use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use InvalidArgumentException;
+use LogicException;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -38,8 +43,11 @@ final readonly class NotificationScheduler
     ) {
     }
 
-    /** @param array<string, mixed> $payload what the type renders from, and checks at send time */
-    public function schedule(string $type, string $cancellationKey, string $sourceId, Trigger $trigger, Audience $audience, array $payload = [], ?Event $event = null): Uuid
+    /**
+     * @param array<string, mixed> $payload what the type renders from, and checks at send time
+     * @param ?DateTimeImmutable   $sendBy  when one held past this lapses instead, for a type whose limit only its caller knows; the type's own `tooLateAt` otherwise
+     */
+    public function schedule(string $type, string $cancellationKey, string $sourceId, Trigger $trigger, Audience $audience, array $payload = [], ?Event $event = null, ?DateTimeImmutable $sendBy = null): Uuid
     {
         $definition = $this->notificationRegistry->type($type);
 
@@ -52,7 +60,7 @@ final readonly class NotificationScheduler
         $urgent = NotificationPriority::Urgent === $definition->priority() || Iter\contains($definition->channels(), NotificationChannel::InApp);
         $id = Uuid::v7();
 
-        $this->connection->transactional(function () use ($id, $type, $cancellationKey, $sourceId, $trigger, $audience, $payload, $event, $dueAt, $definition, $times, $urgent): void {
+        $this->connection->transactional(function () use ($id, $type, $cancellationKey, $sourceId, $trigger, $audience, $payload, $event, $dueAt, $definition, $times, $urgent, $sendBy): void {
             $this->remove($cancellationKey);
             $this->connection->insert('scheduled_notifications', [
                 'id' => $id->toRfc4122(),
@@ -63,7 +71,7 @@ final readonly class NotificationScheduler
                 'organisation_id' => $audience->organisationId?->toRfc4122(),
                 'trigger' => Json\encode($trigger->toArray()),
                 'due_at' => $dueAt,
-                'send_by' => $definition->tooLateAt($dueAt, $times),
+                'send_by' => $sendBy?->setTimezone(new DateTimeZone('UTC')) ?? $definition->tooLateAt($dueAt, $times),
                 'audience' => Json\encode($audience->toArray()),
                 'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
                 'priority' => ($urgent ? NotificationPriority::Urgent : $definition->priority())->value,
@@ -75,6 +83,189 @@ final readonly class NotificationScheduler
                 'created_at' => Types::DATETIME_IMMUTABLE,
             ]);
         });
+
+        return $id;
+    }
+
+    /**
+     * To one person, fixed now (sc-4332): the delivery is written with the row, so nothing resolves the audience later. A type that supersedes replaces the person's earlier one that has not gone.
+     *
+     * @param array<string, mixed> $payload
+     * @param ?DateTimeImmutable   $sendBy  a code's expiry, after which it is never sent
+     *
+     * @return bool false when the same send was already queued
+     */
+    public function scheduleForPerson(string $type, string $sourceId, Audience $audience, array $payload, ?DateTimeImmutable $sendBy = null): bool
+    {
+        $definition = $this->notificationRegistry->type($type);
+        $recipient = $audience->only[0] ?? null;
+
+        if (NotificationAudienceKind::Person !== $definition->audienceKind() || NotificationAudienceKind::Person !== $audience->kind || null === $recipient) {
+            throw new InvalidArgumentException(Str\format('"%s" is not sent to one person.', $type));
+        }
+
+        if (!$this->connection->isTransactionActive()) {
+            throw new LogicException(Str\format('"%s" is written in the transaction of the change it tells of, so the two commit together.', $type));
+        }
+
+        $now = $this->clock->now();
+        $id = Uuid::v7();
+        $types = ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE];
+
+        return $this->connection->transactional(function () use ($id, $type, $sourceId, $audience, $payload, $sendBy, $definition, $recipient, $now, $types): bool {
+            if ($definition->supersedesEarlier()) {
+                $this->connection->executeStatement(
+                    <<<'SQL'
+                        WITH superseded AS (
+                            UPDATE notification_deliveries
+                            SET status = :superseded, finished_at = :now, claimed_until = NULL
+                            WHERE type = :type AND recipient_kind = :kind AND recipient_id = :recipient
+                              AND source_id <> :source
+                              AND status = :pending
+                              AND (claimed_until IS NULL OR claimed_until < :now)
+                            RETURNING scheduled_notification_id
+                        )
+                        UPDATE scheduled_notifications SET payload = '{}'
+                        WHERE :forget AND id IN (SELECT scheduled_notification_id FROM superseded)
+                        SQL,
+                    [
+                        'forget' => $definition->carriesCode(),
+                        'superseded' => NotificationDeliveryStatus::Superseded->value,
+                        'now' => $now,
+                        'type' => $type,
+                        'kind' => NotificationAudienceKind::Person->value,
+                        'recipient' => $recipient->toRfc4122(),
+                        'source' => $sourceId,
+                        'pending' => NotificationDeliveryStatus::Pending->value,
+                    ],
+                    ['now' => Types::DATETIME_IMMUTABLE, 'forget' => Types::BOOLEAN],
+                );
+            }
+
+            $this->connection->executeStatement(
+                <<<'SQL'
+                    INSERT INTO scheduled_notifications (
+                        id, type, cancellation_key, source_id, trigger, due_at, send_by, audience, payload, priority, status, created_at, finished_at
+                    ) VALUES (
+                        :id, :type, :key, :source, :trigger, :due, :sendBy, :audience, :payload, :priority, :fannedOut, :now, :now
+                    )
+                    SQL,
+                [
+                    'id' => $id->toRfc4122(),
+                    'type' => $type,
+                    'key' => 'person:' . $id->toRfc4122(),
+                    'source' => $sourceId,
+                    'trigger' => Json\encode(Trigger::at($now)->toArray()),
+                    'due' => $now,
+                    'sendBy' => $sendBy,
+                    'audience' => Json\encode($audience->toArray()),
+                    'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
+                    'priority' => $definition->priority()->value,
+                    'fannedOut' => ScheduledNotificationStatus::FannedOut->value,
+                    'now' => $now,
+                ],
+                $types,
+            );
+
+            $written = 0 < $this->connection->executeStatement(
+                <<<'SQL'
+                    INSERT INTO notification_deliveries (
+                        id, scheduled_notification_id, type, source_id, recipient_kind, recipient_id, channel,
+                        priority, status, due_at, next_attempt_at, send_by, attempts, created_at
+                    ) VALUES (
+                        :id, :scheduled, :type, :source, :kind, :recipient, :channel,
+                        :priority, :pending, :due, :due, :sendBy, 0, :now
+                    )
+                    ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
+                    SQL,
+                [
+                    'id' => Uuid::v7()->toRfc4122(),
+                    'scheduled' => $id->toRfc4122(),
+                    'type' => $type,
+                    'source' => $sourceId,
+                    'kind' => NotificationAudienceKind::Person->value,
+                    'recipient' => $recipient->toRfc4122(),
+                    'channel' => NotificationChannel::Email->value,
+                    'priority' => $definition->priority()->value,
+                    'pending' => NotificationDeliveryStatus::Pending->value,
+                    'due' => $now,
+                    'sendBy' => $sendBy,
+                    'now' => $now,
+                ],
+                $types,
+            );
+
+            if (!$written) {
+                $this->connection->executeStatement('DELETE FROM scheduled_notifications WHERE id = :id', ['id' => $id->toRfc4122()]);
+            }
+
+            return $written;
+        });
+    }
+
+    /**
+     * Fanned out now, in the caller's transaction (sc-3942): each delivery is queued, or recorded Not sent with its reason, with the address fixed as it goes. The send's answer counts exactly these rows.
+     *
+     * @param array<string, mixed>  $payload
+     * @param list<PlannedDelivery> $deliveries
+     */
+    public function scheduleFannedOut(string $type, string $sourceId, Audience $audience, array $payload, Event $event, array $deliveries): Uuid
+    {
+        $definition = $this->notificationRegistry->type($type);
+
+        if ($definition->audienceKind() !== $audience->kind || [NotificationChannel::Email] !== $definition->channels()) {
+            throw new InvalidArgumentException(Str\format('"%s" is not emailed to a fixed list.', $type));
+        }
+
+        if (!$this->connection->isTransactionActive()) {
+            throw new LogicException(Str\format('"%s" is written in the transaction of the message it tells of, so the two commit together.', $type));
+        }
+
+        $now = $this->clock->now();
+        $id = Uuid::v7();
+        $this->connection->insert('scheduled_notifications', [
+            'id' => $id->toRfc4122(),
+            'type' => $type,
+            'cancellation_key' => $type . ':' . $sourceId,
+            'source_id' => $sourceId,
+            'event_id' => $event->getId()->toRfc4122(),
+            'organisation_id' => $event->getOrganisation()->getId()->toRfc4122(),
+            'trigger' => Json\encode(Trigger::at($now)->toArray()),
+            'due_at' => $now,
+            'audience' => Json\encode($audience->toArray()),
+            'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
+            'priority' => $definition->priority()->value,
+            'status' => ScheduledNotificationStatus::FannedOut->value,
+            'created_at' => $now,
+            'finished_at' => $now,
+        ], ['due_at' => Types::DATETIME_IMMUTABLE, 'created_at' => Types::DATETIME_IMMUTABLE, 'finished_at' => Types::DATETIME_IMMUTABLE]);
+
+        foreach ($deliveries as $delivery) {
+            $this->connection->insert('notification_deliveries', [
+                'id' => Uuid::v7()->toRfc4122(),
+                'scheduled_notification_id' => $id->toRfc4122(),
+                'event_id' => $event->getId()->toRfc4122(),
+                'type' => $type,
+                'source_id' => $sourceId,
+                'recipient_kind' => $audience->kind->value,
+                'recipient_id' => $delivery->recipientId->toRfc4122(),
+                'channel' => NotificationChannel::Email->value,
+                'priority' => $definition->priority()->value,
+                'status' => ($delivery->isQueued() ? NotificationDeliveryStatus::Pending : NotificationDeliveryStatus::Failed)->value,
+                'not_sent_reason' => $delivery->notSent?->value,
+                'address' => $delivery->address,
+                'due_at' => $now,
+                'next_attempt_at' => $now,
+                'attempts' => 0,
+                'finished_at' => $delivery->isQueued() ? null : $now,
+                'created_at' => $now,
+            ], [
+                'due_at' => Types::DATETIME_IMMUTABLE,
+                'next_attempt_at' => Types::DATETIME_IMMUTABLE,
+                'finished_at' => Types::DATETIME_IMMUTABLE,
+                'created_at' => Types::DATETIME_IMMUTABLE,
+            ]);
+        }
 
         return $id;
     }

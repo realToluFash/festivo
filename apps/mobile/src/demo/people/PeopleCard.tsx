@@ -1,4 +1,3 @@
-import { type Href, router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -25,8 +24,14 @@ const OPENS = 'Opens People.';
 /** Loading holds the count's words, its figure a bar. */
 const HELD = 'on this event';
 
-/** Overview's People (sc-29914): how many are on the event and who leads it, the whole row opening People. */
-export function PeopleCard({ state }: { state: CardState | null }) {
+/** Overview's People (sc-29914): how many are on the event and who leads it, the whole row opening People in the event's own frame (sc-67665, sc-70351). */
+export function PeopleCard({
+  state,
+  onOpen,
+}: {
+  state: CardState | null;
+  onOpen: (params: { state?: string }) => void;
+}) {
   const start = cardStart(state);
   const { load, retry } = useLoad(start.load);
   const { count, lead } = cardFacts(start.onEvent, start.viewer);
@@ -78,7 +83,7 @@ export function PeopleCard({ state }: { state: CardState | null }) {
                 lead={mark}
                 opens
                 pad={4}
-                onPress={() => router.push(start.href as Href)}
+                onPress={() => onOpen(start.opens == null ? {} : { state: start.opens })}
                 accessibilityLabel={[
                   count === 0 ? title : `${title}.`,
                   line == null ? null : `Lead, ${lead}.`,

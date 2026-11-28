@@ -34,11 +34,12 @@ import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
   SETTLED_MS,
+  useFocusedFieldAboveKeys,
   useFocusedFieldAboveToast,
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
-import { barFits, keysOver } from '../kit/keyboard.ts';
+import { dockInline, keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -209,12 +210,15 @@ export function StepScreen({
   children,
   foot,
   centred = false,
+  waiting = false,
 }: {
   nav?: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
   /** Content in the middle of the screen, as welcome and the endings with no bar are. */
   centred?: boolean;
+  /** Still reading what it shows: not yet a landing the landing toast is said over (sc-87539). */
+  waiting?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const inSheet = useInSheet();
@@ -225,27 +229,25 @@ export function StepScreen({
   const bottom = keysUp || inSheet ? tokens.spaceXl : Math.max(insets.bottom, tokens.spaceLg);
   const page = useRef<ViewInstance>(null);
   const measured = ANDROID || inSheet;
-  const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const sheetTop = inSheet ? insets.top + SHEET_LIFTED_GAP : 0;
+  const cover = useKeysCover(page, measured, sheetTop);
+  // The lifts read the keys against the sheet's own frame, as the cover does.
+  const { screenScroll, scrollProps } = useScreenScrollView(sheetTop);
   useFocusedFieldAboveToast(screenScroll);
+  useFocusedFieldAboveKeys(screenScroll, inSheet);
   const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0, group: 0 });
   const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;
     setSizes((was) => (was[key] === height ? was : { ...was, [key]: height }));
   };
   const [inline, setInline] = useState(false);
-  // While docked the scroll view ends at the foot, while in place at the keys.
-  const room = sizes.shown + (inline ? 0 : sizes.foot);
-  const nextInline =
-    foot != null &&
-    keysUp &&
-    sizes.field > 0 &&
-    !barFits({
-      room,
-      field: Math.max(sizes.field, sizes.group),
-      bar: sizes.foot,
-      margin: tokens.spaceLg,
-    });
+  const nextInline = dockInline({
+    keysUp,
+    hasFoot: foot != null,
+    sizes,
+    inline,
+    margin: tokens.spaceLg,
+  });
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
@@ -269,6 +271,7 @@ export function StepScreen({
   }, []);
 
   useEffect(() => {
+    if (waiting) return undefined;
     const step = stepShown();
     const landed = setTimeout(() => {
       shown.current = step;
@@ -280,7 +283,7 @@ export function StepScreen({
       shown.current = null;
       step.left();
     };
-  }, [placeStep]);
+  }, [placeStep, waiting]);
 
   useEffect(() => {
     footInPage.current = inline;
@@ -373,7 +376,7 @@ export function StepScreen({
         <ScrollView
           {...scrollProps}
           onLayout={(event) => {
-            scrollProps.onLayout();
+            scrollProps.onLayout(event);
             measuredAs('shown')(event);
           }}
           style={styles.grow}

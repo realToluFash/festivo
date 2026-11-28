@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  maskedPhone,
   callingCode,
   followCountry,
   formatPhone,
+  phoneMatches,
   phoneLengthProblem,
   phoneScreenCountry,
   pickPhoneCountry,
@@ -40,6 +42,24 @@ describe('the phone check before sending', () => {
   it('shows a stored number as people read it', () => {
     expect(formatPhone('+2348035550142')).toBe('+234 803 555 0142');
     expect(formatPhone('not a number')).toBe('not a number');
+  });
+});
+
+describe('a guest search typed as a number (sc-3772)', () => {
+  const stored = '+2348031234567';
+
+  it('matches with or without spaces, the country code or the national 0', () => {
+    expect(phoneMatches(stored, '0803 123 4567')).toBe(true);
+    expect(phoneMatches(stored, '+234 803 123 4567')).toBe(true);
+    expect(phoneMatches(stored, '8031234567')).toBe(true);
+    expect(phoneMatches(stored, '0803')).toBe(true);
+    expect(phoneMatches(stored, '123 45')).toBe(true);
+  });
+
+  it('waits for 3 digits and never counts a search with letters', () => {
+    expect(phoneMatches(stored, '80')).toBe(false);
+    expect(phoneMatches(stored, 'ada 803')).toBe(false);
+    expect(phoneMatches(stored, '0999')).toBe(false);
   });
 });
 
@@ -107,5 +127,12 @@ describe('the phone screens', () => {
     expect(refusedPhoneField('blank')).toBe('number');
     expect(refusedPhoneField('tooShort')).toBe('number');
     expect(refusedPhoneField(null)).toBeNull();
+  });
+});
+
+describe('a number before sign-in completes (sc-4235)', () => {
+  it('shows the country code and the last four digits', () => {
+    expect(maskedPhone({ countryCode: 'PT', lastDigits: '4512' })).toBe('+351 ••• ••• 4512');
+    expect(maskedPhone({ countryCode: null, lastDigits: '4512' })).toBe('••• ••• 4512');
   });
 });

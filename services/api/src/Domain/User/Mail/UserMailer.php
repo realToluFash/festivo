@@ -4,45 +4,67 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Mail;
 
+use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Locale\SupportedLocales;
+use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
 use IntlDatePatternGenerator;
 use Psl\Regex;
 use Psl\Str;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** A plain-text email to one person, in their locale, from Soirely's one sender. */
+/** A plain-text email to one person, in their locale, from Soirely's one sender: queued on the notification path, never sent from the request (sc-4332). */
 final readonly class UserMailer
 {
     private const string DOMAIN = 'emails';
 
+    /** Names the address, so every send to it is one person's: a newer code supersedes theirs, and a bounce suppresses it. */
+    private const string ADDRESS_NAMESPACE = '6f1d3f0e-3a59-4c1c-9b8e-4b2f0f7c5a11';
+
+    /** @param Closure(): NotificationScheduler $notificationScheduler a closure: the registry's types use this class's dates, and the scheduler needs the registry */
     public function __construct(
-        private MailerInterface $mailer,
+        #[AutowireServiceClosure(NotificationScheduler::class)]
+        private Closure $notificationScheduler,
         private TranslatorInterface $translator,
         private AccountLanguage $accountLanguage,
-        private string $mailFrom,
+        private ClockInterface $clock,
     ) {
     }
 
     /**
+     * Written in the caller's transaction, with the words it will carry; the worker hands it to the provider.
+     *
      * @param list<string>          $paragraphs        already in the person's locale, joined by a blank line
      * @param array<string, string> $subjectParameters
+     * @param ?string               $source            what it is about, when a second queueing of it must not send again
      */
-    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = []): void
+    public function send(AccountMail $mail, string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = [], ?MailCode $code = null, ?string $source = null): void
     {
-        $this->mailer->send(
-            new Email()
-                ->from(Address::create($this->mailFrom))
-                ->to($address)
-                ->subject($this->line($subjectKey, $locale, $subjectParameters))
-                ->text(Str\join($paragraphs, "\n\n")),
+        ($this->notificationScheduler)()->scheduleForPerson(
+            $mail->typeName(),
+            match (true) {
+                null !== $source => $source,
+                null !== $code => \hash('sha256', $address . "\0" . $code->code),
+                default => Uuid::v7()->toRfc4122(),
+            },
+            Audience::person(self::person($address), $address, $locale ?? SupportedLocales::DEFAULT),
+            ['subject' => $this->line($subjectKey, $locale, $subjectParameters), 'body' => Str\join($paragraphs, "\n\n")],
+            null === $code ? null : $this->clock->now()->modify(Str\format('+%d minutes', $code->lifetimeMinutes)),
         );
+    }
+
+    /** Every send to one address is to one person, whatever account holds it then. */
+    public static function person(string $address): Uuid
+    {
+        return Uuid::v5(Uuid::fromString(self::ADDRESS_NAMESPACE), Str\lowercase(Str\trim($address)));
     }
 
     /**
@@ -50,12 +72,12 @@ final readonly class UserMailer
      *
      * @param list<string> $paragraphs
      */
-    public function sendTo(User $user, string $subjectKey, array $paragraphs, ?string $asked = null): void
+    public function sendTo(AccountMail $mail, User $user, string $subjectKey, array $paragraphs, ?string $asked = null, ?MailCode $code = null): void
     {
         $address = $user->getPrimaryEmailAddress()?->getAddress();
 
         if (null !== $address) {
-            $this->send($address, $this->localeFor($user, $asked), $subjectKey, $paragraphs);
+            $this->send($mail, $address, $this->localeFor($user, $asked), $subjectKey, $paragraphs, code: $code);
         }
     }
 
@@ -65,8 +87,8 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
-    /** The language a server-written date on a screen is in: the one the request asked for, else the account's (sc-9267). */
-    public function shownLocaleFor(User $user): string
+    /** The tag a server-written date on a screen is in: the language the request asked for, with the device's region while the device speaks it (sc-65714), else the account's (sc-9267). */
+    public function formattingLocaleFor(User $user): string
     {
         return $this->accountLanguage->shown($user);
     }
@@ -75,6 +97,12 @@ final readonly class UserMailer
     public function answeredLocale(): string
     {
         return $this->accountLanguage->answered();
+    }
+
+    /** The same, with the device's region while the device speaks it, for a sentence a screen quotes (sc-65714). */
+    public function answeredFormattingLocale(): string
+    {
+        return $this->accountLanguage->answeredFormatting();
     }
 
     /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
@@ -92,12 +120,28 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline in the house order for English (sc-6758), not always as the screens write it: "Saturday 24 Oct at 14:20 WAT". */
+    /** A deadline in the house order for English (sc-6758), "Saturday 24 Oct at 14:20 WAT"; a tag with a region writes the date part in its order (sc-65714). */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
 
         return $this->dateAt($local, $label, $locale);
+    }
+
+    /** To the second, with the year and the zone, as an audit entry's detail states it (sc-611): "Thursday 5 Nov 2026 at 14:20:07 WAT". */
+    public function stamp(DateTimeImmutable $at, User $user, string $locale): string
+    {
+        [$local, $label] = self::local($at, $user);
+
+        return $this->dateAt($local, $label, $locale, 'EEEEyMMMd', 'H:i:s');
+    }
+
+    /** The reader's own day and 24-hour time for an instant, in their zone or UTC (sc-868). @return array{0: string, 1: string} */
+    public static function dayAndTime(DateTimeImmutable $at, User $user): array
+    {
+        [$local] = self::local($at, $user);
+
+        return [$local->format('Y-m-d'), $local->format('H:i')];
     }
 
     /** The same words in UTC, for a `detail` read raw from anywhere (sc-12379): "Monday 26 Oct at 16:32 UTC". */
@@ -106,15 +150,15 @@ final readonly class UserMailer
         return $this->dateAt($at->setTimezone(new DateTimeZone('UTC')), 'UTC', $locale);
     }
 
-    private function dateAt(DateTimeImmutable $local, string $label, string $locale): string
+    private function dateAt(DateTimeImmutable $local, string $label, string $locale, string $skeleton = 'EEEEMMMd', string $time = 'H:i'): string
     {
         $dates = SupportedLocales::dates($locale);
-        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
+        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern($skeleton) ?: 'EEEE d MMM';
         $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
-        return $this->line('time.dateAt', $locale, [
+        return $this->line('time.dateAt', SupportedLocales::narrow($locale), [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
-            '{time}' => $local->format('H:i'),
+            '{time}' => $local->format($time),
             '{hour}' => (int) $local->format('G'),
             '{zone}' => $label,
         ]);
@@ -134,24 +178,24 @@ final readonly class UserMailer
      *
      * @param list<string> $paragraphs
      */
-    public function sendToEveryVerified(User $user, string $subjectKey, array $paragraphs): void
+    public function sendToEveryVerified(AccountMail $mail, User $user, string $subjectKey, array $paragraphs): void
     {
         foreach ($user->getEmailAddresses() as $address) {
             if ($address->isVerified()) {
-                $this->send($address->getAddress(), $this->localeFor($user), $subjectKey, $paragraphs);
+                $this->send($mail, $address->getAddress(), $this->localeFor($user), $subjectKey, $paragraphs);
             }
         }
     }
 
-    /** CLDR's date and wording for the locale, on a 24-hour clock: its short time is 12-hour in en. Quoted text is left alone. */
+    /** CLDR's date and wording for the locale, on a two-digit 24-hour clock: its short time is 12-hour in en and "H:mm" in es. Quoted text is left alone. */
     private static function twentyFourHour(string $pattern): string
     {
         return Str\trim(Regex\replace_with(
             $pattern,
-            '/\'[^\']*\'|[hK]+|[\s\x{00A0}\x{202F}]*a+/u',
+            '/\'[^\']*\'|[hHkK]+|[\s\x{00A0}\x{202F}]*a+/u',
             static fn (array $found): string => match (true) {
                 Str\starts_with($found[0], "'") => $found[0],
-                Regex\matches($found[0], '/^[hK]+$/') => 'HH',
+                Regex\matches($found[0], '/^[hHkK]+$/') => 'HH',
                 default => '',
             },
         ));

@@ -9,7 +9,12 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { LIST_GAP, SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import {
+  LIST_GAP,
+  PANE_TITLE_ROW,
+  SETTINGS_PAGE,
+  titleFoot,
+} from '../../src/components/listFrame.ts';
 import {
   DetailRows,
   DetailsScreen,
@@ -20,6 +25,7 @@ import { DomainsSection, RequestsSection } from '../../src/components/Organisati
 import { type Candidate, OwnershipSection } from '../../src/components/OrganisationOwnership.tsx';
 import { useOrganisationChoices } from '../../src/components/OrganisationPicker.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
+import { PausedSettingsSection } from '../../src/components/PausedSettings.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { PageToast } from '../../src/components/Summary.tsx';
@@ -33,8 +39,15 @@ import { reloadSignedIn, replaceOrganisation, useSignedIn } from '../../src/sign
 import { tokens } from '../../src/theme/tokens.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
+/** While the pill names a paused organisation, its row opens the paused page, and nothing of the organisation is read (sc-86077). */
+export default function OrganisationRoute() {
+  const { pausedIn } = useSignedIn();
+
+  return pausedIn == null ? <Organisation /> : <PausedSettingsSection open="organisation" />;
+}
+
 /** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
-export default function Organisation() {
+function Organisation() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
@@ -80,8 +93,8 @@ export default function Organisation() {
     if (organisationId == null || !owner) return;
     let live = true;
 
-    api.members(organisationId).then(
-      (found) => live && setMembers({ id: organisationId, list: found.members }),
+    api.everyMember(organisationId, 'active').then(
+      (active) => live && setMembers({ id: organisationId, list: active }),
       () => live && setMembers(null),
     );
 
@@ -208,9 +221,9 @@ export default function Organisation() {
     >
       <SettingsSplit open="organisation">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(CONTENT[kind])} />}
           {!alone && (
-            <View style={besideRow.row}>
+            <View style={[besideRow.row, PANE_TITLE_ROW]}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}

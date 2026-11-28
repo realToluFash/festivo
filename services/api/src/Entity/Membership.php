@@ -75,7 +75,7 @@ class Membership
     private ?DateTimeImmutable $removesAt = null;
 
     /** What the person wrote when asking through the request link (sc-562), for whoever answers. */
-    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 2000, nullable: true)]
     private ?string $requestMessage = null;
 
     /** The instant a request to join nobody answered is removed (sc-392): set on asking, and cleared once it is answered. */
@@ -164,6 +164,12 @@ class Membership
     public function hasBeenActive(): bool
     {
         return null !== $this->joinedAt;
+    }
+
+    /** Whether Settings › Members lists them (sc-392, sc-8168): somebody waiting on approval only to the people who decide on them. */
+    public function isListedTo(bool $decides): bool
+    {
+        return $decides || MembershipStatus::PendingApproval !== $this->status && $this->hasBeenActive();
     }
 
     public function getTwoFactorBlockedAt(): ?DateTimeImmutable

@@ -45,6 +45,7 @@ export const SEATING_STATES = [
   'sectionLimit',
   'sectionEdit',
   'sectionDelete',
+  'sectionDeleteRows',
   'sectionDeleteEmpty',
   'sparse',
   'addMenu',
@@ -57,6 +58,11 @@ export const SEATING_STATES = [
   'squeeze',
   'nameTaken',
   'belowSeated',
+  'fieldBlank',
+  'seatsRange',
+  'sizeRange',
+  'notNumber',
+  'endsRange',
   'chair',
   'unusable',
   'unusableRefused',
@@ -71,6 +77,8 @@ export const SEATING_STATES = [
   'deleteRow',
   'seatAdded',
   'seatNameTaken',
+  'rowChanged',
+  'seatChanged',
   'drag',
   'resize',
   'turn',
@@ -92,6 +100,11 @@ export const SEATING_STATES = [
   'presenceBoth',
   'presenceSix',
   'presenceViewer',
+  'presenceSeatTables',
+  'presenceSeatList',
+  'presenceTwoTables',
+  'presenceTwoList',
+  'presenceBothTables',
   'reconnecting',
   'left',
   'arriving',
@@ -172,6 +185,36 @@ export type Sheet =
   | { kind: 'short'; id: string }
   | { kind: 'print' };
 
+/** A colleague's choice of an item, or of one of its seats; `seat` counts chairs from 0 (sc-4719). */
+export interface Choice {
+  who: Person;
+  seat?: number;
+}
+
+/** Each item's colleagues, in the order they chose it. */
+export type Rings = Readonly<Record<string, readonly Choice[]>>;
+
+/** The colleagues' choices on an item: never a viewer's, and none while your own connection is down (sc-4719, sc-60717). */
+export function choicesOn(m: Seating, id: string): readonly Choice[] {
+  if (m.presence === 'reconnecting') return [];
+  return (m.rings[id] ?? []).filter((one) => !one.who.viewer);
+}
+
+/** ", chosen by Priya Shah and Ana Souza, seat 2 chosen by Julien Moreau", what a marked card, row or room item adds to its name. */
+export function chosenWords(choices: readonly Choice[]): string {
+  const whole = choices.filter((one) => one.seat == null).map((one) => one.who.name);
+  const seats = choices.flatMap((one) =>
+    one.seat == null ? [] : [say.seatChosenBy(one.seat + 1, one.who.name)],
+  );
+  return (whole.length === 0 ? '' : say.chosenBy(say.names(whole))) + seats.join('');
+}
+
+/** What a chair adds to its name when colleagues chose it. */
+export function chairChosenWords(choices: readonly Choice[], seat: number): string {
+  const names = choices.filter((one) => one.seat === seat).map((one) => one.who.name);
+  return names.length === 0 ? '' : say.chosenBy(say.names(names));
+}
+
 export interface Fields {
   drafts: Record<string, string>;
   errors: Record<string, string>;
@@ -212,7 +255,7 @@ export interface Seating {
   save: SaveLine;
   people: Person[];
   presence: 'chips' | 'reconnecting';
-  rings: Record<string, Person>;
+  rings: Rings;
   ask: Ask | null;
   pop: Pop | null;
   sheet: Sheet | null;
@@ -325,8 +368,7 @@ export function accName(m: Seating, it: Item): string {
     row: `row of ${it.chairs.length}`,
     single: 'single seat',
   }[it.kind];
-  const ring = m.rings[it.id];
-  const by = ring != null && !ring.viewer ? say.chosenBy(ring.name) : '';
+  const by = chosenWords(choicesOn(m, it.id));
   return say.accName(it.name, kind, filled(it), usable(it), sectionOf(m, it.sec)?.name ?? null, by);
 }
 
@@ -388,6 +430,15 @@ export function noSectionLine(m: Seating): string {
       'seats',
     ),
   ].join(' · ');
+}
+
+export function sectionDeleteLine(m: Seating, key: string): string {
+  const its = m.items.filter((it) => it.sec === key);
+  return say.sectionDeleteBody(
+    its.filter(isTable).length,
+    its.filter((it) => it.kind === 'row').length,
+    its.filter((it) => it.kind === 'single').length,
+  );
 }
 
 /** The least-used colour, the first in order on a tie (sc-3998). */

@@ -134,11 +134,14 @@ def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None,
             "story_id": story["id"] if story else None, "pr": pr["number"] if pr else None}
 
 
+IDEA_ACCEPTED = "idea accepted"
+
+
 def open_ideas(stories):
-    """The creative director's ideas still waiting on the product manager's decision: the
-    cap and the digest count these, while the idea label stays on in every state."""
+    """The creative director's ideas the cap and both digests count: in Backlog and not yet
+    accepted, parked ones included. An accepted idea may wait in Backlog for its epic."""
     return [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"
-            and not s.get("done")]
+            and IDEA_ACCEPTED not in s["labels"] and not s.get("done")]
 
 
 def finished(story):
@@ -218,6 +221,32 @@ def held_by(holders):
     return "held by " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in holders)
 
 
+# A blocker in one of these is waiting for a role to pick it up; from Needs Design on, one is.
+IDLE_BLOCKER = ("Backlog", "To Do", R.WAITING)
+
+
+def idle(blocker, epics):
+    """A blocker no role will pick up: one waiting in an idle state, or one ready to build
+    whose own epic is not in progress, so no developer is offered it."""
+    return not blocker.get("archived") and (blocker["state"] in IDLE_BLOCKER
+                                            or bool(held_epic(blocker, epics)))
+
+
+def stuck_blockers(stories, epics):
+    """Each idle blocker with the stories it holds in epics in progress, most held first:
+    the holds no role will clear, because nobody is working on the story that clears them."""
+    by_id = {s["id"]: s for s in stories}
+    held = {}
+    for story in stories:
+        if story.get("archived") or held_epic(dict(story, state="Ready For Dev"), epics):
+            continue
+        for blocker in holding(story, by_id):
+            if idle(blocker, epics):
+                held.setdefault(blocker["id"], []).append(story)
+    found = [(by_id[b], sorted(h, key=lambda s: s["id"])) for b, h in held.items()]
+    return sorted(found, key=lambda pair: (-len(pair[1]), pair[0]["id"]))
+
+
 def builds(role):
     return role in R.DEVS or role == "ops"
 
@@ -236,7 +265,33 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
-            and not (builds(role) and story["id"] in only)]
+            and not (builds(role) and story["id"] in only)
+            and not (role == "ux" and story["state"] == "Failed QA"
+                     and (story["id"] not in only or demo_fixing(story, prs or [])))
+            and not (builds(role) and demo_open(story, prs or []))]
+
+
+DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
+SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)", re.I)
+
+
+def demo_line(story):
+    design = T.find(story.get("description"), "Design")
+    if not design:
+        return None
+    return next((x for x in design[2].splitlines() if DEMO_LINE.match(x)), None)
+
+
+def demo_open(story, prs):
+    """The pull requests a Ready For Dev story's Demo: line names that are still open. Its demo
+    is drawn and waiting to merge, so no builder is offered it until then."""
+    if story["state"] != "Ready For Dev":
+        return []
+    line = demo_line(story)
+    if not line or SHOWS_NOTHING.match(line):
+        return []
+    open_ = {pr["number"] for pr in prs if pr.get("state") == "open"}
+    return [n for n in dict.fromkeys(int(x) for x in re.findall(r"#(\d+)", line)) if n in open_]
 
 
 def retester(story, now=None):
@@ -437,8 +492,15 @@ def side_pr(story, pr):
     """A developer's pull request on a linguist's ticket, such as a test that has to take the
     new wording. The lead reviews it and its developer merges it, while the ticket keeps the
     state the linguist gives it."""
-    return linguists(story) and not (pr.get("branch") or "").startswith("l10n/") \
-        and not design_pr(pr)
+    return ops_pr(story, pr) or linguists(story) \
+        and not (pr.get("branch") or "").startswith("l10n/") and not design_pr(pr)
+
+
+def ops_pr(story, pr):
+    """Ops's pull request, from an ops/ branch, on a story another role builds, such as a
+    tester's check put in the repository. The lead reviews it and ops answers its threads
+    and merges it, while the story keeps its state."""
+    return R.is_ops_branch(pr.get("branch")) and R.builder_of(story["labels"]) != "ops"
 
 
 def design_pr(pr):
@@ -462,6 +524,13 @@ def demo_only(stories, prs):
     return {story["id"]: by_story.get(story["id"], []) for story in stories
             if R.DEMO_ONLY in story["labels"]
             and all(design_pr(pr) for pr in by_story.get(story["id"], []))}
+
+
+def demo_fixing(story, prs):
+    """Whether a failed demo-only story's fix is open, or pm's demo-merged item has it: ux's
+    hold ends there. Read from `demo_items`, so it ends exactly where pm's begins."""
+    return any(pr.get("story_id") == story["id"] and design_pr(pr) and pr["state"] == "open"
+               for pr in prs) or bool(demo_items([story], prs))
 
 
 def demo_items(stories, prs):
@@ -547,7 +616,8 @@ def developer_items(stories, prs):
                              "close it, saying why", f"{role}:close:#{number}")
             continue
         if pr["state"] == "merged":
-            if story["state"] in R.MERGING and not linguists(story) and not design:
+            if story["state"] in R.MERGING and not linguists(story) and not design \
+                    and not side:
                 if covered and verdict["verdict"] == "pass":
                     if story["id"] in building \
                             or any(not t["done"] for t in story.get("tasks") or []):
@@ -581,7 +651,7 @@ def developer_items(stories, prs):
         elif pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] in ("In Progress", "Failed Code Review") \
-                and not covered and not linguists(story) and not design:
+                and not covered and not linguists(story) and not design and not side:
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
         elif pr["checks"] == "green" and (side or follow or design
@@ -669,9 +739,19 @@ def main_items(main_run):
 def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None,
                     testers=None, prs=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
-    role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
+    role with `sweepEvery` picks too, and sweeps once that long has passed since its last.
+    A role with `sweepOverdue` never goes longer than that without a sweep: once it is
+    overdue the sweep is offered though the role is busy, ahead of its comments, and stays
+    the same work until a sweep is finished."""
     items = []
     for role, config in R.ROLES.items():
+        overdue = config.get("sweepOverdue")
+        last_sweep = (last_sweeps or {}).get(role)
+        if overdue and not (last_sweep and now - last_sweep < overdue * 60):
+            items.append(_item(f"{role}:sweep:overdue:{int(last_sweep or 0)}", role, [role],
+                               "sweep", f"your sweep, overdue: none for {overdue} minutes",
+                               INBOX - 1))
+            continue
         if role in busy_roles:
             continue
         period = config["heartbeat"] * 60
@@ -707,6 +787,8 @@ def machine_items(checks):
 def builder(story, pr):
     if design_pr(pr):
         return "ux"
+    if ops_pr(story, pr):
+        return "ops"
     return "l10n" if linguists(story) and not side_pr(story, pr) else R.builder_of(story["labels"])
 
 

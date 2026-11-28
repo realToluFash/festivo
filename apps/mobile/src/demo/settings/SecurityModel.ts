@@ -9,6 +9,13 @@ import { codeHelp, proveIntro } from '../../kit/waysProof.ts';
 import { SAMPLE } from '../samples.ts';
 import { CODE_SAYS, type SampleProofAsks } from './AccountModel.ts';
 import {
+  APP_ON,
+  type Factors,
+  type KeyMode,
+  samplePasskeys,
+  type Unlock,
+} from './PasskeysModel.ts';
+import {
   AUTHENTICATOR_KEY,
   BREACHED_PASSWORD,
   type Device,
@@ -51,6 +58,28 @@ export const SECURITY_STATES = [
   'factorFailed',
   'factorFailedLinked',
   'factorLoadingSignedOut',
+  'choose',
+  'chooseFaceId',
+  'chooseTouchId',
+  'choosePasskey',
+  'chooseSheet',
+  'cardApp',
+  'cardPasskeys',
+  'cardBoth',
+  'cardTen',
+  'removePasskey',
+  'removeApp',
+  'removeProof',
+  'confirmPasskey',
+  'confirmRefused',
+  'addApp',
+  'proveGoogle',
+  'proveApple',
+  'everywhereGoogle',
+  'everywhereApple',
+  'everywhereGoogleCode',
+  'everywhereLimited',
+  'everywhereLimitedCode',
 ] as const;
 
 export type SecurityState = (typeof SECURITY_STATES)[number];
@@ -59,7 +88,7 @@ export function securityStateOf(param: string | undefined): SecurityState {
   return SECURITY_STATES.find((name) => name === param) ?? 'rest';
 }
 
-export type SecurityAsk = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere';
+export type SecurityAsk = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere' | 'remove';
 export type SecurityScreen =
   | 'change'
   | 'forgot'
@@ -68,8 +97,10 @@ export type SecurityScreen =
   | 'setPasswordExpired'
   | 'confirm'
   | 'setup'
-  | 'recovery';
-export type Proof = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
+  | 'recovery'
+  | 'passkey';
+export type Proof =
+  'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes' | 'remove' | 'addPasskey' | 'addApp';
 /** Two-factor's status as the page has it: until it is ready, Security draws no card. */
 export type Factor = 'ready' | 'loading' | 'failed';
 /** The action that had just finished when the state opens, its line drawn alone while there is no card. */
@@ -101,7 +132,40 @@ export interface SecurityStart {
   handed: boolean;
   /** Turn on was pressed with what the field holds, and the code was refused. */
   refused: boolean;
+  /** The member's factors where the build sets a relying party, so passkeys are offered; null is today's card. */
+  factors: Factors | null;
+  /** How the device unlocks, as the state draws it; null takes the platform's own (Face ID on iOS). */
+  unlock: Unlock | null;
+  keyMode: KeyMode;
+  /** The system's sheet is open over the screen as the state starts. */
+  sheet: boolean;
+  /** The server refused the last passkey. */
+  keyRefused: boolean;
+  /** The factor Remove… was pressed on. */
+  removing: string | null;
+  /** The setup step opens as Add an authenticator app, two-factor already on with passkeys. */
+  addsApp: boolean;
+  /** Sign out everywhere else was refused for too many tries: the button and Continue stay off until it ends. */
+  limited: boolean;
+  /** Confirm it's you opens with Google or Apple already answered, at the code step. */
+  codeStep: boolean;
 }
+
+/** An account with no password, which confirms it's you with Google or Apple (sc-22601). */
+const PROVIDER_ONLY: ReadonlySet<SecurityState> = new Set([
+  'proveGoogle',
+  'proveApple',
+  'everywhereGoogle',
+  'everywhereApple',
+  'everywhereGoogleCode',
+  'everywhereLimited',
+  'everywhereLimitedCode',
+]);
+const APPLE_ONLY: ReadonlySet<SecurityState> = new Set(['proveApple', 'everywhereApple']);
+const PROVIDER_TWO_FACTOR: ReadonlySet<SecurityState> = new Set([
+  'everywhereGoogleCode',
+  'everywhereLimitedCode',
+]);
 
 const ORG = SAMPLE.organisation;
 const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
@@ -157,7 +221,7 @@ export function proofAsks(
   twoFactor: boolean,
   t: TFunction,
 ): SampleProofAsks {
-  const codeOnly = proof === 'turnOff' || proof === 'newCodes';
+  const codeOnly = proof !== 'link' && proof !== 'unlink' && proof !== 'everywhere';
   const first = linkedProviders(ways)[0];
   const instead = codeOnly || ways.password || first == null ? null : PROVIDER_NAME[first];
   const name = PROVIDER_NAME[provider];
@@ -223,10 +287,18 @@ export function setupRefusal(code: string, key: string): string | null {
 export function securityStart(state: SecurityState): SecurityStart {
   const googleOnly =
     state === 'googleOnly' || state === 'setPassword' || state === 'setPasswordExpired';
+  const providerOnly = PROVIDER_ONLY.has(state);
+  const appleOnly = APPLE_ONLY.has(state);
   const picking = state === 'linkPick';
   const start: SecurityStart = {
-    ways: { password: !googleOnly, google: !picking, apple: false },
-    twoFactor: !googleOnly && !SETUP_STATES.has(state),
+    ways: {
+      password: !googleOnly && !providerOnly,
+      google: !picking && !appleOnly,
+      apple: appleOnly,
+    },
+    twoFactor: providerOnly
+      ? PROVIDER_TWO_FACTOR.has(state)
+      : !googleOnly && !SETUP_STATES.has(state),
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
     rules: {
       providerOnly: state === 'keptByRule' || picking ? ORG : null,
@@ -246,7 +318,25 @@ export function securityStart(state: SecurityState): SecurityStart {
     refused: false,
     finished: null,
     signedOut: [],
+    factors: null,
+    unlock: null,
+    keyMode: 'proof',
+    sheet: false,
+    keyRefused: false,
+    removing: null,
+    addsApp: false,
+    limited: false,
+    codeStep: false,
   };
+  const off: Factors = { app: null, passkeys: [] };
+  const both: Factors = { app: APP_ON, passkeys: samplePasskeys(2) };
+  const choosing = {
+    ...start,
+    twoFactor: false,
+    factors: off,
+    screen: 'passkey',
+    keyMode: 'choose',
+  } as const;
 
   switch (state) {
     case 'keptByRule':
@@ -292,6 +382,31 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, opened: 'safari', ask: 'signOut' };
     case 'everywhere':
       return { ...start, ask: 'everywhere', inView: 'everywhere' };
+    case 'proveGoogle':
+      return { ...start, opened: 'apple', screen: 'confirm', proof: 'link' };
+    case 'proveApple':
+      return { ...start, opened: 'google', screen: 'confirm', proof: 'link' };
+    case 'everywhereGoogle':
+    case 'everywhereApple':
+    case 'everywhereGoogleCode':
+      return { ...start, inView: 'everywhere', screen: 'confirm', proof: 'everywhere' };
+    case 'everywhereLimited':
+      return {
+        ...start,
+        inView: 'everywhere',
+        screen: 'confirm',
+        proof: 'everywhere',
+        limited: true,
+      };
+    case 'everywhereLimitedCode':
+      return {
+        ...start,
+        inView: 'everywhere',
+        screen: 'confirm',
+        proof: 'everywhere',
+        limited: true,
+        codeStep: true,
+      };
     case 'forgot':
       return { ...start, screen: 'forgot' };
     case 'forgotSent':
@@ -311,6 +426,63 @@ export function securityStart(state: SecurityState): SecurityStart {
         factor: 'loading',
         finished: { kind: 'signedOut', device: SIGNED_OUT },
         signedOut: [SIGNED_OUT],
+      };
+    case 'choose':
+      return choosing;
+    case 'chooseFaceId':
+      return { ...choosing, unlock: 'faceId' };
+    case 'chooseTouchId':
+      return { ...choosing, unlock: 'touchId' };
+    case 'choosePasskey':
+      return { ...choosing, unlock: 'passkey' };
+    case 'chooseSheet':
+      return { ...choosing, sheet: true };
+    case 'cardApp':
+      return { ...start, factors: { app: APP_ON, passkeys: [] } };
+    case 'cardPasskeys':
+      return { ...start, factors: { app: null, passkeys: samplePasskeys(2) } };
+    case 'cardBoth':
+      return { ...start, factors: both };
+    case 'cardTen':
+      return { ...start, factors: { app: APP_ON, passkeys: samplePasskeys(10) } };
+    case 'removePasskey':
+      return { ...start, factors: both, opened: 'passkey-1', ask: 'remove', removing: 'passkey-1' };
+    case 'removeApp':
+      return {
+        ...start,
+        factors: both,
+        opened: 'authenticator',
+        ask: 'remove',
+        removing: 'authenticator',
+      };
+    case 'removeProof':
+      return {
+        ...start,
+        factors: both,
+        opened: 'passkey-1',
+        removing: 'passkey-1',
+        proof: 'remove',
+        screen: 'passkey',
+        sheet: true,
+      };
+    case 'confirmPasskey':
+    case 'confirmRefused':
+      return {
+        ...start,
+        factors: both,
+        opened: 'apple',
+        proof: 'link',
+        screen: 'passkey',
+        sheet: state === 'confirmPasskey',
+        keyRefused: state === 'confirmRefused',
+      };
+    case 'addApp':
+      return {
+        ...start,
+        factors: { app: null, passkeys: samplePasskeys(2) },
+        screen: 'setup',
+        fetched: 1,
+        addsApp: true,
       };
     default:
       return start;

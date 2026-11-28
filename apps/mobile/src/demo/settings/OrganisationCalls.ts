@@ -49,7 +49,9 @@ export function refusal(
 
 /** Organisation's calls answered from the sample, as a state link starts them: the product's parts draw the demo. */
 export function sampleCalls(start: OrganisationStart, locale: string): OrganisationCalls {
-  let domains: CompanyDomains['domains'] = [{ domain: YOUR_DOMAIN, stopped: false }];
+  let domains: CompanyDomains['domains'] = [
+    { domain: YOUR_DOMAIN, stopped: false, proved: start.proved.includes(YOUR_DOMAIN) },
+  ];
   let linkFails = start.link === 'failed';
   let link: RequestLink =
     start.link === 'turnedOff' ? { on: false, url: null } : { on: true, url: requestLink(0) };
@@ -77,7 +79,7 @@ export function sampleCalls(start: OrganisationStart, locale: string): Organisat
         );
         if (refused != null)
           throw refusal('validation_failed', refused, { propertyPath: 'domain', message: refused });
-        domains = [...domains, { domain, stopped: false }];
+        domains = [...domains, { domain, stopped: false, proved: start.proved.includes(domain) }];
 
         return list();
       }),
@@ -124,7 +126,7 @@ export function sampleCalls(start: OrganisationStart, locale: string): Organisat
         if (!('password' in first) || first.password !== SAMPLE.password)
           throw refusal('invalid_credentials', OWNERSHIP_WORDS.passwordWrong);
         if (code == null) throw refusal('two_factor_required', OWNERSHIP_WORDS.codeAsked);
-        const typed = code.replaceAll(/\s/gu, '').toLowerCase();
+        const typed = typeof code === 'string' ? code.replaceAll(/\s/gu, '').toLowerCase() : '';
         if (typed !== SAMPLE.authenticator && typed !== SAMPLE.recovery)
           throw refusal('two_factor_code_invalid', OWNERSHIP_WORDS.codeWrong);
 

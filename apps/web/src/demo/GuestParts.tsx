@@ -1,4 +1,5 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { type KeyboardEvent, type ReactNode, useContext, useEffect, useRef } from 'react';
+import { Link } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -12,7 +13,6 @@ import {
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
-  THANK_YOU,
   type Visit,
   type Words,
   characters,
@@ -26,6 +26,9 @@ import {
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
 import { ChangeLines } from './GuestChange.tsx';
+import { Programme } from './GuestProgramme.tsx';
+import { WalletButton, WalletLine } from './Wallet.tsx';
+import { WalletDevice } from './walletContext.ts';
 
 const LINES = {
   map: [
@@ -46,6 +49,7 @@ const LINES = {
     'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
   ],
   send: ['M12 19V5', 'm5 12 7-7 7 7'],
+  ringCross: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm15 9-6 6', 'm9 9 6 6'],
 } as const;
 
 /** The boards' strokes Today's set lacks, drawn the same way: beside words, so hidden. */
@@ -192,6 +196,7 @@ export function Cover({
 export function TextAction({
   children,
   off = false,
+  busy = false,
   ink = false,
   icon,
   focus,
@@ -200,6 +205,7 @@ export function TextAction({
 }: {
   children: ReactNode;
   off?: boolean;
+  busy?: boolean;
   ink?: boolean;
   icon?: ReactNode;
   focus?: string;
@@ -212,10 +218,11 @@ export function TextAction({
       type="button"
       data-focus={focus}
       aria-describedby={describedBy}
-      {...offButton(off, { dim: false })}
+      aria-busy={busy || undefined}
+      {...offButton(off || busy, { dim: false })}
       onClick={onClick}
     >
-      {icon}
+      {busy ? <Spinner size={13} /> : icon}
       <span>{children}</span>
     </button>
   );
@@ -226,17 +233,19 @@ export function Filled({
   busy = false,
   focus,
   narrow = false,
+  wraps = false,
   onClick,
 }: {
   children: ReactNode;
   busy?: boolean;
   focus?: string;
   narrow?: boolean;
+  wraps?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className={`gp-filled${narrow ? ' is-narrow' : ''}`}
+      className={`gp-filled${narrow ? ' is-narrow' : ''}${wraps ? ' is-wraps' : ''}`}
       type="button"
       data-focus={focus}
       aria-busy={busy}
@@ -294,15 +303,20 @@ export function Notice({
   kind,
   alert = kind === 'broken',
   action,
+  className,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
+    <div
+      className={`gp-notice is-${kind}${className == null ? '' : ` ${className}`}`}
+      role={alert ? 'alert' : 'status'}
+    >
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>
@@ -378,11 +392,14 @@ export function AnswerRows({
   words,
   current = null,
   busy = null,
+  goesOn = true,
   onAnswer,
 }: {
   words: Words;
   current?: Answer | null;
   busy?: Answer | null;
+  /** sc-1291: false where none of Yes's steps applies, so Yes records at once and has no chevron. */
+  goesOn?: boolean;
   onAnswer: (answer: Answer) => void;
 }) {
   const changing = current != null;
@@ -410,7 +427,8 @@ export function AnswerRows({
               {words.answerNow}
             </span>
           ) : (
-            answer === 'coming' && (
+            answer === 'coming' &&
+            goesOn && (
               <span className="gp-chev">
                 <Glyph name="chevron" size={18} weight={2.2} />
               </span>
@@ -486,6 +504,7 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
         <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
       {hostsRow}
+      <Programme visit={visit} />
     </div>
   );
 }
@@ -493,10 +512,14 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
 export function Foot({
   words,
   noAccount,
+  wayIn,
+  onYourMessages,
   onTell,
 }: {
   words: Words;
   noAccount: boolean;
+  wayIn: string;
+  onYourMessages: () => void;
   onTell: () => void;
 }) {
   return (
@@ -504,6 +527,16 @@ export function Foot({
       {noAccount && (
         <>
           <p>{words.noAccount}</p>
+          <Link
+            className="gp-text"
+            to={wayIn}
+            onClick={(event) => {
+              event.preventDefault();
+              onYourMessages();
+            }}
+          >
+            <span>{words.wayIn}</span>
+          </Link>
           <hr />
         </>
       )}
@@ -529,6 +562,7 @@ export function DoorCode({
   heading?: string;
   cardRef?: (card: HTMLDivElement | null) => void;
 }) {
+  const wallet = useContext(WalletDevice);
   const code = (
     <div className="gp-code">
       <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
@@ -547,7 +581,9 @@ export function DoorCode({
           <p className="gp-day-door">{words.doorTitle}</p>
           {code}
           <p className="gp-sub">{words.doorLine(companions)}</p>
+          {wallet && <WalletButton {...wallet} />}
         </div>
+        {wallet && <WalletLine {...wallet} />}
       </section>
     );
   }
@@ -559,6 +595,8 @@ export function DoorCode({
       </h2>
       <p className="gp-sub">{words.doorLine(companions)}</p>
       {code}
+      {wallet && <WalletButton {...wallet} start />}
+      {wallet && <WalletLine {...wallet} start />}
     </section>
   );
 }
@@ -587,16 +625,6 @@ export function AddToCalendar({ words }: { words: Words }) {
         {row(words.calendarGoogle)}
       </div>
     </section>
-  );
-}
-
-/** sc-6476: the hosts' own words, never translated or linked, signed with their names, outside the notice. */
-export function Thanks({ words }: { words: Words }) {
-  return (
-    <figure className="gp-thanks">
-      <blockquote dir="auto">{THANK_YOU}</blockquote>
-      <figcaption>{words.hosts}</figcaption>
-    </figure>
   );
 }
 
@@ -670,59 +698,61 @@ export function Messages({
           </p>
         </article>
       ))}
-      <div className="gp-compose">
-        <label htmlFor="gp-box">{words.writeTo}</label>
-        {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
-        <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
-          <textarea
-            ref={box}
-            id="gp-box"
-            className="gp-box"
-            rows={1}
-            value={visit.draft}
-            data-focus="box"
-            aria-invalid={tooLong}
-            aria-describedby={
-              tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
-            }
-            onChange={(event) => onDraft(event.target.value)}
-          />
-          <button
-            className={live ? 'gp-send is-live' : 'gp-send'}
-            type="button"
-            aria-label={words.sendMessage}
-            data-focus="sendMessage"
-            {...offButton(!live, { dim: false })}
-            onClick={onSend}
-          >
-            <Line name="send" size={20} weight={2.6} />
-          </button>
+      {visit.box !== 'none' && (
+        <div className="gp-compose">
+          <label htmlFor="gp-box">{words.writeTo}</label>
+          {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
+          <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
+            <textarea
+              ref={box}
+              id="gp-box"
+              className="gp-box"
+              rows={1}
+              value={visit.draft}
+              data-focus="box"
+              aria-invalid={tooLong}
+              aria-describedby={
+                tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
+              }
+              onChange={(event) => onDraft(event.target.value)}
+            />
+            <button
+              className={live ? 'gp-send is-live' : 'gp-send'}
+              type="button"
+              aria-label={words.sendMessage}
+              data-focus="sendMessage"
+              {...offButton(!live, { dim: false })}
+              onClick={onSend}
+            >
+              <Line name="send" size={20} weight={2.6} />
+            </button>
+          </div>
+          {counting && (
+            <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
+              {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
+              {words.messageCount(length)}
+            </p>
+          )}
+          {tooLong && (
+            <p id="gp-box-error" className="gp-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {words.messageTooLong}
+            </p>
+          )}
         </div>
-        {counting && (
-          <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
-            {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
-            {words.messageCount(length)}
-          </p>
-        )}
-        {tooLong && (
-          <p id="gp-box-error" className="gp-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {words.messageTooLong}
-          </p>
-        )}
-      </div>
+      )}
     </section>
   );
 }
 
-export function Gone({ words }: { words: Words }) {
+export function Gone({ title, body }: { title: string; body: string }) {
   return (
     <div className="gp-alone" role="alert">
       <span className="gp-alone-mark" aria-hidden="true">
         <Line name="broken" size={26} />
       </span>
-      <h1 className="gp-alone-title">{words.gone}</h1>
-      <p>{words.goneBody}</p>
+      <h1 className="gp-alone-title">{title}</h1>
+      <p>{body}</p>
     </div>
   );
 }

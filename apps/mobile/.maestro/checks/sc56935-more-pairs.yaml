@@ -1,0 +1,45 @@
+# sc-56935, phone: the More sheet from Overview and with Seating chosen, each shot beside the demo's at evt-wed-4; its close button and a tap outside both close it on the same area. Pass EVENT_ID, an event the signed-in host owns; run with --lang en,es.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: more-overview-product
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- assertVisible: { id: 'event.nav.overview', selected: true }
+- takeScreenshot: closed-by-x-overview
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'tab-more' }, timeout: 30000 }
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: more-overview-demo
+- tapOn: { id: 'event.more.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.more.close' }, timeout: 10000 }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=seating
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'event.nav.more.seating', selected: true }
+- takeScreenshot: more-seating-product
+- tapOn: { point: '50%,12%' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- takeScreenshot: closed-by-outside-seating
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- assertVisible: { id: 'event.nav.more.seating', selected: true }
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=seating
+- extendedWaitUntil: { visible: { id: 'tab-more' }, timeout: 30000 }
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: more-seating-demo
+- tapOn: { id: 'event.more.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.more.close' }, timeout: 10000 }

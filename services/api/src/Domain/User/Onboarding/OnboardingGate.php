@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Onboarding;
 
 use App\Entity\User;
+use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
 use App\Http\Access\Interfaces\OnboardingGateInterface;
 use Psl\Iter;
@@ -36,21 +37,47 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'request_links_ask',
     ];
 
+    /** Besides the events it holds a grant on, all a door code's account (sc-72) may reach. */
+    public const array DEVICE_REACHES = [
+        'auth_me',
+        'auth_locale',
+    ];
+
     public function __construct(
         private AccountCompleteness $accountCompleteness,
     ) {
     }
 
-    public function refusalFor(User $user, string $route): ?ErrorCode
+    public function refusalFor(User $user, string $route, bool $onAnEvent): ?ErrorCode
     {
+        if (self::heldByDevice($user) && !$onAnEvent && !Iter\contains(self::DEVICE_REACHES, $route)) {
+            return ErrorCode::AccountUnverified;
+        }
+
+        if ('orgs_create' === $route && self::phoneOnly($user)) {
+            return ErrorCode::AccountUnverified;
+        }
+
         if (Iter\contains(self::EXEMPT, $route)) {
             return null;
         }
 
-        if (!$user->isVerified()) {
+        if (!$user->isVerified() && !self::heldByDevice($user)) {
             return ErrorCode::AccountUnverified;
         }
 
         return $this->accountCompleteness->isComplete($user) ? null : ErrorCode::ProfileIncomplete;
+    }
+
+    /** A staff account with no email (sc-4235) reaches only its grants' events: founding an organisation would make a member who signs in by phone code. */
+    private static function phoneOnly(User $user): bool
+    {
+        return AccountOrigin::Staff === $user->getOrigin() && null === $user->getPrimaryEmailAddress();
+    }
+
+    /** A door code's account (sc-72) has no address to prove until sc-4235 asks it for a number. */
+    private static function heldByDevice(User $user): bool
+    {
+        return AccountOrigin::DoorCode === $user->getOrigin() && null === $user->getPrimaryEmailAddress() && null === $user->getPrimaryPhoneNumber();
     }
 }

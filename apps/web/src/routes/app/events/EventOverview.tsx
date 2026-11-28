@@ -1,30 +1,28 @@
 import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  calledOff,
   changedWords,
   currencyLabel,
   formatEventRange,
   hostsLine,
+  nextStep,
   positionPart,
   rememberTabHolding,
+  repliesClosed,
   shownPhase,
   stepAwaitsMilestones,
   takesCardStep,
+  takesThankYou,
   wallDay,
 } from '@soirely/domain';
-import {
-  Fragment,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import {
+  Broken,
   Crumb,
   Lead,
   ManageItem,
@@ -33,17 +31,17 @@ import {
 } from '../../../components/EventPageParts.tsx';
 import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { ArrivalNotice } from '../../../components/PageArrival.tsx';
-import { Ask, Head } from '../../../components/SettingsParts.tsx';
+import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { listEventOf, shownEvent } from '../../../eventsList.ts';
+import { useDeskTop } from '../../../deskTop.ts';
+import { cardStep, listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, outsideOn, useSessionState } from '../../../session.ts';
+import { useRoutedEventId } from '../outsideRoute.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
-import { wasDuplicated } from './duplicated.ts';
-import { type EditOutcome } from './EditEvent.tsx';
+import { guestsCopied, wasDuplicated } from './duplicated.ts';
 import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import {
@@ -58,24 +56,47 @@ import {
   VenuePart,
 } from './EventPartEdits.tsx';
 import { useMakeLive } from './MakeLive.tsx';
+import { ReplyByPart } from './ReplyByPart.tsx';
+import { closesAtClock } from '../../../replyBy.ts';
+import { arrivingPart, asksEndNow } from './openInPlace.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
+import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
-import { ComingUp, useTimeline } from './Timeline.tsx';
+import { ThankYouCard } from './ThankYou.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
+import { type Beside, ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
 import '../../../components/eventPage.css';
+import './overviewReflow.css';
 
-/** The crumb an event's page starts with at a desk: Events, then where you are. */
-export function EventCrumb({ name, children }: { name: string | null; children?: ReactNode }) {
+/** The crumb an event's page starts with at a desk: Events, then where you are, and the bell at its end. */
+export function EventCrumb({
+  name,
+  area,
+  children,
+}: {
+  name: string | null;
+  area?: { label: string; event: string } | undefined;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
+  const { bell } = useDeskTop();
+  const state = useSessionState();
+  const routed = useRoutedEventId();
+  const outside =
+    state.status === 'signedIn' &&
+    state.session.pausedIn == null &&
+    (state.session.organisation == null || outsideOn(state.session, routed) != null);
 
   return (
-    <Crumb to="/app/events" back={t('events.title')} name={name}>
+    <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name} area={area}>
       {children}
+      {bell}
     </Crumb>
   );
 }
@@ -115,26 +136,25 @@ export function Overview({
   event,
   tag,
   heading,
+  beside,
   onChange,
 }: {
   event: OrganisationEvent;
   tag: string;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [outcome] = useState(() => editOutcome(location.state));
-  const [coverRefused] = useState(() => coverRefusal(location.state));
-  const coverLine = useRef<HTMLParagraphElement>(null);
+  const [coverRefused, setCoverRefused] = useState(() => coverRefusal(location.state));
   const [ended, setEnded] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [part, setPart] = useState<Part | null>(null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [toast, setToast] = useState<string | null>(() =>
-    wasDuplicated(location.state) ? t('eventDuplicate.created') : null,
+    wasDuplicated(location.state) ? createdLine(guestsCopied(location.state), t) : null,
   );
   const [shown, setShown] = useState(0);
   const now = useServerNow();
@@ -142,11 +162,17 @@ export function Overview({
   const phase = shownPhase(event, loadedAt, now);
   const manages = canOn(event, 'events.manage');
   const creates = canOn(event, 'events.create');
+  const opens = (one: Part | null): Part | null =>
+    one == null || !manages || (one === 'dates' && phase === 'finished') ? null : one;
+  const [part, setPart] = useState<Part | null>(() => opens(arrivingPart(location.state)));
+  const [arrivals, setArrivals] = useState(part === 'dates' ? 1 : 0);
+  const [arrival, setArrival] = useState(location.key);
   const guard = useLeaveGuard({ dirty, busy: false, body: t('eventEdit.leaveBody') });
   const [madeLive, setMadeLive] = useState(false);
   const [resumed, setResumed] = useState(false);
   const [copying, setCopying] = useState(false);
   const stepButton = useRef<HTMLButtonElement>(null);
+  const askEnd = useRef<(() => void) | null>(null);
   const makeLive = useMakeLive({
     event,
     tag,
@@ -157,17 +183,22 @@ export function Overview({
   });
   const resume = useResume({ event, heading, onChange, onResumed: () => setResumed(true) });
   const comingUpHeading = useRef<HTMLHeadingElement>(null);
-  const timeline = useTimeline(event, comingUpHeading, now);
+  const timeline = useTimeline(event, comingUpHeading, now, beside);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const card = shownEvent(listEventOf({ ...event, milestones: milestones ?? [] }), phase);
 
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
+    if (asksEndNow(location.state)) askEnd.current?.();
+  }, [location.state]);
+
+  useEffect(() => {
     if (
-      editOutcome(location.state) == null &&
+      arrivingPart(location.state) == null &&
       coverRefusal(location.state) == null &&
-      !wasDuplicated(location.state)
+      !wasDuplicated(location.state) &&
+      !asksEndNow(location.state)
     )
       return;
 
@@ -177,9 +208,10 @@ export function Overview({
     );
   }, [location, navigate]);
 
-  function open(next: Part): void {
+  function open(next: Part, arriving = false): void {
     const to = next === part ? null : next;
 
+    setArrivals((count) => (arriving ? count + 1 : 0));
     if (part != null && dirty) setLeaving({ to });
     else {
       setPart(to);
@@ -187,10 +219,19 @@ export function Overview({
     }
   }
 
-  const close = useCallback(() => {
+  function close(): void {
     setPart(null);
     setDirty(false);
-  }, []);
+  }
+
+  // Change dates followed while the page is already open, from Make live's refusal.
+  if (location.key !== arrival) {
+    const arriving = opens(arrivingPart(location.state));
+
+    setArrival(location.key);
+    if (arriving != null && arriving !== part) open(arriving, true);
+    else if (arriving === 'dates') setArrivals((count) => count + 1);
+  }
 
   const onStep = (step: ButtonStep) => {
     if (step.action === 'makeLive') makeLive.start();
@@ -200,10 +241,10 @@ export function Overview({
     else setCopying(true);
   };
 
-  const saved = (next: TaggedEvent) => {
+  const saved = (next: TaggedEvent, said = t('eventEdit.saved')) => {
     onChange(next.event, next.tag);
     close();
-    setToast(t('eventEdit.saved'));
+    setToast(said);
   };
 
   const parts: PartProps = {
@@ -214,7 +255,8 @@ export function Overview({
     onSaved: saved,
     onLatest: (latest) => {
       onChange(latest.event, latest.tag);
-      setShown((n) => n + 1);
+      if (part === 'dates' && latest.event.phase === 'finished') close();
+      else setShown((n) => n + 1);
     },
   };
 
@@ -231,6 +273,7 @@ export function Overview({
         sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
         takes={(action) => takesCardStep(event, action)}
         onStep={onStep}
+        nextUp={ownNextUp(card, now) == null ? null : <OwnNextUp card={card} now={now} />}
       />
       <PhaseChange key={loadedAt.getTime()} phase={phase} />
       {resume.state === 'failed' && (
@@ -250,36 +293,43 @@ export function Overview({
       {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
-      {coverRefused != null && (
-        <ArrivalNotice
-          role="alert"
-          line={t('eventCover.createdWithout', { reason: coverRefused })}
-          lineRef={coverLine}
-          focusable={false}
-          retry={t('eventEdit.open')}
-          onRetry={() => open('cover')}
-        />
-      )}
-      {outcome != null && (
-        <OutcomeLine
-          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
-        />
-      )}
       <div className="ev-columns">
         <div className="ev-left">
+          {coverRefused != null && (
+            <Broken
+              action={
+                <TextAction
+                  label={t('eventCover.upload')}
+                  onClick={() => {
+                    setCoverRefused(null);
+                    open('cover');
+                  }}
+                />
+              }
+            >
+              {t('eventCover.createdWithout', { reason: coverRefused })}
+            </Broken>
+          )}
+          {takesThankYou(event, phase) && (
+            <ThankYouCard event={event} manages={manages} onChange={onChange} onSaid={setToast} />
+          )}
           <Details
             event={event}
             phase={phase}
             manages={manages}
+            now={now}
             part={part}
+            arrivals={arrivals}
             parts={parts}
             shown={shown}
-            onCover={(next) => onChange(next, tag)}
+            onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
+            needsYou={<EventNeeds event={event} timeline={timeline} />}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
         <div className="ev-right">
+          {canOn(event, 'guests.read') && <GuestNumbers event={event} />}
           <MuteEvent eventId={event.id} />
           {(creates || manages) && (
             <ManageList title={t('eventPage.manage')}>
@@ -304,14 +354,26 @@ export function Overview({
                     now={now}
                     heading={heading}
                     inManage
+                    askRef={askEnd}
                     onChange={onChange}
-                    onEnded={() => setEnded(true)}
+                    onEnded={(thanked) => {
+                      setEnded(true);
+                      if (thanked) setToast(t('thankYou.onEveryPage'));
+                    }}
                   />
                 </>
               )}
               {creates && (
                 <ManageItem red line={t('eventDelete.note')}>
-                  {(look) => <DeleteEvent event={event} look={look} />}
+                  {(look) => (
+                    <DeleteEvent
+                      event={event}
+                      phase={phase}
+                      now={now}
+                      look={look}
+                      onVerb={() => askEnd.current?.()}
+                    />
+                  )}
                 </ManageItem>
               )}
             </ManageList>
@@ -352,21 +414,27 @@ function Details({
   event,
   phase,
   manages,
+  now,
   part,
+  arrivals,
   parts,
   shown,
   onCover,
   onOpen,
+  needsYou,
   comingUp,
 }: {
   event: OrganisationEvent;
   phase: ReturnType<typeof shownPhase>;
   manages: boolean;
+  now: Date;
   part: Part | null;
+  arrivals: number;
   parts: PartProps;
   shown: number;
   onCover: (event: OrganisationEvent) => void;
   onOpen: (part: Part) => void;
+  needsYou: ReactNode;
   comingUp: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -376,6 +444,8 @@ function Details({
   const maps = mapsLink(event);
   const venue = event.venue;
   const address = venue?.address?.formatted ?? null;
+  const note = event.arrivalNote;
+  const replyBy = event.replyBy ?? null;
   const cover = event.cover;
 
   const editor = (one: Part): ReactNode => {
@@ -383,7 +453,9 @@ function Details({
       case 'name':
         return <NamePart {...parts} />;
       case 'dates':
-        return <DatesPart {...parts} />;
+        return <DatesPart {...parts} now={now} focusStart={arrivals} />;
+      case 'replyBy':
+        return <ReplyByPart {...parts} now={now} />;
       case 'venue':
         return <VenuePart {...parts} over={finished} />;
       case 'hosts':
@@ -393,7 +465,14 @@ function Details({
       case 'currency':
         return <CurrencyPart {...parts} />;
       case 'cover':
-        return <CoverPart event={event} onClose={parts.onClose} onCover={onCover} />;
+        return (
+          <CoverPart
+            event={event}
+            onDirty={parts.onDirty}
+            onClose={parts.onClose}
+            onCover={onCover}
+          />
+        );
     }
   };
 
@@ -401,14 +480,21 @@ function Details({
   const editing = (one: Part): ReactNode =>
     part === one ? <Fragment key={shown}>{editor(one)}</Fragment> : null;
 
-  const row = (one: Part, lead: ReactNode, title: string, line: string, after?: ReactNode) => (
+  const row = (
+    one: Part,
+    lead: ReactNode,
+    title: string,
+    line: string,
+    after?: ReactNode,
+    plain = false,
+  ) => (
     <PartRow
       key={one}
       lead={lead}
       title={title}
       line={line}
       open={part === one}
-      locked={!manages || (one === 'dates' && finished)}
+      locked={!manages || ((one === 'dates' || one === 'replyBy') && finished) || plain}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -426,12 +512,27 @@ function Details({
             <Lead name="calendar" />,
             formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale),
             finished
-              ? `${t('eventPage.dates')} · ${t('eventEdit.scheduleLocked')}`
+              ? `${t('eventPage.dates')} · ${t(calledOff(event) ? 'eventEdit.scheduleCalledOff' : 'eventEdit.scheduleLocked')}`
               : [
                   t('eventPage.dates'),
                   ...(days > 1 ? [t('eventPage.dayCount', { count: days })] : []),
                   event.timeZone,
                 ].join(' · '),
+          )}
+          {row(
+            'replyBy',
+            <Lead name="clock" />,
+            replyBy == null ? t('eventReplyBy.rowNone') : replyByDay(replyBy, locale),
+            replyBy == null
+              ? t('eventReplyBy.replyBy')
+              : `${t('eventReplyBy.replyBy')} · ${
+                  repliesClosed(event, now)
+                    ? t('eventReplyBy.rowClosed')
+                    : t('eventReplyBy.rowCloses', {
+                        time: closesAtClock(locale),
+                        zone: event.timeZone,
+                      })
+                }`,
           )}
           {row(
             'venue',
@@ -440,17 +541,28 @@ function Details({
             venue?.name != null && address != null
               ? `${t('eventPage.venue')} · ${address}`
               : t('eventPage.venue'),
-            maps == null ? undefined : (
-              <a
-                className="desk-text ev-maps"
-                href={maps}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Glyph name="globe" size={17} weight={2.3} />
-                {t('eventPage.openInMaps')}
-              </a>
+            maps == null && note == null ? undefined : (
+              <>
+                {note != null && <p className="ev-note">{note}</p>}
+                {maps != null && (
+                  <a
+                    className="desk-text ev-maps"
+                    href={maps}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Glyph name="globe" size={17} weight={2.3} />
+                    {t('eventPage.openInMaps')}
+                  </a>
+                )}
+                {venue == null && manages && (
+                  <button type="button" className="desk-text" onClick={() => onOpen('venue')}>
+                    {t('eventPage.addVenue')}
+                  </button>
+                )}
+              </>
             ),
+            venue == null && note != null,
           )}
           {row(
             'hosts',
@@ -469,6 +581,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needsYou}
       {comingUp}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{t('eventPage.nameAndCover')}</span>} />
@@ -495,6 +608,17 @@ function Details({
   );
 }
 
+/** "Wed, Nov 4, 2026": the row's title, a calendar day with no zone to move it. */
+function replyByDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
 /** Set by New event when the event was created and its staged cover was refused or failed to save. */
 function coverRefusal(state: unknown): string | null {
   const refused =
@@ -505,8 +629,51 @@ function coverRefusal(state: unknown): string | null {
   return typeof refused === 'string' ? refused : null;
 }
 
-function editOutcome(state: unknown): EditOutcome | null {
-  const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
+/** The copy's toast, with how many guests came when the guest list did (sc-3656). */
+function createdLine(guests: number | null, t: TFunction): string {
+  const created = t('eventDuplicate.created');
 
-  return edit === 'saved' || edit === 'unchanged' ? edit : null;
+  return guests == null
+    ? created
+    : `${created} ${t('eventDuplicate.guestsCopied', { count: guests })}`;
+}
+
+/** Next up when it is the reader's own milestone (sc-30812): You, Overdue once passed, and its action as the card's one step. */
+function ownNextUp(card: ReturnType<typeof shownEvent>, now: Date) {
+  const step = nextStep(card, card.phase, now);
+
+  return step?.kind === 'nextUp' && step.milestone.owner === 'you' ? step.milestone : null;
+}
+
+function OwnNextUp({ card, now }: { card: ReturnType<typeof shownEvent>; now: Date }) {
+  const { t } = useTranslation();
+  const milestone = ownNextUp(card, now);
+  const shown = cardStep(card, now, dateLocale(), t);
+
+  if (milestone == null || shown.kind !== 'next') return null;
+
+  return (
+    <>
+      <ul className="ev-card-marks">
+        <li className="desk-glass">
+          <Glyph name="user" size={14} weight={2.4} />
+          {t('timeline.owner_you')}
+        </li>
+        {Date.parse(milestone.at) < now.getTime() && (
+          <li className="desk-glass">
+            <Glyph name="alert" size={14} weight={2.4} />
+            {t('timeline.overdue')}
+          </li>
+        )}
+      </ul>
+      <p className="ev-card-next">{shown.title}</p>
+      <p className="desk-on-card">{shown.line}</p>
+      {milestone.action != null && (
+        <Link className="desk-step" to={milestone.action.link}>
+          {milestone.action.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
+    </>
+  );
 }

@@ -1,7 +1,8 @@
-import { type InvitationOutcome, type InvitationRefusalCode, isWaiting } from '@soirely/domain';
+import { type InvitationOutcome, type InvitationRefusalCode, stillListed } from '@soirely/domain';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 import type { Invite, Offer, OfferStatus, Place, Session } from '../kit/orgSwitcher.ts';
+import { MANAGED_WORDS } from './settings/DataWords.ts';
 
 export {
   CELL_GAP,
@@ -33,8 +34,9 @@ export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as 
 /** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
 export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
 
-export function openerLabel(place: Place, waiting: number): string {
-  const label = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
+/** Paused (sc-83881): the API returns no role for a paused membership, so the label says access is paused; the pill still opens the switcher, so it still names the switch. */
+export function openerLabel(place: Place, waiting: number, paused = false): string {
+  const label = `Organisation: ${place.name}, ${paused ? 'access paused' : `your role ${place.role}`}. Switch organisation`;
 
   if (waiting === 0) return label;
 
@@ -118,6 +120,7 @@ export const SWITCHER_STATES = [
   'withdrawn',
   'large',
   'managed',
+  'managed-listed',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -193,7 +196,27 @@ export function sessionFor(state: SwitcherState): Session {
     case 'large':
       return { ...populated, large: true };
     case 'managed':
-      return { ...populated, expanded: CELEBRACIONES, managed: CELEBRACIONES };
+      return {
+        ...populated,
+        outcomes: {
+          [CELEBRACIONES]: {
+            kind: 'managed',
+            organisation: IRE_EVENTS.name,
+            message: MANAGED_WORDS.body,
+          },
+        },
+        expanded: CELEBRACIONES,
+        managed: CELEBRACIONES,
+      };
+    case 'managed-listed': {
+      const managed = {
+        kind: 'managed',
+        organisation: IRE_EVENTS.name,
+        message: MANAGED_WORDS.body,
+      } as const;
+
+      return { ...populated, outcomes: { [CELEBRACIONES]: managed, [BLUEBIRD]: managed } };
+    }
     case 'populated':
       return populated;
   }
@@ -203,8 +226,13 @@ export function currentPlace(session: Session): Place {
   return session.places.find((place) => place.id === session.current) ?? IRE_EVENTS;
 }
 
+/** The kit draws the banner under the invitation `managed` names, so it follows whichever is open. */
 export function expand(session: Session, id: string): Session {
-  return { ...session, expanded: session.expanded === id ? null : id };
+  const expanded = session.expanded === id ? null : id;
+  const managed =
+    expanded != null && session.outcomes[expanded]?.kind === 'managed' ? expanded : undefined;
+
+  return { ...session, expanded, managed };
 }
 
 /** The press in flight: both buttons off, the pressed one saying what it is doing. */
@@ -246,10 +274,11 @@ export function settled(session: Session): Session {
   return {
     ...session,
     places: [...session.places, ...joined.map(({ id, name, role }) => ({ id, name, role }))],
-    invitations: session.invitations.filter((invite) => isWaiting(session.outcomes[invite.id])),
+    invitations: session.invitations.filter((invite) => stillListed(session.outcomes[invite.id])),
     outcomes: Object.fromEntries(
-      Object.entries(session.outcomes).filter(([, outcome]) => isWaiting(outcome)),
+      Object.entries(session.outcomes).filter(([, outcome]) => stillListed(outcome)),
     ),
+    managed: undefined,
     offer: session.offer?.status === 'dismissed' ? null : session.offer,
     expanded: null,
     query: '',
@@ -268,9 +297,16 @@ export function founded(session: Session, place: Place): Session {
   return { ...now, places: [...others, place], current: place.id };
 }
 
-/** Folake in no organisation; founded() gives her one. */
-export function withoutPlaces(session: Session): Session {
-  return { ...session, places: [], current: '', invitations: [], outcomes: {}, offer: null };
+/** Folake in no organisation; founded() gives her one, and with `invited` her two invitations wait (sc-75471). */
+export function withoutPlaces(session: Session, invited = false): Session {
+  return {
+    ...session,
+    places: [],
+    current: '',
+    invitations: invited ? INVITATIONS : [],
+    outcomes: {},
+    offer: null,
+  };
 }
 
 export function placeOf(session: Session): Place | null {

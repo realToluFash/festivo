@@ -37,7 +37,7 @@ final readonly class ObjectStore
         $key = $this->key($purpose, $filename, $scope);
         $bucket = $this->bucketFor($purpose);
 
-        $request = $this->s3->presign(
+        $request = $this->signer()->presign(
             new \AsyncAws\S3\Input\PutObjectRequest([
                 'Bucket' => $bucket,
                 'Key' => $key,
@@ -47,7 +47,7 @@ final readonly class ObjectStore
         );
 
         return new SignedUpload(
-            url: $this->forBrowser($request),
+            url: $request,
             key: $key,
             bucket: $bucket,
             expiresInSeconds: $this->uploadTtlSeconds,
@@ -62,12 +62,10 @@ final readonly class ObjectStore
             return \sprintf('%s/%s/%s', \rtrim($this->publicEndpoint, '/'), $bucket, $key);
         }
 
-        $request = $this->s3->presign(
+        return $this->signer()->presign(
             new \AsyncAws\S3\Input\GetObjectRequest(['Bucket' => $bucket, 'Key' => $key]),
             new DateTimeImmutable(\sprintf('+%d seconds', $this->downloadTtlSeconds)),
         );
-
-        return $this->forBrowser($request);
     }
 
     public function delete(string $bucket, string $key): void
@@ -102,15 +100,55 @@ final readonly class ObjectStore
         $this->delete($this->bucketFor($purpose), $key);
     }
 
+    /** Written by the server into the private bucket, and read back only by the server. */
+    public function keep(string $key, string $bytes, string $contentType): void
+    {
+        $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
+    }
+
+    /** @param resource $file read from where it stands to its end, in pieces, so a file of any size is never held in memory whole */
+    public function keepFile(string $key, $file, string $contentType): void
+    {
+        $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $file, 'ContentType' => $contentType]);
+    }
+
+    /** @return iterable<string> the kept file in pieces, for a response that passes each on as it arrives */
+    public function streamKept(string $key): iterable
+    {
+        return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getChunks();
+    }
+
+    public function discardKept(string $key): void
+    {
+        $this->delete($this->privateBucket, $key);
+    }
+
     /** Written by the server, readable by anyone at publicUrl(). */
     public function publish(string $key, string $bytes, string $contentType): void
     {
         $this->s3->putObject(['Bucket' => $this->publicBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
     }
 
+    public function readPublished(string $key): string
+    {
+        return $this->s3->getObject(['Bucket' => $this->publicBucket, 'Key' => $key])->getBody()->getContentAsString();
+    }
+
     public function copyPublished(string $from, string $to): void
     {
         $this->s3->copyObject(['Bucket' => $this->publicBucket, 'Key' => $to, 'CopySource' => $this->publicBucket . '/' . $from]);
+    }
+
+    /** The bytes the public bucket holds under the prefix, as the store reports them. */
+    public function publishedBytesUnder(string $prefix): int
+    {
+        $bytes = 0;
+
+        foreach ($this->s3->listObjectsV2(['Bucket' => $this->publicBucket, 'Prefix' => $prefix])->getContents() as $object) {
+            $bytes += (int) $object->getSize();
+        }
+
+        return $bytes;
     }
 
     public function unpublish(string $key): void
@@ -143,20 +181,24 @@ final readonly class ObjectStore
         );
     }
 
-    private function forBrowser(string $url): string
+    /** A signature covers the host, so a URL a browser will call is signed for the host the browser calls, never signed for the in-network one and rewritten. */
+    private function signer(): S3Client
     {
-        $internal = \parse_url($this->s3->getConfiguration()->get('endpoint') ?: '', \PHP_URL_HOST);
         $public = \rtrim($this->publicEndpoint, '/');
 
-        if (null === $internal || '' === $public) {
-            return $url;
+        if ('' === $public) {
+            return $this->s3;
         }
 
-        $parts = \parse_url($url);
-        if (false === $parts || !isset($parts['path'])) {
-            return $url;
-        }
+        $configuration = $this->s3->getConfiguration();
 
-        return $public . $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        return new S3Client([
+            'endpoint' => $public,
+            'region' => $configuration->get('region'),
+            'accessKeyId' => $configuration->get('accessKeyId'),
+            'accessKeySecret' => $configuration->get('accessKeySecret'),
+            'sessionToken' => $configuration->get('sessionToken'),
+            'pathStyleEndpoint' => $configuration->get('pathStyleEndpoint'),
+        ]);
     }
 }

@@ -18,7 +18,7 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { type CalEvent, type Item, calEventOf } from '../kit/calendar.ts';
 import { useServerNow } from '../kit/serverNow.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
 import { NOT_OFFLINE, type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
@@ -33,8 +33,6 @@ import { layoutOf } from './settingsShell.ts';
 import type { TextHandle } from './Text.tsx';
 import { useUnderTabs } from './underTabs.ts';
 import { LIST_EDGES } from './listFrame.ts';
-
-const KEPT = 'soirely.calendar';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: ListedEvent[]; at: Date };
@@ -56,7 +54,7 @@ const daysOf = (events: readonly CalEvent[], show: CalendarShow) => calendarDays
 export function CalendarScreen() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { organisation } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const title = useRef<TextHandle>(null);
   const subscribeRef = useRef<ViewInstance>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
@@ -68,27 +66,41 @@ export function CalendarScreen() {
   );
 
   const subscribe = () => setFeed(true);
+  // From AX1 on an iPad, Refreshing… and Subscribe leave the title's row for one under it, so the title keeps its row whole (sc-79265).
+  const under = useAccessibilitySizes() && kind !== 'phone';
+  const ends = (
+    <View style={[styles.beside, under && kind === 'tabletPortrait' && styles.underTitle]}>
+      {offline.refreshing && <Refreshing testID="calendar.refreshing" />}
+      {organisation != null && (
+        <View style={under && styles.shrink}>
+          <Subscribe
+            phone={kind === 'phone'}
+            grows={under}
+            onPress={subscribe}
+            ref={subscribeRef}
+          />
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <AppFrame
       current="calendar"
       top="stays"
       listUnderTabs
+      switchedAt={styles.switched}
       title={t('calendar.title')}
       titleRef={title}
       offline={offline.stale}
-      besideTitle={
-        <View style={styles.beside}>
-          {offline.refreshing && <Refreshing testID="calendar.refreshing" />}
-          {organisation != null && (
-            <Subscribe phone={kind === 'phone'} onPress={subscribe} ref={subscribeRef} />
-          )}
-        </View>
-      }
+      besideTitle={under ? undefined : ends}
+      underTitle={under ? ends : undefined}
+      bellUnder={under}
     >
-      {organisation != null && (
+      {organisation != null && account != null && (
         <CalendarOf
-          key={organisation.id}
+          key={`${account.id}/${organisation.id}`}
+          personId={account.id}
           organisationId={organisation.id}
           creates={roleHolds(organisation, 'events.create')}
           kind={kind}
@@ -113,12 +125,14 @@ export function CalendarScreen() {
 }
 
 function CalendarOf({
+  personId,
   organisationId,
   creates,
   kind,
   heading,
   onOffline,
 }: {
+  personId: string;
   organisationId: string;
   creates: boolean;
   kind: LayoutKind;
@@ -201,7 +215,7 @@ function CalendarOf({
         now={now}
         locale={locale}
         firstDay={firstDay}
-        kept={KEPT}
+        personId={personId}
         bottom={kind === 'phone' ? underTabs + tokens.space3xl : insets.bottom + tokens.space3xl}
         onOpen={openItem}
         onRetry={retry}
@@ -214,6 +228,9 @@ function CalendarOf({
 const styles = StyleSheet.create({
   page: { flex: 1 },
   beside: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  underTitle: { marginTop: tokens.spaceXxs },
+  shrink: { flexShrink: 1, minWidth: 0 },
+  switched: { marginTop: 0 },
 });
 
 const PAGE: Record<LayoutKind, { paddingHorizontal: number }> = {

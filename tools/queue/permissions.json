@@ -4,6 +4,16 @@
       "rule": "Artifact",
       "roles": ["dev", "dev2", "dev3", "dev4", "lead", "qa", "qa2", "qa3"],
       "ask": 25203
+    },
+    {
+      "rule": "Bash(npx expo install:*)",
+      "roles": ["dev", "dev2", "dev3", "dev4"],
+      "ask": 80655
+    },
+    {
+      "rule": "Bash(git push --force-with-lease:*)",
+      "roles": ["dev", "dev2", "dev3", "dev4", "ops", "l10n", "ux"],
+      "ask": 102110
     }
   ]
 }

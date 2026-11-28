@@ -1,0 +1,11 @@
+# sc-560: the app demo's Data and control, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control
+- extendedWaitUntil:
+    visible:
+      id: data.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc560-demo-hub

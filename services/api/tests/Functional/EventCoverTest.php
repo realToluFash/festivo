@@ -30,6 +30,7 @@ use Psl\Encoding\Base64;
 use Psl\Encoding\Hex;
 use Psl\Hash;
 use Psl\Json;
+use Psl\Math;
 use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Str\Byte;
@@ -313,13 +314,37 @@ final class EventCoverTest extends ApiTestCase
         self::assertArrayHasKey('uploadKey', $this->violations());
     }
 
-    #[Test]
-    public function aDescriptionOver250CharactersIsRefused(): void
+    /** @return iterable<string, array{string}> */
+    public static function descriptionsOver250Letters(): iterable
     {
-        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => Str\repeat('a', 251)]);
+        yield 'latin letters' => [Str\repeat('a', 251)];
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 251)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 1000)];
+    }
+
+    #[Test]
+    #[DataProvider('descriptionsOver250Letters')]
+    public function aDescriptionOver250CharactersIsRefused(string $description): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => $description]);
 
         self::assertSame(422, $this->statusCode());
-        self::assertArrayHasKey('description', $this->violations());
+        self::assertSame(['description' => 'Shorten the description to 250 characters or fewer.'], $this->violations());
+    }
+
+    #[Test]
+    public function aDescriptionOf250LettersWithADotAndAToneEachIsReadBackAsTyped(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 250);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 250);
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => $composed]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        foreach ([$decomposed, $composed] as $description) {
+            $this->as($this->owner, 'PUT', $this->coverPath(), ['position' => 50, 'description' => $description]);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame($description, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId))['description'] ?? null);
+        }
     }
 
     #[Test]
@@ -340,6 +365,27 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         self::assertSame($first['sizes'] ?? null, $moved['sizes'] ?? null);
         self::assertSame([90, 'The arch'], [$moved['position'] ?? null, $moved['description'] ?? null]);
+    }
+
+    /** A guest's link shows it in a chat (sc-89272): the frame the host set, as a JPEG of at most 300 KB, made again when the frame moves and deleted with the photo. */
+    #[Test]
+    public function aSavedPhotoPublishesItsLinkCardAtItsFrame(): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::halves(1600, 1800), 'image/jpeg'), 'position' => 0]);
+        self::assertSame(200, $this->statusCode());
+        $card = self::service(ObjectStore::class)->publicUrl(EventCoverEditor::cardKey($this->photoKey()));
+
+        $top = self::read($this->fetch($card));
+        self::assertSame(['JPEG', 1200, 675], [$top->getImageFormat(), $top->getImageWidth(), $top->getImageHeight()]);
+        self::assertLessThanOrEqual(300_000, Str\Byte\length($this->fetch($card)));
+        self::assertGreaterThan(0.9, $top->getImagePixelColor(600, 337)->getColorValue(Imagick::COLOR_RED), 'the top of the photo is red');
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['position' => 100]);
+        self::assertSame(200, $this->statusCode());
+        self::assertGreaterThan(0.9, self::read($this->fetch($card))->getImagePixelColor(600, 337)->getColorValue(Imagick::COLOR_BLUE), 'the bottom of the photo is blue');
+
+        $this->as($this->owner, 'DELETE', $this->coverPath());
+        self::assertSame(404, $this->statusOf($card));
     }
 
     #[Test]
@@ -464,8 +510,8 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(201, $this->statusCode());
         $upload = Type\shape(['url' => Type\string(), 'key' => Type\string()], true)->coerce($body['upload'] ?? null);
 
-        $handle = \curl_init(self::insideTheNetwork($upload['url']));
-        \curl_setopt_array($handle, [
+        $handle = \curl_init($upload['url']);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $bytes,
             \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
@@ -480,8 +526,8 @@ final class EventCoverTest extends ApiTestCase
 
     private function fetch(string $url): string
     {
-        $handle = \curl_init(self::insideTheNetwork($url));
-        \curl_setopt_array($handle, [\CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
+        $handle = \curl_init($url);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         $body = \curl_exec($handle);
         self::assertSame(200, \curl_getinfo($handle, \CURLINFO_HTTP_CODE));
 
@@ -490,19 +536,28 @@ final class EventCoverTest extends ApiTestCase
 
     private function statusOf(string $url): int
     {
-        $handle = \curl_init(self::insideTheNetwork($url));
-        \curl_setopt_array($handle, [\CURLOPT_NOBODY => true, \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
+        $handle = \curl_init($url);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_NOBODY => true, \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 10]);
         \curl_exec($handle);
 
         return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
     }
 
-    /** A URL names the store as a browser reaches it; this test reaches it inside the compose network. */
-    private static function insideTheNetwork(string $url): string
+    private static function halves(int $width, int $height): string
     {
-        $parts = Type\shape(['path' => Type\string(), 'query' => Type\optional(Type\string())], true)->coerce(\parse_url($url));
+        $image = new Imagick();
+        $image->newImage($width, $height, 'blue');
+        $red = new Imagick();
+        $red->newImage($width, Math\div($height, 2), 'red');
+        $image->compositeImage($red, Imagick::COMPOSITE_OVER, 0, 0);
+        $image->setImageFormat('jpeg');
 
-        return 'http://storage:4566' . $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        return $image->getImageBlob();
+    }
+
+    private function photoKey(): string
+    {
+        return Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT photo_key FROM event_covers WHERE event_id = :id', ['id' => $this->eventId]));
     }
 
     private static function photo(int $width, int $height, bool $withGps = false, string $format = 'jpeg'): string

@@ -7,8 +7,10 @@ namespace App\Domain\Event\Http;
 use App\Address\Model\Address;
 use App\Domain\Event\Cover\CoverPhotoProcessor;
 use App\Domain\Event\Cover\EventCoverEditor;
+use App\Domain\Event\Deletion\DeleteRefusal;
 use App\Domain\Event\EventDayCount;
 use App\Domain\Event\EventVenue;
+use App\Domain\Event\Model\ReplyDeadline;
 use App\Entity\Event;
 use App\Entity\EventCover;
 use App\Enum\EventPhase;
@@ -27,33 +29,41 @@ final readonly class EventSerialiser
         private EventCoverRepository $eventCoverRepository,
         private ObjectStore $objectStore,
         private ClockInterface $clock,
+        private DeleteRefusal $deleteRefusal,
     ) {
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string} */
     public function event(Event $event, Grants $grants): array
     {
-        return $this->serialise($event, $this->eventCoverRepository->findOneForEvent($event), $grants);
+        return $this->serialise($event, $this->eventCoverRepository->findOneForEvent($event), $grants, $this->deleteRefusal->of($event));
     }
 
     /**
      * @param list<Event> $events
      *
-     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}>
+     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string}>
      */
     public function events(array $events, EventScope $scope): array
     {
         $covers = $this->eventCoverRepository->findForEvents($events);
+        $refusals = $this->deleteRefusal->forEvents($events);
 
-        return Vec\map($events, fn (Event $event): array => $this->serialise($event, $covers[$event->getId()->toRfc4122()] ?? null, $scope->on($event->getId()) ?? Grants::only([])));
+        return Vec\map($events, fn (Event $event): array => $this->serialise(
+            $event,
+            $covers[$event->getId()->toRfc4122()] ?? null,
+            $scope->on($event->getId()) ?? Grants::only([]),
+            $refusals[$event->getId()->toRfc4122()] ?? null,
+        ));
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
-    private function serialise(Event $event, ?EventCover $cover, Grants $grants): array
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string} */
+    private function serialise(Event $event, ?EventCover $cover, Grants $grants, ?string $deleteRefusedBecause): array
     {
         $venue = EventVenue::of($event);
         $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
         $zone = new DateTimeZone($event->getTimeZone());
+        $deadline = ReplyDeadline::of($event);
 
         return [
             'id' => $event->getId()->toRfc4122(),
@@ -68,14 +78,21 @@ final readonly class EventSerialiser
             'currency' => $event->getCurrency(),
             'cover' => null === $cover ? null : $this->cover($cover),
             'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => null === $venue->address ? null : $this->address($venue->address)],
+            'arrivalNote' => $event->getArrivalNote(),
+            'replyBy' => $deadline?->day,
+            'repliesCloseAt' => $deadline?->closesAt()->format(\DATE_ATOM),
+            'repliesClosedOn' => ReplyDeadline::closedOn($event, $this->clock->now()),
             'hosts' => $event->getHosts(),
+            'thankYou' => $event->getThankYou(),
             'madeLiveAt' => $event->getMadeLiveAt()?->format(\DATE_ATOM),
             'pausedAt' => EventPhase::Paused === $phase ? $event->getPausedAt()?->format(\DATE_ATOM) : null,
             'phase' => $phase->value,
             'concludedAt' => EventPhase::Finished === $phase ? ($event->getEndedAt()?->setTimezone($zone) ?? $event->getEndsAt())->format(\DATE_ATOM) : null,
+            'deleteRefusedBecause' => $deleteRefusedBecause,
             'createdAt' => $event->getCreatedAt()->format(\DATE_ATOM),
             // What the caller may do on this event: a Member's come from their role on it, not from the organisation (sc-29915).
             'permissions' => Vec\map(Vec\filter(Permission::cases(), $grants->allows(...)), static fn (Permission $permission): string => $permission->value),
+            'roleOnEvent' => $grants->eventRole()?->value,
         ];
     }
 

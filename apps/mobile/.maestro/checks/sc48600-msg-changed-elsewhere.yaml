@@ -1,0 +1,28 @@
+# sc-48600: the product's changedElsewhere on ${EVENT_ID}: another save between open and Save gives a 412, nothing saved, typing kept. Needs ${METRO_URL}, ${EVENT_ID}, ${EMAIL}, ${PASSWORD}, ${API_URL}, ${WEB_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' mine'
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+    env:
+      ELSEWHERE_NAME: Renamed elsewhere
+- assertTrue:
+    condition: ${output.changed == 200}
+- tapOn:
+    id: 'event.edit.name.save'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: changedElsewhere-product
+- assertVisible:
+    id: 'event.edit.name.field'
+    text: '.* mine'
+- assertVisible: 'Not saved. Somebody else changed this event since you opened it. What you typed is still here.'
+- assertVisible:
+    id: 'event.edit.name.latest'

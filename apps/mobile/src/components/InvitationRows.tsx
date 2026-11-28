@@ -4,7 +4,6 @@ import {
   type InvitationOutcome,
   invitationWording,
   isWaiting,
-  refusalBody,
   roleName,
 } from '@soirely/domain';
 import { useState } from 'react';
@@ -15,6 +14,8 @@ import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
+import { SeatsFullSheet } from './LimitRefusal.tsx';
 import { OrgTile } from './OrgTile.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -86,9 +87,8 @@ function InvitationRow({
 
       {isWaiting(outcome) && (
         <View style={styles.answer}>
-          {outcome?.kind === 'failed' && (
-            <Notice tone="broken" mark="✕" body={t('invitations.failed')} answer={answer} />
-          )}
+          {outcome?.kind === 'failed' && <InvitationFailedNotice answer={answer} />}
+          <SeatsFullSheet outcome={outcome} testID={`invitations.${invitation.id}.seatsFull`} />
           <View style={styles.buttons}>
             <PrimaryButton
               label={t('invitations.accept')}
@@ -150,18 +150,11 @@ function InvitationRow({
       )}
 
       {outcome?.kind === 'refused' && (
-        <Notice
-          tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
-          mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
-          title={t(`invitations.refused.${outcome.refusal}.word`)}
-          body={t(refusalBody(outcome.refusal, invitation.invitedBy != null), {
-            inviter,
-            organisation,
-            email: invitation.email,
-            signedInAs: invitation.signedInAs ?? '',
-          })}
+        <InvitationRefusalNotice
+          refusal={outcome.refusal}
+          organisation={organisation}
+          invitation={invitation}
           answer={answer}
-          takesFocus
         />
       )}
     </View>

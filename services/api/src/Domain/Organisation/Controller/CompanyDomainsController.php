@@ -60,8 +60,10 @@ final readonly class CompanyDomainsController
     {
         $organisation = $this->organisation($organisationId);
 
-        $this->companyDomainEditor->remove($organisation, $this->user(), $domain);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($organisation, $domain): void {
+            $this->companyDomainEditor->remove($organisation, $this->user(), $domain);
+            $this->entityManager->flush();
+        });
 
         return new JsonResponse($this->domains($organisation));
     }
@@ -75,6 +77,7 @@ final readonly class CompanyDomainsController
                 fn (OrganisationDomain $listing): array => [
                     'domain' => $listing->getDomain(),
                     'stopped' => $this->companyDomainEditor->isStopped($listing),
+                    'proved' => $this->companyDomainEditor->isProvedHere($listing),
                 ],
             ),
             'most' => CompanyDomainEditor::MOST,

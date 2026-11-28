@@ -13,6 +13,9 @@ export const SAMPLE = {
   authenticator: '714302',
   recovery: 'vtxp-rh7y',
   joinMessage: 'Hi Ade, it’s Folake from the Lagos team.',
-  askedAt: 'Tuesday 3 Nov at 01:25',
-  endsAt: 'Tuesday 10 Nov at 01:25',
+  /** Longer than the Message box shows, and under the most. */
+  joinMessageLong:
+    'Hi Ade, it’s Folake from the Lagos team. We met at the planners’ breakfast in Ikoyi last month, where you said Ire Events was looking for someone to run guest lists and seating for the December weddings. I’ve run the door and the floor plan for over forty weddings since 2021, most of them between two and five hundred guests, and I’m free every weekend from the fifth of December. I’d love to help with the Adeyemi wedding first if it still needs hands. Thank you!',
+  askedAt: 'Tuesday, Nov 3 at 01:25 GMT',
+  endsAt: 'Tuesday, Nov 10 at 01:25 GMT',
 } as const;

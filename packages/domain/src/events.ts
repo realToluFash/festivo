@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 /** The API's event name limit, counted in characters after trimming. */
 export const EVENT_NAME_MAXIMUM = 120;
 
@@ -45,7 +46,7 @@ export function eventNameOf(typed: string): string {
 }
 
 export function eventNameLength(typed: string): number {
-  return Array.from(eventNameOf(typed)).length;
+  return visibleLength(eventNameOf(typed));
 }
 
 /** ISO 8601 with no offset, as the API takes it: the time is local to the event's zone. */
@@ -87,6 +88,13 @@ export function savedWallClock(date: string, time: string, timeZone: string): st
   if (typed == null) return null;
 
   return resolved(typed, timeZone)?.wallClock ?? typed;
+}
+
+/** The instant the API's LocalTimeResolver stores a date and time in a zone at, or null when either is blank or the zone is not one. */
+export function resolvedInstant(date: string, time: string, timeZone: string): number | null {
+  const typed = localDateTime(date, time);
+
+  return typed == null ? null : (resolved(typed, timeZone)?.instant ?? null);
 }
 
 export function skippedTime(
@@ -148,7 +156,8 @@ function resolved(typed: string, timeZone: string): { instant: number; wallClock
   return { instant, wallClock: new Date(instant + offsetAt(instant)).toISOString().slice(0, 16) };
 }
 
-function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
+/** The zone's offset from UTC at an instant, in milliseconds; null when the zone is not one. */
+export function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
   let format: Intl.DateTimeFormat;
 
   try {
@@ -255,12 +264,14 @@ export function scheduleKept<T extends { draft: EventDraft; timeZone: string }>(
 /** The API's venue limits, counted in characters after trimming (sc-3589). */
 export const VENUE_NAME_MAXIMUM = 120;
 export const VENUE_ADDRESS_MAXIMUM = 300;
+export const ARRIVAL_NOTE_MAXIMUM = 500;
 
-/** `addressId` is the suggestion the address was picked from, and is cleared by typing in it. */
+/** `addressId` is the suggestion the address was picked from, and is cleared by typing in it. `note` is the arrival note, which the form keeps in the Venue section (sc-24385). */
 export interface VenueDraft {
   name: string;
   address: string;
   addressId: string | null;
+  note: string;
 }
 
 export interface SavedVenue {
@@ -275,21 +286,44 @@ export interface VenueSent {
   addressId?: string | null;
 }
 
-export type VenueField = 'venueName' | 'venueAddress';
+export type VenueField = 'venueName' | 'venueAddress' | 'arrivalNote';
 
-export type VenueProblem = 'venueNameTooLong' | 'venueAddressTooLong';
+export type VenueProblem = 'venueNameTooLong' | 'venueAddressTooLong' | 'arrivalNoteTooLong';
 
-export function venueDraftOf(venue: SavedVenue | null): VenueDraft {
-  return { name: venue?.name ?? '', address: venue?.address?.formatted ?? '', addressId: null };
+export function venueDraftOf(venue: SavedVenue | null, note: string | null = null): VenueDraft {
+  return {
+    name: venue?.name ?? '',
+    address: venue?.address?.formatted ?? '',
+    addressId: null,
+    note: note ?? '',
+  };
+}
+
+/** The note as it is saved, as the API's ArrivalNote has it: trimmed and otherwise as typed; only spaces or blank lines is no note. */
+export function arrivalNoteSent(typed: string): string | null {
+  const kept = typed.trim();
+
+  return kept === '' ? null : kept;
+}
+
+/** Counted on what is saved, as the API counts it. */
+export function arrivalNoteLength(typed: string): number {
+  return visibleLength(arrivalNoteSent(typed) ?? '');
+}
+
+export function arrivalNoteTooLong(typed: string): boolean {
+  return arrivalNoteLength(typed) > ARRIVAL_NOTE_MAXIMUM;
 }
 
 export function venueProblems(draft: VenueDraft): { field: VenueField; problem: VenueProblem }[] {
   const problems: { field: VenueField; problem: VenueProblem }[] = [];
 
-  if (Array.from(draft.name.trim()).length > VENUE_NAME_MAXIMUM)
+  if (visibleLength(draft.name.trim()) > VENUE_NAME_MAXIMUM)
     problems.push({ field: 'venueName', problem: 'venueNameTooLong' });
-  if (Array.from(draft.address.trim()).length > VENUE_ADDRESS_MAXIMUM)
+  if (visibleLength(draft.address.trim()) > VENUE_ADDRESS_MAXIMUM)
     problems.push({ field: 'venueAddress', problem: 'venueAddressTooLong' });
+  if (arrivalNoteTooLong(draft.note))
+    problems.push({ field: 'arrivalNote', problem: 'arrivalNoteTooLong' });
 
   return problems;
 }
@@ -317,6 +351,7 @@ export const EVENT_FORM_FIELDS: readonly EventFormField[] = [
   'endsAt',
   'venueName',
   'venueAddress',
+  'arrivalNote',
   'timeZone',
   'currency',
 ];
@@ -350,11 +385,13 @@ export interface EventDetails {
 
 /** Only what differs from the saved event, in the API's terms; empty when nothing changed, and then nothing is sent (sc-3587). */
 export function eventChanges(
-  saved: EventDetails & { venue: SavedVenue | null },
+  saved: EventDetails & { venue: SavedVenue | null; arrivalNote: string | null },
   typed: { draft: EventDraft; timeZone: string; currency: string; venue: VenueDraft },
-): Partial<EventDetails & { venue: VenueSent | null }> {
+): Partial<EventDetails & { venue: VenueSent | null; arrivalNote: string | null }> {
   const was = { ...draftOf(saved), timeZone: saved.timeZone, currency: saved.currency };
-  const changes: Partial<EventDetails & { venue: VenueSent | null }> = {};
+  const changes: Partial<EventDetails & { venue: VenueSent | null; arrivalNote: string | null }> =
+    {};
+  const note = arrivalNoteSent(typed.venue.note);
   const venue = venueSent(typed.venue);
   const savedVenue = venueSent(venueDraftOf(saved.venue));
   const startsAt = localDateTime(typed.draft.startDate, typed.draft.startTime) ?? '';
@@ -372,6 +409,7 @@ export function eventChanges(
     venue?.address !== savedVenue?.address
   )
     changes.venue = venue;
+  if (note !== saved.arrivalNote) changes.arrivalNote = note;
 
   return changes;
 }

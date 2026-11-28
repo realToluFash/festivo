@@ -11,8 +11,8 @@ import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
-import { STYLES, cssRule } from '../test-styles.ts';
-import { atStackedWidth } from '../test-widths.ts';
+import { STYLES, cssRule, stylesheet } from '../test-styles.ts';
+import { atPhoneWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -34,6 +34,8 @@ const ADA_ACCOUNT: Account = {
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],
+  outsideEvents: [],
+  signedOutAt: null,
 };
 
 const ADA: Session = {
@@ -67,10 +69,11 @@ function overdueSession(): Session {
 }
 
 function pausedSession(): Session {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-    id: 'org_3',
-    name: 'Lagos Weddings',
-  });
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
+      id: 'org_3',
+      name: 'Lagos Weddings',
+    });
 
   return {
     ...ADA,
@@ -82,6 +85,8 @@ function pausedSession(): Session {
       currency,
       timezone,
       contactAddress,
+      plan,
+      subscription,
       locale,
       suspension: {
         reason: 'address_gone',
@@ -235,16 +240,14 @@ describe('the application tree', () => {
     await followAccount({ ...ADA_ACCOUNT, locale: 'es' });
     await setLanguage(null);
 
-    at('/app');
+    at('/app/account');
 
-    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Idioma' });
-    expect(picker.value).toBe('es');
-    expect([...picker.options].map((option) => option.textContent)).toEqual([
-      'English',
-      'Español',
-      'Français',
-      'Português',
-    ]);
+    const group = screen.getByRole('group', { name: 'Idioma' });
+    const radios = within(group).getAllByRole<HTMLInputElement>('radio');
+    expect(
+      radios.map((radio) => radio.closest('label')?.querySelector('[lang]')?.textContent),
+    ).toEqual(['English', 'Español', 'Français', 'Português']);
+    expect(radios.map((radio) => radio.checked)).toEqual([false, true, false, false]);
     expect(screen.getByRole('link', { name: 'Eventos' })).toBeDefined();
   });
 
@@ -397,6 +400,8 @@ describe('the application tree', () => {
           hasPassword: true,
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
+          outsideEvents: [],
+          signedOutAt: null,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
@@ -436,38 +441,82 @@ describe('the application tree', () => {
     }
   });
 
-  it("stacks the sidebar and the band from a tablet's width down only as tall as what they hold (sc-17608, sc-26270)", () => {
-    const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
+  it('keeps the sidebar beside the page as its card from 641 px, stacking it only at a phone (sc-60699)', () => {
+    const card = STYLES.slice(STYLES.indexOf('@media (width > 40rem)'));
+    const phone = /@media \(width <= 40rem\) \{[^@]*?\n {2}\.shell-sidebar \{([^}]*)\}/u.exec(
       STYLES,
     )?.[1];
 
-    expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(stacked).toMatch(/grid-template-rows: auto auto 1fr;/u);
+    expect(cssRule('.shell-content.is-card', card)).toContain('overflow-y: auto;');
+    expect(phone).toContain('position: static;');
+    expect(STYLES).not.toMatch(/@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell(-sidebar)? \{/u);
   });
 
-  describe("the band's crumb (sc-26270)", () => {
+  describe('the band (sc-26270)', () => {
     beforeEach(() => {
       vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     });
 
-    function crumb(): string | null | undefined {
-      return document.querySelector('.shell-crumb')?.textContent;
-    }
+    it.each([
+      '/app',
+      '/app/events/new',
+      '/app/events/e1',
+      '/app/events',
+      '/app/calendar',
+      '/app/settings',
+      '/app/account',
+    ])('is not above %s wider than a phone (sc-39471, sc-39509, sc-60699)', (place) => {
+      at(place);
 
-    it('names the organisation and the page', () => {
-      at('/app/events/new');
-
-      expect(crumb()).toBe('Okonkwo Events / Events');
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.shell-content.is-card')).toBeTruthy();
+      expect(document.querySelector('.language-pill')).toBeNull();
     });
 
-    it.each(['/app/events', '/app/calendar', '/app/settings', '/app/account'])(
-      'is not above %s at a desk (sc-39471)',
-      (place) => {
+    it('opens Today from /app/guests, leaving no way back to it (sc-39509)', () => {
+      const router = createMemoryRouter(routes, { initialEntries: ['/app/guests'] });
+      render(<RouterProvider router={router} />);
+
+      expect(router.state.location.pathname).toBe('/app');
+      expect(router.state.historyAction).toBe('REPLACE');
+    });
+
+    it('ends the crumb row of New event with the one bell at a desk (sc-39509)', async () => {
+      at('/app/events/new');
+
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      const row = bell.closest('.ev-crumb-row');
+      expect(
+        within(row as HTMLElement)
+          .getByRole('link', { name: 'Events' })
+          .getAttribute('href'),
+      ).toBe('/app/events');
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+    });
+
+    it.each(['/app/events/e1', '/app/events/e1/dates', '/app/events/e1/people'])(
+      'ends the crumb row of %s with the one bell at a desk (sc-39509)',
+      async (place) => {
         at(place);
 
-        expect(crumb()).toBeUndefined();
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.ev-crumb-row')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
       },
     );
+
+    it.each([
+      ['the overdue screen', overdueSession],
+      ['a paused organisation', pausedSession],
+    ])('draws no band and no bell at a desk while %s stands in (sc-39509)', (_, session) => {
+      __setSessionState({ status: 'signedIn', session: session() });
+
+      at('/app');
+
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+    });
 
     it.each(['/app/events', '/app/calendar', '/app/settings'])(
       "puts the bell in the title row beside the page's heading on %s at a desk (sc-39471)",
@@ -481,44 +530,73 @@ describe('the application tree', () => {
       },
     );
 
-    it.each(['/app/events', '/app/calendar', '/app/settings'])(
-      'stays above %s, with the bell, between a phone and a desk (sc-39471)',
+    it.each(['/app/events', '/app/calendar'])(
+      "puts the bell in %s's title row under the phone's bar, with no band (sc-57468)",
       async (place) => {
-        atStackedWidth();
+        atPhoneWidth();
         at(place);
 
-        expect(crumb()).toMatch(/^Okonkwo Events/u);
-        expect(document.querySelector('.shell-content.is-card')).toBeNull();
         const bell = await screen.findByRole('button', { name: /^Notifications/ });
-        expect(bell.closest('.shell-band')).toBeTruthy();
+        expect(bell.closest('header.desk-top')?.querySelector('h1')).toBeTruthy();
+        expect(document.querySelector('header.shell-band')).toBeNull();
+        expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
       },
     );
 
-    it("names Today at the sidebar's Today", () => {
+    it("draws no band above Today under the phone's bar, and puts the bell in its banner (sc-57468)", async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        new URL(String(input)).pathname === '/api/orgs/org_1/events'
+          ? new Response(JSON.stringify({ events: [], total: 0 }), {
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Promise<Response>(() => {}),
+      );
+      atPhoneWidth();
       at('/app');
 
-      expect(crumb()).toBe('Okonkwo Events / Today');
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      expect(bell.closest('.today-actions')).toBeTruthy();
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
     });
 
-    it('holds only the organisation while the overdue screen stands in', () => {
-      __setSessionState({ status: 'signedIn', session: overdueSession() });
+    it.each(['/app/settings', '/app/account', '/app/events/new'])(
+      'keeps the band with the bell above %s at a phone (sc-13413)',
+      async (place) => {
+        atPhoneWidth();
+        at(place);
 
-      at('/app');
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.shell-band')).toBeTruthy();
+        expect(document.querySelector('.shell.fits-phone')).toBeNull();
+      },
+    );
 
-      expect(crumb()).toBe('Okonkwo Events');
-    });
+    it.each([
+      ['alone', pausedSession],
+      [
+        'beside an organisation they own (sc-86077)',
+        () => {
+          const owned = membership({ id: 'org_4', name: 'Okonkwo Events' });
 
-    it('holds only the organisation while a paused one stands in', () => {
-      __setSessionState({ status: 'signedIn', session: pausedSession() });
+          return { ...pausedSession(), organisation: owned, organisations: [owned] };
+        },
+      ],
+    ])(
+      'names the person in the sidebar with no role while a paused organisation stands in, %s',
+      (_, session) => {
+        __setSessionState({ status: 'signedIn', session: session() });
 
-      at('/app');
+        at('/app');
 
-      expect(crumb()).toBe('Lagos Weddings');
-      const person = document.querySelector<HTMLAnchorElement>('a.today-person');
-      expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
-      expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
-      expect(person?.querySelector('.today-person-role')).toBeNull();
-    });
+        const person = document.querySelector<HTMLAnchorElement>('a.today-person');
+        expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
+        expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
+        expect(person?.querySelector('.today-person-role')).toBeNull();
+      },
+    );
   });
 
   describe("at a phone's width, the menu (sc-13413)", () => {
@@ -544,16 +622,42 @@ describe('the application tree', () => {
         'Today',
         'Events',
         'Calendar',
+        'Menu library',
         'Settings',
         'Ada Okonkwo, Owner',
       ]);
-      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(links[4]!.getAttribute('aria-current')).toBe('page');
       expect(dialog.textContent).not.toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
         within(dialog).getByRole('button', { name: 'Close menu' }),
       );
     });
+
+    it.each([
+      ['a Member with menu.read through a role on an event', ['menu.read'], true],
+      ['a Member with no role on any event', [], false],
+    ])(
+      'offers the Menu library to %s, as the API lets them in (sc-3901)',
+      (_, onAnEvent, shown) => {
+        const member = membership({
+          id: 'org_1',
+          name: 'Okonkwo Events',
+          role: { id: 'role_3', seededAs: 'member', name: null },
+          permissions: [],
+          onAnEvent,
+        });
+        __setSessionState({
+          status: 'signedIn',
+          session: { ...ADA, organisation: member, organisations: [member] },
+        });
+        at('/app/settings');
+
+        const links = [...openMenu().querySelectorAll('a')].map((link) => link.textContent);
+
+        expect(links.includes('Menu library')).toBe(shown);
+      },
+    );
 
     it('draws the person at the foot as the demo draws its button, with no underline', () => {
       const desk = readFileSync(join(import.meta.dirname, '../components/desk.css'), 'utf8');
@@ -774,6 +878,32 @@ describe('the application tree', () => {
     });
   });
 
+  it("sets desk titles and the Calendar's foot where their demos do (sc-39471)", () => {
+    expect(
+      cssRule('.desk-title', stylesheet(import.meta.dirname, '../components/SettingsParts.css')),
+    ).toMatch(/margin: 0;/u);
+    expect(cssRule('.shell-content.is-card:has(.cal-page)')).toMatch(
+      /padding-bottom: var\(--space3xl\);/u,
+    );
+  });
+
+  it('lets Seating and Messages fill their card at a desk, as their demos do (sc-58064, sc-3942)', () => {
+    expect(cssRule('.shell-content.is-card:has(> :is(.st, .ev-msgs))')).toMatch(/padding: 0;/u);
+    expect(cssRule('.shell-content.is-card > .st .st-main')).toMatch(/min-height: 0;/u);
+    expect(cssRule('.shell-content.is-card > .ev-msgs')).toMatch(/min-height: 0;/u);
+    expect(
+      cssRule(
+        [
+          '.shell-content.is-card:has(> :is(.st, .ev-msgs))',
+          '    > :not(.st, .ev-msgs):first-child:not(:has(> .visually-hidden:only-child)),',
+          '  .shell-content.is-card:has(> :is(.st, .ev-msgs))',
+          '    > :first-child:has(> .visually-hidden:only-child)',
+          '    + :not(.st, .ev-msgs)',
+        ].join('\n'),
+      ),
+    ).toMatch(/margin-top: var\(--space3xl\);/u);
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -803,7 +933,23 @@ describe('the guest tree', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
-          guest: { fullName: 'Bisi Adewale', reply: null, companions: 0 },
+          guest: {
+            fullName: 'Bisi Adewale',
+            reply: null,
+            needs: {
+              allergies: [],
+              otherAllergy: null,
+              diet: [],
+              otherDiet: null,
+              access: [],
+              otherAccess: null,
+              changed: null,
+            },
+            places: 0,
+            unnamed: [],
+            companions: [],
+          },
+          language: { chosen: null, host: null, organisation: 'en' },
           event: {
             id: 'e1',
             name: 'Owambe',
@@ -816,6 +962,7 @@ describe('the guest tree', () => {
           },
           phase: 'live',
           started: false,
+          onTheDay: false,
           answersOpen: true,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },

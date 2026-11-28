@@ -3,10 +3,42 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+  '/api/orgs/{organisationId}/vendors': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Retrieves the collection of VendorDirectory resources.
+     * @description Retrieves the collection of VendorDirectory resources.
+     */
+    get: operations['orgs_vendors'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+}
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: never;
+  schemas: {
+    VendorDirectory: {
+      vendors?: (string | null)[];
+      page?: number;
+      total?: number;
+      inUse?: number;
+      archived?: number;
+      categories?: (string | null)[];
+    };
+    /** @enum {string} */
+    TableShape: 'round' | 'rectangular' | 'head' | 'cocktail';
+  };
   responses: never;
   parameters: never;
   requestBodies: never;
@@ -14,4 +46,48 @@ export interface components {
   pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+  orgs_vendors: {
+    parameters: {
+      query?: {
+        /** @description inUse, the default, or archived */
+        view?: 'inUse' | 'archived';
+        /** @description A name containing this, ignoring case */
+        q?: string;
+        /** @description One of the nine */
+        category?:
+          | 'catering'
+          | 'venue'
+          | 'flowers'
+          | 'photography'
+          | 'music'
+          | 'transport'
+          | 'staffing'
+          | 'hire'
+          | 'other';
+        /** @description Opens the page holding this vendor, when nothing is searched */
+        vendor?: string;
+        /** @description The collection page number */
+        page?: number;
+      };
+      header?: never;
+      path: {
+        /** @description VendorDirectory identifier */
+        organisationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description VendorDirectory collection */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['VendorDirectory'][];
+        };
+      };
+    };
+  };
+}

@@ -36,6 +36,17 @@ class Allowed(unittest.TestCase):
         self.assertEqual(remote.allowed("192.168.1.9", {}, "token=ab%2Bcd%2F" + "x" * 40,
                                         secret), (True, secret))
 
+    def test_the_token_in_the_address_sets_the_cookie_on_this_machine_too(self):
+        self.assertEqual(remote.allowed("127.0.0.1", {}, f"token={SECRET}", SECRET),
+                         (True, SECRET))
+        self.assertEqual(remote.allowed("127.0.0.1", {}, "token=wrong", SECRET), (True, None))
+
+    def test_the_controls_ask_every_address_for_the_token_as_a_header_or_cookie(self):
+        self.assertFalse(remote.presented({}, SECRET))
+        self.assertTrue(remote.presented({"Authorization": f"Bearer {SECRET}"}, SECRET))
+        self.assertTrue(remote.presented({"Cookie": f"sq_token={SECRET}"}, SECRET))
+        self.assertFalse(remote.presented({"Cookie": "sq_token=short"}, "short"))
+
     def test_a_short_token_lets_nobody_else_in(self):
         self.assertEqual(remote.allowed("192.168.1.9", {"Authorization": "Bearer short"},
                                         "", "short"), (False, None))

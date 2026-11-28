@@ -48,12 +48,40 @@ class Checks(unittest.TestCase):
         self.assertEqual(len(asked), 1)
 
     def test_one_finding_wakes_ops_once_a_day(self):
-        self.found(free=4.0)
+        self.found(cache=40.0)
         today = {i["fingerprint"] for i in self.items()}
-        self.found(now=DAY * 10 + 3600, free=4.0)
+        self.found(now=DAY * 10 + 3600, cache=40.0)
         self.assertEqual({i["fingerprint"] for i in self.items()}, today)
-        self.found(now=DAY * 11, free=4.0)
+        self.found(now=DAY * 11, cache=40.0)
         self.assertFalse(today & {i["fingerprint"] for i in self.items()})
+
+    def disk_item(self, now):
+        self.found(now=now, free=4.0)
+        cli.refresh_work(self.db, now)
+        return next(i["fingerprint"] for i in self.items() if "GB free" in i["reason"])
+
+    def test_a_disk_item_stays_one_item_while_it_is_open_or_claimed(self):
+        first = self.disk_item(DAY * 10)
+        self.assertEqual(self.disk_item(DAY * 10 + 600), first)
+        self.assertTrue(store.claim(self.db, "ops", DAY * 10 + 700))
+        self.assertEqual(self.disk_item(DAY * 11 + 600), first)
+
+    def test_a_fall_under_the_floor_after_the_disk_item_is_done_wakes_ops_again(self):
+        first = self.disk_item(DAY * 10)
+        row = self.db.execute("select id from work where fingerprint = ?", (first,)).fetchone()
+        store.finish(self.db, row["id"], "cleared", DAY * 10 + 600)
+        self.found(now=DAY * 10 + 1200)
+        cli.refresh_work(self.db, DAY * 10 + 1200)
+        again = self.disk_item(DAY * 10 + 3600)
+        self.assertNotEqual(again, first)
+        status = self.db.execute("select status from work where fingerprint = ?",
+                                 (again,)).fetchone()["status"]
+        self.assertEqual(status, "open")
+
+    def test_a_dry_run_keeps_no_new_disk_period(self):
+        local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0, free=lambda c: 4.0,
+                     dry_run=True)
+        self.assertIsNone(store.get_meta(self.db, "disk_period"))
 
     def test_urgent_findings_come_before_the_sweep_and_go_once_cleared(self):
         self.found(free=4.0, cache=40.0)
@@ -178,6 +206,10 @@ class Scratch(unittest.TestCase):
         self.config = {"machine": "tolu-linux", "workspace": str(self.root)}
         self.db = store.connect(":memory:")
         self.said = []
+        self.home = self.root / "home"
+        home = mock.patch.dict(os.environ, {"HOME": str(self.home)})
+        home.start()
+        self.addCleanup(home.stop)
 
     def entry(self, name, days, size=2_000_000, tester="qa3"):
         path = self.root / f"soirely-{tester}" / ".qa" / name
@@ -230,6 +262,13 @@ class Scratch(unittest.TestCase):
         self.sweep()
         self.assertTrue(all(path.exists() for path in kept))
 
+    def test_old_batch_flows_go_and_recent_ones_and_the_folder_stay(self):
+        old, recent = self.entry(".batch/sc10118-ipad", 4), self.entry(".batch/sc10200", 1)
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue(recent.exists())
+        self.assertTrue(old.parent.is_dir())
+
     def test_an_old_release_folder_keeps_the_record_of_what_is_installed(self):
         release = self.entry("release", 30)
         record = release / "installed"
@@ -277,6 +316,98 @@ class Scratch(unittest.TestCase):
         self.assertEqual([n.split()[0].rsplit("/", 1)[-1] for n in named],
                          ["soirely-qa3", "soirely-dev3", "soirely-dev2", "soirely-qa2",
                           "soirely-l10n", "Devices", "avd"])
+
+    def log(self, entry, days, size=3_000_000, under=".maestro/tests/2026-11-16_160137",
+            name="maestro.log"):
+        folder = entry / under if under else entry
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / name
+        path.write_bytes(b"x" * size)
+        at = self.NOW - days * DAY
+        os.utime(path, (at, at))
+        return path
+
+    def test_a_maestro_log_a_day_old_goes_and_the_evidence_stays(self):
+        entry = self.entry("sc10200-phone", 0)
+        old, fresh = self.log(entry, 2), self.log(entry, 0.5, under="_batch/logs")
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue((entry / "shot.png").exists())
+
+    def test_a_held_storys_old_logs_go_but_its_entry_stays(self):
+        store.put_story(self.db, {"id": 10118, "state": "In QA", "done": False,
+                                  "comments": [{"text": "QA claim: qa3"}]})
+        entry = self.entry("sc10118", 30)
+        old = self.log(entry, 30)
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue((entry / "shot.png").exists())
+
+    def test_deleting_a_log_does_not_make_its_entry_look_recent(self):
+        entry = self.entry("s10118", 4)
+        self.log(entry, 4, under=None)
+        os.utime(entry, (self.NOW - 4 * DAY, self.NOW - 4 * DAY))
+        local.sweep_maestro_logs(entry.parent, self.NOW, self.said.append)
+        self.sweep()
+        self.assertFalse(entry.exists())
+
+    def test_untracked_before_main_keeps_its_logs(self):
+        kept = self.log(self.entry("untracked-before-main-20261001", 60), 60)
+        self.sweep()
+        self.assertTrue(kept.exists())
+
+    def test_a_log_sweep_says_how_much_it_freed_and_where(self):
+        self.log(self.entry("sc10200", 0), 2, size=3_000_000)
+        self.log(self.entry("sc10201", 0), 2, size=2_000_000)
+        self.sweep()
+        self.assertEqual(len(self.said), 1)
+        self.assertIn("swept 5 MB of Maestro logs", self.said[0])
+        self.assertIn("soirely-qa3/.qa", self.said[0])
+        self.assertIn("2 maestro.log", self.said[0])
+
+    def test_the_device_logs_a_day_old_go_too_and_the_evidence_stays(self):
+        entry = self.entry("sc5519-ipad", 0)
+        names = ("device-simulator.log", "device-logcat.txt", "device-xctest.log",
+                 "xctest_runner_2026-11-16_160137.log")
+        old = [self.log(entry, 2, name=name) for name in names]
+        fresh = self.log(entry, 0.5, under="_batch/logs", name="device-simulator.log")
+        kept = [entry / ".maestro/tests/2026-11-16_160137" / name
+                for name in ("commands-(sign-in.yaml).json", "screenshot-1.png")]
+        for path in kept:
+            path.write_text("kept")
+            os.utime(path, (self.NOW - 2 * DAY, self.NOW - 2 * DAY))
+        self.sweep()
+        self.assertEqual([p.exists() for p in old], [False] * 4)
+        self.assertTrue(fresh.exists())
+        self.assertEqual([p.exists() for p in kept], [True, True])
+        self.assertIn("1 device-simulator.log, 1 device-logcat.txt", self.said[0])
+        self.assertIn("1 xctest_runner_*.log", self.said[0])
+
+    def runs(self, name, days, size=1_000_000):
+        run = self.home / ".maestro/tests" / name
+        run.mkdir(parents=True)
+        shot = run / "screenshot-1.png"
+        shot.write_bytes(b"x" * size)
+        at = self.NOW - days * DAY
+        os.utime(shot, (at, at))
+        os.utime(run, (at, at))
+        return run
+
+    def test_a_maestro_run_folder_a_day_old_goes_from_home(self):
+        old, fresh = self.runs("2026-11-15_101010", 2, 4_000_000), \
+            self.runs("2026-11-16_101010", 0.5)
+        self.sweep()
+        self.assertEqual([old.exists(), fresh.exists()], [False, True])
+        self.assertEqual(len(self.said), 1)
+        self.assertIn("swept 4 MB of Maestro runs", self.said[0])
+        self.assertIn(".maestro/tests", self.said[0])
+
+    def test_a_machine_without_maestro_runs_says_nothing_of_them(self):
+        (self.root / "soirely-ops").mkdir()
+        self.sweep()
+        self.assertEqual([s for s in self.said if "Maestro runs" in s], [])
+        self.assertFalse((self.home / ".maestro").exists())
 
     def test_a_machine_without_testers_sweeps_nothing(self):
         (self.root / "soirely-ops").mkdir()
@@ -423,3 +554,56 @@ class Worktrees(unittest.TestCase):
         self.assertEqual(local.measure_litter(self.config, False, out),
                          {"worktrees": 2.0, "qa": 0.5})
         self.assertIsNone(local.measure_litter(self.config, False, self.root / "none"))
+
+
+class WakeDocker(unittest.TestCase):
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        self.started, self.said = [], []
+
+    def wake(self, now=DAY, system="darwin", installed=True, answers=False):
+        app = mock.Mock(exists=lambda: installed)
+        return local.wake_docker(self.db, now, self.said.append, system=system, app=app,
+                                 answers=lambda: answers,
+                                 start=lambda: self.started.append(now))
+
+    def test_a_mac_whose_docker_is_down_starts_it_once_in_five_minutes(self):
+        self.assertTrue(self.wake(DAY))
+        self.assertFalse(self.wake(DAY + 60))
+        self.assertTrue(self.wake(DAY + local.WAKE_SECONDS))
+        self.assertEqual(self.started, [DAY, DAY + local.WAKE_SECONDS])
+        self.assertIn("started Docker Desktop", self.said[0])
+
+    def test_a_linux_machine_whose_docker_desktop_is_down_starts_it_too(self):
+        self.assertTrue(self.wake(system="linux"))
+        self.assertIn("started Docker Desktop", self.said[0])
+
+    def test_each_platform_probes_its_own_socket_and_starts_docker_its_own_way(self):
+        for system, sock, command in (
+                ("darwin", "~/.docker/run/docker.sock", ["open", "-a", "Docker"]),
+                ("linux", "~/.docker/desktop/docker.sock",
+                 ["systemctl", "--user", "start", "docker-desktop"])):
+            with self.subTest(system), \
+                    mock.patch("soirely_queue.local.docker_answers",
+                               return_value=False) as answers, \
+                    mock.patch("soirely_queue.local.open_docker") as start:
+                db = store.connect(":memory:")
+                self.assertTrue(local.wake_docker(db, DAY, self.said.append, system=system,
+                                                  app=mock.Mock(exists=lambda: True)))
+                answers.assert_called_once_with(sock)
+                start.assert_called_once_with(command)
+
+    def test_nothing_is_started_when_docker_answers_or_cannot_be_started_here(self):
+        self.assertFalse(self.wake(answers=True))
+        self.assertFalse(self.wake(system="win32"))
+        self.assertFalse(self.wake(installed=False))
+        self.assertEqual(self.started, [])
+
+    def test_a_start_that_fails_is_said_and_not_retried_at_once(self):
+        def refuse():
+            raise subprocess.CalledProcessError(1, ["open"])
+        app = mock.Mock(exists=lambda: True)
+        self.assertFalse(local.wake_docker(self.db, DAY, self.said.append, system="darwin",
+                                           app=app, answers=lambda: False, start=refuse))
+        self.assertIn("would not start", self.said[0])
+        self.assertFalse(self.wake(DAY + 60))

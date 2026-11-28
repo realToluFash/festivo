@@ -1,4 +1,6 @@
 import type { NeedsState } from './needsYou.ts';
+import type { WriteState } from './guestsWrite.ts';
+import { type ThankYouState, isCardState, isEndState } from './thankYou.ts';
 import {
   type EventPhase,
   type EventState,
@@ -11,7 +13,7 @@ import {
   eventDayWords,
   eventPhase,
   eventsHome,
-  formatEventDate,
+  calledOffDay,
   formatEventMoment,
   milestoneDistance,
   notThisYear,
@@ -26,6 +28,8 @@ import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
+import { type MakeLiveState, MAKE_LIVE_EVENTS, MAKE_LIVE_STATES } from './makeLiveStates.ts';
+import { DINER_ID, type LiveOneDayState, isLiveOneDay, liveOneDayClock } from './liveOneDay.ts';
 
 export interface Venue {
   name: string;
@@ -65,6 +69,12 @@ export const CURRENCIES: Record<Currency, string> = {
   BRL: 'Brazilian real',
   MXN: 'Mexican peso',
 };
+
+export const currencyLabel = (code: Currency): string => `${code} · ${CURRENCIES[code]}`;
+
+export const CURRENCY_CHOICES: readonly (readonly [Currency, string])[] = (
+  Object.keys(CURRENCIES) as Currency[]
+).map((code) => [code, currencyLabel(code)]);
 
 export const TYPE_WORDS: Record<EventType, string> = {
   wedding: 'Wedding',
@@ -365,6 +375,18 @@ export const REUNION: SampleEvent = sample(
   'GBP',
 );
 
+/** Not one of the 20: the one-day event happening tonight, 19:00 to 23:30 on the reader's day (sc-93858). */
+export const DINER: SampleEvent = sample(
+  DINER_ID,
+  'Dîner en direct',
+  'party',
+  'live',
+  ['2026-11-03T19:00:00Z', '2026-11-03T23:30:00Z', 'Europe/London'],
+  at('The Clerk’s House', 'London', '235 Shoreditch High Street, London E1 6PJ'),
+  ['Ire Events'],
+  'GBP',
+);
+
 /** What the demo changed since it opened: Pause, Delete and Duplicate carry back to the list until a state link or a reload opens the sample as drawn. */
 let changed: Map<string, SampleEvent | null> = new Map();
 let copies: SampleEvent[] = [];
@@ -381,7 +403,11 @@ export function sampleEvents(): SampleEvent[] {
 }
 
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return sampleEvents().find((event) => event.id === id) ?? (id === REUNION.id ? REUNION : null);
+  return (
+    sampleEvents().find((event) => event.id === id) ??
+    [REUNION, DINER].find((event) => event.id === id) ??
+    null
+  );
 }
 
 export function keepChange(event: SampleEvent): void {
@@ -462,6 +488,7 @@ export const EVENT_WORDS = {
   ],
   offline: (time: string) => `Offline · as of ${time}`,
   retry: 'Try again',
+  eventFailed: 'The event did not load. Try again in a moment.',
   phase: {
     draft: 'Draft',
     live: 'Live',
@@ -473,8 +500,11 @@ export const EVENT_WORDS = {
   guestsBlocked: 'Guests can’t be invited until this event is live.',
   makeLive: 'Make live',
   endPassed: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+  endPassedReader:
+    'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
   changeDates: 'Change dates',
   nextResume: 'Paused. Guests can’t reply or change anything until you resume it.',
+  nextResumeReader: 'Paused. Guests can’t reply or change anything until it is resumed.',
   resume: 'Resume',
   resumed: (name: string) => `${name} is live again.`,
   allPassed: 'Nothing coming up. Every date on this event has passed.',
@@ -488,6 +518,7 @@ export const EVENT_WORDS = {
   dates: 'Dates',
   dayCount: (count: number) => `${count} days`,
   scheduleLocked: 'This event is over, so its start, end and time zone can’t be changed.',
+  scheduleCalledOff: 'This event was called off, so its start, end and time zone can’t be changed.',
   venue: 'Venue',
   openInMaps: 'Open in maps',
   addVenue: 'Add the venue',
@@ -517,18 +548,18 @@ export const EVENT_WORDS = {
   keepItOn: 'Keep it on',
   deleteOpen: 'Delete event…',
   deleteLine:
-    'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
+    "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
   deleteTitle: (name: string) => `Delete ${name}?`,
-  draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+  draftBody: "It's a draft with nobody on its guest list. It will be removed for your whole team.",
   removes: 'This removes, for your whole team:',
   removesEvent: 'the event, its details and its schedule',
   removesGuests: (people: string, count: number) =>
     count === 1
       ? `its guest list, with the ${people} person on it`
       : `its guest list, with the ${people} people on it`,
-  guestsLink: 'Guests following their link will see that it isn’t available.',
+  guestsLink: "Guests following their link will see that it isn't available.",
   restoreWindow: (deadline: string) =>
-    `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
+    `If this was a mistake, support can restore it until ${deadline}. After that it's gone for good.`,
   restoreUntil: 'Monday, Nov 16 at 14:20 GMT',
   typeName: (name: string) => `Type ${name} to delete it`,
   typeHint: 'Type it exactly, capitals included. A straight or curly apostrophe both count.',
@@ -554,6 +585,10 @@ export const EVENT_WORDS = {
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
   previewLine: 'What somebody you invite sees, before they reply',
+  guestsCanWrite: 'Guests can write from their page',
+  guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
   notBuilt: (story: string) => `AC, not yet built · ${story}`,
   cancel: 'Cancel',
   save: 'Save',
@@ -608,6 +643,7 @@ export const EVENT_WORDS = {
   hostRemoved: (name: string) => `${name} removed`,
   searchTypes: 'Search types',
   currencyInUse: 'The currency cannot change once amounts are recorded against this event.',
+  eventGone: 'Nothing was changed. This event is no longer available.',
   nameCount: (count: number, most: number) => `${count} of ${most} characters`,
   nameBlank: 'Give the event a name.',
   nameTooLong: (most: number) => `Shorten the name to ${most} characters or fewer.`,
@@ -619,6 +655,10 @@ export const EVENT_WORDS = {
   accepted: 'JPEG, PNG, WebP or HEIC, up to 15 MB, at least 1200 × 675 pixels.',
   refusedDimensions:
     'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+  refusedType: 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+  refusedSize: 'That photo is over 15 MB. Choose a smaller one.',
+  uploadFailed: 'The photo did not upload. Try again.',
+  uploading: 'Uploading…',
   changePhoto: 'Change photo',
   position: 'Photo position',
   top: 'Top',
@@ -709,7 +749,7 @@ export function shownOf(event: SampleEvent, now: Date): Shown {
 const LOCALE = 'en-US';
 
 export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string {
-  const days = eventDayWords(event, now, LOCALE, keepDays);
+  const days = eventDayWords(event, now, LOCALE, { keepDays });
 
   switch (days.kind) {
     case 'calledOffOn':
@@ -722,7 +762,12 @@ export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string
 }
 
 export function placeOf(event: SampleEvent): string {
-  return event.venue == null ? W.venueToBeConfirmed : `${event.venue.name}, ${event.venue.city}`;
+  return event.venue == null ? W.venueToBeConfirmed : venueLine(event.venue);
+}
+
+/** A venue typed by hand, as one made from an enquiry is, has no city of its own. */
+export function venueLine(venue: Venue): string {
+  return venue.city === '' ? venue.name : `${venue.name}, ${venue.city}`;
 }
 
 export function lineOf(event: SampleEvent, now: Date, keepDays = false): string {
@@ -828,7 +873,7 @@ export function cardOf(event: SampleEvent, now: Date): Card {
         step: {
           kind: 'button',
           line: W.calledOffNotice(
-            formatEventDate(event.concludedAt ?? event.endsAt, event.timeZone, LOCALE),
+            calledOffDay(event.concludedAt ?? event.endsAt, event.timeZone, now, LOCALE),
           ),
           label: W.duplicate,
           does: 'duplicate',
@@ -945,7 +990,7 @@ export function rememberTab(tab: Tab): void {
   remembered = tab;
 }
 
-function folded(text: string): string {
+export function folded(text: string): string {
   return text
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
@@ -999,7 +1044,9 @@ export type ListState =
   | 'noMatch'
   | 'noGuests'
   | 'replyLands'
+  | 'liveOneDay'
   | 'noGuestsRead'
+  | 'draftsReader'
   | 'tileInvited'
   | 'tileReplied';
 
@@ -1025,7 +1072,9 @@ const LIST_STATES: readonly ListState[] = [
   'noMatch',
   'noGuests',
   'replyLands',
+  'liveOneDay',
   'noGuestsRead',
+  'draftsReader',
   'tileInvited',
   'tileReplied',
 ];
@@ -1052,9 +1101,13 @@ export interface ListStart {
   replyLands: boolean;
   /** Without guests.read, no guest numbers anywhere (sc-3786). */
   readsGuests: boolean;
+  /** sc-50996: a Can view Member, without events.manage, reads the card's line and is offered no step. */
+  reads: boolean;
   tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
+  /** Dîner en direct happening now leads Upcoming, at 20:40 on its day (sc-93858). */
+  liveOneDay: boolean;
 }
 
 /** More picks than Filter has room for at 1280, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
@@ -1080,14 +1133,18 @@ export function listStart(state: ListState | null): ListStart {
     noGuests: false,
     replyLands: false,
     readsGuests: true,
+    reads: false,
     tile: null,
     failed: false,
     moreFailed: false,
+    liveOneDay: false,
   };
 
   switch (state) {
     case null:
       return rest;
+    case 'liveOneDay':
+      return { ...rest, tab: 'upcoming', liveOneDay: true };
     case 'loading':
       return { ...rest, loading: true };
     case 'first':
@@ -1102,6 +1159,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'past', emptied: 'past' };
     case 'drafts':
       return { ...rest, tab: 'drafts' };
+    case 'draftsReader':
+      return { ...rest, tab: 'drafts', reads: true };
     case 'past':
       return { ...rest, tab: 'past' };
     case 'pastMore':
@@ -1146,7 +1205,16 @@ export function listStart(state: ListState | null): ListStart {
 }
 
 export type PhaseState =
-  'draft' | 'draftPast' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff' | 'photo';
+  | 'draft'
+  | 'draftPast'
+  | 'draftPastReader'
+  | 'live'
+  | 'now'
+  | 'paused'
+  | 'pausedReader'
+  | 'finished'
+  | 'calledOff'
+  | 'photo';
 
 export type EditState =
   | 'dates'
@@ -1161,6 +1229,10 @@ export type EditState =
   | 'venueSuggestions'
   | 'venueZone'
   | 'venueDown'
+  | 'venueOne'
+  | 'venueShort'
+  | 'venueNoMatch'
+  | 'venueFrench'
   | 'venueNote'
   | 'venueNoteTooLong'
   | 'venueNoteRefused'
@@ -1172,16 +1244,30 @@ export type EditState =
   | 'type'
   | 'currency'
   | 'currencyRefused'
+  | 'currencyNotSaved'
+  | 'currencyForbidden'
+  | 'currencyGone'
+  | 'currencyChangedElsewhere'
   | 'name'
   | 'nameBlank'
+  | 'nameNotSaved'
+  | 'nameForbidden'
+  | 'nameGone'
+  | 'nameChangedElsewhere'
   | 'cover'
   | 'coverRefused'
   | 'coverPhoto'
+  | 'coverUploading'
+  | 'coverPhotoUploading'
+  | 'coverChangeRefused'
+  | 'coverSaveRefused'
   | 'replyBy'
   | 'replyByEmpty'
   | 'replyByError'
   | 'replyBySooner'
   | 'replyByNow'
+  | 'replyByForbidden'
+  | 'replyByGone'
   | 'replyBySaved'
   | 'replyByRemoved';
 
@@ -1213,18 +1299,23 @@ export type LifeState =
   | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
-  | 'muteNotSaved';
+  | 'muteNotSaved'
+  | WriteState
+  | ThankYouState;
 
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
-export type EventStateName = PhaseState | EditState | LifeState | NeedsState | NoteState;
+export type EventStateName =
+  PhaseState | EditState | LifeState | NeedsState | NoteState | MakeLiveState | LiveOneDayState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
   draftPast: 'evt-shower-2',
+  draftPastReader: 'evt-shower-2',
   live: 'evt-wed-4',
   now: 'evt-wed-4',
   paused: 'evt-party-2',
+  pausedReader: 'evt-party-2',
   finished: 'evt-wed-4',
   calledOff: 'evt-off',
   photo: 'evt-wed-4',
@@ -1240,6 +1331,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   venueSuggestions: 'evt-wed-4',
   venueZone: 'evt-wed-4',
   venueDown: 'evt-wed-4',
+  venueOne: 'evt-wed-4',
+  venueShort: 'evt-wed-4',
+  venueNoMatch: 'evt-wed-4',
+  venueFrench: 'evt-wed-4',
   venueNote: 'evt-wed-4',
   venueNoteTooLong: 'evt-wed-4',
   venueNoteRefused: 'evt-wed-4',
@@ -1254,16 +1349,30 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   type: 'evt-wed-4',
   currency: 'evt-wed-4',
   currencyRefused: 'evt-wed-4',
+  currencyNotSaved: 'evt-wed-4',
+  currencyForbidden: 'evt-wed-4',
+  currencyGone: 'evt-wed-4',
+  currencyChangedElsewhere: 'evt-wed-4',
   name: 'evt-wed-4',
   nameBlank: 'evt-wed-4',
+  nameNotSaved: 'evt-wed-4',
+  nameForbidden: 'evt-wed-4',
+  nameGone: 'evt-wed-4',
+  nameChangedElsewhere: 'evt-wed-4',
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
+  coverUploading: 'evt-wed-4',
+  coverPhotoUploading: 'evt-wed-4',
+  coverChangeRefused: 'evt-wed-4',
+  coverSaveRefused: 'evt-wed-4',
   replyBy: 'evt-wed-4',
   replyByEmpty: 'evt-draft-4',
   replyByError: 'evt-wed-4',
   replyBySooner: 'evt-wed-4',
   replyByNow: 'evt-wed-4',
+  replyByForbidden: 'evt-wed-4',
+  replyByGone: 'evt-wed-4',
   replyBySaved: 'evt-wed-4',
   replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
@@ -1294,6 +1403,24 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
+  guestsCanWriteOff: 'evt-wed-4',
+  guestsCanWriteSaving: 'evt-wed-4',
+  guestsCanWriteFailed: 'evt-wed-4',
+  guestsCanWriteReadOnly: 'evt-wed-4',
+  thankYouLine: 'evt-wed-4',
+  thankYouAdding: 'evt-wed-4',
+  thankYouEditing: 'evt-wed-4',
+  thankYouSaving: 'evt-wed-4',
+  thankYouNotSaved: 'evt-wed-4',
+  thankYouOver: 'evt-wed-4',
+  thankYouLong: 'evt-wed-4',
+  thankYouReadOnly: 'evt-wed-4',
+  thankYouReadOnlyNone: 'evt-wed-4',
+  endNowThankYou: 'evt-wed-4',
+  endNowLong: 'evt-wed-4',
+  endNowOver: 'evt-wed-4',
+  endNowEnding: 'evt-wed-4',
+  endNowNotEnded: 'evt-wed-4',
   needsYou: 'evt-wed-4',
   needsYouOne: 'evt-wed-4',
   needsYouOverdue: 'evt-wed-4',
@@ -1301,21 +1428,32 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   needsYouReadOnly: 'evt-wed-4',
   needsYouLoading: 'evt-wed-4',
   needsYouFailed: 'evt-wed-4',
+  ...MAKE_LIVE_EVENTS,
+  liveOneDay: DINER_ID,
+  liveOneDaySpeeches: DINER_ID,
+  liveOneDayOver: DINER_ID,
 };
+
+/** sc-50996: the event's page as a Can view Member, who holds events.read without events.manage. */
+export function readsOnly(state: EventStateName | null): boolean {
+  return state === 'draftPastReader' || state === 'pausedReader';
+}
 
 export function eventStateOf(value: string | null): EventStateName | null {
   return value != null && Object.hasOwn(EVENT_STATES, value) ? (value as EventStateName) : null;
 }
 
 export function clockOf(state: EventStateName | null): Date {
+  if (isLiveOneDay(state)) return liveOneDayClock(state);
   if (
     state === 'now' ||
     state === 'endNow' ||
+    isEndState(state) ||
     state === 'deleteRefusedStarted' ||
     state === 'deleteRefusedStartedRead'
   )
     return CLOCKS.now;
-  if (state === 'finished') return CLOCKS.finished;
+  if (state === 'finished' || isCardState(state)) return CLOCKS.finished;
 
   return CLOCKS.rest;
 }
@@ -1337,6 +1475,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':
@@ -1351,28 +1493,48 @@ export function partOf(state: EventStateName | null): Part | null {
       return 'type';
     case 'currency':
     case 'currencyRefused':
+    case 'currencyNotSaved':
+    case 'currencyForbidden':
+    case 'currencyGone':
+    case 'currencyChangedElsewhere':
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameNotSaved':
+    case 'nameForbidden':
+    case 'nameGone':
+    case 'nameChangedElsewhere':
       return 'name';
     case 'cover':
     case 'coverRefused':
     case 'coverPhoto':
+    case 'coverUploading':
+    case 'coverPhotoUploading':
+    case 'coverChangeRefused':
+    case 'coverSaveRefused':
       return 'cover';
     case 'replyBy':
     case 'replyByEmpty':
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByForbidden':
+    case 'replyByGone':
       return 'replyBy';
     default:
       return null;
   }
 }
 
+/** The states drawn on a second event as well: Dates on the draft whose end has passed, where Change dates lands (sc-48602). */
+export const ALSO_DRAWN_ON: Partial<Record<EventStateName, readonly string[]>> = {
+  dates: ['evt-shower-2'],
+};
+
 /** A state drawn on another event, or one its phase does not allow, opens the page with no state. */
 export function stateFits(state: EventStateName, event: SampleEvent): boolean {
-  if (EVENT_STATES[state] !== event.id) return false;
+  if (EVENT_STATES[state] !== event.id && !(ALSO_DRAWN_ON[state]?.includes(event.id) ?? false))
+    return false;
 
   const now = clockOf(state);
   const manage = manageOf(event, now);
@@ -1380,7 +1542,8 @@ export function stateFits(state: EventStateName, event: SampleEvent): boolean {
 
   if (state === 'pause') return manage.includes('pause');
   if (state === 'callOff') return manage.includes('callOff');
-  if (state === 'endNow') return manage.includes('endNow');
+  if (state === 'endNow' || isEndState(state)) return manage.includes('endNow');
+  if (isCardState(state)) return shownOf(event, now) === 'finished';
   const part = partOf(state);
   if (part === 'dates' || part === 'replyBy') return !locked;
 
@@ -1453,6 +1616,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       list(null, 'Upcoming, the soonest as the card'),
       list('drafts', 'Drafts, the soonest with its dates passed'),
+      list('draftsReader', 'Drafts, as a Can view Member: its dates passed, no Change dates'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
       list('pastFailed', 'Past, More finished events did not load'),
@@ -1464,6 +1628,11 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('emptyDrafts', 'No drafts'),
       list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
+      {
+        to: '/demo/events?notice=gate,changed',
+        name: 'The sign-in rules’ notices above the title',
+      },
+      { to: '/demo/events?state=offline&notice=due', name: 'Offline, then two-factor due' },
       list('noGuests', 'Nobody invited yet, the guest counts at 0'),
       list('replyLands', 'A reply lands: 97 coming, 24 haven’t replied, in place'),
       list('tileInvited', 'Guests invited chosen: the events with invited guests, and Clear'),
@@ -1472,8 +1641,41 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
-    name: 'New event, its top once the band has gone (sc-39509)',
-    states: [{ to: '/demo/events/new', name: 'New event: ‹ Events and the bell, then the title' }],
+    name: 'New event, its top (sc-39509) and its form (sc-48607)',
+    states: [
+      {
+        to: '/demo/events/new',
+        name: 'New event, empty: ‹ Events and the bell, the title, the form',
+      },
+      { to: '/demo/events/new?state=filled', name: 'Filled in' },
+      { to: '/demo/events/new?state=refused', name: 'Four fields refused at once' },
+      { to: '/demo/events/new?state=creating', name: 'Creating…, the fields held' },
+      { to: '/demo/events/new?state=notCreated', name: 'Not created, the form kept' },
+      { to: '/demo/events/new?state=server', name: 'The server refuses the time zone' },
+      { to: '/demo/events/new?state=offline', name: 'Offline: not created' },
+      { to: '/demo/events/new?state=leave', name: 'Leaving with something typed' },
+      { to: '/demo/events/new?state=moved', name: 'The end moved with the start' },
+      { to: '/demo/events/new?state=skipped', name: 'A start the clocks skip' },
+      { to: '/demo/events/new?state=created', name: 'Created, opening the event' },
+      { to: '/demo/events/new?state=photo', name: 'With a photo chosen' },
+      { to: '/demo/events/new?state=photoRefused', name: 'Created, its photo refused' },
+      {
+        to: '/demo/events/new?state=photoSending',
+        name: 'A HEIC on its way: Uploading… over the default cover',
+      },
+      {
+        to: '/demo/events/new?state=photoSendingCreating',
+        name: 'Create event pressed while a HEIC is on its way: Creating… held',
+      },
+      {
+        to: '/demo/events/new?state=photoSendFailed',
+        name: 'A HEIC that did not upload, before Create event',
+      },
+      {
+        to: '/demo/events/new?state=photoSendLost',
+        name: 'Created, its HEIC did not upload after Create event',
+      },
+    ],
   },
   {
     name: 'Searching and filtering',
@@ -1492,12 +1694,29 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       on('draft', 'Draft'),
       on('draftPast', 'Draft, its dates passed'),
+      on('draftPastReader', 'Draft, its dates passed, as a Can view Member: no Change dates'),
       on('live', 'Live'),
       on('now', 'Happening now'),
       on('paused', 'Paused'),
+      on('pausedReader', 'Paused, as a Can view Member: no Resume'),
       on('finished', 'Finished'),
       on('calledOff', 'Called off'),
       on('photo', 'Live, with a cover photo'),
+    ],
+  },
+  {
+    name: 'A one-day event happening now (sc-93858)',
+    states: [
+      on(
+        'liveOneDay',
+        'Dîner en direct at 20:40: no step on its card, Coming up says when it ends',
+      ),
+      on(
+        'liveOneDaySpeeches',
+        'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
+      ),
+      on('liveOneDayOver', 'At 23:45: every date has passed, with Duplicate, as on main'),
+      list('liveOneDay', 'Events: Dîner en direct leads Upcoming, no step on its card'),
     ],
   },
   {
@@ -1518,12 +1737,16 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'Dates and venue, in place',
     states: [
       on('dates', 'Dates, opened'),
+      {
+        to: '/demo/events/evt-shower-2?state=dates',
+        name: 'Dates, opened on a draft whose end has passed (sc-48602)',
+      },
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
       on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
       on('datesReplyByAsk', 'Dates asks before closing replies sooner (sc-3780)'),
       on('discard', 'Cancel with a change'),
-      on('changedElsewhere', 'Changed elsewhere'),
+      on('changedElsewhere', 'Dates, changed elsewhere: the notice above Cancel and Save'),
       on('showLatest', 'Show the latest'),
       on('venue', 'Venue, opened'),
       on('venueSuggestions', 'Venue, suggestions'),
@@ -1532,12 +1755,23 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'The suggestions credit OpenStreetMap (sc-80918)',
+    states: [
+      on('venueSuggestions', 'Three suggestions, the credit at the foot of the list'),
+      on('venueOne', 'One suggestion, the credit still there'),
+      on('venueShort', 'Two letters typed: no list, no credit'),
+      on('venueNoMatch', 'Nothing matches: no credit'),
+      on('venueDown', 'Suggestions not available: no credit'),
+      on('venueFrench', 'The credit in French, whole at 320 px'),
+    ],
+  },
+  {
     name: 'The arrival note (sc-24385)',
     states: [
       on('venueNote', 'Venue, the arrival note under Address'),
       on('venueNoteTooLong', 'Venue, a note of 501 characters: refused before sending'),
       on('venueNoteRefused', 'Venue, the note refused by the server (422)'),
-      on('venueNoteForbidden', 'Venue, a role changed while open (403)'),
+      on('venueNoteForbidden', 'Venue, a role changed while open (403): above Cancel and Save'),
       on('noteNoVenue', 'Details, Venue to be confirmed with a note'),
       on('noteWide', 'Details, a note of 500 characters with no spaces'),
       on('noteMarkup', 'Details, markup typed as text'),
@@ -1558,6 +1792,38 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('cover', 'Cover, the default'),
       on('coverRefused', 'Cover, a photo refused'),
       on('coverPhoto', 'Cover, a photo'),
+      on('coverUploading', 'Cover, a photo uploading onto the default cover'),
+      on('coverPhotoUploading', 'Cover, a new photo uploading over the photo'),
+      on('coverChangeRefused', 'Cover, Change photo refused: the photo stays'),
+      on('coverSaveRefused', 'Cover, the save refused by the server'),
+    ],
+  },
+  {
+    name: 'A part’s save notices, directly above Cancel and Save (sc-74398)',
+    states: [
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('nameGone', 'Event name, the event no longer available (404)'),
+      on('currencyGone', 'Currency, the event no longer available (404)'),
+    ],
+  },
+  {
+    name: 'At 400% zoom: a 1280 × 800 window is 320 CSS px wide, after Show this page anyway (sc-74933)',
+    states: [
+      on('live', 'The Overview, no part open: the sidebar above the page, one column'),
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, at the end of the list, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('hostsSix', 'Hosted by, six'),
+      on('dates', 'Dates: each day above its time'),
+      on('showLatest', 'Show the latest version?, its two actions one above the other'),
     ],
   },
   {
@@ -1568,6 +1834,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('replyByError', 'Reply by, on the day it starts'),
       on('replyBySooner', 'Reply by, moved sooner'),
       on('replyByNow', 'Reply by, moved into the past'),
+      on('replyByForbidden', 'Reply by, a role changed while open (403): above Cancel and Save'),
+      on('replyByGone', 'Reply by, the event no longer available (404): above Cancel and Save'),
       on('replyBySaved', 'Reply by, saved'),
       on('replyByRemoved', 'Reply by, removed'),
     ],
@@ -1603,6 +1871,41 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
+    ],
+  },
+  {
+    name: 'Guests can write from their page (sc-3978)',
+    states: [
+      { to: '/demo/events/evt-wed-4', name: 'Guests can write from their page, on' },
+      on('guestsCanWriteOff', 'Guests can write from their page, off'),
+      on('guestsCanWriteSaving', 'Guests can write from their page, saving'),
+      on('guestsCanWriteFailed', 'Guests can write from their page, not saved'),
+      on('guestsCanWriteReadOnly', 'Guests can write from their page, without messages.manage'),
+    ],
+  },
+  {
+    name: 'Make live, and the offer to send invitations (sc-3971)',
+    states: MAKE_LIVE_STATES.map((one) => on(one.key, one.name)),
+  },
+  {
+    name: 'A thank-you for your guests (sc-6476)',
+    states: [
+      on('finished', 'Finished, Add a thank-you'),
+      on('thankYouAdding', 'The field open, empty'),
+      on('thankYouLine', 'The line, signed with the hosts, and Edit thank-you'),
+      on('thankYouEditing', 'Edit thank-you, the field holds the line'),
+      on('thankYouSaving', 'Saving…'),
+      on('thankYouNotSaved', 'Not saved, the text kept'),
+      on('thankYouOver', 'Over 280, Save pressed: nothing sent'),
+      on('thankYouLong', 'A 280-character line'),
+      on('thankYouReadOnly', 'Without the permission to end it: the line, read-only'),
+      on('thankYouReadOnlyNone', 'Without the permission to end it, no line: no card'),
+      on('endNow', 'End now, the field left empty'),
+      on('endNowThankYou', 'End now, with a thank-you'),
+      on('endNowLong', 'End now, 280 characters'),
+      on('endNowOver', 'End now, over 280: nothing sent'),
+      on('endNowEnding', 'End now, Ending…'),
+      on('endNowNotEnded', 'End now, not ended, the thank-you kept'),
     ],
   },
   {

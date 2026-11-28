@@ -51,7 +51,7 @@ import {
   unlinkAsk,
   type Ways,
 } from '../kit/securityPage.ts';
-import { codeHelp, proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
+import { codeHelp, pressAfterLimit, proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { currentSessionId } from '../tokens.ts';
@@ -373,7 +373,7 @@ export function SecurityPage({
     }
   }
 
-  async function signOutEverywhere(held: string): Promise<ConfirmSays | null> {
+  async function signOutEverywhere(held: string): Promise<ProvedSays | null> {
     const outcome = await signOutOthers(() => api.signOutEverywhereElse(held, others.sessionId), t);
     switch (outcome.kind) {
       case 'endedHere':
@@ -383,6 +383,19 @@ export function SecurityPage({
         done(outcome.words);
         readAgain();
         return null;
+      case 'limited':
+        return {
+          password: null,
+          code: null,
+          checked: false,
+          other:
+            outcome.until == null
+              ? t('passwordCard.pausedSoon')
+              : t('devices.everywhereLimitedBody', {
+                  time: formatTimeOfDay(outcome.until, dateLocale()),
+                }),
+          limitedUntil: outcome.until,
+        };
       case 'failed':
         if (outcome.refused) await onRefused().catch(() => {});
         return { password: null, code: null, checked: false, other: outcome.message };
@@ -440,6 +453,7 @@ export function SecurityPage({
     }
   }
 
+  const askWords = askBusy(ask, t);
   const question = askOf(ask, {
     unlink: openedWay?.linked === true ? unlinkAsk(openedWay, ways, t) : null,
     signOut: openedDevice == null ? null : signOutAsk(openedDevice.name, t),
@@ -568,7 +582,7 @@ export function SecurityPage({
           label: question?.confirm ?? '',
           testID: `security.${ask ?? 'ask'}.confirm`,
           removes: question?.removes ?? false,
-          busy: acting ? askBusy(ask, t) : undefined,
+          ...(askWords == null ? {} : { busy: acting ? askWords : undefined, busyWords: askWords }),
         }}
         onKeep={() => {
           if (!acting) setAsk(null);
@@ -673,7 +687,14 @@ export function SecurityPage({
             try {
               if (proof === 'turnOff') {
                 await api.disableTwoFactor(code);
-                setStatus({ kind: 'ready', value: { on: false, recoveryCodesLeft: 0 } });
+                setStatus((now) =>
+                  now.kind === 'ready'
+                    ? {
+                        kind: 'ready',
+                        value: { ...now.value, on: false, recoveryCodesLeft: 0, factors: [] },
+                      }
+                    : now,
+                );
                 done(t('security.twoFactorOff', { email }));
               } else {
                 const codes = await api.newRecoveryCodes(code);
@@ -711,7 +732,19 @@ export function SecurityPage({
         onTurnOn={async (code) => {
           try {
             const codes = await api.activateTwoFactor(cleanCode(code));
-            setStatus({ kind: 'ready', value: { on: true, recoveryCodesLeft: codes.length } });
+            setStatus((now) =>
+              now.kind === 'ready'
+                ? {
+                    kind: 'ready',
+                    value: {
+                      ...now.value,
+                      on: true,
+                      recoveryCodesLeft: codes.length,
+                      factors: [{ kind: 'app', addedAt: new Date().toISOString() }],
+                    },
+                  }
+                : now,
+            );
             void onChanged();
 
             return { codes };
@@ -754,7 +787,7 @@ function ProofStep({
   email: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onProved: (proof: string, codeSpent: boolean) => Promise<ConfirmSays | null>;
+  onProved: (proof: string, codeSpent: boolean) => Promise<ProvedSays | null>;
   /** Turning off and new codes: the code is the proof, sent with the change. */
   onCode: (code: string) => Promise<string | null>;
 }) {
@@ -765,7 +798,33 @@ function ProofStep({
       ? confirmWith(account.hasPassword, account.providers)
       : proveWith(account.hasPassword, account.providers, acting);
   const proving = useProof(codeOnly ? 'password' : via, twoFactorOn);
-  const provider = codeOnly || via === 'password' || via == null ? null : PROVIDER_NAMES[via];
+  const tripVia = codeOnly || via === 'password' || via == null ? null : via;
+  const provider = tripVia == null ? null : PROVIDER_NAMES[tripVia];
+  const [limitedUntil, setLimitedUntil] = useState<Date | null>(null);
+  const spent = useRef(false);
+
+  useEffect(() => {
+    if (limitedUntil == null) return;
+    // The button comes back and the notice goes at the API's `until`, with nothing in their place.
+    const lifts = setTimeout(
+      () => setLimitedUntil(null),
+      Math.max(0, limitedUntil.getTime() - Date.now()),
+    );
+
+    return () => clearTimeout(lifts);
+  }, [limitedUntil]);
+  const limited = useMemo(
+    () =>
+      limitedUntil == null
+        ? undefined
+        : {
+            title: t('devices.everywhereLimitedTitle'),
+            body: t('devices.everywhereLimitedBody', {
+              time: formatTimeOfDay(limitedUntil, dateLocale()),
+            }),
+          },
+    [limitedUntil, t],
+  );
   const stepTwo = provider != null && proving.signedIn != null ? provider : null;
   const lead = codeOnly
     ? t('twoFactorCard.offBody')
@@ -796,6 +855,8 @@ function ProofStep({
           ? t('devices.everywhereCodeHelp')
           : codeHelp(t, stepTwo),
     instead: provider,
+    trip: tripVia == null ? undefined : { provider: tripVia, signedIn: proving.signedIn },
+    limited,
   };
 
   return (
@@ -805,6 +866,19 @@ function ProofStep({
       opener={opener}
       onClose={onClose}
       onContinue={async (password, code): Promise<ConfirmSays | null> => {
+        if (spent.current) {
+          const next = pressAfterLimit(heldProof(), proving.codeAsked);
+          if (typeof next === 'object') {
+            const said = await onProved(next.resend, false);
+            if (said?.limitedUntil == null) return said;
+            setLimitedUntil(said.limitedUntil);
+
+            return { password: null, code: null, checked: false };
+          }
+          spent.current = false;
+          proving.startOver();
+          if (next === 'startOver') return { password: null, code: null, checked: false };
+        }
         const blank = {
           password: asks.password && password === '' ? t('waysCard.passwordBlank') : null,
           code: asks.code && code.trim() === '' ? t('waysCard.codeBlank') : null,
@@ -816,9 +890,21 @@ function ProofStep({
           return refused == null ? null : { password: null, code: refused, checked: false };
         }
         const outcome = await proving.submit(password, code);
-        if (outcome.kind === 'proved') return onProved(outcome.proof, outcome.codeSpent);
+        if (outcome.kind === 'proved') {
+          const said = await onProved(outcome.proof, outcome.codeSpent);
+          if (said?.limitedUntil == null || tripVia == null) return said;
+          spent.current = true;
+          setLimitedUntil(said.limitedUntil);
+
+          return { password: null, code: null, checked: false };
+        }
         if (outcome.kind !== 'refused') return { password: null, code: null, checked: false };
-        const { field, message } = outcome.refusal;
+        const { field, message, until } = outcome.refusal;
+        if (proof === 'everywhere' && tripVia != null && until != null) {
+          setLimitedUntil(until);
+
+          return { password: null, code: null, checked: false };
+        }
 
         return {
           password: field === 'password' ? message : null,
@@ -831,6 +917,9 @@ function ProofStep({
     />
   );
 }
+
+/** A sign-out the API held back for too many tries says until when, so a provider's button can stay off until then. */
+type ProvedSays = ConfirmSays & { limitedUntil?: Date | null };
 
 function askOf(ask: AskKind | null, words: Record<AskKind, AskWords | null>): AskWords | null {
   return ask == null ? null : words[ask];

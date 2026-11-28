@@ -1,5 +1,5 @@
 import type { Membership } from '@soirely/api-client';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -45,6 +45,7 @@ function event(name: string, rest: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,
@@ -126,7 +127,7 @@ describe('Today at a desk (sc-30413)', () => {
     ).toBeDefined();
   });
 
-  it('draws This week and Your events, with no Needs you, and a row opens its event', async () => {
+  it('draws Needs you first, then This week and Your events, and a row opens its event', async () => {
     signedIn(membership({ id: 'org_1' }));
     serving([event('Bisi & Kola’s engagement')]);
     const router = open();
@@ -134,7 +135,7 @@ describe('Today at a desk (sc-30413)', () => {
     const row = await screen.findByRole('button', { name: /^Bisi & Kola’s engagement/u });
     expect(screen.getByRole('heading', { level: 2, name: 'This week' })).toBeDefined();
     expect(within(content()).getByRole('heading', { level: 2, name: 'Your events' })).toBeDefined();
-    expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Needs you' })).toBeDefined();
     expect(within(row).getByText('Draft')).toBeDefined();
     expect(within(content()).getByRole('button', { name: 'New event' })).toBeDefined();
 
@@ -172,6 +173,41 @@ describe('Today at a desk (sc-30413)', () => {
 
     expect(rows).toEqual([['Aso ebi', 'Chidi & Ngozi'], ['Bisi’s 40th']]);
   });
+
+  it.each([
+    ['en', false],
+    ['fr', false],
+    ['pt', true],
+  ])(
+    'in %s, This week writes the letter at every width: %s, with the full weekday read in its place (sc-61548)',
+    async (language, letters) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
+      signedIn(membership({ id: 'org_1' }));
+      serving([event('Casamento')]);
+      await act(() => i18next.changeLanguage(language));
+
+      try {
+        open();
+
+        const week = await screen.findByRole('region', { name: i18next.t('today.thisWeek') });
+        const days = week.querySelector('.today-days') as HTMLElement;
+        const friday = days.children[3] as HTMLElement;
+
+        expect(days.classList.contains('has-letters')).toBe(letters);
+        expect(friday.querySelector('.today-weekday-narrow')?.getAttribute('aria-hidden')).toBe(
+          'true',
+        );
+        expect(friday.querySelector('.today-weekday-spoken')?.textContent).toBe(
+          new Intl.DateTimeFormat(language, { weekday: 'long', timeZone: 'UTC' }).format(
+            new Date('2026-11-06T00:00Z'),
+          ),
+        );
+      } finally {
+        await act(() => i18next.changeLanguage('en'));
+      }
+    },
+  );
 
   it('keeps a row’s day count and its date each whole, so the date wraps rather than cuts (sc-36532)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -274,6 +310,24 @@ describe('Today at a desk (sc-30413)', () => {
     }
   });
 
+  it('puts the one bell in the banner at a desk, with its unread count (sc-39509)', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    const events = serving([]).getMockImplementation();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      new URL(String(input)).pathname === '/api/notifications'
+        ? new Response(JSON.stringify({ items: [], unreadCount: 3, next: null }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : events!(input, init),
+    );
+    open();
+
+    const bell = await screen.findByRole('button', { name: 'Notifications, 3 unread' });
+    expect(bell.closest('.today-banner')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('keeps New event off the banner for a role without Create events', async () => {
     signedIn(
       membership({
@@ -314,5 +368,153 @@ describe('Today at a desk (sc-30413)', () => {
 
     expect(await screen.findByRole('button', { name: 'All events' })).toBeDefined();
     expect(screen.queryByRole('heading', { level: 1, name: 'Dashboard' })).toBeNull();
+  });
+});
+
+describe('Needs you on Today (sc-61015)', () => {
+  const kitchen = {
+    at: '2099-11-10T23:59:00+01:00',
+    title: 'Give final numbers to the kitchen',
+    note: null,
+    owner: 'you',
+    area: 'menu',
+    done: false,
+    action: { label: 'Open the kitchen sheet', link: '/app/events/ev_7/kitchen' },
+  };
+  const other = { ...kitchen, area: 'budget', title: 'Pay the band', action: null };
+  const events = () => [
+    event('Ade’s 40th', { milestones: [kitchen], id: 'ev_ade' }),
+    event('Tunde’s 50th', { milestones: [{ ...other }], id: 'ev_tunde' }),
+  ];
+
+  it('leads with the heading and its count, the rows a list, and the cover counts them', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving(events());
+    open();
+
+    const head = await screen.findByRole('heading', { level: 2, name: 'Needs you, 2 things' });
+    const rows = within(head.closest('section') as HTMLElement).getAllByRole('listitem');
+
+    expect(rows).toHaveLength(2);
+    expect(
+      screen.getByRole('button', {
+        name: /^Give final numbers to the kitchen, Ade’s 40th, Due /u,
+      }),
+    ).toBeDefined();
+    expect(screen.getByText('2 things need you.')).toBeDefined();
+    expect(head.compareDocumentPosition(screen.getByRole('heading', { name: 'This week' }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('gives a row with an action its button, read with its event, and none to a row without', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving(events());
+    const router = open();
+
+    const button = await screen.findByRole('link', { name: 'Open the kitchen sheet, Ade’s 40th' });
+
+    expect(screen.getAllByRole('link', { name: /^Open the kitchen sheet/u })).toHaveLength(1);
+
+    fireEvent.click(button);
+
+    expect(router.state.location.pathname).toBe('/app/events/ev_7/kitchen');
+  });
+
+  it('opens the event from a row', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving(events());
+    const router = open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Pay the band, Tunde’s 50th/u }));
+
+    expect(router.state.location.pathname).toBe('/app/events/ev_tunde');
+  });
+
+  it('lists nothing for a member who only reads the area, and shows the tick', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving([event('Ade’s 40th', { milestones: [kitchen], permissions: ['menu.read'] })]);
+    open();
+
+    expect(await screen.findByText('Nothing needs you')).toBeDefined();
+    expect(screen.getByText('You’re up to date on every event.')).toBeDefined();
+    expect(screen.queryByText(/need you\./u)).toBeNull();
+  });
+
+  it('has no Needs you on a first run', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving([]);
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Set up your first event' });
+
+    expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+  });
+
+  it('shows no tick while the events are loading', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    open();
+
+    await screen.findByText('Loading…', {}, { timeout: 200 }).catch(() => undefined);
+
+    expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+  });
+
+  it('counts one row in the singular, in the heading and on the cover', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    serving([event('Ade’s 40th', { milestones: [kitchen], id: 'ev_ade' })]);
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Needs you, 1 thing' }),
+    ).toBeDefined();
+    expect(screen.getByText('1 thing needs you.')).toBeDefined();
+  });
+
+  it('shows neither the tick nor a count after a read that failed with nothing kept', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(JSON.stringify({ message: 'Broken' }), { status: 500 }),
+    );
+    open();
+
+    await screen.findByText('The events did not load. Try again in a moment.');
+
+    expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+    expect(screen.queryByText(/need you\./u)).toBeNull();
+  });
+
+  it('keeps what a load gave under the offline band after a reload that went unanswered', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    const overdue = { ...kitchen, at: '2020-11-10T23:59:00+01:00' };
+    const soirely = { reachable: true };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+
+      if (!soirely.reachable) throw new TypeError('Failed to fetch');
+      if (url.pathname !== '/api/orgs/org_1/events') return new Promise<Response>(() => {});
+
+      const shown =
+        url.searchParams.get('finished') === 'true'
+          ? []
+          : [event('Ade’s 40th', { milestones: [overdue] })];
+
+      return new Response(JSON.stringify({ events: shown, total: shown.length }), { status: 200 });
+    });
+    open();
+    await screen.findByRole('heading', { level: 2, name: 'Needs you, 1 thing' });
+
+    soirely.reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() => expect(document.querySelector('.offline-band-words')).not.toBeNull());
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Needs you, 1 thing' })).toBeDefined();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
   });
 });

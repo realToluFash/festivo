@@ -6,12 +6,22 @@ import {
   type JoinRequest,
   type LinkedProvider,
   type Membership,
+  type OutsideEvent,
   type PausedOrganisation,
   type Problem,
-  awaiting,
+  gateOf,
+  heldByDevice,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, choosePaused, forgetEventsTab, roleHolds } from '@soirely/domain';
+import {
+  chooseOrganisation,
+  choosePaused,
+  forgetEventsTab,
+  holdsAnywhere,
+  rememberedEntry,
+  rememberedFor,
+  roleHolds,
+} from '@soirely/domain';
 import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
@@ -19,6 +29,7 @@ import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
 import { followAccountScheme, schemeIn } from './colourScheme.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetKept } from './tabKept.ts';
 
 export interface Session {
   /** The account's id, which names its own realtime topics. */
@@ -46,6 +57,12 @@ export interface Session {
   timezone: string | null;
   /** The request to join at its domain that an account in no organisation is waiting on (sc-561). */
   waitingFor: JoinRequest | null;
+  /** The events it holds from outside an organisation, the one it lands on first (sc-71). */
+  outsideEvents?: readonly OutsideEvent[];
+  /** A door code's account (sc-72): no address to prove, so no gate, and nothing but its events and itself to read. */
+  heldByDevice?: boolean;
+  /** When this browser's session ends with the account's grants (sc-4235); null for one that does not. */
+  signedOutAt?: string | null;
 }
 
 export type SessionState =
@@ -53,7 +70,14 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
   | { status: 'unreachable'; retrying: boolean }
-  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut; providerOnly?: ProviderOnly };
+  | {
+      status: 'signedOut';
+      ended: boolean;
+      /** This tab never held a session, so the page it opened is where sign-in lands (sc-612). */
+      arrived?: true;
+      timedOut?: TimedOut;
+      providerOnly?: ProviderOnly;
+    };
 
 /** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
 export interface TimedOut {
@@ -69,7 +93,7 @@ export interface ProviderOnly {
   email: string;
 }
 
-/** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
+/** Per device and for the account that left it, as the switcher promises: "Soirely remembers your choice on this device" (sc-86373). */
 const ACTIVE_ORGANISATION = 'soirely.organisation';
 
 let state: SessionState = { status: 'unknown' };
@@ -96,16 +120,36 @@ export function can(session: Session, permission: string): boolean {
   return session.organisation != null && roleHolds(session.organisation, permission);
 }
 
+/** Held by the organisation role or by a role on any one event: who reaches a page the API opens either way (sc-3901). */
+export function canAnywhere(session: Session, permission: string): boolean {
+  return session.organisation != null && holdsAnywhere(session.organisation, permission);
+}
+
 /** On one event, a Member holds what their role on it gives, not the organisation's: the event read says which (sc-29915). */
 export function canOn(event: { permissions: readonly string[] }, permission: string): boolean {
   return event.permissions.includes(permission);
 }
 
-export async function restoreSession(): Promise<void> {
-  if (state.status !== 'unknown') return;
+/** The event the account holds from outside an organisation at this id, a member's of another organisation's event as much as a no-organisation account's (sc-71, sc-68438); null for any other. */
+export function outsideOn(
+  session: Session,
+  eventId: string | null | undefined,
+): OutsideEvent | null {
+  if (session.pausedIn != null) return null;
+
+  return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
+}
+
+let restoring: Promise<void> = Promise.resolve();
+
+/** Settles once the cookie's account is known, so a page that called it second still waits for the first ask. */
+export function restoreSession(): Promise<void> {
+  if (state.status !== 'unknown') return restoring;
 
   set({ status: 'checking' });
-  await askForAccount();
+  restoring = askForAccount();
+
+  return restoring;
 }
 
 /** Stays on the unreachable screen while asking, so the button can say it is trying. */
@@ -127,7 +171,7 @@ async function askForAccount(): Promise<void> {
     set(
       error instanceof ApiUnreachableError
         ? { status: 'unreachable', retrying: false }
-        : { status: 'signedOut', ended: false },
+        : { status: 'signedOut', ended: false, arrived: true },
     );
   }
 }
@@ -144,7 +188,9 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 
   // A sign-in's answer carries the colours as /me does, so a new browser opens in them without a reload.
   followAccountScheme(schemeIn(account));
-  set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
+  const session = sessionFrom(account, organisations, paused);
+  set({ status: 'signedIn', session });
+  rememberWorkingIn(session);
   // The account's language, followed after this read and before the session was set (sc-9267).
   if (currentLocale() !== askedIn) void rereadOrganisations();
 }
@@ -152,6 +198,16 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** The events held from outside, read again: one whose grant ended or was revoked is gone from the list (sc-68438). */
+export async function rereadOutsideEvents(): Promise<string | null> {
+  const asked = generation;
+  const { outsideEvents, signedOutAt = null } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return signedOutAt;
+
+  set({ status: 'signedIn', session: { ...state.session, outsideEvents, signedOutAt } });
+  return signedOutAt;
 }
 
 /** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
@@ -195,7 +251,12 @@ export function onMovedOn(listener: (organisation: Membership) => void): () => v
 
 /** Read again on a language pick (sc-9267), a move or a return to the tab (sc-16229); a failed read leaves them as they were. */
 export async function rereadOrganisations(): Promise<void> {
-  if (state.status !== 'signedIn' || state.session.awaiting != null) return;
+  if (
+    state.status !== 'signedIn' ||
+    state.session.awaiting != null ||
+    state.session.heldByDevice === true
+  )
+    return;
 
   const asked = generation;
   const known = state.session.organisations;
@@ -215,14 +276,14 @@ export async function rereadOrganisations(): Promise<void> {
   const kept = read.organisations.find((membership) => membership.id === current.organisation?.id);
 
   if (kept == null && current.organisation != null && current.pausedIn == null) {
-    const organisation = chooseOrganisation(read.organisations, recalled());
-    const pausedIn = choosePaused(read.paused, recalled(), read.organisations.length);
+    const organisation = chooseOrganisation(read.organisations, recalled(current.userId));
+    const pausedIn = choosePaused(read.paused, current.organisation.id, read.organisations.length);
+    const session = { ...current, organisations: read.organisations, organisation, pausedIn };
 
     forgetEventsTab();
-    set({
-      status: 'signedIn',
-      session: { ...current, organisations: read.organisations, organisation, pausedIn },
-    });
+    forgetKept();
+    set({ status: 'signedIn', session });
+    rememberWorkingIn(session);
     if (organisation != null && pausedIn == null)
       for (const listener of movedOn) listener(organisation);
 
@@ -250,8 +311,8 @@ export function landingFor(gate: Awaiting | null): string {
 }
 
 /** Before the organisations are read, so the next read opens in this one: an invitation accepted while onboarding. */
-export function rememberOrganisation(id: string): void {
-  remember(id);
+export function rememberOrganisation(account: string, id: string): void {
+  remember(account, id);
 }
 
 /** Remembered on this device, so the next visit opens where this one left off. */
@@ -262,8 +323,9 @@ export function switchOrganisation(id: string): void {
 
   if (organisation == null) return;
 
-  remember(id);
+  remember(state.session.userId, id);
   forgetEventsTab();
+  forgetKept();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 
@@ -297,11 +359,14 @@ export function replaceOrganisation(next: Membership): void {
 export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
+  const arrived = ended && state.status !== 'signedIn';
 
   generation += 1;
+  forgetKept();
   set({
     status: 'signedOut',
     ended,
+    ...(arrived ? { arrived } : {}),
     ...(timedOut == null ? {} : { timedOut }),
     ...(providerOnly == null ? {} : { providerOnly }),
   });
@@ -333,7 +398,7 @@ function sessionFrom(
   organisations: readonly Membership[],
   paused: readonly PausedOrganisation[],
 ): Session {
-  const remembered = recalled();
+  const remembered = recalled(account.id);
 
   return {
     userId: account.id,
@@ -341,7 +406,8 @@ function sessionFrom(
     email: primaryEmailAddress(account) ?? '',
     verified: account.verified,
     complete: account.complete,
-    awaiting: awaiting(account),
+    awaiting: gateOf(account),
+    heldByDevice: heldByDevice(account),
     providers: account.providers,
     hasPassword: account.hasPassword,
     needsOrganisation: account.needsOrganisation,
@@ -349,24 +415,41 @@ function sessionFrom(
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
     waitingFor: account.waitingFor,
+    outsideEvents: account.outsideEvents,
+    signedOutAt: account.signedOutAt,
     organisation: chooseOrganisation(organisations, remembered),
     pausedIn: choosePaused(paused, remembered, organisations.length),
   };
 }
 
-function recalled(): string | null {
+function recalled(account: string): string | null {
   try {
-    return window.localStorage.getItem(ACTIVE_ORGANISATION);
+    return rememberedFor(window.localStorage.getItem(ACTIVE_ORGANISATION), account);
   } catch {
     return null;
   }
 }
 
-function remember(id: string): void {
+/** Opened by default as much as by choice, so a pause there shows its page at the next open rather than another organisation (sc-86056); another account's is let go, so it does not come back after this one (sc-86373). */
+function rememberWorkingIn(session: Session): void {
+  if (session.organisation != null && session.pausedIn == null)
+    remember(session.userId, session.organisation.id);
+  else if (recalled(session.userId) == null) forgetRemembered();
+}
+
+function remember(account: string, id: string): void {
   try {
-    window.localStorage.setItem(ACTIVE_ORGANISATION, id);
+    window.localStorage.setItem(ACTIVE_ORGANISATION, rememberedEntry(account, id));
   } catch {
     // Private windows refuse storage; the choice then lasts as long as the page.
+  }
+}
+
+function forgetRemembered(): void {
+  try {
+    window.localStorage.removeItem(ACTIVE_ORGANISATION);
+  } catch {
+    // Nothing was kept where storage is refused.
   }
 }
 
@@ -397,6 +480,6 @@ if (typeof window !== 'undefined') {
 
   // The API said the account is behind a gate this session did not know about, so read it again.
   window.addEventListener(GATED, () => {
-    if (state.status === 'signedIn') void refreshAccount();
+    if (state.status === 'signedIn' && state.session.heldByDevice !== true) void refreshAccount();
   });
 }

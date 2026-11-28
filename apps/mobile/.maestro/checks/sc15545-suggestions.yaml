@@ -1,4 +1,5 @@
 # sc-15545: in New event, typing "Praca do Comercio Lisboa" in Address lists four suggestions, not the provider's six (two pairs read the same); choosing the first fills the address.
+# Tapping the Address label puts the keys away: hideKeyboard hangs on an iPhone (sc-82567).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/new
@@ -8,33 +9,40 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueAddress'
+      id: 'eventForm.venue.address'
     direction: DOWN
+    centerElement: true
 - tapOn:
-    id: 'eventForm.venueAddress'
+    id: 'eventForm.venue.address'
 - inputText: 'Praca do Comercio Lisboa'
-- waitForAnimationToEnd:
-    timeout: 5000
-- hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: 'eventForm.venueSuggestion.0'
-    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm\.venue\.suggestion\..*'
+      index: 0
     timeout: 20000
+- tapOn: '(Address|Dirección|Adresse|Morada), (Optional|Opcional|Facultatif)'
+- waitForAnimationToEnd:
+    timeout: 3000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueSuggestion.3'
+      id: 'eventForm\.venue\.suggestion\..*'
+      index: 3
     direction: DOWN
+    centerElement: true
 - takeScreenshot: suggestions
 - assertNotVisible:
-    id: 'eventForm.venueSuggestion.4'
+    id: 'eventForm\.venue\.suggestion\..*'
+    index: 4
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueSuggestion.0'
+      id: 'eventForm\.venue\.suggestion\..*'
+      index: 0
     direction: UP
+    centerElement: true
 - tapOn:
-    id: 'eventForm.venueSuggestion.0'
+    id: 'eventForm\.venue\.suggestion\..*'
+    index: 0
 - waitForAnimationToEnd
 - assertNotVisible:
-    id: 'eventForm.venueSuggestions'
+    id: 'eventForm\.venue\.suggestion\..*'
 - takeScreenshot: chosen

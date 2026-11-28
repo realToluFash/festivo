@@ -10,6 +10,9 @@ use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Event\Interfaces\EventDatesMovedInterface;
+use App\Domain\Event\ThankYouEditor;
+use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -29,12 +32,14 @@ use App\Repository\EventSearch;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
 use DateTimeZone;
+use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -46,6 +51,7 @@ final readonly class EventsController
 
     private const int MOST_PER_PAGE = 200;
 
+    /** @param iterable<EventDatesMovedInterface> $datesMovedListeners */
     public function __construct(
         private Security $security,
         private OrganisationRepository $organisationRepository,
@@ -58,10 +64,14 @@ final readonly class EventsController
         private MilestoneSerialiser $milestoneSerialiser,
         private ClockInterface $clock,
         private EventDuplicator $eventDuplicator,
+        private HeadcountCalculator $headcountCalculator,
+        private ThankYouEditor $thankYouEditor,
+        #[AutowireIterator(EventDatesMovedInterface::TAG)]
+        private iterable $datesMovedListeners,
     ) {
     }
 
-    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912). */
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594) and its guest figures (sc-3786). A Member's has only the events they have a role on (sc-29912). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
     #[InOrganisation(null)]
     public function list(Request $request, string $organisationId): JsonResponse
@@ -84,9 +94,15 @@ final readonly class EventsController
         $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
         $now = $this->clock->now();
         $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor, $search);
+        $counted = $this->headcountCalculator->forEvents(Vec\filter($events, static fn (Event $event): bool => $scope->on($event->getId())?->holds(Permission::GuestsRead) ?? false));
 
         return new JsonResponse([
-            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [
+                ...$pair[1],
+                'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([])),
+                // Each event's guest line (sc-3786), only where the caller reads its guests.
+                'guests' => Iter\contains_key($counted, $pair[0]->getId()->toRfc4122()) ? HeadcountCalculator::figures($counted[$pair[0]->getId()->toRfc4122()]) : null,
+            ]),
             'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor, $search),
             'page' => $page,
             'itemsPerPage' => $perPage,
@@ -117,6 +133,7 @@ final readonly class EventsController
             'timeZone' => Type\optional(Type\nullable(Type\string())),
             'currency' => Type\optional(Type\nullable(Type\string())),
             'venue' => Type\optional(self::venue()),
+            'arrivalNote' => Type\optional(Type\nullable(Type\string())),
             'hosts' => Type\optional(Type\vec(Type\string())),
         ]));
 
@@ -128,6 +145,7 @@ final readonly class EventsController
             'timeZone' => $body['timeZone'] ?? null,
             'currency' => $body['currency'] ?? null,
             'venue' => $body['venue'] ?? null,
+            'arrivalNote' => $body['arrivalNote'] ?? null,
             'hosts' => $body['hosts'] ?? [],
         ]);
 
@@ -141,7 +159,7 @@ final readonly class EventsController
         return $this->tagged($this->event($eventId));
     }
 
-    /** Any of the eight fields; those left out keep their value, a `venue` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the ten fields; those left out keep their value, a `venue`, an `arrivalNote` or a `replyBy` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). A Reply by, start or zone sent tells whatever closes by them (sc-3905). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -155,24 +173,44 @@ final readonly class EventsController
             'timeZone' => Type\optional(Type\string()),
             'currency' => Type\optional(Type\string()),
             'venue' => Type\optional(self::venue()),
+            'arrivalNote' => Type\optional(Type\nullable(Type\string())),
             'hosts' => Type\optional(Type\vec(Type\string())),
+            'replyBy' => Type\optional(Type\nullable(Type\string())),
         ]));
 
-        return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+        $edited = $this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body);
+
+        if (Iter\any(['replyBy', 'startsAt', 'timeZone'], static fn (string $field): bool => Iter\contains_key($body, $field))) {
+            foreach ($this->datesMovedListeners as $listener) {
+                $listener->datesMoved($edited);
+            }
+        }
+
+        return $this->tagged($edited);
     }
 
-    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one. */
+    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one, and guests.manage as well to bring the guest list (sc-3656). */
     #[Route('/api/events/{eventId}/duplicate', name: 'events_duplicate', methods: ['POST'])]
     #[InEvent(Permission::EventsCreate)]
     public function duplicate(Request $request, string $eventId): JsonResponse
     {
         $body = Input::body($request, Type\shape([
             'startsAt' => Type\optional(Type\nullable(Type\string())),
+            'copyGuests' => Type\optional(Type\bool()),
         ]));
+        $original = $this->event($eventId);
+        $copyGuests = $body['copyGuests'] ?? false;
 
-        $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
+        if ($copyGuests) {
+            $this->grantsOn($original)->require(Permission::GuestsManage);
+        }
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($copy, $this->grantsOn($copy))], Response::HTTP_CREATED);
+        $duplicate = $this->eventDuplicator->duplicate($original, $this->user(), $body['startsAt'] ?? null, $copyGuests);
+
+        return new JsonResponse([
+            'event' => $this->eventSerialiser->event($duplicate->copy, $this->grantsOn($duplicate->copy)),
+            ...(null === $duplicate->guestsCopied ? [] : ['guestsCopied' => $duplicate->guestsCopied]),
+        ], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */
@@ -183,12 +221,26 @@ final readonly class EventsController
         return $this->tagged($this->eventLifecycle->makeLive($this->event($eventId), $this->user()));
     }
 
-    /** Calls the event off before its start and ends it early after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed (sc-3585). */
+    /** Calls the event off before its start and ends it early after: refused 409 `event_state_invalid` unless Live or Paused, or on a call-off with a `thankYou`, and 409 `event_concluded` once its end has passed. */
     #[Route('/api/events/{eventId}/end', name: 'events_end', methods: ['POST'])]
     #[InEvent(Permission::EventsManage)]
-    public function end(string $eventId): JsonResponse
+    public function end(Request $request, string $eventId): JsonResponse
     {
-        return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user()));
+        $body = '' === Str\trim($request->getContent()) ? [] : Input::body($request, Type\shape([
+            'thankYou' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user(), $body['thankYou'] ?? null));
+    }
+
+    /** Saved empty, the line is removed. Refused 409 `event_state_invalid` unless the event is Finished and was not called off, and 422 over 280 characters (sc-6476). */
+    #[Route('/api/events/{eventId}/thank-you', name: 'events_thank_you', methods: ['PUT'])]
+    #[InEvent(Permission::EventsManage)]
+    public function thankYou(Request $request, string $eventId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['thankYou' => Type\nullable(Type\string())]));
+
+        return $this->tagged($this->thankYouEditor->save($this->event($eventId), $body['thankYou'], $this->user()));
     }
 
     /** Refused 409 `event_state_invalid` unless it is Live and not yet Finished (sc-3586). */

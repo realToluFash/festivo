@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 import {
   type Draft,
@@ -21,10 +22,11 @@ import {
   PAGE_WHEN,
   THEIR_LINK,
   filled,
-  many,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { asSent } from './inviteSms.ts';
+import { counterOf, firstTextLine } from './messagesSms.ts';
 import {
   type Language,
   type Person,
@@ -35,7 +37,7 @@ import {
 import { PW, STAND_INS } from './messagesPreviewWords.ts';
 import './messagesPreview.css';
 
-const FILL_MS = 900;
+export const FILL_MS = 900;
 const EVENT_DAY = new Date('2026-11-05T12:00:00Z');
 const HOST_NAMES = ['Adaeze Obi', 'Tunde Bakare'];
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
@@ -153,18 +155,24 @@ function noticeFor(person: Person) {
 
 /** The message as the chosen guest's page shows it, and Soirely's notice by each ticked channel they have (sc-3960). */
 export function Preview({ draft }: { draft: Draft }) {
-  const { act, mesh } = useInbox();
+  const { act, mesh, focus } = useInbox();
   const later = useLater();
   const [who, setWho] = useState<PersonId>(draft.previewAs ?? FIRST_PERSON);
   const [filling, setFilling] = useState(draft.opens === 'filling');
+  const [failed, setFailed] = useState(draft.opens === 'failed');
   const [first] = useState(draft.opens === 'previewAs');
+  const [dropped, setDropped] = useState<readonly PersonId[]>(draft.dropped ?? []);
+  const [said, setSaid] = useState<PersonId | undefined>(draft.goneSaid);
+  const gone = draft.gone ?? [];
   const person = personOf(who);
   const notice = noticeFor(person);
   const lang = person.language === 'en' ? undefined : person.language;
   const shown = CHANNELS.filter((channel) => draft.ticks[channel] && person.has.includes(channel));
+  const sms = asSent(notice.sms, person.firstText === true);
   const sendsId = useId();
   const seen = useEffectEvent(() => {
-    if (draft.opens != null) act({ kind: 'draft', draft: { opens: undefined } });
+    if (draft.opens != null || draft.goneSaid != null)
+      act({ kind: 'draft', draft: { opens: undefined, goneSaid: undefined } });
   });
 
   useEffect(() => {
@@ -172,23 +180,74 @@ export function Preview({ draft }: { draft: Draft }) {
   }, []);
 
   function pick(id: PersonId): void {
+    setSaid(undefined);
+    fill(id, dropped);
+  }
+
+  /** The preview's 404 drops them from Preview as and fills it in for the first person left, A to Z. */
+  function fill(id: PersonId, out: readonly PersonId[]): void {
     setWho(id);
+    setFailed(false);
     setFilling(true);
     act({ kind: 'draft', draft: { previewAs: id } });
-    later(FILL_MS, () => setFilling(false));
+    later(FILL_MS, () => {
+      if (!gone.includes(id)) {
+        setFilling(false);
+        return;
+      }
+
+      const now = [...out, id];
+      const next = PEOPLE.find((one) => !now.includes(one.id));
+
+      if (next == null) {
+        act({
+          kind: 'draft',
+          draft: {
+            step: 'write',
+            dropped: now,
+            nobodyLeft: { name: personOf(id).name, to: draft.to },
+          },
+        });
+        focus('preview');
+        return;
+      }
+
+      act({ kind: 'draft', draft: { dropped: now } });
+      setDropped(now);
+      setSaid(id);
+      fill(next.id, now);
+    });
   }
 
   return (
     <div className="mg-preview">
       <div className="mg-preview-top">
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
-        <PreviewAs who={who} first={first} onPick={pick} />
+        <PreviewAs
+          who={who}
+          options={PEOPLE.filter((one) => !dropped.includes(one.id)).map((one) => ({
+            id: one.id,
+            words: optionWords(one),
+          }))}
+          first={first}
+          onPick={(id) => pick(id as PersonId)}
+        />
+      </div>
+      <div role="status">
+        {said != null && (
+          <p className="mg-preview-gone">
+            <Glyph name="info" size={16} weight={2.2} />
+            {filled(PW.noLongerGuest, { name: personOf(said).name, next: person.name })}
+          </p>
+        )}
       </div>
       <p className="desk-unseen" role="status">
         {filling ? filled(PW.filling, { name: person.name }) : ''}
       </p>
       {filling ? (
         <PreviewBones name={person.name} />
+      ) : failed ? (
+        <PreviewFailed name={person.name} onRetry={() => pick(who)} />
       ) : (
         <>
           <div className="mg-preview-cols">
@@ -231,11 +290,14 @@ export function Preview({ draft }: { draft: Draft }) {
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {many('smsParts', 1)}
+                      {counterOf(sms)}
                     </p>
-                    <p className="mg-notice-bubble" lang={lang}>
-                      {notice.sms}
+                    <p className="mg-notice-bubble mg-sms-bubble" lang={lang}>
+                      {sms.text}
                     </p>
+                    {person.firstText === true && (
+                      <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>
+                    )}
                   </div>
                 )}
                 {shown.includes('whatsApp') && (
@@ -264,8 +326,22 @@ export function Preview({ draft }: { draft: Draft }) {
   );
 }
 
+/** In place of the page when it could not be filled; Preview as stays, and Try again fills it for the same guest. */
+export function PreviewFailed({ name, onRetry }: { name: string; onRetry: () => void }) {
+  return (
+    <div className="mg-preview-failed" role="alert">
+      <p className="mg-preview-failed-words">
+        <Glyph name="alert" size={18} weight={2.2} />
+        {filled(PW.failed, { name })}
+      </p>
+      <p className="desk-line">{PW.failedLine}</p>
+      <TextAction label={PW.tryAgain} onClick={onRetry} />
+    </div>
+  );
+}
+
 /** While the preview fills for another guest: the words, and the page and its notices as Sunk shapes. */
-function PreviewBones({ name }: { name: string }) {
+export function PreviewBones({ name }: { name: string }) {
   return (
     <div className="mg-preview-bones" aria-hidden="true">
       <p className="mg-preview-filling">{filled(PW.filling, { name })}</p>
@@ -292,14 +368,16 @@ function optionsIn(list: HTMLElement | null): HTMLElement[] {
 }
 
 /** Preview as: a button that drops the people in To as a listbox (WAI-ARIA APG), the chosen one ticked. */
-function PreviewAs({
+export function PreviewAs({
   who,
+  options,
   first,
   onPick,
 }: {
-  who: PersonId;
+  who: string;
+  options: readonly { id: string; words: string }[];
   first: boolean;
-  onPick: (id: PersonId) => void;
+  onPick: (id: string) => void;
 }) {
   const id = useId();
   const [open, setOpen] = useState(first);
@@ -334,7 +412,7 @@ function PreviewAs({
     if (back) button.current?.focus();
   }
 
-  function choose(next: PersonId): void {
+  function choose(next: string): void {
     close(true);
     if (next !== who) onPick(next);
   }
@@ -358,7 +436,7 @@ function PreviewAs({
       case 'Enter':
       case ' ': {
         event.preventDefault();
-        const one = PEOPLE[at];
+        const one = options[at];
 
         if (one != null) choose(one.id);
         return;
@@ -403,7 +481,9 @@ function PreviewAs({
             setOpen(true);
           }}
         >
-          <span className="mg-preview-as-words">{optionWords(personOf(who))}</span>
+          <span className="mg-preview-as-words">
+            {options.find((one) => one.id === who)?.words ?? ''}
+          </span>
           <Glyph name="chevdown" size={15} weight={2.4} />
         </button>
         {open && (
@@ -414,7 +494,7 @@ function PreviewAs({
             aria-labelledby={`${id}-label`}
             className="mg-pop mg-preview-as-list"
           >
-            {PEOPLE.map((one, at) => (
+            {options.map((one, at) => (
               <li
                 key={one.id}
                 role="option"
@@ -427,7 +507,7 @@ function PreviewAs({
                 <span className="mg-preview-as-tick">
                   {one.id === who && <Glyph name="tick" size={15} weight={2.6} />}
                 </span>
-                {optionWords(one)}
+                {one.words}
               </li>
             ))}
           </ul>

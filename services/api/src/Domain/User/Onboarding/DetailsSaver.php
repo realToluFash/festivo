@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Onboarding;
 
 use App\Domain\Organisation\DomainJoining\JoinRequester;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\AccountName;
 use App\Domain\User\Phone\PhoneNumberParser;
@@ -21,7 +22,7 @@ use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** The details screen's save: the person's name and optional mobile, and for an account in none, the organisation it founds or asks to join (sc-561). */
+/** The details screen's save: the person's name and optional mobile, and for an account in none, the organisation it founds or asks to join (sc-561), which a managed one may leave out (sc-563). */
 final readonly class DetailsSaver
 {
     /** The organisation fields "A few details" shows; a refusal reports no other. */
@@ -37,6 +38,7 @@ final readonly class DetailsSaver
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private AccountName $accountName,
+        private ManagedAccounts $managedAccounts,
     ) {
     }
 
@@ -58,7 +60,10 @@ final readonly class DetailsSaver
         $needsOrganisation = $this->accountCompleteness->needsOrganisation($user);
         $asking = $needsOrganisation ? $askToJoin : null;
 
-        if ($needsOrganisation && null === $asking) {
+        // A managed account may found none (sc-563), so it completes with none; a name sent for one is still refused.
+        $foundsNone = '' === Str\trim($organisationName ?? '') && null !== $this->managedAccounts->managing($user);
+
+        if ($needsOrganisation && null === $asking && !$foundsNone) {
             try {
                 $this->organisationFounder->found($user, $organisationName ?? '', $countryCode ?? '', $timezone ?? '');
             } catch (ApiException $e) {
@@ -97,9 +102,9 @@ final readonly class DetailsSaver
     }
 
     /**
-     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, string>} $violation
+     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>} $violation
      *
-     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}
+     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}
      */
     private static function phoneOnThisScreen(array $violation): array
     {
@@ -109,9 +114,9 @@ final readonly class DetailsSaver
     }
 
     /**
-     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, string>} $violation
+     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>} $violation
      *
-     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}
+     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}
      */
     private static function onThisScreen(array $violation): array
     {

@@ -9,7 +9,9 @@ import {
   INTERIM_HREF,
   SECTION_HREF,
   destinationOf,
+  dataAndControlListed,
   destinations,
+  listedFor,
   settingsGroups,
 } from './appNav.ts';
 
@@ -102,6 +104,20 @@ describe('"Sign out" on the Settings list', () => {
 });
 
 describe('the Settings list', () => {
+  it('lists the paused organisation’s Organisation and Sign-in rules alone, whatever the role in use (sc-86077)', () => {
+    const owner = {
+      name: 'Ìrè Events',
+      permissions: ['members.read', 'members.manage', 'organisation.manage'],
+    };
+    const listed = listedFor(owner, { name: 'Casa Lumen Eventos' });
+
+    expect(listed?.name).toBe('Casa Lumen Eventos');
+    expect(settingsGroups(listed)[1]?.sections).toEqual(['organisation', 'signInRules']);
+    expect(dataAndControlListed(listed)).toBe(false);
+    expect(settingsGroups(listedFor(null, { name: 'Casa Lumen Eventos' }))).toHaveLength(2);
+    expect(listedFor(owner, null)).toBe(owner);
+  });
+
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
       {
@@ -161,7 +177,7 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
   it('leaves no head row on a tablet on its side when there is nothing to put in it', () => {
     const split = source(join(SRC, 'components', 'ListAndPage.tsx'));
 
-    expect(split).toMatch(/\{landscape && !inColumn && \(heading \|\| besideHeading\) && \(/u);
+    expect(split).toMatch(/\{headingAbove && \(heading \|\| besideHeading\) && \(/u);
   });
 });
 
@@ -210,39 +226,79 @@ describe('A screen whose top scrolls places it, and the band is gone (sc-39471)'
   });
 });
 
-describe('The bell titles itself once, in the frame header (sc-3980)', () => {
-  it('gives the feed no heading of its own on any layout', () => {
-    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
-
-    expect(feed).not.toMatch(/notifications\.heading/u);
-  });
-
-  it('moves focus after the push ask to the frame title, which is a header', () => {
+describe('The bell titles itself once (sc-3980)', () => {
+  it("gives the feed no heading of its own: the B frame titles it, or main's frame on a phone on its side", () => {
     const screen = source(join(APP, 'notifications.tsx'));
     const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+    const parts = source(join(SRC, 'components', 'BellParts.tsx'));
 
+    expect(feed).not.toMatch(/notifications\.heading/u);
+    expect(parts.match(/t\('notifications\.heading'\)/gu)).toHaveLength(2);
     expect(screen).toMatch(/title=\{t\('notifications\.heading'\)\}\s*titleRef=\{title\}/u);
-    expect(screen).toMatch(/<NotificationsFeed heading=\{title\} onOffline=\{setOffline\} \/>/u);
-    expect(feed).toMatch(/moveScreenReaderFocus\(heading\.current\)/u);
+    expect(screen).toMatch(/kind: 'framed', heading: title, onOffline: setOffline/u);
+  });
+
+  it('moves focus after the push ask to the title, which is a header', () => {
+    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+    expect(feed).toMatch(
+      /async function answerPush\(turnOn: boolean\): Promise<void> \{[\s\S]*?moveScreenReaderFocus\(heading\.current\)/u,
+    );
   });
 });
 
-describe('The bell in [fd] (sc-23233)', () => {
+describe('The bell in the B frame (sc-83081)', () => {
   const feed = (): string => source(join(SRC, 'components', 'NotificationsFeed.tsx'));
-  const skeleton = (): string => source(join(SRC, 'components', 'Skeleton.tsx'));
+  const parts = (): string => source(join(SRC, 'components', 'BellParts.tsx'));
 
-  it('draws Muted with the slashed bell beside the word, hidden from a screen reader', () => {
-    expect(feed()).toMatch(
-      /accessibilityElementsHidden\s+importantForAccessibility="no-hide-descendants"\s*>\s*<BellMark [^>]*slashed[^>]*\/>\s*<\/View>\s*<Text[^>]*>\s*\{t\('notifications\.muted'\)\}/u,
+  it('opens Notifications as its own screen on a phone either way up, with the frame moved in past the side insets (sc-62023)', () => {
+    expect(source(join(APP, 'notifications.tsx'))).toMatch(
+      /if \(kind === 'phone'\)\s*return <NotificationsFeed where=\{\{ kind: 'screen', onBack: back \}\} \/>;/u,
+    );
+    expect(parts()).toMatch(/const sides = sidePadding\(tokens\.spaceXxl, insets\)/u);
+    expect(parts()).toMatch(/\[styles\.bellTop, sides\]/u);
+    expect(parts()).toMatch(/styles\.bellPage,\s*sides/u);
+  });
+
+  it('puts Back and Mark all read on one row, the title under them, and no card', () => {
+    const source = parts();
+
+    expect(source).toMatch(
+      /<Back label=\{where\.back\} onPress=\{where\.onBack\} \/>\s*<View style=\{styles\.grow\} \/>\s*\{markAll\}/u,
+    );
+    expect(source.indexOf('{markAll}\n      </View>')).toBeLessThan(
+      source.indexOf('<PageTitle heading'),
+    );
+    expect(feed()).not.toMatch(/cardTop|cardFoot|radiusCardPhone/u);
+  });
+
+  it("opens a 380 popover under the bell on a tablet, its right edge in line with the bell's", () => {
+    expect(parts()).toMatch(/<AnchoredMenu[\s\S]*?width=\{380\}\s*align="end"/u);
+    expect(source(join(SRC, 'components', 'BellButton.tsx'))).toMatch(/useBellOpens\(\)/u);
+  });
+
+  it('marks each item with its category in a tinted 40 square, hidden from a screen reader', () => {
+    const source = parts();
+
+    expect(source).toMatch(
+      /<View\s+style=\{styles\.tile\}\s+accessibilityElementsHidden\s+importantForAccessibility="no-hide-descendants"\s*>\s*<Glyph name=\{markOf\(row\.category\)\}/u,
+    );
+    expect(source).toMatch(
+      /tile: \{\s*width: 40,\s*height: 40,[\s\S]*?backgroundColor: tokens\.colorInset,/u,
     );
   });
 
-  it('shows Mark all read that did not save on screen, read out once by the notice alone', () => {
+  it('opens Mute this event inline under the item, not in a sheet', () => {
+    expect(feed()).not.toMatch(/<Sheet\b/u);
+    expect(parts()).toMatch(
+      /\{menu && row\.more != null && <View style=\{styles\.mute\}>\{row\.more\.mute\}<\/View>\}/u,
+    );
+  });
+
+  it('shows Mark all read that did not save on screen, read out once by its line alone', () => {
     const source = feed();
 
-    expect(source).toMatch(
-      /<Notice tone="attention" mark="!" body=\{notSaved\} announce wordsInTone \/>/u,
-    );
+    expect(source).toMatch(/notice=\{notSaved\}/u);
     expect(source).toMatch(/setNotSaved\(t\(outcome\.said\)\)/u);
     expect(source.indexOf('setNotSaved(t(outcome.said))')).toBeLessThan(
       source.indexOf('setSaid({ words: t(outcome.said) })'),
@@ -258,102 +314,19 @@ describe('The bell in [fd] (sc-23233)', () => {
       /async function answerPush\(turnOn: boolean\): Promise<void> \{\s*nextAction\(\);/u,
       /function openItem\(item: NotificationItem\): void \{\s*nextAction\(\);/u,
       /function showMore\(after: string\): void \{\s*nextAction\(\);/u,
-      /onPress=\{\(\) => \{\s*onOpened\(\);\s*setOpen\(true\);/u,
+      /onMenu=\{\(id\) => \{\s*nextAction\(\);/u,
     ]) {
       expect(source).toMatch(action);
     }
   });
 
-  it('draws the rows in one card, its top on whichever row or block is first, its foot in the footer', () => {
-    const source = feed();
+  it('draws the demo from the same parts', () => {
+    const demo = source(join(SRC, 'demo', 'messages', 'BellPlace.tsx'));
 
-    expect(source).toMatch(/opensCard=\{index === 0 && !asking\}/u);
-    expect(source).toMatch(/\[styles\.card, opensCard && styles\.cardTop\]/u);
-    expect(source).toMatch(
-      /\(asking \|\| rows\.length === 0\) && \(\s*<View style=\{\[styles\.card, styles\.cardTop\]\}>/u,
+    expect(demo).toMatch(
+      /import \{ BellBody, BellFrame, BellMute \} from '\.\.\/\.\.\/components\/BellParts\.tsx';/u,
     );
-    expect(source).toMatch(
-      /ListFooterComponent=\{\s*<View style=\{\[styles\.card, styles\.cardFoot\]\}>/u,
-    );
-    expect(source.match(/styles\.cardFoot/gu)).toHaveLength(1);
-    expect(source).toMatch(/cardTop: \{\s*paddingTop: tokens\.spaceXxs,/u);
-    expect(source).toMatch(/borderTopLeftRadius: tokens\.radiusCardPhone/u);
-    expect(source).not.toMatch(/ItemSeparatorComponent/u);
-  });
-
-  it('keeps Mark all read and its line above the card, the push ask and the states inside it', () => {
-    const source = feed();
-    const card = source.indexOf('(asking || rows.length === 0) && (');
-
-    expect(source.indexOf("t('notifications.markAllRead')")).toBeLessThan(card);
-    expect(source.indexOf('body={notSaved}')).toBeLessThan(card);
-    for (const state of [
-      'notifications.pushAsk.title',
-      'notifications.loading',
-      'notifications.couldNotLoad',
-      'notifications.empty',
-    ]) {
-      expect(source.indexOf(state)).toBeGreaterThan(card);
-    }
-    expect(source).toMatch(/rowHeight=\{64\}\s+rows=\{3\}\s+inCard/u);
-  });
-
-  it('closes the card on Show more and Notification settings, each under a rule', () => {
-    const source = feed();
-    const foot = source.indexOf('ListFooterComponent={');
-
-    expect(source.indexOf("t('notifications.showMore')")).toBeGreaterThan(foot);
-    expect(source.indexOf("t('notifications.settings')")).toBeGreaterThan(foot);
-    expect(source).toMatch(
-      /more: \{\s*gap: tokens\.spaceSm,\s*paddingVertical: tokens\.spaceSm,\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
-    );
-    expect(source).toMatch(
-      /settings: \{\s*minHeight: tokens\.sizeHit,\s*justifyContent: 'center',\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
-    );
-    expect(source).toMatch(/accessibilityRole="link"\s+testID="notifications\.settings"/u);
-  });
-
-  it('centres the empty line under the bell', () => {
-    const source = feed();
-
-    expect(source).toMatch(
-      /<BellMark ink=\{tokens\.colorInkSecondary\} \/>\s*<\/View>\s*<Text[^>]*style=\{styles\.centred\}>\s*\{t\('notifications\.empty'\)\}/u,
-    );
-    expect(source).toMatch(
-      /empty: \{\s*alignItems: 'center',\s*gap: tokens\.spaceSm,\s*paddingVertical: tokens\.space3xl,\s*paddingHorizontal: tokens\.spaceXl,/u,
-    );
-  });
-
-  it("insets More's sheet as the app's other sheets", () => {
-    expect(feed()).toMatch(/sheet: \{ gap: tokens\.spaceLg, padding: tokens\.space3xl \}/u);
-  });
-
-  it('draws Unread in the accent, its mark 4 from the word', () => {
-    const source = feed();
-
-    expect(source).toMatch(
-      /<Text[^>]*style=\{styles\.accent\}>\s*\{t\('notifications\.unread'\)\}/u,
-    );
-    expect(source).toMatch(
-      /mark: \{ flexDirection: 'row', alignItems: 'center', gap: tokens\.spaceXxs \}/u,
-    );
-  });
-
-  it('insets a row 12 by 16 under a rule, with no gap to the next, and More 8 from the edge', () => {
-    const source = feed();
-
-    expect(source).toMatch(
-      /row: \{\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,\s*\}/u,
-    );
-    expect(source).toMatch(
-      /minHeight: tokens\.sizeHit,\s*paddingVertical: tokens\.spaceLg,\s*paddingHorizontal: tokens\.spaceXl,/u,
-    );
-    expect(source).toMatch(
-      /moreButton: \{\s*marginTop: tokens\.spaceSm,\s*marginRight: tokens\.spaceSm,/u,
-    );
-    expect(source).toMatch(
-      /goneLine: \{ marginHorizontal: tokens\.spaceXl, marginBottom: tokens\.spaceLg \}/u,
-    );
+    expect(demo).not.toMatch(/AnchoredMenu|RowList|Skeleton/u);
   });
 
   it('draws the bell as the demos do: a dot while anything is unread, the count in its name', () => {
@@ -363,25 +336,56 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(button).toMatch(/t\('notifications\.bellUnread', \{ count: unread \}\)/u);
     expect(button).toMatch(/dot=\{unread > 0\}/u);
   });
+});
 
-  it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {
-    const source = feed();
+describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)", () => {
+  it('is presented as the (sign-in) group, which renders a Stack of its own', () => {
+    expect(source(join(APP, '_layout.tsx'))).toMatch(/<Stack\.Screen\s+name="\(sign-in\)"/u);
+    expect(readdirSync(APP)).not.toContain('sign-in.tsx');
+    expect(source(join(APP, '(sign-in)', '_layout.tsx'))).toMatch(
+      /return \(\s*<SignInOver value=\{[^}]+\}>\s*<Stack\b/u,
+    );
+  });
+});
 
-    expect(source).toMatch(/<View style=\{styles\.loading\}>\s*<Skeleton[^>]*inCard\s+edgeToEdge/u);
-    expect(source).toMatch(/loading: \{ paddingVertical: tokens\.spaceSm \}/u);
-    expect(skeleton()).toMatch(/wordsInset: \{ paddingHorizontal: tokens\.spaceXl \}/u);
-    expect(skeleton()).toMatch(/row: \{[^}]*paddingHorizontal: tokens\.spaceXl,/u);
+describe('Sign in pushed over welcome knows welcome is under it (sc-67709)', () => {
+  it('is opened only where its opener says what stays under it, wherever under app/ and src/ a push or a replace reaches it', () => {
+    const SIGN_IN = /'\/sign-in[?']|timedOutSignIn\(|signInRoute\(/u;
+    const openers = (text: string): number[] =>
+      [...text.matchAll(/router\.(?:push|replace|navigate)\(\s*(\{[^}]*\}|[^,)]+)/gu)]
+        .filter(([, to = '']) =>
+          /^\w+$/u.test(to)
+            ? new RegExp(`\\b${to}\\s*=[^;]*(?:${SIGN_IN.source})`, 'u').test(text)
+            : SIGN_IN.test(to),
+        )
+        .map(({ index }) => text.slice(0, index).split('\n').length);
+    const unsaid = (text: string): number[] =>
+      openers(text).filter(
+        (line) =>
+          !/signInOver\(/u.test(
+            text
+              .split('\n')
+              .slice(Math.max(0, line - 3), line - 1)
+              .join('\n'),
+          ),
+      );
+    const files = [APP, SRC].flatMap((root) =>
+      readdirSync(root, { recursive: true, encoding: 'utf8' })
+        .filter((path) => /\.tsx?$/u.test(path) && !/\.test\.tsx?$/u.test(path))
+        .map((path) => join(root, path)),
+    );
+    const named = (file: string): string => file.slice(join(APP, '..').length + 1);
+
+    expect(files.filter((file) => openers(source(file)).length > 0).map(named)).toEqual(
+      expect.arrayContaining(['src/components/Welcome.tsx', 'src/steps/leaveTimedOutSignIn.ts']),
+    );
+    expect(
+      files.flatMap((file) => unsaid(source(file)).map((line) => `${named(file)}:${line}`)),
+    ).toEqual([]);
   });
 
-  it('starts Mark all read 12pt under the tablet Back, with no gap from the route body, and leaves the phone as it was', () => {
-    const source = feed();
-
-    expect(source).toMatch(/\[styles\.feed, kind !== 'phone' && styles\.feedUnderBack\]/u);
-    expect(source).toMatch(/feedUnderBack: \{ paddingTop: tokens\.spaceXxs \}/u);
-    expect(source).toMatch(/part: \{ gap: tokens\.spaceLg, paddingVertical: tokens\.spaceSm \}/u);
-    expect(source).toMatch(/feed: \{\s*paddingTop: tokens\.spaceXl,/u);
-    expect(readFileSync(join(APP, 'notifications.tsx'), 'utf8')).toMatch(
-      /body: \{ padding: 0, gap: 0 \}/u,
-    );
+  it('is not read from the stack while Sign in is drawn, which expo-router hands over as it was before the push', () => {
+    expect(source(join(APP, '(sign-in)', 'sign-in.tsx'))).not.toMatch(/navigation\.canGoBack\(\)/u);
+    expect(source(join(APP, '_layout.tsx'))).toMatch(/opensOver\(route\.key\)/u);
   });
 });

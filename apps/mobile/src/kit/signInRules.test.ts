@@ -41,11 +41,14 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     timezone: 'Africa/Lagos',
     contactAddress: 'hello@ire.events',
     locale: 'en',
+    plan: 'free',
+    subscription: { status: 'active', periodEnd: null },
     role: { id: 'role_2', seededAs: 'administrator', name: null },
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
     withheldUntilLinked: [],
+    onAnEvent: [],
     twoFactorDue: null,
     signInRules: {
       providerOnly: false,
@@ -137,6 +140,12 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
   it('names Google and Apple when the refusal named no provider', () => {
     expect(providerNames([])).toEqual(['Google', 'Apple']);
     expect(providerNames(['apple'])).toEqual(['Apple']);
+  });
+
+  it('names Google first whatever order the API lists them in (sc-96668)', () => {
+    expect(providerNames(['apple', 'google'])).toEqual(['Google', 'Apple']);
+    expect(providerNames(['google', 'apple'])).toEqual(['Google', 'Apple']);
+    expect(providerNames(['google'])).toEqual(['Google']);
   });
 });
 

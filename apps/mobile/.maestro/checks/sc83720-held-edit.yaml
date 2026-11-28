@@ -1,0 +1,11 @@
+# sc-83720: ${EV}'s Edit details Hosted by with its saved hosts and the keyboard down, left at rest for a TalkBack pass on Add a host.
+# Needs: EV, an event of the signed-in host's with two hosts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: held

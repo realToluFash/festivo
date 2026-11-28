@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -225,6 +228,28 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     expect(screen.getAllByText(tag).length).toBeGreaterThan(0);
   });
 
+  it('keeps a long domain’s step whole, to wrap rather than run past the card', async () => {
+    await domains('?state=oo_long_name');
+    const step = screen.getByRole('button', {
+      name: 'Limit associacaodeorganizadoresdeeventosdelisboaeporto.com.pt accounts to Ire Events',
+    });
+
+    expect(step.parentElement?.classList.contains('step-wraps')).toBe(true);
+  });
+
+  it('wraps Limit and Ask an owner by one rule, which the demo sheet sets', async () => {
+    const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+    const rule = /\.step-wraps \.desk-step \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+
+    expect(rule).toContain('white-space: normal;');
+    expect(rule).toContain('height: auto;');
+    expect(rule).toContain('overflow-wrap: anywhere;');
+
+    await domains('?state=admin&as=julien');
+    const ask = screen.getByRole('button', { name: 'Ask an owner' });
+    expect(ask.parentElement?.classList.contains('step-wraps')).toBe(true);
+  });
+
   it('opens the missing record’s own dialog from the card', async () => {
     await domains('?state=ed_lapsing');
     fireEvent.click(screen.getByRole('button', { name: 'See the record' }));
@@ -249,8 +274,12 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
   it('keeps ire.events as it was after Enterprise, with no actions', async () => {
     await domains('?state=ed_downgraded');
 
-    expect(screen.getByText('Switched off on Sunday, Oct 18')).toBeDefined();
+    expect(screen.getByText('Switched off')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeNull();
     expect(within(row('ire.events')).getByText('Kept')).toBeDefined();
+    expect(within(row('ireevents.com')).getByText('Kept')).toBeDefined();
+    expect(within(row('ireevents.com')).getByText('Not proved')).toBeDefined();
+    expect(screen.queryByText(/We check every hour/u)).toBeNull();
     expect(
       within(onlyRow()).getByText('Kept as it was. It comes back on with Enterprise.'),
     ).toBeDefined();

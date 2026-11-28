@@ -13,6 +13,8 @@ import {
   grantableRoles,
   historyLine,
   initials,
+  type LimitRefusal,
+  limitRefusalOf,
   memberHeldNoRole,
   memberStanding,
   ownRoleLine,
@@ -25,6 +27,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import {
   Ask,
   Card,
@@ -42,6 +45,7 @@ import {
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
+import { callerIn } from './membersCard.ts';
 import { memberTag, roleChoices } from './memberWords.ts';
 import { type OwnerReturn, provingOnReturn, signInOnReturn } from './ownerReturn.ts';
 
@@ -54,7 +58,7 @@ type Outcome =
 
 type Asking = 'role' | 'suspend' | 'remove' | null;
 
-type Refusal = { kind: 'seats'; limit: number } | { kind: 'line'; text: string };
+type Refusal = { kind: 'line'; text: string };
 
 /** A member in the list's place (sc-34200): their card, how they got here, and what the viewer may do, by their standing (sc-68). */
 export function MemberPage({
@@ -65,6 +69,7 @@ export function MemberPage({
   manages,
   level,
   returned,
+  reread,
   onChanged,
   onRemoved,
   onBack,
@@ -76,6 +81,9 @@ export function MemberPage({
   manages: boolean;
   level: 1 | 2;
   returned: OwnerReturn | null;
+  /** The rows on screen and the counts, read again once a change lands. */
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList, name: string) => void;
   onBack: () => void;
@@ -87,9 +95,10 @@ export function MemberPage({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const said = useRef<HTMLDivElement>(null);
   const owns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, {
+  const standing = memberStanding(member, list.owners, {
     owns,
     manages,
     withholds: withheldRoles(roles, organisation),
@@ -111,7 +120,7 @@ export function MemberPage({
   }, [outcome]);
 
   async function reload(): Promise<void> {
-    onChanged(await api.members(organisation.id));
+    onChanged(await reread(member.id));
   }
 
   function changedElsewhere(): void {
@@ -151,7 +160,7 @@ export function MemberPage({
 
     try {
       await api.removeMember(organisation.id, member.id);
-      onRemoved(await api.members(organisation.id), name);
+      onRemoved(await reread(member.id), name);
     } catch (error) {
       setBusy(false);
       if (asking === 'remove') setFailed(refused(error));
@@ -184,9 +193,9 @@ export function MemberPage({
       setOutcome({ kind: 'restored', role });
       await reload();
     } catch (error) {
-      if (error instanceof ApiError && error.is('team_seats_in_use')) {
-        setRefusal({ kind: 'seats', limit: error.problem.limit ?? 0 });
-      } else if (error instanceof ApiError && error.is('restore_needs_address')) {
+      const limit = limitRefusalOf(error, 'seatRestore', t, dateLocale(), name);
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiError && error.is('restore_needs_address')) {
         setRefusal({ kind: 'line', text: t('membersScreen.restoreNeedsAddress', named) });
       } else if (error instanceof ApiError && error.status === 409) {
         changedElsewhere();
@@ -303,25 +312,16 @@ export function MemberPage({
         </div>
         {step != null && <CardStep label={step.label} onClick={step.onClick} />}
       </Card>
+      {(member.alsoMemberOf ?? 0) > 0 && (
+        <Note>{t('membersScreen.alsoMemberOf', { count: member.alsoMemberOf })}</Note>
+      )}
       {refusal != null && (
         <div className="desk-refusal" role="alert">
-          {refusal.kind === 'seats' ? (
-            <>
-              <p className="desk-line is-ink">
-                {t('membersScreen.seatsInUse', { count: refusal.limit })}
-              </p>
-              <p className="desk-line">
-                {owns
-                  ? t('membersScreen.seatsWayOwner', { name })
-                  : t('membersScreen.seatsWayAdmin', { name })}
-              </p>
-              <p className="desk-line">{t('membersScreen.seatsSuspendedFree')}</p>
-              <TextAction label={t('membersScreen.seatsOpenMembers')} onClick={onBack} />
-            </>
-          ) : (
-            <p className="desk-line is-ink">{refusal.text}</p>
-          )}
+          <p className="desk-line is-ink">{refusal.text}</p>
         </div>
+      )}
+      {limited != null && (
+        <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} onWay={onBack} />
       )}
       {acts && suspended && byHand && <Note>{t('membersScreen.roleKeptWhileSuspended')}</Note>}
       <section className="desk-block">
@@ -373,6 +373,7 @@ export function MemberPage({
           member={member}
           roles={grantableRoles(roles, organisation)}
           returned={returned}
+          reread={reread}
           onClose={() => setAsking(null)}
           onChanged={(changed, to) => {
             onChanged(changed);
@@ -436,7 +437,7 @@ function historyRows(
   list: MembersList,
   organisation: string,
 ): { what: string; at: string }[] {
-  const caller = list.members.find((one) => one.self)?.user.id ?? null;
+  const caller = callerIn(list);
   const steps = member.history.map((step) => {
     const line = historyLine({ ...step, by: step.by?.id ?? null }, member.user.id);
     const by =
@@ -469,6 +470,7 @@ function RoleDialog({
   member,
   roles,
   returned,
+  reread,
   onClose,
   onChanged,
   onChangedElsewhere,
@@ -477,6 +479,8 @@ function RoleDialog({
   member: OrganisationMember;
   roles: OrganisationRole[];
   returned: OwnerReturn | null;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onClose: () => void;
   onChanged: (list: MembersList, role: string) => void;
   onChangedElsewhere: () => void;
@@ -497,7 +501,6 @@ function RoleDialog({
           removable: false,
           permissions: [],
           holders: 0,
-          holderNames: [],
         },
         ...roles,
       ];
@@ -534,7 +537,7 @@ function RoleDialog({
 
     try {
       await api.changeMemberRole(organisation.id, member.id, picked, proof ?? undefined);
-      onChanged(await api.members(organisation.id), roleName(t, role));
+      onChanged(await reread(member.id), roleName(t, role));
     } catch (error) {
       setBusy(false);
       if (toOwner && error instanceof ApiError && error.is('proof_required')) {

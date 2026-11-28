@@ -30,8 +30,11 @@ export const W = {
   done: 'Done',
   capBlank: 'Enter how many people can use this code.',
   capRange: 'Use a whole number from 1 to 500.',
-  past: 'Choose a time that hasn’t passed yet.',
-  noEdit: 'A code can’t give edit access. Give that to a named person instead.',
+  past: 'Choose a time that has not passed yet.',
+  noEdit:
+    'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
+  runRefused:
+    'A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
   makeFailed: 'The door code was not made. Check your connection and try again.',
   made: 'Door code made.',
   newTitle: 'Make a new code?',
@@ -45,14 +48,18 @@ export const W = {
   codeBlank: 'Enter the door code.',
   codeShort: 'A door code is 8 letters and numbers.',
   continue: 'Continue',
-  refused: 'That code doesn’t work. Check it with whoever gave it to you.',
+  refused: 'That code does not work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
   yourName: 'Your name',
   countryCode: 'Country code',
   mobileNumber: 'Mobile number',
   sendCode: 'Send code',
+  join: 'Join',
+  joining: 'Joining…',
   nameBlank: 'Enter your full name.',
   numberBlank: 'Enter your mobile number.',
+  secondNumber:
+    'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
   checkWhatsApp: 'Check WhatsApp',
   checkMessages: 'Check your messages',
   codeLabel: 'Code, 6 digits',
@@ -71,11 +78,13 @@ export const W = {
   endsLine: 'Access ends when the event concludes.',
   openEvent: 'Open the event',
   signOut: 'Sign out',
+  signedOut: 'Signed out.',
   checkIn: 'Check guests in',
   guests: 'Guests',
   guestsLine: 'Names and replies only, no contact details',
   people: 'People',
   overview: 'Overview',
+  yourNight: 'Your night',
   more: 'More',
   yourAccount: 'Your account',
   schedule: 'Schedule',
@@ -169,6 +178,27 @@ export function memberTitle(organisation: string): string {
 
 export function youreIn(event: string, job: string | null): string {
   return job == null ? `You’re in for ${event}` : `You’re in for ${event} · ${job}`;
+}
+
+const PROVIDER_NAMES = { google: 'Google', apple: 'Apple' } as const;
+
+/** sc-69's heading, fed by the 403 `oauth_only`'s organisation (sc-94849). */
+export function providerOnlyTitle(organisation: string): string {
+  return `${organisation} signs in with Google or Apple only`;
+}
+
+const PROVIDER_ORDER = ['google', 'apple'] as const;
+
+/** [en]'s line (#94892 on sc-94849): the linked providers, Google first whatever order the API lists them in, as the heading names them (sc-96668), joined as the locale joins a choice; English joins two with "or". */
+export function providerOnlyLine(
+  organisation: string,
+  providers: readonly (keyof typeof PROVIDER_NAMES)[],
+): string {
+  const names = PROVIDER_ORDER.filter((one) => providers.includes(one))
+    .map((one) => PROVIDER_NAMES[one])
+    .join(' or ');
+
+  return `A code sent to your phone cannot sign you in to this account. ${organisation} asks everyone in it to use ${names}.`;
 }
 
 export function joinAs(name: string): string {

@@ -23,13 +23,17 @@ import {
   partyTitle,
   peopleIn,
   readCount,
+  readEnds,
   readItemSize,
+  readTableSeats,
+  readTableSize,
   shownParties,
   unsureLeft,
   readPlace,
   readRoom,
   reshaped,
   sameName,
+  many,
   say,
   sectionLine,
   sectionName,
@@ -43,7 +47,13 @@ import {
   withSeats,
 } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
+import { isProposed } from './autoSeat.ts';
 import { StateMark } from './SeatingRoom.tsx';
+import { SelectionPanel } from './SeatingSelection.tsx';
+import { ShareTables } from './ShareTables.tsx';
+import { AutoSeatBlock, AutoSeatTray } from './AutoSeat.tsx';
+import { TRAY_SAID } from './autoSeat.ts';
+import { outsideProposal } from './autoSeatUi.ts';
 import { Mark, TextAction } from '../components/SettingsParts.tsx';
 
 export function Line({
@@ -131,8 +141,15 @@ export function Field({
   readOnly?: boolean;
   onCommit: (text: string) => string | null;
 }) {
-  const { ui, hold } = useSeating();
+  const { ui, set, hold } = useSeating();
   const id = useId();
+
+  function leave(item: string): void {
+    set((now) => ({ ...now, chosen: [], chair: null, notice: null, note: null }));
+    requestAnimationFrame(() =>
+      document.querySelector<SVGElement>(`[data-item="${item}"]`)?.focus(),
+    );
+  }
   const seed = ui.seed?.key === fieldKey ? ui.seed : null;
   const [draft, setDraft] = useState(seed?.value ?? value);
   const [error, setError] = useState<string | null>(seed?.error ?? null);
@@ -170,8 +187,12 @@ export function Field({
     } else if (event.key === 'Escape') {
       event.stopPropagation();
       editing.current = false;
-      setDraft(value);
-      setError(null);
+      if (draft !== value || error != null || ui.panel != null || ui.chosen[0] == null) {
+        setDraft(value);
+        setError(null);
+        return;
+      }
+      leave(ui.chosen[0]);
     }
   }
 
@@ -288,6 +309,7 @@ export function Swatch({ colour, size = 20 }: { colour: Colour | null; size?: 12
 }
 
 export function Legend() {
+  const { ui } = useSeating();
   const states: Chair['state'][] = ['taken', 'held', 'empty', 'unusable'];
 
   return (
@@ -298,6 +320,12 @@ export function Legend() {
           {stateWord(state)}
         </li>
       ))}
+      {isProposed(ui.plan) && (
+        <li>
+          <StateMark chair={{ state: 'proposed' }} size={16} />
+          {SW.proposed}
+        </li>
+      )}
     </ul>
   );
 }
@@ -431,6 +459,7 @@ function NothingChosen() {
   return (
     <>
       <RoomHead readOnly={ui.readOnly} />
+      <ShareTables />
       {ui.readOnly ? <Line>{SW.readOnly}</Line> : <SnapRow />}
       <SectionsBlock readOnly={ui.readOnly} />
       {ui.camera == null || ui.camera.s >= 0.25 ? <Legend /> : null}
@@ -615,8 +644,7 @@ function RoomSettings() {
             ? { width: read.cm, outside: outside.map((item) => item.id) }
             : { width: now.plan.room?.w ?? read.cm, outside: outside.map((item) => item.id) },
       }));
-      return say(SW.shrinkRefused, {
-        n: outside.length,
+      return many('shrinkRefused', outside.length, {
         width: lengthOf(next.w, ui.units),
         length: lengthOf(next.l, ui.units),
       });
@@ -847,8 +875,12 @@ function PlaceFields({ item }: { item: Item }) {
   );
 }
 
+const NAME_MAX = 30;
+const LABEL_MAX = 10;
+
 function nameRefusal(plan: Plan, item: Item, name: string): string | null {
-  if (name.trim() === '') return null;
+  if (name.trim() === '') return item.kind === 'single' ? SW.seatBlank : SW.tableBlank;
+  if (name.trim().length > NAME_MAX) return SW.nameLong;
   if (!plan.items.some((other) => other.id !== item.id && sameName(other.name, name))) return null;
   return say(item.kind === 'single' ? SW.seatTaken : SW.tableTaken, { name: name.trim() });
 }
@@ -861,18 +893,18 @@ function TableFields({ item }: { item: Item }) {
   const unit = units === 'us' ? undefined : 'cm';
 
   function seats(text: string): string | null {
-    const n = readCount(text);
+    const read = readTableSeats(text, item.kind === 'cocktail');
 
-    if (n == null || n < 1) return null;
+    if ('refused' in read) return read.refused;
     const keep = keepSeats(item);
 
-    if (n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
-    edit(item.id, withSeats(item, n));
+    if (read.n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
+    edit(item.id, withSeats(item, read.n));
     return null;
   }
 
   function size(key: 'd' | 'w' | 'l', text: string): string | null {
-    const read = readItemSize(text, units);
+    const read = readTableSize(text, units);
 
     if ('refused' in read) return read.refused;
     edit(item.id, { [key]: Math.round(read.cm) });
@@ -896,26 +928,24 @@ function TableFields({ item }: { item: Item }) {
           return refused;
         }}
       />
-      <Two>
-        <Select
-          fieldKey="section"
-          label={SW.section}
-          value={item.sec ?? ''}
-          options={sectionOptions(plan)}
-          onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
-        />
-        <Select
-          fieldKey="shape"
-          label={SW.shape}
-          value={item.kind}
-          options={SHAPES.map((kind) => ({ value: kind, word: shapeShort(kind) }))}
-          onPick={(value) => {
-            const { item: next, note } = reshaped(item, value as (typeof SHAPES)[number]);
+      <Select
+        fieldKey="section"
+        label={SW.section}
+        value={item.sec ?? ''}
+        options={sectionOptions(plan)}
+        onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
+      />
+      <Select
+        fieldKey="shape"
+        label={SW.shape}
+        value={item.kind}
+        options={SHAPES.map((kind) => ({ value: kind, word: shapeShort(kind) }))}
+        onPick={(value) => {
+          const { item: next, note } = reshaped(item, value as (typeof SHAPES)[number]);
 
-            edit(item.id, next, { note });
-          }}
-        />
-      </Two>
+          edit(item.id, next, { note });
+        }}
+      />
       {round ? (
         <Two>
           <Field
@@ -962,9 +992,10 @@ function TableFields({ item }: { item: Item }) {
               label={SW.ends}
               value={String(item.ends ?? 0)}
               onCommit={(text) => {
-                const n = readCount(text);
+                const read = readEnds(text, item.chairs.length);
 
-                if (n != null && n <= item.chairs.length) edit(item.id, { ends: n });
+                if ('refused' in read) return read.refused;
+                edit(item.id, { ends: read.n });
                 return null;
               }}
             />
@@ -1000,17 +1031,17 @@ function Overlaps({ item }: { item: Item }) {
 
 function Colleague({ item }: { item: Item }) {
   const { ui } = useSeating();
-  const ring = ui.rings[item.id];
+  const shown = (ui.rings[item.id] ?? []).filter((one) => !one.who.viewer && one.seat == null);
 
-  if (ring == null || ring.viewer || !ui.chosen.includes(item.id)) return null;
-  return (
-    <div className="st-colleague">
-      <span className={`st-face p${ring.tone} is-24`} aria-hidden="true">
-        {ring.initials}
+  if (shown.length === 0 || !ui.chosen.includes(item.id)) return null;
+  return shown.map(({ who }) => (
+    <div key={who.name} className="st-colleague">
+      <span className={`st-face p${who.tone} is-24`} aria-hidden="true">
+        {who.initials}
       </span>
-      <p>{say(SW.choseToo, { name: ring.name })}</p>
+      <p>{say(SW.choseToo, { name: who.name })}</p>
     </div>
-  );
+  ));
 }
 
 function RowFields({ item }: { item: Item }) {
@@ -1046,36 +1077,33 @@ function RowFields({ item }: { item: Item }) {
         onPick={(i) => set((now) => ({ ...now, chair: i === chosen ? null : { id: item.id, i } }))}
       />
       {chosen != null && <ChosenSeat item={item} index={chosen} />}
-      <Two>
-        <Field
-          fieldKey="label"
-          label={SW.label}
-          value={item.label ?? ''}
-          onCommit={(text) => {
-            const label = text.trim().toUpperCase();
+      <Field
+        fieldKey="label"
+        label={SW.label}
+        value={item.label ?? ''}
+        onCommit={(text) => {
+          const label = text.trim().toUpperCase();
 
-            if (label === '') return null;
-            if (
-              plan.items.some(
-                (other) =>
-                  other.id !== item.id &&
-                  other.kind === 'row' &&
-                  sameName(other.label ?? '', label),
-              )
+          if (label === '') return SW.rowBlank;
+          if (label.length > LABEL_MAX) return SW.labelLong;
+          if (
+            plan.items.some(
+              (other) =>
+                other.id !== item.id && other.kind === 'row' && sameName(other.label ?? '', label),
             )
-              return say(SW.rowTaken, { label });
-            edit(item.id, { label, name: `Row ${label}` });
-            return null;
-          }}
-        />
-        <Select
-          fieldKey="section"
-          label={SW.section}
-          value={item.sec ?? ''}
-          options={sectionOptions(plan)}
-          onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
-        />
-      </Two>
+          )
+            return say(SW.rowTaken, { label });
+          edit(item.id, { label, name: `Row ${label}` });
+          return null;
+        }}
+      />
+      <Select
+        fieldKey="section"
+        label={SW.section}
+        value={item.sec ?? ''}
+        options={sectionOptions(plan)}
+        onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
+      />
       <Two>
         <Field
           fieldKey="seats"
@@ -1321,12 +1349,19 @@ function ReadFacts({ item }: { item: Item }) {
           string,
         ][])
       : []),
-    ...(item.w != null
-      ? ([[SW.width, `${sizeOf(item.w, units)}${units === 'us' ? '' : ' cm'}`]] as [
-          string,
-          string,
-        ][])
-      : []),
+    ...(item.kind === 'rect' || item.kind === 'head'
+      ? ([
+          [SW.width, `${sizeOf(item.w ?? 180, units)}${units === 'us' ? '' : ' cm'}`],
+          [SW.length, `${sizeOf(item.l ?? 76, units)}${units === 'us' ? '' : ' cm'}`],
+          [SW.ends, String(item.ends ?? 0)],
+          [SW.rotation, `${item.rot}°`],
+        ] as [string, string][])
+      : item.w != null
+        ? ([[SW.width, `${sizeOf(item.w, units)}${units === 'us' ? '' : ' cm'}`]] as [
+            string,
+            string,
+          ][])
+        : []),
     [SW.across, lengthOf(item.x, units)],
     [SW.down, lengthOf(item.y, units)],
   ];
@@ -1353,7 +1388,9 @@ function Tray({ chips = true }: { chips?: boolean }) {
   const count = coming.reduce((sum, party) => sum + peopleIn(party), 0);
   const unsure = unsureLeft(ui.tray);
   const nobodySeated = ui.plan.items.every((item) => filled(item) === 0);
-  const shown = shownParties(ui);
+  const matching = shownParties(ui);
+  const shown = chips ? outsideProposal(ui, matching) : matching;
+  const inProposal = matching.length - shown.length;
   const groups = [...GROUP_ORDER, SW.noGroup]
     .map((group) => ({
       group,
@@ -1391,7 +1428,9 @@ function Tray({ chips = true }: { chips?: boolean }) {
         <p className="st-line is-strong">{say(SW.moreUnsure, { n: unsure })}</p>
       )}
       {count === 0 && !ui.unsure ? (
-        <Line>{nobodySeated ? SW.nobodyComing : SW.everyoneSeated}</Line>
+        <p id={TRAY_SAID} className="st-line">
+          {nobodySeated ? SW.nobodyComing : SW.everyoneSeated}
+        </p>
       ) : (
         <>
           <div className="st-search">
@@ -1427,7 +1466,8 @@ function Tray({ chips = true }: { chips?: boolean }) {
               ))}
             </div>
           )}
-          {shown.length === 0 ? (
+          {chips && <AutoSeatTray matching={matching} />}
+          {shown.length === 0 && inProposal > 0 ? null : shown.length === 0 ? (
             <div className="st-block">
               <p className="st-strong">{SW.noMatch}</p>
               <Acts>
@@ -1478,7 +1518,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
 }
 
 function TableGuests({ item }: { item: Item }) {
-  const { ui, unseatAll, set, focusField } = useSeating();
+  const { ui, unseatAll, set, focusField, pickSeated } = useSeating();
   const empty = filled(item) === 0;
 
   return (
@@ -1492,15 +1532,35 @@ function TableGuests({ item }: { item: Item }) {
       ) : (
         <>
           <ul className="st-rows is-dense">
-            {item.chairs.map((chair, index) => (
-              <li key={index} className="st-row is-dense">
-                <StateMark chair={chair} size={22} />
-                <span className="st-row-words">
-                  <span className="st-row-name">{say(SW.seatN, { n: index + 1 })}</span>
-                  <span className="st-row-line">{chairWord(chair)}</span>
-                </span>
-              </li>
-            ))}
+            {item.chairs.map((chair, index) => {
+              const words = (
+                <>
+                  <StateMark chair={chair} size={22} />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{say(SW.seatN, { n: index + 1 })}</span>
+                    <span className="st-row-line">{chairWord(chair)}</span>
+                  </span>
+                </>
+              );
+              const on = ui.moving?.table === item.id && ui.moving.chair === index;
+
+              return (
+                <li key={index} className="st-row is-dense">
+                  {chair.state === 'taken' && !ui.readOnly ? (
+                    <button
+                      type="button"
+                      className={on ? 'st-party is-seat is-on' : 'st-party is-seat'}
+                      aria-pressed={on}
+                      onClick={() => pickSeated(item.id, index)}
+                    >
+                      {words}
+                    </button>
+                  ) : (
+                    words
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {!ui.readOnly && (
             <Acts>
@@ -1538,9 +1598,22 @@ export function SeatingPanel() {
   let body: ReactNode;
 
   if (ui.tab === 'seat') {
-    const table = chosen.length === 1 && ui.picked == null ? chosen[0] : undefined;
+    const table =
+      ui.moving != null
+        ? plan.items.find((item) => item.id === ui.moving?.table)
+        : chosen.length === 1 && ui.picked == null
+          ? chosen[0]
+          : undefined;
 
-    body = table != null && table.kind !== 'single' ? <TableGuests item={table} /> : <Tray />;
+    body =
+      table != null && table.kind !== 'single' ? (
+        <TableGuests item={table} />
+      ) : (
+        <>
+          <AutoSeatBlock />
+          <Tray />
+        </>
+      );
   } else if (ui.panel?.kind === 'start') body = <StartForm />;
   else if (ui.panel?.kind === 'room') body = <RoomSettings />;
   else if (ui.panel?.kind === 'sectionAdd')
@@ -1554,7 +1627,8 @@ export function SeatingPanel() {
     body = <SectionForm key={ui.panel.id} id={ui.panel.id} />;
   else if (chair != null && ui.chair != null && chair.kind !== 'row')
     body = <ChairFields item={chair} index={ui.chair.i} />;
-  else if (chosen.length > 1) body = <Several items={chosen} />;
+  else if (chosen.length > 1)
+    body = ui.readOnly ? <Several items={chosen} /> : <SelectionPanel items={chosen} />;
   else if (chosen.length === 1 && chosen[0] != null) {
     const item = chosen[0];
 

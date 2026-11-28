@@ -7,6 +7,7 @@ namespace App\Domain\User\TwoFactor\Recovery;
 use App\Audit\Auditor;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\TwoFactorSettings;
 use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
 use App\Entity\User;
@@ -14,12 +15,10 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\TwoFactorRecoveryStatus;
 use App\Http\Exception\ApiException;
-use App\Repository\RecoveryCodeRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
+use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -31,8 +30,7 @@ final readonly class RecoveryDecisions
 
     public function __construct(
         private TwoFactorRecoveryRepository $twoFactorRecoveryRepository,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
-        private RecoveryCodeRepository $recoveryCodeRepository,
+        private TwoFactorSettings $twoFactorSettings,
         private RecoveryApprovers $recoveryApprovers,
         private TwoFactorRecoveryMailer $twoFactorRecoveryMailer,
         private TokenIssuer $tokenIssuer,
@@ -55,29 +53,22 @@ final readonly class RecoveryDecisions
     /** Two-factor off, every recovery code spent, every session ended; they sign in again and are asked to set it up. */
     public function approve(User $approver, string $id): void
     {
-        $recovery = $this->decide($approver, $id, TwoFactorRecoveryStatus::Approved, function (TwoFactorRecovery $recovery): void {
+        $this->decide($approver, $id, TwoFactorRecoveryStatus::Approved, function (TwoFactorRecovery $recovery): void {
             $user = $recovery->getUser();
-            $factor = $this->twoFactorFactorRepository->findActiveFor($user);
-
-            if (null !== $factor) {
-                $this->entityManager->remove($factor);
-            }
-
-            $this->recoveryCodeRepository->deleteAllFor($user);
+            $this->twoFactorSettings->removeEveryFactor($user);
             $this->tokenIssuer->revokeAllFor($user);
             $user->setTwoFactorSetupPrompt(true);
+        }, function (TwoFactorRecovery $recovery, DateTimeImmutable $at): void {
+            $this->twoFactorRecoveryMailer->sendApproved($recovery, $at);
+            $this->twoFactorRecoveryMailer->sendTwoFactorOff($recovery, $at);
         });
-
-        $at = $recovery->getClosedAt() ?? $this->clock->now();
-        $this->twoFactorRecoveryMailer->sendApproved($recovery, $at);
-        $this->twoFactorRecoveryMailer->sendTwoFactorOff($recovery, $at);
     }
 
     public function turnDown(User $approver, string $id): void
     {
-        $recovery = $this->decide($approver, $id, TwoFactorRecoveryStatus::TurnedDown, static function (): void {});
-
-        $this->twoFactorRecoveryMailer->sendTurnedDown($recovery, $recovery->getClosedAt() ?? $this->clock->now());
+        $this->decide($approver, $id, TwoFactorRecoveryStatus::TurnedDown, static function (): void {}, function (TwoFactorRecovery $recovery, DateTimeImmutable $at): void {
+            $this->twoFactorRecoveryMailer->sendTurnedDown($recovery, $at);
+        });
     }
 
     /** @return int how many lapsed: the backstop for the emails, since a read already treats a lapsed one as expired */
@@ -86,18 +77,23 @@ final readonly class RecoveryDecisions
         $expired = 0;
 
         foreach ($this->twoFactorRecoveryRepository->findWaitingExpiredBy($this->clock->now()) as $recovery) {
-            $recovery->close(TwoFactorRecoveryStatus::Expired, $this->clock->now());
-            $this->auditor->record('two_factor_recovery.expired', self::SUBJECT, $recovery->getId());
-            $this->entityManager->flush();
-            $this->twoFactorRecoveryMailer->sendExpired($recovery);
+            $this->entityManager->wrapInTransaction(function () use ($recovery): void {
+                $recovery->close(TwoFactorRecoveryStatus::Expired, $this->clock->now());
+                $this->auditor->record('two_factor_recovery.expired', self::SUBJECT, $recovery->getId());
+                $this->entityManager->flush();
+                $this->twoFactorRecoveryMailer->sendExpired($recovery);
+            });
             ++$expired;
         }
 
         return $expired;
     }
 
-    /** @param callable(TwoFactorRecovery): void $effect */
-    private function decide(User $approver, string $id, TwoFactorRecoveryStatus $answer, callable $effect): TwoFactorRecovery
+    /**
+     * @param callable(TwoFactorRecovery): void                    $effect
+     * @param callable(TwoFactorRecovery, DateTimeImmutable): void $tell   once it is closed, in the same transaction
+     */
+    private function decide(User $approver, string $id, TwoFactorRecoveryStatus $answer, callable $effect, callable $tell): void
     {
         $recovery = Uuid::isValid($id) ? $this->twoFactorRecoveryRepository->find(Uuid::fromString($id)) : null;
 
@@ -110,7 +106,7 @@ final readonly class RecoveryDecisions
             throw ApiException::forbidden('recovery.own_request');
         }
 
-        $decided = $this->entityManager->wrapInTransaction(function () use ($recovery, $approver, $answer, $effect): TwoFactorRecovery|ApiException {
+        $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $approver, $answer, $effect, $tell): ?ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
             $now = $this->clock->now();
             $status = $recovery->statusAt($now);
@@ -130,15 +126,14 @@ final readonly class RecoveryDecisions
                 $approver->getName(),
             );
             $this->entityManager->flush();
+            $tell($recovery, $now);
 
-            return $recovery;
+            return null;
         });
 
-        if ($decided instanceof ApiException) {
-            throw $decided;
+        if ($refusal instanceof ApiException) {
+            throw $refusal;
         }
-
-        return Type\instance_of(TwoFactorRecovery::class)->coerce($decided);
     }
 
     /** @return list<Organisation> whose Members show the request to this person: all of their own, or each they may answer it for */

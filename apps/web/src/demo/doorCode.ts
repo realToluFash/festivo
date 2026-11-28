@@ -1,7 +1,13 @@
 import { formattingLocale } from '@soirely/domain';
 
 import { writtenTime } from './clock.ts';
-import type { EventPlace, OnEvent, OrgMember, PeopleStart } from './people.ts';
+import {
+  type EventPlace,
+  LEVEL_LINES,
+  type OnEvent,
+  type OrgMember,
+  type PeopleStart,
+} from './people.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The door code at a desk (Access-A-Web, page e28): its words, the boards' sample and the states. */
@@ -16,9 +22,11 @@ export const EVENT_ENDS = '2026-11-14T23:30:00Z';
 export const DESK_NOW = '2026-11-07T16:00:00Z';
 
 export const DOOR_PLACE: EventPlace = {
+  country: 'PT',
   organisation: DOOR_ORG,
   initials: 'LF',
   event: DOOR_EVENT,
+  eventId: DOOR_EVENT_ID,
   when: 'Live · in 7 days',
 };
 
@@ -30,7 +38,7 @@ export const JOIN_MS = 1500;
 
 export const W = {
   noneSays: 'No door code yet',
-  noneLine: 'One code lets a crew in on the day. Each person gives their name and mobile number.',
+  noneLine: 'One code lets a crew in on the day. Each person gives their full name.',
   makeFirst: 'Make a door code',
   another: 'Make another door code',
   doorCode: 'Door code',
@@ -45,7 +53,10 @@ export const W = {
   making: 'Making…',
   theirRole: 'Their role',
   canEdit: 'Can edit',
-  noEdit: 'A code can’t give edit access. Give that to a named person instead.',
+  noEdit:
+    'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
+  runRefused: 'A join code cannot let people run the floor.',
+  runRefusedLine: 'Give Can run the floor to one person, with their own link from the roster.',
   jobLabel: 'Job label (optional)',
   howMany: 'How many people',
   howManyHelp: 'From 1 to 500.',
@@ -57,7 +68,7 @@ export const W = {
   earlierLine: 'A day and time before the event ends.',
   day: 'Day',
   time: 'Time',
-  past: 'Choose a time that hasn’t passed yet.',
+  past: 'Choose a time that has not passed yet.',
   failMake: 'The door code was not made. Check your connection and try again.',
   tryAgain: 'Try again',
   made: 'Door code made.',
@@ -76,8 +87,21 @@ export const W = {
   backToPeople: 'Back to People',
 } as const;
 
-export const CODE_ROLES = ['Can view', 'Can check guests in'] as const;
+/** sc-4002: a code offers the two service levels that work a place; Can run the floor is refused (422 level_not_allowed_for_code). */
+export const CODE_ROLES = [
+  'Can view',
+  'Can check guests in',
+  'Can work the floor',
+  'Can work the pass',
+] as const;
 export type CodeRole = (typeof CODE_ROLES)[number];
+
+export const CODE_LINES: Record<CodeRole, string> = {
+  'Can view': LEVEL_LINES['Can view'],
+  'Can check guests in': LEVEL_LINES['Can check guests in'],
+  'Can work the floor': LEVEL_LINES['Can work the floor'],
+  'Can work the pass': LEVEL_LINES['Can work the pass'],
+};
 
 export type Ends = { kind: 'event' } | { kind: 'earlier'; day: string; time: string };
 export type CodeState = 'working' | 'full' | 'stopped' | 'ranOut';
@@ -93,7 +117,7 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-GB reads "Sat 14 Nov", pt-PT stays "Sat, Nov 14". */
+/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-US reads "Sat, Nov 14", and en-GB or any other region "Sat 14 Nov". */
 export const readerLocale = () => formattingLocale('en', navigator.language);
 const DAYS = new Map<string, Intl.DateTimeFormat>();
 const dayFormat = (locale: string): Intl.DateTimeFormat => {
@@ -522,6 +546,7 @@ export const MAKE_STATES = [
   'past',
   'making',
   'failed',
+  'refused',
 ] as const;
 export const HOLD_STATES = [
   'open',
@@ -545,6 +570,8 @@ export interface MakeStart {
   checked: boolean;
   phase: 'open' | 'busy' | 'held' | 'failed';
   failsOnce: boolean;
+  /** The API's 422 level_not_allowed_for_code, from a stale form or a direct call: the client never offers the level. */
+  refused: boolean;
   menu: boolean;
   into: number | null;
   focus: 'first' | 'cap' | 'time';
@@ -596,12 +623,15 @@ function makeStart(state: MakeState): MakeStart {
     checked: false,
     phase: 'open',
     failsOnce: false,
+    refused: false,
     menu: false,
     into: null,
     focus: 'first',
   };
 
   switch (state) {
+    case 'refused':
+      return { ...start, form: { ...TYPED, role: 'Can work the floor' }, refused: true };
     case 'blank':
       return { ...start, checked: true, focus: 'cap' };
     case 'malformed':
@@ -771,6 +801,7 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       people('code=past', 'An end that has passed'),
       people('code=making', 'Making'),
       people('code=failed', 'Making failed'),
+      people('code=refused', 'Refused: a code can’t run the floor (sc-4002)'),
     ],
   },
   {

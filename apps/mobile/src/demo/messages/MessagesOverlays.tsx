@@ -1,44 +1,54 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SearchField } from '../../components/EventsSearch.tsx';
 import { TextField } from '../../components/Field.tsx';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
-import { readOut } from '../../components/ReadOut.tsx';
+import { ReadOut, readOut } from '../../components/ReadOut.tsx';
 import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine, EventField } from '../events/EventEdits.tsx';
 import { MomentBox, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
-import { Back, Pill } from '../../components/SettingsParts.tsx';
+import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   AnchoredMenu,
   FocusedScreen,
   Row,
-  RowList,
   TextAction,
 } from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
-import { type Moment, type ReachFilter, countOf, dayWords, laterRefused } from './MessagesModel.ts';
+import {
+  type Moment,
+  type ReachFilter,
+  type TellChange,
+  countOf,
+  dayWords,
+  laterRefused,
+} from './MessagesModel.ts';
+import { STANDARD, type TellRun, UNREACHABLE, figuresArrive, tellTitle } from './TellKinds.ts';
 import type { FilterOption } from './Reach.ts';
 import {
-  BELL,
-  EVENT,
-  PARKING,
-  PARKING_REACH,
-  TELL,
   TO_ORDER,
   TO_WORD,
   type ToGroup,
   formatCount,
-  BALANCE,
   EVENT_ENDS,
   MATCHES,
 } from './MessagesSample.ts';
@@ -244,268 +254,133 @@ export function FilterPicker({
   );
 }
 
-interface BellItem {
-  key: 'replies' | 'missed' | 'change';
-  title: string;
-  line: string;
-  glyph: GlyphName;
-}
-
-const BELL_ITEMS: readonly BellItem[] = [
-  {
-    key: 'replies',
-    title: W.bellReplies,
-    line: say.whereWhen(EVENT, say.atTime('09:31')),
-    glyph: 'users',
-  },
-  {
-    key: 'missed',
-    title: say.bellMissed(PARKING, PARKING_REACH.notReached),
-    line: say.whereWhen(EVENT, 'Mon, Nov 2'),
-    glyph: 'chat',
-  },
-  { key: 'change', title: BELL.change, line: say.whereWhen(EVENT, 'Mon, Nov 2'), glyph: 'events' },
-];
-
-function BellItems({ read, onItem }: { read: boolean; onItem: (key: BellItem['key']) => void }) {
-  return (
-    <RowList
-      items={BELL_ITEMS.map((item) => {
-        const unread = !read && item.key !== 'change';
-
-        return {
-          key: item.key,
-          inset: 52,
-          row: (
-            <Pressable
-              onPress={() => onItem(item.key)}
-              style={({ pressed }) => [styles.bellItem, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel={[item.title, item.line, unread ? W.unread : null]
-                .filter(Boolean)
-                .join(', ')}
-              testID={`messages.bell.${item.key}`}
-            >
-              <View style={styles.bellTile}>
-                <Glyph name={item.glyph} size={20} ink={tokens.colorInkSecondary} />
-              </View>
-              <View style={styles.grow}>
-                <Text
-                  size={16}
-                  weight={unread ? 'bold' : 'medium'}
-                  accessible={false}
-                  style={styles.bellTitle}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  size={13.5}
-                  weight="medium"
-                  accessible={false}
-                  style={[styles.secondary, styles.bellLine]}
-                >
-                  {item.line}
-                </Text>
-                {unread && (
-                  <View style={styles.unread}>
-                    <View style={styles.dot} />
-                    <Text size={12.5} weight="semibold" accessible={false} style={styles.accent}>
-                      {W.unread}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Pressable>
-          ),
-        };
-      })}
-    />
-  );
-}
-
-/** The bell with the batched replies item (sc-4331): its own screen on the phone with the push above, a 380 popover on the iPad. */
-export function BellPlace({
-  open,
-  phone,
-  at,
-  opener,
-  push,
-  onItem,
-  onSettings,
-  onClose,
-}: {
-  open: boolean;
-  phone: boolean;
-  at: Anchor | null;
-  opener: Opener;
-  push: boolean;
-  onItem: (key: BellItem['key']) => void;
-  onSettings: () => void;
-  onClose: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-  const [read, setRead] = useState(false);
-  const [pushing, setPushing] = useState(push);
-  const markAll = () => {
-    setRead(true);
-    readOut(W.allRead);
-  };
-  const markAllRead = (
-    <TextAction label={W.markAllRead} off={read} onPress={markAll} testID="messages.bell.markAll" />
-  );
-
-  if (!phone)
-    return (
-      <AnchoredMenu
-        at={open ? at : null}
-        onClose={onClose}
-        opener={opener}
-        width={380}
-        align="end"
-        testID="messages.bellPopover"
-      >
-        <View style={styles.popover}>
-          <View style={styles.bellHead}>
-            <Text size={18} weight="bold" accessibilityRole="header" style={styles.grow}>
-              {W.notifications}
-            </Text>
-            {markAllRead}
-          </View>
-          <BellItems read={read} onItem={onItem} />
-          <TextAction
-            label={W.notificationSettings}
-            onPress={onSettings}
-            testID="messages.bell.settings"
-          />
-        </View>
-      </AnchoredMenu>
-    );
-  if (!open) return null;
-
-  return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.bellTop}>
-        <Back label={W.back} onPress={onClose} />
-        <View style={styles.grow} />
-        {markAllRead}
-      </View>
-      <ScrollView
-        contentContainerStyle={[
-          styles.bellPage,
-          { paddingBottom: insets.bottom + tokens.space6xl },
-        ]}
-      >
-        <Text size={30} weight="bold" accessibilityRole="header" style={styles.pageTitle}>
-          {W.notifications}
-        </Text>
-        <BellItems read={read} onItem={onItem} />
-        <TextAction
-          label={W.notificationSettings}
-          onPress={onSettings}
-          testID="messages.bell.settings"
-        />
-      </ScrollView>
-      {pushing && (
-        <View style={[styles.pushAt, { top: insets.top + tokens.spaceXxs }]}>
-          <Pressable
-            onPress={() => {
-              setPushing(false);
-              onItem('replies');
-            }}
-            style={styles.push}
-            accessibilityRole="button"
-            accessibilityLabel={BELL.push}
-            testID="messages.push"
-          >
-            <View style={styles.pushTile}>
-              <Glyph name="bell" size={18} ink={tokens.colorInkOnDark} weight={2.2} />
-            </View>
-            <View style={styles.grow}>
-              <View style={styles.pushHead}>
-                <Text
-                  size={13}
-                  weight="semibold"
-                  accessible={false}
-                  style={[styles.grow, styles.secondary]}
-                >
-                  SOIRELY
-                </Text>
-                <Text size={13} weight="semibold" accessible={false} style={styles.secondary}>
-                  now
-                </Text>
-              </View>
-              <Text size={15} weight="semibold" accessible={false}>
-                {BELL.push}
-              </Text>
-            </View>
-          </Pressable>
-          <PushTimer onGone={() => setPushing(false)} />
-        </View>
-      )}
-    </View>
-  );
-}
-
-function PushTimer({ onGone }: { onGone: () => void }) {
-  useEffect(() => {
-    const gone = setTimeout(onGone, 6000);
-
-    return () => clearTimeout(gone);
-  }, [onGone]);
-
-  return null;
-}
-
-/** Tell guests (sc-4330): Soirely's prepared line goes by every channel; a note goes on their page only. */
+/** Tell guests (sc-4330): Soirely's prepared message goes by every channel, a note goes on their page only, and Send never sends before the figures show. */
 export function TellGuests({
   open,
-  lines,
-  address = false,
+  change,
+  run,
   phone,
   opener,
   onSend,
   onNotNow,
-  onSeeWho,
+  onRun,
   before = null,
 }: {
   open: boolean;
-  lines: readonly string[];
-  address?: boolean;
+  change: TellChange;
+  run: TellRun;
   /** A change the save made beside the guests' message (sc-3780: Reply by moved with the start). */
   before?: string | null;
   phone: boolean;
   opener: Opener;
   onSend: () => void;
   onNotNow: () => void;
-  onSeeWho: () => void;
+  onRun: (run: TellRun) => void;
 }) {
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(run.note);
+  const figures = change.figures ?? STANDARD;
+  const shown = run.figures === 'shown';
+  const title = tellTitle(change, run);
+  const who = change.parts != null ? null : change.who === undefined ? W.tellWho : change.who;
+  useEffect(() => {
+    if (!run.arriving) return undefined;
+    const later = setTimeout(() => onRun(figuresArrive(run)), ARRIVE_MS);
+
+    return () => clearTimeout(later);
+  }, [run, onRun]);
+  useEffect(() => {
+    if (open && run.line?.alert === true) return readOut(run.line.words, { interrupts: true });
+
+    return undefined;
+  }, [open, run.line, run.tries]);
+  const chips = (['email', 'sms', 'wa'] as const).filter((key) => figures[key] > 0);
+  const message = (lines: readonly string[]) => (
+    <View style={styles.prepared}>
+      {lines.map((line) => (
+        <Text key={line} size={16} weight="medium" style={styles.line16}>
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
+  const quiet = (text: string) => (
+    <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+      {text}
+    </Text>
+  );
   const parts = (
     <>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
-        {W.tellWho}
-      </Text>
-      <View style={styles.block}>
+      {who != null && (
+        <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
+          {who}
+        </Text>
+      )}
+      <View
+        style={styles.block}
+        accessibilityState={shown ? undefined : { busy: true }}
+        testID="messages.tell.figures"
+      >
         <Text size={14} weight="semibold">
           {W.sentBy}
         </Text>
-        <View style={styles.pills}>
-          <ChannelPill channel="email" count={TELL.email} />
-          <ChannelPill channel="sms" count={TELL.sms} />
-          <ChannelPill channel="wa" count={TELL.wa} />
-        </View>
-      </View>
-      <View>
-        <View style={styles.info}>
-          <View style={styles.markTop}>
-            <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+        {shown ? (
+          <View style={styles.pills}>
+            {chips.map((key) => (
+              <ChannelPill key={key} channel={key} count={figures[key]} />
+            ))}
           </View>
-          <Text size={14} weight="medium" style={[styles.grow, styles.secondary, styles.line14]}>
-            {say.cannotBeReached(TELL.cannot)}
-          </Text>
-        </View>
-        <TextAction label={W.seeWho} onPress={onSeeWho} testID="messages.tell.seeWho" />
+        ) : (
+          <View style={styles.pills} accessible={false}>
+            <View style={styles.shapeChip} />
+            <View style={styles.shapeChip} />
+            <View style={styles.shapeChip} />
+          </View>
+        )}
       </View>
+      {shown && figures.cannot > 0 && (
+        <View>
+          <View style={styles.info}>
+            <View style={styles.markTop}>
+              <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+            </View>
+            <Text size={14} weight="medium" style={[styles.grow, styles.secondary, styles.line14]}>
+              {say.cannotBeReached(figures.cannot)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => onRun({ ...run, seeWho: !run.seeWho })}
+            style={({ pressed }) => [styles.seeWho, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: run.seeWho }}
+            testID="messages.tell.seeWho"
+          >
+            <Text size={15} weight="semibold" style={styles.accent}>
+              {W.seeWho}
+            </Text>
+            <Glyph
+              name={run.seeWho ? 'up' : 'down'}
+              size={14}
+              ink={tokens.colorAccentText}
+              weight={2.4}
+            />
+          </Pressable>
+          {run.seeWho && (
+            <View style={styles.seeList} testID="messages.tell.seeWhoList">
+              {UNREACHABLE.map((one) => (
+                <View key={one.name} style={styles.seeRow} accessible>
+                  <Text size={15} weight="semibold">
+                    {one.name}
+                  </Text>
+                  <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+                    {one.why}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+      {!shown && <View style={styles.shapeLine} accessible={false} />}
       {before != null && (
         <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
           {before}
@@ -515,21 +390,20 @@ export function TellGuests({
         <Text size={14} weight="semibold">
           {W.message}
         </Text>
-        <View style={styles.prepared}>
-          {lines.map((line) => (
-            <Text key={line} size={16} weight="medium" style={styles.line16}>
-              {line}
-            </Text>
-          ))}
-        </View>
-        {address && (
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
-            {W.addressAdded}
-          </Text>
-        )}
-        <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
-          {W.ownLanguage}
-        </Text>
+        {change.parts == null
+          ? message(change.lines)
+          : change.parts.map((part) => (
+              <View key={part.item} style={styles.block}>
+                <Text size={14} weight="semibold" accessibilityRole="header">
+                  {part.item}
+                </Text>
+                {message(part.lines)}
+                {quiet(part.who)}
+              </View>
+            ))}
+        {quiet(W.ownLanguage)}
+        {change.address === true && quiet(W.addressAdded)}
+        {change.tables === true && quiet(W.ownTable)}
       </View>
       <EventField label={W.noteForGuests} optional help={W.noteOnPage}>
         <TextField
@@ -544,14 +418,51 @@ export function TellGuests({
           testID="messages.tell.note"
         />
       </EventField>
-      <View>
-        <Text size={14} weight="medium" style={[styles.line14, styles.figures]}>
-          {say.tellCredits(TELL.credits)}
-        </Text>
-        <Text size={14} weight="medium" style={[styles.line14, styles.figures]}>
-          {say.balanceAfter(formatCount(BALANCE - TELL.credits))}
-        </Text>
-      </View>
+      {shown ? (
+        figures.credits != null && (
+          <View>
+            <Text size={14} weight="medium" style={[styles.line14, styles.figures]}>
+              {say.tellCredits(figures.credits)}
+            </Text>
+            <Text size={14} weight="medium" style={[styles.line14, styles.figures]}>
+              {say.balanceAfter(formatCount(figures.balance - figures.credits))}
+            </Text>
+          </View>
+        )
+      ) : (
+        <View style={styles.shapeLines} accessible={false}>
+          <View style={styles.shapeLine} />
+          <View style={[styles.shapeLine, styles.shapeShort]} />
+        </View>
+      )}
+      {shown && change.held != null && (
+        <WaitLine words={say.held(change.held)} ink={tokens.colorAttentionText} />
+      )}
+      {shown && change.quiet != null && (
+        <WaitLine
+          words={say.quietWait(change.quiet.count, change.quiet.time)}
+          ink={tokens.colorInkSecondary}
+        />
+      )}
+      {run.line != null &&
+        (run.line.alert ? (
+          <AlertLine key={run.tries} text={run.line.words} />
+        ) : (
+          <ReadOut
+            words={run.line.words}
+            answer={run.tries}
+            style={[styles.info, styles.status]}
+            accessible
+            testID="messages.tell.status"
+          >
+            <View style={styles.markTop}>
+              <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+            </View>
+            <Text size={14} weight="medium" style={[styles.grow, styles.line14]}>
+              {run.line.words}
+            </Text>
+          </ReadOut>
+        ))}
     </>
   );
 
@@ -559,7 +470,7 @@ export function TellGuests({
     return (
       <FocusedScreen
         open={open}
-        title={say.tell(TELL.count)}
+        title={title}
         cancelLabel={W.notNow}
         verb={{ label: W.send, on: true, onPress: onSend, testID: 'messages.tell.send' }}
         onCancel={onNotNow}
@@ -579,12 +490,27 @@ export function TellGuests({
         contentContainerStyle={styles.sheetBody}
         keyboardShouldPersistTaps="handled"
       >
-        <SheetHead title={say.tell(TELL.count)} close={W.notNow} onClose={onNotNow} />
+        <SheetHead title={title} close={W.notNow} onClose={onNotNow} />
         {parts}
         <Pill label={W.send} onPress={onSend} testID="messages.tell.send" />
         <TextAction label={W.notNow} onPress={onNotNow} testID="messages.tell.notNow" />
       </ScrollView>
     </Sheet>
+  );
+}
+
+const ARRIVE_MS = 1000;
+
+function WaitLine({ words, ink }: { words: string; ink: string }) {
+  return (
+    <View style={styles.info}>
+      <View style={styles.markTop}>
+        <Glyph name="clock" size={15} ink={ink} weight={2.2} />
+      </View>
+      <Text size={14} weight="medium" style={[styles.grow, styles.line14, { color: ink }]}>
+        {words}
+      </Text>
+    </View>
   );
 }
 
@@ -719,6 +645,35 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   note: { minHeight: 52, maxHeight: 120 },
+  status: {
+    paddingVertical: 10,
+    paddingHorizontal: tokens.spaceMd,
+    borderRadius: 14,
+    backgroundColor: tokens.colorInset,
+  },
+  seeWho: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: tokens.spaceXs,
+  },
+  seeList: { gap: tokens.spaceMd, paddingLeft: 23, paddingBottom: tokens.spaceXs },
+  seeRow: { gap: 2 },
+  shapeChip: {
+    width: 84,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: tokens.colorNeutralFill,
+  },
+  shapeLines: { gap: tokens.spaceSm },
+  shapeLine: {
+    height: 12,
+    borderRadius: 6,
+    width: '70%',
+    backgroundColor: tokens.colorNeutralFill,
+  },
+  shapeShort: { width: '45%' },
   tellScroll: { maxHeight: 700 },
   line14: { lineHeight: 14 * 1.45 },
   line135: { lineHeight: 13.5 * 1.45 },
@@ -756,6 +711,9 @@ export function MatchPicker({
   opener,
   onMatch,
   onClose,
+  picks = MATCHES,
+  first = { search: 'Dubois', picked: MATCHES[0]?.name ?? '' },
+  hinted = true,
 }: {
   open: boolean;
   phone: boolean;
@@ -763,24 +721,41 @@ export function MatchPicker({
   opener: Opener;
   onMatch: (name: string) => void;
   onClose: () => void;
+  picks?: readonly { name: string; line: string }[];
+  first?: { search: string; picked: string };
+  hinted?: boolean;
 }) {
-  const [search, setSearch] = useState('Dubois');
-  const [picked, setPicked] = useState(MATCHES[0]?.name ?? '');
-  const shown = MATCHES.filter((one) =>
-    one.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const [search, setSearch] = useState(first.search);
+  const [picked, setPicked] = useState(first.picked);
+  const searchRef = useRef<TextInputInstance>(null);
+  const [laidOut, setLaidOut] = useState(false);
+  if (!open && laidOut) setLaidOut(false);
+  // Focus waits for the sheet's first layout, then SETTLED_MS, not a fixed delay from open (qa3 #83800).
+  useEffect(() => {
+    if (!open || !laidOut) return;
+    const later = setTimeout(() => searchRef.current?.focus(), SETTLED_MS);
+
+    return () => clearTimeout(later);
+  }, [open, laidOut]);
+  const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
-      <TextField
-        value={search}
-        onChangeText={setSearch}
-        autoFocus
-        autoCapitalize="words"
-        placeholder={W.searchGuests}
-        accessibilityLabel={W.searchGuests}
+      <SearchField
+        ref={searchRef}
+        typed={search}
+        off={false}
+        width={null}
+        onTyped={setSearch}
+        onSearch={() => undefined}
+        onClear={() => setSearch('')}
+        label={W.searchGuests}
         testID="messages.match.search"
       />
-      <View accessibilityRole="radiogroup">
+      <View
+        key={open ? 'open' : 'shut'}
+        accessibilityRole="radiogroup"
+        onLayout={() => setLaidOut(true)}
+      >
         {shown.map((one) => (
           <Row
             key={one.name}
@@ -797,9 +772,11 @@ export function MatchPicker({
           />
         ))}
       </View>
-      <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
-        {say.matchHint(address, picked)}
-      </Text>
+      {hinted && (
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+          {say.matchHint(address, picked)}
+        </Text>
+      )}
     </>
   );
 

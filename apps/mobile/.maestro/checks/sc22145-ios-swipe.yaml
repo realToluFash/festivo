@@ -30,9 +30,9 @@ appId: host.exp.Exponent
     duration: 600
 - waitForAnimationToEnd
 - tapOn:
-    id: 'eventDuplicate.start.time'
+    id: 'eventDuplicate.time'
 - tapOn:
-    id: 'eventDuplicate.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - takeScreenshot: time-first
 - tapOn:

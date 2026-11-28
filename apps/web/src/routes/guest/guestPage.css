@@ -296,12 +296,8 @@
     top: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap));
   }
 
-  :where(.guest-page) .gp-under > .gp-phase-live > .gp-phase {
-    margin-bottom: -8px;
-  }
-
-  :where(.guest-page) .gp-under > .gp-phase-live:empty {
-    margin-bottom: -28px;
+  :where(.guest-page) .gp-columns > .gp-phase-live > .gp-phase {
+    margin-bottom: 20px;
   }
 
   :where(.guest-page) .gp-alone-wrap {
@@ -464,6 +460,7 @@
   color: var(--colorAccent);
   font: 600 16px/1.3 var(--fontFamily);
   text-align: left;
+  text-decoration: none;
   overflow-wrap: anywhere;
   cursor: pointer;
 }
@@ -504,6 +501,7 @@
 }
 
 :where(.guest-page) .gp-outlined {
+  text-align: center;
   background: none;
   box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
   color: var(--colorInk);
@@ -610,6 +608,25 @@
 
 :where(.guest-page) .gp-notice.is-attention .gp-notice-mark {
   border: 3px solid var(--colorAttentionText);
+}
+
+:where(.guest-page) .gp-notice.gp-unsaved {
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+}
+
+:where(.guest-page) .gp-unsaved-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@media (width >= 64rem) {
+  :where(.guest-page) .gp-notice.gp-unsaved {
+    margin-bottom: 20px;
+  }
 }
 
 /* ── A link that does not work, and Soirely out of reach: alone on the page ── */
@@ -834,7 +851,8 @@
 }
 
 :where(.guest-page) .gp-answers,
-:where(.guest-page) .gp-details {
+:where(.guest-page) .gp-details,
+:where(.guest-page) .gp-cal-rows {
   display: flex;
   flex-direction: column;
 }
@@ -891,7 +909,8 @@
   font: 600 17px/1.3 var(--fontFamily);
 }
 
-:where(.guest-page) .gp-chev {
+:where(.guest-page) .gp-chev,
+:where(.guest-page) .gp-out {
   display: flex;
   flex: none;
   margin-left: 12px;
@@ -909,8 +928,42 @@
   white-space: nowrap;
 }
 
+/* sc-1301: the door's code, the demo's card (GuestParts DoorCode) */
+:where(.guest-page) .gp-code {
+  align-self: flex-start;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 20px;
+  background: var(--colorCard);
+}
+
+:where(.guest-page) .gp-code img {
+  display: block;
+}
+
+/* sc-3627: Add to calendar, the demo's rows (GuestParts AddToCalendar) */
+:where(.guest-page) .gp-cal {
+  color: var(--colorAccent);
+  text-decoration: none;
+}
+
+:where(.guest-page) .gp-block .gp-h2 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+:where(.guest-page) .gp-block > .gp-sub {
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-cal-rows {
+  margin-top: 6px;
+}
+
 :where(.guest-page) .gp-details > .gp-row,
-:where(.guest-page) .gp-where.has-rule {
+:where(.guest-page) .gp-where.has-rule,
+:where(.guest-page) .gp-cal:not(:last-child) {
   border-bottom: 1px solid var(--colorBorder);
 }
 
@@ -968,6 +1021,7 @@
 :where(.guest-page) .gp-changing,
 :where(.guest-page) .gp-closed,
 :where(.guest-page) .gp-ended,
+:where(.guest-page) .gp-block,
 :where(.guest-page) .gp-recorded {
   display: flex;
   flex-direction: column;
@@ -1034,6 +1088,14 @@
 
 :where(.guest-page) .gp-closed > .gp-sub {
   margin-top: 6px;
+}
+
+:where(.guest-page) .gp-ended > .gp-sub {
+  margin-top: 16px;
+}
+
+:where(.guest-page) .gp-ended > .gp-sub:first-child {
+  margin-top: 0;
 }
 
 /* ── Under the answer: when, where and who, then the foot; at 64rem the details move left and the foot follows the answer ── */
@@ -1147,4 +1209,27 @@
 
 :where(.guest-page) .gp-closed > .gp-text + .gp-sub {
   margin-top: 2px;
+}
+
+:where(.guest-page) .gp-closed.is-live > .gp-text {
+  margin-top: 4px;
+}
+
+/* sc-3780: who recorded the answer for the guest, at the guest's 17 (pm, 8 Nov) */
+:where(.guest-page) .gp-sub.is-recorded {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+/* sc-24385: the host's arrival note, in an inset under the Where line, its line breaks kept */
+:where(.guest-page) .gp-note {
+  margin: 4px 0 12px 40px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }

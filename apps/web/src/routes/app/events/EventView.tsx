@@ -1,25 +1,29 @@
 import { ApiError, type OrganisationEvent, eventVersion } from '@soirely/api-client';
 import {
   type PlaceholderEventArea,
+  eventMovesInto,
   formatEventRange,
   isPlaceholderEventArea,
+  placeWords,
   rememberTabHolding,
   shownPhase,
+  venueCity,
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
-import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { keepLoaded, keptFor, keptKeys, rekeep } from '../../../tabKept.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, switchOrganisation, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
@@ -27,21 +31,50 @@ import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
+import { RunArea } from './RunArea.tsx';
+import { BudgetArea } from './BudgetArea.tsx';
+import { MenuArea } from './MenuArea.tsx';
+import { SeePicksArea } from './SeePicksArea.tsx';
+import { KitchenSheetArea, KitchenSheetRefused } from './KitchenSheetArea.tsx';
+import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
+import { JobsShiftsArea } from './JobsShiftsArea.tsx';
+import { RosterArea, StaffRefused } from './RosterArea.tsx';
+import { StationsArea } from './StationsArea.tsx';
+import { HoursWorkedArea } from './HoursWorkedArea.tsx';
+import { PAGE_NEEDS } from './handoff.ts';
+import { MessagesArea } from './MessagesArea.tsx';
+import { Forbidden } from '../Forbidden.tsx';
 import { typeLabel } from './eventTypes.ts';
-import { AllDates } from './Timeline.tsx';
+import { AllDates, type Beside } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
+import { OutsideOverview } from './OutsideOverview.tsx';
+import { OutsideGone } from '../OutsideShell.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { Switched } from '../../../components/Switched.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
+import '../../../components/eventsDesk.css';
+import './budget.css';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; offline?: boolean }
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | PlaceholderEventArea;
+type Page =
+  | 'event'
+  | 'guests'
+  | 'dates'
+  | 'people'
+  | 'run'
+  | 'staffJobs'
+  | 'staffStations'
+  | 'staffHours'
+  | 'menuPicks'
+  | 'kitchenSheet'
+  | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -59,19 +92,98 @@ export function EventPeoplePage() {
   return <ForEvent page="people" />;
 }
 
+/** The run view: the schedule as the night runs (sc-1404). */
+export function EventRun() {
+  return <ForEvent page="run" />;
+}
+
+export function EventRoster() {
+  return <ForEvent page="staff" />;
+}
+
+export function EventJobsShifts() {
+  return <ForEvent page="staffJobs" />;
+}
+
+export function EventStations() {
+  return <ForEvent page="staffStations" />;
+}
+
+export function EventHoursWorked() {
+  return <ForEvent page="staffHours" />;
+}
+
+export function EventMenuPicks() {
+  return <ForEvent page="menuPicks" />;
+}
+
+/** The kitchen sheet (sc-3911), behind Kitchen sheet on the Menu. */
+export function EventMessages() {
+  return <ForEvent page="messages" />;
+}
+
+export function EventKitchenSheet() {
+  return <ForEvent page="kitchenSheet" />;
+}
+
+/** Staff opens its first tab, the Roster (sc-3906). */
+export function EventStaff() {
+  const { eventId = '' } = useParams();
+
+  return <Navigate replace to={`/app/events/${encodeURIComponent(eventId)}/staff/roster`} />;
+}
+
+/** Budget, with its pages for everything due and for each vendor quoted (sc-87). */
+export function EventBudget() {
+  return <ForEvent page="budget" />;
+}
+
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
 export function EventAreaPage() {
   const { area = '' } = useParams();
 
-  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <NotFound />;
+  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <Withheld />;
+}
+
+/** The event its link opened in another organisation, carried into that organisation so it shows at once, with Now working in under its crumb (sc-80863). */
+interface Moved {
+  organisationId: string;
+  name: string;
+  event: OrganisationEvent;
+  tag: string;
 }
 
 function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
-  const organisationId = session.organisation?.id;
+  const outside = outsideOn(session, eventId);
+  const organisationId = outside == null ? (session.organisation?.id ?? null) : OUTSIDE;
+  const [moved, setMoved] = useState<Moved | null>(null);
+  // The link moves the account once, from the organisation it was opened in: a pick in the switcher after that is the person's, and stays (sc-46032).
+  const [link, setLink] = useState({ eventId, openIn: organisationId });
+
+  if (moved != null && (moved.organisationId !== organisationId || moved.event.id !== eventId))
+    setMoved(null);
+  if (link.eventId !== eventId) setLink({ eventId, openIn: organisationId });
+  else if (link.openIn != null && link.openIn !== organisationId)
+    setLink({ eventId, openIn: null });
 
   if (organisationId == null) return null;
+
+  const movesInto =
+    page === 'event' && outside == null && link.openIn === organisationId
+      ? (event: OrganisationEvent, tag: string): boolean => {
+          const into = eventMovesInto(event, organisationId, session.organisations);
+          const membership = session.organisations.find(({ id }) => id === into);
+
+          if (membership == null) return false;
+          setLink({ eventId, openIn: null });
+          setMoved({ organisationId: membership.id, name: membership.name, event, tag });
+          switchOrganisation(membership.id);
+
+          return true;
+        }
+      : null;
 
   return (
     <EventOf
@@ -79,7 +191,51 @@ function ForEvent({ page }: { page: Page }) {
       organisationId={organisationId}
       eventId={eventId}
       page={page}
+      moved={moved?.organisationId === organisationId ? moved : null}
+      movesInto={movesInto}
     />
+  );
+}
+
+/** Held from outside an organisation (sc-71), by a member of another as much as by an account in none (sc-68438): the event is the account's whichever organisation it belongs to. */
+const OUTSIDE = 'outside';
+
+function ofOrganisation(event: OrganisationEvent, organisationId: string): boolean {
+  return organisationId === OUTSIDE || event.organisationId === organisationId;
+}
+
+function Withheld() {
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <NotFound />
+    </div>
+  );
+}
+
+/** Without budget.read, as the Budget's demo draws it (sc-85, sc-101): the event's name, then Not available, and no word of what is withheld. */
+function BudgetWithheld({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="event-page">
+      <EventCrumb
+        name={event.name}
+        area={{
+          label: t('eventPage.notAvailable'),
+          event: `/app/events/${encodeURIComponent(event.id)}`,
+        }}
+      />
+      <div className="bt-gone ev">
+        <h1 className="bt-title" tabIndex={-1}>
+          {t('eventPage.notFound')}
+        </h1>
+        <Link className="desk-text" to="/app/events">
+          <Glyph name="back" size={17} weight={2.4} />
+          {t('eventPage.backToEvents')}
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -87,32 +243,52 @@ function EventOf({
   organisationId,
   eventId,
   page,
+  moved,
+  movesInto,
 }: {
   organisationId: string;
   eventId: string;
   page: Page;
+  moved: Moved | null;
+  /** Moves the account into the event's organisation, or answers false when it may not. */
+  movesInto: ((event: OrganisationEvent, tag: string) => boolean) | null;
 }) {
   const { t } = useTranslation();
-  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const session = useSession();
+  const outside = outsideOn(session, eventId);
+  const noOrganisation = session.organisation == null && session.pausedIn == null;
+  const looking = outside != null && outside.role !== 'can_edit' ? outside : null;
+  const [load, setLoad] = useState<Load>(
+    moved == null ? { kind: 'loading' } : { kind: 'loaded', event: moved.event, tag: moved.tag },
+  );
+  const moves = useRef(movesInto);
+  useEffect(() => {
+    moves.current = movesInto;
+  });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
-  const { watch, refreshing } = useOffline({
+  const answered = useRef<Date | null>(null);
+  const { watch, keep, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
+    event: true,
   });
+  const beside: Beside = { reloads: refresh, underBand: stale != null };
 
   useEffect(() => {
     let current = true;
 
     watch(api.taggedEvent(eventId)).then(
-      ({ event, tag }) =>
-        current &&
+      ({ event, tag }) => {
+        if (!current) return;
+        if (!ofOrganisation(event, organisationId) && moves.current?.(event, tag) === true) return;
+        answered.current = new Date();
         setLoad((was) => {
-          if (event.organisationId !== organisationId) return { kind: 'notFound' };
+          if (!ofOrganisation(event, organisationId)) return { kind: 'notFound' };
 
           try {
             return was.kind === 'loaded' && eventVersion(tag) < eventVersion(was.tag)
@@ -121,32 +297,133 @@ function EventOf({
           } catch {
             return { kind: 'failed' };
           }
-        }),
-      (error: unknown) =>
-        current &&
+        });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const found = keepsWhatLoaded(error)
+          ? keptFor<{ event: OrganisationEvent; tag: string }>(keptKeys.event(eventId), error)
+          : null;
+        const kept =
+          found != null && ofOrganisation(found.value.event, organisationId) ? found : null;
+
+        if (kept != null) keep(kept.at);
         setLoad((was) =>
           was.kind === 'loaded' && keepsWhatLoaded(error)
             ? was
-            : error instanceof ApiError && error.status === 404
-              ? { kind: 'notFound' }
-              : { kind: 'failed' },
-        ),
+            : kept != null
+              ? { kind: 'loaded', ...kept.value }
+              : error instanceof ApiError && error.status === 404
+                ? { kind: 'notFound' }
+                : { kind: 'failed', offline: keepsWhatLoaded(error) },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, eventId, attempt, refresh, watch]);
-  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
-  useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
+  }, [organisationId, eventId, attempt, refresh, watch, keep]);
 
-  if (page === 'guests' && load.kind === 'notFound') return <GuestsGone heading={heading} />;
+  useEffect(() => {
+    if (load.kind !== 'loaded') return;
+
+    const shown = { event: load.event, tag: load.tag };
+    const key = keptKeys.event(eventId);
+
+    if (answered.current == null) rekeep(key, shown);
+    else keepLoaded(key, shown, answered.current);
+    answered.current = null;
+  }, [load, eventId]);
+  const budgetUnseen =
+    page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
+  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  // Until Overview has the event, it stands under the organisation's sidebar, the switcher still naming the one worked in (sc-80863).
+  useGoneEvent(
+    eventId,
+    (page === 'event' && outside == null && load.kind !== 'loaded') ||
+      (page === 'guests' && load.kind === 'notFound') ||
+      (load.kind === 'failed' && load.offline === true),
+  );
+
+  if (noOrganisation && load.kind === 'notFound') return <OutsideGone eventId={eventId} />;
+
+  if (page === 'guests' && load.kind === 'notFound')
+    return (
+      <GuestsGone heading={heading}>
+        <EventCrumb name={null} />
+      </GuestsGone>
+    );
+
+  if (page === 'messages' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.messages) ? (
+      <MessagesArea event={load.event} />
+    ) : (
+      <Forbidden />
+    );
 
   if (page === 'seating' && load.kind === 'loaded')
-    return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.seating) ? (
+      <SeatingArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
+
+  if (page === 'menu' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'menuPicks' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <SeePicksArea event={load.event} /> : <Withheld />;
+
+  if (page === 'kitchenSheet' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? (
+      <KitchenSheetArea event={load.event} />
+    ) : (
+      <KitchenSheetRefused event={load.event} />
+    );
+
+  if (page === 'budget' && load.kind === 'loaded')
+    return budgetUnseen ? <BudgetWithheld event={load.event} /> : <BudgetArea event={load.event} />;
+
+  if (page === 'schedule' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.schedule) ? (
+      <ScheduleOrNight event={load.event} />
+    ) : (
+      <Withheld />
+    );
+
+  if (page === 'run' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <Withheld />;
+
+  if (page === 'staff' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <RosterArea
+        event={load.event}
+        onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+      />
+    ) : (
+      <StaffRefused event={load.event} />
+    );
+
+  if (page === 'staffJobs' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <JobsShiftsArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
+
+  if (page === 'staffStations' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? <StationsArea event={load.event} /> : <Withheld />;
+
+  if (page === 'staffHours' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <HoursWorkedArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
 
   if (page === 'guests' && load.kind === 'loaded')
-    return canOn(load.event, 'guests.read') ? (
+    return canOn(load.event, PAGE_NEEDS.guests) ? (
       <GuestsArea
         event={load.event}
         tag={load.tag}
@@ -154,7 +431,7 @@ function EventOf({
         onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
       />
     ) : (
-      <NotFound />
+      <Withheld />
     );
 
   const states = (
@@ -201,18 +478,47 @@ function EventOf({
       <EventDesk>
         {(covered) => (
           <div className="event-page ev-wide" inert={covered}>
+            {looking != null ? (
+              refreshing && <Refreshing />
+            ) : (
+              <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+                {refreshing && <Refreshing />}
+              </EventCrumb>
+            )}
+            {moved != null && <Switched name={moved.name} />}
+            {states}
+            {load.kind === 'loaded' && (
+              <Arrived>
+                {looking != null ? (
+                  <OutsideOverview event={load.event} held={looking} heading={heading} />
+                ) : (
+                  <Overview
+                    event={load.event}
+                    tag={load.tag}
+                    heading={heading}
+                    beside={beside}
+                    onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                  />
+                )}
+              </Arrived>
+            )}
+          </div>
+        )}
+      </EventDesk>
+    );
+
+  if (page === 'dates')
+    return (
+      <EventDesk>
+        {(covered) => (
+          <div className="event-page ev-wide" inert={covered}>
             <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
               {refreshing && <Refreshing />}
             </EventCrumb>
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                <Overview
-                  event={load.event}
-                  tag={load.tag}
-                  heading={heading}
-                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-                />
+                <AllDatesPage event={load.event} heading={heading} beside={beside} />
               </Arrived>
             )}
           </div>
@@ -221,38 +527,49 @@ function EventOf({
     );
 
   return (
-    <div className="event-page">
-      <div className="event-crumbs">
-        <BackControl
-          className="event-back"
-          label={t('eventPage.backToEvent')}
-          to={`/app/events/${encodeURIComponent(eventId)}`}
-        />
-        {refreshing && <Refreshing />}
-      </div>
+    <AskHost>
+      {(covered) => (
+        <div className={page === 'people' ? 'event-page is-people' : 'event-page'} inert={covered}>
+          <EventCrumb
+            name={load.kind === 'loaded' ? load.event.name : null}
+            area={
+              page === 'people'
+                ? {
+                    label: t('eventPeople.title'),
+                    event: `/app/events/${encodeURIComponent(eventId)}`,
+                  }
+                : undefined
+            }
+          >
+            {refreshing && <Refreshing />}
+          </EventCrumb>
 
-      {states}
+          {states}
 
-      {load.kind === 'loaded' && (
-        <Arrived>
-          <EventTop
-            event={load.event}
-            tag={load.tag}
-            heading={heading}
-            onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-          />
-          {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
-          {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && page !== 'seating' && (
-            <AreaComing event={load.event} area={page} />
+          {load.kind === 'loaded' && (
+            <Arrived>
+              {page !== 'people' && (
+                <EventTop
+                  event={load.event}
+                  tag={load.tag}
+                  heading={heading}
+                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                />
+              )}
+              {page === 'people' && <PeoplePage event={load.event} />}
+              {isPlaceholderEventArea(page) &&
+                page !== 'menu' &&
+                page !== 'seating' &&
+                page !== 'schedule' && <AreaComing event={load.event} area={page} />}
+            </Arrived>
           )}
-        </Arrived>
+        </div>
       )}
-    </div>
+    </AskHost>
   );
 }
 
-/** Above every area but Overview, whose cover card is its top: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top, and People and All dates, which open on their own title (sc-69635, sc-98187): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,
@@ -328,10 +645,11 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
   const address = venue?.address ?? null;
   const { latitude, longitude } = address ?? { latitude: null, longitude: null };
   const place = venue?.name ?? address?.formatted ?? null;
+  const placeLine = placeWords(place, venueCity(venue), (key, values) => t(key, values ?? {}));
 
   return (
     <div className="event-top-venue" role="group" aria-label={t('eventPage.venue')}>
-      <p>{place ?? t('eventPage.venueToBeConfirmed')}</p>
+      <p>{placeLine}</p>
       {latitude != null && longitude != null && (
         <a
           className="link-button"
@@ -349,21 +667,18 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
 function AllDatesPage({
   event,
   heading,
+  beside,
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
 }) {
   const { t } = useTranslation();
   const now = useServerNow();
 
   usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
 
-  return (
-    <section className="card timeline-page" aria-labelledby="all-dates-title">
-      <h2 id="all-dates-title">{t('timeline.allDates')}</h2>
-      <AllDates event={event} now={now} heading={heading} />
-    </section>
-  );
+  return <AllDates event={event} now={now} heading={heading} beside={beside} />;
 }
 
 function PeoplePage({ event }: { event: OrganisationEvent }) {
@@ -387,7 +702,7 @@ function AreaComing({ event, area }: { event: OrganisationEvent; area: Placehold
   );
 }
 
-/** A desk for the event's page: the dialogs its edits ask in, over the page they make inert. */
+/** A desk for the event's page and its All dates: the dialogs its edits ask in, over the page they make inert, and the desk's variables and list reset the demo draws both under. */
 function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) {
   const { layers, covered, setHost } = useDeskLayers();
 
@@ -397,6 +712,18 @@ function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) 
         {children(covered)}
         <div ref={setHost} className="desk-layers" />
       </div>
+    </LayersContext>
+  );
+}
+
+/** Where Make live asks from the row heading an area (sc-48603): the desk's dialog over a page that keeps its own look. */
+function AskHost({ children }: { children: (covered: boolean) => ReactNode }) {
+  const { layers, covered, setHost } = useDeskLayers();
+
+  return (
+    <LayersContext value={layers}>
+      {children(covered)}
+      <div ref={setHost} className="desk desk-layers" />
     </LayersContext>
   );
 }

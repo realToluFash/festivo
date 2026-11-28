@@ -1,13 +1,26 @@
 import { wallDay } from './calendar.ts';
 import {
+  formatEventDate,
   formatEventMoment,
   formatEventShortDay,
   formatEventWeekday,
   formatWallDay,
 } from './datetime.ts';
-import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
+import {
+  type EventPhase,
+  type EventState,
+  calledOff,
+  eventPhase,
+  shownPhase,
+} from './eventStates.ts';
 import { type LocaleCode, pluralLocale } from './locales.ts';
-import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
+import {
+  type MarkedMilestone,
+  type Milestone,
+  comingUp,
+  milestoneDistance,
+  nextUp,
+} from './timeline.ts';
 
 export interface HomeEvent {
   id: string;
@@ -143,7 +156,8 @@ export type NextStep =
   | { kind: 'makeLive' }
   | { kind: 'changeDates' }
   | { kind: 'resume' }
-  | { kind: 'nextUp'; milestone: Milestone };
+  | { kind: 'nextUp'; milestone: Milestone }
+  | { kind: 'over' };
 
 const STEP_WITHOUT_MILESTONES: ReadonlySet<EventPhase> = new Set(['draft', 'paused', 'finished']);
 
@@ -152,7 +166,7 @@ export function stepAwaitsMilestones(phase: EventPhase): boolean {
   return !STEP_WITHOUT_MILESTONES.has(phase);
 }
 
-/** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103). */
+/** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103); none while it is on with nothing ahead, which is not over (sc-93858). */
 export function nextStep(
   event: { status: EventState; endsAt: string; milestones: readonly Milestone[] },
   phase: EventPhase,
@@ -166,11 +180,27 @@ export function nextStep(
 
   if (phase === 'paused') return { kind: 'resume' };
 
-  if (phase === 'finished') return null;
+  if (phase === 'finished') return { kind: 'over' };
 
   const milestone = nextUp(event.milestones, now, event.status === 'ended');
 
   return milestone == null ? null : { kind: 'nextUp', milestone };
+}
+
+export type ComingUpPanel =
+  { kind: 'rows'; rows: MarkedMilestone[] } | { kind: 'endsToday' } | { kind: 'finished' };
+
+/** Event View's Coming up on the web and the app: its next four, else when it ends while it is on, else finished; never finished while it is on (sc-93858). */
+export function comingUpPanel(
+  event: { status: EventState; startsAt: string; endsAt: string },
+  milestones: readonly Milestone[],
+  now: Date,
+): ComingUpPanel {
+  const rows = comingUp(milestones, now, event.status === 'ended');
+
+  if (rows.length > 0) return { kind: 'rows', rows };
+
+  return eventPhase(event, now) === 'happening_now' ? { kind: 'endsToday' } : { kind: 'finished' };
 }
 
 export type EventDays =
@@ -202,6 +232,11 @@ export type EventDayWords =
   | { kind: 'days'; first: string; last: string }
   | { kind: 'calledOffOn'; date: string };
 
+export interface EventDayWordsOptions {
+  keepDays?: boolean;
+  day?: (moment: string, timeZone: string, locale: string, withYear: boolean) => string;
+}
+
 /** Whether any of these moments falls outside this year, today's in the event's zone: such a date is written with its year (sc-30413). */
 export function notThisYear(timeZone: string, now: Date, ...moments: string[]): boolean {
   const thisYear = wallDay(now, timeZone).slice(0, 4);
@@ -227,12 +262,22 @@ export function milestoneMoment(at: string, timeZone: string, now: Date, locale:
   return formatEventMoment(at, timeZone, locale, notThisYear(timeZone, now, at));
 }
 
-/** A dates line's dates in the reader's words; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
+/** The day an event was called off, as the card heading its page writes it, with its year when that is not this year in the event's zone (sc-30413). */
+export function calledOffDay(
+  concludedAt: string,
+  timeZone: string,
+  now: Date,
+  locale: string,
+): string {
+  return formatEventDate(concludedAt, timeZone, locale, notThisYear(timeZone, now, concludedAt));
+}
+
+/** A dates line's dates in the reader's words, each written by `day`; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
 export function eventDayWords(
   event: Parameters<typeof eventDays>[0],
   now: Date,
   locale: string,
-  keepDays = false,
+  { keepDays = false, day = formatEventWeekday }: EventDayWordsOptions = {},
 ): EventDayWords {
   const { timeZone } = event;
   const withYear = (...moments: string[]) => notThisYear(timeZone, now, ...moments);
@@ -249,11 +294,11 @@ export function eventDayWords(
 
   const { startsAt, endsAt } = event;
   const year = withYear(startsAt, endsAt);
-  const first = formatEventWeekday(startsAt, timeZone, locale, year);
+  const first = day(startsAt, timeZone, locale, year);
 
   return wallDay(startsAt, timeZone) === wallDay(endsAt, timeZone)
     ? { kind: 'oneDay', day: first }
-    : { kind: 'days', first, last: formatEventWeekday(endsAt, timeZone, locale, year) };
+    : { kind: 'days', first, last: day(endsAt, timeZone, locale, year) };
 }
 
 export interface HowSoon {

@@ -1,13 +1,17 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { ChoosePanel } from './MessagesChoose.tsx';
+import { CHW, choseAudience, chosenIds, chw } from './messagesChoose.ts';
 import { MW, filled } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
+import { INVITE_WORLD } from './messagesInvite.ts';
 import {
   type Audience,
   type Condition,
   type ToPick,
   ADDABLE,
+  MESSAGES_WORLD,
   NO_GROUP,
   TW,
   addLine,
@@ -26,7 +30,6 @@ import {
   saveRefusal,
   savedInOrder,
   savedOf,
-  whoMatches,
   withName,
   withSaved,
   without,
@@ -37,7 +40,7 @@ const COUNTING_MS = 600;
 const BY_NAME = new Intl.Collator('en', { sensitivity: 'base' });
 
 /** More actions: three dots, drawn here rather than added to the product's icons. */
-function MoreMark() {
+export function MoreMark() {
   return (
     <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true" className="mgt-mark">
       <circle cx={4.5} cy={10} r={1.8} />
@@ -66,19 +69,25 @@ function BinMark() {
   );
 }
 
-/** Who gets it (sc-3957): the saved audiences, the quick picks and Guests who…, with its conditions, count and See who. */
+/** Who gets it (sc-3957): the saved audiences, the quick picks and Guests who…, with its conditions, count and See who; on an invitation, Not yet invited too (sc-3971). */
 export function ToPopover({
   to,
   chip,
   onPick,
   onClose,
+  onNobody,
+  choosingFirst = false,
+  invite = false,
 }: {
   to: Audience;
   chip: RefObject<HTMLButtonElement | null>;
   onPick: (to: Audience) => void;
   onClose: (back: boolean) => void;
+  onNobody?: () => void;
+  choosingFirst?: boolean;
+  invite?: boolean;
 }) {
-  const { tell, say, to: event } = useInbox();
+  const { say, to: event } = useInbox();
   const { book, setBook, viewed } = event;
   const [first] = useState(event.view);
   const [adding, setAdding] = useState(first.adding);
@@ -89,6 +98,7 @@ export function ToPopover({
   const [menu, setMenu] = useState(first.menu);
   const [renaming, setRenaming] = useState(first.renaming);
   const [deleting, setDeleting] = useState(first.deleting);
+  const [choosing, setChoosing] = useState(choosingFirst || first.choose != null);
   const [kept, setKept] = useState<readonly Condition[]>(to.kind === 'who' ? to.conditions : []);
   const box = useRef<HTMLDivElement>(null);
   const timer = useRef<number | null>(null);
@@ -97,10 +107,14 @@ export function ToPopover({
   const name = useId();
   const ids = useId();
   const groups = book.groups;
-  const who = to.kind === 'who' ? to.conditions : null;
+  const world = invite ? INVITE_WORLD : MESSAGES_WORLD;
+  const quicks = invite
+    ? (['notInvited', 'coming', 'notReplied'] as const)
+    : (['coming', 'notReplied'] as const);
+  const who = to.kind === 'who' && to.pick !== 'chosen' ? to.conditions : null;
   const pick = pickOf(to, book);
   const from = savedOf(book, pick);
-  const count = who == null ? null : countIn(who, groups);
+  const count = who == null ? null : countIn(who, groups, world);
   const live = groups
     .filter((group) => group.deleted !== true)
     .sort((a, b) => BY_NAME.compare(a.name, b.name));
@@ -162,7 +176,7 @@ export function ToPopover({
         setMenu(null);
         return;
       }
-      if (keyEvent.key !== 'Escape') return;
+      if (keyEvent.key !== 'Escape' || (choosing && keyEvent.defaultPrevented)) return;
 
       keyEvent.preventDefault();
       if (menu != null) {
@@ -200,7 +214,7 @@ export function ToPopover({
       document.removeEventListener('keydown', keys);
       document.removeEventListener('pointerdown', outside);
     };
-  }, [menu, adding, renaming, deleting, saving, chip, onClose]);
+  }, [menu, adding, renaming, deleting, saving, choosing, chip, onClose]);
 
   function recount(): void {
     if (timer.current != null) window.clearTimeout(timer.current);
@@ -296,6 +310,30 @@ export function ToPopover({
     checked: pick === value,
     'data-focus': pick === value ? 'to-pick' : undefined,
   });
+
+  if (choosing)
+    return (
+      <div
+        ref={box}
+        className="mg-pop mg-to-pop mgt-pop mgc-pop"
+        role="dialog"
+        aria-labelledby={titleId}
+      >
+        <ChoosePanel
+          to={to}
+          first={first.choose}
+          addresses={event.addresses}
+          titleId={titleId}
+          onPick={onPick}
+          onBack={() => {
+            later.current = 'input:checked';
+            setChoosing(false);
+          }}
+          onClose={() => onClose(true)}
+          onDoneNone={() => (onNobody ?? (() => onClose(true)))()}
+        />
+      </div>
+    );
 
   return (
     <div ref={box} className="mg-pop mg-to-pop mgt-pop" role="dialog" aria-labelledby={titleId}>
@@ -431,28 +469,50 @@ export function ToPopover({
           <label className="mg-radio-row">
             <input {...radio('all')} onChange={() => choose({ kind: 'all' })} />
             <span className="today-grow">{MW.allGuests}</span>
-            <span className="mg-radio-count">{countOf({ kind: 'all' }, groups)}</span>
+            <span className="mg-radio-count">{countOf({ kind: 'all' }, groups, world)}</span>
           </label>
-          {(['coming', 'notReplied'] as const).map((quick) => (
+          {quicks.map((quick) => (
             <label key={quick} className="mg-radio-row">
               <input
                 {...radio(quick)}
                 onChange={() => choose({ kind: 'who', conditions: [quick], pick: quick })}
               />
               <span className="today-grow">{quickWord(quick)}</span>
-              <span className="mg-radio-count">{countIn([quick], groups)}</span>
+              <span className="mg-radio-count">{countIn([quick], groups, world)}</span>
             </label>
           ))}
+          {to.kind === 'guest' && (
+            <label className="mg-radio-row">
+              <input {...radio(pick)} onChange={() => onPick(to)} />
+              <span className="today-grow">{to.guest.name}</span>
+              <span className="mg-radio-count">{countOf(to, groups)}</span>
+            </label>
+          )}
           <label className="mg-radio-row">
             <input
-              type="radio"
-              name={name}
-              className="desk-radio"
-              checked={false}
-              onChange={() => tell(`${MW.chooseGuests} has its own design.`)}
+              {...radio('chosen')}
+              onChange={() => {
+                onPick(choseAudience(chosenIds(to)));
+                setChoosing(true);
+              }}
             />
             <span className="today-grow">{MW.chooseGuests}</span>
+            {pick === 'chosen' && <span className="mg-radio-count">{chosenIds(to).length}</span>}
           </label>
+          {pick === 'chosen' && (
+            <div className="mg-who-block">
+              <button
+                type="button"
+                className="desk-text"
+                data-to="choose"
+                onClick={() => setChoosing(true)}
+              >
+                {chosenIds(to).length === 0
+                  ? MW.chooseGuests
+                  : `${chw.filled(CHW.chosen, { count: chosenIds(to).length })} · ${CHW.change}`}
+              </button>
+            </div>
+          )}
           <label className="mg-radio-row">
             <input
               {...radio('who')}
@@ -578,7 +638,7 @@ export function ToPopover({
             </div>
             {shown && seeing && (
               <ul id={`${ids}-see`} className="mgt-see" aria-label={MW.seeWho}>
-                {whoMatches(who, groups).map((guest) => (
+                {world.matches(who, groups).map((guest) => (
                   <li key={guest.name}>
                     <span className="mgt-see-name">{guest.name}</span>
                     {' · '}

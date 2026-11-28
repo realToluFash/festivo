@@ -1,14 +1,18 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -16,10 +20,13 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   allowCleartext,
+  apnsPayload,
+  expoPushes,
+  pushPick,
   aloneFlows,
   answers,
   emulatorJournalArgs,
@@ -41,6 +48,7 @@ import {
   batchSummary,
   physicalSize,
   portraitRotation,
+  landscapeRotation,
   ANDROID_START,
   startParts,
   iosExpoGoStops,
@@ -52,12 +60,14 @@ import {
   TOOLS_BUTTON,
   MENU_ONBOARDED,
   SCREEN_READER_OFF,
+  TEXT_SIZE_RESET,
   STYLUS_HANDWRITING_OFF,
   driverBuilds,
   driverPids,
   leftDriverSay,
   clearForBatch,
   bundlerArgs,
+  bundlerGroups,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -67,6 +77,9 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  parseCode,
+  parseVars,
+  checkOrientation,
   readyReport,
   accountKind,
   REBUILD,
@@ -87,11 +100,29 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  freshBatchDir,
+  servicesMountingApi,
+  withApiStopped,
+  execOutput,
+  staleInContainer,
   defaultNetwork,
   COMPOSE_PROJECT,
   emulatorAbi,
   emulatorFor,
   emulatorGpu,
+  emulatorHostOf,
+  agentsFile,
+  testerRole,
+  testerOffset,
+  remoteEmulatorCommand,
+  remoteEmulatorScript,
+  adbAnnouncement,
+  shouldAnnounce,
+  pickPlayImage,
+  missingRemoteTools,
+  SSH_OPTIONS,
+  REACH_TIMEOUT_MS,
+  missingAvdTools,
   expoGoApk,
   expoGoFits,
   expoGoIosClient,
@@ -105,8 +136,13 @@ import {
   renewingSession,
   resumeBatch,
   runHeld,
+  KEPT_LOG_BYTES,
+  trimMaestroLogs,
   maestroTarget,
   missingCmdlineTools,
+  setupAgain,
+  unauthorizedWarning,
+  setUpLocalEmulators,
   withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
@@ -126,6 +162,11 @@ import {
   lanProxy,
   lanAddress,
   qaConfig,
+  browserHostOf,
+  defaultBrowserHost,
+  savedBrowserHost,
+  configFor,
+  BROWSER_HOST_FILE,
   qrPng,
   APP_SERVICES,
   launchVideo,
@@ -145,6 +186,9 @@ import {
   releaseApk,
   releaseApp,
   releasePlatform,
+  releaseLink,
+  bootCommands,
+  shutCommands,
   simulatorArch,
   staleBuilds,
   iosBuildEnv,
@@ -153,6 +197,8 @@ import {
   renderQaEnv,
   reversedPorts,
   unreversed,
+  restoreReverses,
+  reversePorts,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -177,6 +223,10 @@ describe('the QA .env', () => {
 
   it('names its own compose project', () => {
     expect(values.COMPOSE_PROJECT_NAME).toBe(COMPOSE_PROJECT);
+  });
+
+  it('asks the address stand-in, never the public Nominatim server (sc-80880)', () => {
+    expect(values.ADDRESS_ENDPOINT).toBe('http://smocker:8080/nominatim');
   });
 
   it('moves every port the example publishes', () => {
@@ -358,6 +408,94 @@ describe('the stack a person tests on', () => {
     }
   });
 
+  it('moves what a browser reaches to the browser host, and leaves the app on 127.0.0.1', () => {
+    for (const tester of TESTERS) {
+      const host = defaultBrowserHost(tester);
+      const { ports, urls, browser, overrides, app } = qaConfig(tester, undefined, {
+        browserHost: host,
+      });
+      const named = (port) => `http://${host}:${ports[port]}`;
+      const address = (port) => `http://127.0.0.1:${ports[port]}`;
+
+      expect(urls.web).toBe(named('WEB_PORT'));
+      expect(overrides.CORS_WEB_ORIGIN).toBe(named('WEB_PORT'));
+      expect(overrides.SOIRELY_API_URL).toBe(named('API_PORT'));
+      expect(browser.api).toBe(named('API_PORT'));
+      expect(overrides.SOIRELY_MERCURE_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_PUBLIC_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_CORS_ORIGINS.split(' ')).toEqual([
+        named('WEB_PORT'),
+        address('METRO_PORT'),
+      ]);
+      expect(overrides.SOIRELY_GOOGLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/google/authorize`);
+      expect(overrides.SOIRELY_APPLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/apple/authorize`);
+      for (const provider of ['google', 'apple']) {
+        const issuers = overrides[`OAUTH_${provider.toUpperCase()}_ISSUERS`].split(',');
+        expect(issuers).toContain(`${named('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`${address('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`http://oidc:8080/${provider}`);
+      }
+
+      expect(urls.api).toBe(address('API_PORT'));
+      expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(address('STORAGE_PORT'));
+      expect(overrides.OAUTH_APPLE_RETURN_URI).toMatch(new RegExp(`^${address('API_PORT')}/`));
+      expect(overrides.DEFAULT_URI).toBe(address('API_PORT'));
+      expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(address('METRO_PORT'));
+      for (const value of Object.values(app)) expect(value).not.toContain(host);
+      expect(app).toEqual(qaConfig(tester).app);
+    }
+  });
+
+  it('changes nothing for a stack with no browser host', () => {
+    for (const tester of TESTERS) {
+      const { overrides, browser } = qaConfig(tester);
+      expect(Object.values(overrides).join(' ')).not.toContain('localhost');
+      expect(browser.api).toBe(qaConfig(tester).urls.api);
+      expect(overrides.OAUTH_GOOGLE_ISSUERS).toBe(
+        `http://127.0.0.1:${qaConfig(tester).ports.OIDC_PORT}/google,http://oidc:8080/google`,
+      );
+    }
+  });
+
+  it('takes localhost or a name under it as the browser host, and nothing else', () => {
+    expect(defaultBrowserHost(3)).toBe('qa3.localhost');
+    expect(browserHostOf(' QA2.localhost\n')).toBe('qa2.localhost');
+    expect(browserHostOf('localhost')).toBe('localhost');
+    for (const bad of ['127.0.0.1', 'qa2.example.com', 'localhost.evil', 'qa2..localhost', '']) {
+      expect(() => browserHostOf(bad), bad).toThrow(/not localhost/);
+    }
+    expect(() => qaConfig(LAN, '192.168.1.40', { browserHost: 'qa.localhost' })).toThrow(
+      /no browser host/,
+    );
+  });
+
+  it('reads the browser host a tester turned on from the worktree, and none when unset', () => {
+    const files = { [`/qa2/${BROWSER_HOST_FILE}`]: 'qa2.localhost\n' };
+    const read = (path) => {
+      if (path in files) return files[path];
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    expect(savedBrowserHost('/qa2', read)).toBe('qa2.localhost');
+    expect(savedBrowserHost('/qa3', read)).toBeNull();
+    files[`/qa4/${BROWSER_HOST_FILE}`] = 'qa4.example.com';
+    expect(() => savedBrowserHost('/qa4', read)).toThrow(/not localhost/);
+  });
+
+  it('keeps a saved browser host for a simulated stack, and the lan stack ignores it', () => {
+    const read = (path) => {
+      if (path.endsWith(BROWSER_HOST_FILE)) return 'qa2.localhost\n';
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const missing = () => {
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const saved = configFor(2, '/qa2', read);
+    expect(saved.browserHost).toBe('qa2.localhost');
+    expect(saved.urls.web).toContain('qa2.localhost');
+    expect(configFor(2, '/qa2', missing).browserHost).toBeNull();
+    expect(configFor(LAN, '/lan', read).browserHost).toBeNull();
+  });
+
   it('puts the proxy on every proxied port and takes those ports off the services', () => {
     const { ports } = qaConfig(LAN, '192.168.1.40');
     const { caddyfile, compose } = lanProxy(ports, '192.168.1.40', '/ca', 'AB:CD');
@@ -481,6 +619,23 @@ describe('the bundler command', () => {
   });
 });
 
+describe('ios --stop', () => {
+  it("stops only the group listening on this tester's own port", () => {
+    const asked = [];
+    const look = (command, args) => {
+      asked.push([command, ...args].join(' '));
+      if (command === 'lsof') return '4101\n4102';
+      return { 4101: ' 4100', 4102: '4100' }[args.at(-1)];
+    };
+    expect(bundlerGroups(38081, look)).toEqual([4100]);
+    expect(asked[0]).toBe('lsof -nP -t -iTCP:38081 -sTCP:LISTEN');
+  });
+
+  it('stops nothing when no bundler listens', () => {
+    expect(bundlerGroups(38081, () => null)).toEqual([]);
+  });
+});
+
 describe('Expo Go on android --clear', () => {
   const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
   const stopped = ANDROID_START[at('Expo Go stopped')];
@@ -525,6 +680,12 @@ describe('the bundler environment', () => {
       EXPO_PUBLIC_ENVIRONMENT: 'qa',
       CI: '1',
     });
+  });
+
+  it('points the app at QA_API_URL when it is set, for a proxy in front of the API', () => {
+    const env = bundlerEnv({ QA_API_URL: 'http://proxy' }, { EXPO_PUBLIC_API_URL: 'http://api' });
+
+    expect(env.EXPO_PUBLIC_API_URL).toBe('http://proxy');
   });
 });
 
@@ -597,7 +758,7 @@ describe('the device a maestro run drives', () => {
       '--device',
       'UDID',
       '--driver-host-port',
-      String(22087 + tester),
+      String(22087 + (tester >= 4 ? tester + 1 : tester)),
     ]);
   });
 
@@ -635,6 +796,18 @@ describe('the screen reader on an emulator android opens', () => {
 
   it('says so, so a tester turns it on again', () => {
     expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
+  });
+});
+
+describe('the text size on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+
+  it('goes back to default before Expo Go is launched, and says so', () => {
+    const reset = ANDROID_START[at('text size reset')];
+    expect(reset.adb).toBe(TEXT_SIZE_RESET);
+    expect(TEXT_SIZE_RESET).toEqual([['shell', 'settings', 'put', 'system', 'font_scale', '1.0']]);
+    expect(at('text size reset')).toBeLessThan(at('Expo Go launched'));
+    expect(reset.say).toMatch(/Text size is back to default/);
   });
 });
 
@@ -827,6 +1000,13 @@ describe('the ports an emulator is given', () => {
     }
   });
 
+  it('take in the port of a proxy QA_API_URL names on this machine', () => {
+    expect(reversedPorts(QA_PORTS, { QA_API_URL: 'http://127.0.0.1:18999' })).toContain(18999);
+    expect(reversedPorts(QA_PORTS, { QA_API_URL: 'http://192.168.1.40:18999' })).not.toContain(
+      18999,
+    );
+  });
+
   it('leave the databases on the host', () => {
     const ports = reversedPorts(QA_PORTS);
     expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);
@@ -846,6 +1026,56 @@ describe('the reversed ports read back', () => {
 
   it('counts every port missing when adb answers nothing', () => {
     expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
+  });
+});
+
+describe('the reverses a batch puts back', () => {
+  const emulator = (held) => {
+    const added = [];
+    const adb = (args) => {
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      added.push(Number(args[1].slice(4)));
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    return { adb, added };
+  };
+
+  it('adds back only the ports a reconnect lost', async () => {
+    const { adb, added } = emulator([13180]);
+    expect(await restoreReverses(adb, [13180, 13181, 13189])).toEqual([]);
+    expect(added).toEqual([13181, 13189]);
+  });
+
+  it('adds nothing when every port is held', async () => {
+    const { adb, added } = emulator([13180, 13181]);
+    expect(await restoreReverses(adb, [13180, 13181])).toEqual([]);
+    expect(added).toEqual([]);
+  });
+
+  it('names the ports adb still drops after ten tries', async () => {
+    const tries = [];
+    const adb = (args) => (args[1] === '--list' ? '' : tries.push(args[1]));
+    const missing = await restoreReverses(adb, [13181], { wait: async () => {} });
+    expect(missing).toEqual([13181]);
+    expect(tries).toHaveLength(10);
+  });
+
+  it('announces the remote emulator again before restoring them', async () => {
+    const calls = [];
+    const held = [13181];
+    const see = (_tools, options) => calls.push(['see', options]);
+    const adb = (args) => {
+      calls.push(args);
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    await reversePorts({}, { see, adb, ports: [13180, 13181], wait: async () => {} });
+    expect(calls[0]).toEqual(['see', { again: true }]);
+    expect(calls.slice(1)).toContainEqual(['reverse', 'tcp:13180', 'tcp:13180']);
   });
 });
 
@@ -1028,6 +1258,27 @@ describe('a release build', () => {
     expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
     expect(releasePlatform(['--android'], 'darwin')).toBe('android');
     expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it('opens the first launch with --link, a URL, on iOS only', () => {
+    expect(releaseLink(['--ipad'], 'ios')).toBeNull();
+    expect(releaseLink(['--ipad', '--link', 'soirely://sign-in'], 'ios')).toBe('soirely://sign-in');
+    expect(releaseLink(['--link', 'https://example.test/e/1', '--offline'], 'ios')).toBe(
+      'https://example.test/e/1',
+    );
+    expect(() => releaseLink(['--link', 'sign-in'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link', '--ipad'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--android', '--link', 'soirely://sign-in'])).toThrow(
+      /--link is iOS only/,
+    );
+    expect(() => releaseLink(['--link', 'soirely://sign-in'], 'android')).toThrow(/iOS only/);
+  });
+
+  it('leaves every simulator it opens or shuts at the default text size', () => {
+    const reset = ['simctl', 'ui', 'UDID', 'content_size', 'large'];
+    expect(bootCommands('UDID')).toEqual([['simctl', 'bootstatus', 'UDID', '-b'], reset]);
+    expect(shutCommands('UDID')).toEqual([reset, ['simctl', 'shutdown', 'UDID']]);
   });
 
   it("builds for the Mac's own simulator architecture", () => {
@@ -1564,9 +1815,9 @@ describe('the branch for a story', () => {
   });
 });
 
-// Three testers run at once. A port two stacks share is one tester's stack failing to
+// Five testers run at once. A port two stacks share is one tester's stack failing to
 // start, and a shared project name is one tester's reset dropping another's database.
-describe('the three QA testers', () => {
+describe('the QA testers', () => {
   const configs = TESTERS.map((tester) => qaConfig(tester));
 
   it('are tester 1 exactly as before', () => {
@@ -1600,6 +1851,13 @@ describe('the three QA testers', () => {
     const example = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
     const development = [...example.matchAll(/^[A-Z_]+_PORT=(\d+)/gm)].map(([, p]) => Number(p));
     const all = [...development, ...configs.flatMap((c) => Object.values(c.ports))];
+    const lan = qaConfig(LAN, '192.168.1.40');
+    for (const key of ['chromePort', 'driverPort', 'helperPort']) {
+      expect(
+        configs.map((c) => c[key]),
+        key,
+      ).not.toContain(lan[key]);
+    }
     expect(new Set(all).size).toBe(all.length);
     expect(Math.max(...all)).toBeLessThan(65536);
   });
@@ -1619,8 +1877,235 @@ describe('the three QA testers', () => {
     expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
   });
 
-  it('stop at three', () => {
-    expect(() => qaConfig(4)).toThrow(/no QA tester 4/);
+  it('refuse another tester when run from a QA worktree', () => {
+    const scripts = join(
+      mkdtempSync(join(realpathSync(tmpdir()), 'qa-own-')),
+      'soirely-qa3',
+      'scripts',
+    );
+    mkdirSync(scripts, { recursive: true });
+    copyFileSync(
+      fileURLToPath(new URL('./qa-env.mjs', import.meta.url)),
+      join(scripts, 'qa-env.mjs'),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(scripts, 'qa-env.mjs'), '--tester', '1', 'status'],
+      {
+        encoding: 'utf8',
+      },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('belongs to tester 3, not 1');
+  });
+
+  it('let a QA worktree reach the lan stack', () => {
+    const scripts = join(
+      mkdtempSync(join(realpathSync(tmpdir()), 'qa-lan-')),
+      'soirely-qa3',
+      'scripts',
+    );
+    mkdirSync(scripts, { recursive: true });
+    copyFileSync(
+      fileURLToPath(new URL('./qa-env.mjs', import.meta.url)),
+      join(scripts, 'qa-env.mjs'),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(scripts, 'qa-env.mjs'), '--tester', 'lan', 'no-such-command'],
+      { encoding: 'utf8' },
+    );
+    expect(result.stderr).not.toContain('belongs to tester');
+    expect(result.stderr).toContain('unknown command no-such-command');
+  });
+
+  it('stop at five', () => {
+    expect(() => qaConfig(6)).toThrow(/no QA tester 6/);
+  });
+
+  it('keep testers 1 to 3 and the lan stack where they were when tester 4 came', () => {
+    expect(
+      [1, 2, 3].map((t) => {
+        const c = qaConfig(t);
+        return [c.ports.API_PORT, c.emulatorPort, c.chromePort, c.driverPort, c.helperPort];
+      }),
+    ).toEqual([
+      [18080, 5572, 9222, 22088, 22191],
+      [28080, 5574, 9223, 22089, 22192],
+      [38080, 5576, 9224, 22090, 22193],
+    ]);
+    const lan = qaConfig(LAN, '192.168.1.40');
+    expect([lan.ports.API_PORT, lan.chromePort, lan.driverPort, lan.helperPort]).toEqual([
+      63080, 9225, 22091, 22194,
+    ]);
+    expect(qaConfig(3).emulators.phone.name).toBe('Soirely_QA3_Phone');
+  });
+
+  it('give tester 4 the 5100 block, console 5578 and slots clear of the lan stack', () => {
+    const c = qaConfig(4);
+    expect(testerOffset(4)).toBe(5100);
+    expect([c.project, c.ports.API_PORT, c.ports.MERCURE_PORT, c.emulatorPort]).toEqual([
+      'soirely-qa4',
+      13180,
+      8100,
+      5578,
+    ]);
+    expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9226, 22092, 22195]);
+    expect(c.emulators.tablet).toMatchObject({ name: 'Soirely_QA4_Tablet', ramMb: 4096 });
+    expect(testerOf('/Users/x/Projects/soirely-qa4')).toBe(4);
+  });
+
+  it('give tester 5 the 5200 block, console 5580 and the slot after tester 4', () => {
+    const c = qaConfig(5);
+    expect(testerOffset(5)).toBe(5200);
+    expect([c.project, c.ports.API_PORT, c.ports.MERCURE_PORT, c.emulatorPort]).toEqual([
+      'soirely-qa5',
+      13280,
+      8200,
+      5580,
+    ]);
+    expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9227, 22093, 22196]);
+    expect(c.emulators).toMatchObject({
+      phone: { name: 'Soirely_QA5_Phone', ramMb: 4096 },
+      tablet: { name: 'Soirely_QA5_Tablet', ramMb: 4096 },
+    });
+    expect(testerOf('/Users/x/Projects/soirely-qa5')).toBe(5);
+    expect(testerRole(5)).toBe('qa5');
+  });
+});
+
+describe('an emulator on another computer', () => {
+  it("is unset unless the tester's role names one, so the emulator starts here", () => {
+    expect(emulatorHostOf(null, 4)).toBeNull();
+    expect(emulatorHostOf({ roles: { qa2: {} } }, 2)).toBeNull();
+    expect(emulatorHostOf({ roles: { qa4: { emulatorHost: 'me@laptop' } } }, 2)).toBeNull();
+    expect(emulatorHostOf({ roles: { qa: { emulatorHost: 'me@laptop' } } }, 1)?.ssh).toBe(
+      'me@laptop',
+    );
+  });
+
+  it('reads a destination or an object, with the GPU and SDK a Windows host has', () => {
+    expect(emulatorHostOf({ roles: { qa4: { emulatorHost: 'me@192.168.1.9' } } }, 4)).toEqual({
+      ssh: 'me@192.168.1.9',
+      name: '192.168.1.9',
+      sdk: '%LOCALAPPDATA%\\Android\\Sdk',
+      gpu: 'host',
+    });
+    const host = { ssh: 'me@laptop', name: 'my-laptop', gpu: 'swiftshader_indirect' };
+    expect(emulatorHostOf({ roles: { qa4: { emulatorHost: host } } }, 4)).toMatchObject(host);
+    expect(() => emulatorHostOf({ roles: { qa4: { emulatorHost: { name: 'x' } } } }, 4)).toThrow(
+      /emulatorHost of qa4/,
+    );
+  });
+
+  it('is found in the soirely config folder', () => {
+    expect(agentsFile({}, '/home/me')).toBe('/home/me/.config/soirely/agents.json');
+    expect(agentsFile({ SOIRELY_CONFIG: '/etc/s' }, '/home/me')).toBe('/etc/s/agents.json');
+    expect(testerRole(1)).toBe('qa');
+    expect(testerRole(4)).toBe('qa4');
+  });
+
+  it('runs in one ssh session that carries its console and adb ports back', () => {
+    const host = { ssh: 'me@laptop', sdk: 'C:\\Sdk' };
+    const command = remoteEmulatorCommand(host, 5578, ['-avd', 'A', '-port', '5578']);
+    expect(command[0]).toBe('ssh');
+    expect(command).toContain('BatchMode=yes');
+    expect(command).toContain('ExitOnForwardFailure=yes');
+    expect(command.join(' ')).toContain('-L 5578:127.0.0.1:5578 -L 5579:127.0.0.1:5579');
+    expect(command.at(-2)).toBe('me@laptop');
+    expect(command.at(-1)).toBe('C:\\Sdk\\emulator\\emulator.exe -avd A -port 5578');
+    expect(SSH_OPTIONS).toContain('ConnectTimeout=30');
+    expect(REACH_TIMEOUT_MS).toBeGreaterThan(30000);
+    expect(REACH_TIMEOUT_MS).toBeLessThan(60000);
+  });
+
+  it('names the Command-line Tools and a JDK when a host without Android Studio cannot make an AVD', () => {
+    const host = { ssh: 'hp@192.168.1.228', name: 'princess-shalew', sdk: 'C:\\Sdk' };
+    const both = missingAvdTools(host, { tools: false, jdk: false }, ['Soirely_QA5_Tablet']);
+    expect(both).toContain('Soirely_QA5_Tablet: not made on princess-shalew (hp@192.168.1.228)');
+    expect(both).toContain('lacks the Android SDK Command-line Tools and a JDK (17 or later)');
+    expect(both).toContain('C:\\Sdk\\cmdline-tools\\latest\\bin\\avdmanager.bat');
+    const jdk = missingAvdTools(host, { tools: true, jdk: false }, ['A']);
+    expect(jdk).toContain('which lacks a JDK (17 or later)');
+    expect(jdk).not.toContain('avdmanager.bat');
+  });
+
+  it('is announced to adb as the server protocol frames it', () => {
+    expect(adbAnnouncement(5578)).toBe('0012host:emulator:5579');
+  });
+
+  it('is announced again only when remote, missing from adb and its unit still runs', () => {
+    const asked = [];
+    const ask = (name, value) => () => (asked.push(name), value);
+    expect(
+      shouldAnnounce({ remote: true, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(true);
+    expect(shouldAnnounce({ remote: true, online: () => true, unit: () => 'active' })).toBe(false);
+    expect(shouldAnnounce({ remote: true, online: () => false, unit: () => 'inactive' })).toBe(
+      false,
+    );
+    asked.length = 0;
+    expect(
+      shouldAnnounce({ remote: false, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(false);
+    expect(asked).toEqual([]);
+  });
+
+  it('is found and stopped by its console port alone', () => {
+    expect(remoteEmulatorScript(5578)).toContain("-like '*-port 5578*'");
+    expect(remoteEmulatorScript(5578)).not.toContain('Stop-Process');
+    expect(remoteEmulatorScript(5578, true)).toContain('Stop-Process');
+    expect(remoteEmulatorScript(5578, true)).toMatch(
+      /^powershell -NoProfile -Command ".*\.Count"$/,
+    );
+  });
+
+  it('picks the newest Play image the host has, from its own paths', () => {
+    expect(
+      pickPlayImage(
+        [
+          'android-34\\google_apis_playstore\\x86_64',
+          'android-36\\google_apis\\x86_64',
+          'android-35\\google_apis_playstore\\x86_64',
+          'android-35\\google_apis_playstore_ps16k\\x86_64',
+          'android-37\\google_apis_playstore\\arm64-v8a',
+        ],
+        'x86_64',
+      ),
+    ).toBe('system-images;android-35;google_apis_playstore;x86_64');
+  });
+
+  it('says what to install on the host when its tools are missing', () => {
+    const host = { name: 'laptop', ssh: 'me@laptop', sdk: '%LOCALAPPDATA%\\Android\\Sdk' };
+    const said = missingRemoteTools(host, 'Android SDK Command-line Tools');
+    expect(said).toContain('laptop (me@laptop) has no Android SDK Command-line Tools');
+    expect(said).toContain('Android SDK Command-line Tools (latest)');
+    expect(said).toContain('Google Play');
+  });
+
+  it('names the tester when it says to run setup again', () => {
+    const host = { name: 'laptop', ssh: 'me@laptop', sdk: 'C:\\Sdk' };
+    expect(missingRemoteTools(host, 'Android Emulator', 4)).toContain(
+      '`node scripts/qa-env.mjs setup --tester 4` again',
+    );
+    expect(setupAgain(1)).toBe('`node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('an unauthorized device on the shared adb server', () => {
+  it('names it, since maestro then calls our own emulator not connected', () => {
+    const devices =
+      'List of devices attached\nemulator-5578\tdevice\nemulator-5580\tunauthorized\n';
+    const said = unauthorizedWarning(devices, 'emulator-5578');
+    expect(said).toContain('emulator-5580 as unauthorized');
+    expect(said).toContain('emulator-5578 as not connected');
+    expect(said).toContain('step 2');
+  });
+
+  it('says nothing when every device is authorized', () => {
+    expect(
+      unauthorizedWarning('List of devices attached\nemulator-5578\tdevice\n', 'emulator-5578'),
+    ).toBeNull();
   });
 });
 
@@ -1692,6 +2177,43 @@ describe('the API cache a checkout leaves behind', () => {
     expect(seen).toEqual([]);
   });
 
+  it('stops first every service that mounts services/api, and only those', () => {
+    const root = '/work/soirely-qa5';
+    const api = { type: 'bind', source: '/work/soirely-qa5/services/api', target: '/app' };
+    const services = {
+      api: { volumes: [api] },
+      'notification-worker': { volumes: [api] },
+      web: { volumes: [{ type: 'bind', source: '/work/soirely-qa5/apps/web', target: '/app' }] },
+      postgres: { volumes: [{ type: 'volume', source: 'postgres-data', target: '/data' }] },
+      mailpit: {},
+    };
+
+    expect(servicesMountingApi(services, root)).toEqual(['api', 'notification-worker']);
+  });
+
+  it('starts the stopped services again when the checkout fails', () => {
+    const started = [];
+    const failing = () => {
+      throw new Error('checkout failed');
+    };
+
+    expect(() =>
+      withApiStopped(failing, {
+        stop: () => ['api', 'notification-worker'],
+        start: (names) => started.push(...names),
+      }),
+    ).toThrow('checkout failed');
+    expect(started).toEqual(['api', 'notification-worker']);
+  });
+
+  it('leaves them stopped when the checkout succeeds', () => {
+    const started = [];
+
+    withApiStopped(() => 'ok', { stop: () => ['api'], start: (names) => started.push(...names) });
+
+    expect(started).toEqual([]);
+  });
+
   it('pins the image it clears with', () => {
     expect(CACHE_CLEARER).toMatch(/^busybox:\d+\.\d+$/);
   });
@@ -1726,6 +2248,52 @@ describe('the step a code is made in', () => {
 
   it('is now, when the last was long ago', () => {
     expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('an account line', () => {
+  it('keeps an = inside a value and leaves lowercase words alone', () => {
+    expect(parseVars(['tour', 'PASSWORD=a=b', 'email=x', '--cold'])).toEqual({ PASSWORD: 'a=b' });
+  });
+
+  it('reads the same for batch and code', () => {
+    const line = ['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'];
+    expect(parseBatch(['tour', 'home', ...line]).vars).toEqual(parseVars(line));
+  });
+});
+
+describe('an ORIENT', () => {
+  it('refuses a bare LANDSCAPE, which Maestro knows only when it turns the device', () => {
+    expect(() => parseBatch(['tour', 'home', 'ORIENT=LANDSCAPE'])).toThrow(/LANDSCAPE_LEFT/);
+  });
+
+  it("takes Maestro's own four, a lowercase label and none at all", () => {
+    for (const orient of [
+      'PORTRAIT',
+      'LANDSCAPE_LEFT',
+      'LANDSCAPE_RIGHT',
+      'UPSIDE_DOWN',
+      'landscape',
+    ])
+      expect(() => checkOrientation({ ORIENT: orient })).not.toThrow();
+    expect(() => checkOrientation({})).not.toThrow();
+  });
+});
+
+describe('the code command', () => {
+  it('reads whose code from the account line', () => {
+    expect(parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'])).toEqual({
+      email: 'a@b.test',
+      secret: 'GEZDGNBV',
+    });
+  });
+
+  it('refuses without a secret', () => {
+    expect(() => parseCode(['EMAIL=a@b.test'])).toThrow('TOTP_SECRET');
+  });
+
+  it('refuses a secret that is not base32 before waiting for a step', () => {
+    expect(() => parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=nope!'])).toThrow('base32');
   });
 });
 
@@ -2076,6 +2644,13 @@ describe('portraitRotation', () => {
   });
 });
 
+describe('landscapeRotation', () => {
+  it('turns a portrait-native display a quarter, and leaves a landscape-native one at 0', () => {
+    expect(landscapeRotation('Physical size: 1600x2560\n')).toBe(1);
+    expect(landscapeRotation('Physical size: 2560x1600\n')).toBe(0);
+  });
+});
+
 describe('the batch helper', () => {
   const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
@@ -2146,6 +2721,55 @@ describe('the batch helper', () => {
     }
   });
 
+  it('answers what the API holds of one track once the asked presses have reached it', async () => {
+    const event = '0f8e2c1a-5b3d-4e6f-9a7b-1c2d3e4f5a6b';
+    const reads = [
+      {
+        items: [
+          { place: 'Salle', startedAt: '2026-11-17T20:00:00+00:00', endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            place: 'Salle',
+            startedAt: '2026-11-17T20:00:00+00:00',
+            endedAt: '2026-11-17T20:01:00+00:00',
+          },
+          { place: 'Salle', startedAt: null, endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+    ];
+    const asked = [];
+    const readSchedule = async (id) => {
+      asked.push(id);
+      return reads[Math.min(asked.length - 1, reads.length - 1)];
+    };
+    const { server, ask } = await helperFor('running', undefined, { readSchedule });
+    try {
+      expect(await ask(`/schedule?event=${event}&place=Salle&done=1`)).toEqual({
+        started: 1,
+        done: 1,
+      });
+      expect(asked).toEqual([event, event]);
+      expect(await ask('/schedule?event=..%2Fauth')).toEqual({
+        error: 'whose schedule? /schedule?event=<id> gave ../auth',
+      });
+    } finally {
+      server.close();
+    }
+  });
+
   it('turns an Android device to portrait, and leaves iOS to Maestro', async () => {
     const turned = [];
     const portrait = () => turned.push('portrait') && 1;
@@ -2155,6 +2779,21 @@ describe('the batch helper', () => {
       expect(await android.ask('/portrait')).toEqual({ rotation: 1 });
       expect(await ios.ask('/portrait')).toEqual({ rotation: null });
       expect(turned).toEqual(['portrait']);
+    } finally {
+      android.server.close();
+      ios.server.close();
+    }
+  });
+
+  it('turns an Android device to landscape, and leaves iOS to Maestro', async () => {
+    const turned = [];
+    const landscape = () => turned.push('landscape') && 1;
+    const android = await helperFor('running', undefined, { onAndroid: true, landscape });
+    const ios = await helperFor('running', undefined, { onAndroid: false, landscape });
+    try {
+      expect(await android.ask('/landscape')).toEqual({ rotation: 1 });
+      expect(await ios.ask('/landscape')).toEqual({ rotation: null });
+      expect(turned).toEqual(['landscape']);
     } finally {
       android.server.close();
       ios.server.close();
@@ -2327,6 +2966,17 @@ describe('a batch flow', () => {
     const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
     expect(flow).toContain('stopApp: true');
     expect(flow.indexOf('sign-out.yaml')).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
+  it('puts a tablet left on its side upright before a cold sign-out', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
+    expect(flow).toMatch(/setOrientation: PORTRAIT[\s\S]*ASK: '\/portrait'[\s\S]*sign-out\.yaml/);
+  });
+
+  it('turns nothing on a warm batch, whose reset turns it', () => {
+    expect(batchFlow({ checks: ['home'], languages: ['en'], cold: false })).not.toContain(
+      '/portrait',
+    );
   });
 });
 
@@ -2818,8 +3468,7 @@ describe('a cold batch whose bundler goes away', () => {
 describe('the time a Maestro run is given', () => {
   it('grows with its checks, and stops a hung single check within minutes', () => {
     expect(runBudgetMs(1)).toBe(7 * 60_000);
-    expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
-    expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+    expect(runBudgetMs(10)).toBe(43 * 60_000);
   });
 
   it('stops a run that never exits once its budget is spent', async () => {
@@ -2956,14 +3605,16 @@ describe('the flows a batch runs', () => {
             else if (/\.ya?ml$/.test(path)) follow(reached);
           }
         };
-        for (const file of readdirSync(join(target, '_checks')))
+        for (const file of readdirSync(join(target, '_checks')).filter((name) =>
+          name.endsWith('.yaml'),
+        ))
           follow(join(target, '_checks', file));
         expect(unreached).toEqual([]);
       } finally {
         rmSync(target, { recursive: true, force: true });
       }
     }
-  });
+  }, 30_000);
 
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
@@ -3003,6 +3654,13 @@ describe('the flows a batch runs', () => {
       expect(
         existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
       ).toBe(true);
+      const joined = 'sc28178/sc28178-gone-moves-on.es.sc28178.joined.flow.yaml';
+      expect(readFileSync(join(target, '_checks/sc28178-gone-moves-on.es.yaml'), 'utf8')).toContain(
+        `file: ${joined}`,
+      );
+      const sub = readFileSync(join(target, '_checks', joined), 'utf8');
+      expect(sub).toContain(localise("'{{t:switcher.switched}}'", catalogues, 'es'));
+      expect(sub).not.toContain('{{t:');
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
@@ -3055,6 +3713,9 @@ describe('the flows a batch runs', () => {
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
       expect(signInForm).toContain('- runFlow: sign-in-typed.yaml');
       expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
+        /platform: Android\s+commands:\s+- retry:[\s\S]*?inputText: \$\{EMAIL\}\s+- copyTextFrom:\s+id: 'signIn\.email'\s+- assertTrue: \$\{maestro\.copiedText == EMAIL\}/,
+      );
+      expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
         /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
       );
       const landed = new RegExp(
@@ -3068,6 +3729,8 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).toMatch(landed);
         expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
         expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
+        expect(catalogues[code].accessPaused.badge).toMatch(landed);
+        expect(catalogues[code].accessPaused.badge).toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);
@@ -3122,13 +3785,13 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
       }
       for (const flow of ['session', 'sign-in-form']) {
-        const toSettings = new RegExp(
-          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
-            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
-            .replaceAll("''", "'")})$`,
+        const [, paused, today] = readFileSync(join(target, `batch/${flow}.yaml`), 'utf8').match(
+          /when:\s+notVisible: '(.*)'\s+visible: '(.*)'\s+file: to-settings\.yaml/,
         );
+        const pattern = (alternatives) => new RegExp(`^(?:${alternatives.replaceAll("''", "'")})$`);
         for (const code of ['en', 'es', 'fr', 'pt']) {
-          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+          expect(catalogues[code].todayScreen.tab.today).toMatch(pattern(today));
+          expect(catalogues[code].accessPaused.badge).toMatch(pattern(paused));
         }
       }
       const atSettings = new RegExp(
@@ -3193,7 +3856,7 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
 
 describe('a check that runs a sibling check', () => {
@@ -3243,6 +3906,46 @@ describe('a check that runs a sibling check', () => {
       expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
         "'Hello'",
       );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('rewrites the file of an inline runFlow map', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks', 'part'), { recursive: true });
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      'appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: \'part/state.yaml\'}\n- runFlow: { env: { STATE: first }, file: part/state.yaml }\n- runFlow: { when: { platform: iOS }, file: "part/state.yaml" }\n',
+    );
+    writeFileSync(
+      join(source, 'checks', 'part', 'state.yaml'),
+      'appId: x\n---\n- takeScreenshot: shot\n',
+    );
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en'],
+        cold: false,
+        catalogues: { en: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      const outer = readFileSync(join(checks, 'outer.en.yaml'), 'utf8');
+      expect(outer).toContain(
+        '- runFlow: { file: part/outer.en.part.state.flow.yaml, env: { STATE: first } }\n',
+      );
+      expect(outer).toContain('- runFlow: {file: part/outer.en.part.state.flow.yaml}\n');
+      expect(outer).toContain(
+        '- runFlow: { env: { STATE: first }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(outer).toContain(
+        '- runFlow: { when: { platform: iOS }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(readdirSync(join(checks, 'part'))).toEqual(['outer.en.part.state.flow.yaml']);
     } finally {
       rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });
@@ -3400,6 +4103,20 @@ describe('the database, from a checkout', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
     expect(commands).toHaveLength(6);
+  });
+
+  it('empties Redis with the database it drops, and never when keeping the data', () => {
+    const flushes = (keepData) =>
+      databaseCommands(console_, ['notification-worker'], keepData, true).filter((args) =>
+        args.includes('FLUSHALL'),
+      );
+    expect(flushes(false)).toEqual([['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']]);
+    expect(verbs(databaseCommands(console_, [], false, true)).slice(0, 3)).toEqual([
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'compose exec',
+    ]);
+    expect(flushes(true)).toEqual([]);
   });
 
   it('rebuilds the test database from nothing, even keeping the data', () => {
@@ -3965,6 +4682,39 @@ describe('waitForBoot', () => {
       waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
     ).rejects.toThrow('qa_pixel did not boot within three minutes');
   });
+
+  it('names an unauthorized device and the adb-key step, not a boot timeout', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes, 'emulator-5578');
+    const waiting = waitForBoot({
+      name: 'Soirely_QA4_Tablet',
+      booted: () => false,
+      gone: () => null,
+      pause,
+      unauthorized,
+    });
+    await expect(waiting).rejects.toThrow(
+      'Soirely_QA4_Tablet: adb here sees emulator-5578 as unauthorized',
+    );
+    await expect(waiting).rejects.toThrow('machines.md, An emulator on another computer, step 2');
+    expect(passes).toBe(30);
+  });
+
+  it('still boots a device that was unauthorized only for a while', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes < 29 ? 'emulator-5578' : null);
+    const booted = () => passes === 40;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(40);
+  });
+
+  it('counts unauthorized passes in a row, so a device that flaps still boots', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes === 16 || passes > 31 ? null : 'emulator-5578');
+    const booted = () => passes === 35;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(35);
+  });
 });
 
 describe('emulatorJournalArgs', () => {
@@ -4046,6 +4796,39 @@ describe('madeAccount', () => {
   });
 });
 
+describe('setUpLocalEmulators', () => {
+  it("raises an existing AVD's RAM when avdmanager is missing", () => {
+    const home = mkdtempSync(join(tmpdir(), 'avd-'));
+    mkdirSync(join(home, 'Soirely_QA_Phone.avd'));
+    writeFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'hw.ramSize=2048\n');
+    const tools = {
+      sdk: join(home, 'sdk'),
+      avdmanager: join(home, 'sdk/cmdline-tools/latest/bin/avdmanager'),
+      vars: { ANDROID_AVD_HOME: home },
+      env: {},
+    };
+    const phone = { name: 'Soirely_QA_Phone', device: 'pixel_8', ramMb: 4096 };
+    const tablet = { name: 'Soirely_QA_Tablet', device: 'pixel_tablet', ramMb: 4096 };
+
+    const printed = [];
+    const log = vi
+      .spyOn(console, 'log')
+      .mockImplementation((...args) => printed.push(args.join(' ')));
+    try {
+      setUpLocalEmulators(tools, [phone, tablet], ['Soirely_QA_Phone']);
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(printed).toContain(missingCmdlineTools(tools));
+    expect(printed.filter((line) => line.includes('Soirely_QA_Tablet'))).toEqual([]);
+    expect(readFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'utf8')).toBe(
+      'hw.ramSize=4096\n',
+    );
+    expect(existsSync(join(home, 'Soirely_QA_Tablet.avd'))).toBe(false);
+  });
+});
+
 describe('withAvdRam', () => {
   it('raises a lower hw.ramSize', () => {
     expect(withAvdRam('a=1\nhw.ramSize=2048\nb=2\n', 4096)).toBe('a=1\nhw.ramSize=4096\nb=2\n');
@@ -4058,5 +4841,239 @@ describe('withAvdRam', () => {
 
   it('adds the line when the config has none', () => {
     expect(withAvdRam('a=1', 4096)).toBe('a=1\nhw.ramSize=4096\n');
+  });
+});
+
+describe('staleInContainer', () => {
+  const a = 'a'.repeat(64);
+  const b = 'b'.repeat(64);
+  const host = new Map([
+    ['src/Enum/ErrorCode.php', a],
+    ['tests/Double/ScriptedMenuPicks.php', b],
+  ]);
+
+  it('finds nothing when the container serves the host bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${b}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual([]);
+  });
+
+  it('names a file served with other bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${a}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual(['tests/Double/ScriptedMenuPicks.php']);
+  });
+
+  it('names a file the container did not hash at all', () => {
+    expect(staleInContainer(host, `${a}  ./src/Enum/ErrorCode.php\n`)).toEqual([
+      'tests/Double/ScriptedMenuPicks.php',
+    ]);
+  });
+});
+
+describe('execOutput', () => {
+  it('returns the stdout of an exec that succeeded', () => {
+    expect(execOutput({ status: 0, stdout: 'ok\n', stderr: '' }, 'exec')).toBe('ok\n');
+  });
+
+  it('throws with the stderr when the exec failed, rather than reading empty stdout', () => {
+    expect(() =>
+      execOutput({ status: 1, stdout: '', stderr: 'service "api" is not running\n' }, 'exec api'),
+    ).toThrow('exec api exited 1: service "api" is not running');
+  });
+
+  it('throws when docker could not be spawned', () => {
+    expect(() =>
+      execOutput({ status: null, error: new Error('spawn docker ENOENT') }, 'exec api'),
+    ).toThrow('exec api: spawn docker ENOENT');
+  });
+});
+
+describe("a Maestro run's debug logs", () => {
+  const run = () => {
+    const out = mkdtempSync(join(tmpdir(), 'maestro-logs-'));
+    const write = (under, text, at) => {
+      mkdirSync(join(out, under), { recursive: true });
+      const path = join(out, under, 'maestro.log');
+      writeFileSync(path, text);
+      if (at) utimesSync(path, at / 1000, at / 1000);
+      return path;
+    };
+    const evidence = join(out, '.maestro/tests/2026-11-17_044334/screenshot-1.png');
+    const log = write('.maestro/tests/2026-11-17_044334', 'run log', Date.now() - 1000);
+    const batch = write('_batch/logs', 'batch log', Date.now());
+    writeFileSync(evidence, 'png');
+    writeFileSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'), '[]');
+    return { out, log, batch, evidence };
+  };
+
+  it('are deleted after a run that passed, both copies, and the evidence stays', () => {
+    const { out, log, batch, evidence } = run();
+    trimMaestroLogs(out, { failed: false });
+    expect([existsSync(log), existsSync(batch), existsSync(evidence)]).toEqual([
+      false,
+      false,
+      true,
+    ]);
+    expect(existsSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'))).toBe(true);
+  });
+
+  it('keep one copy after a run that failed, the newest', () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { failed: true });
+    expect([existsSync(log), readFileSync(batch, 'utf8')]).toEqual([false, 'batch log']);
+  });
+
+  it("keep a failed run's last 5 MB", () => {
+    const { out, batch } = run();
+    writeFileSync(
+      batch,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(batch);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
+  it("leave an earlier run's kept log to that run", () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { since: Date.now() - 500, failed: false });
+    expect([existsSync(log), existsSync(batch)]).toEqual([true, false]);
+  });
+
+  const DEVICE_LOGS = [
+    'device-simulator.log',
+    'device-logcat.txt',
+    'device-xctest.log',
+    'xctest_runner_2026-11-17_044334.log',
+  ];
+  const withDeviceLogs = (out, under, at) =>
+    DEVICE_LOGS.map((name) => {
+      const path = join(out, under, name);
+      writeFileSync(path, name);
+      utimesSync(path, at / 1000, at / 1000);
+      return path;
+    });
+
+  it("delete the device's logs after a run that passed, every copy, and the evidence stays", () => {
+    const { out, evidence } = run();
+    const logs = [
+      ...withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000),
+      ...withDeviceLogs(out, '_batch/logs', Date.now()),
+    ];
+    trimMaestroLogs(out, { failed: false });
+    expect(logs.filter(existsSync)).toEqual([]);
+    expect(existsSync(evidence)).toBe(true);
+  });
+
+  it("keep the newest of each of the device's logs after a run that failed", () => {
+    const { out } = run();
+    const older = withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000);
+    const newer = withDeviceLogs(out, '_batch/logs', Date.now());
+    trimMaestroLogs(out, { failed: true });
+    expect([older.filter(existsSync), newer.filter(existsSync)]).toEqual([[], newer]);
+  });
+
+  it("cut a failed run's device log to its last 5 MB", () => {
+    const { out } = run();
+    const [simulator] = withDeviceLogs(out, '_batch/logs', Date.now());
+    writeFileSync(
+      simulator,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(simulator);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
+  it('ask nothing of a run that left no folder', () => {
+    expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
+  });
+});
+
+describe('a batch folder', () => {
+  it('keeps the last run of the same name beside the new one', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots/first.png'), '');
+
+    const out = freshBatchDir(root, 'shots');
+
+    expect(out).toBe(join(root, '.qa/shots'));
+    expect(readdirSync(out)).toEqual([]);
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['first.png']);
+  });
+
+  it('keeps only one run back', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots.previous'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots.previous/oldest.png'), '');
+    mkdirSync(join(root, '.qa/shots'));
+    writeFileSync(join(root, '.qa/shots/second.png'), '');
+
+    freshBatchDir(root, 'shots');
+
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['second.png']);
+  });
+});
+
+describe('push', () => {
+  const sent = (messages, path = '/expo/--/api/v2/push/send') => ({
+    request: { method: 'POST', path, body: JSON.stringify(messages) },
+  });
+
+  it('reads the product messages from Smocker newest first, skipping other mocks', () => {
+    const history = [
+      sent([{ title: 'first' }]),
+      { request: { method: 'GET', path: '/nominatim/search', body: '' } },
+      sent([{ title: 'second' }, { title: 'third' }]),
+    ];
+    expect(expoPushes(history).map(({ title }) => title)).toEqual(['third', 'second', 'first']);
+  });
+
+  it('finds no push in a history of other mocks', () => {
+    const history = [
+      { request: { method: 'GET', path: '/nominatim/search', body: '' } },
+      { request: { method: 'POST', path: '/twilio/messages', body: '{}' } },
+    ];
+    expect(expoPushes(history)).toEqual([]);
+  });
+
+  it('takes a body Smocker already parsed', () => {
+    const history = [
+      { request: { method: 'POST', path: '/expo/--/api/v2/push/send', body: [{ title: 'a' }] } },
+    ];
+    expect(expoPushes(history)).toEqual([{ title: 'a' }]);
+  });
+
+  it('builds the APNs payload Expo would, with the data where expo-notifications reads it', () => {
+    expect(
+      apnsPayload({
+        to: 'ExponentPushToken[x]',
+        title: 'Your shift changed',
+        body: 'Now 18:00',
+        data: { place: '/shifts', recipient: 'u1' },
+        threadId: 'shift-1',
+        interruptionLevel: 'time-sensitive',
+      }),
+    ).toEqual({
+      aps: {
+        alert: { title: 'Your shift changed', body: 'Now 18:00' },
+        'thread-id': 'shift-1',
+        'interruption-level': 'time-sensitive',
+      },
+      body: { place: '/shifts', recipient: 'u1' },
+    });
+  });
+
+  it('leaves out what the product did not set', () => {
+    expect(apnsPayload({ title: 't', body: 'b' })).toEqual({
+      aps: { alert: { title: 't', body: 'b' } },
+      body: {},
+    });
+  });
+
+  it('sends the newest unless a number picks another', () => {
+    expect(pushPick(['--ipad'])).toBe(1);
+    expect(pushPick(['3', '--se'])).toBe(3);
+    expect(pushPick(['0'])).toBe(1);
   });
 });

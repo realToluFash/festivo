@@ -81,8 +81,8 @@ export function Ownership({
     if (!owner) return;
     let current = true;
 
-    api.members(organisation.id).then(
-      (list) => current && setMembers(list.members),
+    api.everyMember(organisation.id, 'active').then(
+      (active) => current && setMembers(active),
       () => current && setMembers(null),
     );
 

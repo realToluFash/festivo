@@ -1,6 +1,5 @@
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type Ref, type RefObject, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { keyboardTopNow } from '../../components/keyboardWatch.ts';
@@ -22,20 +21,9 @@ import { PW, TOKEN_LINE } from './PreviewWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
-/** An anchor that also knows the top of what opened it, so a menu with no room under it can sit above. */
-export interface Anchored extends Anchor {
-  top: number;
-}
-
-export function anchorAt(node: ViewInstance | null | undefined, then: (at: Anchored) => void) {
-  node?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width, top: y }));
-}
-
 const GAP = tokens.spaceXxs;
 const INSERT_WIDTH = 360;
 const SELECT_WIDTH = 360;
-/** Four rows of a word and a line, until the menu has measured its own. */
-const INSERT_GUESS = 300;
 
 function InsertRows({
   role,
@@ -82,15 +70,11 @@ export function InsertMenu({
 }: {
   open: boolean;
   phone: boolean;
-  at: Anchored | null;
+  at: Anchor | null;
   opener: Opener;
   onInsert: (token: Token) => void;
   onClose: () => void;
 }) {
-  const frame = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const [tall, setTall] = useState(INSERT_GUESS);
-
   if (phone)
     return (
       <Sheet
@@ -108,12 +92,7 @@ export function InsertMenu({
       </Sheet>
     );
 
-  // The Insert button sits at the composer's foot, so with no room under it the menu opens above it.
-  const foot = (keyboardTopNow(0) ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - GAP;
-  const place =
-    at != null && at.y + GAP + tall > foot
-      ? { below: at.top - at.y - GAP - tall, floor: at.top - GAP }
-      : { below: GAP, floor: null };
+  const keys = keyboardTopNow(0);
 
   return (
     <AnchoredMenu
@@ -122,13 +101,11 @@ export function InsertMenu({
       opener={opener}
       width={INSERT_WIDTH}
       align="start"
-      below={place.below}
-      floor={place.floor}
+      below={GAP}
+      floor={keys == null ? null : keys - GAP}
       testID="messages.insertMenu"
     >
-      <View onLayout={(event) => setTall(event.nativeEvent.layout.height + tokens.spaceXs * 2 + 2)}>
-        <InsertRows role="menuitem" inSheet={false} onInsert={onInsert} />
-      </View>
+      <InsertRows role="menuitem" inSheet={false} onInsert={onInsert} />
     </AnchoredMenu>
   );
 }
@@ -188,16 +165,18 @@ export function PreviewAsControl({
 
 function AsChoices({
   shown,
+  people,
   inSheet,
   shownRef,
   onPick,
 }: {
   shown: PreviewKey;
+  people: readonly PreviewPerson[];
   inSheet: boolean;
   shownRef: Ref<ViewInstance>;
   onPick: (who: PreviewKey) => void;
 }) {
-  return PREVIEW_AS.map((person) => {
+  return people.map((person) => {
     const on = person.key === shown;
 
     return (
@@ -231,6 +210,7 @@ export function PreviewAsChooser({
   phone,
   at,
   shown,
+  people = PREVIEW_AS,
   opener,
   onPick,
   onClose,
@@ -239,6 +219,7 @@ export function PreviewAsChooser({
   phone: boolean;
   at: Anchor | null;
   shown: PreviewKey;
+  people?: readonly PreviewPerson[];
   opener: Opener;
   onPick: (who: PreviewKey) => void;
   onClose: () => void;
@@ -263,7 +244,7 @@ export function PreviewAsChooser({
       >
         <SheetBody title={PW.previewAs} close={W.cancel} onClose={onClose}>
           <View>
-            <AsChoices shown={shown} inSheet shownRef={shownRef} onPick={onPick} />
+            <AsChoices shown={shown} people={people} inSheet shownRef={shownRef} onPick={onPick} />
           </View>
         </SheetBody>
       </Sheet>
@@ -278,7 +259,13 @@ export function PreviewAsChooser({
       align="start"
       testID="messages.previewAsMenu"
     >
-      <AsChoices shown={shown} inSheet={false} shownRef={shownRef} onPick={onPick} />
+      <AsChoices
+        shown={shown}
+        people={people}
+        inSheet={false}
+        shownRef={shownRef}
+        onPick={onPick}
+      />
     </AnchoredMenu>
   );
 }

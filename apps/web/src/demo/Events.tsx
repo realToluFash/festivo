@@ -31,6 +31,7 @@ import {
   type SampleEvent,
   type Tab,
   CLOCKS,
+  DINER,
   DISTINCT_HOSTS,
   EVENT_WORDS as W,
   PAST_PAGE,
@@ -61,13 +62,17 @@ import {
 } from './guestCounts.ts';
 import { guestsAt } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
+import { DINER_ID, liveOneDayClock, seedRunOfShow } from './liveOneDay.ts';
+import { timelineOf } from './kitchen.ts';
 import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
-import { AccessPaused, Switched } from './OrgSwitcher.tsx';
+import { isLong, nameSample } from './longName.ts';
+import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
+import { DemoRuleNotices } from './RuleNotices.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
-import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
+import { isFresh, useHeld, useSwitcherStart, useWhere } from './switcher.ts';
 
 /** Events at a desk in A · Summary first (Events-A-Desk, page 29): the list from the Today sidebar, on sample data. */
 export function Events() {
@@ -76,7 +81,7 @@ export function Events() {
   const navigate = useNavigate();
   const state = listStateOf(params.get('state'));
   useSwitcherStart();
-  const paused = usePaused();
+  const held = useHeld();
   const fresh = isFresh(useWhere());
   const [told] = useState(() => (location.state as { told?: string } | null)?.told ?? null);
   const [start] = useState(() => {
@@ -84,6 +89,7 @@ export function Events() {
 
     return listStart(state);
   });
+  nameSample(isLong(params));
 
   useEffect(() => {
     if (location.state == null) return;
@@ -93,19 +99,21 @@ export function Events() {
 
   return (
     <EventsShell
+      fit
       told={told}
       renderSide={(tell, covered) => (
         <TodaySidebar
+          phone
           events={start.first || fresh ? [] : sidebarEvents(start.emptied)}
           tell={tell}
           listing
-          person={start.asks ? VIEWERS.ana : VIEWERS.folake}
+          person={start.asks || start.reads ? VIEWERS.ana : VIEWERS.folake}
           inert={covered}
         />
       )}
     >
       {(tell) =>
-        paused ? (
+        held ? (
           <PausedPage />
         ) : (
           <EventsList
@@ -134,9 +142,11 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const now = CLOCKS.rest;
+  const [now] = useState(() => (start.liveOneDay ? liveOneDayClock('liveOneDay') : CLOCKS.rest));
   const [events] = useState<SampleEvent[]>(() => {
     if (start.first) return [];
+    seedRunOfShow(null);
+    if (start.liveOneDay) return [...sampleEvents(), DINER];
 
     return start.emptied == null ? sampleEvents() : withoutTab(sampleEvents(), start.emptied, now);
   });
@@ -278,8 +288,9 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     <div className="desk-page">
       <div className="ev-column">
         {offline && <OfflineBox onRetry={() => setOffline(false)} />}
+        <DemoRuleNotices />
         <div>
-          <ListTop tell={tell} />
+          <ListTop tell={tell} creates={!start.reads} />
           {summary != null && <p className="desk-line">{summary}</p>}
         </div>
         {start.readsGuests && (
@@ -344,6 +355,11 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                     event={byTab[tab][0]}
                     now={now}
                     level={2}
+                    reads={start.reads}
+                    {...(byTab[tab][0].id === DINER_ID && {
+                      dates: timelineOf(byTab[tab][0], now),
+                      to: `/demo/events/${DINER_ID}?state=liveOneDay`,
+                    })}
                     onStep={stepOn(byTab[tab][0])}
                   />
                   {figuresOf(byTab[tab][0])}
@@ -487,7 +503,7 @@ function PausedPage() {
   return (
     <div className="desk-page">
       <Switched />
-      <AccessPaused />
+      <HeldStandIn />
     </div>
   );
 }

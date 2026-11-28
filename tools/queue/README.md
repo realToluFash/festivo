@@ -12,7 +12,7 @@ sq status | sync [--full] | install
 ```
 
 `sq` is `python3 .git/soirely-roles/sq/sq` once installed (`python3 tools/queue/sq install`),
-so a branch switch never takes it away. Roles: pm, ux, dev, dev2, dev3, dev4, qa, qa2, qa3, lead, bm,
+so a branch switch never takes it away. Roles: pm, ux, dev, dev2, dev3, dev4, qa, qa2, qa3, qa4, qa5, lead, bm,
 ops, en, es, fr, pt, cd.
 
 ## Reads print each thing once
@@ -167,6 +167,19 @@ removed when it ends, by `worker-ended` after a timeout or a crash. A worker
 whose item is done and whose answer is written ends whatever it left running, such as a
 bundler, since `claude -p` would otherwise wait on it until `maxRuntime`. The
 design, the commands and the guards are in [docs/agents](../../docs/agents/README.md).
+
+### Signing a role in with a token
+
+A role runs as the account logged in under its `claudeConfigDir`. To sign it in with a
+`claude setup-token` token instead, put the token in the env file under the folder's name:
+for `~/.claude-soirely-3`, `CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_SOIRELY_3=...`. A plain
+`CLAUDE_CODE_OAUTH_TOKEN` there signs in every folder that has no token of its own. Claude
+uses the token ahead of the folder's login, and a folder with one needs no login. A worker
+is given its own folder's token and never another's, and `sq status` shows `token` and the
+folder's name where it showed an email, since a token names no account.
+
+The token only makes model requests: a role signed in with one cannot reach claude.ai
+connectors, so keep a login for a role that reads or publishes the design boards.
 
 ## Tests
 

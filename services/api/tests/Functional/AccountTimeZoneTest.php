@@ -12,6 +12,7 @@ use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
@@ -63,6 +64,18 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame('17 October 2026 at 13:05 UTC', $this->moment($this->registered('nobody@example.com', null), 'en'));
     }
 
+    /** The clock is two-digit in every locale, as a deadline beside it is: Spanish's own pattern writes "4:05". */
+    #[Test]
+    public function anEarlyHourKeepsItsLeadingZeroInEveryLocale(): void
+    {
+        $user = $this->registered('early@example.com', null);
+
+        foreach (['en', 'es', 'fr', 'pt'] as $locale) {
+            $moment = self::service(UserMailer::class)->moment(new DateTimeImmutable('2026-10-17 04:05:00 UTC'), $user, $locale);
+            self::assertStringContainsString('04:05 UTC', $moment, $locale);
+        }
+    }
+
     #[Test]
     public function changingItInSettingsChangesTheNextEmail(): void
     {
@@ -74,7 +87,8 @@ final class AccountTimeZoneTest extends ApiTestCase
         $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/London'], $user);
         self::assertSame('Europe/London', $this->call('GET', '/api/auth/me', null, $user)['timezone']);
 
-        self::service(PasswordChangeMailer::class)->sendChanged($this->fresh($user), new DateTimeImmutable(self::AT), null, null);
+        $fresh = $this->fresh($user);
+        self::service(EntityManagerInterface::class)->wrapInTransaction(static fn () => self::service(PasswordChangeMailer::class)->sendChanged($fresh, new DateTimeImmutable(self::AT), null, null));
         self::assertStringContainsString('14:05 BST', (string) $this->lastMail()->getTextBody());
     }
 

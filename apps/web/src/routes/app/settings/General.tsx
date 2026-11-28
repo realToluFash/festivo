@@ -1,7 +1,6 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import {
   ORGANISATION_FIELDS,
-  ORGANISATION_NAME_MAXIMUM,
   type OrganisationField,
   countryChoices,
   heldCurrencyLabel,
@@ -28,6 +27,7 @@ import {
 } from './organisationDetails.ts';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
+import { SECURITY, securityOn } from './signInRulesDesk.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { useOffline } from '../../../offline.ts';
@@ -253,7 +253,6 @@ function Editable({
           error={errors.name}
           busy={busy}
           autoComplete="organization"
-          maxLength={ORGANISATION_NAME_MAXIMUM}
           onChange={change}
         />
         <Choice
@@ -390,7 +389,11 @@ function WhyReadOnly({ organisation }: { organisation: Membership }) {
         )}
       </p>
       <p className="notice-action">
-        <Link className="link-button" to="/app/account/security">
+        <Link
+          className="link-button"
+          to={SECURITY}
+          state={securityOn(rule === 'linking' ? 'link' : 'turnOn')}
+        >
           {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
         </Link>
       </p>
@@ -419,7 +422,6 @@ function Text({
   busy,
   type = 'text',
   autoComplete,
-  maxLength,
   onChange,
 }: {
   field: Field;
@@ -429,7 +431,6 @@ function Text({
   busy: boolean;
   type?: 'text' | 'email';
   autoComplete: string;
-  maxLength?: number;
   onChange: (field: Field, value: string) => void;
 }) {
   const id = `organisation-${field}`;
@@ -438,7 +439,6 @@ function Text({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <input
-        maxLength={maxLength}
         className={error == null ? 'input' : 'input input-wrong'}
         id={id}
         type={type}

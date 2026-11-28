@@ -169,6 +169,11 @@ epic. With no argument:
    story whose Design section is settled is not — do not redraw a screen somebody has
    signed off because you would have done it differently.
 
+**A `demo only` story in `Failed QA` is yours, with no tag**: its merged demo is its whole
+build, so no developer has it, and sq wakes you with "sc-N moved to Failed QA" and lists it
+first in `sq ux queue`. Fix the demo on a `ux/` branch, as you built it; once that merges, pm
+moves the story to Ready For QA.
+
 **A story in `Failed QA` with a design finding is yours too**, when QA tags `[ux]` on it:
 Failed QA itself wakes only the developer. Read the QA report
 (`sq ux comments sc-N --all`): if a

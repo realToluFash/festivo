@@ -5,7 +5,7 @@
  * the correlation id and the error shape are decided once. Written per client,
  * each grows its own error path and most of those are never exercised.
  */
-import { type Account, ApiClient, type Problem, awaiting } from '@soirely/api-client';
+import { type Account, ApiClient, type Problem, gateOf, heldByDevice } from '@soirely/api-client';
 import { type NetworkKind, connection } from '@soirely/domain';
 import {
   type NetworkState,
@@ -19,19 +19,25 @@ import { router } from 'expo-router';
 import { appAgent } from './appAgent.ts';
 import { heardFrom, readsMe } from './colourScheme.ts';
 import { config } from './config.ts';
-import { currentLocale } from './i18n/index.ts';
+import { dateLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
 import { landingFor } from './landing.ts';
+import { leaveWithoutAsking } from './leaveHeld.ts';
 import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
 import { dropRegistration } from './pendingRegistration.ts';
 import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
+import { signInOver } from './steps/signInOver.ts';
 
-const hold = signedOutHold((why) => router.replace(signInRoute(ruleRefusal(why), true)));
+const hold = signedOutHold((why) => {
+  leaveWithoutAsking();
+  signInOver(false);
+  router.replace(signInRoute(ruleRefusal(why), true));
+});
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
-  locale: () => currentLocale(),
+  locale: () => dateLocale(),
   timeZone: () => getCalendars()[0]?.timeZone ?? null,
   userAgent: appAgent,
   device: () => installId(),
@@ -42,10 +48,13 @@ export const api = new ApiClient({
   // Held for getting back to a code with no session (sc-512); a session on this device means they went another way.
   onSignedIn: dropRegistration,
   // A refusal names the gate but not whether the email or a phone is unproved, so ask the account.
+  // A door code's account is refused everything but its events and itself (sc-72), and stays where it is.
   onGate: () => {
     void api
       .me()
-      .then((account) => router.replace(landingFor(awaiting(account))))
+      .then((account) => {
+        if (!heldByDevice(account)) router.replace(landingFor(gateOf(account)));
+      })
       .catch(() => router.replace('/'));
   },
   // Every request tells the offline band whether Soirely answered (sc-22586).

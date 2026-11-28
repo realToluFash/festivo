@@ -1,5 +1,5 @@
-import type { Membership } from '@soirely/api-client';
-import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
+import type { Membership, OutsideEvent } from '@soirely/api-client';
+import { type InvitationOutcome, stillListed, waitingInvitations } from '@soirely/domain';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
@@ -44,6 +44,13 @@ export interface Session {
   large: boolean;
   /** sc-563: the invitation whose Join is refused, the address being managed by its home organisation. */
   managed?: string | undefined;
+}
+
+/** sc-563: what You are not in an organisation offers last, nothing until the API has said whether the account is managed. */
+export function noOrganisationEnd(managed: DomainOffer['managed']): 'managed' | 'start' | null {
+  if (managed === undefined) return null;
+
+  return managed === null ? 'start' : 'managed';
 }
 
 export function waitingOf(session: Session): number {
@@ -124,6 +131,22 @@ export function noneMatch(session: Session, query: string): boolean {
   return searchable(session) && query.trim() !== '' && tilesOf(session, query).length === 1;
 }
 
+/** What a search finds, the events from outside counted with the tiles, as the web's switcher counts them (sc-68438). */
+export function foundBy(
+  session: Session,
+  events: readonly OutsideEvent[],
+  query: string,
+): { held: OutsideEvent[]; none: boolean; count: number } {
+  const typed = searchable(session) ? query : '';
+  const held = events.filter((event) => matches(event.name, typed));
+
+  return {
+    held,
+    none: noneMatch(session, typed) && held.length === 0,
+    count: tilesOf(session, typed).length - 1 + held.length,
+  };
+}
+
 export function untilIn(locale: string, day: string): string {
   return new Intl.DateTimeFormat(locale, {
     weekday: 'short',
@@ -182,6 +205,15 @@ const ABOVE_FOOT = 12;
 const SIDE = 12;
 const TAB_BAR = 64;
 const LEAST_HEIGHT = 160;
+
+/** What the drop-down hangs from once the window has turned: its opener while still drawn, else the first opener drawn in its place. */
+export function openerAfterTurn<T extends { current: unknown }>(opened: T, drawn: Iterable<T>): T {
+  if (opened.current != null) return opened;
+
+  for (const opener of drawn) if (opener.current != null) return opener;
+
+  return opened;
+}
 
 export function frameFor({
   opener,
@@ -249,7 +281,7 @@ export function switcherSession({
   role: (role: Membership['role']) => string;
 }): Session {
   const invitations = waiting.invitations.filter(
-    (invitation) => isWaiting(waiting.outcomes[invitation.id]) || answeredHere.has(invitation.id),
+    (invitation) => stillListed(waiting.outcomes[invitation.id]) || answeredHere.has(invitation.id),
   );
   const joinedHere = new Set(
     invitations.flatMap((invitation) => {
@@ -279,6 +311,8 @@ export function switcherSession({
       signedInAs: invitation.signedInAs,
     })),
     outcomes: waiting.outcomes,
+    managed:
+      expanded != null && waiting.outcomes[expanded]?.kind === 'managed' ? expanded : undefined,
     offer:
       offer.organisation == null
         ? null

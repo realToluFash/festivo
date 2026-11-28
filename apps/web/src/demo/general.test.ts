@@ -82,7 +82,7 @@ describe('General’s sample (sc-30063)', () => {
       step: 'Edit details',
     });
     expect(cardWords(SAMPLE_DETAILS, null, 'Admin', 'twoFactor')).toMatchObject({
-      lock: 'Ire Events asks owners and admins to use two-factor. Until you turn it on, you can see these but not change them.',
+      lock: 'Ire Events asks its owners and admins to use two-factor. Until you turn it on, you can see these but not change them.',
       step: 'Turn on two-factor',
     });
     expect(changesThings('Admin', 'linking')).toBe(false);

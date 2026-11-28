@@ -294,7 +294,7 @@ export function cardOf(
     return {
       says: 'Guests’ details are kept after an event',
       line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.`,
-      step: 'contact',
+      step: null,
     };
   if (page.plan !== 'enterprise')
     return {

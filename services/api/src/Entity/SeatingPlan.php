@@ -33,7 +33,7 @@ class SeatingPlan
     #[ORM\JoinColumn(nullable: false, unique: true, onDelete: 'CASCADE')]
     private Event $event;
 
-    #[ORM\Column(type: Types::STRING, length: 60, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
     private ?string $roomName;
 
     #[ORM\Column(type: Types::INTEGER)]

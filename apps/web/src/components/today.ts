@@ -24,9 +24,18 @@ export interface AgendaDay {
 
 export interface StripDay {
   weekday: string;
+  /** The narrow weekday, one letter, written at 360 px and narrower and in Portuguese at every width (sc-61548). */
+  narrow: string;
+  /** The full weekday, which a screen reader hears where the letter shows. */
+  spoken: string;
   number: string;
   today: boolean;
   dots: ShownEvent[];
+}
+
+/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every width, whatever the region (sc-61548). */
+export function lettersAtEveryWidth(language: string): boolean {
+  return language.split('-')[0] === 'pt';
 }
 
 export interface StripBar {
@@ -79,6 +88,17 @@ export interface Now {
   ends: string;
 }
 
+export interface Need {
+  /** Unique among a list's rows: a milestone has no id, so its event, area, moment and title. */
+  key: string;
+  event: ShownEvent;
+  title: string;
+  due: string;
+  late: boolean;
+  /** The milestone's action, labelled as the API gives it; null when it has none. */
+  action: { label: string; link: string } | null;
+}
+
 export interface Moment {
   kind: 'plan' | 'day' | 'quiet' | 'first';
   /** False draws only what the product can show today, from the events' own dates. */
@@ -87,6 +107,8 @@ export interface Moment {
   hello: string;
   lead: string | null;
   sub: string;
+  /** Needs you (sc-61015): null on a first run and while nothing has loaded; empty when nothing needs the reader. */
+  needs: Need[] | null;
   days: StripDay[];
   bars: StripBar[];
   agenda: AgendaDay[];

@@ -1,4 +1,5 @@
-import { invitationWording, refusalBody } from '@soirely/domain';
+import type { OutsideEvent } from '@soirely/api-client';
+import { invitationWording } from '@soirely/domain';
 import { useIsFocused } from 'expo-router';
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,7 @@ import {
   type TextInputInstance,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -26,7 +28,7 @@ import {
   type Tile,
   cellWidth,
   columnsFor,
-  noneMatch,
+  foundBy,
   rowsOf,
   scrollToShow,
   searchable,
@@ -36,6 +38,7 @@ import {
 } from '../kit/orgSwitcher.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { answersStack, answerWidth } from '../layout/pillFit.ts';
+import { dotKept, labelStart } from '../layout/textSize.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { fadeAway, glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -44,8 +47,10 @@ import { useModalOpen } from '../updateRequired.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Initials } from './Initials.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { Notice } from './Notice.tsx';
 import { OrgMark } from './OrgMark.tsx';
+import { OutsideEventsGroup } from './OutsideRows.tsx';
 import { useReadOut, useSendingWords } from './ReadOut.tsx';
 import {
   SETTLED_MS,
@@ -57,8 +62,8 @@ import {
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Pill, TYPE } from './SettingsParts.tsx';
 import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
-import { Text, type TextHandle } from './Text.tsx';
-import { MeasuredWords } from './Title.tsx';
+import { Text, type TextHandle, TitleCap } from './Text.tsx';
+import { MeasuredWords, WholeWords } from './Title.tsx';
 
 const GROW_FROM = 0.92;
 const CARET = 16;
@@ -119,6 +124,8 @@ export function OrgDropDown({
   back,
   email,
   managed,
+  events = [],
+  onEvent = () => undefined,
   onClose,
   onPick,
   onCreate,
@@ -136,6 +143,9 @@ export function OrgDropDown({
   email: string;
   /** sc-563's banner, in place of the answers for the invitation `session.managed` names. */
   managed?: ReactNode;
+  /** Events from outside (sc-68438): a member's grants on other organisations' events, between the organisations and the rest. */
+  events?: readonly OutsideEvent[];
+  onEvent?: (eventId: string) => void;
 }) {
   const { t } = useTranslation();
   const here = useIsFocused();
@@ -151,6 +161,7 @@ export function OrgDropDown({
   const scroller = useRef<ScrollViewInstance>(null);
   const seen = useRef({ offset: 0, viewport: 0 });
   const shownFor = useRef<string | null>(null);
+  const panel = useRef<ViewInstance>(null);
   const [typed, setTyped] = useState(session.query);
   const [cleared, setCleared] = useState(0);
   const [under, setUnder] = useState(false);
@@ -200,8 +211,7 @@ export function OrgDropDown({
 
   const query = searchable(session) ? typed : '';
   const tiles = tilesOf(session, query);
-  const none = noneMatch(session, query);
-  const count = tiles.length - 1;
+  const { held, none, count } = foundBy(session, events, query);
   const typedWords = query.trim();
   useReadOut(
     typedWords === ''
@@ -214,7 +224,19 @@ export function OrgDropDown({
 
   const across = large ? 1 : columnsFor(frame.width);
   const cell = large ? 0 : cellWidth(frame.width);
-  const rows = rowsOf(tiles, across);
+  const groups =
+    held.length === 0
+      ? [rowsOf(tiles, across)]
+      : [
+          rowsOf(
+            tiles.filter((tile) => tile.kind === 'place'),
+            across,
+          ),
+          rowsOf(
+            tiles.filter((tile) => tile.kind !== 'place'),
+            across,
+          ),
+        ];
 
   const clear = () => {
     setTyped('');
@@ -223,6 +245,11 @@ export function OrgDropDown({
   const reveal = (top: number, bottom: number) => {
     const to = scrollToShow({ top, bottom, ...seen.current });
     if (to != null) scroller.current?.scrollTo({ y: to, animated: !reduced });
+  };
+  const revealPanel = () => {
+    const content = scroller.current?.getInnerViewRef();
+    if (content == null) return;
+    panel.current?.measureLayout(content, (_x, y, _width, height) => reveal(y, y + height));
   };
   const answerWith = (invite: Invite, yes: boolean) => {
     setAnswered({});
@@ -340,97 +367,116 @@ export function OrgDropDown({
                 </View>
               </View>
             )}
-            <View style={large && styles.list}>
-              {rows.map((row, index) => {
-                const column = row.findIndex(
-                  (tile) =>
-                    tile.kind !== 'place' &&
-                    tile.kind !== 'create' &&
-                    tileKey(tile) === session.expanded,
-                );
-                const opened = row[column];
-                const hasCurrent = row.some((tile) => tile.kind === 'place' && tile.current);
+            {groups.map((rows, group) => (
+              <Fragment key={group}>
+                {group === 1 && (
+                  <View style={styles.outside}>
+                    <OutsideEventsGroup
+                      title={t('outsideEvent.fromOutside')}
+                      events={held}
+                      here={null}
+                      idPrefix="switcher.outside"
+                      onEvent={(event) => onEvent(event.id)}
+                    />
+                  </View>
+                )}
+                <View style={large && styles.list}>
+                  {rows.map((row, index) => {
+                    const column = row.findIndex(
+                      (tile) =>
+                        tile.kind !== 'place' &&
+                        tile.kind !== 'create' &&
+                        tileKey(tile) === session.expanded,
+                    );
+                    const opened = row[column];
+                    const hasCurrent = row.some((tile) => tile.kind === 'place' && tile.current);
 
-                return (
-                  <Fragment key={row.map(tileKey).join(':')}>
-                    <View
-                      style={[styles.row, !large && index > 0 && styles.rowGap]}
-                      onLayout={(event: LayoutChangeEvent) => {
-                        if (!hasCurrent || shownFor.current != null) return;
-                        shownFor.current = session.current;
-                        const { y, height } = event.nativeEvent.layout;
-                        reveal(y, y + height);
-                      }}
-                    >
-                      {row.map((tile) => (
-                        <Cell
-                          key={tileKey(tile)}
-                          tile={tile}
-                          width={large ? null : cell}
-                          sizes={sizes}
-                          open={tileKey(tile) === session.expanded}
-                          ref={tileOpener(tileKey(tile))}
-                          onPress={() => {
-                            if (tile.kind === 'create') onCreate();
-                            else if (tile.kind === 'place' && tile.current) onClose();
-                            else if (tile.kind === 'place') onPick(tile.place.id);
-                            else if (tile.kind === 'joined') onPick(joinedId(session, tile));
-                            else onExpand(tileKey(tile));
-                          }}
-                        />
-                      ))}
-                    </View>
-                    {opened != null && opened.kind !== 'place' && opened.kind !== 'create' && (
-                      <View
-                        style={styles.panel}
-                        onLayout={(event) => {
-                          const id = tileKey(opened);
-                          if (shownFor.current === id) return;
-                          shownFor.current = id;
-                          const { y, height } = event.nativeEvent.layout;
-                          reveal(y, y + height);
-                        }}
-                        testID={`switcher.panel.${tileKey(opened)}`}
-                      >
+                    return (
+                      <Fragment key={row.map(tileKey).join(':')}>
                         <View
-                          style={[
-                            styles.caret,
-                            {
-                              left: large
-                                ? tokens.spaceLg + sizes.tile / 2 - CARET / 2
-                                : column * (cell + CELL_GAP) + cell / 2 - CARET / 2,
-                            },
-                          ]}
-                        />
-                        {opened.kind === 'offer' ? (
-                          <OfferPanel
-                            offer={opened.offer}
-                            email={email}
-                            sizes={sizes}
-                            answered={answered}
-                            busy={asking}
-                            onAsk={ask}
-                            onNotNow={() => notNow(tileKey(opened))}
-                          />
-                        ) : (
-                          <InvitationPanel
-                            invite={opened.invite}
-                            outcome={opened.kind === 'invitation' ? opened.outcome : undefined}
-                            joined={opened.kind === 'joined'}
-                            managed={session.managed === opened.invite.id ? managed : undefined}
-                            sizes={sizes}
-                            locale={locale}
-                            answered={answered}
-                            onAnswer={(yes) => answerWith(opened.invite, yes)}
-                            onOpen={() => onPick(joinedId(session, opened))}
-                          />
+                          style={[styles.row, !large && index > 0 && styles.rowGap]}
+                          onLayout={(event: LayoutChangeEvent) => {
+                            if (!hasCurrent || shownFor.current != null) return;
+                            shownFor.current = session.current;
+                            const { y, height } = event.nativeEvent.layout;
+                            reveal(y, y + height);
+                          }}
+                        >
+                          {row.map((tile) => (
+                            <Cell
+                              key={tileKey(tile)}
+                              tile={tile}
+                              width={large ? null : cell}
+                              sizes={sizes}
+                              open={tileKey(tile) === session.expanded}
+                              ref={tileOpener(tileKey(tile))}
+                              onPress={() => {
+                                if (tile.kind === 'create') onCreate();
+                                else if (tile.kind === 'place' && tile.current) onClose();
+                                else if (tile.kind === 'place') onPick(tile.place.id);
+                                else if (tile.kind === 'joined') onPick(joinedId(session, tile));
+                                else onExpand(tileKey(tile));
+                              }}
+                            />
+                          ))}
+                        </View>
+                        {opened != null && opened.kind !== 'place' && opened.kind !== 'create' && (
+                          <View
+                            style={styles.panel}
+                            ref={panel}
+                            onLayout={() => {
+                              const refused =
+                                managed != null &&
+                                opened.kind !== 'offer' &&
+                                session.managed === opened.invite.id;
+                              const id = `${tileKey(opened)}${refused ? ':managed' : ''}`;
+                              if (shownFor.current === id) return;
+                              shownFor.current = id;
+                              revealPanel();
+                            }}
+                            testID={`switcher.panel.${tileKey(opened)}`}
+                          >
+                            <View
+                              style={[
+                                styles.caret,
+                                {
+                                  left: large
+                                    ? tokens.spaceLg + sizes.tile / 2 - CARET / 2
+                                    : column * (cell + CELL_GAP) + cell / 2 - CARET / 2,
+                                },
+                              ]}
+                            />
+                            {opened.kind === 'offer' ? (
+                              <OfferPanel
+                                offer={opened.offer}
+                                email={email}
+                                sizes={sizes}
+                                answered={answered}
+                                busy={asking}
+                                onAsk={ask}
+                                onNotNow={() => notNow(tileKey(opened))}
+                              />
+                            ) : (
+                              <InvitationPanel
+                                invite={opened.invite}
+                                outcome={opened.kind === 'invitation' ? opened.outcome : undefined}
+                                joined={opened.kind === 'joined'}
+                                managed={session.managed === opened.invite.id ? managed : undefined}
+                                sizes={sizes}
+                                locale={locale}
+                                answered={answered}
+                                onAnswer={(yes) => answerWith(opened.invite, yes)}
+                                onOpen={() => onPick(joinedId(session, opened))}
+                              />
+                            )}
+                          </View>
                         )}
-                      </View>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </View>
+                      </Fragment>
+                    );
+                  })}
+                </View>
+              </Fragment>
+            ))}
             <Text
               ref={remembered}
               size={sizes.note}
@@ -593,57 +639,130 @@ function Cell({
               lit ? tokens.colorAccentTint : open || pressed ? tokens.colorInset : tokens.colorCard
             }
           />
-          <View style={beside ? styles.entryWords : styles.cellWords}>
-            <Text
-              size={sizes.name}
-              weight="semibold"
-              numberOfLines={NAME_LINES}
-              accessible={false}
-              maxFontSizeMultiplier={cap}
-              style={[
-                beside ? styles.left : styles.centred,
-                { lineHeight: sizes.name * (beside ? 1.25 : 1.3) },
-                tile.kind === 'create' && styles.violet,
-              ]}
-            >
-              {words.name}
-            </Text>
-            {words.line != null && (
+          {sizes === ROWS ? (
+            <WholeRowWords tile={tile} name={words.name} line={words.line} lit={lit} />
+          ) : (
+            <View style={beside ? styles.entryWords : styles.cellWords}>
               <Text
-                size={sizes.line}
-                weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
-                accessible={false}
-                maxFontSizeMultiplier={cap}
-                style={[
-                  beside ? styles.left : styles.centred,
-                  styles.line,
-                  { lineHeight: sizes.line * 1.35 },
-                  tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
-                ]}
-              >
-                {words.line}
-              </Text>
-            )}
-            {lit && (
-              <Text
-                size={sizes.line}
+                size={sizes.name}
                 weight="semibold"
+                numberOfLines={NAME_LINES}
                 accessible={false}
                 maxFontSizeMultiplier={cap}
                 style={[
                   beside ? styles.left : styles.centred,
-                  styles.line,
-                  styles.violet,
-                  { lineHeight: sizes.line * 1.35 },
+                  { lineHeight: sizes.name * (beside ? 1.25 : 1.3) },
+                  tile.kind === 'create' && styles.violet,
                 ]}
               >
-                {t('switcher.current')}
+                {words.name}
               </Text>
-            )}
-          </View>
+              {words.line != null && (
+                <Text
+                  size={sizes.line}
+                  weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
+                  accessible={false}
+                  maxFontSizeMultiplier={cap}
+                  style={[
+                    beside ? styles.left : styles.centred,
+                    styles.line,
+                    { lineHeight: sizes.line * 1.35 },
+                    tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
+                  ]}
+                >
+                  {words.line}
+                </Text>
+              )}
+              {lit && (
+                <Text
+                  size={sizes.line}
+                  weight="semibold"
+                  accessible={false}
+                  maxFontSizeMultiplier={cap}
+                  style={[
+                    beside ? styles.left : styles.centred,
+                    styles.line,
+                    styles.violet,
+                    { lineHeight: sizes.line * 1.35 },
+                  ]}
+                >
+                  {t('switcher.current')}
+                </Text>
+              )}
+            </View>
+          )}
         </>
       )}
     </Pressable>
+  );
+}
+
+/** A row's words from AX1 (sc-92465): every line wraps between words with no line limit, the name stepping down only until its widest word fits, never under its default size; the role line and Current each step alone, never larger than the name. A word too wide even at the default size breaks where its line is full. */
+function WholeRowWords({
+  tile,
+  name,
+  line,
+  lit,
+}: {
+  tile: Tile;
+  name: string;
+  line: string | null;
+  lit: boolean;
+}) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const [nameAt, setNameAt] = useState<number | null>(null);
+  const under = nameAt ?? ROWS.name * fontScale;
+
+  return (
+    <View
+      style={styles.entryWords}
+      onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <TitleCap.Provider value={null}>
+        <WholeWords
+          size={ROWS.name}
+          start={labelStart(ROWS.name, fontScale, Infinity)}
+          room={room}
+          breakAfterHyphens
+          weight="semibold"
+          accessible={false}
+          onDrawn={setNameAt}
+          style={[styles.left, tile.kind === 'create' && styles.violet]}
+        >
+          {name}
+        </WholeWords>
+        {line != null && (
+          <WholeWords
+            size={ROWS.line}
+            start={labelStart(ROWS.line, fontScale, under)}
+            room={room}
+            weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
+            accessible={false}
+            style={[
+              styles.left,
+              styles.line,
+              tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
+            ]}
+          >
+            {dotKept(line)}
+          </WholeWords>
+        )}
+        {lit && (
+          <WholeWords
+            size={ROWS.line}
+            start={labelStart(ROWS.line, fontScale, under)}
+            room={room}
+            weight="semibold"
+            accessible={false}
+            style={[styles.left, styles.line, styles.violet]}
+          >
+            {t('switcher.current')}
+          </WholeWords>
+        )}
+      </TitleCap.Provider>
+    </View>
   );
 }
 
@@ -871,30 +990,18 @@ function InvitationPanel({
         </View>
       ) : outcome?.kind === 'refused' ? (
         <View style={styles.answerUnder}>
-          <Notice
-            tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
-            mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
-            title={t(`invitations.refused.${outcome.refusal}.word`)}
-            body={t(refusalBody(outcome.refusal, invite.invitedBy != null), {
-              inviter,
-              organisation,
-              email: invite.email,
-              signedInAs: invite.signedInAs ?? '',
-            })}
+          <InvitationRefusalNotice
+            refusal={outcome.refusal}
+            organisation={organisation}
+            invitation={invite}
             answer={answered}
-            takesFocus
           />
         </View>
       ) : (
         <View style={styles.answerUnder}>
           {outcome?.kind === 'failed' && (
             <View style={styles.failed}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('invitations.failed')}
-                answer={answered}
-              />
+              <InvitationFailedNotice answer={answered} />
             </View>
           )}
           {!full && (
@@ -1066,6 +1173,7 @@ function OfferPanel({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  outside: { marginVertical: tokens.spaceMd },
   drop: {
     position: 'absolute',
     borderWidth: 1,

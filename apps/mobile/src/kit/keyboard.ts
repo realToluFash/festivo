@@ -43,6 +43,42 @@ export function barFits({ room, field, bar, margin }: DockRoom): boolean {
   return field + 2 * margin + bar <= room;
 }
 
+export interface DockSizes {
+  shown: number;
+  foot: number;
+  field: number;
+  group: number;
+}
+
+/** Whether the bar leaves the keys for the page: with the keys up, when the focused input or its group would not fit above it. */
+export function dockInline({
+  keysUp,
+  hasFoot,
+  sizes,
+  inline,
+  margin,
+}: {
+  keysUp: boolean;
+  hasFoot: boolean;
+  sizes: DockSizes;
+  inline: boolean;
+  margin: number;
+}): boolean {
+  const field = Math.max(sizes.field, sizes.group);
+
+  return (
+    hasFoot &&
+    keysUp &&
+    field > 0 &&
+    !barFits({
+      room: sizes.shown + (inline ? 0 : sizes.foot),
+      field,
+      bar: sizes.foot,
+      margin,
+    })
+  );
+}
+
 export interface ScrollInsets {
   automaticallyAdjustKeyboardInsets: boolean;
   contentInset: { bottom: number } | undefined;
@@ -197,6 +233,17 @@ export function offsetIntoView({
   if (contentY < offset) return Math.max(0, contentY - margin);
 
   return Math.max(0, Math.min(contentY + height + margin - shown, contentY - margin));
+}
+
+/** As offsetIntoView, except that a view taller than the sight shows its foot, where a field typed in grows and its error comes; null when the foot is already in sight. */
+export function offsetShowingFoot(at: InScroll): number | null {
+  const { contentY, height, offset, shown, margin } = at;
+  if (height + 2 * margin <= shown) return offsetIntoView(at);
+
+  const foot = contentY + height + margin;
+  if (foot >= offset && foot <= offset + shown) return null;
+
+  return Math.max(0, foot - shown);
 }
 
 /** Whether no part of a view is in sight. TalkBack's focus rests on a view partly in sight, and a scroll under it moves that focus on (sc-18588). */

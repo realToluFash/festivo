@@ -23,15 +23,15 @@ appId: host.exp.Exponent
     direction: DOWN
 - takeScreenshot: over
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - waitForAnimationToEnd
 - takeScreenshot: start-tapped
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueName'
+      id: 'eventForm.venue.name'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.venueName'
+    id: 'eventForm.venue.name'
 - inputText: Eko Hotel
 - takeScreenshot: keyboard-venue
 - hideKeyboard

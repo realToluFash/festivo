@@ -8,10 +8,19 @@ use App\Domain\Guest\GuestAdder;
 use App\Domain\Guest\GuestEditor;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\Model\CompanionChoice;
+use App\Domain\Guest\Model\GroupChoice;
+use App\Domain\Guest\Model\PageReply;
+use App\Domain\Guest\Model\PlaceChoice;
+use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Guest\Reply\GuestAnswers;
+use App\Domain\Guest\Reply\GuestRepliesReopener;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\GuestReply;
+use App\Enum\GuestReplyHow;
 use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
@@ -21,6 +30,7 @@ use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use App\Repository\GuestRepository;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -43,6 +53,8 @@ final readonly class GuestsController
         private MembershipDirectoryInterface $membershipDirectory,
         private GuestSerialiser $guestSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private GuestRepliesReopener $guestRepliesReopener,
+        private GuestAnswers $guestAnswers,
     ) {
     }
 
@@ -55,7 +67,7 @@ final readonly class GuestsController
         return new JsonResponse($this->guestSerialiser->list($event, $this->seesContacts($event)));
     }
 
-    /** Refused `validation_failed` on each field at once, and 409 `guest_already_listed` until `allowDuplicate`. */
+    /** Refused `validation_failed` on each field at once, and 409 `guest_already_listed` until `allowDuplicate`. A `group` by `name` is the group already called that, or one made with the guest (sc-3775); with `create` it is refused `validation.guest_group_name_taken` instead of joined (sc-5519). */
     #[Route('/api/events/{eventId}/guests', name: 'guests_add', methods: ['POST'])]
     #[InEvent(Permission::GuestsManage)]
     public function add(Request $request, string $eventId): JsonResponse
@@ -70,7 +82,12 @@ final readonly class GuestsController
             ]))),
             'companions' => Type\optional(Type\vec(Type\shape([
                 'fullName' => Type\optional(Type\nullable(Type\string())),
+                'needs' => Type\optional(Type\nullable(self::needsShape())),
             ]))),
+            'needs' => Type\optional(Type\nullable(self::needsShape())),
+            'language' => Type\optional(Type\nullable(Type\string())),
+            'greetAs' => Type\optional(Type\nullable(Type\string())),
+            'group' => Type\optional(Type\nullable(self::groupShape())),
             'allowDuplicate' => Type\optional(Type\bool()),
         ]));
 
@@ -79,6 +96,11 @@ final readonly class GuestsController
             $body['email'] ?? null,
             $body['mobile'] ?? null,
             Vec\map($body['companions'] ?? [], static fn (array $companion): ?string => $companion['fullName'] ?? null),
+            $body['language'] ?? null,
+            $body['needs'] ?? null,
+            Vec\map($body['companions'] ?? [], static fn (array $companion): ?array => $companion['needs'] ?? null),
+            self::groupChoice($body['group'] ?? null),
+            $body['greetAs'] ?? null,
         );
         $guest = $this->guestAdder->add($event, $new, $this->user(), $body['allowDuplicate'] ?? false);
         $added = Iter\search($this->guestSerialiser->list($event, contacts: true)['guests'], static fn (array $row): bool => $row['id'] === $guest->getId()->toRfc4122());
@@ -95,7 +117,7 @@ final readonly class GuestsController
         return $this->tagged($this->guest($event, $guestId), $this->seesContacts($event));
     }
 
-    /** The whole guest: a companion without an `id` is added and one left out removed. Needs If-Match (sc-3587). */
+    /** The whole guest: a companion without an `id` is added and one left out removed; a body without `language`, `greetAs`, `needs` or `group`, or a companion without `needs`, keeps them, since a form that does not show a field never changes it. Needs If-Match (sc-3587). */
     #[Route('/api/events/{eventId}/guests/{guestId}', name: 'guests_update', methods: ['PUT'])]
     #[InEvent(Permission::GuestsManage)]
     public function update(Request $request, string $eventId, string $guestId): JsonResponse
@@ -111,7 +133,12 @@ final readonly class GuestsController
             'companions' => Type\optional(Type\vec(Type\shape([
                 'id' => Type\optional(Type\nullable(Type\string())),
                 'fullName' => Type\optional(Type\nullable(Type\string())),
+                'needs' => Type\optional(Type\nullable(self::needsShape())),
             ]))),
+            'needs' => Type\optional(Type\nullable(self::needsShape())),
+            'language' => Type\optional(Type\nullable(Type\string())),
+            'greetAs' => Type\optional(Type\nullable(Type\string())),
+            'group' => Type\optional(Type\nullable(self::groupShape())),
             'allowDuplicate' => Type\optional(Type\bool()),
         ]));
         $companions = $body['companions'] ?? [];
@@ -121,6 +148,11 @@ final readonly class GuestsController
             $body['email'] ?? null,
             $body['mobile'] ?? null,
             Vec\map($companions, static fn (array $companion): ?string => $companion['fullName'] ?? null),
+            Iter\contains_key($body, 'language') ? $body['language'] : $guest->getLanguage(),
+            $body['needs'] ?? null,
+            Vec\map($companions, static fn (array $companion): ?array => $companion['needs'] ?? null),
+            Iter\contains_key($body, 'group') ? self::groupChoice($body['group']) : null,
+            Iter\contains_key($body, 'greetAs') ? $body['greetAs'] : $guest->getGreetAs(),
         );
         $ids = Vec\map($companions, static fn (array $companion): ?string => $companion['id'] ?? null);
 
@@ -130,7 +162,53 @@ final readonly class GuestsController
         );
     }
 
-    /** A hub token for this event's guest list alone; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */
+    /** Let them change their reply (sc-3780): this guest may answer after Reply by, until the start; refused 409 `replies_open` while replies are open. */
+    #[Route('/api/events/{eventId}/guests/{guestId}/reopen-replies', name: 'guests_reopen_replies', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function reopenReplies(string $eventId, string $guestId): JsonResponse
+    {
+        return $this->tagged($this->guestRepliesReopener->reopen($this->guest($this->event($eventId), $guestId), $this->user()), contacts: true);
+    }
+
+    /** Record a reply (sc-3787): the guest's reply as a host heard it, marked as recorded by them, under the guest page's rules (GuestAnswers). Refused 422 without an answer or how they told you, and 409 `reply_is_theirs` over the guest's own answer unless `replace`. `companions` ticks each place, named or not, by its id. */
+    #[Route('/api/events/{eventId}/guests/{guestId}/record-reply', name: 'guests_record_reply', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function recordReply(Request $request, string $eventId, string $guestId): JsonResponse
+    {
+        $guest = $this->guest($this->event($eventId), $guestId);
+        $body = Input::body($request, Type\shape([
+            'answer' => Type\optional(Type\nullable(Type\string())),
+            'how' => Type\optional(Type\nullable(Type\string())),
+            'companions' => Type\optional(Type\vec(Type\shape(['id' => Type\string(), 'coming' => Type\bool()]))),
+            'replace' => Type\optional(Type\bool()),
+        ]));
+        $answer = GuestReply::tryFrom($body['answer'] ?? '');
+        $how = GuestReplyHow::tryFrom($body['how'] ?? '');
+        if (null === $answer || GuestReply::NoReply === $answer || null === $how) {
+            throw ApiException::validation([
+                ...null === $answer || GuestReply::NoReply === $answer ? [$this->guestRules->violation('answer', 'validation.guest_reply_choose')] : [],
+                ...null === $how ? [$this->guestRules->violation('how', 'validation.guest_how_choose')] : [],
+            ]);
+        }
+
+        $places = Dict\from_entries(Vec\map($this->guestRepository->findCompanionsOf($guest), static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place]));
+        $isUnnamed = static fn (array $one): bool => Iter\contains_key($places, $one['id']) && null === $places[$one['id']]->getFullName();
+        $ticks = $body['companions'] ?? [];
+        $page = new PageReply(
+            Vec\map(
+                Vec\filter($ticks, static fn (array $one): bool => !$isUnnamed($one)),
+                static fn (array $one): CompanionChoice => new CompanionChoice($one['id'], ($places[$one['id']] ?? null)?->getFullName() ?? '', ($places[$one['id']] ?? null)?->getNameKey() ?? '', $one['coming']),
+            ),
+            null,
+            Vec\map(Vec\filter($ticks, $isUnnamed), static fn (array $one): PlaceChoice => new PlaceChoice($one['id'], $one['coming'])),
+        );
+
+        $this->guestAnswers->answer($guest, $answer, $page, new RecordedReply($this->user(), $how, $body['replace'] ?? false));
+
+        return $this->tagged($guest, contacts: true);
+    }
+
+    /** A hub token for this event's guest list and its headcount; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */
     #[Route('/api/events/{eventId}/guests/subscriptions', name: 'guests_subscribe', methods: ['POST'])]
     #[InEvent(Permission::GuestsRead)]
     public function subscribe(string $eventId): JsonResponse
@@ -140,6 +218,38 @@ final readonly class GuestsController
         return new JsonResponse([
             'token' => $issued->token,
             'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
+        ]);
+    }
+
+    /** @return Type\TypeInterface<array{id?: ?string, name?: ?string, create?: bool}> */
+    private static function groupShape(): Type\TypeInterface
+    {
+        return Type\shape([
+            'id' => Type\optional(Type\nullable(Type\string())),
+            'name' => Type\optional(Type\nullable(Type\string())),
+            'create' => Type\optional(Type\bool()),
+        ]);
+    }
+
+    /** @param ?array{id?: ?string, name?: ?string, create?: bool} $group */
+    private static function groupChoice(?array $group): GroupChoice
+    {
+        $id = $group['id'] ?? null;
+
+        return new GroupChoice($id, null === $id ? $group['name'] ?? null : null, null === $id && ($group['create'] ?? false));
+    }
+
+    /** @return Type\TypeInterface<array{allergies?: list<string>, diet?: list<string>, access?: list<string>, otherAllergy?: ?string, otherDiet?: ?string, otherAccess?: ?string, note?: ?string}> */
+    private static function needsShape(): Type\TypeInterface
+    {
+        return Type\shape([
+            'allergies' => Type\optional(Type\vec(Type\string())),
+            'diet' => Type\optional(Type\vec(Type\string())),
+            'access' => Type\optional(Type\vec(Type\string())),
+            'otherAllergy' => Type\optional(Type\nullable(Type\string())),
+            'otherDiet' => Type\optional(Type\nullable(Type\string())),
+            'otherAccess' => Type\optional(Type\nullable(Type\string())),
+            'note' => Type\optional(Type\nullable(Type\string())),
         ]);
     }
 

@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import i18next, { type TFunction } from 'i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain';
@@ -7,17 +8,22 @@ import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain
 import { EventCard as ProductCard, EventThumb } from '../components/EventCard.tsx';
 import { EventRow as ProductRow } from '../components/EventsList.tsx';
 import { Toast } from '../components/Toast.tsx';
+import { type Told, ActionToast } from './ActionToast.tsx';
 import { type Shown, howSoon, rowLine, rowTag, shownEvent } from '../eventsList.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
   type SampleEvent,
   type Shown as DemoShown,
   type Tab,
+  EVENT_WORDS,
   phaseWord,
   tagKind,
+  venueLine,
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
+import { stepless } from './liveOneDay.ts';
+import './liveOneDay.css';
 import { LayersContext } from '../layers.ts';
 import { DeskSearch } from './Search.tsx';
 import { Chevron, RowWords, Tag } from '../components/SettingsParts.tsx';
@@ -27,19 +33,26 @@ import '../components/SettingsParts.css';
 import '../components/eventPage.css';
 import './events.css';
 import './kitchen.css';
+import './phone.css';
 
 /** The desk Events sits in: a sidebar, the main card, the layers dialogs open on, and a toast. */
 export function EventsShell({
   renderSide,
   told: first = null,
+  fit = false,
   children,
 }: {
   renderSide: (tell: Tell, covered: boolean) => ReactNode;
-  told?: string | null;
-  children: (tell: Tell) => ReactNode;
+  told?: string | Told | null;
+  /** Fits a phone's window at 40rem and under (sc-57468): Events and Calendar. */
+  fit?: boolean;
+  children: (tell: Tell, show: (told: Told) => void) => ReactNode;
 }) {
-  const [told, setTold] = useState<string | null>(first);
-  const tell = useCallback<Tell>((words) => setTold(words), []);
+  const [told, setTold] = useState<Told | null>(() =>
+    typeof first === 'string' ? { words: first } : first,
+  );
+  const tell = useCallback<Tell>((words) => setTold({ words }), []);
+  const show = useCallback((next: Told) => setTold(next), []);
   const [stack, setStack] = useState<readonly string[]>([]);
   const push = useCallback(
     (id: string) => setStack((now) => [...now.filter((one) => one !== id), id]),
@@ -52,15 +65,21 @@ export function EventsShell({
 
   return (
     <LayersContext value={layers}>
-      <div className="today desk ev">
+      <div className={fit ? 'today desk ev dp-fit fits-phone' : 'today desk ev'}>
         <DeskSearch tell={tell}>
           {renderSide(tell, covered)}
           <main id="content" className="desk-main" inert={covered}>
-            {children(tell)}
+            {children(tell, show)}
           </main>
           <div ref={setHost} className="desk-layers" />
         </DeskSearch>
-        {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
+        {told?.action != null ? (
+          <ActionToast key={told.words} told={told} onClose={() => setTold(null)} />
+        ) : (
+          told != null && (
+            <Toast key={told.words} words={told.words} onClose={() => setTold(null)} />
+          )
+        )}
       </div>
     </LayersContext>
   );
@@ -75,15 +94,20 @@ const milestoneAt = (at: string, title: string): Milestone => ({
   action: null,
 });
 
-/** A sample event as the product's list draws one: its place with its city, its start and end as its milestones. */
-export function shownSample(event: SampleEvent, now: Date): Shown {
+/** A sample event as the product's list draws one: its place with its city, its start and end as its milestones unless its `dates` are given. */
+export function shownSample(
+  event: SampleEvent,
+  now: Date,
+  dates: readonly Milestone[] | null = null,
+): Shown {
   return {
     ...shownEvent(
       {
         ...event,
-        place: event.venue == null ? null : `${event.venue.name}, ${event.venue.city}`,
+        place: event.venue == null ? null : venueLine(event.venue),
+        city: null,
         photo: event.photo ? 'standIn' : null,
-        milestones: [
+        milestones: dates ?? [
           milestoneAt(event.startsAt, `${event.name} starts`),
           milestoneAt(event.endsAt, `${event.name} ends`),
         ],
@@ -101,33 +125,83 @@ export function Thumb({ event, size }: { event: SampleEvent; size: 28 | 40 | 48 
   );
 }
 
-/** The product's cover card on a sample event, every step offered, as the owner it is shown to. */
+/** sc-50996: a reader without events.manage reads the fact and who can act, under the product's own keys. */
+const READER_LINES: Readonly<Record<string, string>> = {
+  'events.nextChangeDates': EVENT_WORDS.endPassedReader,
+  'events.nextResume': EVENT_WORDS.nextResumeReader,
+};
+
+function readerWords(language: string) {
+  const local = i18next.cloneInstance({ lng: language });
+  const t = local.t.bind(local) as unknown as (...args: unknown[]) => string;
+  const read = (...args: unknown[]) =>
+    (typeof args[0] === 'string' ? READER_LINES[args[0]] : undefined) ?? t(...args);
+
+  local.t = read as unknown as TFunction;
+
+  return local;
+}
+
+/** The product's cover card on a sample event, every step offered to the owner it is shown to and none to a reader (sc-50996). */
 export function EventCard({
   event,
   now,
   level,
   milestone = null,
+  reads = false,
+  dates = null,
+  to = `/demo/events/${event.id}`,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
+  /** Its dates as the server serves them, where they are not the start and end (sc-93858). */
+  dates?: readonly Milestone[] | null;
+  /** On a list, where its name leads. */
+  to?: string;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
+  reads?: boolean;
   onStep: (does: CardStepAction) => void;
 }) {
-  return (
+  const { i18n } = useTranslation();
+  const language = i18n.language;
+  const words = useMemo(() => (reads ? readerWords(language) : null), [reads, language]);
+  const shown = shownSample(event, now, dates);
+  const held = stepless(shown.phase, shown.milestones, now, event.status === 'ended');
+  const product = (
     <ProductCard
-      event={shownSample(event, now)}
+      event={shown}
       now={now}
       locale={dateLocale()}
       level={level}
-      {...(level === 2 && { to: `/demo/events/${event.id}` })}
+      {...(level === 2 && { to })}
       nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
-      takes={() => true}
+      takes={() => !reads}
+      held={held}
       onStep={(step) => onStep(step.action)}
     />
   );
+  const card = held ? (
+    <div className="lod-held">
+      <div className="lod-unseen">
+        <ProductCard
+          event={{ ...shown, phase: 'finished' }}
+          now={now}
+          locale={dateLocale()}
+          level={level}
+          takes={() => !reads}
+          onStep={() => undefined}
+        />
+      </div>
+      {product}
+    </div>
+  ) : (
+    product
+  );
+
+  return words == null ? card : <I18nextProvider i18n={words}>{card}</I18nextProvider>;
 }
 
 function MilestoneStep({ milestone }: { milestone: CardMilestone }) {

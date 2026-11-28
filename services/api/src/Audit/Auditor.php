@@ -7,7 +7,9 @@ namespace App\Audit;
 use App\Entity\AuditEntry;
 use App\Enum\Actor;
 use App\Http\Listener\CorrelationIdListener;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 
@@ -16,6 +18,7 @@ final readonly class Auditor
     public function __construct(
         private EntityManagerInterface $entityManager,
         private RequestStack $requestStack,
+        private AuditScopes $auditScopes,
     ) {
     }
 
@@ -28,8 +31,11 @@ final readonly class Auditor
         ?Uuid $actorId = null,
         ?string $actorLabel = null,
         array $changes = [],
+        ?DateTimeImmutable $occurredAt = null,
     ): AuditEntry {
         $request = $this->requestStack->getCurrentRequest();
+        $scope = $this->auditScopes->of($subjectType, $subjectId);
+        $userAgent = $request?->headers->get('User-Agent');
 
         $entry = new AuditEntry(
             $actorType,
@@ -41,6 +47,12 @@ final readonly class Auditor
             $changes,
             $request?->getClientIp(),
             $this->correlationId($request),
+            $occurredAt,
+            $scope->organisationId,
+            $scope->eventId,
+            null === $scope->eventName ? null : Str\truncate($scope->eventName, 0, 240),
+            null === $scope->target ? null : Str\truncate($scope->target, 0, 720),
+            null === $userAgent || '' === $userAgent ? null : Str\truncate($userAgent, 0, 512),
         );
 
         $this->entityManager->persist($entry);

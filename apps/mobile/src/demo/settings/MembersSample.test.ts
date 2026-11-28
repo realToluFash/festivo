@@ -16,6 +16,7 @@ import {
   ORGANISATION,
   membersStateOf,
   type MembersViewer,
+  nearsEnd,
   membersViewerOf,
   personLine,
   proofProblem,
@@ -305,7 +306,10 @@ describe('Members in the demo', () => {
     });
     expect(tagOf(person('Daniel Kim'))).toEqual({ kind: 'ended', word: 'Left' });
     expect(personLine(person('Folake Adeyemi'), VIEWERS.folake.id)).toBe('Owner · you');
-    expect(waitingLine(person('Lucía Gómez'), us)).toBe('lucia.gomez@outlook.com · asked Nov 2');
+    expect(waitingLine(person('Lucía Gómez'), us)).toBe(
+      'lucia.gomez@outlook.com · asked Monday, Nov 2',
+    );
+    expect(gb.day(person('Lucía Gómez').when)).toBe('Monday 2 Nov');
     expect(whenWord(person('Priya Shah'))).toBe('Member since');
     expect(us.date(person('Priya Shah').when)).toBe('Jun 3, 2025');
   });
@@ -332,6 +336,12 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'readOnly',
       'nobodySuspended',
       'nobodyLeft',
+      'ninetyNine',
+      'crowd',
+      'largest',
+      'moreLoading',
+      'moreFailed',
+      'moreOffline',
       'loading',
       'failed',
       'approving',
@@ -661,5 +671,65 @@ describe('sc-40153’s organisation names', () => {
     expect(membersStart('longName')).toMatchObject({ open: PRIYA, organisation: LONG_NAME });
     expect(membersStart('oneWordName')).toMatchObject({ open: PRIYA, organisation: ONE_WORD_NAME });
     expect(membersStart('priya').organisation).toBe(ORGANISATION);
+  });
+});
+
+describe("Members' card with more people than its chip writes (sc-48825)", () => {
+  const cardOf = (state: 'ninetyNine' | 'crowd' | 'list') =>
+    membersCard({ ...plainCard, people: membersStart(state).people });
+
+  it('has 99 beyond the five faces at 104 people', () => {
+    expect(cardOf('ninetyNine')).toMatchObject({ more: 99 });
+    expect(cardOf('ninetyNine').faces).toHaveLength(5);
+    expect(cardOf('ninetyNine').says).toMatch(/^104 people/u);
+  });
+
+  it('has 1,321 beyond the faces at 1,326 people, and the sentence groups the figure', () => {
+    expect(cardOf('crowd')).toMatchObject({ more: 1321 });
+    expect(cardOf('crowd').says).toMatch(/^1,326 people/u);
+  });
+
+  it('keeps the first five faces as they were, and counts the crowd under All', () => {
+    expect(cardOf('crowd').faces.map(({ id }) => id)).toEqual(
+      cardOf('list').faces.map(({ id }) => id),
+    );
+    expect(counts(membersStart('crowd').people).all).toBe(1326);
+  });
+});
+
+describe('People a page at a time at 12,345 (sc-49170)', () => {
+  const at = (y: number) =>
+    nearsEnd({
+      contentOffset: { y },
+      contentSize: { height: 4000 },
+      layoutMeasurement: { height: 800 },
+    });
+
+  it('counts the whole organisation, whatever has loaded', () => {
+    expect(counts(membersStart('largest').people).all).toBe(12345);
+    expect(membersCard({ ...plainCard, people: membersStart('largest').people }).says).toMatch(
+      /^12,345 people/u,
+    );
+  });
+
+  it('holds the next page loading, or failed, over the same 12,345', () => {
+    expect(membersStart('moreLoading')).toMatchObject({ more: 'loading', load: 'loaded' });
+    expect(membersStart('moreFailed')).toMatchObject({ more: 'failed', load: 'loaded' });
+    expect(counts(membersStart('moreFailed').people).all).toBe(12345);
+    expect(membersStart('largest').more).toBe('idle');
+  });
+
+  it('shows the offline band only when Soirely did not answer for the next page', () => {
+    expect(membersStart('moreOffline')).toMatchObject({ more: 'failed', offline: true });
+    expect(counts(membersStart('moreOffline').people).all).toBe(12345);
+    expect(membersStart('moreFailed').offline).toBe(false);
+    expect(membersStart('largest').offline).toBe(false);
+  });
+
+  it('asks for the next page once the end is within a screen of the view', () => {
+    expect(at(0)).toBe(false);
+    expect(at(2399)).toBe(false);
+    expect(at(2400)).toBe(true);
+    expect(at(3200)).toBe(true);
   });
 });

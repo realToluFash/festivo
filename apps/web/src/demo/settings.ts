@@ -109,14 +109,28 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. */
-export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
+/** What holds the account in the organisation in use: a paused membership (sc-86077), two-factor overdue for everyone (sc-609), or an admin held until two-factor (sc-39471). */
+export type Hold = 'paused' | 'overdue' | 'adminTwoFactor';
+
+/** The sections each hold leaves out, as the API leaves their permissions out of `permissions`: the administrators' rule keeps `vendors.read`, which is not administrative (sc-93443). */
+const WITHHELD: Record<Hold, readonly Section[]> = {
+  paused: ['members', 'vendors', 'data'],
+  overdue: ['members', 'vendors', 'data'],
+  adminTwoFactor: ['members', 'data'],
+};
+
+const MANAGED: readonly Section[] = ['members', 'vendors', 'data'];
+
+/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. A hold hides what its permissions withhold, whatever the role (sc-86077, sc-93443). */
+export function groupsFor(
+  viewer: Pick<Viewer, 'manages'>,
+  hold: Hold | null = null,
+): SectionGroup[] {
+  const hidden = [...(viewer.manages ? [] : MANAGED), ...(hold == null ? [] : WITHHELD[hold])];
+
   return GROUPS.map((group) => ({
     ...group,
-    sections: group.sections.filter(
-      (section) =>
-        viewer.manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
-    ),
+    sections: group.sections.filter((section) => !hidden.includes(section)),
   }));
 }
 
@@ -156,12 +170,11 @@ export function settingsSayIn(locale: string): SettingsSay {
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
-  const dayOnly = format({ month: 'short', day: 'numeric' });
   const weekday = format({ weekday: 'long', month: 'short', day: 'numeric' });
 
   return {
     date: (day) => date.format(new Date(`${day}T00:00Z`)),
-    day: (day) => dayOnly.format(new Date(`${day}T00:00Z`)),
+    day: (day) => weekday.format(new Date(`${day}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
     deadline: (at) => `${weekday.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
@@ -188,6 +201,11 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('menu', 'The filter menu open'),
       members('nobodySuspended', 'Nobody is suspended'),
       members('nobodyLeft', 'Nobody has left'),
+      members('ninetyNine', '104 people, +99 beside the faces'),
+      members('crowd', '1,326 people, 99+ beside the faces'),
+      members('largest', '12,345 people, Show more before Invitations'),
+      members('moreLoading', '12,345 people, more loading'),
+      members('moreFailed', '12,345 people, more did not load'),
       members('invited', 'Invited'),
       members('revoked', 'After Revoke'),
       members('loading', 'Loading'),
@@ -196,6 +214,9 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('inviteBlank', 'Invite, nothing typed'),
       members('inviteShape', 'Invite, not an address'),
       members('sent', 'Invitation sent'),
+      members('notDelivered', 'Invitations not delivered'),
+      members('notDeliveredInvited', 'Invited, not delivered'),
+      members('notDeliveredAgain', 'Invited again, still not delivered'),
     ],
   },
   {

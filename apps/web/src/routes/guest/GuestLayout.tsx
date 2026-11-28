@@ -1,15 +1,15 @@
-import { useLayoutEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useParams } from 'react-router';
 
 import lockupUrl from '../../brand/lockup.svg';
 import { holdScheme } from '../../colourScheme.ts';
-import { chooseLanguage } from '../../accountLanguage.ts';
 import { LanguageMenu } from '../../components/LanguageMenu.tsx';
 import { config } from '../../config.ts';
-import { currentLocale } from '../../i18n/index.ts';
+import { currentLocale, showLanguage } from '../../i18n/index.ts';
 import { useSessionState } from '../../session.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
+import { chooseGuestLanguage, leaveGuestPage, useGuestLanguage } from './guestLanguage.ts';
 import '../../components/desk.css';
 import '../../components/eventsDesk.css';
 import '../../components/EventsList.css';
@@ -19,11 +19,24 @@ import './guestPage.css';
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 
 export function GuestLayout() {
-  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
+  const valid = token != null && TOKEN_SHAPE.test(token);
+
+  return (
+    <GuestShell token={valid ? token : null}>
+      {valid ? <Outlet context={token} /> : <InvalidInvitation />}
+    </GuestShell>
+  );
+}
+
+/** The guest's shell, with no sign-in: a guest's link token saves the language chosen, and a page without one only shows it. */
+export function GuestShell({ token, children }: { token: string | null; children: ReactNode }) {
+  const { t } = useTranslation();
   const signedIn = useSessionState().status === 'signedIn';
+  const { said } = useGuestLanguage();
 
   useLayoutEffect(() => holdScheme(config().scheme), []);
+  useEffect(() => leaveGuestPage, []);
 
   return (
     <div className="guest-page desk">
@@ -34,15 +47,17 @@ export function GuestLayout() {
         <LanguageMenu
           look="guest"
           current={currentLocale()}
-          onChoose={(code) => void chooseLanguage(code, signedIn)}
+          onChoose={(code) => {
+            if (token != null) void chooseGuestLanguage(token, code, signedIn);
+            else void showLanguage(code);
+          }}
         />
       </header>
+      <p className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {said > 0 && <span key={said}>{t('guest.languageSwitched')}</span>}
+      </p>
       <main id="content" className="gp-main">
-        {token == null || !TOKEN_SHAPE.test(token) ? (
-          <InvalidInvitation />
-        ) : (
-          <Outlet context={token} />
-        )}
+        {children}
       </main>
     </div>
   );

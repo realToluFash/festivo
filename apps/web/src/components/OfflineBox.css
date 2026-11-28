@@ -30,4 +30,20 @@
 
 .ev-offline .desk-text {
   margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* An event's areas at a desk: the shell puts the box above the page's crumb row, as wide as an event page's --evWide, which is not set out here (sc-65646). */
+.shell-content > .offline-box > .ev-offline {
+  box-sizing: border-box;
+  max-width: 938px;
+  margin-bottom: 18px;
+}
+
+/* Seating's page has no card padding, so the box takes the crumb row's insets. */
+.shell-content:has(> .st) > .offline-box > .ev-offline {
+  max-width: none;
+  margin: var(--spaceMd) var(--spaceLg) 0 var(--space3xl);
 }

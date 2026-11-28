@@ -1,5 +1,12 @@
 framework:
     rate_limiter:
+        usage_update:
+            # Per organisation, spent by each usage update on its live channel (sc-3929): a send
+            # of 400 publishes about one a second, and the trailing one after the last change.
+            policy: token_bucket
+            limit: 1
+            rate: { interval: '1 second', amount: 1 }
+
         address_lookup:
             # Per IP. An autocomplete field fires on keystrokes, so the budget is
             # generous — but a budget that cannot be exhausted is a provider bill
@@ -142,3 +149,40 @@ framework:
             policy: fixed_window
             limit: 60
             interval: '1 hour'
+
+        staff_link:
+            # Per IP, for a person's own link (sc-3912). Its token is 128 random bits, so this is
+            # not what keeps it unguessable; it stops one network walking the lookup. A crew
+            # sharing a venue's wifi, each opening their link a few times, stays inside it.
+            policy: fixed_window
+            limit: 120
+            interval: '10 minutes'
+
+        door_code_source:
+            # Per IP, spent only by a refused door code (sc-72), so fifteen waiters joining on one venue's
+            # network are not refused for each other. 10 a minute is about 14,400 tries a day against
+            # 32^8 codes: about 1 in 76 million of hitting a given live code. Fixed, so the time holds still.
+            policy: fixed_window
+            limit: 10
+            interval: '1 minute'
+
+        door_code_send:
+            # Per IP, every code sent to redeem a door code signed out (sc-4235), on top of the number's
+            # own resend cooldown, so one network cannot text its way through a list of numbers.
+            policy: fixed_window
+            limit: 30
+            interval: '1 hour'
+
+        door_code_code:
+            # Per code, keyed by its hash, spent only by a refused try at it (sc-72), so one code cannot be worked
+            # at from many sources while a crew of 500 opening and joining a working code together is never refused.
+            policy: fixed_window
+            limit: 120
+            interval: '1 minute'
+
+        service_tap:
+            # Per account, spent by each service write (sc-4028). A waiter back online sends every
+            # kept tap at once, in order, so the burst is generous; a loop is not (RFC 6585 §4).
+            policy: token_bucket
+            limit: 60
+            rate: { interval: '30 seconds', amount: 60 }

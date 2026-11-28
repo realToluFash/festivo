@@ -1,5 +1,13 @@
 import { ApiError, type InvitationPreview, type InvitationRefusal } from '@soirely/api-client';
-import { PASSWORD_MINIMUM_LENGTH, formatDay, meetsPasswordLength, roleName } from '@soirely/domain';
+import {
+  PASSWORD_MINIMUM_LENGTH,
+  formatDay,
+  maskedPhone,
+  type LimitRefusal,
+  limitRefusalOf,
+  meetsPasswordLength,
+  roleName,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +15,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import { LimitRefusalDialog } from '../../components/LimitRefusal.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { HaveAccount, OrganisationLine, SignedInAs } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
@@ -18,6 +27,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { LayersContext, useDeskLayers } from '../../layers.ts';
 import { useLinkRetry } from '../../linkRetry.ts';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
@@ -32,7 +42,7 @@ import {
 import { useStepFocus } from '../../stepFocus.ts';
 import { useSignOut } from '../../signOut.ts';
 
-type Refusal = InvitationRefusal | 'invitation_not_yours';
+type Refusal = InvitationRefusal | 'invitation_not_yours' | 'invitation_needs_email';
 
 type View =
   | { kind: 'loading' }
@@ -51,6 +61,7 @@ const REFUSALS: readonly Refusal[] = [
   'invitation_declined',
   'organisation_deleted',
   'invitation_not_yours',
+  'invitation_needs_email',
 ];
 
 /** An invitation's token is 64 hex characters; an organisation's request link (sc-562) is 32. */
@@ -160,6 +171,10 @@ function Invited({ token }: { token: string }) {
 }
 
 function viewOf(preview: InvitationPreview): View {
+  // An account with only a number answers no invitation until it has the invited address (sc-4235).
+  if (preview.needsEmail && preview.refusal == null) {
+    return { kind: 'refused', preview, refusal: 'invitation_needs_email' };
+  }
   if (preview.forYou === false) {
     return { kind: 'refused', preview, refusal: 'invitation_not_yours' };
   }
@@ -208,7 +223,14 @@ function JoinPage({
         registering ? (
           <HaveAccount onSignIn={() => holdInvitation(token)} />
         ) : session.status === 'signedIn' ? (
-          <SignedInAs email={session.session.email} onSignOut={() => void signOut()} />
+          <SignedInAs
+            email={
+              preview.signedInAsPhone == null
+                ? session.session.email
+                : maskedPhone(preview.signedInAsPhone)
+            }
+            onSignOut={() => void signOut()}
+          />
         ) : null
       }
     >
@@ -528,6 +550,8 @@ function Answer({
   const words = useWords(preview);
   const [busy, setBusy] = useState<'accept' | 'decline' | null>(null);
   const [failed, setFailed] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
+  const { layers, covered, setHost } = useDeskLayers();
 
   async function answer(choice: 'accept' | 'decline'): Promise<void> {
     setBusy(choice);
@@ -548,47 +572,55 @@ function Answer({
 
       const refusal =
         error instanceof ApiError ? REFUSALS.find((code) => error.is(code)) : undefined;
+      const limit = limitRefusalOf(error, 'seatAccept', t, dateLocale());
 
-      if (refusal != null) onChange({ kind: 'refused', preview, refusal });
+      if (limit != null) setLimited(limit);
+      else if (refusal != null) onChange({ kind: 'refused', preview, refusal });
       else setFailed(true);
     }
   }
 
   return (
-    <>
-      {failed && (
-        <div className="auth-notice" role="alert">
-          <p className="auth-notice-title">{t('join.answerFailedTitle')}</p>
-          <p>{t('register.failedBody')}</p>
-        </div>
-      )}
+    <LayersContext value={layers}>
+      <div className="lr-under" inert={covered}>
+        {failed && (
+          <div className="auth-notice" role="alert">
+            <p className="auth-notice-title">{t('join.answerFailedTitle')}</p>
+            <p>{t('register.failedBody')}</p>
+          </div>
+        )}
 
-      <div className="auth-choices">
-        <div className="auth-answers">
-          <button
-            className="button button-primary"
-            type="button"
-            aria-busy={busy === 'accept'}
-            disabled={busy === 'decline'}
-            {...offButton(busy === 'accept')}
-            onClick={() => void answer('accept')}
-          >
-            {t('join.accept')}
-          </button>
-          <button
-            className="button"
-            type="button"
-            aria-busy={busy === 'decline'}
-            disabled={busy === 'accept'}
-            {...offButton(busy === 'decline')}
-            onClick={() => void answer('decline')}
-          >
-            {t('join.decline')}
-          </button>
+        <div className="auth-choices">
+          <div className="auth-answers">
+            <button
+              className="button button-primary"
+              type="button"
+              aria-busy={busy === 'accept'}
+              disabled={busy === 'decline'}
+              {...offButton(busy === 'accept')}
+              onClick={() => void answer('accept')}
+            >
+              {t('join.accept')}
+            </button>
+            <button
+              className="button"
+              type="button"
+              aria-busy={busy === 'decline'}
+              disabled={busy === 'accept'}
+              {...offButton(busy === 'decline')}
+              onClick={() => void answer('decline')}
+            >
+              {t('join.decline')}
+            </button>
+          </div>
+          <p className="muted">{t('join.declineNote', { inviter: words.inviter })}</p>
         </div>
-        <p className="muted">{t('join.declineNote', { inviter: words.inviter })}</p>
       </div>
-    </>
+      {limited != null && <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} />}
+      <div className="desk">
+        <div ref={setHost} className="desk-layers" />
+      </div>
+    </LayersContext>
   );
 }
 
@@ -653,11 +685,19 @@ function Refused({
         </>
       )}
 
-      {refusal !== 'invitation_accepted' && refusal !== 'invitation_not_yours' && (
-        <Link className="button" to="/">
-          {t('join.goHome')}
+      {refusal === 'invitation_needs_email' && (
+        <Link className="button button-primary" to="/app/account">
+          {t('join.addEmail')}
         </Link>
       )}
+
+      {refusal !== 'invitation_accepted' &&
+        refusal !== 'invitation_not_yours' &&
+        refusal !== 'invitation_needs_email' && (
+          <Link className="button" to="/">
+            {t('join.goHome')}
+          </Link>
+        )}
     </>
   );
 }

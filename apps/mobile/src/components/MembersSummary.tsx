@@ -1,5 +1,7 @@
 import type { OrganisationMember } from '@soirely/api-client';
-import type { Ref } from 'react';
+import type { MembersMore } from '@soirely/domain';
+import type { TFunction } from 'i18next';
+import { memo, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -15,6 +17,7 @@ import {
 } from '../kit/membersSummary.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useReadOut } from './ReadOut.tsx';
+import type { ColumnRows } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Avatar } from './SettingsParts.tsx';
 import {
@@ -25,7 +28,12 @@ import {
   OnCard,
   Row,
   RowList,
+  RowRule,
+  RowShapes,
   Section,
+  SectionFailed,
+  SectionFoot,
+  SectionHead,
   SummaryCard,
   TextAction,
 } from './Summary.tsx';
@@ -163,85 +171,163 @@ export function Waiting({
   );
 }
 
+/** People's head: its title, Show, and what an option with nobody under it says once its first page is read. Its rows come from `peopleRows`. */
 export function People({
   listed,
   counts,
   filter,
+  switching,
   organisation,
-  open,
-  dense,
-  manages,
-  rowRef,
   onFilter,
-  onOpen,
 }: {
   listed: readonly OrganisationMember[];
   counts: Record<MembersFilter, number>;
   filter: MembersFilter;
+  /** The option's first page is still being read, so an empty list says nothing about it yet. */
+  switching: boolean;
   organisation: string;
+  onFilter: (filter: MembersFilter) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View>
+      <SectionHead
+        title={t('membersScreen.peopleTitle')}
+        right={
+          <FilterMenu
+            choices={MEMBERS_FILTERS.map((value) => ({
+              value,
+              word: t(`membersScreen.filter.${value}`),
+              count: counts[value],
+            }))}
+            value={filter}
+            onChoose={onFilter}
+            name={t('membersScreen.filterName')}
+            testID="members.filter"
+          />
+        }
+      />
+      {listed.length === 0 && !switching && (
+        <Empty filter={filter} organisation={organisation} onShowEveryone={() => onFilter('all')} />
+      )}
+    </View>
+  );
+}
+
+/** Drawn again only when its person or its place changes, so a page arriving under People does not draw every row mounted (sc-49170). */
+const PersonRow = memo(function PersonRow({
+  t,
+  member,
+  ruled,
+  selected,
+  dense,
+  rowRef,
+  onOpen,
+}: {
+  t: TFunction;
+  member: OrganisationMember;
+  ruled: boolean;
+  selected: boolean;
+  dense: boolean;
+  rowRef: (id: string) => Ref<ViewInstance>;
+  onOpen: (id: string) => void;
+}) {
+  const side = dense ? 36 : 40;
+  const gutter = dense ? 10 : 0;
+  const former = member.status === 'left_or_removed';
+  const face = faceOf(member);
+
+  return (
+    <View style={dense && styles.bleed}>
+      {ruled && <RowRule inset={side + tokens.spaceLg + gutter} />}
+      <Row
+        ref={former ? undefined : rowRef(member.id)}
+        title={member.user.name}
+        line={memberLine(t, member)}
+        lead={<Avatar initials={face.initials} side={side} tone={face.tone} />}
+        tag={memberTag(t, member)}
+        opens={!former}
+        selected={selected}
+        gutter={gutter}
+        onPress={former ? undefined : () => onOpen(member.id)}
+        testID={`members.row.${member.id}`}
+      />
+    </View>
+  );
+});
+
+/** People's rows, mounted only near the screen, and what stands under them (sc-49170). */
+export function peopleRows({
+  t,
+  listed,
+  open,
+  dense,
+  manages,
+  rowRef,
+  more,
+  onOpen,
+  onTryAgain,
+  onEndNear,
+}: {
+  t: TFunction;
+  listed: readonly OrganisationMember[];
   open: string | null;
   dense: boolean;
   manages: boolean;
   rowRef: (id: string) => Ref<ViewInstance>;
-  onFilter: (filter: MembersFilter) => void;
+  /** The next page of People, under the rows held. */
+  more: MembersMore;
   onOpen: (id: string) => void;
-}) {
-  const { t } = useTranslation();
-  const side = dense ? 36 : 40;
-  const gutter = dense ? 10 : 0;
-  const items: ListItem[] = listed.map((member) => {
-    const selected = member.id === open;
-    const former = member.status === 'left_or_removed';
-    const face = faceOf(member);
+  onTryAgain: () => void;
+  onEndNear: () => void;
+}): ColumnRows<OrganisationMember> {
+  return {
+    data: listed,
+    keyOf: (member) => member.id,
+    render: (member, index) => {
+      const before = listed[index - 1];
+      const selected = member.id === open;
 
-    return {
-      key: member.id,
-      inset: side + tokens.spaceLg,
-      selected,
-      row: (
-        <Row
-          ref={former ? undefined : rowRef(member.id)}
-          title={member.user.name}
-          line={memberLine(t, member)}
-          lead={<Avatar initials={face.initials} side={side} tone={face.tone} />}
-          tag={memberTag(t, member)}
-          opens={!former}
+      return (
+        <PersonRow
+          t={t}
+          member={member}
+          ruled={before != null && before.id !== open && !selected}
           selected={selected}
-          gutter={gutter}
-          onPress={former ? undefined : () => onOpen(member.id)}
-          testID={`members.row.${member.id}`}
+          dense={dense}
+          rowRef={rowRef}
+          onOpen={onOpen}
         />
-      ),
-    };
-  });
-
-  return (
-    <Section
-      title={t('membersScreen.peopleTitle')}
-      right={
-        <FilterMenu
-          choices={MEMBERS_FILTERS.map((value) => ({
-            value,
-            word: t(`membersScreen.filter.${value}`),
-            count: counts[value],
-          }))}
-          value={filter}
-          onChoose={onFilter}
-          name={t('membersScreen.filterName')}
-          testID="members.filter"
-        />
-      }
-      foot={manages ? t('membersScreen.fromTheWeb') : undefined}
-    >
-      {listed.length === 0 ? (
-        <Empty filter={filter} organisation={organisation} onShowEveryone={() => onFilter('all')} />
-      ) : (
-        <View style={dense && styles.bleed}>
-          <RowList items={items} gutter={gutter} />
-        </View>
-      )}
-    </Section>
-  );
+      );
+    },
+    foot: (
+      <>
+        {(listed.length > 0 || more === 'failed') && (
+          <View style={dense && styles.bleed}>
+            {more === 'failed' ? (
+              <SectionFailed
+                title={t('membersScreen.more.failedTitle')}
+                line={t('membersScreen.more.failedLine')}
+                onRetry={onTryAgain}
+                testID="members.more.retry"
+              />
+            ) : (
+              more === 'loading' && (
+                <View style={styles.more} testID="members.more.loading">
+                  <RowShapes count={2} words={t('membersScreen.more.loading')} />
+                </View>
+              )
+            )}
+          </View>
+        )}
+        {manages && <SectionFoot foot={t('membersScreen.fromTheWeb')} />}
+      </>
+    ),
+    onEndNear: () => {
+      if (more === 'idle') onEndNear();
+    },
+  };
 }
 
 function Empty({
@@ -293,6 +379,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
   bleed: { marginHorizontal: -10 },
+  more: { paddingTop: tokens.spaceSm },
   empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   nobody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space5xl },
 });

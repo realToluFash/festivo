@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -27,8 +28,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { remeasureAfter } from './anchorRemeasure.ts';
+import { windowArrival, WindowArriving } from './openedFocus.ts';
+import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
+import { reachableOffset } from './reachableOffset.ts';
+import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import {
   SilentWindowName,
   WINDOW_ARRIVES_MS,
@@ -40,12 +45,20 @@ import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
-import { menuInModal, menuMost } from '../kit/anchoredMenu.ts';
+import {
+  keptSide,
+  menuButton,
+  menuSide,
+  menuTall,
+  nextHeld,
+  type HeldSide,
+} from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction } from './SummaryRows.tsx';
+import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
 
@@ -71,6 +84,21 @@ function useClearOfGoing(): boolean {
   return clear;
 }
 
+/** True from when `up` turns true until SETTLED_MS later, and false while it is false. */
+function useArriving(up: boolean): boolean {
+  const [arrived, setArrived] = useState(false);
+  if (!up && arrived) setArrived(false);
+
+  useEffect(() => {
+    if (!up) return;
+    const settled = setTimeout(() => setArrived(true), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [up]);
+
+  return up && !arrived;
+}
+
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
@@ -94,6 +122,8 @@ function Window({
   const here = useIsFocused();
   const clear = useClearOfGoing();
   const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
+  const slidesIn = slides && Platform.OS === 'android';
+  const arriving = useArriving(shown && slidesIn);
   const showing = useRef(false);
 
   useLayoutEffect(() => {
@@ -122,7 +152,9 @@ function Window({
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
-      {children}
+      <WindowArriving.Provider value={windowArrival(slidesIn, arriving)}>
+        {children}
+      </WindowArriving.Provider>
     </Modal>
   );
 }
@@ -167,6 +199,7 @@ export function FocusedScreen({
   over,
   toast,
   scrollRef,
+  toTop = 0,
   fills = false,
   gap = tokens.spaceLg,
   children,
@@ -189,6 +222,9 @@ export function FocusedScreen({
   over?: Layer | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
+  toTop?: number;
+  /** The body brings its own scroller, sized `flexGrow: 1, flexShrink: 1`: a tablet sheet takes its height from it, so `flex: 1` draws it at none. */
   fills?: boolean;
   gap?: number;
   children: ReactNode;
@@ -205,6 +241,19 @@ export function FocusedScreen({
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
+  const scroll = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  const holdField = useFocusedFieldInSight(scroll, offset);
+  const reduced = useReducedMotion();
+  const wentToTop = useRef(toTop);
+
+  useEffect(() => {
+    if (toTop === wentToTop.current) return;
+
+    wentToTop.current = toTop;
+    holdField();
+    scroll.current?.scrollTo({ y: 0, animated: !reduced });
+  }, [toTop, reduced, holdField]);
 
   return (
     <Window
@@ -250,8 +299,12 @@ export function FocusedScreen({
               </View>
             ) : (
               <ScrollView
-                ref={scrollRef}
+                ref={bothRefs(scroll, scrollRef)}
                 style={phone ? styles.fill : styles.sheetBody}
+                scrollEventThrottle={16}
+                onScroll={(event) => {
+                  offset.current = event.nativeEvent.contentOffset.y;
+                }}
                 contentContainerStyle={[
                   styles.body,
                   { gap, paddingBottom: bottom + tokens.space5xl },
@@ -268,8 +321,12 @@ export function FocusedScreen({
               <Toast key={toast.words} words={toast.words} onClose={toast.onClose} />
             </View>
           )}
-          {over?.layer}
-          {asking && <AskLayer {...ask} />}
+          {covered && (
+            <View style={[StyleSheet.absoluteFill, styles.overSheet]} pointerEvents="box-none">
+              {over?.layer}
+              {asking && <AskLayer {...ask} />}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Window>
@@ -350,37 +407,45 @@ export interface MenuChoice<T extends string> {
 }
 
 const MENU_WIDTH = 220;
+const MENU_EDGE = 1;
 
 export interface Anchor {
   x: number;
+  /** Its opener's foot. */
   y: number;
   width: number;
+  /** Its opener's top, for a menu with no room under it to sit above. */
+  top: number;
 }
 
 export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: Anchor) => void) {
-  trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
+  trigger.current?.measureInWindow((x, y, width, height) =>
+    then({ x, y: y + height, width, top: y }),
+  );
 }
 
-/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+/** An open menu's anchor, measured again once a turned window settles or the offline band moves the frame's body; a button the turn took away closes it. */
 export function useAnchorFollowsTurn(
   trigger: RefObject<ViewInstance | null>,
   open: boolean,
   then: (at: Anchor | null) => void,
 ) {
   const { width, height } = useWindowDimensions();
-  const size = useRef({ width, height });
+  const bodyTop = useContext(BodyTop);
+  const was = useRef({ width, height, bodyTop });
 
   useEffect(() => {
-    const turned = size.current.width !== width || size.current.height !== height;
-    size.current = { width, height };
-    if (!open || !turned) return;
+    const now = { width, height, bodyTop };
+    const after = remeasureAfter(was.current, now, open, SETTLED_MS);
+    was.current = now;
+    if (after == null) return;
     const wait = setTimeout(() => {
       if (trigger.current == null) then(null);
       else anchorUnder(trigger, then);
-    }, SETTLED_MS);
+    }, after);
 
     return () => clearTimeout(wait);
-  }, [width, height, open, trigger, then]);
+  }, [width, height, bodyTop, open, trigger, then]);
 }
 
 interface MenuProps {
@@ -388,30 +453,70 @@ interface MenuProps {
   onClose: () => void;
   width?: number;
   align?: 'start' | 'end';
-  /** How far under what opened it. */
+  /** How far from what opened it, under it or above it. */
   below?: number;
   /** Where it must end above, in measureInWindow's frame as `at` is: the keys' top less a gap; the window's foot otherwise. */
   floor?: number | null;
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
+  /** Where its items are to be scrolled, held as they lay out until it is reached or a drag takes over; a new object asks again. */
+  bringTo?: { y: number } | null;
+  /** Where its items are scrolled to, as they scroll. */
+  onOffset?: (offset: number) => void;
+  /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
+  hidden?: boolean;
+  /** Close the menu alone out of TalkBack's reach, so its own first focus can only find the menu. */
+  outsideHidden?: boolean;
   children: ReactNode;
   testID?: string;
 }
 
-/** A menu under what opened it, its right edge in line; capped at the room under it, it scrolls inside with a fade at its foot. */
+/** A menu under what opened it, its right edge in line, or above it when it does not fit under it and above has more room; capped at its room, it scrolls inside with a fade at its foot. */
 export function AnchoredMenu({
   opener,
   over,
+  first,
   ...menu
 }: MenuProps & {
   opener: Opener;
   /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
   over?: ReactNode;
+  /** The first row, where TalkBack's focus lands as the menu opens rather than on Close the menu (sc-52641). */
+  first?: RefObject<ScreenReaderTarget | null>;
 }) {
+  const open = menu.at != null;
+  const [onScreen, setOnScreen] = useState(false);
+  if (!open && onScreen) setOnScreen(false);
+  const reduced = useReducedMotion();
+  const arriving = useUnnamedWindow(
+    Platform.OS === 'android' && first != null,
+    onScreen,
+    null,
+    reduced ? 0 : WINDOW_ARRIVES_MS,
+  );
+  const landed = onScreen && first != null && !arriving;
+  const [focused, setFocused] = useState(false);
+  if (!landed && focused) setFocused(false);
+
+  // TalkBack's own first focus can still come after the window has arrived, and Close the menu comes first in the tree, so it stays out of reach until focus is on the first row (sc-52641, #53461).
+  useEffect(() => {
+    if (!landed || Platform.OS !== 'android') return;
+    const wait = setTimeout(() => moveScreenReaderFocus(first.current));
+    const reached = setTimeout(() => setFocused(true), SETTLED_MS);
+
+    return () => {
+      clearTimeout(wait);
+      clearTimeout(reached);
+    };
+  }, [landed, first]);
+
   return (
-    <Window open={menu.at != null} onClose={menu.onClose} opener={opener}>
-      <MenuLayer {...menu} />
+    <Window open={open} onClose={menu.onClose} opener={opener} onShow={() => setOnScreen(true)}>
+      <MenuLayer
+        {...menu}
+        hidden={arriving}
+        outsideHidden={Platform.OS === 'android' && first != null && !focused}
+      />
       {over}
     </Window>
   );
@@ -426,7 +531,10 @@ export function MenuLayer({
   below = tokens.spaceXxs,
   floor = null,
   head,
-  scrollRef,
+  bringTo = null,
+  onOffset,
+  hidden = false,
+  outsideHidden = false,
   children,
   testID,
 }: MenuProps) {
@@ -434,39 +542,85 @@ export function MenuLayer({
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const origin = useWindowOrigin();
-  const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
-  const place = menuInModal({ under: at?.y ?? 0, below, floor, origin });
-  const top = place.top;
-  const room = menuMost(place, frame.height - Math.max(insets.bottom, tokens.spaceLg));
+  const [seen, setSeen] = useState({ head: 0, panel: 0, content: 0, offset: 0 });
+  const [held, setHeld] = useState<HeldSide | null>(null);
+  const [layer, setLayer] = useState<number | null>(null);
+  const button = menuButton(at);
+  const side = menuSide({
+    under: at?.y ?? 0,
+    over: at?.top ?? 0,
+    gap: below,
+    floor,
+    origin,
+    ceiling: insets.top,
+    layer: layer ?? 0,
+    bar: Math.max(insets.bottom, tokens.spaceLg),
+    tall: menuTall(seen, MENU_EDGE),
+    above: keptSide(held, button),
+  });
   const more = seen.content - seen.offset - seen.panel > 1;
+
+  const hold = nextHeld(held, button, side, seen.content > 0);
+  if (hold !== held) setHeld(hold);
+  const reach = hidden ? 'no-hide-descendants' : 'auto';
+  const scroll = useRef<ScrollViewInstance>(null);
+  const asked = useRef(bringTo);
+  const wanted = useRef(bringTo?.y ?? null);
+  const measured = useRef(false);
+  const bring = (content: number, panel: number) => {
+    if (wanted.current == null) return;
+    const y = reachableOffset(wanted.current, content, panel);
+    scroll.current?.scrollTo({ y, animated: false });
+    if (measured.current && y === wanted.current) wanted.current = null;
+  };
+
+  // The sizes seen before the ask are the items it replaced, and they can reach the offset the new items will not yet, so it is only reached once the new items are measured (sc-75211, #77053).
+  useLayoutEffect(() => {
+    if (asked.current !== bringTo) {
+      asked.current = bringTo;
+      wanted.current = bringTo?.y ?? null;
+      measured.current = false;
+    }
+    bring(seen.content, seen.panel);
+  }, [bringTo, seen.content, seen.panel]);
 
   return (
     <>
       <Pressable
         style={StyleSheet.absoluteFill}
+        onLayout={(event) => setLayer(event.nativeEvent.layout.height)}
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
+        importantForAccessibility={outsideHidden ? 'no-hide-descendants' : reach}
       />
-      {at != null && (
+      {at != null && layer != null && (
         <View
           style={[
             styles.menu,
             {
-              top,
+              top: side.top,
               left: menuLeft(at, width, align, frame.width),
               width,
-              maxHeight: room,
+              maxHeight: side.most,
             },
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
+          importantForAccessibility={reach}
           testID={testID}
         >
           <View style={styles.menuClip}>
-            {head}
+            <View
+              onLayout={(event) => {
+                const headHeight = event.nativeEvent.layout.height;
+                setSeen((now) => (now.head === headHeight ? now : { ...now, head: headHeight }));
+              }}
+            >
+              {head}
+            </View>
             <ScrollView
-              ref={scrollRef}
+              ref={scroll}
               bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.menuBody}
@@ -475,12 +629,18 @@ export function MenuLayer({
                 const panel = event.nativeEvent.layout.height;
                 setSeen((now) => (now.panel === panel ? now : { ...now, panel }));
               }}
-              onContentSizeChange={(_width, content) =>
-                setSeen((now) => (now.content === content ? now : { ...now, content }))
-              }
+              onContentSizeChange={(_width, content) => {
+                measured.current = true;
+                bring(content, seen.panel);
+                setSeen((now) => (now.content === content ? now : { ...now, content }));
+              }}
               onScroll={(event) => {
                 const offset = event.nativeEvent.contentOffset.y;
                 setSeen((now) => ({ ...now, offset }));
+                onOffset?.(offset);
+              }}
+              onScrollBeginDrag={() => {
+                wanted.current = null;
               }}
             >
               {children}
@@ -523,26 +683,32 @@ export function FilterMenu<T extends string>({
   name: string;
   testID: string;
 }) {
+  const { i18n } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
+  const first = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
+  useAnchorFollowsTurn(trigger, at != null, setAt);
   const current = choices.find((choice) => choice.value === value) ?? choices[0];
+  const figure = menuFigure(i18n, current?.count ?? 0);
   const close = () => setAt(null);
 
   return (
     <>
       <TextAction
         ref={trigger}
-        label={`${current?.word ?? ''} · ${current?.count ?? 0}`}
+        label={`${current?.word ?? ''} · ${figure}`}
         after="down"
         onPress={() => anchorUnder(trigger, setAt)}
-        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${current?.count ?? 0}`}
+        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${figure}`}
         testID={testID}
       />
-      <AnchoredMenu at={at} onClose={close} opener={trigger}>
-        {choices.map((choice) => (
+      <AnchoredMenu at={at} onClose={close} opener={trigger} first={first}>
+        {choices.map((choice, index) => (
           <MenuRow
             key={choice.value}
+            ref={index === 0 ? first : undefined}
             choice={choice}
+            figure={menuFigure(i18n, choice.count)}
             on={choice.value === value}
             onPress={() => {
               close();
@@ -562,23 +728,28 @@ function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: num
 }
 
 function MenuRow<T extends string>({
+  ref,
   choice,
+  figure,
   on,
   onPress,
   testID,
 }: {
+  ref?: Ref<ViewInstance> | undefined;
   choice: MenuChoice<T>;
+  figure: string;
   on: boolean;
   onPress: () => void;
   testID: string;
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
-      accessibilityLabel={`${choice.word}, ${choice.count}`}
+      accessibilityLabel={`${choice.word}, ${figure}`}
       testID={testID}
     >
       <View style={styles.menuTick}>
@@ -593,7 +764,7 @@ function MenuRow<T extends string>({
         {choice.word}
       </Text>
       <Text size={15} weight="medium" accessible={false} style={[styles.secondary, styles.count]}>
-        {String(choice.count)}
+        {figure}
       </Text>
     </Pressable>
   );
@@ -627,12 +798,14 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.popover.ios,
     elevation: tokens.elevationNative.popover.android.elevation,
   },
+  // Android hands a field's tap to the highest elevation, so whatever covers the raised sheet is raised above it.
+  overSheet: { elevation: tokens.elevationNative.popover.android.elevation + 1 },
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
   body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   menu: {
     position: 'absolute',
-    borderWidth: 1,
+    borderWidth: MENU_EDGE,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.spaceXl,
     backgroundColor: tokens.colorCard,

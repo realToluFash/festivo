@@ -15,9 +15,10 @@ import {
   sectionsOf,
   startOf,
 } from './MessagesModel.ts';
-import { SCHEDULED, SCHEDULED_BODY } from './MessagesSample.ts';
+import { DAYS, SCHEDULED, SCHEDULED_BODY } from './MessagesSample.ts';
 import { W } from './MessagesWords.ts';
-import { SW, refusalLine } from './ScheduledSave.ts';
+import { readsOnly } from './NoticeStates.ts';
+import { SW, pausedWaits, refusalLine, sayNobody, scheduledEnd } from './ScheduledSave.ts';
 
 const REFUSED = ['editConflict', 'editSent', 'editCancelled', 'editTooLate'];
 const TYPED = SCHEDULED_BODY.replace('17:30', '17:15');
@@ -126,5 +127,135 @@ describe('sc-3963’s refused saves', () => {
     expect(screen).toMatch(
       /Keyboard\.dismiss\(\);\s*readOut\([^;]*\{ interrupts: true \}\);[\s\S]*moveScreenReaderFocus\(refs\.current\.refused/u,
     );
+  });
+});
+
+const ENDS = [
+  'scheduledPaused',
+  'scheduledPausedLate',
+  'scheduledPausedEdit',
+  'scheduledFinished',
+  'scheduledTooLate',
+];
+
+describe('sc-3963’s paused, finished and too-late rows', () => {
+  it('are read from ?state= and linked from the demo home', () => {
+    for (const state of ENDS) {
+      expect(messagesStateOf(state)).toBe(state);
+      expect(MESSAGES_BOARDS.find((board) => board.state === state)?.href).toBe(
+        `/demo/events/evt-wed-4?area=messages&state=${state}`,
+      );
+    }
+  });
+
+  it('wait while paused, before the message’s time and after it, still Scheduled', () => {
+    for (const state of ['scheduledPaused', 'scheduledPausedLate']) {
+      const m = opened(state);
+
+      expect(m.draft).toMatchObject({ step: 'scheduled', paused: true });
+      expect(m.draft != null && isScheduled(m.draft)).toBe(true);
+      expect(where(m)).toBe('scheduled');
+    }
+    expect(opened('scheduledPausedLate').draft?.at).toEqual({ date: DAYS.today, time: '08:00' });
+  });
+
+  it('say one paused line for both sides of the time, its hours a plural family', () => {
+    expect(pausedWaits()).toBe(
+      'This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than 48 hours late.',
+    );
+    expect(pausedWaits(1).endsWith('more than 1 hour late.')).toBe(true);
+  });
+
+  it('edit while paused under Editing. with no time, and stay paused once saved', () => {
+    const m = opened('scheduledPausedEdit');
+
+    expect(SW.editingPaused).toBe('Editing.');
+    expect(m.draft).toMatchObject({ step: 'write', paused: true });
+    const saved = reduce(m, { type: 'saveScheduled' });
+
+    expect(saved.draft).toMatchObject({ step: 'scheduled', paused: true });
+  });
+
+  it('draw the paused line where Goes… was, and the time under the bubble', () => {
+    const talk = source('Conversation.tsx');
+
+    expect(talk).toMatch(/paused \? \(\s*<PausedLine text=\{pausedWaits\(\)\} \/>\s*\) : \(/u);
+    expect(talk).toContain('paused ? SW.editingPaused : say.editing(day, at.time)');
+    expect(talk).toContain('[{ word: W.scheduled, ring: true }, { word: when }]');
+  });
+
+  it('end as Cancelled by Soirely with the reason when the event finished, in Done', () => {
+    const m = opened('scheduledFinished');
+
+    expect(m.draft).toMatchObject({ step: 'cancelled', cancelledBy: 'Soirely', finished: true });
+    expect(m.draft == null ? '' : draftLine(m.draft)).toBe('Cancelled by Soirely at 09:30');
+    expect(SW.finishedWhy).toBe('The event finished before this message was due.');
+    expect(where(m)).toBe('done');
+  });
+
+  it('end as Not sent: too late, keeping the time it was for, in Done', () => {
+    const m = opened('scheduledTooLate');
+
+    expect(m.draft?.outcome).toBe('tooLate');
+    expect(m.draft == null ? '' : draftLine(m.draft)).toBe('To Coming · Sat, Oct 31, 09:00');
+    expect(where(m)).toBe('done');
+  });
+});
+
+describe('sc-3963’s nobodyDue: a message that matched nobody when it went', () => {
+  it('is read from ?state= and linked from the demo home', () => {
+    expect(messagesStateOf('nobodyDue')).toBe('nobodyDue');
+    expect(MESSAGES_BOARDS.find((board) => board.state === 'nobodyDue')?.href).toBe(
+      '/demo/events/evt-wed-4?area=messages&state=nobodyDue',
+    );
+  });
+
+  it('sits in Done, its row in the web’s words, with nothing left to do', () => {
+    const m = opened('nobodyDue');
+
+    expect(m.draft?.outcome).toBe('nobody');
+    expect(m.draft == null ? '' : draftLine(m.draft)).toBe(
+      'Nobody matched when it was due, 09:00 · sent nothing',
+    );
+    expect(m.draft != null && isScheduled(m.draft)).toBe(false);
+    expect(where(m)).toBe('done');
+  });
+
+  it('says why it sent nothing, greyed, with no Edit, Send now, Cancel… or composer', () => {
+    const m = opened('nobodyDue');
+    const end = m.draft == null ? null : scheduledEnd(m.draft, readsOnly(m));
+
+    expect(sayNobody.line('09:00')).toBe(
+      'At 09:00 no guest matched its conditions, so it sent nothing.',
+    );
+    expect(end).toBe('nobody');
+    expect(['actions', 'editing', 'preview', 'reads']).not.toContain(end);
+    expect(
+      m.draft == null
+        ? null
+        : scheduledEnd({ step: m.draft.step, was: m.draft.was, asking: m.draft.asking }, false),
+    ).toBe('actions');
+
+    const parts = source('Conversation.tsx');
+    const body = parts.slice(
+      parts.indexOf('function scheduledParts('),
+      parts.indexOf('function draftParts('),
+    );
+    const branch = (from: string, to: string) =>
+      body.slice(body.indexOf(`end === '${from}'`), body.indexOf(`end === '${to}'`));
+    const actions = body.slice(
+      body.indexOf("else if (end === 'actions')"),
+      body.indexOf('\n  return {'),
+    );
+    const nobody = branch('nobody', 'sent');
+
+    expect(nobody).toContain('<SystemLine text={sayNobody.line(at.time)} glyph="x" />');
+    for (const id of ['messages.sched.edit', 'messages.sched.now', 'messages.sched.cancel']) {
+      expect(actions).toContain(`testID="${id}"`);
+      expect(body.split(`testID="${id}"`)).toHaveLength(2);
+    }
+    expect(branch('editing', 'check')).toContain('foot = (');
+    expect(body.split('foot = (')).toHaveLength(2);
+    expect(body).toContain("draft.outcome === 'tooLate' || draft.outcome === 'nobody'");
   });
 });

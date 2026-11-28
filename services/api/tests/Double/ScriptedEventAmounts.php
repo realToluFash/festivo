@@ -7,7 +7,7 @@ namespace App\Tests\Double;
 use App\Domain\Event\Interfaces\EventAmountsInterface;
 use App\Entity\Event;
 
-/** Stands in for sc-100's dish costs until something real records an amount against an event. */
+/** Records an amount against an event without building whatever would record it. */
 final class ScriptedEventAmounts implements EventAmountsInterface
 {
     /** @var array<string, true> */
@@ -21,5 +21,9 @@ final class ScriptedEventAmounts implements EventAmountsInterface
     public function anyRecordedFor(Event $event): bool
     {
         return isset($this->recorded[$event->getId()->toRfc4122()]);
+    }
+
+    public function currencyChanged(Event $event): void
+    {
     }
 }

@@ -165,6 +165,7 @@ export function DoorCodes({
               label: W.stopConfirm,
               removes: true,
               busy: asking.sending ? W.stopping : undefined,
+              busyWords: W.stopping,
               testID: 'door.stop.confirm',
             },
             onKeep: closeAsk,

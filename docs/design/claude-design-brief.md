@@ -66,7 +66,9 @@ A tablet on a stand at a kitchen pass is a real deployment.
 ### C. The web, on a phone or tablet — deliberately small
 
 **Event management is not here. It is in the app.** The narrow web carries only
-billing, the person's own account settings, and organisation settings.
+signing in and the other signed-out pages. Billing and settings are the signed-in web,
+which has no phone or tablet layout: down to 320 CSS px it is the desktop page reflowed
+(epic 22091, "Decided, 2 Nov (pm, on ux's #28764)").
 
 Somebody who opens an event-management link on a phone browser is sent to the
 app, and that handoff is something to design rather than an error — unembarrassed
@@ -210,8 +212,8 @@ come back to you.
 - Chooses their language, which then follows them to every device
 - Sees the sessions currently signed in and ends one
 
-**Where** Every surface. Signing in is the one thing the narrow web does besides
-settings and billing.
+**Where** Every surface. Signing in is the one thing the narrow web does; the
+signed-in web is desktop only, reflowed down to 320 CSS px (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)").
 
 **What makes it hard** Most people do this once and then not for months, so the
 **return paths matter more than the first run**. Somebody who has forgotten
@@ -249,8 +251,9 @@ understand why rather than think it is broken.
 - Sets organisation-wide rules: sign-in through a provider only, how long a
   session lasts
 
-**Where** A computer, almost entirely. The narrow web can manage members and
-settings; the apps only need enough to see who is who.
+**Where** A computer, almost entirely. The signed-in web has no phone layout,
+only the desktop page reflowed down to 320 CSS px (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)");
+the apps only need enough to see who is who.
 
 **What makes it hard** We see the eight routes in as **one journey entered at
 different points**, not eight separate flows — design them that way and a ninth
@@ -598,7 +601,8 @@ see a version of this that earns its keep without them, say so.)_
   event stopping**
 - Falls behind on payment, and finds things **read-only rather than gone**
 
-**Where** A computer only, including the narrow web. App stores take a share of
+**Where** A computer only; the narrow web shows the desktop page reflowed
+down to 320 CSS px (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)"). App stores take a share of
 anything bought inside an app, so plans are sold on the web and the app signs in
 to what was bought there. That is worth saying at the point of purchase, because
 a subscription bought through a store belongs to that store account, cannot be

@@ -2,17 +2,22 @@ import { describe, expect, it } from 'vitest';
 
 import {
   chooseOrganisation,
+  eventMovesInto,
   choosePaused,
   pausedSwitch,
   pausedReasonKey,
+  rememberedEntry,
+  rememberedFor,
   organisationChanges,
   newOrganisationProblem,
   organisationProblem,
   keptBackBy,
   roleHolds,
+  requestMessageLength,
   roleName,
   takesCardStep,
   withCurrent,
+  REQUEST_MESSAGE_MAXIMUM,
 } from './organisations.ts';
 
 const ire = { id: 'org_ire' };
@@ -30,6 +35,43 @@ describe('chooseOrganisation', () => {
 
   it('is in no organisation when the account has none', () => {
     expect(chooseOrganisation([], 'org_ire')).toBeNull();
+  });
+});
+
+describe('rememberedFor', () => {
+  it('gives back the organisation the same account left', () => {
+    expect(rememberedFor(rememberedEntry('usr_x', 'org_ire'), 'usr_x')).toBe('org_ire');
+  });
+
+  it('gives nothing to another account signing in on the same device', () => {
+    expect(rememberedFor(rememberedEntry('usr_x', 'org_ire'), 'usr_y')).toBeNull();
+  });
+
+  it('gives nothing for an empty slot or one it cannot read', () => {
+    expect(rememberedFor(null, 'usr_x')).toBeNull();
+    expect(rememberedFor('org_ire', 'usr_x')).toBeNull();
+    expect(rememberedFor('null', 'usr_x')).toBeNull();
+    expect(rememberedFor('{"account":"usr_x"}', 'usr_x')).toBeNull();
+  });
+});
+
+describe('eventMovesInto', () => {
+  const memberships = [{ id: 'org_a' }, { id: 'org_b' }];
+
+  it("moves into the event's organisation when the account is a member of it", () => {
+    expect(eventMovesInto({ organisationId: 'org_b' }, 'org_a', memberships)).toBe('org_b');
+  });
+
+  it('stays for an event of the organisation already worked in', () => {
+    expect(eventMovesInto({ organisationId: 'org_a' }, 'org_a', memberships)).toBeNull();
+  });
+
+  it('stays for an organisation the account is not a member of', () => {
+    expect(eventMovesInto({ organisationId: 'org_c' }, 'org_a', memberships)).toBeNull();
+  });
+
+  it('stays when working in none, as an event held from outside opens', () => {
+    expect(eventMovesInto({ organisationId: 'org_b' }, null, memberships)).toBeNull();
   });
 });
 
@@ -197,6 +239,7 @@ describe('keptBackBy', () => {
   it('names each rule keeping it back, Google or Apple first', () => {
     const both = {
       withheldUntilLinked: ['organisation.manage'],
+      onAnEvent: [],
       withheldUntilTwoFactor: ['members.manage', 'organisation.manage'],
     };
 
@@ -222,5 +265,31 @@ describe('takesCardStep', () => {
     for (const action of ['makeLive', 'changeDates', 'resume', 'duplicate'] as const) {
       expect(takesCardStep({ permissions: ['events.read'] }, action)).toBe(false);
     }
+  });
+});
+
+describe('requestMessageLength', () => {
+  const yoruba = 'Ẹ̀gbẹ́ Ọ̀rẹ́ Ìyàwó Àgbà';
+
+  it('counts the letters a person sees, composed or decomposed', () => {
+    expect(requestMessageLength(yoruba.normalize('NFC'))).toBe(19);
+    expect(requestMessageLength(yoruba.normalize('NFD'))).toBe(19);
+  });
+
+  it('counts a family and a flag as one each', () => {
+    expect(requestMessageLength('👨‍👩‍👧 🇳🇬')).toBe(3);
+  });
+
+  it('holds the limit in dotted and toned letters, one more is past it', () => {
+    const letters = (count: number): string => 'Ẹ̀'.normalize('NFD').repeat(count);
+
+    expect(requestMessageLength(letters(REQUEST_MESSAGE_MAXIMUM))).toBe(REQUEST_MESSAGE_MAXIMUM);
+    expect(requestMessageLength(letters(REQUEST_MESSAGE_MAXIMUM + 1))).toBeGreaterThan(
+      REQUEST_MESSAGE_MAXIMUM,
+    );
+  });
+
+  it('leaves out the space around the words', () => {
+    expect(requestMessageLength('  Hello  ')).toBe(5);
   });
 });

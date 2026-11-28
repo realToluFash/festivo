@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   howToReadOut,
+  KEYBOARD_HIDDEN_SAID_MS,
   newWords,
   saidInFullMs,
   settleMs,
@@ -296,7 +297,14 @@ describe('a refusal’s words, said in full before focus moves on (sc-43907)', (
     expect(saidInFullMs('android', longer)).toBeGreaterThan(saidInFullMs('android', summary));
   });
 
+  it('wait for TalkBack to say the keyboard is hidden when it closes with them', () => {
+    expect(saidInFullMs('android', summary, true)).toBe(
+      saidInFullMs('android', summary) + KEYBOARD_HIDDEN_SAID_MS,
+    );
+  });
+
   it('leave iOS as it was', () => {
     expect(saidInFullMs('ios', summary)).toBe(0);
+    expect(saidInFullMs('ios', summary, true)).toBe(0);
   });
 });

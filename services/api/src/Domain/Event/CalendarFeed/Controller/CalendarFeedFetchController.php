@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Domain\Event\CalendarFeed\Controller;
 
 use App\Deletion\RestoreWindow;
+use App\Domain\Event\CalendarFeed\CalendarFeedResponse;
 use App\Domain\Event\CalendarFeed\CalendarFeedWriter;
-use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\PublicAccess;
-use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
+use App\Http\LinkTokens;
 use App\Repository\CalendarFeedRepository;
 use App\Repository\EventRepository;
-use Psl\Str;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
@@ -45,7 +44,7 @@ final readonly class CalendarFeedFetchController
     #[Route('/api/calendar-feeds/{token}.ics', name: 'calendar_feed', requirements: ['token' => '[A-Za-z0-9_-]{43}'], methods: ['GET'])]
     public function fetch(Request $request, #[SensitiveParameter] string $token): Response
     {
-        $hash = FeedLinkIssuer::hash($token);
+        $hash = LinkTokens::hash($token);
         $limit = $this->calendarFeedTokenLimiter->create($hash)->consume();
 
         if (!$limit->isAccepted()) {
@@ -67,14 +66,7 @@ final readonly class CalendarFeedFetchController
             $this->accountLanguage->of($user),
             fn (): string => $this->calendarFeedWriter->write($organisation, $events, $scope, $now),
         );
-        $tag = '"' . Str\slice(\hash('sha256', $body), 0, 32) . '"';
-        $headers = ['ETag' => $tag, 'Cache-Control' => 'private, no-cache'];
-        $ifNoneMatch = $request->headers->get('If-None-Match');
 
-        if (null !== $ifNoneMatch && ('*' === Str\trim($ifNoneMatch) || EntityTag::matches($ifNoneMatch, $tag))) {
-            return new Response(null, Response::HTTP_NOT_MODIFIED, $headers);
-        }
-
-        return new Response($body, Response::HTTP_OK, [...$headers, 'Content-Type' => 'text/calendar; charset=utf-8']);
+        return CalendarFeedResponse::of($request, $body);
     }
 }

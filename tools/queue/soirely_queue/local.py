@@ -4,14 +4,18 @@ machine holds ops' shared duties, and it never touches another computer.
 The checks run in the minute, with no model. Each finding becomes an ops work item of kind
 `machine`, which this machine's ops takes even while another machine holds the ops lease."""
 
+import collections
+import fnmatch
 import json
 import os
 import pathlib
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import typing
 import urllib.error
 import urllib.request
 
@@ -30,8 +34,13 @@ SMALL_DAYS = 14
 SMALL_BYTES = 1_000_000
 RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
+MAESTRO_LOG = "maestro.log"
+# Every log Maestro's --debug-output writes beside its screenshots (sc-64887).
+MAESTRO_LOGS = (MAESTRO_LOG, "device-simulator.log", "device-logcat.txt", "device-xctest.log",
+                "xctest_runner_*.log")
+MAESTRO_RUNS = pathlib.Path(".maestro", "tests")
 HARNESS = ("bin", "state.json")
-RECORDS = {"release": ("installed",)}
+SWEPT_INSIDE = {"release": ("installed",), ".batch": ()}
 STORY_NUMBER = re.compile(r"\d{4,}")
 STORY_REF = re.compile(r"sc-?(\d+)", re.I)
 # Evidence is attached on Shortcut by then, so `.qa/sc<N>*` has done its job.
@@ -42,6 +51,21 @@ GENERATED = ("node_modules", "pnpm-workspace.yaml")
 LARGEST = 5
 MEASURE_SECONDS = 30 * 60
 DEVICES = ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")
+
+
+class Desktop(typing.NamedTuple):
+    app: pathlib.Path
+    socket: str
+    start: list
+
+
+DOCKER_DESKTOP = {
+    "darwin": Desktop(pathlib.Path("/Applications/Docker.app"), "~/.docker/run/docker.sock",
+                      ["open", "-a", "Docker"]),
+    "linux": Desktop(pathlib.Path("/opt/docker-desktop"), "~/.docker/desktop/docker.sock",
+                     ["systemctl", "--user", "start", "docker-desktop"]),
+}
+WAKE_SECONDS = 5 * 60
 
 
 def gigabytes(text):
@@ -63,6 +87,40 @@ def build_cache_gb():
         if row.get("Type") == "Build Cache":
             return gigabytes(row.get("Size"))
     return None
+
+
+def docker_answers(sock):
+    try:
+        with socket.socket(socket.AF_UNIX) as conn:
+            conn.settimeout(2)
+            conn.connect(os.path.expanduser(sock))
+        return True
+    except OSError:
+        return False
+
+
+def open_docker(command):
+    subprocess.run(command, capture_output=True, timeout=30, check=True)
+
+
+def wake_docker(db, now, say=print, system=None, app=None, answers=None, start=None):
+    """Docker Desktop, started from this tick when its daemon is gone. A Claude run that
+    starts it takes it down again when the run ends (sc-46912)."""
+    desktop = DOCKER_DESKTOP.get(system or sys.platform)
+    if not desktop or not (app or desktop.app).exists():
+        return False
+    if (answers or (lambda: docker_answers(desktop.socket)))():
+        return False
+    if now - (store.get_meta(db, "docker_woken") or {}).get("at", 0) < WAKE_SECONDS:
+        return False
+    store.set_meta(db, "docker_woken", {"at": now})
+    try:
+        (start or (lambda: open_docker(desktop.start)))()
+    except (OSError, subprocess.SubprocessError) as error:
+        say(f"Docker is down on this machine and would not start: {error}")
+        return False
+    say("Docker was down on this machine: started Docker Desktop")
+    return True
 
 
 def stack_problem(role):
@@ -127,13 +185,13 @@ def scratch_folders(config):
 
 
 def sweepable(scratch):
-    """The entries a sweep may clear: a folder holding a record the harness reads back is
-    swept entry by entry, around the record."""
+    """The entries a sweep may clear: folders in `SWEPT_INSIDE` are swept entry by entry,
+    keeping the names listed."""
     for entry in scratch.iterdir():
         if entry.name in HARNESS:
             continue
-        if entry.name in RECORDS and entry.is_dir() and not entry.is_symlink():
-            yield from (e for e in entry.iterdir() if e.name not in RECORDS[entry.name])
+        if entry.name in SWEPT_INSIDE and entry.is_dir() and not entry.is_symlink():
+            yield from (e for e in entry.iterdir() if e.name not in SWEPT_INSIDE[entry.name])
         else:
             yield entry
 
@@ -144,6 +202,61 @@ def finished(stories, numbers, states):
     known = [by_id.get(n) for n in numbers]
     return bool(known) and all(s and (s.get("state") in states or
                                       "Done" in states and s.get("done")) for s in known)
+
+
+def maestro_log_kind(name):
+    return next((kind for kind in MAESTRO_LOGS if fnmatch.fnmatchcase(name, kind)), None)
+
+
+def sweep_maestro_logs(scratch, now, say=print):
+    """Deletes every Maestro debug log a day old in a tester's `.qa/`: qa-env trims each run's,
+    and these are from before that or from runs killed part way."""
+    freed, gone = 0, collections.Counter()
+    for entry in sweepable(scratch):
+        if entry.name.startswith(NEVER_SWEPT) or entry.is_symlink():
+            continue
+        logs = [entry] if maestro_log_kind(entry.name) else \
+            (p for p in entry.rglob("*") if maestro_log_kind(p.name)) if entry.is_dir() else []
+        for log in logs:
+            try:
+                found = log.lstat()
+                if not log.is_file() or now - found.st_mtime < SWEEP_SECONDS:
+                    continue
+                # The folder keeps its age, or the three-day sweep would wait three days more.
+                parent = log.parent.lstat()
+                log.unlink()
+                os.utime(log.parent, ns=(parent.st_atime_ns, parent.st_mtime_ns))
+            except OSError as error:
+                say(f"warning: could not sweep {log}: {error}")
+                continue
+            freed = freed + found.st_size
+            gone[maestro_log_kind(log.name)] += 1
+    if gone:
+        named = ", ".join(f"{gone[kind]} {kind}" for kind in MAESTRO_LOGS if gone[kind])
+        say(f"swept {amount(freed)} of Maestro logs from {scratch}: {named}")
+
+
+def sweep_maestro_runs(now, say=print):
+    """Deletes the run folders a day old under `~/.maestro/tests`, where Maestro writes a run
+    made without --debug-output, which no tester's sweep sees."""
+    runs = pathlib.Path.home() / MAESTRO_RUNS
+    if not runs.is_dir():
+        return
+    freed, gone = 0, 0
+    for run in runs.iterdir():
+        if not run.is_dir() or run.is_symlink():
+            continue
+        try:
+            newest, size = footprint(run)
+            if now - newest < SWEEP_SECONDS:
+                continue
+            shutil.rmtree(run)
+        except OSError as error:
+            say(f"warning: could not sweep {run}: {error}")
+            continue
+        freed, gone = freed + size, gone + 1
+    if gone:
+        say(f"swept {amount(freed)} of Maestro runs from {runs}: {gone} run folders")
 
 
 def sweep_scratch(db, config, now=None, say=print, cwds=None):
@@ -157,7 +270,9 @@ def sweep_scratch(db, config, now=None, say=print, cwds=None):
         return False
     store.set_meta(db, "scratch_swept", {"period": period})
     stories = store.stories(db)
+    sweep_maestro_runs(now, say)
     for tester, scratch in scratch_folders(config):
+        sweep_maestro_logs(scratch, now, say)
         held, freed, gone = held_stories(stories, tester), 0, 0
         for entry in sweepable(scratch):
             numbers = set(STORY_NUMBER.findall(entry.name))
@@ -395,6 +510,21 @@ def measure_litter(config, start, out=None):
     return sizes
 
 
+def disk_period(db, name, now, dry_run=False):
+    """The disk item's period: kept while its item is open or claimed, and a new one once it
+    is done, so every fall under the floor wakes ops, not only the first of the day."""
+    period = (store.get_meta(db, "disk_period") or {}).get(name)
+    if period is not None:
+        row = db.execute("select status from work where fingerprint = ?",
+                         (f"ops@{name}:disk:{period}",)).fetchone()
+        if not row or row["status"] != "done":
+            return period
+    period = int(now)
+    if not dry_run:
+        store.set_meta(db, "disk_period", {name: period})
+    return period
+
+
 def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=False):
     """What needs this machine's ops now, kept for the work it becomes."""
     now = now or time.time()
@@ -405,7 +535,7 @@ def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=Fa
     floor = config.get("minFreeGb", 15)
     left = free(config)
     if floor and left < floor:
-        found.append({"key": "disk", "urgent": True, "period": int(now // SWEEP_SECONDS),
+        found.append({"key": "disk", "urgent": True, "period": disk_period(db, name, now, dry_run),
                       "reason": f"only {left:.0f} GB free on {name}, under minFreeGb {floor}: "
                                 "free space before workers can start again"})
     elif floor and left < 2 * floor:

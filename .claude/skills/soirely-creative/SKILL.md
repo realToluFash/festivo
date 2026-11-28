@@ -84,9 +84,10 @@ lists your open ideas and the friction in recent QA reports, and the order is:
 4. Failing those, say there is nothing worth proposing and stop. That is a complete answer,
    and better than a weak idea.
 
-**At most three open ideas at once.** An idea is open while it is in `Backlog` with no
-decision from the product manager. With three open, your run is following up on them, not
-proposing a fourth.
+**At most three open ideas at once.** An idea is open while it is in `Backlog` without the
+label `idea accepted`, parked ones included: a parked idea is "not now", not accepted. That
+is the count `sq cd new-story` refuses on and your digest lists. With three open, your run
+is following up on them, not proposing a fourth.
 
 ## 3. The idea
 
@@ -146,8 +147,10 @@ Only when words cannot carry it: a link to the section of the concepts artifact.
 
 The product manager replies on the story:
 
-- **Accepted**: the product manager writes the AC (or folds it into an existing story) and
-  moves it to `To Do`, then to `Needs Design`, and the designer draws it. Your part is done, except for questions
+- **Accepted**: the product manager adds `idea accepted`, writes the AC (or folds it into an
+  existing story) and moves it to `To Do`, then to `Needs Design`, and the designer draws it.
+  While its epic waits for the owner, an accepted idea may wait in `Backlog` with the epic's
+  other stories; it stops counting toward your three once it carries `idea accepted`. Your part is done, except for questions
   addressed to you. You do not write AC and you do not draw the final screens.
 - **Parked**: it stays in `Backlog` with the reason. Bring it back only when the reason
   changes, and say what changed.

@@ -27,6 +27,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
@@ -182,6 +183,98 @@ final class EventRolesTest extends ApiTestCase
         self::assertContains(Permission::EventsManage->value, $byName['Naming']);
     }
 
+    /** sc-59617: a client names the role a Member's grants come from, and an organisation role's come from no event role. */
+    #[Test]
+    public function theEventReadNamesAMembersRoleOnItAndNoOtherRoles(): void
+    {
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        self::onEvent($viewer, $this->naming, EventRole::CanCheckIn);
+        self::onEvent($admin, $this->owambe, EventRole::CanView);
+
+        $roleOn = function (User $who, string $eventId): mixed {
+            $this->as($who, 'GET', '/api/events/' . $eventId);
+            self::assertSame(200, $this->statusCode());
+
+            $event = $this->last()['event'];
+            self::assertArrayHasKey('roleOnEvent', $event);
+
+            return $event['roleOnEvent'];
+        };
+
+        self::assertSame('can_view', $roleOn($viewer, $this->owambe));
+        self::assertSame('can_check_in', $roleOn($viewer, $this->naming));
+        self::assertNull($roleOn($admin, $this->owambe), 'an Admin on the event still holds the organisation role');
+        self::assertNull($roleOn($this->owner, $this->owambe));
+
+        $this->as($viewer, 'GET', $this->path('events'));
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'roleOnEvent' => Type\nullable(Type\string())], true))->coerce($this->last()['events']);
+        $byName = [];
+        foreach ($listed as $event) {
+            $byName[$event['name']] = $event['roleOnEvent'];
+        }
+        self::assertSame(['Owambe' => 'can_view', 'Naming' => 'can_check_in'], $byName, 'the list says the same');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function jobLabelsPast60Letters(): iterable
+    {
+        yield 'latin letters' => [Str\repeat('a', 61)];
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 61)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 240)];
+    }
+
+    #[Test]
+    #[DataProvider('jobLabelsPast60Letters')]
+    public function aJobLabelPast60LettersIsRefused(string $label): void
+    {
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view', 'jobLabel' => $label]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([['propertyPath' => 'jobLabel', 'message' => 'Shorten the job label to 60 characters or fewer.']], Vec\map(
+            Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($this->last()['violations'] ?? null),
+            static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']],
+        ));
+        self::assertNull($this->personOf($tunde, $this->owambe));
+    }
+
+    #[Test]
+    public function aJobLabelOf60LettersWithADotAndAToneEachIsSavedAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 60);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 60);
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        $added = $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view', 'jobLabel' => $composed]);
+        self::assertSame(201, $this->statusCode(), Json\encode($added));
+        $person = Type\shape(['id' => Type\string(), 'jobLabel' => Type\nullable(Type\string())], true)->coerce($added['person']);
+        self::assertSame($composed, $person['jobLabel']);
+
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->owambe . '/people/' . $person['id'], ['jobLabel' => $decomposed]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($decomposed, $this->personOf($tunde, $this->owambe)?->getJobLabel());
+    }
+
+    #[Test]
+    public function aMemberIsNeverGivenAServiceLevel(): void
+    {
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        foreach (['can_work_floor', 'can_work_pass', 'can_run_floor'] as $level) {
+            $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => $level]);
+            self::assertSame(422, $this->statusCode(), $level);
+        }
+
+        $added = $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view']);
+        $id = Type\shape(['id' => Type\string()], true)->coerce($added['person'])['id'];
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->owambe . '/people/' . $id, ['role' => 'can_run_floor']);
+        self::assertSame(422, $this->statusCode(), 'nor changed to one');
+        self::assertSame(EventRole::CanView, $this->personOf($tunde, $this->owambe)?->getRole());
+    }
+
     #[Test]
     public function aLeadAddsChangesAndRemovesAMember(): void
     {
@@ -214,7 +307,7 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
-    public function aLeadFindsWhomToAddByNameAloneAndNeverThemselves(): void
+    public function aLeadFindsWhomToAddWithTheirOrganisationRoleAndNeverThemselves(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member, 'Priya Shah');
         $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
@@ -229,8 +322,8 @@ final class EventRolesTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($listed));
         self::assertEqualsCanonicalizing([
-            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person'],
-            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello'],
+            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person', 'role' => 'owner'],
+            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello', 'role' => 'member'],
         ], $listed['members'] ?? null);
     }
 
@@ -379,6 +472,35 @@ final class EventRolesTest extends ApiTestCase
         self::assertEqualsCanonicalizing($expected, Vec\map($resolved, static fn (Uuid $id): string => $id->toRfc4122()));
         self::assertNull(self::service(MemberAudienceResolver::class)->recipient($audience, $elsewhere->getId()));
         self::assertNotNull(self::service(MemberAudienceResolver::class)->recipient($audience, $onIt->getId()));
+    }
+
+    /** sc-18317: each page starts after its cursor, so walking the pages reaches every member exactly once. */
+    #[Test]
+    public function anAudiencePageStartsAfterItsCursor(): void
+    {
+        $people = [$this->owner];
+        foreach (['ada', 'bayo', 'chidi', 'dupe'] as $name) {
+            $people[] = $this->member($name . '@ire.events', SeededRole::Member);
+        }
+
+        $ids = Vec\sort(Vec\map($people, static fn (User $user): string => $user->getId()->toRfc4122()));
+        $audience = Audience::members($this->organisation->getId(), Vec\map($people, static fn (User $user): Uuid => $user->getId()));
+        $resolver = self::service(MemberAudienceResolver::class);
+        $page = static fn (?string $after): array => Vec\map(
+            $resolver->resolve($audience, null === $after ? null : Uuid::fromString($after), 2),
+            static fn (Uuid $id): string => $id->toRfc4122(),
+        );
+
+        self::assertSame([$ids[2], $ids[3]], $page($ids[1]));
+
+        $walked = [];
+        $next = $page(null);
+        for ($pages = 0; [] !== $next && $pages < 5; ++$pages) {
+            $walked = [...$walked, ...$next];
+            $next = $page($next[1] ?? $next[0]);
+        }
+
+        self::assertSame($ids, $walked);
     }
 
     /** @return list<string> the names of the unfinished events listed */

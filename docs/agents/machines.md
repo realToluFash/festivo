@@ -57,6 +57,8 @@ repository because it describes the machine, not the project. The repository shi
 | `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `sliceMemoryMax`                          | what every worker on the machine may use between them, the cap on systemd's `soirely.slice`; `16G` by default. Raise it before adding roles, since each worker's own `memoryMax` counts against it                                                                                                                                                                                                                                                                                                                   |
+| `emulatorHost`                            | per tester role: the computer its Android emulator runs on, `"me@laptop"` or `{"ssh": "me@192.168.1.9", "name": "my-laptop", "gpu": "host", "sdk": "%LOCALAPPDATA%\\Android\\Sdk"}`. Unset, the emulator starts on this machine as always. A malformed value refuses only that role. See [An emulator on another computer](#an-emulator-on-another-computer)                                                                                                                                                         |
+| `chromeProfiles`                          | the Chrome profile folder of an account whose Chrome profile is not signed in to Google with that address, for a login from `sq web`: `{"qa@example.com": "Profile 3"}`. See [Claude accounts](#claude-accounts)                                                                                                                                                                                                                                                                                                     |
 | `manualTesters`                           | people who test, by Shortcut mention name: `{"@name": {"machine": "<the machine their stack runs on>", "member": "<Shortcut member id>"}}`. Kept out of the repository, which is public. A malformed entry is a warning in `sq status`, and stops no role                                                                                                                                                                                                                                                            |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
@@ -165,9 +167,32 @@ with `~/.claude-soirely`.
   login. The copy is made once. A later setup overwrites nothing; it names each folder
   whose `settings.json` no longer matches the default's, so a rule added there is not
   silently missing from the others.
+- **Logging in again, from `sq web`:** its **Claude logins** section lists every account
+  on every machine the page reads: the folders the roles name, soonest to run out first,
+  then the rest of each home folder's (`~/.claude`, and each `~/.claude-*` holding an
+  account file, settings or a login) as **No role**, so a spare account can be logged in
+  before a role moves onto it. Each row has how long the login has left
+  (`claude auth status`'s `loginExpiresAt`) and a **Log in again** button. A login
+  running out within three days, or gone, is also a warning on `sq status` and the page.
+  The button runs `claude auth login --email <account>` on the machine that holds the
+  folder, and the page's own machine opens the sign-in in the Chrome profile signed in as
+  that account (`--profile-email`, or the folder named in `chromeProfiles`). Sign in and the
+  login finishes by itself; if the sign-in page shows a code instead, paste it on the page.
+  A login that comes back as another account is named on the page, since the folder's roles
+  now run as it. Claude moves the date later each time it refreshes a login, so a login in
+  daily use rarely runs out; one that is dropped shows as logged out straight away.
+- **Each account's usage**, beside its login: every limit Claude reports for it (the
+  session, the week, the week for one model), how much is used and when it resets, as
+  `/usage` shows them. The page has each folder's Claude read them again once they are 5
+  minutes old, one folder at a time, with
+  `claude -p /usage --no-session-persistence --setting-sources ""` in
+  `~/.cache/soirely-usage`. Claude answers it itself: no model call, so nothing is spent,
+  no hooks or settings loaded, no session kept. sq then reads the figures from the account
+  file Claude keeps them in. An account a role uses that is 90% through any limit is a
+  warning on `sq status` and the page; a folder no role uses never is.
 - **A folder with no login refuses its roles**, with the command to log in. The other
-  roles keep running. `sq` reads only the account's email from `.claude.json`, never a
-  token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
+  roles keep running. `sq` reads only the account's email and the usage Claude last read
+  from `.claude.json`, never a token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
   Keychain. _(To check on the Mac's first run with two folders: that each keeps its own
   Keychain login, which `sq status` shows as each role's account and the run log as each
   run's.)_
@@ -324,12 +349,13 @@ date. Ops never applies permissions: only the owner does (below). So ops is spli
 in `sq status` and the journal, and the other roles and the self-update carry on. Each minute, with no model, `sq run` checks the machine and files what it finds as
 ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 
-| Check                                                   | Becomes                                                                                                  |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                  |
-| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                         |
-| once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                         |
-| free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day |
+| Check                                                   | Becomes                                                                                                                                                               |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                                                                               |
+| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                                                                                      |
+| once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                                                                                      |
+| Docker Desktop's socket not answering                   | no work: the tick starts it itself (`open -a Docker` on a Mac, `systemctl --user start docker-desktop` on Linux), at most every 5 minutes, and says so in the journal |
+| free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day                                                              |
 
 - **Testers' `.qa/` is cleared once a day, with no model.** In each `soirely-qa<n>` here,
   an entry nothing has changed in for 3 days goes (14 days under a megabyte). Kept: the
@@ -338,6 +364,11 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
   each sweep freed and where. An entry whose stories have all passed QA or are Done goes
   at the next sweep, whatever its age; so does a merged story's clean, pushed worktree
   (`README.md`, Guards and alerts).
+- **No Claude run starts Docker Desktop.** An app a run opens is quit when the run ends, so a
+  Docker started with `open -a Docker` from a run stops seconds after it (sc-46912). The
+  minute tick runs outside every session and starts it instead; a run that finds Docker
+  down waits a tick or two. A paused machine (`sq pause`, here or everywhere) starts
+  nothing, so pause it to keep Docker quit.
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold
@@ -376,6 +407,145 @@ through its own server, so the browser holds one token and talks to one address.
   warning on `sq status`.
 - It is plain HTTP on a trusted network, as Docker's own ports here are. Over anything else,
   put it behind a tunnel.
+- **A login started for another machine's account** runs on that machine, and its sign-in
+  opens in this one's Chrome. Claude sends the browser back to `localhost`, which is this
+  machine, so the page listens on that port here for the length of the login and passes
+  the code on to the other machine's Claude; when the port is taken here, it opens the
+  link whose page shows a code to paste instead. Chrome opens only for a page looked at
+  on the machine serving it (`127.0.0.1`): from another address the page shows the link
+  and the box for the code. Each login step is taken only as JSON from the page's own
+  address, so another site open in the browser cannot start one.
+
+### Controls on the page
+
+**The page pauses and resumes a machine, pauses and resumes every machine, and starts and
+stops each role**, on the machine it shows: a peer's are asked of that peer's own page,
+which does them. Each says what the `sq` command says, its `error:` included, and is kept
+in `<sq home>/runs/controls.jsonl` with the address it came from.
+
+- **Every control asks for the token, this machine's own page included.** A worker shares
+  the loopback with the owner, not the owner's cookie. Open the page once as
+  `http://127.0.0.1:8765/?token=<SQ_WEB_TOKEN>` (a hand-run `sq web` opens it that way
+  itself), and the cookie lasts a year. Until then the buttons are off and the page says how.
+- **Workers are never given `SQ_WEB_TOKEN`**, and reading the env file is among their
+  denied tools. Like the `OWNER_ONLY` refusals, that is a guard against a worker that
+  misreads a thread, not a boundary: a worker runs as the owner.
+- **Start starts the role and its stack, and leaves the manager as it is.** Unlike
+  `sq start`, it neither installs the manager nor lifts a pause, since the page is served
+  by one of the manager's own units. A started role on a paused machine ticks once the
+  machine is resumed, and the page says so.
+- **Stop lets a running worker finish its item**, as `sq stop` does. Stopping one at once
+  is `just agents down --now`, at the machine.
+- **Pause every machine is shown here at once**, and on the other machines at their next
+  tick, within a minute.
+- A peer whose `sq` predates the controls is named on the page; it gets them once its `sq`
+  updates from `main`.
+
+**Settings, on each role and on each machine's header, changes `agents.json` there**: a
+role's `model`, `effort`, `inboxEffort`, `wakeEvery`, `workers` and `maxBudgetUsd`, the same
+six in `defaults`, and the machine's `dailyBudgetUsd`, and the **Claude account**
+(`claudeConfigDir`) of each role and of the machine. The rest of the file is changed by
+hand, since a mistake there stops the machine.
+
+- **A Claude account is one of the folders the machine's logins list**: the folders its
+  roles run under, `~/.claude`, and each `~/.claude-*` with an account file, settings or a
+  login, named with who it runs as and the roles on it. Any other folder is refused, since
+  a folder's settings and hooks run in every worker started under it. Make a new one and
+  log in to it at the keyboard ([Claude accounts](#claude-accounts)). A folder is matched
+  by the path it resolves to and written in the `~/` form the logins show.
+- **A folder with no login is refused** with `sq run`'s `no Claude login in …`, for a role
+  even when it is refused for something else already, and for the machine's own folder
+  even when no role runs under it. A role's account can be cleared, so it runs under the
+  machine's (**The machine's**); naming the machine's folder instead keeps the role on it
+  when the machine's changes. The machine's cannot be cleared. The next run starts under
+  the new folder, with its account, settings and memory; a worker already running finishes
+  under the old one.
+- **Each field shows the value in force and where it is set**: the role, `defaults`, or
+  sq's own floor (`wakeEvery` 3m, `workers` 1). A cleared role field falls back to
+  `defaults`.
+- **A save is checked as `sq run` checks the whole file after it.** A save that would put
+  the file in error, or refuse a role that was not refused, is refused with `sq run`'s own
+  line, and nothing is written. So `workers: 2` in `defaults` is refused, naming every role
+  it would stop.
+- **Only the changed fields' lines change**, on a file indented as `just agents setup`
+  writes it. One Save is one write, even when it changes `defaults` and the daily budget
+  together. The file a save replaced is kept as `agents.json.prev`, with the revision the
+  save wrote beside it in `agents.json.prev.sha256`, and **Undo last change** puts it back:
+  one step, not a history.
+- **A save or an undo is refused when the file changed since the page read it**, by hand
+  or from another page, and the page shows the file as it now is. An undo is also refused,
+  and Undo is not offered, once the file has been changed by hand since the last save, so a
+  hand edit is never put back.
+- `sq run` reads the file every minute, so a change is in force by the next tick. A worker
+  already running finishes its item on the values it started with.
+- Without the token, Settings shows the values and offers no Save or Undo. Each save and
+  undo is kept in `runs/controls.jsonl` with each field's old and new value.
+
+## An emulator on another computer
+
+A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
+only its emulator runs elsewhere. Two testers on tolu-linux do this, each on its own host:
+
+| Tester | Stack ports       | Console, adb | `emulatorHost`                                                       |
+| ------ | ----------------- | ------------ | -------------------------------------------------------------------- |
+| `qa4`  | +5100 (API 13180) | 5578, 5579   | the owner's Windows laptop                                           |
+| `qa5`  | +5200 (API 13280) | 5580, 5581   | `{"ssh": "hp@192.168.1.228", "name": "princess-shalew"}`, Wi-Fi only |
+
+`android` starts it there in one systemd user unit,
+`soirely-qa<n>-emulator`, holding an ssh session that runs the emulator and carries its
+console and adb ports (5578 and 5579 for qa4) back here, so adb, `adb reverse`, screenshots
+and Maestro see `emulator-5578` as if it were local. `android --stop` ends the emulator, the
+unit and anything left on that port over there. If the session drops, the unit ends and
+Windows ends the emulator with it; the next `android` boots it again. An unreachable host
+fails within a minute, naming it; ssh waits up to 30 s for the handshake, which a host on
+Wi-Fi can take more than 10 s over.
+
+What the other computer needs, once:
+
+- **Windows, with OpenSSH Server** running (Settings > System > Optional features), and this
+  machine's public key in its `authorized_keys` (for an administrator,
+  `C:\ProgramData\ssh\administrators_authorized_keys`). `ssh -o BatchMode=yes <host> echo ok`
+  from here must answer without a prompt.
+- **The Android SDK** at `%LOCALAPPDATA%\Android\Sdk` (or `sdk` in the setting), with the
+  Android Emulator, the Command-line Tools (latest), and a Google Play x86_64 system image.
+  `just qa-env setup --tester <n>` then makes the tester's phone and tablet AVDs there, the
+  phone and the tablet at 4096 MB, and says exactly what to install when something is
+  missing. An AVD already there is reported and left alone.
+- **A JDK, when Android Studio is not installed.** The Command-line Tools' `avdmanager` is a
+  Java program, and Android Studio's bundled one is the JDK it usually finds. Without Studio,
+  install one (17 or later, such as Eclipse Temurin) with `java` on `PATH` or `JAVA_HOME` set,
+  and unpack the Command-line Tools zip so that
+  `%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\avdmanager.bat` exists.
+- **Hardware acceleration**: the Windows Hypervisor Platform or the Android Emulator
+  hypervisor driver. `-gpu host` (the default here) boots in about 50 s on a discrete GPU;
+  set `"gpu": "swiftshader_indirect"` where there is none, at about twice that.
+- **Memory for one emulator at a time.** The phone or the tablet, never both; either one's
+  4096 MB needs the rest of the computer quiet.
+- **Mains power, awake.** Turn off sleep on mains (Settings > System > Power), or the
+  session drops mid-batch.
+
+Two steps by hand, since they hold keys:
+
+1. **The console token.** `adb emu` signs in with this machine's
+   `~/.emulator_console_auth_token`, so the host must hold the same one. Keep the host's as
+   `%USERPROFILE%\.emulator_console_auth_token.bak-soirely`, then
+   `scp ~/.emulator_console_auth_token <host>:.emulator_console_auth_token`. `setup` says
+   whether the two match.
+2. **This machine's adb key.** A Play image accepts only the keys it was given, and the host's
+   emulator hands it the host's. Boot the phone once with `android`; until the device accepts
+   this machine's key, adb here sees it as `unauthorized` and refuses `shell` and
+   `exec-out`, so look and tap with the host's own adb, which the host's key already
+   authorizes: `ssh <host> %LOCALAPPDATA%\Android\Sdk\platform-tools\adb -s emulator-<port>
+exec-out screencap -p > prompt.png` shows the prompt, and the same with
+   `shell input tap <x> <y>` ticks **Always allow from this computer** and taps **Allow**.
+   It lasts until the AVD's data is wiped. Do the same once on the tablet.
+   Until then, the unauthorized emulator breaks every Android tester on this machine, not only
+   its own: maestro's adb client throws on any unauthorized device on the shared server and
+   reports each tester's emulator as `not connected`. `android` stops after 30 seconds of it, and `maestro` and `batch` name the
+   unauthorized serial when they see one; authorize it, or disconnect it, before going on.
+
+After `adb kill-server` the next harness command announces the emulator to the new server
+itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.
 
 ## Permission asks
 

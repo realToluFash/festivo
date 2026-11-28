@@ -5,6 +5,7 @@ import {
   OFFLINE_LINE,
   SERVICE_STATES,
   type Section,
+  type ServiceStateName,
   buttonOf,
   candidates,
   carryOn,
@@ -211,5 +212,20 @@ describe('the waiter’s Next', () => {
 describe('the states', () => {
   it('seeds every state', () => {
     for (const name of SERVICE_STATES) expect(seed(name).summary.course.due).toBe(194);
+  });
+
+  it('has Grilled fish Ready in the run-out states only, with the counts still adding up', () => {
+    const fish = (name: ServiceStateName) =>
+      seed(name).summary.kitchen.find((k) => k.item === 'Grilled fish');
+    const s = seed('runOutAlert').summary;
+    const c = s.course;
+    expect(fish('runOutAlert')?.state).toBe('Ready');
+    expect(fish('runOutAlert')?.waiting).toBe(0);
+    expect(c.kitchen).toBe(7);
+    expect(c.onTray + c.kitchen + c.toServe + c.served).toBe(c.due);
+    expect(s.sections.reduce((n, sec) => n + sec.toServe, 0)).toBe(c.toServe);
+    expect(s.alerts.some((a) => a.kind === 'heldUp')).toBe(false);
+    expect(fish('populated')?.state).toBe('Preparing');
+    expect(seed('populated').summary.alerts.some((a) => a.kind === 'heldUp')).toBe(true);
   });
 });

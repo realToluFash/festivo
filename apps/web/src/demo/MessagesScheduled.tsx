@@ -1,5 +1,5 @@
 import { Glyph } from '../components/Glyph.tsx';
-import { type Refusal, SW, refusalLine } from './messagesScheduled.ts';
+import { type Refusal, SW, pausedWaits, refusalLine } from './messagesScheduled.ts';
 import './messagesScheduled.css';
 
 /** A scheduled message's refused save (sc-3963): an alert above the composer, the red edge and the mark with the words, never colour alone. */
@@ -18,5 +18,18 @@ export function RefusedSave({ refusal, onReload }: { refusal: Refusal; onReload:
         </div>
       </div>
     </li>
+  );
+}
+
+/** sc-3963: where "Goes …" was while the event is paused, the same line before the message's time and after it, two bars with the words. */
+export function PausedLine() {
+  return (
+    <p className="mg-paused">
+      <span className="mg-paused-mark" aria-hidden="true">
+        <span />
+        <span />
+      </span>
+      {pausedWaits()}
+    </p>
   );
 }

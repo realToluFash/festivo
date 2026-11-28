@@ -7,11 +7,14 @@ import { DecidePage } from './Decide.tsx';
 import { type SampleEvent } from './events.ts';
 import { PAYERS_STATES } from './payers.ts';
 import { PayersPage } from './Payers.tsx';
-import { PLAN_STATES } from './plan.ts';
+import { PLANNING_STATES, PLAN_STATES } from './plan.ts';
 import { PlanPage } from './Plan.tsx';
+import { PlanningPage } from './Planning.tsx';
 import { BudgetArea } from './Quotes.tsx';
 import { SHARE_STATES } from './share.ts';
 import { SharePage } from './Share.tsx';
+import { STAFF_RATES_STATES } from './staffRates.ts';
+import { StaffRatesPage } from './StaffRates.tsx';
 import { TEMPLATES_STATES } from './templates.ts';
 import { TemplatesPage } from './Templates.tsx';
 
@@ -28,6 +31,10 @@ export function BudgetEntry({ event }: { event: SampleEvent }) {
   if (PAYERS_STATES.includes(state)) return <PayersPage key={key} event={event} state={state} />;
   if (SHARE_STATES.includes(state)) return <SharePage key={key} event={event} state={state} />;
   if (PLAN_STATES.includes(state)) return <PlanPage key={key} event={event} state={state} />;
+  if (PLANNING_STATES.includes(state))
+    return <PlanningPage key={key} event={event} state={state} />;
+  if (STAFF_RATES_STATES.includes(state))
+    return <StaffRatesPage key={key} event={event} state={state} />;
   if (TEMPLATES_STATES.includes(state))
     return <TemplatesPage key={key} event={event} state={state} />;
   return <BudgetArea event={event} />;

@@ -230,6 +230,11 @@ export interface CalendarPlace {
   month: CalendarMonth;
 }
 
+/** Where a person's view and month are kept on a device: their own, never the device's (sc-74024). */
+export function calendarPlaceKey(personId: string): string {
+  return `soirely.calendar.${personId}`;
+}
+
 export function readCalendarPlace(kept: string | null): CalendarPlace | null {
   if (kept == null) return null;
 

@@ -4,7 +4,9 @@ import { type Ref, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { TextField, type TextFieldProps } from './Field.tsx';
+import { TapPressable } from './TapPressable.tsx';
 import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { pickedInto, pickerValue } from '../kit/eventForm.ts';
 import { weight } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -81,7 +83,7 @@ export function PickerLayer({
   );
 }
 
-/** A date or a time as a box to tap, as main's form draws them: the date with its year, the time 24-hour. */
+/** A date or a time as a box to tap, as main's form draws them: the date with its year, the time 24-hour, or the empty box when none is chosen. */
 export function MomentBox({
   label,
   mode,
@@ -91,7 +93,10 @@ export function MomentBox({
   width,
   height = 52,
   wrong = false,
+  line = null,
+  grown = false,
   onPress,
+  tapOnly = false,
   ref,
   testID,
 }: {
@@ -103,21 +108,32 @@ export function MomentBox({
   width?: number;
   height?: number;
   wrong?: boolean;
+  /** Read after the box while it is wrong: the line under it. */
+  line?: string | null;
+  /** Its words grow up to the page title's size and step down rather than break, the box growing with them (sc-75213). */
+  grown?: boolean;
   onPress: () => void;
+  /** In a list that scrolls, a touch that moved it opens nothing (sc-75211). */
+  tapOnly?: boolean;
   ref?: Ref<ViewInstance>;
   testID?: string;
 }) {
+  const { t } = useTranslation();
+  const Press = tapOnly ? TapPressable : Pressable;
   const words =
-    mode === 'time'
-      ? formatWallClock(value, locale)
-      : year
-        ? formatEventDate(`${value}T12:00:00Z`, 'UTC', locale)
-        : formatWallDay(value, locale);
+    value === ''
+      ? ''
+      : mode === 'time'
+        ? formatWallClock(value, locale)
+        : year
+          ? formatEventDate(`${value}T12:00:00Z`, 'UTC', locale)
+          : formatWallDay(value, locale);
   const tall = height > tokens.sizeHit;
   const inside = (tall ? tokens.spacePillEnd : tokens.spaceLg) - (wrong ? 2 : 1.5);
+  const [room, setRoom] = useState(0);
 
   return (
-    <Pressable
+    <Press
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
@@ -129,16 +145,32 @@ export function MomentBox({
         },
         width == null ? styles.grow : { width },
         wrong && styles.wrong,
+        grown && styles.grown,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${words}`}
+      accessibilityLabel={`${label}, ${words === '' ? t('eventForm.notChosen') : words}`}
+      {...(wrong && line != null ? { accessibilityHint: line } : {})}
       testID={testID}
     >
-      <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
-        {words}
-      </Text>
-    </Pressable>
+      {grown ? (
+        <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+          <CappedWholeWords
+            size={tall ? 16 : 15}
+            weight="medium"
+            accessible={false}
+            style={styles.figures}
+            room={room}
+          >
+            {words}
+          </CappedWholeWords>
+        </View>
+      ) : (
+        <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
+          {words}
+        </Text>
+      )}
+    </Press>
   );
 }
 
@@ -195,6 +227,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   wrong: { borderWidth: 2, borderColor: tokens.colorBroken },
+  grown: { paddingVertical: tokens.spaceXs },
   field: {
     minHeight: 52,
     paddingLeft: 14.5,

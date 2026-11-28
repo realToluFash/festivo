@@ -3,9 +3,12 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, CardStep, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { StateMark } from './KitchenSheet.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { Opened } from '../components/EventPageParts.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
@@ -14,11 +17,11 @@ import {
   type Dialog,
   type Kitchen as KitchenHeld,
   type KitchenStart,
+  type Pdf,
   CW,
   KITCHEN_EVENT,
   KW,
   READER,
-  SHOWN_FIRST,
   changeLines,
   clockOfKitchen,
   copyLine,
@@ -28,7 +31,6 @@ import {
   fileName,
   keepKitchen,
   keptKitchen,
-  kitchenAt,
   kw,
   apiRefuses,
   latestCopy,
@@ -51,14 +53,26 @@ import {
   courseRows,
   dietCounts,
 } from './kitchenChanges.ts';
-import { KitchenPaper, PartsBlock } from './KitchenParts.tsx';
-import { PARTS_FIGURES, PARTS_SAMPLES, type PartsSheet } from './kitchenParts.ts';
+import {
+  type Cell,
+  type Sheet as SheetFigures,
+  type SheetCourse,
+  KSW,
+  ksw,
+  menuOf,
+  pdfName,
+  sheetOf,
+  worldOf,
+} from './kitchenSheet.ts';
 import { keptInbox, waitingLine } from './messages.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './kitchen.css';
 
 const MAKE_MS = 900;
+const LOAD_MS = 900;
+
+type Load = 'loading' | 'unreached' | 'retrying' | 'loaded';
 
 /** The kitchen sheet at a desk (board Kitchen-A-Web, page e30): sc-3911's sheet beside Final numbers, the date edited in place, Give final numbers… the 400 dialog. */
 export function KitchenPage() {
@@ -77,39 +91,33 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== KITCHEN_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=menu`} replace />;
-  if (first.paper === true && first.parts != null)
-    return (
-      <KitchenPaper
-        event={event}
-        figures={PARTS_FIGURES}
-        sheet={PARTS_SAMPLES[first.parts]()}
-        now={first.clock ?? clockOfKitchen()}
-        back={kitchenAt(event.id, first.parts === 'inParts' ? 'inParts' : 'familyStyle')}
-      />
-    );
 
   return (
-    <EventsShell
-      told={first.told}
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="menu"
-          now={first.clock ?? clockOfKitchen()}
-          tell={tell}
-          inert={covered}
-          waiting={waitingLine(keptInbox())}
-        />
-      )}
+    <KeptArea
+      eventId={event.id}
+      area="menu"
+      at={clockWords(first.clock ?? clockOfKitchen(), event.timeZone)}
     >
-      {(tell) => <Kitchen first={first} event={event} tell={tell} />}
-    </EventsShell>
+      <EventsShell
+        told={first.told}
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="menu"
+            now={first.clock ?? clockOfKitchen()}
+            tell={tell}
+            inert={covered}
+            waiting={waitingLine(keptInbox())}
+          />
+        )}
+      >
+        {(tell) => <Kitchen first={first} event={event} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
-function figuresOf(kitchen: KitchenHeld, parts: boolean): Figures {
-  if (parts) return PARTS_FIGURES;
-
+function figuresOf(kitchen: KitchenHeld): Figures {
   return kitchen.sample == null ? BASE : SAMPLES[kitchen.sample].now;
 }
 
@@ -121,13 +129,53 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
   const [given, setGiven] = useState(first.given);
   const [pressed, setPressed] = useState(false);
   const [seed, setSeed] = useState<KitchenStart | null>(first.open ? first : null);
-  const [all, setAll] = useState(false);
+  const [pdf, setPdf] = useState<Pdf>(first.pdf ?? 'rest');
+  const [pdfPressed, setPdfPressed] = useState(false);
+  const [load, setLoad] = useState<Load>(
+    first.sheet?.state === 'loading'
+      ? 'loading'
+      : first.sheet?.state === 'cannotReach'
+        ? 'unreached'
+        : 'loaded',
+  );
+  const [sheet] = useState(() =>
+    first.sheet == null
+      ? null
+      : sheetOf(worldOf(first.sheet.state, first.sheet.menu), menuOf(first.sheet.menu)),
+  );
   const manage = first.manage;
   const names = first.names ?? manage;
   const copies = newestFirst(kitchen.copies);
-  const [parts] = useState(() => (first.parts == null ? null : PARTS_SAMPLES[first.parts]()));
-  const figures = figuresOf(kitchen, parts != null);
+  const figures = figuresOf(kitchen);
   const started = now.getTime() >= Date.parse(event.startsAt);
+  const coming = sheet?.coming ?? figures.coming;
+  const line =
+    sheet == null
+      ? sheetLine(event, now, allergic(figures).length)
+      : sheetLine(event, now, sheet.withAllergies, sheet.courses.length);
+
+  useEffect(() => {
+    if (load !== 'retrying') return undefined;
+    const timer = window.setTimeout(() => setLoad('loaded'), LOAD_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  useEffect(() => {
+    if (pdf !== 'making' || !pdfPressed) return undefined;
+    const timer = window.setTimeout(() => {
+      setPdfPressed(false);
+      setPdf('made');
+      tell(kw(KW.noPdf, { file: pdfName(event, now) }));
+    }, MAKE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [pdf, pdfPressed, tell, event, now]);
+
+  function makePdf(): void {
+    setPdfPressed(true);
+    setPdf('making');
+  }
 
   function keep(next: typeof kitchen): void {
     keepKitchen(next);
@@ -158,138 +206,162 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
     return () => window.clearTimeout(timer);
   }, [dialog, pressed, now, event, tell, names]);
 
+  if (first.sheet?.state === 'refused')
+    return (
+      <div className="desk-page ev-page gs kitchen">
+        <div className="ev-wide gs-page">
+          <KeptHere />
+          <Crumbs event={event} tell={tell} />
+          <section className="desk-failed kitchen-refused" aria-labelledby="kitchen-refused">
+            <Glyph name="lock" size={28} weight={2.2} />
+            <h1 id="kitchen-refused" className="gs-title" tabIndex={-1}>
+              {KSW.refused}
+            </h1>
+            <Link className="gs-pill is-secondary" to={`/demo/events/${event.id}`}>
+              {KSW.back}
+            </Link>
+          </section>
+        </div>
+      </div>
+    );
+
   return (
     <div className="desk-page ev-page gs kitchen">
       <div className="ev-wide gs-page">
-        <div className="ev-crumb-row">
-          <nav className="ev-crumb" aria-label={KW.crumb}>
-            <ol>
-              <li className="ev-crumb-part">
-                <Link to="/demo/events">{KW.events}</Link>
-              </li>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}?area=menu`}>
-                  {KW.menu}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{KW.title}</span>
-              </li>
-            </ol>
-          </nav>
-          <DemoBell tell={tell} />
-        </div>
-        <header className="gs-top">
-          <h1 className="gs-title" tabIndex={-1}>
+        <KeptHere />
+        <Crumbs event={event} tell={tell} />
+        <header className="gs-top kitchen-top">
+          <h1 className="gs-title kitchen-title" tabIndex={-1}>
             {KW.title}
           </h1>
-          <div className="kitchen-acts">
-            <button
-              type="button"
-              className="desk-text"
-              onClick={() =>
-                tell(kw(KW.noPdf, { file: fileName(event, { at: now.toISOString() }) }))
-              }
-            >
-              <DownloadMark />
-              {KW.download}
-            </button>
-            <button type="button" className="desk-text" onClick={() => tell(KW.printed)}>
-              <PrintMark />
-              {KW.print}
-            </button>
-          </div>
+          {load === 'loaded' && (
+            <div className="kitchen-acts">
+              <button
+                type="button"
+                className="desk-text"
+                aria-disabled={pdf === 'making'}
+                onClick={() => {
+                  if (pdf !== 'making') makePdf();
+                }}
+              >
+                {pdf === 'making' ? (
+                  <span className="kitchen-spin" aria-hidden="true" />
+                ) : (
+                  <DownloadMark />
+                )}
+                {pdf === 'making' ? KSW.making : KW.download}
+              </button>
+              <button type="button" className="desk-text" onClick={() => tell(KW.printed)}>
+                <PrintMark />
+                {KW.print}
+              </button>
+            </div>
+          )}
         </header>
         <div role="status" className="kitchen-said">
           {given && <OkLine>{KW.given}</OkLine>}
+          {pdf === 'made' && <OkLine>{ksw(KSW.made, { file: pdfName(event, now) })}</OkLine>}
         </div>
-        <Cover mesh={event.mesh} size="page" label="kitchen-says">
-          <p id="kitchen-says" className="gs-says">
-            {kw(KW.coming, { count: figures.coming })}
-          </p>
-          <p className="desk-on-card">{sheetLine(event, now, allergic(figures).length)}</p>
-          {manage && (
-            <div className="ev-card-foot">
-              <CardStep label={KW.give} onClick={() => setDialog('rest')} />
-            </div>
-          )}
-        </Cover>
-        <div className="ev-columns">
-          <div className="ev-left">
-            <Changes
-              kitchen={kitchen}
-              names={names}
-              timeZone={event.timeZone}
-              give={manage && !started}
-              onGive={() => setDialog('rest')}
-            />
-            <Sheet
-              figures={figures}
-              parts={parts}
-              names={names}
-              all={all}
-              onAll={() => setAll(true)}
-            />
+        {pdf === 'failed' && (
+          <div className="desk-failed kitchen-failed" role="alert">
+            <p className="kitchen-failed-line">
+              <Glyph name="alert" size={17} weight={2.4} />
+              {KSW.failed}
+            </p>
+            <TextAction label={KSW.retry} onClick={makePdf} />
           </div>
-          <div className="ev-right">
-            <section className="desk-block" aria-labelledby="kitchen-final">
-              <Head title={<span id="kitchen-final">{KW.final}</span>} />
-              <ul className="desk-rows ev-details">
-                <DueRow
-                  event={event}
-                  now={now}
-                  due={kitchen.due}
-                  manage={manage}
-                  open={open}
-                  seed={seed}
-                  onOpen={() => setOpen((was) => !was)}
-                  onClose={() => {
-                    setOpen(false);
-                    setSeed(null);
-                  }}
-                  onSave={(due) => {
-                    keep({ ...kitchen, due });
-                    setOpen(false);
-                    setSeed(null);
-                    tell(KW.saved);
-                  }}
+        )}
+        {load === 'unreached' && (
+          <div className="desk-failed kitchen-failed" role="alert">
+            <p className="kitchen-failed-line">
+              <Glyph name="alert" size={17} weight={2.4} />
+              {KSW.cannotReach}
+            </p>
+            <TextAction label={KSW.retry} onClick={() => setLoad('retrying')} />
+          </div>
+        )}
+        {(load === 'loading' || load === 'retrying') && <SheetBones />}
+        {load === 'loaded' && (
+          <>
+            <Cover mesh={event.mesh} size="page" label="kitchen-says">
+              <p id="kitchen-says" className="gs-says">
+                {kw(KW.coming, { count: coming })}
+              </p>
+              <p className="desk-on-card">{line}</p>
+              {manage && (
+                <div className="ev-card-foot">
+                  <CardStep label={KW.give} onClick={() => setDialog('rest')} />
+                </div>
+              )}
+            </Cover>
+            <div className="ev-columns">
+              <div className="ev-left">
+                <Changes
+                  kitchen={kitchen}
+                  names={names}
+                  timeZone={event.timeZone}
+                  give={manage && !started}
+                  onGive={() => setDialog('rest')}
                 />
-                {copies.map((copy) => (
-                  <li key={copy.id} className="ev-part">
-                    <div className="desk-row ev-detail is-locked">
-                      <span className="ev-lead" aria-hidden="true">
-                        <Glyph name="page" size={22} weight={2} />
-                      </span>
-                      <RowWords title={copyLine(copy, event.timeZone)} />
-                    </div>
-                    <button
-                      type="button"
-                      className="desk-text ev-maps"
-                      onClick={() =>
-                        tell(
-                          copy.changes === true
-                            ? `${kw(KW.noPdf, { file: fileName(event, copy) })} ${KW.changesPage}`
-                            : kw(KW.noPdf, { file: fileName(event, copy) }),
-                        )
-                      }
-                    >
-                      <DownloadMark />
-                      {KW.copyDownload}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </div>
-        </div>
+                {sheet == null ? (
+                  <Sheet figures={figures} names={names} />
+                ) : (
+                  <SheetA sheet={sheet} names={names} />
+                )}
+              </div>
+              <div className="ev-right">
+                <section className="desk-block" aria-labelledby="kitchen-final">
+                  <Head title={<span id="kitchen-final">{KW.final}</span>} />
+                  <ul className="desk-rows ev-details">
+                    <DueRow
+                      event={event}
+                      now={now}
+                      due={kitchen.due}
+                      manage={manage}
+                      open={open}
+                      seed={seed}
+                      onOpen={() => setOpen((was) => !was)}
+                      onClose={() => {
+                        setOpen(false);
+                        setSeed(null);
+                      }}
+                      onSave={(due) => {
+                        keep({ ...kitchen, due });
+                        setOpen(false);
+                        setSeed(null);
+                        tell(KW.saved);
+                      }}
+                    />
+                    {copies.map((copy) => (
+                      <li key={copy.id} className="ev-part">
+                        <div className="desk-row ev-detail is-locked">
+                          <span className="ev-lead" aria-hidden="true">
+                            <Glyph name="page" size={22} weight={2} />
+                          </span>
+                          <RowWords title={copyLine(copy, event.timeZone)} />
+                        </div>
+                        <button
+                          type="button"
+                          className="desk-text ev-maps"
+                          onClick={() =>
+                            tell(
+                              copy.changes === true
+                                ? `${kw(KW.noPdf, { file: fileName(event, copy) })} ${KW.changesPage}`
+                                : kw(KW.noPdf, { file: fileName(event, copy) }),
+                            )
+                          }
+                        >
+                          <DownloadMark />
+                          {KW.copyDownload}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            </div>
+          </>
+        )}
       </div>
       {dialog != null && (
         <Ask
@@ -546,21 +618,8 @@ function Changes({
   );
 }
 
-function Sheet({
-  figures,
-  parts,
-  names,
-  all,
-  onAll,
-}: {
-  figures: Figures;
-  parts: PartsSheet | null;
-  names: boolean;
-  all: boolean;
-  onAll: () => void;
-}) {
+function Sheet({ figures, names }: { figures: Figures; names: boolean }) {
   const people = allergic(figures);
-  const shown = all ? people : people.slice(0, SHOWN_FIRST);
 
   return (
     <>
@@ -575,7 +634,7 @@ function Sheet({
         />
         <ul className="desk-rows">
           {names
-            ? shown.map((one) => (
+            ? people.map((one) => (
                 <li key={one.guest} className="desk-row">
                   <span className="ev-lead" aria-hidden="true">
                     <Glyph name="alert" size={22} weight={2} />
@@ -596,8 +655,14 @@ function Sheet({
                 </li>
               ))}
         </ul>
-        {names && !all && (
-          <TextAction label={kw(KW.showAll, { count: people.length })} onClick={onAll} />
+        {names && people.length > 0 && (
+          <p className="desk-line">
+            {allergyCounts(figures)
+              .map(([allergen, count]) =>
+                ksw(KSW.perAllergen, { allergen: codeTitle(allergen), count }),
+              )
+              .join(' · ')}
+          </p>
         )}
         {!names && <p className="desk-line">{KW.namesNeed}</p>}
       </section>
@@ -615,35 +680,256 @@ function Sheet({
           ))}
         </ul>
       </section>
-      {figures.courses.map((course) =>
-        parts?.course.id === course.id ? (
-          <PartsBlock key={course.id} sheet={parts} coming={figures.coming} />
-        ) : (
-          <section
-            key={course.id}
-            className="desk-block"
-            aria-labelledby={`kitchen-${course.name}`}
-          >
-            <Head
-              title={
-                <span id={`kitchen-${course.name}`}>
-                  {course.name}
-                  <span className="kitchen-count"> · {figures.coming}</span>
+      {figures.courses.map((course) => (
+        <section key={course.id} className="desk-block" aria-labelledby={`kitchen-${course.name}`}>
+          <Head
+            title={
+              <span id={`kitchen-${course.name}`}>
+                {course.name}
+                <span className="kitchen-count"> · {figures.coming}</span>
+              </span>
+            }
+          />
+          <ul className="desk-rows">
+            {courseRows(figures, course.id).map(({ id, name: dish, count }) => (
+              <li key={id} className="desk-row">
+                <RowWords title={dish} />
+                <span className="kitchen-figure">{count}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
+  );
+}
+
+function Crumbs({ event, tell }: { event: SampleEvent; tell: Tell }) {
+  return (
+    <div className="ev-crumb-row">
+      <nav className="ev-crumb" aria-label={KW.crumb}>
+        <ol>
+          <li className="ev-crumb-part">
+            <Link to="/demo/events">{KW.events}</Link>
+          </li>
+          <li className="ev-crumb-part">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
+              {event.name}
+            </Link>
+          </li>
+          <li className="ev-crumb-part">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <Link className="ev-crumb-name" to={`/demo/events/${event.id}?area=menu`}>
+              {KW.menu}
+            </Link>
+          </li>
+          <li className="ev-crumb-part" aria-current="page">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <span className="ev-crumb-name">{KW.title}</span>
+          </li>
+        </ol>
+      </nav>
+      <DemoBell tell={tell} />
+    </div>
+  );
+}
+
+function SheetBones() {
+  return (
+    <div className="desk-loading gs-bones" role="status" aria-busy="true">
+      <span className="desk-unseen">{KSW.loading}</span>
+      <span className="desk-sunk gs-bone-card" aria-hidden="true" />
+      <ul className="desk-rows gs-rows" aria-hidden="true">
+        {[1, 2, 3, 4, 1].map((bone, index) => (
+          <li key={index} className="desk-row is-bones">
+            <span className="desk-sunk gs-bone-mark" />
+            <span className="desk-row-words">
+              <span className={`desk-sunk is-title b${bone}`} />
+              <span className={`desk-sunk is-line b${bone}`} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const CELL_WORDS: Record<Exclude<Cell['kind'], 'dish'>, string> = {
+  kitchen: KSW.kitchen,
+  skipped: KSW.skipped,
+  host: KSW.needsHost,
+  changed: KSW.changed,
+  notYet: KSW.cellNotYet,
+  never: KSW.cellNever,
+};
+
+function CellWords({ cell }: { cell: Cell }) {
+  if (cell.kind === 'dish') return <>{cell.text}</>;
+
+  return (
+    <span className="kitchen-state">
+      <StateMark kind={cell.kind} />
+      {CELL_WORDS[cell.kind]}
+    </span>
+  );
+}
+
+const ROW_MARK: Partial<Record<string, Exclude<Cell['kind'], 'dish'>>> = {
+  host: 'host',
+  skipped: 'skipped',
+  none: 'notYet',
+};
+
+/** sc-3911's sheet, sc-34244's By station included, in A's rows (sc-99611): every person listed at once, the per-allergen line under them, then the diets, then each course closing on the room. */
+function SheetA({ sheet, names }: { sheet: SheetFigures; names: boolean }) {
+  const none = sheet.withAllergies === 0;
+
+  return (
+    <>
+      <section className="desk-block" aria-labelledby="kitchen-allergies">
+        <Head
+          title={
+            <span id="kitchen-allergies">
+              {KW.allergies}
+              <span className="kitchen-count"> · {sheet.withAllergies}</span>
+            </span>
+          }
+        />
+        {none && <p className="desk-line">{KSW.noAllergies}</p>}
+        {names && sheet.allergic.length > 0 && (
+          <ul className="desk-rows">
+            {sheet.allergic.map((person) => (
+              <li key={person.id} className="desk-row">
+                <span className="ev-lead" aria-hidden="true">
+                  <Glyph name={person.allergy ? 'alert' : 'menu'} size={22} weight={2} />
                 </span>
-              }
-            />
+                <RowWords
+                  title={person.name}
+                  lines={[
+                    person.allergens,
+                    <span key="cells" className="kitchen-cells">
+                      {person.cells.map((cell, index) => (
+                        <span key={sheet.courses[index]?.course.id ?? index}>
+                          {index > 0 && ' · '}
+                          <CellWords cell={cell} />
+                        </span>
+                      ))}
+                    </span>,
+                  ]}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+        {names && !none && (
+          <p className="desk-line">
+            {sheet.allergyCounts
+              .map(([allergen, count]) => ksw(KSW.perAllergen, { allergen, count }))
+              .join(' · ')}
+          </p>
+        )}
+        {!names && !none && (
+          <>
             <ul className="desk-rows">
-              {courseRows(figures, course.id).map(({ id, name: dish, count }) => (
-                <li key={id} className="desk-row">
-                  <RowWords title={dish} />
+              {sheet.allergyCounts.map(([allergen, count]) => (
+                <li key={allergen} className="desk-row">
+                  <span className="ev-lead" aria-hidden="true">
+                    <Glyph name="alert" size={22} weight={2} />
+                  </span>
+                  <RowWords title={allergen} />
                   <span className="kitchen-figure">{count}</span>
                 </li>
               ))}
             </ul>
-          </section>
-        ),
-      )}
+            <p className="desk-line">{KW.namesNeed}</p>
+          </>
+        )}
+      </section>
+      <section className="desk-block" aria-labelledby="kitchen-diets">
+        <Head title={<span id="kitchen-diets">{KW.diets}</span>} />
+        {sheet.dietCounts.length === 0 ? (
+          <p className="desk-line">{KSW.noDiets}</p>
+        ) : (
+          <ul className="desk-rows">
+            {sheet.dietCounts.map(([diet, count]) => (
+              <li key={diet} className="desk-row">
+                <span className="ev-lead" aria-hidden="true">
+                  <Glyph name="menu" size={22} weight={2} />
+                </span>
+                <RowWords title={diet} />
+                <span className="kitchen-figure">{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {sheet.courses.map((one) => (
+        <CourseA key={one.course.id} course={one} />
+      ))}
     </>
+  );
+}
+
+function CourseA({ course }: { course: SheetCourse }) {
+  const id = `kitchen-course-${course.course.id}`;
+
+  return (
+    <section className="desk-block" aria-labelledby={id}>
+      <Head title={<span id={id}>{course.course.name}</span>} />
+      <ul className="desk-rows">
+        {course.rows.map((row) => {
+          const mark = ROW_MARK[row.kind];
+          const under = row.kind === 'variant' || row.kind === 'side';
+
+          return (
+            <li key={row.id} className={under ? 'desk-row kitchen-under' : 'desk-row'}>
+              <RowWords
+                title={
+                  mark == null ? (
+                    row.name
+                  ) : (
+                    <span className="kitchen-state">
+                      <StateMark kind={mark} />
+                      {row.name}
+                    </span>
+                  )
+                }
+              />
+              <span className="kitchen-figure">{row.count}</span>
+            </li>
+          );
+        })}
+        <li className="desk-row kitchen-room">
+          <RowWords title={KSW.room} />
+          <span className="kitchen-figure">{course.room}</span>
+        </li>
+      </ul>
+      {course.given != null && <p className="desk-line">{course.given}</p>}
+      {course.sides && <p className="desk-line">{KSW.sides}</p>}
+      {course.stations != null && (
+        <div className="kitchen-stations">
+          <h3 id={`${id}-stations`} className="kitchen-sub">
+            {KSW.byStation}
+          </h3>
+          {course.stations.map(({ place, lines }) => (
+            <div key={place.id} className="kitchen-station">
+              <h4 id={`${id}-${place.id}`} className="kitchen-station-head">
+                {place.name}
+              </h4>
+              <ul className="desk-rows" aria-labelledby={`${id}-${place.id}`}>
+                {lines.map((one) => (
+                  <li key={one.chefs ? '' : one.name} className="desk-row">
+                    <RowWords title={one.chefs ? KSW.chefs : one.name} />
+                    <span className="kitchen-figure">{one.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

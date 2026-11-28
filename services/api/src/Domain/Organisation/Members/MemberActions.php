@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
@@ -20,7 +21,6 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Suspension;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use Doctrine\DBAL\LockMode;
@@ -48,8 +48,7 @@ final readonly class MemberActions
         private DomainSuspender $domainSuspender,
         private ClockInterface $clock,
         private OwnerClaimHandler $ownerClaimHandler,
-        private TeamSeats $teamSeats,
-        private AfterResponse $afterResponse,
+        private HardLimitsInterface $hardLimits,
         private MemberAccessMailer $memberAccessMailer,
         private RecentProof $recentProof,
     ) {
@@ -92,13 +91,7 @@ final readonly class MemberActions
                 'suspension' => [null, Suspension::Manual->value],
             ]);
             $this->entityManager->flush();
-        });
-
-        $at = $this->clock->now();
-        $this->afterResponse->defer(function () use ($membership, $at): void {
-            if ($this->membershipRepository->isSuspendedInStore($membership->getId())) {
-                $this->memberAccessMailer->sendSuspended($membership, $at);
-            }
+            $this->memberAccessMailer->sendSuspended($membership, $this->clock->now());
         });
     }
 
@@ -170,7 +163,7 @@ final readonly class MemberActions
                 ]));
             }
 
-            $this->teamSeats->requireFree($membership->getOrganisation());
+            $this->hardLimits->requireSeatToRestore($membership->getOrganisation());
             $this->membershipMachine->move($membership, MembershipStatus::Active, MembershipChannel::Settings, $by);
             $this->record(MemberSuspension::RESTORED, $membership, $by, [
                 'status' => [MembershipStatus::Suspended->value, MembershipStatus::Active->value],
@@ -182,12 +175,11 @@ final readonly class MemberActions
             }
 
             $this->entityManager->flush();
-        });
 
-        if (Suspension::Manual === $suspension) {
-            $at = $this->clock->now();
-            $this->afterResponse->defer(fn () => $this->memberAccessMailer->sendRestored($membership, $at));
-        }
+            if (Suspension::Manual === $suspension) {
+                $this->memberAccessMailer->sendRestored($membership, $this->clock->now());
+            }
+        });
     }
 
     public function leave(Organisation $organisation, User $user): void

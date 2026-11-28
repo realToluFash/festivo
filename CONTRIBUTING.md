@@ -84,6 +84,38 @@ mid-batch: start them with the longest timeout the tool allows (7200000 ms). `io
 `--clear` starts Metro with an empty cache and stops Expo Go first: without it, a build started
 with different `EXPO_PUBLIC_` values (`EXPO_PUBLIC_SCHEME=violet`, say) shows the last build's.
 
+A passkey cannot be tested on `127.0.0.1`: WebAuthn refuses an address as its relying party.
+`node .qa/bin/qa-env.mjs browser-host` moves the tester's web, API, Mercure and sign-in
+sandbox, as a browser reaches them, to `qa<n>.localhost`, and restarts the stack with them.
+Chrome resolves every `*.localhost` to this machine and treats it as a secure context, so a
+virtual authenticator registers a passkey there over http, and its cookies stay apart from a
+developer's `localhost`. Open the web at the address it prints. The app, the harness and the
+store stay on `127.0.0.1`, because a simulator or an emulator does not resolve the name.
+`browser-host <name>` takes another name under `.localhost`, plain `localhost` included for a
+separate Chrome profile; `browser-host off` puts the browser back on `127.0.0.1`. The choice
+lives in the worktree's `.qa/browser-host`, so `checkout` keeps it.
+
+To hold a loading state on screen, start `ios` or `android` with `QA_API_URL` naming a slow proxy
+in front of the tester's API: `node scripts/qa-slow-proxy.mjs --target <API url> --port <n>
+--delay 5000` holds each `GET /api/events/{id}/guests` for five seconds and forwards everything
+else at once; `--path` takes another route as a regular expression, matched against the path alone, and
+`--query` a regular expression the query string must match too (`finished=true` for Events' Past). To see a failure or a state the
+stack cannot reach, `--status <code>` answers each matching request with that status instead of
+forwarding it, and `--body <file>` answers it with that file as JSON (200 unless `--status` names
+another): save the API's real answer, edit it, and serve the edit. Either one waits only as long
+as `--delay` says. Pass `--clear` when starting `ios` or `android`, or Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
+reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
+127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
+put that address in `QA_API_URL`. Every matching GET is held, the first load
+included, so let the screen settle, then pull to refresh: reopening a screen or a popover remounts it and
+shows its first load, not its refresh. Keep `--delay` under the app's 20-second no-answer limit
+(`NO_ANSWER_MS`, `packages/domain/src/connection.ts`), or the Offline band replaces the
+loading state: 15000 leaves room for a slow tap on the iPad. Where no pull to refresh exists,
+`--drop '<METHOD> <path regex>'` closes each matching request unanswered, so the screen goes
+stale with its rows, and Try again then starts the held reload: `--path '^/api/notifications$'
+--delay 15000 --drop '^POST /api/notifications/read-all$'` reaches the bell panel's refreshing row
+through Mark all read.
+
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
 `node .qa/bin/qa-env.mjs release` builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
@@ -105,8 +137,18 @@ On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` 
 `xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
 `.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
 network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)
-before that launch rather than cutting the network. The next `ios` removes the build and starts
+before that launch rather than cutting the network. `--link <url>` makes that first launch the
+link (`simctl openurl`) instead of the app's icon, for a link that opens the app just after
+install; it is iOS only. `ios` and `release` set the simulator they boot to the default text size. The next `ios` removes the build and starts
 them again.
+
+The stack sends its pushes to Smocker's Expo stand-in, so nothing reaches a device. `node .qa/bin/qa-env.mjs push`
+takes the product's newest push from Smocker and hands it to the release build on the iPhone simulator
+(`--ipad`, `--se`) through `simctl push`, as the APNs payload Expo would send: the title, the body, the
+thread and interruption level, and the data the app opens on tap. `push --list` numbers the pushes
+newest first, and `push 3` sends the third. It needs `release` first, signed in, with notifications
+turned on from the bell's card (Allow on the OS alert), and shows only what was sent since Smocker
+last started.
 
 There are several developers. Developer 1 works in this checkout on the development ports.
 `just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at

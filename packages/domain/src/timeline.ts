@@ -1,4 +1,7 @@
 import { dayDate, wallDay } from './calendar.ts';
+import { zoneDeviceCanFormat } from './datetime.ts';
+import { type EventState, eventPhase } from './eventStates.ts';
+import { levelOf } from './roles.ts';
 
 export const MILESTONE_OWNERS = ['event', 'you', 'automatic'] as const;
 
@@ -11,6 +14,8 @@ export interface Milestone {
   owner: MilestoneOwner;
   area: string;
   action: { label: string; link: string } | null;
+  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). */
+  done?: boolean;
 }
 
 export interface EventTimeline {
@@ -26,7 +31,7 @@ export interface MarkedMilestone {
   nextUp: boolean;
 }
 
-/** The earliest at or after `now`; an overdue "You" milestone is undone while its area returns it, so it stays. */
+/** The earliest at or after `now`; an overdue "You" milestone stays until its area marks it done or stops returning it. */
 export function nextUp(
   milestones: readonly Milestone[],
   now: Date,
@@ -79,6 +84,73 @@ export function milestoneDistance(at: string, timeZone: string, now: Date): Mile
   return moment.getTime() <= now.getTime() ? { kind: 'now' } : { kind: 'today' };
 }
 
+/** The reader's own milestone, still to do, in an area their role changes on this event. */
+export function isYours(
+  { owner, area, done }: Pick<Milestone, 'owner' | 'area' | 'done'>,
+  permissions: readonly string[],
+): boolean {
+  return owner === 'you' && done !== true && levelOf(permissions, area) === 'change';
+}
+
+/** A row of Needs you: the reader's own milestone, on an event that has not finished (sc-61015). A Finished event needs nothing; its areas keep their milestones as the event's record. */
+export function isNeed(
+  milestone: Pick<Milestone, 'owner' | 'area' | 'done'>,
+  event: { permissions: readonly string[]; status: EventState; startsAt: string; endsAt: string },
+  now: Date,
+): boolean {
+  return eventPhase(event, now) !== 'finished' && isYours(milestone, event.permissions);
+}
+
+export interface NeedKey {
+  at: string;
+  title: string;
+  startsAt: string;
+  name: string;
+}
+
+/** Earliest first; a tie goes by the event's start, then its name, then the milestone's title, in the reader's language. */
+export function needOrder(a: NeedKey, b: NeedKey): number {
+  return (
+    Date.parse(a.at) - Date.parse(b.at) ||
+    Date.parse(a.startsAt) - Date.parse(b.startsAt) ||
+    a.name.localeCompare(b.name) ||
+    a.title.localeCompare(b.title)
+  );
+}
+
+export type NeedDue =
+  | { kind: 'overdue'; late: true }
+  | { kind: 'overdueDays'; late: true; count: number }
+  | { kind: 'dueToday'; late: false }
+  | { kind: 'dueTomorrow'; late: false }
+  | { kind: 'dueOn'; late: false; day: string; withYear: boolean };
+
+/** How a milestone's due reads, in calendar days in the event's zone: a date carries its year only when its day falls in another year than today (sc-29884). Each client words it in its own keys. */
+export function needDue(at: string, timeZone: string, now: Date): NeedDue {
+  const distance = milestoneDistance(at, timeZone, now);
+
+  switch (distance.kind) {
+    case 'now':
+      return { kind: 'overdue', late: true };
+    case 'daysAgo':
+      return { kind: 'overdueDays', late: true, count: distance.count };
+    case 'today':
+      return { kind: 'dueToday', late: false };
+    case 'inDays': {
+      if (distance.count === 1) return { kind: 'dueTomorrow', late: false };
+
+      const day = wallDay(at, timeZone);
+
+      return {
+        kind: 'dueOn',
+        late: false,
+        day,
+        withYear: day.slice(0, 4) !== wallDay(now, timeZone).slice(0, 4),
+      };
+    }
+  }
+}
+
 export function namesZone(eventZone: string, readerZone: string): boolean {
   return canonicalZone(eventZone) !== canonicalZone(readerZone);
 }
@@ -92,7 +164,7 @@ function standingOf(milestone: Milestone, now: Date, ended: boolean): MilestoneS
   if (ended && milestone.area === EVENT_AREA) return 'passed';
   if (new Date(milestone.at).getTime() >= now.getTime()) return 'upcoming';
 
-  return milestone.owner === 'you' ? 'overdue' : 'passed';
+  return milestone.owner === 'you' && milestone.done !== true ? 'overdue' : 'passed';
 }
 
 function earliestFirst(milestones: readonly Milestone[]): Milestone[] {
@@ -107,9 +179,5 @@ function dayNumber(moment: Date, timeZone: string): number {
 }
 
 function canonicalZone(zone: string): string {
-  try {
-    return new Intl.DateTimeFormat('en', { timeZone: zone }).resolvedOptions().timeZone;
-  } catch {
-    return zone;
-  }
+  return zoneDeviceCanFormat(zone) ?? zone;
 }

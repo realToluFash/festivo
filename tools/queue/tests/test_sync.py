@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from soirely_queue import github, roles, store, sync
+from soirely_queue.shortcut import ShortcutError
 
 NOW = 1_000_000.0
 
@@ -122,6 +123,162 @@ class Since(unittest.TestCase):
         self.assertEqual(self.since(db, NOW + 60), [self.at(NOW + 60 - 86400)])
 
 
+class DesignBranchMoves(unittest.TestCase):
+    """GitHub moves a story to Ready For Dev when a ux/ branch naming it is pushed; the sync
+    puts it back in Needs Design, since its demo has not merged."""
+
+    ID = {name: i for i, name in enumerate(roles.QUEUE_STATES, 1)}
+
+    def move(self, old, new, **source):
+        return {"actions": [{"changes": {"workflow_state_id": {
+            "old": self.ID[old], "new": self.ID[new]}}}], **source}
+
+    def branch(self, name):
+        return {"references": [{"entity_type": "branch", "id": 7, "name": name}]}
+
+    def sync(self, history, branch="ux/sc-5-pill", prs=(), failures=0, runs=1, pulls=(),
+             pull_requests=(), arriving=()):
+        db, test = store.connect(":memory:"), self
+        store.put_prs(db, list(prs))
+        updates, failing = [], [failures]
+
+        class Pushed(FakeShortcut):
+            def find(self, **filters):
+                super().find(**filters)
+                return [] if filters.get("archived") else [{"id": 5, "updated_at": "t1"}]
+
+            def story(self, story_id):
+                return {"id": story_id, "name": "pill", "updated_at": "t1",
+                        "workflow_state_id": test.ID["Ready For Dev"],
+                        "branches": [{"name": branch, "pull_requests": list(pulls)}],
+                        "pull_requests": list(pull_requests)}
+
+            def history(self, story_id):
+                if failing[0]:
+                    failing[0] -= 1
+                    raise ShortcutError("503 Service Unavailable")
+                return history
+
+            def update(self, story_id, **fields):
+                updates.append((story_id, fields))
+                return dict(self.story(story_id), **fields, updated_at="t2")
+        for run in range(runs):
+            sync.sync_shortcut(db, Pushed(), NOW + run * 60)
+            store.put_prs(db, [*prs, *arriving])
+        self.synced_at = store.get_meta(db, "shortcut_at")
+        self.stored = store.story(db, 5)
+        return updates, self.stored["state"]
+
+    def test_a_ux_branch_push_out_of_needs_design_is_undone(self):
+        updates, state = self.sync([self.move("To Do", "Needs Design"),
+                                    self.move("Needs Design", "Ready For Dev",
+                                              **self.branch("ux/sc-5-pill"))])
+        self.assertEqual(updates, [(5, {"workflow_state_id": self.ID["Needs Design"]})])
+        self.assertEqual(state, "Needs Design")
+
+    def test_a_ux_pull_request_opened_out_of_needs_design_is_undone(self):
+        pr = {"entity_type": "pull-request", "id": 9, "number": 3888}
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev", references=[pr])],
+                               prs=[{"number": 3888, "story_id": 5, "branch": "ux/sc-5-pill"}])
+        self.assertEqual(len(updates), 1)
+
+    def test_a_pull_request_sq_learns_of_after_the_move_is_undone_next_sync(self):
+        opened = [self.move("Needs Design", "Ready For Dev", references=[
+            {"entity_type": "pull-request", "id": 9, "number": 4161}])]
+        arriving = [{"number": 4161, "story_id": 5, "branch": "ux/sc-5-pill"}]
+        updates, state = self.sync(opened, arriving=arriving)
+        self.assertEqual((updates, state), ([], "Ready For Dev"))
+        updates, state = self.sync(opened, arriving=arriving, runs=2)
+        self.assertEqual((len(updates), state), (1, "Needs Design"))
+
+    def test_a_feature_pull_request_learnt_of_late_is_left_alone(self):
+        opened = [self.move("Needs Design", "Ready For Dev", references=[
+            {"entity_type": "pull-request", "id": 9, "number": 4161}])]
+        updates, _ = self.sync(opened, runs=2, arriving=[
+            {"number": 4161, "story_id": 5, "branch": "feature/sc-5/pill"}])
+        self.assertEqual(updates, [])
+
+    def test_a_feature_pull_request_only_shortcut_names_settles_at_once(self):
+        opened = [self.move("Needs Design", "Ready For Dev", references=[
+            {"entity_type": "pull-request", "id": 9, "number": 4161}])]
+        updates, _ = self.sync(opened, pulls=[{"number": 3888}], pull_requests=[
+            {"number": 4161, "branch_name": "feature/sc-5/pill", "closed": True}])
+        self.assertEqual((updates, self.stored["updated_at"]), ([], "t1"))
+
+    def test_a_person_moving_it_is_left_alone(self):
+        updates, state = self.sync([self.move("Needs Design", "Ready For Dev",
+                                              member_id="m-1")])
+        self.assertEqual((updates, state), ([], "Ready For Dev"))
+
+    def test_a_feature_branch_is_left_alone(self):
+        name = "feature/sc-5/pill"
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",
+                                          **self.branch(name))], branch=name)
+        self.assertEqual(updates, [])
+
+    def test_a_move_from_another_state_is_left_alone(self):
+        updates, _ = self.sync([self.move("To Do", "Ready For Dev",
+                                          **self.branch("ux/sc-5-pill"))])
+        self.assertEqual(updates, [])
+
+    def test_a_history_shortcut_fails_on_is_read_again_next_sync(self):
+        moved = [self.move("Needs Design", "Ready For Dev", **self.branch("ux/sc-5-pill"))]
+        updates, state = self.sync(moved, failures=1)
+        self.assertEqual((updates, state, self.synced_at), ([], "Ready For Dev", NOW))
+        updates, state = self.sync(moved, failures=1, runs=2)
+        self.assertEqual((len(updates), state), (1, "Needs Design"))
+
+    def test_a_merged_demo_stays_however_the_story_was_fetched(self):
+        merged = {"number": 2154, "merged": True, "closed": True}
+        updates, state = self.sync(self.pushed(), pulls=[merged])
+        self.assertEqual((updates, state), ([], "Ready For Dev"))
+
+    def test_a_closed_demo_pull_request_counts_as_finished(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154, "closed": True}])
+        self.assertEqual(updates, [])
+
+    def test_the_integrations_move_on_the_merge_stands(self):
+        merge = self.move("Needs Design", "Ready For Dev",
+                          references=[{"entity_type": "pull-request", "id": 9, "number": 2154}])
+        updates, _ = self.sync([*self.pushed(), self.move("Ready For Dev", "Needs Design"),
+                                merge], pulls=[{"number": 2154, "merged": True}],
+                               prs=[{"number": 2154, "story_id": 5, "branch": "ux/sc-5-pill",
+                                     "state": "open"}])
+        self.assertEqual(updates, [])
+
+    def test_a_merge_github_has_seen_before_shortcut_stands(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154}],
+                               prs=[{"number": 2154, "story_id": 5, "branch": "ux/sc-5-pill",
+                                     "state": "merged"}])
+        self.assertEqual(updates, [])
+
+    def test_an_open_demo_pull_request_is_undone(self):
+        updates, state = self.sync(self.pushed(), pulls=[{"number": 3888}])
+        self.assertEqual((len(updates), state), (1, "Needs Design"))
+
+    def test_a_second_ux_branch_still_open_is_undone(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154, "merged": True}],
+                               pull_requests=[{"number": 3888, "branch_name": "ux/sc-5-states"}])
+        self.assertEqual(len(updates), 1)
+
+    def test_a_pull_request_only_shortcut_names_resolves_the_move(self):
+        merge = self.move("Needs Design", "Ready For Dev",
+                          references=[{"entity_type": "pull-request", "id": 9, "number": 3888}])
+        updates, _ = self.sync([merge], pulls=[{"number": 3888}])
+        self.assertEqual(len(updates), 1)
+
+    def pushed(self):
+        return [self.move("Needs Design", "Ready For Dev", **self.branch("ux/sc-5-pill"))]
+
+    def test_only_the_last_move_counts(self):
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",
+                                          **self.branch("ux/sc-5-pill")),
+                                {"changed_at": "later"},
+                                self.move("Ready For Dev", "Needs Design"),
+                                self.move("Needs Design", "Ready For Dev", member_id="m-1")])
+        self.assertEqual(updates, [])
+
+
 class Epics(unittest.TestCase):
     def test_epics_are_read_every_minute_with_their_state_name(self):
         db, shortcut = store.connect(":memory:"), FakeShortcut()
@@ -170,6 +327,64 @@ class PullRequestStories(unittest.TestCase):
         sync.pr_stories(db, Shortcut(), NOW)
         sync.pr_stories(db, Shortcut(), NOW + sync.FULL_EVERY_SECONDS)
         self.assertEqual(asked, [10])
+
+
+class DemoPullRequests(unittest.TestCase):
+    """A demo-only story whose demo merged before the window of 15 merges still has it."""
+
+    def setUp(self):
+        self.db, self.asked = store.connect(":memory:"), []
+
+    def story(self, id_, state="Ready For Dev", labels=("demo only",), **extra):
+        store.put_story(self.db, {"id": id_, "name": "demo", "state": state,
+                                  "labels": list(labels), "done": False, **extra})
+
+    def merged(self, number, story_id):
+        return {"number": number, "story_id": story_id, "state": "merged", "head_sha": "a",
+                "branch": f"ux/sc-{story_id}-demo", "merged_at": "2026-11-07T19:00:00Z"}
+
+    def run_at(self, now, found=None):
+        def search(story_id):
+            self.asked.append(story_id)
+            if isinstance(found, Exception):
+                raise found
+            return [self.merged(40 + story_id, story_id)]
+        with mock.patch.object(github, "merged_for_story", side_effect=search):
+            sync.demo_prs(self.db, now)
+        return sorted(pr["number"] for pr in store.prs(self.db))
+
+    def test_a_stranded_demo_is_found_and_stored_beside_the_window(self):
+        self.story(1)
+        store.put_prs(self.db, [self.merged(99, 5)])
+        self.assertEqual(self.run_at(NOW), [41, 99])
+        self.assertEqual(store.prs_for_story(self.db, 1)[0]["number"], 41)
+        self.assertEqual(self.asked, [1])
+
+    def test_it_is_searched_once_a_day_and_kept_across_syncs(self):
+        self.story(1)
+        self.run_at(NOW)
+        store.put_prs(self.db, [])
+        self.assertEqual(self.run_at(NOW + 60), [41])
+        store.put_prs(self.db, [])
+        self.run_at(NOW + sync.DEMO_SEARCH_SECONDS)
+        self.assertEqual(self.asked, [1, 1])
+
+    def test_a_failed_search_keeps_what_was_found(self):
+        self.story(1)
+        self.run_at(NOW)
+        store.put_prs(self.db, [])
+        self.assertEqual(self.run_at(NOW + sync.DEMO_SEARCH_SECONDS,
+                                     github.GitHubError("rate")), [41])
+
+    def test_only_a_demo_only_story_waiting_on_its_build_is_searched(self):
+        self.story(1, labels=())
+        self.story(2, state="Ready For QA")
+        self.story(3, done=True, state="Done")
+        self.story(4, archived=True)
+        self.story(5)
+        store.put_prs(self.db, [self.merged(50, 5)])
+        self.assertEqual(self.run_at(NOW), [50])
+        self.assertEqual(self.asked, [])
 
 
 class Blockers(unittest.TestCase):
@@ -294,13 +509,15 @@ class Budget(unittest.TestCase):
         self.assertEqual(self.made[0].deadline, 100.0 + sync.BUDGET_SECONDS)
         self.assertEqual(store.get_meta(self.db, "synced_ok_at"), NOW)
 
-    def test_github_out_of_time_is_cut_and_pr_stories_skipped(self):
+    def test_github_out_of_time_is_cut_and_pr_stories_and_demos_skipped(self):
         def slow_github(db):
             raise github.OutOfTime("out of time in gh api graphql")
 
-        with mock.patch.object(sync, "pr_stories") as stories:
+        with mock.patch.object(sync, "pr_stories") as stories, \
+                mock.patch.object(sync, "demo_prs") as demos:
             self.assertEqual(self.run_sync(github_step=slow_github), [])
         stories.assert_not_called()
+        demos.assert_not_called()
         self.assertEqual(store.get_meta(self.db, "sync_report")["cut"], ["github"])
 
     def test_each_part_reports_how_long_it_took(self):
@@ -309,7 +526,8 @@ class Budget(unittest.TestCase):
 
         self.run_sync(github_step=github_takes_four)
         self.assertEqual(store.get_meta(self.db, "sync_report")["took"],
-                         {"shortcut": 0.0, "github": 4.0, "pr stories": 0.0})
+                         {"shortcut": 0.0, "github": 4.0, "demo prs": 0.0,
+                          "pr stories": 0.0})
 
     def test_a_manual_sync_has_no_budget(self):
         with mock.patch.object(sync, "sync_github"), mock.patch.object(sync, "pr_stories"):

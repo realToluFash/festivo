@@ -53,6 +53,7 @@ import {
   type Seating,
   accName,
   arrangeable,
+  choicesOn,
   chairWord,
   handlesLive,
   hexOf,
@@ -75,6 +76,7 @@ const TINT = tokens.colorAccentTint;
 const VIOLET = tokens.colorAccent;
 const AMBER = tokens.colorAttention;
 const VIEWS_BAND = tokens.spaceXl + 48;
+const NAME_LINE = 18;
 
 export interface Look {
   lit?: boolean;
@@ -735,7 +737,10 @@ export function looksOf(
       lit: true,
       ...(handles != null && handlesLive(m) ? { handles } : {}),
     });
-  Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: person }));
+  Object.keys(m.rings).forEach((id) => {
+    const first = choicesOn(m, id)[0];
+    if (first != null) add(id, { ring: first.who });
+  });
   m.outside.forEach((id) => add(id, { overlap: true }));
   const chosen = itemOf(m, m.chosen);
   if (chosen != null) {
@@ -953,6 +958,13 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
   };
 }
 
+/** Where a message bar over the room ends, so the room's name can stay out from under it. */
+export interface BarBox {
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 /** The iPad's room by finger (sc-5033): a tap chooses or seats, a drag moves and snaps, a handle resizes, two fingers zoom or turn. */
 export function RoomSurface({
   m,
@@ -961,6 +973,7 @@ export function RoomSurface({
   height,
   viewsEnd = 0,
   printStart = 0,
+  bar = null,
   caption: drawCaption = true,
 }: {
   m: Seating;
@@ -969,6 +982,7 @@ export function RoomSurface({
   height: number;
   viewsEnd?: number;
   printStart?: number;
+  bar?: BarBox | null;
   caption?: boolean;
 }) {
   const box = useRef<ViewInstance>(null);
@@ -991,13 +1005,20 @@ export function RoomSurface({
   const tip = live?.tip ?? m.tip;
   const detail = detailOf(v.s);
   const beside = viewsEnd > 0 && v.oy - 26 < VIEWS_BAND + 4 && v.ox < viewsEnd + tokens.spaceMd;
+  const nameTop = v.oy - 26;
+  const under =
+    !beside &&
+    bar != null &&
+    v.ox < bar.right &&
+    nameTop + NAME_LINE > bar.top &&
+    nameTop < bar.bottom + tokens.spaceXxs;
   const caption = beside
     ? {
         left: viewsEnd + tokens.spaceMd,
         top: tokens.spaceXl + 14 - tokens.spaceXxs,
         maxWidth: (printStart > 0 ? printStart : width) - viewsEnd - 2 * tokens.spaceMd,
       }
-    : { left: v.ox, top: v.oy - 26 };
+    : { left: v.ox, top: under && bar != null ? bar.bottom + tokens.spaceXxs : nameTop };
   return (
     <View ref={box} style={styles.fill} onLayout={measure} {...gestures.panHandlers}>
       <RoomDrawing m={m} v={v} width={width} height={height} items={items} looks={looks}>
@@ -1012,7 +1033,7 @@ export function RoomSurface({
               length(m, m.room.l),
             )}
             numberOfLines={1}
-            style={[styles.roomLine, caption, beside && styles.roomLineOver]}
+            style={[styles.roomLine, caption, (beside || under) && styles.roomLineOver]}
           >
             {roomLine(m)}
           </Text>

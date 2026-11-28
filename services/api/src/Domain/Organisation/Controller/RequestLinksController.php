@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
 use App\Domain\Organisation\RequestLink\LinkRequester;
 use App\Domain\Organisation\RequestLink\RequestStanding;
@@ -13,6 +14,7 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Locale\VisibleText;
 use Psl\Str;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -28,6 +30,7 @@ final readonly class RequestLinksController
     public function __construct(
         private Security $security,
         private LinkRequester $linkRequester,
+        private ManagedAccounts $managedAccounts,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private TranslatorInterface $translator,
     ) {
@@ -49,6 +52,7 @@ final readonly class RequestLinksController
             'askAgainFrom' => RequestStanding::CoolingOff === $standing && $user instanceof User
                 ? $this->linkRequester->coolingOffUntil($user, $organisation)?->format(\DATE_ATOM)
                 : null,
+            'managed' => $user instanceof User ? $this->managedAccounts->describeFor($user, $organisation) : null,
         ]);
     }
 
@@ -70,7 +74,7 @@ final readonly class RequestLinksController
 
         $message = $body['message'] ?? null;
 
-        if (null !== $message && Str\length(Str\trim($message)) > LinkRequester::MESSAGE_MOST) {
+        if (null !== $message && VisibleText::tooLong(Str\trim($message), LinkRequester::MESSAGE_MOST)) {
             throw ApiException::validation([[
                 'propertyPath' => 'message',
                 'message' => $this->translator->trans('request_link.message_long', ['{count}' => (string) LinkRequester::MESSAGE_MOST]),

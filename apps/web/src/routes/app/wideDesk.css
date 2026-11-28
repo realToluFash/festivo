@@ -1,0 +1,76 @@
+/* From 641 px (sc-60699, sc-61150), each arrangement in one rule, as the web demo's wideDesk.css: none changes a page that already fits. */
+@media (width > 40rem) {
+  .shell :is(.desk-top, .gs-top) {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .shell :is(.desk-title, .gs-title) {
+    min-width: auto;
+  }
+
+  .shell .gs-top > .mn-head {
+    min-width: auto;
+  }
+
+  .shell :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
+    overflow-wrap: normal;
+  }
+}
+
+/* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list. */
+@media (40rem < width <= 75rem) {
+  .shell .ro .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell .ro .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .shell .ro .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+@media (40rem < width <= 70rem) {
+  .shell .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .shell .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each at its own width, as the demo draws it. */
+@media (40rem < width <= 77.5rem) {
+  .shell .gs-cols {
+    flex-flow: column nowrap;
+    align-items: stretch;
+  }
+
+  .shell :is(.gs-list, .gs-column) {
+    flex: none;
+  }
+
+  .shell .gs-column {
+    order: -1;
+  }
+
+  .shell .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}

@@ -1,5 +1,18 @@
 /* Members at a desk (sc-34200); its parts are components/SettingsParts.css. */
 
+/* sc-49170: under People's rows while more remain, so Invitations stays a Tab away at any size. */
+
+.members-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.members-more > .desk-rows {
+  align-self: stretch;
+}
+
 .settings-desk .settings-desk-page > .members-desk > .members-room {
   max-width: none;
 }
@@ -39,4 +52,21 @@
 .members-desk .desk-title {
   min-width: auto;
   overflow-wrap: break-word;
+}
+
+.not-delivered {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.not-delivered .mark {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.not-delivered-word {
+  color: var(--colorBrokenText);
+  font-weight: 600;
 }

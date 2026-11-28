@@ -97,7 +97,7 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
   });
 
   it(
-    'opens Preview as on the five people in To, A to Z, each with their language',
+    'opens Preview as on the six people in To, A to Z, each with their language',
     SLOW,
     async () => {
       await messages('previewAs');
@@ -107,14 +107,15 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
 
       expect(button.getAttribute('aria-expanded')).toBe('true');
       expect(options.map((one) => one.textContent)).toEqual([
+        'Amaka Eze · English',
         'Bisi Adewale · English',
         'Camille Dubois · French',
         'Kemi Bankole · English',
         'Kwame Mensah · English',
         'Lucía Ortega · Spanish',
       ]);
-      await vi.waitFor(() => expect(document.activeElement).toBe(options[3]));
-      expect(options[3]?.getAttribute('aria-selected')).toBe('true');
+      await vi.waitFor(() => expect(document.activeElement).toBe(options[4]));
+      expect(options[4]?.getAttribute('aria-selected')).toBe('true');
     },
   );
 
@@ -123,9 +124,9 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
     await messages('previewAs');
     const options = within(screen.getByRole('listbox')).getAllByRole('option');
 
-    fireEvent.keyDown(options[3] as HTMLElement, { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(options[4]);
-    fireEvent.keyDown(options[4] as HTMLElement, { key: 'Enter' });
+    fireEvent.keyDown(options[4] as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(options[5]);
+    fireEvent.keyDown(options[5] as HTMLElement, { key: 'Enter' });
 
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(
@@ -197,6 +198,101 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
     ).toBeDefined();
     expect(document.querySelector('.mg-preview-bones')?.getAttribute('aria-hidden')).toBe('true');
     expect(document.querySelector('.mg-page-figure')).toBeNull();
+  });
+
+  it(
+    'says it could not fill it in for Camille Dubois, and Try again fills it in',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await messages('previewFailed');
+
+      const alert = screen.getByRole('alert');
+      expect(screen.getByRole('heading', { name: 'As Camille Dubois will see it' })).toBeDefined();
+      expect(alert.textContent).toContain('We could not fill it in for Camille Dubois.');
+      expect(alert.textContent).toContain('Check your connection and try again.');
+      expect(
+        screen.getByRole('button', { name: 'Preview as Camille Dubois · French' }),
+      ).toBeDefined();
+      expect(document.querySelector('.mg-page-figure')).toBeNull();
+      expect(document.querySelector('.mg-preview-lines')).toBeNull();
+
+      fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(
+        screen.getByText('Filling it in for Camille Dubois…', { selector: '[role=status]' }),
+      ).toBeDefined();
+
+      await act(() => vi.advanceTimersByTime(1000));
+
+      expect(page()).toMatch(/^Camille Dubois, a few things before /u);
+    },
+  );
+
+  it(
+    'drops a guest who is no longer a guest from Preview as, fills it in for the first left, and says so',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await messages('previewGone');
+      const line = 'Camille Dubois is no longer a guest, so it is filled in for Amaka Eze instead.';
+
+      expect(screen.getByRole('heading', { name: 'As Amaka Eze will see it' })).toBeDefined();
+      expect(screen.getByText(line).closest('[role=status]')).not.toBeNull();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(page()).toMatch(/^Amaka Eze, a few things before /u);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Preview as Amaka Eze · English' }));
+      const options = within(screen.getByRole('listbox')).getAllByRole('option');
+
+      expect(options.map((one) => one.textContent)).toEqual([
+        'Amaka Eze · English',
+        'Bisi Adewale · English',
+        'Kemi Bankole · English',
+        'Kwame Mensah · English',
+        'Lucía Ortega · Spanish',
+      ]);
+
+      fireEvent.click(options[4] as HTMLElement);
+
+      expect(screen.queryByText(line)).toBeNull();
+      expect(
+        screen.getByText('Filling it in for Lucía Ortega…', { selector: '[role=status]' }),
+      ).toBeDefined();
+
+      await act(() => vi.advanceTimersByTime(1000));
+
+      expect(
+        screen.getByText(
+          'Lucía Ortega is no longer a guest, so it is filled in for Amaka Eze instead.',
+        ),
+      ).toBeDefined();
+      expect(
+        screen.getByText('Filling it in for Amaka Eze…', { selector: '[role=status]' }),
+      ).toBeDefined();
+
+      await act(() => vi.advanceTimersByTime(1000));
+
+      expect(page()).toMatch(/^Amaka Eze, a few things before /u);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Preview as Amaka Eze · English' }));
+      expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(4);
+    },
+  );
+
+  it('closes the preview when nobody is left, and says why beside Preview', SLOW, async () => {
+    await messages('previewGoneLast');
+    const preview = screen.getByRole('button', { name: 'Preview' });
+    const why = document.getElementById(preview.getAttribute('aria-describedby') ?? '');
+
+    expect(preview.getAttribute('aria-disabled')).toBe('true');
+    expect(why?.textContent).toBe(
+      'Camille Dubois is no longer a guest, so there is nobody to preview it as.',
+    );
+
+    fireEvent.click(preview);
+    expect(screen.queryByRole('heading', { name: /will see it$/u })).toBeNull();
   });
 
   it('shows a Greet as with markup as text, never as markup', SLOW, async () => {

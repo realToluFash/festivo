@@ -1,7 +1,9 @@
 import type { EventCover } from '@soirely/api-client';
 import type { EventType } from '@soirely/domain';
+
+import type { RunNow } from './todayRun.ts';
 /** An event's colour on Today until it has a photo. */
-export type MeshKey = 'rose' | 'teal' | 'accent' | 'amber';
+export type MeshKey = 'rose' | 'teal' | 'party' | 'amber';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
 
 /** An event as Today draws it, a sample or a real one: its name, its colour, and its photo once it has one. */
@@ -12,13 +14,13 @@ export interface ShownEvent {
   photo: { cover: EventCover; type: EventType } | null;
 }
 
-const MESHES: readonly MeshKey[] = ['rose', 'teal', 'accent', 'amber'];
+const MESHES: readonly MeshKey[] = ['rose', 'teal', 'party', 'amber'];
 
 /** A real event's colour until it has a photo, the same one every time it is drawn. */
 export function meshFor(id: string): MeshKey {
   const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
 
-  return MESHES[sum % MESHES.length] ?? 'accent';
+  return MESHES[sum % MESHES.length] ?? 'party';
 }
 
 export function daysFrom(from: string, to: string): number {
@@ -34,7 +36,6 @@ export interface Need {
   title: string;
   due: string;
   late: boolean;
-  action: string;
 }
 
 export interface AgendaItem {
@@ -79,13 +80,30 @@ export interface EventCard {
   live: boolean;
   draft: boolean;
   stage: string | null;
-  ready: { words: string; percent: number } | null;
+  ready: {
+    words: string;
+    /** What a screen reader says for the line, when that is not its words. */
+    spoken?: string;
+    percent: number;
+    /** The bar's track drawn at 0% too, so invited with no replies reads apart from not sent (sc-29881). */
+    track?: boolean;
+  } | null;
 }
 
 export interface RailStop {
   time: string;
   name: string;
   state: 'done' | 'now' | 'next' | 'later';
+}
+
+/** Now's arrived figure (sc-29978): "141/152" over "arrived" beside a ring, or "37" over "arrived" with none while nobody is Coming. */
+export interface ArrivedFigure {
+  count: string;
+  of: string | null;
+  share: number | null;
+  /** "arrived" under the numbers, agreeing with the count. */
+  label: string;
+  spoken: string;
 }
 
 export interface Now {
@@ -96,8 +114,8 @@ export interface Now {
   until: string;
   behind: string;
   next: { time: string; title: string };
-  arrived: number;
-  expected: number;
+  /** Null while nobody has arrived (sc-29978). */
+  arrived: ArrivedFigure | null;
   rail: RailStop[];
   /** Where the moment sits along the rail, from 0 at its first stop to 1 at its last. */
   at: number;
@@ -123,4 +141,8 @@ export interface Moment {
   nextUp: { event: ShownEvent; name: string; when: string } | null;
   events: EventCard[];
   now: Now | null;
+  /** Now from the run of show (sc-29875): absent, or null, keeps sc-29090's Now. */
+  run?: RunNow | null;
+  /** sc-62416's line under the run of show's figure, "Offline · as of 16:38"; absent or null when it does not show. */
+  asOf?: string | null;
 }

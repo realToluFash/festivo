@@ -235,10 +235,40 @@ export const REMOVED_PAYER = 'Uncle Kayode';
 
 export const REMINDER = { sent: '2026-11-01', payments: ['bloom-balance', 'savour-deposit'] };
 
-/** sc-95's two reminders as they arrive today: the overdue one alone, and one with what falls due in the next 3 days. */
+/** The other event a reminder can name (sc-1331): the web demo's gala, in its own currency. */
+export const GALA = { id: 'evt-gala-4', name: 'Gala Fundación Lucía', currency: 'EUR' } as const;
+
+/** A payment on the gala's schedule, which this budget never counts. */
+export const GALA_PAYMENTS = [
+  {
+    id: 'gala-flowers',
+    vendor: 'Floristería Lirio',
+    what: 'Balance',
+    amount: 120000,
+    due: '2026-11-06',
+  },
+] as const;
+
+/** A payment the reminder named that has since come off the wedding's schedule (sc-1331). */
+export const GONE_PAYMENTS = [
+  { id: 'lens-album', vendor: 'Lens & Light', what: 'Album', amount: 35000, due: '2026-11-02' },
+] as const;
+
+/** sc-1331's other reminders: one across two events, and one naming a payment since removed. */
+export const REMINDER_SEVERAL = {
+  sent: '2026-11-01',
+  payments: ['bloom-balance', 'savour-deposit', 'gala-flowers'],
+} as const;
+export const REMINDER_CHANGED = {
+  sent: '2026-11-01',
+  payments: ['bloom-balance', 'savour-deposit', 'lens-album'],
+} as const;
+
+/** sc-95's reminders as they arrive today: the overdue one alone, one with what falls due in the next 3 days, and that alone. */
 export const REMINDERS = {
   overdue: { sent: TODAY, payments: ['bloom-balance'] },
   mixed: { sent: TODAY, payments: ['bloom-balance', 'savour-deposit', 'landmark-balance'] },
+  due: { sent: TODAY, payments: ['savour-deposit', 'landmark-balance'] },
 } as const;
 export const REMINDER_DAYS = 3;
 

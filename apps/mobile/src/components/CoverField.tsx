@@ -7,6 +7,7 @@ import {
   coverTypeOf,
   draggedPosition,
   positionPart,
+  visibleLength,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
@@ -29,6 +30,7 @@ import {
   pickedFile,
   pickedRefusal,
 } from '../kit/coverUpload.ts';
+import { pickedBytes } from '../kit/pickedBytes.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
@@ -232,8 +234,7 @@ function CoverDialog({
         filename: file.name,
       })
       .then(async (signed) => {
-        const body = await (await fetch(photo.uri)).blob();
-        await api.uploadTo(signed, body);
+        await api.uploadTo(signed, await pickedBytes(photo.uri));
         uploaded = signed.key;
         if (current) setUpload({ kind: 'ready', key: signed.key });
         else discardCoverUpload(organisationId, signed.key);
@@ -252,7 +253,7 @@ function CoverDialog({
   const dragFrom = useRef<{ y: number; start: number } | null>(null);
 
   const ready = upload.kind === 'saved' || upload.kind === 'ready';
-  const count = [...description].length;
+  const count = visibleLength(description);
 
   async function use(): Promise<void> {
     if (!ready || pending) return;

@@ -7,6 +7,7 @@ namespace App\Http\Access;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use App\Http\Access\Interfaces\EventDirectoryInterface;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Interfaces\OnboardingGateInterface;
@@ -54,7 +55,7 @@ final readonly class AccessListener
 
         match (true) {
             $policy instanceof PublicAccess => null,
-            $policy instanceof Authenticated => $this->account($route),
+            $policy instanceof Authenticated => $this->account($route, false),
             $policy instanceof InOrganisation => $this->inOrganisation($request, $route, $policy),
             $policy instanceof InEvent => $this->inEvent($request, $route, $policy),
             default => throw new LogicException(Str\format('Route "%s" has a policy nothing enforces.', $route)),
@@ -64,38 +65,54 @@ final readonly class AccessListener
     private function inOrganisation(Request $request, string $route, InOrganisation $policy): void
     {
         $organisationId = self::uuid($request, $policy->parameter);
-        $user = $this->account($route);
+        $user = $this->account($route, false);
 
         if ($policy->orOnAnEvent && null !== $policy->permission) {
-            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw self::notFound();
-            $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission);
+            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId);
+
+            if (null === $scope) {
+                if ($this->membershipDirectory->isOutsideIn($user, $organisationId)) {
+                    throw ApiException::permissionRequired($policy->permission);
+                }
+
+                throw self::notFound();
+            }
+
+            $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission, $policy->feature);
 
             return;
         }
 
-        $this->require($request, $user, $organisationId, $policy->permission);
+        $this->require($request, $user, $organisationId, $policy->permission, $policy->feature, $policy->featureLocksReading);
     }
 
     /** The event is found first, then the caller's grants on it: a Member with no role on it gets the same 404 as an event that does not exist (sc-29912). */
     private function inEvent(Request $request, string $route, InEvent $policy): void
     {
         $eventId = self::uuid($request, $policy->parameter);
-        $user = $this->account($route);
+        $user = $this->account($route, true);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
-        $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
-        $this->check($request, $grants, $policy->permission);
+        $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw $this->noGrantOn($user, $eventId, $policy);
+        $this->check($request, $grants, $policy->permission, $policy->feature, $policy->featureLocksReading);
 
         $request->attributes->set(self::EVENT, $eventId);
     }
 
-    /** Not a member reads as not found: a 403 would confirm the organisation exists. */
-    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission): void
+    private function noGrantOn(User $user, Uuid $eventId, InEvent $policy): ApiException
     {
-        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission);
+        return null !== $policy->endedLink && $this->membershipDirectory->linkEndedWithTheEvent($user, $eventId)
+            ? new ApiException(ErrorCode::EventConcluded, $this->translator->trans($policy->endedLink))
+            : self::notFound();
     }
 
-    private function check(Request $request, Grants $grants, ?Permission $permission): void
+    /** Not a member reads as not found: a 403 would confirm the organisation exists. */
+    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission, ?PlanFeature $feature = null, bool $featureLocksReading = false): void
+    {
+        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission, $feature, $featureLocksReading);
+    }
+
+    private function check(Request $request, Grants $grants, ?Permission $permission, ?PlanFeature $feature = null, bool $featureLocksReading = false): void
     {
         if ($grants->isHeldForTwoFactor()) {
             throw new ApiException(ErrorCode::OrganisationTwoFactorOverdue, 'access.two_factor_overdue');
@@ -105,32 +122,17 @@ final readonly class AccessListener
             throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'access.provider_only_unlinked');
         }
 
-        if (null !== $permission && $grants->withholds($permission)) {
-            throw new ApiException(
-                ErrorCode::OrganisationTwoFactorRequired,
-                'access.two_factor_required',
-                [],
-                null,
-                [],
-                ['permission' => $permission->value],
-            );
+        if (null !== $permission) {
+            $grants->require($permission);
         }
 
-        if (null !== $permission && !$grants->holds($permission)) {
-            throw new ApiException(
-                ErrorCode::PermissionRequired,
-                'access.permission_required',
-                [],
-                null,
-                [],
-                ['permission' => $permission->value],
-                ['{permission}' => $permission->value],
-            );
+        if (null !== $feature && ($featureLocksReading || !$request->isMethodSafe())) {
+            $grants->requirePlanFor($feature);
         }
     }
 
     /** Signed in, and through the onboarding gate unless the route is on its exempt list. */
-    private function account(string $route): User
+    private function account(string $route, bool $onAnEvent): User
     {
         $user = $this->security->getUser();
 
@@ -140,7 +142,7 @@ final readonly class AccessListener
             ]);
         }
 
-        $refusal = $this->onboardingGate->refusalFor($user, $route);
+        $refusal = $this->onboardingGate->refusalFor($user, $route, $onAnEvent);
 
         if (null !== $refusal) {
             throw new ApiException($refusal, $this->translator->trans(match (true) {

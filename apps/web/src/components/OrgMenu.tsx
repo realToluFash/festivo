@@ -1,4 +1,10 @@
-import { type InvitationRefusalCode, initials, refusalBody } from '@soirely/domain';
+import type { OutsideEvent } from '@soirely/api-client';
+import {
+  type InvitationRefusalCode,
+  initials,
+  outsideEventsInOrder,
+  refusalBody,
+} from '@soirely/domain';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -13,6 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { meshFor } from '../mesh.ts';
+import { OutsideEventRow } from './OutsideRows.tsx';
 import { offButton } from '../offButton.ts';
 import { useFocusOnceShown } from '../stepFocus.ts';
 import { Glyph } from './Glyph.tsx';
@@ -53,6 +60,8 @@ export function OrgMenu({
   into,
   answer,
   onPick,
+  outside = [],
+  onOutside = () => undefined,
   onCreate,
 }: {
   menu: RefObject<HTMLDivElement | null>;
@@ -65,10 +74,14 @@ export function OrgMenu({
   into: boolean;
   answer: (tile: MenuTile, tools: PanelTools) => ReactNode;
   onPick: (place: MenuPlace) => void;
+  /** Events from outside (sc-68438), under the places, in the order the API gave with those under way first. */
+  outside?: readonly OutsideEvent[];
+  onOutside?: (eventId: string) => void;
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const [now] = useState(() => new Date());
   const [query, setQuery] = useState(start?.query ?? '');
   const [panel, setPanel] = useState<string | null>(start?.panel ?? null);
   const [at, setAt] = useState<number | null>(null);
@@ -81,6 +94,7 @@ export function OrgMenu({
   const field = useRef<HTMLInputElement>(null);
   const shown = useRef<HTMLDivElement>(null);
   const options = useRef<(HTMLDivElement | null)[]>([]);
+  const create = useRef<HTMLButtonElement>(null);
 
   const searchable = places.length > SEARCH_FROM;
   const typed = searchable ? query : '';
@@ -89,7 +103,11 @@ export function OrgMenu({
     ...listed.map((place): MenuTile => ({ kind: 'place', id: place.id, place })),
     ...others.filter((tile) => tile.kind !== 'place' && holds(tile.name, typed)),
   ];
-  const found = tiles.length;
+  const fromOutside = outsideEventsInOrder(
+    outside.filter((event) => holds(event.name, typed)),
+    now,
+  );
+  const found = tiles.length + fromOutside.length;
   const nothing = typed.trim() !== '' && found === 0;
   const across = columnsOf(Math.min(WIDEST, wide - 2 * EDGE) - 2 - 2 * EDGE);
   const chosen = listed.findIndex((place) => place.id === current);
@@ -153,6 +171,7 @@ export function OrgMenu({
 
   useLayoutEffect(() => {
     const lit = body.current?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
+    if (lit == null && arrive) create.current?.focus();
     if (lit == null || body.current == null) return;
 
     reveal(body.current, lit);
@@ -266,7 +285,13 @@ export function OrgMenu({
     );
   });
   more.push(
-    <button key="create" type="button" className="sw-cell is-create" onClick={onCreate}>
+    <button
+      key="create"
+      ref={create}
+      type="button"
+      className="sw-cell is-create"
+      onClick={onCreate}
+    >
       <span className="sw-mark" aria-hidden="true">
         <span className="sw-tile is-create">
           <Glyph name="plus" size={20} weight={2.4} />
@@ -369,6 +394,23 @@ export function OrgMenu({
               })}
             </div>
           )}
+          {fromOutside.length > 0 && (
+            <section className="oe-switch" aria-labelledby={`${id}-outside`}>
+              <h3 id={`${id}-outside`} className="oe-heading">
+                {t('outsideEvent.fromOutside')}
+              </h3>
+              {fromOutside.map((event) => (
+                <OutsideEventRow
+                  key={event.id}
+                  event={event}
+                  here={false}
+                  now={now}
+                  className="oe-row"
+                  onChoose={() => onOutside(event.id)}
+                />
+              ))}
+            </section>
+          )}
           <div id={`${id}-more`} className="sw-more">
             {more}
           </div>
@@ -395,17 +437,20 @@ function reveal(scroller: HTMLElement, element: HTMLElement): void {
 export function JoinedAnswer({
   name,
   role,
+  takesFocus = false,
   onOpen,
 }: {
   name: string;
   role: string;
+  /** On a page, where nothing else moves focus to it, it takes focus and is read once. */
+  takesFocus?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Notice kind="done" lands>
+      <Notice kind="done" lands={!takesFocus} takesFocus={takesFocus}>
         {t('invitations.joined', { organisation: name, role })}
       </Notice>
       <button type="button" className="sw-button is-primary is-whole" onClick={onOpen}>
@@ -493,17 +538,23 @@ export function RefusalAnswer({
   organisation,
   email,
   signedInAs,
+  takesFocus = false,
 }: {
   refusal: InvitationRefusalCode;
   inviter: string | null;
   organisation: string;
   email: string;
   signedInAs: string;
+  takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
-    <Notice kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
+    <Notice
+      kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'}
+      lands={!takesFocus}
+      takesFocus={takesFocus}
+    >
       <strong>{t(`invitations.refused.${refusal}.word`)}</strong>{' '}
       {t(refusalBody(refusal, inviter != null), {
         inviter: inviter ?? '',

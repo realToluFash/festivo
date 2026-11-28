@@ -1,15 +1,21 @@
 # Taps Settings' Sign out, from Settings. sc-21636.
 #
-# Sign out can stop under the iPhone's tab bar, which Maestro counts as visible, so
-# scrollUntilVisible leaves it there. Sign out is the list's last row, so one more scroll
-# brings it to rest whole above the tab bar.
+# Sign out is the list's last row, so the flow scrolls to the list's foot and taps it there,
+# whole above the iPhone's tab bar. No visibility threshold: at the largest text sizes
+# scrollUntilVisible timed out with the button whole on screen, at 100% and at 50%. Scrolls at
+# the foot move nothing, so a Settings opened already at its foot taps at once. sc-67202.
 appId: host.exp.Exponent
 ---
-- scrollUntilVisible:
-    element:
-      id: 'settings.signOut'
-    direction: DOWN
-    timeout: 30000
+- repeat:
+    times: 20
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: 'settings.signOut'
+          commands:
+            - scroll
+- scroll
 - scroll
 - waitForAnimationToEnd
 - tapOn:

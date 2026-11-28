@@ -8,18 +8,25 @@ import {
   keyStep,
   nextScheme,
   savedScheme,
+  schemeHeardAt,
   schemeIn,
   schemeName,
   useColourScheme,
 } from '../../../colourScheme.ts';
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { ActionPair } from '../../../components/ActionPair.tsx';
-import { FieldError } from '../../../components/FieldError.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Dots, Ground, Pieces } from '../../../components/SchemeArt.tsx';
+import {
+  NotSaved,
+  PersonalisationFailed,
+  PersonalisationLoading,
+  SavedMark,
+} from '../../../components/PersonalisationParts.tsx';
 import { TitleRow } from '../../../components/SettingsParts.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { PAGE_ART, PREVIEW_ART, SWATCH_ART, isLightGround } from '../../../schemeArt.ts';
 import { type Scheme, confetti, defaultScheme, schemeNames } from '../../../scheme.ts';
@@ -35,31 +42,43 @@ export function Personalisation() {
     chosen === undefined ? 'loading' : 'loaded',
   );
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [pick, setPick] = useState<Scheme | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unsaved, setUnsaved] = useState<Refusal | null>(null);
   const [said, setSaid] = useState('');
   const step = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const savesMade = useRef(0);
+  const { watch, keep } = useOffline({
+    loaded: load === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   useEffect(() => {
-    if (load !== 'loading') return;
     let current = true;
+    const savesBefore = savesMade.current;
 
-    api.request<unknown>('/api/auth/me').then(
+    watch(api.request<unknown>('/api/auth/me')).then(
       (answer) => {
-        followAccountScheme(schemeIn(answer));
+        if (savesMade.current === savesBefore) followAccountScheme(schemeIn(answer));
         if (current) setLoad('loaded');
       },
-      () => {
-        if (current) setLoad('failed');
+      (error: unknown) => {
+        if (!current) return;
+        const heard = schemeHeardAt();
+
+        if (keepsWhatLoaded(error) && heard != null) keep(heard);
+        setLoad((was) => (was === 'loaded' && keepsWhatLoaded(error) ? was : 'failed'));
       },
     );
 
     return () => {
       current = false;
     };
-  }, [load, attempt]);
+  }, [attempt, refresh, watch, keep]);
 
   function open(): void {
     setSaved(false);
@@ -79,6 +98,7 @@ export function Personalisation() {
 
     setUnsaved(null);
     setSaving(true);
+    savesMade.current += 1;
     setSaid('');
     try {
       savedScheme(
@@ -90,8 +110,12 @@ export function Personalisation() {
           .then((answer) => schemeIn(answer) ?? pick),
       );
     } catch (error) {
+      const offline = error instanceof ApiUnreachableError;
+      const heard = schemeHeardAt();
+
+      if (offline && heard != null) keep(heard);
       setSaving(false);
-      setUnsaved(error instanceof ApiUnreachableError ? 'offline' : 'failed');
+      setUnsaved(offline ? 'offline' : 'failed');
       return;
     }
 
@@ -102,43 +126,29 @@ export function Personalisation() {
   }
 
   return (
-    <div className="account personalisation">
+    <div className="desk account personalisation">
       {phone ? (
         <AccountHeader title={t('personalisation.title')} />
       ) : (
-        <TitleRow title={t('personalisation.title')} />
+        <TitleRow title={t('personalisation.title')} titleRef={title} />
       )}
 
       <div className="visually-hidden" aria-live="polite">
         {said}
       </div>
 
-      {load === 'loading' && (
-        <Skeleton words={t('personalisation.loading')} shape="cards" cards={[{ lines: 2 }]} />
-      )}
+      {load === 'loading' && <PersonalisationLoading words={t('personalisation.loading')} />}
 
       {load === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('personalisation.couldNotLoad')}</p>
-            <p>{t('personalisation.check')}</p>
-            <p className="notice-action">
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => {
-                  setLoad('loading');
-                  setAttempt((tries) => tries + 1);
-                }}
-              >
-                {t('personalisation.tryAgain')}
-              </button>
-            </p>
-          </div>
-        </div>
+        <PersonalisationFailed
+          title={t('personalisation.couldNotLoad')}
+          line={t('personalisation.check')}
+          retry={t('personalisation.tryAgain')}
+          onRetry={() => {
+            setLoad('loading');
+            setAttempt((tries) => tries + 1);
+          }}
+        />
       )}
 
       {load === 'loaded' && (
@@ -202,9 +212,7 @@ function PageCard({
         <p className="personalisation-says">{t('personalisation.says', { name })}</p>
         {line === 'saved' ? (
           <p className="personalisation-done">
-            <span className="personalisation-mark" aria-hidden="true">
-              ✓
-            </span>
+            <SavedMark />
             {t('personalisation.saved')}
           </p>
         ) : (
@@ -332,24 +340,17 @@ function Colours({ current, pick, saving, unsaved, onPick, onCancel, onSave }: C
                   : t('personalisation.notYet', { name: pickedName })}
               </p>
             ) : (
-              <FieldError
-                id={`${id}-unsaved`}
-                message={t(
+              <NotSaved
+                words={t(
                   unsaved === 'offline' ? 'personalisation.offline' : 'personalisation.failed',
                   { picked: pickedName, kept: keptName },
                 )}
-              >
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => {
-                    verb.current?.focus();
-                    onSave();
-                  }}
-                >
-                  {t('personalisation.tryAgain')}
-                </button>
-              </FieldError>
+                retry={t('personalisation.tryAgain')}
+                onRetry={() => {
+                  verb.current?.focus();
+                  onSave();
+                }}
+              />
             )}
           </div>
           <div
@@ -444,7 +445,7 @@ function Swatch({
       {current && (
         <span className="colours-current" aria-hidden="true">
           <span className="personalisation-mark is-small" aria-hidden="true">
-            ✓
+            <Glyph name="tick" size={9} weight={3.4} />
           </span>
           {t('personalisation.current')}
         </span>

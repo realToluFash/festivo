@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../components/Buttons.tsx';
+import { OneHeight } from '../components/OneHeight.tsx';
 import { ProviderButton } from '../components/ProviderSignIn.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { BoldAppleButton } from './boldText/BoldAppleButton.tsx';
@@ -51,10 +52,10 @@ export function Choices({
 
   return (
     <View style={styles.choices}>
-      <View style={styles.buttons}>
+      <OneHeight style={styles.buttons}>
         <PrimaryButton label="Sign in with email" onPress={onEmail} testID="demo.email" />
         {Platform.OS === 'android' ? [google, apple] : [apple, google]}
-      </View>
+      </OneHeight>
       <QuietButton label="Create an account" onPress={onCreate} testID="demo.create" />
       {onJoinCode != null && (
         <QuietButton label="Enter a door code" onPress={onJoinCode} testID="demo.joinCode" />

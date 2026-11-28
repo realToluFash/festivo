@@ -1,17 +1,19 @@
 import type { EventCover, ListedEvent } from '@soirely/api-client';
 import {
+  calledOffDay,
   type CardStepAction,
   type EventPhase,
   type EventState,
   type Milestone,
   calledOff,
   eventDayWords,
-  formatEventDate,
   milestoneDistance,
   nextStep,
   milestoneMoment,
   numberFormat,
   shownDays,
+  placeWords,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -30,6 +32,8 @@ export interface ListEvent {
   status: EventState;
   concludedAt: string | null;
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }
@@ -49,6 +53,7 @@ export function listEventOf(event: ListedEvent): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: venueCity(event.venue),
     photo: event.cover,
   };
 }
@@ -61,7 +66,7 @@ export function daysWords(
   t: TFunction,
   keepDays = false,
 ): string {
-  const days = eventDayWords(event, now, locale, keepDays);
+  const days = eventDayWords(event, now, locale, { keepDays });
 
   switch (days.kind) {
     case 'calledOffOn':
@@ -82,7 +87,7 @@ export function rowLine(
 ): string {
   return t('events.daysAndPlace', {
     dates: daysWords(event, now, locale, t, keepDays),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 
@@ -229,9 +234,20 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
   }
 }
 
+export interface ButtonStep {
+  kind: 'button';
+  line: string;
+  /** What someone who cannot take the step reads instead, when the line asks them to (sc-50996). */
+  readerLine?: string;
+  label: string;
+  action: CardStepAction;
+}
+
 export type CardStep =
-  | { kind: 'button'; line: string; label: string; action: CardStepAction }
-  | { kind: 'next'; title: string; line: string };
+  | ButtonStep
+  | { kind: 'next'; title: string; line: string }
+  /** On with nothing ahead: no step, in the room its finished step takes, so nothing below moves when it comes (sc-93858). */
+  | { kind: 'none'; keeps: ButtonStep };
 
 /** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
 export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep {
@@ -249,6 +265,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
       return {
         kind: 'button',
         line: t('events.nextChangeDates'),
+        readerLine: t('eventLive.endPassedReader'),
         label: t('eventLive.changeDates'),
         action: 'changeDates',
       };
@@ -256,6 +273,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
       return {
         kind: 'button',
         line: t('events.nextResume'),
+        readerLine: t('events.nextResumeReader'),
         label: t('eventPause.resume'),
         action: 'resume',
       };
@@ -268,17 +286,22 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
           distance: distanceWords(step.milestone.at, event.timeZone, now, t),
         }),
       };
-    case undefined: {
-      const line =
-        event.calledOff && event.concludedAt != null
-          ? t('eventEnd.calledOffNotice', {
-              date: formatEventDate(event.concludedAt, event.timeZone, locale),
-            })
-          : t('timeline.finished');
-
-      return { kind: 'button', line, label: t('eventDuplicate.open'), action: 'duplicate' };
-    }
+    case 'over':
+      return overStep(event, now, locale, t);
+    case undefined:
+      return { kind: 'none', keeps: overStep(event, now, locale, t) };
   }
+}
+
+function overStep(event: Shown, now: Date, locale: string, t: TFunction): ButtonStep {
+  const line =
+    event.calledOff && event.concludedAt != null
+      ? t('eventEnd.calledOffNotice', {
+          date: calledOffDay(event.concludedAt, event.timeZone, now, locale),
+        })
+      : t('timeline.finished');
+
+  return { kind: 'button', line, label: t('eventDuplicate.open'), action: 'duplicate' };
 }
 
 /** The line under Events' title: only the counts that are not 0, none at all when every count is (sc-22103). */

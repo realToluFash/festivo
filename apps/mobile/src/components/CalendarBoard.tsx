@@ -1,12 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  type CalendarMonth,
-  type CalendarView,
-  keptCalendarPlace,
-  monthOfDay,
-  readCalendarPlace,
-  shiftMonth,
-} from '@soirely/domain';
+import { type CalendarMonth, type CalendarView, monthOfDay, shiftMonth } from '@soirely/domain';
+import { useIsFocused } from 'expo-router';
 import {
   type ComponentType,
   type ReactNode,
@@ -28,11 +21,13 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import {
+  type Asked,
   BIG_WEEK,
   type CalEvent,
   type Days,
   type Item,
   PHONE_WEEK,
+  type ScrollReport,
   WIDE_WEEK,
   type Week,
   agendaMonth,
@@ -45,9 +40,12 @@ import {
   monthName,
   offsetsOf,
   pinnedOf,
+  placeAfter,
+  topIndex,
   weekIndexOf,
   weeksAround,
 } from '../kit/calendar.ts';
+import { type Opening, keepPlace, openingOf } from '../kit/calendarPlace.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { motionEase } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -71,7 +69,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { type Anchor, anchorUnder, useAnchorFollowsTurn } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
@@ -109,13 +107,14 @@ function lookOf(big: boolean, phone: boolean): GridLook {
   return LOOKS[big ? 'big' : phone ? 'phone' : 'wide'];
 }
 
-/** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion. */
+/** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion; a glide the next one stops never calls its done. */
 function useGlide(reduced: boolean) {
   const running = useRef<Animated.CompositeAnimation | null>(null);
 
   return useCallback(
     (from: number, to: number, apply: (y: number) => void, done: () => void) => {
       running.current?.stop();
+      running.current = null;
       if (reduced || Math.abs(to - from) < 1) {
         apply(to);
         done();
@@ -129,9 +128,9 @@ function useGlide(reduced: boolean) {
         easing: motionEase,
         useNativeDriver: false,
       });
-      running.current.start(() => {
+      running.current.start(({ finished }) => {
         value.removeListener(heard);
-        done();
+        if (finished) done();
       });
     },
     [reduced],
@@ -151,8 +150,8 @@ export interface CalendarBoardProps<S extends string, E extends CalEvent> {
   now: Date;
   locale: string;
   firstDay: number;
-  /** The AsyncStorage key the view and month are kept under. */
-  kept: string;
+  /** The person whose view and month the board opens on and keeps. */
+  personId: string;
   start?: BoardStart;
   bottom: number;
   head?: ReactNode;
@@ -175,7 +174,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   now,
   locale,
   firstDay,
-  kept,
+  personId,
   start = NO_START,
   bottom,
   head,
@@ -206,27 +205,27 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const agendaRef = useRef<ScrollViewInstance>(null);
   const weekY = useRef(0);
   const agendaY = useRef(0);
+  const weekAsked = useRef<Asked | null>(null);
   const places = useRef(new Map<string, number>());
   const glide = useGlide(reduced);
   const placed = start.view != null && start.at != null;
+  const here = useIsFocused();
+  const wasHere = useRef(here);
 
   useEffect(() => {
     if (placed) return;
     let live = true;
-    const land = (place: ReturnType<typeof readCalendarPlace>) => {
-      setView((was) => was ?? place?.view ?? 'month');
-      setAt((was) => was ?? (place == null ? today : landingOf(place.month, today)));
+    const land = (opening: Opening) => {
+      setView((was) => was ?? opening.view);
+      setAt((was) => was ?? opening.at);
     };
 
-    AsyncStorage.getItem(kept).then(
-      (read) => live && land(readCalendarPlace(read)),
-      () => live && land(null),
-    );
+    void openingOf(personId, today).then((opening) => live && land(opening));
 
     return () => {
       live = false;
     };
-  }, [placed, kept, today]);
+  }, [placed, personId, today]);
 
   useEffect(() => {
     if (!start.menu) return;
@@ -263,11 +262,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
   useEffect(() => {
     if (view == null || at == null) return;
-    void AsyncStorage.setItem(
-      kept,
-      keptCalendarPlace({ view, month: monthOfDay(`${pinnedKey}-01`) }),
-    ).catch(() => undefined);
-  }, [kept, view, at, pinnedKey]);
+    void keepPlace(personId, { view, month: monthOfDay(`${pinnedKey}-01`) });
+  }, [personId, view, at, pinnedKey]);
 
   const loaded = load === 'loaded';
   const none = loaded && events.length === 0;
@@ -279,31 +275,53 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     setLastDay(day);
     setOpen(day);
   }, []);
-  const onTop = useCallback((index: number, y: number) => {
-    weekY.current = y;
-    setTop(index);
+  const toWeekY = useCallback((y: number) => {
+    listRef.current?.scrollToOffset({ offset: y, animated: false });
   }, []);
+  const putWeekY = useCallback(
+    (y: number) => {
+      weekAsked.current = { from: y, to: y };
+      toWeekY(y);
+    },
+    [toWeekY],
+  );
+  const toAgendaY = useCallback((y: number) => {
+    agendaRef.current?.scrollTo({ y, animated: false });
+  }, []);
+  const onTop = useCallback(
+    (report: ScrollReport) => {
+      if (!here) return;
+      const y = placeAfter(weekY.current, report, weekAsked.current);
+      if (report.byHand) weekAsked.current = null;
+      if (y !== report.y) putWeekY(y);
+      weekY.current = y;
+      setTop(topIndex(offsets, y));
+    },
+    [here, offsets, putWeekY],
+  );
+
+  useEffect(() => {
+    const back = here && !wasHere.current;
+    wasHere.current = here;
+    if (!back) return;
+    if (view === 'agenda') toAgendaY(agendaY.current);
+    else putWeekY(weekY.current);
+  }, [here, view, toAgendaY, putWeekY]);
 
   const scrollWeeks = (index: number, toToday: boolean) => {
     const to = offsets[index] ?? 0;
-    if (toToday) setTodayRuns(true);
-    glide(
-      weekY.current,
-      to,
-      (y) => listRef.current?.scrollToOffset({ offset: y, animated: false }),
-      () => setTodayRuns(false),
-    );
+    setTodayRuns(toToday);
+    weekAsked.current = { from: weekY.current, to };
+    glide(weekY.current, to, toWeekY, () => {
+      weekAsked.current = { from: to, to };
+      setTodayRuns(false);
+    });
   };
   const scrollAgenda = (key: string, toToday: boolean) => {
     const to = places.current.get(key);
     if (to == null) return;
-    if (toToday) setTodayRuns(true);
-    glide(
-      agendaY.current,
-      to,
-      (y) => agendaRef.current?.scrollTo({ y, animated: false }),
-      () => setTodayRuns(false),
-    );
+    setTodayRuns(toToday);
+    glide(agendaY.current, to, toAgendaY, () => setTodayRuns(false));
   };
   const onStep = (step: -1 | 1) => {
     if (view === 'agenda') {
@@ -340,6 +358,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     agendaY.current = y;
   }, []);
   const onAgendaScroll = (y: number) => {
+    if (!here) return;
     agendaY.current = y;
     let found: string | null = null;
     for (const entry of entries) {
@@ -534,7 +553,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
               pinned={pinned}
               locale={locale}
               lateOf={parts.lateOf}
-              start={startIndex}
+              start={top ?? startIndex}
               bottom={bottom}
               onDay={onDay}
               onTop={onTop}
@@ -575,9 +594,14 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
           headingTakesFocus
           testID="calendar.daySheet"
         >
-          <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          <SheetScrollView
+            holdsHeading
+            bounces={false}
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetBody}
+          >
             {shownDay}
-          </ScrollView>
+          </SheetScrollView>
         </Sheet>
       ) : (
         !landscape && (
@@ -629,8 +653,8 @@ const styles = StyleSheet.create({
   sideRow: { flexDirection: 'row', gap: SIDE_GAP },
   first: { gap: 18, paddingTop: tokens.spacePillEnd },
   failed: { gap: tokens.spaceLg, paddingTop: tokens.spaceXxs },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
   sheetBody: {
-    paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceSm,
   },

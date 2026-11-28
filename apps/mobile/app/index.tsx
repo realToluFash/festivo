@@ -1,4 +1,4 @@
-import { ApiUnreachableError, awaiting } from '@soirely/api-client';
+import { ApiUnreachableError, gateOf } from '@soirely/api-client';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -18,6 +18,7 @@ import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn, resumesSession } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 /**
  * Launch: the signed-in home once somebody is in (sc-722), else welcome (sc-29076).
@@ -53,7 +54,7 @@ export default function Home() {
         void followAccount(signedIn);
 
         // Behind the onboarding gate, the gate's screen opens rather than the app.
-        const landing = landingFor(awaiting(signedIn));
+        const landing = landingFor(gateOf(signedIn));
         if (landing !== '/') router.replace(landing);
         else
           void launchSignedIn().then((loaded) => {
@@ -88,6 +89,7 @@ export default function Home() {
       ).then((route) => {
         if (route == null) return;
         // An organisation's rule that ended the session is named on sign-in (sc-69).
+        signInOver(false);
         router.replace(
           route === '/sign-in?signedOut=1' ? signInRoute(ruleRefusal(answer.why), true) : route,
         );

@@ -1,20 +1,36 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  dayLineShares,
   bandPlace,
-  breakableEmail,
+  capChipInDisc,
+  capInDisc,
   capUnderTitle,
+  dotKept,
   drawnLine,
+  drawnSize,
+  besideGlyph,
+  besideGlyphInPill,
   fitWidest,
+  grownPad,
+  labelStart,
+  lineStart,
+  LABEL_LINE,
   frameTitleSize,
   nameLines,
   paddingToCentre,
+  pasteHeight,
   rowsFloor,
   sideListWidth,
   TITLE_LINE,
+  piecesIn,
   titleSize,
   wordsIn,
+  windowAt,
+  wordsRoomKey,
   wordsSlot,
+  titleOnOneLine,
+  wholeLineHeight,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -67,6 +83,51 @@ describe('capUnderTitle', () => {
   });
 });
 
+describe('capInDisc', () => {
+  it('never lets initials draw past half the disc, at any scale (sc-37693)', () => {
+    for (const [side, size] of [
+      [40, 14],
+      [34, 12],
+      [34, 13],
+      [56, 20],
+    ] as const) {
+      for (const scale of [1, AX1, AX2, 3.1]) {
+        expect(size * Math.min(scale, capInDisc(side, size))).toBeLessThanOrEqual(side * 0.5);
+      }
+    }
+  });
+
+  it("lets a 40 disc's initials grow to 20", () => {
+    expect(14 * capInDisc(40, 14)).toBeCloseTo(20);
+  });
+
+  it('never asks for less than the default size', () => {
+    expect(capInDisc(20, 12)).toBe(1);
+  });
+});
+
+describe('capChipInDisc', () => {
+  it.each([1, 2, 3])(
+    'keeps a chip of %i characters inside a 34 disc at every scale (sc-37693)',
+    (characters) => {
+      for (const scale of [1, AX1, AX2, 3.1]) {
+        const drawn = 13 * Math.min(scale, capChipInDisc(34, 13, characters));
+
+        expect(drawn * characters * 0.62).toBeLessThan(34 * 0.8 + 0.01);
+        expect(drawn).toBeLessThanOrEqual(34 * 0.5);
+      }
+    },
+  );
+
+  it('lets +5 grow as far as its height allows', () => {
+    expect(capChipInDisc(34, 13, 2)).toBe(capInDisc(34, 13));
+  });
+
+  it('holds 99+ under what its height alone would allow', () => {
+    expect(capChipInDisc(34, 13, 3)).toBeLessThan(capInDisc(34, 13));
+  });
+});
+
 describe('frameTitleSize', () => {
   it.each([
     [false, 402, 34],
@@ -91,6 +152,63 @@ describe('wordsIn', () => {
       'application',
     ]);
   });
+
+  it('keeps the two sides of a no-break space one word', () => {
+    expect(wordsIn([dotKept('Your role · Owner')])).toEqual(['Your', 'role\u00a0·', 'Owner']);
+  });
+});
+
+describe('dotKept', () => {
+  it('ties the dot to the word before it', () => {
+    expect(dotKept('Your role · Owner')).toBe('Your role\u00a0· Owner');
+    expect(dotKept('Votre rôle · Owner')).toBe('Votre rôle\u00a0· Owner');
+  });
+});
+
+describe('piecesIn', () => {
+  it('splits a word after the hyphen it already has, keeping the hyphen on the first part', () => {
+    expect(piecesIn(['Password, two-factor, signed-in devices'])).toEqual([
+      'Password,',
+      'two-',
+      'factor,',
+      'signed-',
+      'in',
+      'devices',
+    ]);
+  });
+
+  it('keeps a word with no hyphen whole, and lists each piece once across the texts', () => {
+    expect(piecesIn(['Notifications', 'e-mail Notifications'])).toEqual([
+      'Notifications',
+      'e-',
+      'mail',
+    ]);
+  });
+});
+
+describe('labelStart', () => {
+  it('grows a title to the cap and no further', () => {
+    expect(labelStart(16, 3.571, 43)).toBe(43);
+  });
+
+  it('keeps main’s size below the cap', () => {
+    expect(labelStart(16, 1, 34)).toBe(16);
+    expect(labelStart(16, 2.143, 43)).toBeCloseTo(34.29, 2);
+  });
+});
+
+describe('lineStart', () => {
+  it('starts the line no larger than its title draws', () => {
+    expect(lineStart(13.5, 3.571, 43, 35)).toBe(35);
+  });
+
+  it('starts the line at the cap when its title draws at the cap', () => {
+    expect(lineStart(13.5, 3.571, 43, 43)).toBe(43);
+  });
+
+  it('keeps main’s line at the default size', () => {
+    expect(lineStart(13.5, 1, 34, 16)).toBe(13.5);
+  });
 });
 
 describe('fitWidest', () => {
@@ -107,6 +225,82 @@ describe('fitWidest', () => {
   });
 });
 
+describe("fitWidest with tracking, This week's strip on an iPhone 17 Pro (sc-94682)", () => {
+  // A day's column, a seventh of the strip less 10 a side; TODAY at the seventh step, 11 × 1.353, its five letters tracked 0.66 each.
+  const column = 48.9;
+  const start = 11 * 1.353;
+  const tracking = 5 * 0.66;
+
+  it("keeps the step's size for a label that fits its column", () => {
+    expect(fitWidest(11, start, 34, column, 3 * 0.66)).toBe(start);
+  });
+
+  it('steps TODAY down to the largest whole size at which it fits, its tracking kept', () => {
+    expect(fitWidest(11, start, 54.2, column, tracking)).toBe(13);
+  });
+
+  it('never steps under the default size', () => {
+    expect(fitWidest(11, start, 120, column, tracking)).toBe(11);
+  });
+
+  it('leaves a label at or under the default size as it is, even when it is too wide', () => {
+    expect(fitWidest(11, 11, 60, column, tracking)).toBe(11);
+  });
+});
+
+describe('besideGlyph, Sign out at the foot of Settings (sc-66900)', () => {
+  // The iPhone 17 Pro's page, 402 less 20 a side, less the pill's 20 and 1.5 ring a side and the 8 beside the glyph.
+  const inside = 362 - 2 * (20 + 1.5) - 8;
+  const glyph = 18 / 16;
+
+  it('keeps the label at 16 at the default size', () => {
+    expect(besideGlyph(16, 16, 40, glyph, inside)).toBe(16);
+  });
+
+  it('keeps Sign at its full size, about 50, at the twelfth step', () => {
+    expect(besideGlyph(16, 49.92, 100, glyph, inside)).toBeCloseTo(49.92, 2);
+  });
+
+  it('steps déconnecter down to 44, so it fits whole beside the glyph, at the twelfth step', () => {
+    expect(besideGlyph(16, 49.92, 290, glyph, inside)).toBe(44);
+  });
+
+  it('never draws the label under the default size', () => {
+    expect(besideGlyph(16, 49.92, 2000, glyph, inside)).toBe(16);
+  });
+});
+
+describe('besideGlyphInPill, Sign out on one line in its pill (sc-84920)', () => {
+  const inside = 362 - 2 * (20 + 1.5) - 8;
+  const glyph = 18 / 16;
+  const inPill = (start: number) =>
+    besideGlyphInPill({
+      size: 16,
+      start,
+      wrap: { pieces: [[2.1 * start], [1.6 * start]], space: 0.25 * start },
+      glyph,
+      beside: 8,
+      width: 362,
+      sides: 20 + 1.5,
+      pad: grownPad(52, 16, 1.5) + 1.5,
+      ring: 1.5,
+    });
+
+  it.each([16, 16 * 2.14])('sizes a one-line label at %d as besideGlyph does', (start) => {
+    expect(inPill(start)).toBe(besideGlyph(16, start, 2.1 * start, glyph, inside));
+  });
+});
+
+describe('grownPad, the room above and below Sign out’s words (sc-66900)', () => {
+  it('keeps main’s 44 on a tablet on its side at the default size', () => {
+    expect(2 * grownPad(44, 15, 1.5) + 2 * 1.5 + 15 * LABEL_LINE).toBeCloseTo(44, 5);
+  });
+
+  it('keeps 12 on a phone, where the words and 12 stay under 52', () => {
+    expect(grownPad(52, 16, 1.5)).toBe(12);
+  });
+});
+
 it('lets a name in the frame take two lines only at the accessibility sizes', () => {
   expect(nameLines(1.353)).toBe(1);
   expect(nameLines(AX1)).toBe(2);
@@ -118,14 +312,6 @@ describe('widths', () => {
     expect(sideListWidth(320, 834, AX1)).toBe(334);
     expect(sideListWidth(236, 980, AX2)).toBe(392);
     expect(sideListWidth(320, 700, AX2)).toBe(320);
-  });
-});
-
-describe('breakableEmail', () => {
-  it('lets the line break after the @ and nowhere new', () => {
-    expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
-      'camille.moreau@​traiteur-lumiere.fr',
-    );
   });
 });
 
@@ -228,54 +414,147 @@ describe('rowsFloor', () => {
 
 describe('the width labels have to fit (sc-37298)', () => {
   it('keeps a container’s reported width when only the text size changes', () => {
-    const reported = { windowWidth: 360, width: 76 };
+    const reported = 76;
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, 360)).toBe(76);
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, windowAt(360, 360))).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360))).toBe(76);
   });
 
-  it('forgets a reported width once the window changes width', () => {
-    const reported = { windowWidth: 360, width: 76 };
+  it('keeps a width reported mid-turn, which no new layout would replace (sc-99214)', () => {
+    // The tab reaches its final width when the window moves, before the frame does, so its onLayout does not fire again.
+    const room = { wrapped: null, kept: null, reported: 76 };
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 412)).toBe(0);
+    expect(wordsSlot(room, 12, windowAt(800, 360))).toBe(76);
+    expect(wordsSlot(room, 12, windowAt(800, 800))).toBe(76);
   });
 
   it('keeps a wrapped text’s width only for the start it wrapped at', () => {
-    const kept = { key: '20|360', width: 120 };
+    const kept = { key: wordsRoomKey(20, windowAt(360, 360)), width: 120 };
 
-    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, 360)).toBe(120);
-    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, windowAt(360, 360))).toBe(120);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, windowAt(360, 360))).toBe(0);
+  });
+
+  it('forgets a wrapped text’s width once its container reports a new room (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, windowAt(402, 402)), width: 129 };
+    const reported = 238;
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(238);
+    expect(
+      fitWidest(
+        16,
+        43,
+        171,
+        wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238),
+      ),
+    ).toBe(43);
+  });
+
+  it('keeps a wrapped text’s width while its container’s room is the same (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, windowAt(402, 402), 238), width: 236 };
+    const reported = 238;
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(236);
   });
 
   it('takes the width a text wrapped at over anything kept', () => {
-    const kept = { key: '20|360', width: 120 };
+    const kept = { key: wordsRoomKey(20, windowAt(360, 360)), width: 120 };
 
-    expect(
-      wordsSlot({ wrapped: 90, kept, reported: { windowWidth: 360, width: 76 } }, 20, 360),
-    ).toBe(90);
+    expect(wordsSlot({ wrapped: 90, kept, reported: 76 }, 20, windowAt(360, 360))).toBe(90);
+  });
+
+  it('keeps no wrap read while a turn upright had moved the window but not yet the frame (sc-90463)', () => {
+    const upright = windowAt(834, 834);
+    const turning = windowAt(834, 1194);
+    const kept = { key: wordsRoomKey(43, turning), width: 512 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 43, turning)).toBe(512);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 43, upright)).toBe(0);
   });
 
   it('steps the bar’s labels below the cap after a live change with no new layout', () => {
     const tab = 76;
-    const reported = { windowWidth: 360, width: tab };
+    const reported = tab;
     const widestAt = (start: number) => (start / 12) * 60;
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBeGreaterThan(0);
+    expect(
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360)),
+    ).toBeGreaterThan(0);
 
     const before = fitWidest(
       12,
       12,
       widestAt(12),
-      wordsSlot({ wrapped: null, kept: null, reported }, 12, 360),
+      wordsSlot({ wrapped: null, kept: null, reported }, 12, windowAt(360, 360)),
     );
     const after = fitWidest(
       12,
       20,
       widestAt(20),
-      wordsSlot({ wrapped: null, kept: null, reported }, 20, 360),
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360)),
     );
 
     expect(before / 12).toBe(1);
     expect(after / 12).toBeLessThan(20 / 12);
+  });
+});
+
+describe('pasteHeight', () => {
+  it('keeps the field height up to xxxL', () => {
+    expect(pasteHeight(45, 1)).toBe(45);
+    expect(pasteHeight(45, 1.353)).toBe(45);
+  });
+
+  it('grows past the word Apple draws at the accessibility sizes', () => {
+    expect(pasteHeight(45, AX1)).toBeGreaterThan(17 * AX1 * 1.2 + 14);
+    expect(pasteHeight(45, 3.12)).toBeGreaterThan(17 * 3.12 * 1.2 + 14);
+  });
+});
+
+describe('wholeLineHeight', () => {
+  it('scales to whole points at the size a text is drawn at', () => {
+    expect(wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(49, 9);
+    expect(wholeLineHeight(15.5, 43) * (43 / 15.5)).toBeCloseTo(53, 9);
+    expect(wholeLineHeight(13, 13)).toBe(16);
+  });
+
+  it('keeps four lines of a stepped-down row line at four whole lines', () => {
+    expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
+  });
+
+  it("rounds a heading's own line spacing to whole points", () => {
+    expect(wholeLineHeight(22, 50, 1.15) * (50 / 22)).toBeCloseTo(58, 9);
+    expect(wholeLineHeight(38, 61, 1.08) * (61 / 38)).toBeCloseTo(66, 9);
+  });
+});
+
+describe('drawnSize', () => {
+  it('grows with the text size up to its multiplier', () => {
+    expect(drawnSize(14, 2)).toBe(28);
+    expect(drawnSize(14, 2, 1.5)).toBe(21);
+    expect(drawnSize(14, 1.2, 1.5)).toBeCloseTo(16.8, 9);
+  });
+
+  it('ignores a multiplier under 1, as React Native does', () => {
+    expect(drawnSize(14, 2, 0)).toBe(28);
+  });
+});
+
+describe('dayLineShares, a This week day line (sc-92250)', () => {
+  it('keeps the name and its dotted date on one line while both fit', () => {
+    expect(dayLineShares(120, 110, 4, 234)).toBe(true);
+  });
+
+  it('sends the date to the line under once one pixel short', () => {
+    expect(dayLineShares(120, 110, 4, 233)).toBe(false);
+  });
+});
+
+describe('titleOnOneLine', () => {
+  it('holds a title to one line when it is no wider than its room', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+    expect(titleOnOneLine(10, 0)).toBe(false);
   });
 });

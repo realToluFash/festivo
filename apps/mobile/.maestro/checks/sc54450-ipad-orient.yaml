@@ -1,0 +1,27 @@
+# sc-54450 on a tablet in ORIENT: Guests with Paste a reply, then Whose reply is this?, then Record a reply from a message.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- takeScreenshot: guests
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 10000
+- takeScreenshot: whose
+- tapOn:
+    id: 'paste.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: form
+- tapOn:
+    id: 'guest.record.cancel'
+- setOrientation: PORTRAIT

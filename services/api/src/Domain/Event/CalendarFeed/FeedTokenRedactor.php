@@ -8,17 +8,18 @@ use Monolog\Attribute\AsMonologProcessor;
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
 use Psl\Dict;
+use Psl\Iter;
 use Psl\Regex;
 
 /**
- * A calendar link's token is its whole credential (sc-3626), and the router logs every matched path and its parameters. This takes it out of every record, in every channel, before any handler writes it.
+ * A calendar link's token is its whole credential (sc-3626, and a guest's invitation token in theirs, sc-3627), as are the Guest replies unsubscribe link's (sc-4331) and a guest's email unsubscribe link's (sc-3969), and the router logs every matched path and its parameters. This takes it out of every record, in every channel, before any handler writes it.
  */
 #[AsMonologProcessor]
 final readonly class FeedTokenRedactor implements ProcessorInterface
 {
     public const string REDACTED = '[redacted]';
 
-    private const string IN_PATH = '#(calendar-feeds/)[A-Za-z0-9_-]{43}#';
+    private const string IN_PATH = '#(calendar-feeds/|guest-calendars/|unsubscribe/guest-replies/|unsubscribe/guest/)[A-Za-z0-9_-]{43,44}#';
 
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -36,7 +37,7 @@ final readonly class FeedTokenRedactor implements ProcessorInterface
      */
     private static function redactAll(array $values): array
     {
-        $calendarFeed = 'calendar_feed' === ($values['_route'] ?? null);
+        $calendarFeed = Iter\contains(['calendar_feed', 'guest_calendar_feed', 'guest_replies_unsubscribe', 'guest_replies_unsubscribe_post', 'guest_unsubscribe', 'guest_unsubscribe_post'], $values['_route'] ?? null);
 
         return Dict\map_with_key($values, static fn (int|string $key, mixed $value): mixed => match (true) {
             $calendarFeed && 'token' === $key => self::REDACTED,

@@ -1,4 +1,13 @@
-import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -8,13 +17,19 @@ import {
   Pressable,
   StyleSheet,
   type StyleProp,
+  useWindowDimensions,
   View,
   type ViewStyle,
   type ViewInstance,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Text } from './Text.tsx';
+import { addressRuns, atWithItsLastCharacter, isLoneAt } from '../kit/addressBreaks.ts';
+import { TapPressable } from './TapPressable.tsx';
+import { Text, type TextProps } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
+import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
+import { TAG_END, TAG_GAP, tagChrome } from '../layout/tagLine.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -31,6 +46,7 @@ export interface RowTag {
   kind: TagKind;
   word: string;
   turning?: boolean;
+  wraps?: boolean;
 }
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
@@ -51,6 +67,12 @@ export const SELECTED_ROW = {
 /** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it and the title wraps at the row's full width (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
 
+/** A row's line under its title: 1.4 of its size, in whole points, so its last line is never drawn cut on iOS (sc-94081). */
+const ROW_LINE = 1.4;
+
+/** The width of the line a tag sits on: its title row's, the words column of a row (sc-90472). */
+const TagLine = createContext<number | null>(null);
+
 /** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
 export function TitleBesideTag({
   title,
@@ -63,16 +85,64 @@ export function TitleBesideTag({
 }) {
   const measured = useRef(UNMEASURED_TITLE);
   const [key, setKey] = useState(UNMEASURED_TITLE.key);
+  const [line, setLine] = useState<number | null>(null);
   return (
     <View
       style={[styles.titleRow, style]}
       onLayout={(event) => {
-        measured.current = titleAtWidth(measured.current, event.nativeEvent.layout.width);
+        const { width } = event.nativeEvent.layout;
+        measured.current = titleAtWidth(measured.current, width);
         setKey(measured.current.key);
+        setLine(width);
       }}
     >
       <Fragment key={key}>{title}</Fragment>
-      {tag}
+      <TagLine.Provider value={line}>{tag}</TagLine.Provider>
+    </View>
+  );
+}
+
+/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). `shown` reaches only what ends the name, so nothing it adds sits between the @ and the domain. */
+export function NameText({
+  name,
+  box,
+  shown = (run) => run,
+  accessible,
+  accessibilityRole,
+  ...text
+}: Omit<TextProps, 'children'> & {
+  name: string;
+  box?: StyleProp<ViewStyle>;
+  shown?: (run: string) => string;
+}) {
+  const runs = addressRuns(name);
+  const [atAlone, setAtAlone] = useState(false);
+  if (runs == null)
+    return (
+      <Text {...text} accessible={accessible} accessibilityRole={accessibilityRole}>
+        {shown(name)}
+      </Text>
+    );
+
+  return (
+    <View
+      style={[styles.address, box]}
+      accessible={accessible ?? true}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={name}
+    >
+      <Text
+        {...text}
+        accessible={false}
+        onTextLayout={(event) => {
+          if (isLoneAt(event.nativeEvent.lines.at(-1)?.text ?? '')) setAtAlone(true);
+        }}
+      >
+        {atAlone ? atWithItsLastCharacter(runs[0]) : runs[0]}
+      </Text>
+      <Text {...text} accessible={false}>
+        {shown(runs[1])}
+      </Text>
     </View>
   );
 }
@@ -117,26 +187,44 @@ export function TurningMark({ side = 12 }: { side?: number }) {
   );
 }
 
-/** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. */
+const TAG_SIZE = 12.5;
+
+/** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. On a row at the accessibility sizes its words stay whole, stepping down to fit its line, never under 12.5 (sc-90472). */
 export function Tag({
   kind,
   word,
   turning = false,
-  wraps = false,
+  wraps: wrapsAlways = false,
 }: {
   kind: TagKind;
   word: string;
   turning?: boolean | undefined;
-  /** At the largest text a long word wraps inside the tag rather than run past the row. */
-  wraps?: boolean;
+  /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
+  wraps?: boolean | undefined;
 }) {
   const look = TAGS[kind];
+  const { fontScale } = useWindowDimensions();
+  const grown = atAccessibilitySizes(fontScale);
+  const wraps = wrapsAlways || grown;
+  const line = useContext(TagLine);
+  const room =
+    line == null
+      ? 0
+      : Math.max(
+          0,
+          line -
+            tagChrome({
+              marks: (turning ? 1 : 0) + (kind === 'now' ? 0 : 1),
+              turning,
+              ringed: look.ring != null,
+            }),
+        );
 
   return (
     <View
       style={[
         styles.tag,
-        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
+        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? TAG_END : 7 },
         turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
         wraps && styles.tagWraps,
@@ -144,17 +232,31 @@ export function Tag({
     >
       {turning && <TurningMark />}
       {kind !== 'now' && <ShapeMark kind={kind} ink={look.ink} />}
-      <Text
-        size={12.5}
-        weight="semibold"
-        numberOfLines={wraps ? undefined : 1}
-        style={{ color: look.ink }}
-      >
-        {word}
-      </Text>
+      {grown && line != null ? (
+        <CappedWholeWords
+          size={TAG_SIZE}
+          weight="semibold"
+          room={room}
+          breakAfterHyphens
+          style={[styles.tagWords, { color: look.ink }]}
+        >
+          {word}
+        </CappedWholeWords>
+      ) : (
+        <Text
+          size={TAG_SIZE}
+          weight="semibold"
+          numberOfLines={wraps ? undefined : 1}
+          style={{ color: look.ink }}
+        >
+          {word}
+        </Text>
+      )}
     </View>
   );
 }
+
+const HEAD_SIZE = 18;
 
 export function HeadCount({ text }: { text: string }) {
   return (
@@ -164,10 +266,29 @@ export function HeadCount({ text }: { text: string }) {
   );
 }
 
+/** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
+  const { fontScale } = useWindowDimensions();
+
+  if (atAccessibilitySizes(fontScale)) {
+    return (
+      <View style={[styles.head, styles.headStacked]}>
+        <CappedWholeWords
+          size={HEAD_SIZE}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.headTitle, styles.headTitleStacked]}
+        >
+          {title}
+        </CappedWholeWords>
+        {right}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.head}>
-      <Text size={18} weight="bold" accessibilityRole="header" style={styles.headTitle}>
+      <Text size={HEAD_SIZE} weight="bold" accessibilityRole="header" style={styles.headTitle}>
         {title}
       </Text>
       {right}
@@ -191,17 +312,23 @@ export function Section({
     <View>
       <SectionHead title={title} right={right} />
       {children}
-      {foot != null && (
-        <Text size={14} weight="medium" style={[styles.secondary, styles.foot]}>
-          {foot}
-        </Text>
-      )}
+      {foot != null && <SectionFoot foot={foot} />}
     </View>
+  );
+}
+
+export function SectionFoot({ foot }: { foot: string }) {
+  return (
+    <Text size={14} weight="medium" wholeLines style={[styles.secondary, styles.foot]}>
+      {foot}
+    </Text>
   );
 }
 
 export interface RowProps {
   title: string;
+  /** The title may be an address, which breaks after its @ first (sc-70353). */
+  titleMayBeAddress?: boolean;
   titleLines?: number | undefined;
   line?: string | undefined;
   /** Under the title in place of a plain line: a line with its own mark. */
@@ -231,6 +358,7 @@ export interface RowProps {
 /** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
 export function Row({
   title,
+  titleMayBeAddress = false,
   titleLines,
   line,
   below,
@@ -271,25 +399,44 @@ export function Row({
       <View style={styles.words}>
         <TitleBesideTag
           title={
-            <Text
-              size={16}
-              weight={weight}
-              numberOfLines={titleLines}
-              selectable={selectable}
-              accessible={grouped ? false : undefined}
-              style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
-            >
-              {titleWithInkRoom(title, Platform.OS, selectable)}
-            </Text>
+            titleMayBeAddress ? (
+              <NameText
+                name={title}
+                box={TITLE_BESIDE_TAG}
+                shown={(run) => titleWithInkRoom(run, Platform.OS, selectable)}
+                size={16}
+                weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              />
+            ) : (
+              <Text
+                size={16}
+                weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              >
+                {titleWithInkRoom(title, Platform.OS, selectable)}
+              </Text>
+            )
           }
-          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+          tag={
+            tag != null && (
+              <Tag kind={tag.kind} word={tag.word} turning={tag.turning} wraps={tag.wraps} />
+            )
+          }
         />
         {line != null && (
           <Text
             size={14}
             weight="medium"
+            wholeLines={ROW_LINE}
             accessible={grouped ? false : undefined}
-            style={[styles.secondary, styles.line]}
+            style={styles.secondary}
           >
             {line}
           </Text>
@@ -332,7 +479,7 @@ export function Row({
     );
 
   return (
-    <Pressable
+    <TapPressable
       ref={ref}
       onPress={onPress}
       disabled={off}
@@ -350,7 +497,7 @@ export function Row({
       testID={testID}
     >
       {words}
-    </Pressable>
+    </TapPressable>
   );
 }
 
@@ -371,13 +518,18 @@ export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gut
 
         return (
           <View key={item.key}>
-            {rule && <View style={[styles.hairline, { marginLeft: (item.inset ?? 0) + gutter }]} />}
+            {rule && <RowRule inset={(item.inset ?? 0) + gutter} />}
             {item.row}
           </View>
         );
       })}
     </View>
   );
+}
+
+/** The hairline between two rows, starting where the text starts. */
+export function RowRule({ inset }: { inset: number }) {
+  return <View style={[styles.hairline, { marginLeft: inset }]} />;
 }
 
 /** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause; `wraps` shows a long label whole, on as many lines as it needs. */
@@ -393,8 +545,10 @@ export function TextAction({
   renderMark,
   after,
   wraps = false,
+  drawnAt,
   consequence,
   accessibilityLabel,
+  maxFontSizeMultiplier,
   testID,
   ref,
 }: {
@@ -409,8 +563,12 @@ export function TextAction({
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
   wraps?: boolean;
+  /** The label's size already grown to the text size by the caller, drawn as it is (sc-75214). */
+  drawnAt?: number | undefined;
   consequence?: string;
   accessibilityLabel?: string;
+  /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
+  maxFontSizeMultiplier?: number | undefined;
   testID?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
@@ -437,14 +595,17 @@ export function TextAction({
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
       {renderMark?.(ink)}
       <Text
-        size={15}
+        size={drawnAt ?? 15}
         weight="semibold"
         accessible={false}
+        allowFontScaling={drawnAt == null}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           { color: ink },
           figures && styles.figures,
           onFill && styles.onFill,
           wraps && styles.wrapsLabel,
+          drawnAt != null && { lineHeight: Math.ceil(drawnAt * LABEL_LINE) },
         ]}
       >
         {label}
@@ -494,14 +655,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     flexShrink: 0,
-    gap: 5,
-    paddingRight: 9,
+    gap: TAG_GAP,
+    paddingRight: TAG_END,
     borderRadius: 12,
   },
+  tagWords: { flexShrink: 1 },
   tagTurning: { gap: tokens.spaceXs },
   tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: HEAD_SIZE * 1.25 },
+  headStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  headTitleStacked: { flex: 0, alignSelf: 'stretch' },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
@@ -516,7 +680,7 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
-  line: { lineHeight: 14 * 1.4 },
+  address: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },

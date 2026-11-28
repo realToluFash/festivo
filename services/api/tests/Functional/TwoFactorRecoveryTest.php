@@ -14,6 +14,7 @@ use App\Domain\User\Verification\RecordingTextMessageSender;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Entity\Passkey;
 use App\Entity\PhoneNumber;
 use App\Entity\RefreshToken;
 use App\Entity\Role;
@@ -79,6 +80,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     #[Test]
     public function anEmailCodeAloneProvesItWhenThereIsNoVerifiedPhone(): void
     {
+        self::drainNotifications();
         $opening = $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()]);
         self::assertSame([self::ADDRESS, null, ['Ìrè Events'], false], [$opening['email'], $opening['phone'], $opening['organisations'], $opening['nobody']]);
         self::assertNull($opening['recovery'], 'nothing open yet, and nothing sent');
@@ -94,6 +96,33 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(['Somebody asked to get into your account without two-factor'], $this->headingsTo(self::ADDRESS, 'A request to get into your Soirely account'));
         self::assertStringContainsString('proved their email address with a code. They have no verified phone.', $this->mailTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account'));
         self::assertSame([], $this->mailsTo(self::ADDRESS, 'Folake Adeyemi asked to get back into their account'), 'never to the person');
+    }
+
+    /** Each email names the factors the member holds: passkeys only, or passkeys and the app (sc-86885). */
+    #[Test]
+    #[TestWith([false, 'without your passkeys:', 'the passkeys and the recovery codes are lost', 'They lost their passkeys and their recovery codes,'])]
+    #[TestWith([true, 'without your passkeys or authenticator:', 'the passkeys, the authenticator and the recovery codes are lost', 'They lost their passkeys, their authenticator and their recovery codes,'])]
+    public function theEmailsNameThePasskeysTheMemberHolds(bool $keepsApp, string $code, string $started, string $approver): void
+    {
+        $person = Type\instance_of(User::class)->coerce(self::em()->find(User::class, $this->person->getId()));
+        self::em()->persist(new Passkey($person, 'credential', 'key', '00000000-0000-0000-0000-000000000000', true, 0, new DateTimeImmutable()));
+        if (!$keepsApp) {
+            self::em()->remove(self::service(TwoFactorFactorRepository::class)->findActiveFor($person) ?? self::fail('the app is on'));
+        }
+        self::em()->flush();
+        self::drainNotifications();
+
+        $handle = $this->start();
+        $codeMail = $this->mailTo(self::ADDRESS, 'Your code to get back into Soirely');
+        self::assertStringContainsString($code, $codeMail);
+
+        $this->prove($handle, Regex\first_match($codeMail, '/^(\d{6})$/m')[1] ?? self::fail('the email carries no code'));
+        $sent = Str\join(Vec\map(
+            Type\vec(Type\instance_of(Email::class))->coerce(self::getMailerMessages()),
+            static fn (Email $mail): string => Type\string()->coerce($mail->getTextBody()),
+        ), "\n");
+        self::assertStringContainsString($started, $sent, 'to the member');
+        self::assertStringContainsString($approver, $sent, 'to the approver');
     }
 
     /** A reset link proves only the inbox, so it opens no recovery: that asks for the first factor (sc-29067, Decided, 8 Nov). */
@@ -284,6 +313,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         $this->leaves($this->approver);
         $challenge = $this->challenge();
+        self::drainNotifications();
 
         self::assertTrue($this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $challenge])['nobody']);
         self::assertSame('support@soirely.com', $this->last()['supportAddress']);

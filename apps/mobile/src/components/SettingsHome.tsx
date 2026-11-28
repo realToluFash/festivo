@@ -1,5 +1,5 @@
 import { initials } from '@soirely/domain';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,7 @@ import { useAccountChoice } from '../colourScheme.ts';
 import { type Choice, inUse } from '../kit/personalisation.ts';
 import { schemeOf } from '../kit/schemes.ts';
 import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
-import { breakableEmail } from '../layout/textSize.ts';
+import { breakableEmail } from '../kit/addressBreaks.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -16,6 +16,7 @@ import { SchemeTile } from './SchemeParts.tsx';
 import { Pill, Tile, TYPE } from './SettingsParts.tsx';
 import { SELECTED_ROW } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { Glass } from './TodayCover.tsx';
 
 /** Who the card at the top of Settings is: no role outside an organisation. */
@@ -143,9 +144,9 @@ export function PersonCard({
           </Text>
           {role != null && (
             <Glass height={28} grows style={styles.roleChip}>
-              <Text size={13} weight="semibold" accessible={false} style={styles.white}>
+              <CappedWholeWords size={13} weight="semibold" accessible={false} style={styles.white}>
                 {t('settings.personRole', role)}
-              </Text>
+              </CappedWholeWords>
             </Glass>
           )}
         </View>
@@ -223,6 +224,9 @@ function Row({
   open: boolean;
   onPress: () => void;
 }) {
+  const [room, setRoom] = useState(0);
+  const [title, setTitle] = useState(Infinity);
+
   return (
     <Pressable
       onPress={onPress}
@@ -241,23 +245,29 @@ function Row({
         <View style={[styles.rule, { left: tokens.spaceXl + rowSide(dense) + 12 }]} />
       )}
       {row.tile}
-      <View style={styles.rowWords}>
-        <Text
+      <View style={styles.rowWords} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+        <CappedWholeWords
           size={dense ? 15.5 : TYPE.row}
           weight="semibold"
           accessible={false}
           style={open ? styles.accent : undefined}
+          room={room}
+          onDrawn={setTitle}
+          breakAfterHyphens
         >
           {row.title}
-        </Text>
-        <Text
+        </CappedWholeWords>
+        <CappedWholeWords
           size={dense ? 13 : TYPE.small}
           weight="medium"
           accessible={false}
           style={styles.secondary}
+          room={room}
+          under={title}
+          breakAfterHyphens
         >
           {row.line}
-        </Text>
+        </CappedWholeWords>
       </View>
       <Glyph
         name="chevron"
@@ -318,6 +328,7 @@ export function SettingsSignOut({
         kind="secondary"
         glyph="signOut"
         height={height}
+        grows
         onPress={onSignOut}
         testID="settings.signOut"
       />

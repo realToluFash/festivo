@@ -10,23 +10,35 @@ import {
   feedWithRead,
   feedWithReadsUndone,
   readSettled,
+  readerZoneOf,
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type MouseEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
-import { offButton } from '../offButton.ts';
 import { type Stale, keepsWhatLoaded, useStaleWatch } from '../offline.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
+import { stateFor } from '../routes/app/pageUnder.ts';
+import { placeUnder } from './bellPlace.ts';
+import { type BellRow, BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
-import { Refreshing, StaleBand } from './OfflineBand.tsx';
+import { StaleBand } from './OfflineBand.tsx';
 import { Bell } from './SettingsParts.tsx';
+import { BannerBell } from './TodayBanner.tsx';
 import './SettingsParts.css';
 import './today.css';
 
@@ -35,10 +47,20 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page. */
-export function NotificationsBell({ userId, desk = false }: { userId: string; desk?: boolean }) {
+/** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page; `banner` is Today's, glass on its banner. */
+export function NotificationsBell({
+  userId,
+  accountZone = null,
+  look = 'band',
+}: {
+  userId: string;
+  accountZone?: string | null;
+  look?: 'band' | 'desk' | 'banner';
+}) {
   const { t } = useTranslation();
+  const zone = readerZoneOf(accountZone);
   const navigate = useNavigate();
+  const location = useLocation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -46,6 +68,7 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const [notSaved, setNotSaved] = useState(false);
+  const [menu, setMenu] = useState<string | null>(null);
   const bellOpen = useRef(false);
   const firstAdded = useRef<string | null>(null);
   const arrivals = useRef(0);
@@ -163,12 +186,14 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
     bellOpen.current = !open;
     setOpen(!open);
     setNotSaved(false);
+    setMenu(null);
   }
 
   const closeBell = useCallback((): void => {
     bellOpen.current = false;
     setOpen(false);
     setNotSaved(false);
+    setMenu(null);
   }, []);
 
   /** Mark all read's failure stays until the next thing done in the bell (sc-23233). */
@@ -200,15 +225,40 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
     firstAdded.current = null;
   }, [feed]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const placeIt = (): void => {
+      const pop = container.current?.querySelector<HTMLElement>('.bell-pop');
+      if (button.current != null && pop != null) placeUnder(button.current, pop);
+    };
+    const afterScroll = (event: Event): void => {
+      if (!container.current?.contains(event.target as Node)) placeIt();
+    };
+    const pageChanges = new MutationObserver(placeIt);
+    placeIt();
+    window.addEventListener('resize', placeIt);
+    window.addEventListener('scroll', afterScroll, true);
+    pageChanges.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => {
+      window.removeEventListener('resize', placeIt);
+      window.removeEventListener('scroll', afterScroll, true);
+      pageChanges.disconnect();
+    };
+  }, [open, stale]);
+
   useEffect(() => {
     if (!open) return;
 
     const close = (event: globalThis.MouseEvent | KeyboardEvent): void => {
       if (event instanceof KeyboardEvent) {
-        if (
-          event.key !== 'Escape' ||
-          document.activeElement?.closest('.notification-mute') != null
-        ) {
+        if (event.key !== 'Escape' || document.activeElement?.closest('.bell-mute') != null) {
           return;
         }
         closeBell();
@@ -256,7 +306,7 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
 
     if (item.place != null) {
       closeBell();
-      await navigate(item.place);
+      await navigate(item.place, { state: stateFor(item.place, location) });
     }
   }
 
@@ -304,10 +354,38 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
     );
   }
 
+  function rowOf(item: NotificationItem): BellRow {
+    return {
+      id: item.id,
+      category: item.category,
+      title: item.title,
+      lines: item.lines,
+      where:
+        item.eventName == null
+          ? when(item.createdAt, zone, t)
+          : t('notifications.whereWhen', {
+              event: item.eventName,
+              when: when(item.createdAt, zone, t),
+            }),
+      unread: !item.read,
+      muted: item.muted,
+      more:
+        item.eventId != null && item.eventAvailable && item.eventName != null
+          ? {
+              label: t('notifications.more', { title: item.title, event: item.eventName }),
+              mute: <MuteSwitch eventId={item.eventId} />,
+            }
+          : null,
+      goneShown: gone.has(item.id),
+    };
+  }
+
   return (
-    <div className={desk ? 'notifications is-desk' : 'notifications'} ref={container}>
-      {desk ? (
+    <div className={look === 'band' ? 'notifications' : 'notifications is-desk'} ref={container}>
+      {look === 'desk' ? (
         <Bell ref={button} unread={unread} expanded={open} onOpen={openBell} />
+      ) : look === 'banner' ? (
+        <BannerBell ref={button} unread={unread} expanded={open} onOpen={openBell} />
       ) : (
         <button
           ref={button}
@@ -333,177 +411,46 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
       </div>
 
       {open && (
-        <section
-          className="notifications-panel"
-          aria-labelledby={headingId}
-          onClickCapture={nextAction}
-        >
-          <header className="notifications-header">
-            <div className="notifications-heading">
-              <h2 id={headingId} ref={heading} tabIndex={-1}>
-                {t('notifications.heading')}
-              </h2>
-              {refreshing && <Refreshing />}
-            </div>
-            <button
-              type="button"
-              className="link-button"
-              aria-disabled={unread === 0}
-              onClick={() => void readAll()}
+        <BellPanel
+          titleId={headingId}
+          heading={heading}
+          refreshing={refreshing}
+          unread={unread}
+          onReadAll={() => void readAll()}
+          band={<FeedBand stale={stale} />}
+          notice={notSaved ? t('notifications.allReadNotSaved') : null}
+          ask={asking ? { onAnswer: (turnOn) => void answerPush(turnOn) } : null}
+          feed={feed.status}
+          rows={feed.status === 'loaded' ? feed.items.map((item) => rowOf(item)) : []}
+          onPick={(row) => {
+            const item =
+              feed.status === 'loaded' ? feed.items.find((one) => one.id === row.id) : undefined;
+            if (item != null) void openItem(item);
+          }}
+          onTryAgain={tryAgain}
+          more={
+            feed.status === 'loaded' && feed.next != null
+              ? {
+                  busy: more === 'loading',
+                  failed: more === 'failed',
+                  onMore: () => feed.next != null && showMore(feed.next, feed.items),
+                }
+              : null
+          }
+          menu={menu}
+          onMenu={setMenu}
+          settings={
+            <Link
+              className="desk-text bell-settings"
+              to="/app/account/notifications"
+              onClick={closeBell}
             >
-              {t('notifications.markAllRead')}
-            </button>
-          </header>
-
-          <FeedBand stale={stale} />
-
-          {notSaved && <AttentionLine words={t('notifications.allReadNotSaved')} />}
-
-          {asking && (
-            <section className="notifications-push-ask" aria-labelledby={`${headingId}-push`}>
-              <h3 id={`${headingId}-push`}>{t('notifications.pushAsk.title')}</h3>
-              <p>{t('notifications.pushAsk.reason')}</p>
-              <div className="notifications-push-ask-actions">
-                <button
-                  type="button"
-                  className="button button-primary"
-                  onClick={() => void answerPush(true)}
-                >
-                  {t('notifications.pushAsk.turnOn')}
-                </button>
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => void answerPush(false)}
-                >
-                  {t('notifications.pushAsk.notNow')}
-                </button>
-              </div>
-            </section>
-          )}
-
-          {feed.status === 'loading' && (
-            <ul className="notifications-list" aria-busy="true">
-              <li className="visually-hidden">{t('notifications.loading')}</li>
-              {[0, 1, 2].map((row) => (
-                <li key={row} className="notifications-skeleton" aria-hidden="true" />
-              ))}
-            </ul>
-          )}
-
-          {feed.status === 'failed' && (
-            <div className="notice notice-broken notifications-failed" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <div className="notice-body">
-                <p className="notice-title">{t('notifications.couldNotLoad')}</p>
-                <button type="button" className="link-button" onClick={tryAgain}>
-                  {t('notifications.tryAgain')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {feed.status === 'loaded' && feed.items.length === 0 && (
-            <div className="notifications-empty">
-              <BellMark />
-              <p>{t('notifications.empty')}</p>
-            </div>
-          )}
-
-          {feed.status === 'loaded' && feed.items.length > 0 && (
-            <ul className="notifications-list">
-              {feed.items.map((item) => (
-                <li key={item.id} className="notification-row">
-                  <button
-                    type="button"
-                    data-notification={item.id}
-                    className={item.read ? 'notification-item' : 'notification-item unread'}
-                    onClick={() => void openItem(item)}
-                  >
-                    <span className="notification-title">{item.title}</span>
-                    {item.lines.map((line, index) => (
-                      <span key={index} className="notification-line">
-                        {line}
-                      </span>
-                    ))}
-                    <span className="notification-where">
-                      {item.eventName == null
-                        ? when(item.createdAt, t)
-                        : t('notifications.whereWhen', {
-                            event: item.eventName,
-                            when: when(item.createdAt, t),
-                          })}
-                    </span>
-                    {(!item.read || item.muted) && (
-                      <span className="notification-marks">
-                        {!item.read && (
-                          <span className="notification-unread">
-                            <span className="notification-dot" aria-hidden="true" />
-                            {t('notifications.unread')}
-                          </span>
-                        )}
-                        {item.muted && (
-                          <span className="notification-muted">
-                            <BellMark slashed />
-                            {t('notifications.muted')}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </button>
-                  {item.eventId != null && item.eventAvailable && item.eventName != null && (
-                    <MuteMenu
-                      eventId={item.eventId}
-                      label={t('notifications.more', { title: item.title, event: item.eventName })}
-                    />
-                  )}
-                  {gone.has(item.id) && (
-                    <p className="notification-gone" role="status">
-                      {t('notifications.eventGone')}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {feed.status === 'loaded' && feed.next != null && (
-            <div className="notifications-more">
-              <button
-                type="button"
-                className="link-button"
-                {...offButton(more === 'loading', { dim: false })}
-                aria-busy={more === 'loading'}
-                onClick={() => feed.next != null && showMore(feed.next, feed.items)}
-              >
-                {t('notifications.showMore')}
-              </button>
-              {more === 'failed' && <AttentionLine words={t('notifications.moreFailed')} />}
-            </div>
-          )}
-
-          <Link
-            className="notifications-settings"
-            to="/app/account/notifications"
-            onClick={closeBell}
-          >
-            {t('notifications.settings')}
-          </Link>
-        </section>
+              {t('notifications.settings')}
+            </Link>
+          }
+          onClickCapture={nextAction}
+        />
       )}
-    </div>
-  );
-}
-
-function AttentionLine({ words }: { words: string }) {
-  return (
-    <div className="notice notice-attention notifications-failure-line" role="alert">
-      <span className="mark" aria-hidden="true">
-        !
-      </span>
-      <p>{words}</p>
     </div>
   );
 }
@@ -517,73 +464,22 @@ function FeedBand({ stale }: { stale: Stale | null }) {
   return (
     <StaleBand
       stale={stale}
-      className={
-        still ? 'offline-band notifications-band still' : 'offline-band notifications-band'
-      }
+      className={still ? 'offline-band bell-band still' : 'offline-band bell-band'}
     />
   );
 }
 
-function when(createdAt: string, t: TFunction): string {
-  const shown = whenShown(createdAt, new Date(), currentLocale());
+function when(createdAt: string, zone: string, t: TFunction): string {
+  const shown = whenShown(createdAt, new Date(), currentLocale(), zone);
 
   return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
 }
 
-function BellMark({ slashed = false }: { slashed?: boolean }) {
+function BellMark() {
   return (
     <svg className="bell-mark" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
       <path d="M10 20.5a2 2 0 0 0 4 0" />
-      {slashed && <path d="M4 4l16 16" />}
     </svg>
-  );
-}
-
-/** The item's More: the same Mute this event switch as the event's own page, per person. */
-function MuteMenu({ eventId, label }: { eventId: string; label: string }) {
-  const [open, setOpen] = useState(false);
-  const more = useRef<HTMLButtonElement>(null);
-  const dialog = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    dialog.current?.focus();
-    const close = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || !dialog.current?.contains(document.activeElement)) return;
-      setOpen(false);
-      more.current?.focus();
-    };
-
-    document.addEventListener('keydown', close);
-
-    return () => document.removeEventListener('keydown', close);
-  }, [open]);
-
-  return (
-    <>
-      <button
-        ref={more}
-        type="button"
-        className="notification-more"
-        aria-label={label}
-        aria-expanded={open}
-        onClick={() => setOpen((shown) => !shown)}
-      >
-        <span aria-hidden="true">⋯</span>
-      </button>
-      {open && (
-        <div
-          ref={dialog}
-          className="notification-mute"
-          role="dialog"
-          aria-label={label}
-          tabIndex={-1}
-        >
-          <MuteSwitch eventId={eventId} />
-        </div>
-      )}
-    </>
   );
 }

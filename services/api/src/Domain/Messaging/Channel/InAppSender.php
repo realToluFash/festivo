@@ -95,9 +95,46 @@ final readonly class InAppSender implements ChannelSenderInterface
             $this->clock->now(),
         );
 
-        // A thread's unread item takes the new words and rises to the top, keeping its id; a retry of the delivery that began it lands there too.
+        $params = [
+            'id' => $item->getId()->toRfc4122(),
+            'user' => $recipient->id->toRfc4122(),
+            'category' => $category->value,
+            'title' => $item->getTitle(),
+            'lines' => Json\encode($item->getLines()),
+            'event' => $item->getEventId()?->toRfc4122(),
+            'eventName' => $item->getEventName(),
+            'place' => $item->getPlace(),
+            'muted' => $item->isMuted(),
+            'thread' => $notification->thread,
+            'threadFrom' => $notification->threadFrom,
+            'createdAt' => $item->getCreatedAt(),
+        ];
+        $types = ['muted' => Types::BOOLEAN, 'createdAt' => Types::DATETIME_IMMUTABLE];
+        $written = null !== $notification->thread && $notification->reopens ? $this->reopen($recipient, $params, $types) : false;
+        $written = false !== $written ? $written : $this->insert($notification->thread, $params, $types);
+
+        $published = NotificationItemSerialiser::item($item, $delivery['event_available']);
+
+        if (false !== $written) {
+            $published['id'] = $written;
+        }
+
+        $published['unreadCount'] = $this->unreadFor($recipient);
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
+
+        return null;
+    }
+
+    /**
+     * A thread's unread item takes the new words and rises to the top, keeping its id; a retry of the delivery that began it lands there too.
+     *
+     * @param array<string, mixed>  $params
+     * @param array<string, string> $types
+     */
+    private function insert(?string $thread, array $params, array $types): string|false
+    {
         $written = $this->connection->fetchOne(
-            null === $notification->thread
+            null === $thread
                 ? <<<'SQL'
                     INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
                     VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, NULL, NULL, :createdAt)
@@ -113,33 +150,55 @@ final readonly class InAppSender implements ChannelSenderInterface
                                   place = EXCLUDED.place, muted = EXCLUDED.muted, created_at = EXCLUDED.created_at
                     RETURNING id
                     SQL,
-            [
-                'id' => $item->getId()->toRfc4122(),
-                'user' => $recipient->id->toRfc4122(),
-                'category' => $category->value,
-                'title' => $item->getTitle(),
-                'lines' => Json\encode($item->getLines()),
-                'event' => $item->getEventId()?->toRfc4122(),
-                'eventName' => $item->getEventName(),
-                'place' => $item->getPlace(),
-                'muted' => $item->isMuted(),
-                'thread' => $notification->thread,
-                'threadFrom' => $notification->threadFrom,
-                'createdAt' => $item->getCreatedAt(),
-            ],
-            ['muted' => Types::BOOLEAN, 'createdAt' => Types::DATETIME_IMMUTABLE],
+            $params,
+            $types,
         );
 
-        $published = NotificationItemSerialiser::item($item, $delivery['event_available']);
+        return false === $written ? false : Type\string()->coerce($written);
+    }
 
-        if (false !== $written) {
-            $published['id'] = Type\string()->coerce($written);
+    /**
+     * The member's item in the thread, unread first, else the latest read one, takes the new words, turns unread and rises to the top; any other item in the thread goes, so the bell keeps one (sc-4331).
+     *
+     * @param array<string, mixed>  $params
+     * @param array<string, string> $types
+     */
+    private function reopen(Recipient $recipient, array $params, array $types): string|false
+    {
+        $kept = $this->connection->fetchOne(
+            <<<'SQL'
+                UPDATE notification_items
+                SET read_at = NULL, category = :category, title = :title, lines = :lines, event_name = :eventName,
+                    place = :place, muted = :muted, created_at = :createdAt
+                WHERE id = (
+                    SELECT id FROM notification_items WHERE user_id = :user AND thread = :thread
+                    ORDER BY read_at IS NOT NULL, created_at DESC, id DESC LIMIT 1
+                )
+                RETURNING id
+                SQL,
+            $params,
+            $types,
+        );
+
+        if (false === $kept) {
+            return false;
         }
 
-        $published['unreadCount'] = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
+        $kept = Type\string()->coerce($kept);
+        $removed = $this->connection->fetchFirstColumn(
+            'DELETE FROM notification_items WHERE user_id = :user AND thread = :thread AND id <> :kept RETURNING id',
+            ['user' => $params['user'], 'thread' => $params['thread'], 'kept' => $kept],
+        );
 
-        return null;
+        if ([] !== $removed) {
+            $unread = $this->unreadFor($recipient);
+
+            foreach ($removed as $id) {
+                $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), ['removedId' => Type\string()->coerce($id), 'unreadCount' => $unread]);
+            }
+        }
+
+        return $kept;
     }
 
     /** An unread item left with nothing in it disappears (sc-13214, AC 3), and the member's bells drop it. */
@@ -155,7 +214,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         }
 
         $unread = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'removedId' => Type\string()->coerce($removed),
             'unreadCount' => $unread,
         ]);
@@ -168,7 +227,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         $this->entityManager->refresh($item);
 
         $unread = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'updated' => NotificationItemSerialiser::item($item, $eventAvailable),
             'unreadCount' => $unread,
         ]);

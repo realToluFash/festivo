@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GUESTS_N, MESSAGE_STATES, MW, sectionsOf, seedOf } from './messages.ts';
+import { POPULATION } from './messagesPopulation.ts';
 import {
   type Audience,
   type Book,
@@ -9,7 +10,6 @@ import {
   BOOK,
   GROUPS,
   LONG_NAME,
-  POPULATION,
   SAVED,
   SAVED_MOST,
   TAKEN_NAME,
@@ -208,11 +208,11 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
     );
     expect(nameRefusal(LONG_NAME.slice(0, 60), SAVED)).toBeNull();
     expect(nameRefusal(TAKEN_NAME, SAVED)).toBe(
-      'There’s already a saved audience called Elodie’s friends.',
+      'There is already a saved audience called Elodie’s friends.',
     );
     expect(nameRefusal('Élodie’s friends', SAVED, 'elodie')).toBeNull();
     expect(nameRefusal('no reply yet', SAVED, 'elodie')).toBe(
-      'There’s already a saved audience called No reply yet.',
+      'There is already a saved audience called No reply yet.',
     );
     expect(saveRefusal('Reminder: Family, no reply', BOOK)).toBeNull();
     expect(bookOf('saveFull').saved).toHaveLength(SAVED_MOST);
@@ -243,7 +243,7 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
       wrong: 'A saved audience’s name can be up to 60 characters.',
     });
     expect(viewOf('saveTaken', BOOK).saving?.wrong).toBe(
-      'There’s already a saved audience called Elodie’s friends.',
+      'There is already a saved audience called Elodie’s friends.',
     );
     expect(viewOf('saveFull', bookOf('saveFull')).saving?.wrong).toBe(TW.full);
     expect(viewOf('deleteAsk', BOOK)).toMatchObject({ deleting: 'comingMobile', first: 'keep' });

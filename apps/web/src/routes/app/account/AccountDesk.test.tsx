@@ -1,7 +1,16 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
+import {
+  fireEvent,
+  getDefaultNormalizer,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
@@ -207,7 +216,7 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     expect(within(ask).getByRole('button', { name: 'Keep folake@ire.events' })).toBeDefined();
     fireEvent.click(within(ask).getByRole('button', { name: 'Make it primary' }));
 
-    expect(within(dialog()).getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
+    expect(within(dialog()).getByRole('heading', { name: 'Confirm it’s you' })).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
     expect(within(dialog()).getByText('Enter your password.')).toBeDefined();
     fireEvent.change(within(dialog()).getByLabelText('Your password'), {
@@ -454,6 +463,68 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     fails = false;
     fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
     expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+  });
+});
+
+describe('an address we could not deliver to, at a desk (sc-44949)', () => {
+  it('shows nothing while every address takes our mail', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [{ ...PRIMARY, undeliverable: false }, OTHER] }),
+    });
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(screen.queryByTestId('account.undeliverable')).toBeNull();
+  });
+
+  it('names the address with Change email, which opens Add an email address while there is room', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [{ ...PRIMARY, undeliverable: true }] }),
+    });
+    open();
+
+    expect(
+      await screen.findByText('We couldn’t deliver email to folake@ire.events.'),
+    ).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+    expect(within(dialog()).getByRole('textbox')).toBeDefined();
+  });
+
+  it('at the most an account holds, one line each, and Change email opens the address that is not primary', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({
+          ...ME,
+          emailAddresses: [
+            { ...OTHER, undeliverable: true },
+            { ...PRIMARY, undeliverable: true },
+          ],
+        }),
+    });
+    open();
+
+    const lines = within(await screen.findByTestId('account.undeliverable')).getAllByRole(
+      'listitem',
+    );
+    expect(lines.map((line) => line.querySelector('p')?.textContent)).toEqual([
+      'We couldn’t deliver email to folake@ire.events.',
+      'We couldn’t deliver email to folake.adeyemi@gmail.com.',
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+
+    const row = screen.getByRole('button', { name: /^folake\.adeyemi@gmail\.com/ });
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(row));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const offers = screen.getByRole('group', { name: 'folake.adeyemi@gmail.com' });
+    expect(within(offers).getByRole('button', { name: 'Remove…' })).toBeDefined();
   });
 });
 
@@ -786,5 +857,65 @@ describe('a Verify dialog opened on a spent code (sc-38970)', () => {
     expect(within(dialog()).queryByText('That code has expired')).toBeNull();
     expect(field.value).toBe('');
     await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+});
+
+describe('Your account’s language (sc-39509)', () => {
+  afterEach(async () => {
+    await setLanguage(null);
+  });
+
+  function radio(name: string): HTMLInputElement {
+    return within(screen.getByRole('group', { name: /^(Language|Langue|Idioma)$/ })).getByRole(
+      'radio',
+      { name: new RegExp(name) },
+    );
+  }
+
+  function pick(name: string): void {
+    const choice = radio(name);
+    choice.focus();
+    fireEvent.click(choice);
+  }
+
+  it('saves a pick to the account and redraws the page in it, saying so, with focus kept on the pick', async () => {
+    const sent = answering({ 'PUT /api/auth/locale': () => new Response(null, { status: 204 }) });
+    open();
+    await screen.findByText('folake.adeyemi@gmail.com');
+
+    pick('Français');
+
+    expect(await screen.findByRole('heading', { name: 'À propos de vous' })).toBeDefined();
+    expect(sent.filter((one) => one.call === 'PUT /api/auth/locale')).toEqual([
+      { call: 'PUT /api/auth/locale', body: { locale: 'fr' } },
+    ]);
+    expect(document.documentElement.lang).toBe('fr');
+    expect(
+      within(card()).getByText(
+        getDefaultNormalizer()(i18next.t('account.languageSaved', { language: 'Français' })),
+      ),
+    ).toBeDefined();
+    expect(radio('Français').checked).toBe(true);
+    expect(document.activeElement).toBe(radio('Français'));
+  });
+
+  it('keeps the last of several quick picks, as arrowing from English to Português does', async () => {
+    const sent = answering({ 'PUT /api/auth/locale': () => new Response(null, { status: 204 }) });
+    open();
+    await screen.findByText('folake.adeyemi@gmail.com');
+
+    pick('Español');
+    pick('Français');
+    pick('Português');
+
+    expect(await screen.findByRole('heading', { name: 'Sobre si' })).toBeDefined();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.call === 'PUT /api/auth/locale').at(-1)?.body).toEqual({
+        locale: 'pt',
+      }),
+    );
+    expect(radio('Português').checked).toBe(true);
+    expect(radio('Français').checked).toBe(false);
+    expect(document.activeElement).toBe(radio('Português'));
   });
 });

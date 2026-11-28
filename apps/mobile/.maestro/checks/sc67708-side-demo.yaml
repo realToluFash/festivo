@@ -1,0 +1,44 @@
+# sc-67708: the demo's evt-wed-4 on an iPad on its side, each area by link, for the pairs.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=overview
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-overview
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-guests
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=menu
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-menu
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=seating
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-seating
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-messages
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=schedule
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-schedule
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=staff
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-staff
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=people
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-people
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=budget
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-budget
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=reports
+- extendedWaitUntil: { visible: { id: 'event.side.back' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-reports

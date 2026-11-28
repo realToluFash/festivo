@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { type Translate } from './eventWords.ts';
 import {
   type HostRow,
+  aboveCover,
   eventSaveRefusal,
+  eventSaveStoppedWords,
   firstRefusedOf,
   hostErrorsOf,
+  hostErrorsShownOf,
   hostRefusalsOf,
   hostRequiredOf,
   hostsArrival,
@@ -29,6 +32,21 @@ describe('Hosted by on both clients (sc-6713, sc-15497)', () => {
       3: 'eventHosts.duplicate {"name":"Funmi Adeyemi"}',
     });
     expect(hostErrorsOf(rows('a'.repeat(60), 'Tayo\r\nAdeyemi'), t)).toEqual({});
+  });
+
+  it('shows a repeat and an overlong name while typing, and a blank one only once Save was tried', () => {
+    const typed = [
+      { key: 4, name: 'Adaeze Obi' },
+      { key: 2, name: '' },
+      { key: 9, name: 'adaeze obi' },
+      { key: 5, name: 'a'.repeat(61) },
+    ];
+
+    expect(hostErrorsShownOf(typed, t, false)).toEqual({
+      9: 'eventHosts.duplicate {"name":"Adaeze Obi"}',
+      5: 'eventHosts.tooLong {"most":60,"length":61}',
+    });
+    expect(hostErrorsShownOf(typed, t, true)).toEqual(hostErrorsOf(typed, t));
   });
 
   it("puts the server's refusal of one name under its row, and of the whole list under the last", () => {
@@ -55,6 +73,14 @@ describe('Hosted by on both clients (sc-6713, sc-15497)', () => {
     });
     expect(firstRefusedOf({ endsAt: 'x' }, {}, hosts)).toEqual({ field: 'endsAt' });
     expect(firstRefusedOf({}, {}, hosts)).toBeNull();
+  });
+
+  it('puts the name, the type and the hosts above the cover, and the rest below it (sc-48607)', () => {
+    expect(aboveCover({ field: 'name' })).toBe(true);
+    expect(aboveCover({ field: 'type' })).toBe(true);
+    expect(aboveCover({ host: 0 })).toBe(true);
+    expect(aboveCover({ field: 'startsAt' })).toBe(false);
+    expect(aboveCover(null)).toBe(false);
   });
 });
 
@@ -114,6 +140,29 @@ describe('A refused save of an event, read once for Edit details and the parts e
     });
     expect(eventSaveRefusal(new Error('offline'), [], t)).toEqual({ kind: 'failed' });
     expect(eventSaveRefusal(problem(500, 'server_error'), [], t)).toEqual({ kind: 'failed' });
+  });
+
+  it('reads a role that no longer allows the save as forbidden, and only that 403 (sc-49861)', () => {
+    expect(eventSaveRefusal(problem(403, 'permission_required'), [], t)).toEqual({
+      kind: 'forbidden',
+    });
+    expect(eventSaveRefusal(problem(403, 'two_factor_required'), [], t)).toEqual({
+      kind: 'failed',
+    });
+  });
+
+  it('reads a 404 as an event no longer available, deleted or no longer theirs (sc-75689)', () => {
+    expect(eventSaveRefusal(problem(404, 'not_found'), [], t)).toEqual({ kind: 'gone' });
+  });
+
+  it('gives a cover the same line for a 404 and the role’s refusal, and leaves it every other refusal', () => {
+    expect(eventSaveStoppedWords(problem(404, 'not_found'), t)).toBe('eventEdit.eventGone');
+    expect(eventSaveStoppedWords(problem(403, 'permission_required'), t)).toBe(
+      'eventEdit.forbidden',
+    );
+    expect(eventSaveStoppedWords(problem(403, 'two_factor_required'), t)).toBeNull();
+    expect(eventSaveStoppedWords(problem(422, 'validation_failed'), t)).toBeNull();
+    expect(eventSaveStoppedWords(new Error('offline'), t)).toBeNull();
   });
 
   it('puts a concluded schedule under Starts, and says a currency in use', () => {

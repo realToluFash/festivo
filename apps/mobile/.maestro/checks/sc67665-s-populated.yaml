@@ -1,0 +1,11 @@
+# sc-67665: the People demo, populated, on the iPad in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: '.*On this event.*', timeout: 30000 }
+- assertVisible: { id: 'people.add.open' }
+- assertNotVisible: '.*Only owners, admins and the lead change.*'
+- assertNotVisible: '.*Lead.*You.*'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

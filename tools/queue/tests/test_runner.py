@@ -37,6 +37,9 @@ class FakePlatform:
     def install(self, sq, env_file, python):
         self.installed += 1
 
+    def restart_web(self):
+        self.web_restarts = getattr(self, "web_restarts", 0) + 1
+
     def worker_active(self, role):
         return role in self.active
 
@@ -98,7 +101,8 @@ class Run(unittest.TestCase):
                       mock.patch("soirely_queue.cli.refresh_work"),
                       mock.patch("soirely_queue.update.check", return_value=False),
                       mock.patch("soirely_queue.machine.free_gb", return_value=100.0),
-                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0)):
+                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0),
+                      mock.patch("soirely_queue.local.open_docker")):
             patch.start()
             self.addCleanup(patch.stop)
         runner.set_started(self.db, ["ops", "dev2", "lead"], True)
@@ -112,6 +116,29 @@ class Run(unittest.TestCase):
                    say=self.said.append, load=lambda: self.config,
                    probe=lambda: kwargs.pop("version", "2.1.304"),
                    remote=kwargs.pop("remote", self.remote), **kwargs)
+
+    def test_an_updated_sq_restarts_the_page_which_would_serve_the_old_one(self):
+        self.run_once()
+        self.assertEqual(getattr(self.platform, "web_restarts", 0), 0)
+        with mock.patch("soirely_queue.update.check", return_value=True):
+            self.run_once()
+        self.assertEqual(self.platform.web_restarts, 1)
+
+    def test_a_worker_is_given_its_folders_token_and_never_another_accounts(self):
+        mine, plain = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_3", "CLAUDE_CODE_OAUTH_TOKEN"
+        theirs = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_4"
+        with mock.patch.dict("os.environ", {mine: "m", theirs: "t"}):
+            env = runner.account_env("/home/x/.claude-3")
+            self.assertEqual({k: v for k, v in env.items() if k.startswith(plain)}, {plain: "m"})
+            env = runner.account_env("/home/x/.claude-5")
+            self.assertEqual([k for k in env if k.startswith(plain)], [])
+            with mock.patch.dict("os.environ", {plain: "p"}):
+                self.assertEqual(runner.account_env("/home/x/.claude-5")[plain], "p")
+                self.assertEqual(runner.account_env("/home/x/.claude-3")[plain], "m")
+
+    def test_a_worker_is_never_given_sq_webs_token_which_works_its_controls(self):
+        with mock.patch.dict("os.environ", {"SQ_WEB_TOKEN": "t" * 40}):
+            self.assertNotIn("SQ_WEB_TOKEN", runner.account_env("/home/x/.claude-3"))
 
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)
@@ -262,6 +289,21 @@ class Run(unittest.TestCase):
         self.assertEqual(self.platform.launched, [])
         self.assertEqual(self.platform.installed, 0)
         self.assertFalse(store.held_by(self.db, "ops", ON_ZERO))
+
+    def test_a_tick_wakes_docker_and_a_dry_run_or_a_pause_does_not(self):
+        with mock.patch("soirely_queue.local.wake_docker") as woke:
+            self.run_once(dry_run=True)
+            woke.assert_not_called()
+            self.run_once()
+            woke.assert_called_once()
+            woke.reset_mock()
+            store.set_meta(self.db, "paused", "now")
+            self.run_once(ON_ZERO + MINUTE)
+            woke.assert_not_called()
+            store.set_meta(self.db, "paused", "")
+            shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO)
+            self.run_once(ON_ZERO + 2 * MINUTE)
+            woke.assert_not_called()
 
     def test_a_drifted_claude_warns_every_run_and_notifies_once(self):
         self.config["claudeVersion"] = "2.1.300"

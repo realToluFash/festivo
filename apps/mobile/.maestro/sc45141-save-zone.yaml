@@ -1,0 +1,11 @@
+# sc-45141: with the time zone list open, choose Africa/Accra and Save. Leaves the Dates part as the save left it.
+appId: host.exp.Exponent
+---
+- tapOn:
+    text: 'Africa/Accra.*'
+- waitForAnimationToEnd
+- tapOn:
+    text: 'Save'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${OUT}/app-pastend-refused

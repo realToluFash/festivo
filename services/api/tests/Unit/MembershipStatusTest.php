@@ -94,6 +94,15 @@ final class MembershipStatusTest extends TestCase
         self::assertEquals(new DateTimeImmutable('2026-10-20'), $membership->getJoinedAt());
     }
 
+    #[Test]
+    public function somebodyWhoAskedAndWasNeverLetInIsListedOnlyToThoseWhoDecide(): void
+    {
+        $asked = $this->membership(MembershipStatus::PendingApproval);
+
+        self::assertSame([true, false], [$asked->isListedTo(true), $asked->isListedTo(false)]);
+        self::assertSame([true, true], [$this->membership(MembershipStatus::Active)->isListedTo(true), $this->membership(MembershipStatus::Active)->isListedTo(false)]);
+    }
+
     private function membership(MembershipStatus $status): Membership
     {
         $organisation = new Organisation('Ìrè Events', 'NG', 'NGN', 'Africa/Lagos', 'hello@ire.events', 'en');

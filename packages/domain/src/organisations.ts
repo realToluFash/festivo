@@ -1,4 +1,25 @@
+import { visibleLength } from './visibleText.ts';
 import { emailProblem } from './forms.ts';
+
+/** What a device keeps: the organisation and the account that worked in it, so the next account to sign in there does not inherit it (sc-86373). */
+export function rememberedEntry(account: string, organisation: string): string {
+  return JSON.stringify({ account, organisation });
+}
+
+/** The organisation a device remembers for this account; null when another account, or nobody, left it there. */
+export function rememberedFor(stored: string | null, account: string): string | null {
+  if (stored == null) return null;
+
+  try {
+    const entry: unknown = JSON.parse(stored);
+    if (typeof entry !== 'object' || entry == null) return null;
+    const { account: owner, organisation } = entry as Record<string, unknown>;
+
+    return owner === account && typeof organisation === 'string' ? organisation : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The one remembered on this device while the account still belongs to it, else the first. */
 export function chooseOrganisation<T extends { id: string }>(
@@ -17,6 +38,17 @@ export function choosePaused<T extends { id: string }>(
   return (
     paused.find(({ id }) => id === remembered) ?? (activeCount === 0 ? (paused[0] ?? null) : null)
   );
+}
+
+/** An event opened by its link while working in another organisation: the event's own, when the account is a member of it (sc-80863). The API answers only what the account may open, so membership is all that is left to ask. */
+export function eventMovesInto(
+  event: { organisationId: string },
+  workingIn: string | null,
+  memberships: readonly { id: string }[],
+): string | null {
+  if (workingIn == null || event.organisationId === workingIn) return null;
+
+  return memberships.some(({ id }) => id === event.organisationId) ? event.organisationId : null;
 }
 
 /** Switch organisation on the paused screen: straight into the only other active one, the switcher for more, absent for none. */
@@ -48,6 +80,17 @@ export function roleHolds(
   permission: string,
 ): boolean {
   return permission !== '' && membership.permissions.includes(permission);
+}
+
+/** Whether the role holds it, or a role on at least one event does: how the API lets a Member into an organisation's page such as the Menu library (sc-3901). */
+export function holdsAnywhere(
+  membership: { permissions: readonly string[]; onAnEvent: readonly string[] },
+  permission: string,
+): boolean {
+  return (
+    roleHolds(membership, permission) ||
+    (permission !== '' && membership.onAnEvent.includes(permission))
+  );
 }
 
 export type CardStepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
@@ -93,6 +136,11 @@ export const ORGANISATION_NAME_MAXIMUM = 100;
 
 /** What a request to join through the request link may say, in characters, as the API counts them (sc-562). */
 export const REQUEST_MESSAGE_MAXIMUM = 500;
+
+/** A request's message in visible characters, as its counter shows and its limit refuses (sc-54292). */
+export function requestMessageLength(message: string): number {
+  return visibleLength(message.trim());
+}
 
 /** What a client checks before saving. Country, time zone and language come from pickers, so they cannot be wrong; a currency can still be unchosen (sc-909). */
 export function organisationProblem(
@@ -144,7 +192,7 @@ export function newOrganisationProblem(
   if (field === 'countryCode') return value === '' ? { kind: 'countryBlank' } : null;
 
   const name = value.trim();
-  const length = Array.from(name).length;
+  const length = visibleLength(name);
 
   if (length === 0) return { kind: 'nameBlank' };
 

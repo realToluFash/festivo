@@ -12,12 +12,13 @@ use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\Messaging\PushTargets;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
+use App\Enum\PushTargetKind;
 use Psl\Str;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
-/** Every live device the member registered (sc-3980). Fails, to be retried, only when no device took it: the retry goes to all again, and the collapse key replaces rather than stacks. */
+/** Every live device the member registered (sc-3980), or only the app's for a silent one (sc-66580). Fails, to be retried, only when no device took it: the retry goes to all again, and the collapse key replaces rather than stacks. */
 final readonly class PushSender implements ChannelSenderInterface
 {
     /** @var array<string, PushServiceInterface> */
@@ -55,6 +56,10 @@ final readonly class PushSender implements ChannelSenderInterface
         $refused = [];
 
         foreach ($targets as $target) {
+            if ($notification->silent && PushTargetKind::Expo !== $target->kind) {
+                continue;
+            }
+
             $service = $this->services[$target->kind->value] ?? null;
 
             if (null === $service) {

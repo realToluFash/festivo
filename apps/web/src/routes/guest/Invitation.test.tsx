@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { __setConfig, config } from '../../config.ts';
+import { setLanguage } from '../../i18n/index.ts';
+import { __setSessionState } from '../../session.ts';
 import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
@@ -19,8 +22,26 @@ function json({ status, body }: Answer): Response {
   });
 }
 
+const NO_NEEDS = {
+  allergies: [] as string[],
+  otherAllergy: null as string | null,
+  diet: [] as string[],
+  otherDiet: null as string | null,
+  access: [] as string[],
+  otherAccess: null as string | null,
+  changed: null as object | null,
+};
+
 const PAGE = {
-  guest: { fullName: ADAEZE, reply: null, companions: 0 },
+  guest: {
+    fullName: ADAEZE,
+    reply: null,
+    needs: NO_NEEDS,
+    places: 0,
+    unnamed: [] as object[],
+    companions: [] as object[],
+  },
+  language: { chosen: null, host: null, organisation: 'en' },
   event: {
     id: '0193f5a8-0000-7000-8000-000000000001',
     name: "Amara & Tobi's wedding",
@@ -33,12 +54,33 @@ const PAGE = {
   },
   phase: 'live',
   started: false,
+  onTheDay: false,
   answersOpen: true,
 };
 
-function answered(answer: string, at = '2026-10-17T14:20:00+01:00', companions = 0) {
-  return { ...PAGE, guest: { ...PAGE.guest, reply: { answer, at }, companions } };
+function answered(
+  answer: string,
+  at = '2026-10-17T14:20:00+01:00',
+  places = 0,
+  companions: readonly object[] = [],
+) {
+  return { ...PAGE, guest: { ...PAGE.guest, reply: { answer, at }, places, companions } };
 }
+
+const CHIDI = {
+  id: '0193f5a8-0000-7000-8000-0000000000c1',
+  fullName: 'Chidi Okonkwo-Williams',
+  coming: true,
+  namedByGuest: false,
+  needs: NO_NEEDS,
+};
+
+const SPARE = { id: '0193f5a8-0000-7000-8000-0000000000d9', coming: true, needs: NO_NEEDS };
+
+const WITH_PLACES = {
+  ...PAGE,
+  guest: { ...PAGE.guest, places: 2, companions: [CHIDI], unnamed: [SPARE] },
+};
 
 const CLOSED = {
   type: 'https://soirely.com/errors/replies_closed',
@@ -78,7 +120,8 @@ function open(token = TOKEN) {
   );
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await i18next.changeLanguage('en');
   vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
@@ -107,6 +150,60 @@ describe("a guest's own link", () => {
       account.compareDocumentPosition(closing) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByText(/This page is yours for this event/)).toBeNull();
+  });
+
+  it('puts the way into Your messages after the account line, and opens it with the switches alone (sc-3969)', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...PAGE, event: { ...PAGE.event, organisation: 'The Okafors' } } },
+      ],
+      '/api/your-messages': [
+        {
+          status: 200,
+          body: {
+            organisation: 'The Okafors',
+            channels: {
+              email: { onRecord: true, on: true },
+              texts: { onRecord: false, on: false },
+              whatsApp: { onRecord: false, on: false },
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    const account = await screen.findByText('You do not need an account to answer.');
+    const wayIn = screen.getByRole('link', { name: 'Choose how The Okafors can reach you' });
+    expect(account.compareDocumentPosition(wayIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(wayIn);
+
+    expect(await screen.findByRole('switch', { name: 'Email' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Back' })).toBeDefined();
+    expect(sent.at(-1)).toEqual({ path: '/api/your-messages', body: { guestToken: TOKEN } });
+  });
+
+  it('has no way into Your messages while answers are closed (sc-3969)', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...PAGE,
+            answersOpen: false,
+            event: { ...PAGE.event, organisation: 'The Okafors' },
+          },
+        },
+      ],
+    });
+    open();
+
+    await screen.findByText(
+      'This invitation is for you and your family. Other guests cannot see your answer.',
+    );
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+    expect(screen.queryByRole('link', { name: /can reach you/ })).toBeNull();
   });
 
   it('reads cover, answers, when, where and who, then the foot', async () => {
@@ -326,6 +423,39 @@ describe('answering', () => {
     expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
   });
 
+  it("shows the host's arrival note under the address as typed, alone with no venue, and not on a paused page (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const markup = '<b>Gate 2</b> <script>alert(1)</script>';
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...PAGE, event: { ...PAGE.event, arrivalNote: note } } },
+        {
+          status: 200,
+          body: { ...PAGE, event: { ...PAGE.event, venue: null, arrivalNote: markup } },
+        },
+        {
+          status: 200,
+          body: { ...PAGE, phase: 'paused', event: { ...PAGE.event, arrivalNote: note } },
+        },
+      ],
+    });
+    const first = open();
+    const shown = await screen.findByText(/Use the side gate\./);
+    expect(shown.textContent).toBe(note);
+    expect(shown.closest('.gp-where')?.textContent).toContain('The Civic Centre');
+    first.unmount();
+
+    const second = open();
+    const alone = await screen.findByText(markup);
+    expect(alone.querySelector('b, script')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+    second.unmount();
+
+    open();
+    await screen.findByText(ADAEZE);
+    expect(screen.queryByText(/Use the side gate\./)).toBeNull();
+  });
+
   it('records Sorry, I can’t in one tap and greets the guest by their full name', async () => {
     const { sent } = api({
       '/api/guest-links/page': [{ status: 200, body: PAGE }],
@@ -348,7 +478,7 @@ describe('answering', () => {
   it('tells a guest with companions that they won’t be coming either', async () => {
     api({
       '/api/guest-links/page': [
-        { status: 200, body: { ...PAGE, guest: { ...PAGE.guest, companions: 2 } } },
+        { status: 200, body: { ...PAGE, guest: { ...PAGE.guest, places: 2 } } },
       ],
       '/api/guest-links/reply': [{ status: 200, body: answered('notComing', undefined, 2) }],
     });
@@ -382,8 +512,14 @@ describe('answering', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
 
+    expect(screen.getByRole('heading', { name: 'Anything the kitchen must know?' })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+
     expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
-    expect(screen.getByText('Your answer: Coming')).toBeDefined();
+    expect(screen.getByText('Coming')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
     expect(screen.queryByText(/Step/)).toBeNull();
     expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
@@ -399,7 +535,167 @@ describe('answering', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change your answer' }));
+
+    expect(screen.getByRole('button', { name: 'Yes, I’ll be there' })).toBe(document.activeElement);
+  });
+
+  it('asks Who’s coming with you? after Yes for a guest with places, sending nothing yet', async () => {
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBe(
+      document.activeElement,
+    );
+    expect(
+      screen.getByText('Amara and Tobi have saved places for you and up to 2 others.'),
+    ).toBeDefined();
+    expect(screen.getByText('That’s you')).toBeDefined();
+    expect(screen.getByText('Named on your invitation')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Chidi Okonkwo-Williams is coming' }).ariaPressed,
+    ).toBe('true');
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
+    expect(screen.getByText('No name yet')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Your guest 2 is coming' }).ariaPressed).toBe('true');
+    expect(screen.queryByRole('button', { name: /Add someone/ })).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('says one host has saved the places, not have (sc-47095)', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: { ...WITH_PLACES, event: { ...WITH_PLACES.event, hosts: ['Funmi'] } },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByText('Funmi has saved places for you and up to 2 others.')).toBeDefined();
+  });
+
+  it('leaves a place unnamed on Done with nothing typed, and refuses a companion’s name cleared, saying why on the button (sc-48740)', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 2' }));
+
+    expect(screen.getByLabelText('Their name')).toBe(document.activeElement);
+    expect((screen.getByLabelText('Their name') as HTMLInputElement).value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.queryByLabelText('Their name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Type their name' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change Chidi Okonkwo-Williams’s name' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.getByRole('button', { name: 'Type their name' })).toBeDefined();
+    expect(screen.getByLabelText('Their name').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('keeps Not sure yet on the cover while the guest changes to Coming with companions', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: answered('maybe', undefined, 2, [CHIDI]) }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yes, I’ll be there/ }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBeDefined();
+    expect(document.querySelector('.gp-tag')?.textContent).toBe('?Not sure yet');
+  });
+
+  it('sends every place by its id with Send my answer: a toggle, a rename and a place named (sc-48740)', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }],
+      '/api/guest-links/reply': [
+        {
+          status: 200,
+          body: answered('coming', undefined, 2, [
+            { ...CHIDI, fullName: 'Chidi Okonkwo', coming: false, namedByGuest: true },
+            {
+              id: SPARE.id,
+              fullName: 'Nneka Okonkwo-Williams',
+              coming: true,
+              namedByGuest: true,
+              needs: NO_NEEDS,
+            },
+          ]),
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change Chidi Okonkwo-Williams’s name' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Chidi Okonkwo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chidi Okonkwo is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 2' }));
+    fireEvent.change(screen.getByLabelText('Their name'), {
+      target: { value: ' Nneka Okonkwo-Williams ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.getAllByText('Named by you')).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: 'Nneka Okonkwo-Williams is coming' }).ariaPressed,
+    ).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.getByText('You and Nneka Okonkwo-Williams · 2 people')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      answer: 'coming',
+      companions: [
+        { id: CHIDI.id, fullName: 'Chidi Okonkwo', coming: false },
+        { id: SPARE.id, fullName: 'Nneka Okonkwo-Williams', coming: true },
+      ],
+    });
+    expect(screen.getByText('You and Nneka Okonkwo-Williams · 2 people')).toBeDefined();
+  });
+
+  it('goes back from Check and send to the kitchen step, to Who’s coming with you?, then to the answers', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('heading', { name: 'Anything the kitchen must know?' })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(screen.getByRole('button', { name: 'Yes, I’ll be there' })).toBe(document.activeElement);
   });
@@ -451,6 +747,7 @@ describe('answering', () => {
     });
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
     expect((await screen.findByRole('alert')).textContent).toBe(i18next.t('guest.notSent'));
@@ -513,6 +810,42 @@ describe('changing an answer', () => {
     expect(
       await screen.findByText('You’re already down as Not sure yet. Nothing has changed.'),
     ).toBeDefined();
+  });
+
+  it('shows a reply a host recorded as theirs, naming only the recorder, until they answer themselves (sc-3787)', async () => {
+    const recorded = answered('coming');
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...recorded,
+            guest: {
+              ...recorded.guest,
+              reply: { ...recorded.guest.reply, recordedBy: 'Folake Adeyemi' },
+            },
+          },
+        },
+      ],
+      '/api/guest-links/reply': [
+        { status: 200, body: answered('notComing', '2026-10-19T10:00:00+01:00') },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(
+      screen.getByText(
+        /^Folake Adeyemi recorded this answer for you on .*If it isn’t right, change it here\.$/u,
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+
+    expect(
+      await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` }),
+    ).toBeDefined();
+    expect(screen.queryByText(/recorded this answer for you/u)).toBeNull();
   });
 
   it('keeps the answer with Keep my answer', async () => {
@@ -580,6 +913,83 @@ describe('when answers have closed', () => {
   });
 });
 
+describe('Reply by (sc-3780)', () => {
+  const REPLY_BY = { ...PAGE, event: { ...PAGE.event, replyBy: '2030-11-10' } };
+  const SHUT = {
+    ...answered('coming'),
+    event: REPLY_BY.event,
+    answersOpen: false,
+    answersClosedOn: '2030-11-10',
+  };
+
+  it('says the day to answer by while answers are open', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: REPLY_BY }] });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Please answer by Sunday, November 10. You can change your answer any time before then.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says no day to answer by to a guest reopened after it', async () => {
+    const reopened = { ...PAGE, event: { ...PAGE.event, replyBy: '2020-11-10' } };
+    api({ '/api/guest-links/page': [{ status: 200, body: reopened }] });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer' })).toBeDefined();
+    expect(screen.queryByText(/Please answer by/)).toBeNull();
+  });
+
+  it('names the day answers closed, and lets a Coming guest update the kitchen', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: SHUT }],
+      '/api/guest-links/needs': [{ status: 200, body: SHUT }],
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Answers closed on Sunday, November 10. Contact your host if something has changed.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Update what the kitchen should know' }));
+    expect(
+      await screen.findByText(
+        'Your answer stays Coming, and who is coming with you stays the same.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved. The kitchen will see this.')).toBeDefined();
+    expect(sent.find((one) => one.path === '/api/guest-links/needs')?.body).toMatchObject({
+      token: TOKEN,
+    });
+  });
+
+  it('says a host recorded the answer, without You answered', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...SHUT,
+            guest: {
+              ...SHUT.guest,
+              reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00', recordedBy: 'Amara' },
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(screen.getByText(/^Amara recorded this answer for you on /u)).toBeDefined();
+  });
+});
+
 describe('when the event is paused, called off or over (sc-3591)', () => {
   const PAUSED_NOTICE =
     'This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.';
@@ -610,6 +1020,19 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByRole('button', { name: 'Yes, I’ll be there' })).toBeNull();
     expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
     expect(screen.queryByText(/Answers have closed/)).toBeNull();
+  });
+
+  it('reads the notice before the cover card at a desk, where the columns sit side by side', async () => {
+    atWideWidth();
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
+    });
+    open();
+
+    const notice = (await screen.findByText(PAUSED_NOTICE)).closest('[role="status"]');
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(notice?.parentElement?.classList.contains('gp-columns')).toBe(true);
+    expect(notice?.compareDocumentPosition(h1)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('says You didn’t answer, paused before the start, and offers no answer', async () => {
@@ -678,6 +1101,63 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
   });
 
+  it('shows the hosts’ thank-you under the notice and above the answer, as typed and outside the status region', async () => {
+    const line = 'Thank you all! Photos at https://amara.example <b>soon</b>';
+    const page = answered('coming');
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: at('finished', true, { ...page, event: { ...page.event, thankYou: line } }),
+        },
+      ],
+    });
+    open();
+
+    const quote = await screen.findByText(line);
+    const notice = screen.getByText(
+      'This event has taken place. This page stays here as a keepsake.',
+    );
+    const reply = screen.getByText(/You answered Coming on/);
+    expect(quote.tagName).toBe('BLOCKQUOTE');
+    expect(quote.querySelector('a, b')).toBeNull();
+    expect(quote.closest('[role="status"], [aria-live]')).toBeNull();
+    expect(quote.closest('figure')?.querySelector('figcaption')?.textContent).toBe(
+      'Amara and Tobi',
+    );
+    expect(notice.compareDocumentPosition(quote) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(quote.compareDocumentPosition(reply) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('leaves no slot on a finished page without a thank-you', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('finished', true, answered('coming')) }],
+    });
+    open();
+
+    await screen.findByText(/You answered Coming on/);
+    expect(document.querySelector('.gp-thanks')).toBeNull();
+  });
+
+  it.each([
+    ['paused before the start', 'paused', false],
+    ['paused after the start', 'paused', true],
+    ['called off', 'calledOff', false],
+    ['finished', 'finished', true],
+  ])(
+    'drops the account line from the foot when %s, keeping the closing line and Tell us',
+    async (_, phase, started) => {
+      api({
+        '/api/guest-links/page': [{ status: 200, body: at(phase, started, answered('coming')) }],
+      });
+      open();
+
+      expect(await screen.findByText(i18next.t('guest.closing'))).toBeDefined();
+      expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
+      expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+    },
+  );
+
   it('keeps Check and send with what was chosen when a send is refused 409 event_paused', async () => {
     api({
       '/api/guest-links/page': [
@@ -697,6 +1177,7 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     });
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
     expect(
@@ -789,6 +1270,7 @@ describe('a page left open (sc-3591)', () => {
     await later();
 
     expect(await screen.findByRole('button', { name: 'Sorry, I can’t' })).toBeDefined();
+    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
     const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
@@ -879,6 +1361,2173 @@ describe('a page left open (sc-3591)', () => {
 
     expect(
       await screen.findByRole('heading', { name: 'This invitation link does not work' }),
+    ).toBeDefined();
+  });
+});
+
+describe("the guest's language (sc-3790)", () => {
+  function browser(...languages: string[]): void {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+  }
+
+  function language(chosen: string | null, host: string | null, organisation = 'en') {
+    return { ...PAGE, language: { chosen, host, organisation } };
+  }
+
+  it('opens in Portuguese for a browser asking for pt-BR, with <html lang> following', async () => {
+    browser('pt-BR');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('pt');
+  });
+
+  it('falls through a browser asking only for de to the host’s Language, then the organisation’s', async () => {
+    browser('de');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    const first = open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    first.unmount();
+
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, null, 'es') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Español/u })).toBeDefined();
+  });
+
+  it('opens in what the guest chose, whatever the browser asks for', async () => {
+    browser('en-GB', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('fr', 'pt') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+  });
+
+  it('opens exactly as before in English for a guest with nothing set on an English browser', async () => {
+    browser('en-US', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('switches at once, says so once, and keeps the choice on the guest with a copy on this device', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Français/u }));
+    expect(screen.getByText(i18next.t('guest.languageSwitched'))).toBeDefined();
+    await waitFor(() =>
+      expect(sent).toContainEqual({
+        path: '/api/guest-links/language',
+        body: { token: TOKEN, language: 'fr' },
+      }),
+    );
+    expect(localStorage.getItem('soirely:language')).toBe('fr');
+    expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('opens again in the language a failed save kept on this device, ahead of the browser', async () => {
+    browser('en');
+    api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }],
+    });
+    const first = open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await screen.findByRole('alert');
+    first.unmount();
+    await i18next.changeLanguage('en');
+
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('fr');
+  });
+
+  it('opens in the saved choice over this device’s copy', async () => {
+    browser('en');
+    localStorage.setItem('soirely:language', 'es');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('pt', null) }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+  });
+
+  it('leaves a signed-in account’s language alone: no account request, no device write, and Español again on the way out', async () => {
+    browser('en');
+    await setLanguage('es');
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        userId: 'u1',
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        hasPassword: true,
+        needsOrganisation: false,
+        organisation: null,
+        organisationCountry: null,
+        organisations: [],
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+    try {
+      const { sent } = api({
+        '/api/guest-links/page': [{ status: 200, body: PAGE }],
+        '/api/guest-links/language': [{ status: 204 }],
+      });
+      const page = open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Español/u }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'English' }));
+
+      await waitFor(() =>
+        expect(sent).toContainEqual({
+          path: '/api/guest-links/language',
+          body: { token: TOKEN, language: 'en' },
+        }),
+      );
+      expect(document.documentElement.lang).toBe('en');
+      expect(sent.some((one) => one.path === '/api/auth/locale')).toBe(false);
+      expect(localStorage.getItem('soirely:language')).toBe('es');
+      expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
+
+      page.unmount();
+
+      await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    } finally {
+      __setSessionState({ status: 'unknown' });
+    }
+  });
+
+  it('says the language was not saved, as an alert with Try again, and clears it once saved', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }, { status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(i18next.t('guest.languageNotSaved'));
+    expect(document.documentElement.lang).toBe('pt');
+
+    fireEvent.click(within(alert).getByRole('button', { name: i18next.t('error.retry') }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(sent.filter((one) => one.path === '/api/guest-links/language')).toHaveLength(2);
+  });
+
+  it('saves only the last of quick picks, once the save before it has answered', async () => {
+    browser('en');
+    let answerFirst: (response: Response) => void = () => {};
+    const saves: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(typeof input === 'string' ? input : (input as Request).url).pathname;
+      if (path === '/api/guest-links/page') return json({ status: 200, body: PAGE });
+      saves.push((JSON.parse(String(init?.body)) as { language: string }).language);
+      if (saves.length > 1) return json({ status: 204 });
+
+      return new Promise<Response>((resolve) => {
+        answerFirst = resolve;
+      });
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await waitFor(() => expect(saves).toEqual(['fr']));
+
+    fireEvent.click(screen.getByRole('button', { name: /Français/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Español' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    fireEvent.click(screen.getByRole('button', { name: /Español/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('pt'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(saves).toEqual(['fr']);
+
+    await act(async () => {
+      answerFirst(json({ status: 204 }));
+    });
+
+    await waitFor(() => expect(saves).toEqual(['fr', 'pt']));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('Add to calendar (sc-3627)', () => {
+  const FEED = '/api/guest-calendars/abc.ics';
+  const coming = (extra: Record<string, unknown> = {}) => ({
+    ...answered('coming'),
+    calendarFeed: FEED,
+    ...extra,
+  });
+
+  it('offers Apple / Outlook by webcal and Google Calendar by URL after Coming, each read with the line', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Add to calendar' });
+    const apple = screen.getByRole('link', { name: 'Apple / Outlook' });
+    const google = screen.getByRole('link', { name: 'Google Calendar' });
+    const line = screen.getByText(
+      'Your calendar updates by itself if the date, time or place changes.',
+    );
+
+    expect(heading).toBeDefined();
+    expect(apple.getAttribute('href')).toMatch(/^webcal:\/\/.+\/api\/guest-calendars\/abc\.ics$/);
+    expect(google.getAttribute('href')).toMatch(
+      /^https:\/\/calendar\.google\.com\/calendar\/r\?cid=webcal%3A%2F%2F.+abc\.ics$/,
+    );
+    expect(google.getAttribute('target')).toBe('_blank');
+    for (const link of [apple, google]) {
+      expect(link.getAttribute('aria-describedby')).toBe(line.id);
+    }
+  });
+
+  it('stays with Coming once answers have closed, during Happening now', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: coming({ answersOpen: false, started: true }) },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('is not there without a feed: another answer, or a paused, called-off or finished event', async () => {
+    for (const body of [
+      { ...answered('notComing'), calendarFeed: null },
+      { ...answered('maybe'), calendarFeed: null },
+      { ...answered('coming'), phase: 'paused', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'calledOff', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'finished', answersOpen: false, calendarFeed: null },
+    ]) {
+      api({ '/api/guest-links/page': [{ status: 200, body }] });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('leaves while the answer is being changed, and comes back on keeping it', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my answer' }));
+    expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('leaves when Coming changes to Sorry, I can’t', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: coming() }],
+      '/api/guest-links/reply': [
+        { status: 200, body: { ...answered('notComing'), calendarFeed: null } },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+
+    expect(
+      await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+  });
+});
+
+describe('Anything the kitchen must know? (sc-3778)', () => {
+  const RECORDED = {
+    ...answered('coming', undefined, 1, [
+      { ...CHIDI, needs: { ...NO_NEEDS, allergies: ['sesame'] } },
+    ]),
+  };
+  RECORDED.guest.needs = {
+    ...NO_NEEDS,
+    access: ['step_free'],
+    changed: { by: 'hosts', at: '2026-11-02T10:00:00+01:00' },
+  };
+
+  const UNSAVED = {
+    type: 'https://soirely.com/errors/validation_failed',
+    title: 'x',
+    status: 422,
+  };
+
+  it('says who will see it before anything is picked, and sends the codes chosen with Coming', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming') }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    const head = screen.getByRole('heading', { name: 'Anything the kitchen must know?' });
+    const consent = document.getElementById(head.getAttribute('aria-describedby') ?? '');
+    const peanuts = screen.getByRole('button', { name: 'Peanuts' });
+    expect(consent?.textContent).toBe(
+      'Only Amara and Tobi and the people who cook and serve your meal will see this.',
+    );
+    expect(consent?.compareDocumentPosition(peanuts)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByText('Choose anything that applies to you.')).toBeDefined();
+
+    fireEvent.click(peanuts);
+    fireEvent.click(screen.getByRole('button', { name: 'Milk' }));
+    expect(peanuts.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getByText('Peanuts and milk. The kitchen and your server will see this.'),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Other allergy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    const which = screen.getByLabelText('Which allergy?');
+    expect(which).toBe(document.activeElement);
+    expect(which.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Say which')).toBeDefined();
+
+    fireEvent.change(which, { target: { value: ' Kiwi ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Vegan' }));
+    fireEvent.change(screen.getByLabelText(/Anything else, in your own words/), {
+      target: { value: 'No mushrooms' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.getByText('Allergies: peanuts, milk and Kiwi')).toBeDefined();
+    expect(screen.getByText('Vegan')).toBeDefined();
+    expect(screen.getByText('“No mushrooms”')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      answer: 'coming',
+      needs: {
+        allergies: ['peanuts', 'milk', 'other'],
+        otherAllergy: 'Kiwi',
+        diet: ['vegan', 'other'],
+        otherDiet: 'No mushrooms',
+        access: [],
+        otherAccess: null,
+      },
+    });
+  });
+
+  it('shows a returning guest the record for each person coming, and removes what the hosts noted only on Send', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: RECORDED }],
+      '/api/guest-links/reply': [{ status: 200, body: RECORDED }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yes, I’ll be there/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText(/^Last changed by Amara and Tobi on /)).toBeDefined();
+    expect(screen.getByRole('group', { name: 'Chidi Okonkwo-Williams' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Sesame' })[1]?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Leave it as it is' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Step-free access' }));
+    expect(screen.getByText('Step-free access will be removed when you send.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep it, Step-free access' })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Removed: Step-free access')).toBeDefined();
+    expect(screen.getByText('Allergy: sesame')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    const body = sent.at(-1)?.body as {
+      needs: { access: string[] };
+      companions: { needs: { allergies: string[] } }[];
+    };
+    expect(body.needs.access).toEqual([]);
+    expect(body.companions[0]?.needs.allergies).toEqual(['sesame']);
+  });
+
+  it('sends no needs with Leave it as it is, so the record stays', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: RECORDED }],
+      '/api/guest-links/reply': [{ status: 200, body: RECORDED }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yes, I’ll be there/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Step-free access' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
+
+    expect(screen.getByText('Step-free access')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      answer: 'coming',
+      companions: [{ id: CHIDI.id, fullName: CHIDI.fullName, coming: true }],
+    });
+  });
+
+  const PLACE_1 = '0193f5a8-0000-7000-8000-0000000000d1';
+  const PLACE_2 = '0193f5a8-0000-7000-8000-0000000000d2';
+  const OBI = { ...CHIDI, id: '0193f5a8-0000-7000-8000-0000000000c3', fullName: 'Obi Okonkwo' };
+  const unnamed = (ids: string[], named: object[] = [], answer: string | null = null) => ({
+    ...PAGE,
+    guest: {
+      ...PAGE.guest,
+      reply: answer == null ? null : { answer, at: '2026-10-17T14:20:00+01:00' },
+      places: ids.length + named.length,
+      companions: named,
+      unnamed: ids.map((id) => ({ id, coming: true, needs: NO_NEEDS })),
+    },
+  });
+
+  it('gives a place nobody named its own card, “Your guest”, and sends its needs by the place', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: unnamed([PLACE_1]) }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 1) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const guest = screen.getByRole('group', { name: 'Your guest' });
+    expect(screen.queryByRole('group', { name: 'Your guest 1' })).toBeNull();
+    fireEvent.click(within(guest).getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    expect(screen.getByText('You and Your guest · 2 people')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    const body = sent.at(-1)?.body as { unnamed: object[] };
+    expect(body.unnamed).toEqual([
+      {
+        id: PLACE_1,
+        coming: true,
+        needs: {
+          allergies: ['peanuts'],
+          otherAllergy: null,
+          diet: [],
+          otherDiet: null,
+          access: [],
+          otherAccess: null,
+        },
+      },
+    ]);
+  });
+
+  it('labels a place by its position on all three screens, named first, with another declined (sc-48740)', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: unnamed([PLACE_1, PLACE_2], [OBI]) }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 3) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(
+      within(document.querySelector('.gp-with-rows') as HTMLElement)
+        .getAllByRole('listitem')
+        .map((row) => row.querySelector('.gp-with-name')?.textContent),
+    ).toEqual([ADAEZE, 'Obi Okonkwo', 'Your guest 2', 'Your guest 3']);
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 2 is coming' }));
+    expect(screen.getByRole('button', { name: 'Your guest 2 is coming' }).ariaPressed).toBe(
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 3' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByRole('group', { name: 'Your guest 2' })).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Your guest 3' })).getByRole('button', {
+        name: 'Vegan',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('You, Obi Okonkwo and Your guest 3 · 3 people')).toBeDefined();
+    expect(screen.getByText('Your guest 3')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    const body = sent.at(-1)?.body as {
+      companions: { id: string; coming: boolean }[];
+      unnamed: { id: string; coming: boolean; needs?: { diet: string[] } }[];
+    };
+    expect(body.companions.map((one) => [one.id, one.coming])).toEqual([[OBI.id, true]]);
+    expect(body.unnamed.map((one) => [one.id, one.coming, one.needs?.diet])).toEqual([
+      [PLACE_1, false, undefined],
+      [PLACE_2, true, ['vegan']],
+    ]);
+  });
+
+  it('keeps a declined place’s record, and gives its card back once it is Coming again (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2]);
+    page.guest.unnamed[0] = {
+      id: PLACE_1,
+      coming: true,
+      needs: { ...NO_NEEDS, allergies: ['peanuts'] },
+    };
+    api({ '/api/guest-links/page': [{ status: 200, body: page }] });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 1 is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByRole('group', { name: 'Your guest 1' })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Your guest 2' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 1 is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const first = screen.getByRole('group', { name: 'Your guest 1' });
+    expect(
+      within(first).getByRole('button', { name: 'Peanuts' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('names a place, keeping what was recorded for it, and the other keeps its number (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2]);
+    page.guest.unnamed[0] = {
+      id: PLACE_1,
+      coming: true,
+      needs: { ...NO_NEEDS, allergies: ['peanuts'] },
+    };
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: page }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 2) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 1' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Kemi Adewale' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.getByText('Named by you')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const kemi = screen.getByRole('group', { name: 'Kemi Adewale' });
+    expect(within(kemi).getByRole('button', { name: 'Peanuts' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('group', { name: 'Your guest 2' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    const body = sent.at(-1)?.body as {
+      companions: { id: string; fullName: string; needs: { allergies: string[] } }[];
+      unnamed: { id: string; coming: boolean }[];
+    };
+    expect(body.companions.map((one) => [one.id, one.fullName, one.needs.allergies])).toEqual([
+      [PLACE_1, 'Kemi Adewale', ['peanuts']],
+    ]);
+    expect(body.unnamed.map((one) => [one.id, one.coming])).toEqual([[PLACE_2, true]]);
+  });
+
+  it('counts each place Coming in a returning guest’s line, and You · 1 person once all are declined (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2], [OBI], 'coming');
+    page.guest.unnamed[1] = { id: PLACE_2, coming: false, needs: NO_NEEDS };
+    const alone = unnamed([PLACE_1], [{ ...OBI, coming: false }], 'coming');
+    alone.guest.unnamed[0] = { id: PLACE_1, coming: false, needs: NO_NEEDS };
+    api({ '/api/guest-links/page': [{ status: 200, body: page }] });
+    const first = open();
+
+    expect(await screen.findByText('You, Obi Okonkwo and Your guest 2 · 3 people')).toBeDefined();
+    first.unmount();
+
+    api({ '/api/guest-links/page': [{ status: 200, body: alone }] });
+    open();
+
+    expect(await screen.findByText('You · 1 person')).toBeDefined();
+  });
+
+  it.each([
+    ['the Other allergy', 'Which allergy?'],
+    ['Anything else', /Anything else, in your own words/],
+    ['the access line', /Anything that would make it easier to get in or around/],
+  ])('refuses %s over 100 characters, and passes at 100', async (_, label) => {
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    if (label === 'Which allergy?') {
+      fireEvent.click(screen.getByRole('button', { name: 'Other allergy' }));
+    }
+    const field = screen.getByLabelText(label);
+    fireEvent.change(field, { target: { value: 'k'.repeat(101) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('Shorten it to 100 characters or fewer.')).toBeDefined();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.queryByRole('heading', { name: 'Check and send' })).toBeNull();
+
+    fireEvent.change(field, { target: { value: 'k'.repeat(100) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBeDefined();
+    expect(sent.map((one) => one.path)).not.toContain('/api/guest-links/reply');
+  });
+
+  it('keeps what was chosen on screen when the API refuses it 422, and says so', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/reply': [{ status: 422, body: UNSAVED }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(i18next.t('guestKitchen.notSaved'));
+    expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Change what the kitchen must know' })).toBe(
+      document.activeElement,
+    );
+  });
+});
+
+describe('Your table on the page (sc-4022)', () => {
+  const SEATED = {
+    ...answered('coming', '2026-10-17T14:20:00+01:00', 1, [CHIDI]),
+    seating: {
+      seat: { kind: 'table', name: 'Table 4', section: 'Main hall' },
+      elsewhere: [
+        {
+          name: 'Chidi Okonkwo-Williams',
+          seat: { kind: 'table', name: 'Table 6', section: 'Main hall' },
+        },
+      ],
+    },
+  };
+
+  it('shows a Coming guest their table under the answer, and each companion seated elsewhere', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: SEATED }] });
+    open();
+
+    expect(await screen.findByText('Your table: Table 4 · Main hall')).toBeDefined();
+    expect(screen.getByText('Chidi Okonkwo-Williams: Table 6')).toBeDefined();
+    expect(
+      screen.getByRole('region', { name: 'Your table' }).querySelector('[aria-live="polite"]'),
+    ).not.toBeNull();
+  });
+
+  it('names a row seat and its section, and a companion with no name as Your guest', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...SEATED,
+            seating: {
+              seat: { kind: 'row', name: 'C', seat: 4, section: 'Balcony' },
+              elsewhere: [
+                { name: null, seat: { kind: 'row', name: 'D', seat: 1, section: 'Balcony' } },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByText('Your seat: Row C, seat 4 · Balcony')).toBeDefined();
+    expect(screen.getByText('Your guest: Row D, seat 1')).toBeDefined();
+  });
+
+  it('shows nothing about seating before the hosts share, as the page was', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: answered('coming') }] });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
+    expect(screen.queryByText(/^Your (table|seat):/)).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Your table' })).toBeNull();
+  });
+
+  it('shows the table as soon as the hosts share, by the event’s signal rather than the next poll', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    const made: { url: string; onmessage: ((message: { data: string }) => void) | null }[] = [];
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        static readonly CLOSED = 2;
+        readyState = 0;
+        onopen = null;
+        onmessage: ((message: { data: string }) => void) | null = null;
+        onerror = null;
+        url: string;
+        constructor(url: string | URL) {
+          this.url = String(url);
+          made.push(this);
+        }
+        close(): void {}
+      },
+    );
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: answered('coming') },
+        { status: 200, body: SEATED },
+      ],
+      '/api/guest-links/subscriptions': [
+        {
+          status: 200,
+          body: { token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+        },
+      ],
+    });
+
+    try {
+      open();
+      await screen.findByRole('heading', { level: 1 });
+      await waitFor(() =>
+        expect(made.some((one) => decodeURIComponent(one.url).includes('/guest-pages'))).toBe(true),
+      );
+      expect(sent.find((one) => one.path === '/api/guest-links/subscriptions')?.body).toEqual({
+        token: TOKEN,
+      });
+
+      act(() =>
+        made
+          .find((one) => decodeURIComponent(one.url).includes('/guest-pages'))
+          ?.onmessage?.({ data: '[]' }),
+      );
+
+      expect(await screen.findByText('Your table: Table 4 · Main hall')).toBeDefined();
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+const dish = (id: string, name: string, allergens: string[] | null) => ({
+  id,
+  name,
+  description: null,
+  allergens,
+  diets: [],
+  variants: [],
+  choices: [],
+});
+
+const CLOSE = { at: '2030-11-10T23:59:00+01:00', source: 'replyBy', closed: false };
+
+const MEALS = {
+  you: '0193f5a8-0000-7000-8000-0000000000a1',
+  courses: [
+    {
+      id: 'main',
+      name: 'Main',
+      answer: 'choose',
+      skippable: false,
+      picksClose: CLOSE,
+      dishes: [
+        dish('jollof', 'Jollof rice', ['celery']),
+        dish('egusi', 'Pounded yam and egusi', ['fish', 'milk']),
+        dish('gizdodo', 'Gizdodo', null),
+      ],
+    },
+    {
+      id: 'dessert',
+      name: 'Dessert',
+      answer: 'choose',
+      skippable: true,
+      picksClose: CLOSE,
+      dishes: [dish('cake', 'Coconut cake', ['gluten', 'eggs'])],
+    },
+  ],
+  answers: {} as Record<string, object[]>,
+};
+
+const MEAL_PAGE = { ...PAGE, meals: MEALS };
+
+describe('a meal for each person coming (sc-3907)', () => {
+  it('asks each course after the kitchen note, refuses Next with nothing chosen, and sends the picks after the answer', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: MEAL_PAGE }],
+      '/api/guest-links/reply': [{ status: 200, body: { ...answered('coming'), meals: MEALS } }],
+      '/api/guest-links/meals': [{ status: 200, body: { ...answered('coming'), meals: MEALS } }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+
+    expect(screen.getByRole('heading', { name: /Which main\?/ })).toBe(document.activeElement);
+    expect(screen.getByText('For you · Main · 1 of 2')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Choose a main for you, or let the kitchen choose.',
+    );
+    expect(screen.getByRole('radio', { name: /Jollof rice/ })).toBe(document.activeElement);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: /Which dessert\?/ })).toBe(document.activeElement);
+
+    fireEvent.click(screen.getByRole('radio', { name: 'No dessert for me' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.getByText('Your meals')).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText('No dessert')).toBeDefined();
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/meals'));
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      picks: [
+        {
+          person: MEALS.you,
+          course: 'main',
+          answer: 'chosen',
+          dish: 'jollof',
+          variant: null,
+          options: [],
+        },
+        { person: MEALS.you, course: 'dessert', answer: 'skipped' },
+      ],
+    });
+  });
+
+  it('greys a dish holding the person’s allergen, and one that states nothing, with the reason', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...MEAL_PAGE,
+            guest: { ...PAGE.guest, needs: { ...NO_NEEDS, allergies: ['milk'] } },
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
+
+    const egusi = screen.getByRole('radio', { name: /Pounded yam and egusi/ });
+    expect((egusi as HTMLInputElement).disabled).toBe(true);
+    expect(egusi.closest('label')?.textContent).toContain('You are allergic to: milk.');
+    expect(screen.getByRole('radio', { name: /Gizdodo/ }).closest('label')?.textContent).toContain(
+      'The kitchen hasn’t said what’s in this, so it can’t be picked for you.',
+    );
+    expect(screen.getByText('The host can arrange a dish for you.')).toBeDefined();
+  });
+
+  it('refuses Send my changes while a saved pick holds an allergen given since, with focus on its Change', async () => {
+    const back = {
+      ...answered('coming'),
+      guest: {
+        ...answered('coming').guest,
+        needs: { ...NO_NEEDS, allergies: ['milk'] },
+      },
+      meals: {
+        ...MEALS,
+        answers: {
+          [MEALS.you]: [
+            { course: 'main', answer: 'needsHost', dish: 'egusi', variant: null, options: [] },
+            { course: 'dessert', answer: 'skipped', dish: null, variant: null, options: [] },
+          ],
+        },
+      },
+    };
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: back }] });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('Pounded yam and egusi')).toBeDefined();
+    expect(screen.getByText('You are allergic to: milk.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'A pick contains an allergen. Change it before you send.',
+    );
+    expect(screen.getByRole('button', { name: 'Change main for you' })).toBe(
+      document.activeElement,
+    );
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('says there is nothing to send when no pick changed', async () => {
+    const back = {
+      ...answered('coming'),
+      meals: {
+        ...MEALS,
+        answers: {
+          [MEALS.you]: [
+            { course: 'main', answer: 'chefsChoice', dish: null, variant: null, options: [] },
+            { course: 'dessert', answer: 'skipped', dish: null, variant: null, options: [] },
+          ],
+        },
+      },
+    };
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: back }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    expect(screen.getByText('Nothing has changed, so there is nothing to send.')).toBeDefined();
+    expect(screen.getByText('The kitchen will choose')).toBeDefined();
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+});
+
+describe('Same as an earlier person (sc-17283)', () => {
+  const MILKY = { ...CHIDI, needs: { ...NO_NEEDS, allergies: ['milk'] } };
+  const PARTY_PAGE = {
+    ...PAGE,
+    guest: { ...PAGE.guest, places: 1, companions: [MILKY], unnamed: [] },
+    meals: MEALS,
+  };
+  const CHIDI_NAME = 'Chidi Okonkwo-Williams';
+
+  function toMeals(): void {
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  }
+
+  function mine(main: RegExp): void {
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: main }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'No dessert for me' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  }
+
+  it('copies every course that can be picked, shows the card, and sends the copy as picks made by hand', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }],
+      '/api/guest-links/reply': [
+        {
+          status: 200,
+          body: {
+            ...PARTY_PAGE,
+            guest: {
+              ...PARTY_PAGE.guest,
+              reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+            },
+          },
+        },
+      ],
+      '/api/guest-links/meals': [{ status: 200, body: PARTY_PAGE }],
+    });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Jollof rice/);
+
+    const same = screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` });
+    expect(same.textContent).toBe('Same as mine');
+    expect(same.closest('fieldset')).toBeNull();
+    fireEvent.click(same);
+
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+    expect(
+      screen.getByText('Copied from your picks. Change anything that should be different.'),
+    ).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText('No dessert')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: `Change main for ${CHIDI_NAME}` }));
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('button', { name: `Change main for ${CHIDI_NAME}` })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.queryByText(/Copied from/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/meals'));
+    const jollof = { answer: 'chosen', dish: 'jollof', variant: null, options: [] };
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      picks: [
+        { person: MEALS.you, course: 'main', ...jollof },
+        { person: MEALS.you, course: 'dessert', answer: 'skipped' },
+        { person: CHIDI.id, course: 'main', ...jollof },
+        { person: CHIDI.id, course: 'dessert', answer: 'skipped' },
+      ],
+    });
+  });
+
+  it('asks a course that can’t be copied with its line, refuses it unanswered, and Back from the card returns to the buttons', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }] });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Pounded yam and egusi/);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Gizdodo/ }));
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+
+    const head = screen.getByRole('heading', { name: /Which main\?/ });
+    expect(head).toBe(document.activeElement);
+    const line = screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`);
+    expect(head.closest('fieldset')?.getAttribute('aria-describedby')).toContain(
+      line.closest('p')?.id,
+    );
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    expect((screen.getByRole('radio', { name: /Gizdodo/ }) as HTMLInputElement).checked).toBe(
+      false,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('alert').textContent).toContain(
+      `Choose a main for ${CHIDI_NAME}, or let the kitchen choose.`,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+    expect(screen.getByText('No dessert')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` })).toBeDefined();
+    expect((screen.getByRole('radio', { name: /Jollof rice/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+
+  it('takes Back on a course Same as couldn’t copy to the person’s first course with the buttons, keeping the copy’s sequence', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }] });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Pounded yam and egusi/);
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+    expect(screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('heading', { name: /Which main\?/ })).toBe(document.activeElement);
+    expect(screen.queryByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+    expect(screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+  });
+});
+
+describe('a meal for each person coming, the close and the allergy rules (sc-3907)', () => {
+  const CLOSED_CLOSE = { ...CLOSE, closed: true };
+  const comingBack = (courses: object[], answers: object[], needs: object = NO_NEEDS) => ({
+    ...answered('coming'),
+    guest: { ...answered('coming').guest, needs },
+    meals: { ...MEALS, courses, answers: { [MEALS.you]: answers } },
+  });
+  const [MAIN, DESSERT] = MEALS.courses as [
+    (typeof MEALS.courses)[number],
+    (typeof MEALS.courses)[number],
+  ];
+  const saved = (course: string, over: object) => ({
+    course,
+    answer: 'chosen',
+    dish: null,
+    variant: null,
+    options: [],
+    ...over,
+  });
+
+  it('shows a closed course’s pick read-only, with the close and no Change', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: comingBack(
+            [{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT],
+            [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })],
+          ),
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText(/^Picks closed on /)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change main for you' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Change dessert for you' })).toBeDefined();
+  });
+
+  it('turns a course refused 409 read-only with what was saved before, and says the change was not saved', async () => {
+    const before = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        { status: 200, body: comingBack([{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT], before) },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    expect(
+      (
+        await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/)
+      ).closest('[role="alert"]'),
+    ).not.toBeNull();
+    expect(screen.getByText('The kitchen will choose')).toBeDefined();
+    expect(screen.queryByText('Jollof rice')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change main for you' })).toBeNull();
+    expect(screen.queryByText('Your other changes are saved.')).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual([
+      '/api/guest-links/page',
+      '/api/guest-links/meals',
+      '/api/guest-links/page',
+    ]);
+  });
+
+  it('says the other changes are saved when a send changes a closed course and one still open', async () => {
+    const before = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const after = [saved('main', { answer: 'chefsChoice' }), saved('dessert', { dish: 'cake' })];
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        { status: 200, body: comingBack([{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT], after) },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Change dessert for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Coconut cake/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/);
+    expect(
+      screen.getByText('Your other changes are saved.').closest('[role="status"]'),
+    ).not.toBeNull();
+    expect(screen.getByText('Coconut cake')).toBeDefined();
+  });
+
+  it('puts the refused alert only on the rows the send changed, after their close line', async () => {
+    const mine = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const his = [saved('main', { answer: 'chefsChoice' }), saved('dessert', { answer: 'skipped' })];
+    const withChidi = (courses: object[]) => ({
+      ...answered('coming', undefined, 1, [CHIDI]),
+      meals: { ...MEALS, courses, answers: { [MEALS.you]: mine, [CHIDI.id]: his } },
+    });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: withChidi([MAIN, DESSERT]) },
+        { status: 200, body: withChidi([{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT]) },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    const alert = (
+      await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/)
+    ).closest('[role="alert"]') as HTMLElement;
+    expect(screen.getAllByText(/, so your change was not saved\.$/)).toHaveLength(1);
+    expect(alert).toBe(document.activeElement);
+    const close = alert.parentElement?.querySelector('.mx-close') as HTMLElement;
+    expect(close.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByText(/^Picks closed on /)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: `Change main for ${CHIDI.fullName}` })).toBeNull();
+  });
+
+  it('shows every pick read-only once Reply by closes answers, with no send and no Change', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...comingBack(
+              [
+                { ...MAIN, picksClose: CLOSED_CLOSE },
+                { ...DESSERT, picksClose: CLOSED_CLOSE },
+              ],
+              [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })],
+            ),
+            answersOpen: false,
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getAllByText(/^Picks closed on /)).toHaveLength(2);
+    expect(screen.getByText(/^To change a pick now, ask /)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Change (main|dessert) for you$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change what the kitchen must know' })).toBeNull();
+  });
+
+  it('keeps the refused row and its alert when the 409 comes with answers closed', async () => {
+    const before = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const shut = [
+      { ...MAIN, picksClose: CLOSED_CLOSE },
+      { ...DESSERT, picksClose: CLOSED_CLOSE },
+    ];
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        { status: 200, body: { ...comingBack(shut, before), answersOpen: false } },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    const alert = (
+      await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/)
+    ).closest('[role="alert"]');
+    expect(alert).toBe(document.activeElement);
+    expect(screen.getByText('The kitchen will choose')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull();
+  });
+
+  it('shows For the kitchen on coming back, and sends its change with Send my changes', async () => {
+    const before = [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })];
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: comingBack([MAIN, DESSERT], before) }],
+      '/api/guest-links/needs': [
+        {
+          status: 200,
+          body: comingBack([MAIN, DESSERT], before, { ...NO_NEEDS, allergies: ['peanuts'] }),
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change what the kitchen must know' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('button', { name: 'Change what the kitchen must know' })).toBe(
+      document.activeElement,
+    );
+    expect(screen.getByText('Not sent yet')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(await screen.findByText('Your changes are saved.')).toBeDefined();
+    expect(screen.queryByText('Not sent yet')).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual([
+      '/api/guest-links/page',
+      '/api/guest-links/needs',
+    ]);
+  });
+
+  it('keeps the picks read-only under the paused card, with each close line and no send (#82715)', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...comingBack(
+              [{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT],
+              [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })],
+            ),
+            phase: 'paused',
+            answersOpen: false,
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Answers are closed while the event is paused. Anything you sent is kept.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText(/^Picks closed on /)).toBeDefined();
+    expect(screen.getByText(/^Picks close /)).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Change (main|dessert) for you$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change what the kitchen must know' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.queryByText(/^Saved\. You can change them until/)).toBeNull();
+    expect(screen.queryByText(/^To change a pick now, ask/)).toBeNull();
+  });
+
+  it('offers no Change on For the kitchen while answers are open and every course is closed', async () => {
+    const shut = [
+      { ...MAIN, picksClose: CLOSED_CLOSE },
+      { ...DESSERT, picksClose: CLOSED_CLOSE },
+    ];
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: comingBack(shut, [
+            saved('main', { dish: 'jollof' }),
+            saved('dessert', { answer: 'skipped' }),
+          ]),
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change what the kitchen must know' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.getByText(/^To change a pick now, ask/)).toBeDefined();
+  });
+
+  it('lands on the page as it stands when the API refuses a kitchen change 409', async () => {
+    const before = [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })];
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        {
+          status: 200,
+          body: { ...comingBack([MAIN, DESSERT], before), phase: 'paused', answersOpen: false },
+        },
+      ],
+      '/api/guest-links/needs': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/guest.event_paused',
+            title: 'Paused',
+            status: 409,
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change what the kitchen must know' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull(),
+    );
+    expect(screen.queryByText('Not sent yet')).toBeNull();
+    expect(screen.queryByText('Not sent. Check your connection and try again.')).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual([
+      '/api/guest-links/page',
+      '/api/guest-links/needs',
+      '/api/guest-links/page',
+    ]);
+  });
+
+  it('refuses Send my changes when an allergy given on the kitchen row rules out a pick', async () => {
+    const before = [saved('main', { dish: 'egusi' }), saved('dessert', { answer: 'skipped' })];
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: comingBack([MAIN, DESSERT], before) }],
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change what the kitchen must know' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Milk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'A pick contains an allergen. Change it before you send.',
+    );
+    expect(screen.getByRole('button', { name: 'Change main for you' })).toBe(
+      document.activeElement,
+    );
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('says on the first course that an Other allergy isn’t checked, ruling nothing out', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...MEAL_PAGE,
+            guest: {
+              ...PAGE.guest,
+              needs: { ...NO_NEEDS, allergies: ['other'], otherAllergy: 'Kiwi' },
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
+
+    expect(
+      screen.getByText(/allergy isn’t checked against the menu\. The host will confirm\.$/),
+    ).toBeDefined();
+    expect((screen.getByRole('radio', { name: /Gizdodo/ }) as HTMLInputElement).disabled).toBe(
+      false,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByText(/allergy isn’t checked against the menu/)).toBeNull();
+  });
+
+  it('asks an Everyone gets the same course’s way, then its choice, counted in the total', async () => {
+    const rice = {
+      ...dish('jollof', 'Jollof rice', ['celery']),
+      variants: [
+        { id: 'chicken', name: 'Chicken', allergens: ['celery'], diets: [] },
+        { id: 'fish', name: 'Fish', allergens: ['fish'], diets: [] },
+      ],
+      choices: [
+        {
+          id: 'side',
+          question: 'And a side?',
+          pick: 1,
+          required: true,
+          options: [
+            { id: 'plantain', name: 'Plantain', allergens: [] },
+            { id: 'beans', name: 'Beans', allergens: ['milk'] },
+          ],
+        },
+      ],
+    };
+    const meals = { ...MEALS, courses: [{ ...MAIN, answer: 'same', dishes: [rice] }] };
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: { ...PAGE, meals } }],
+      '/api/guest-links/reply': [{ status: 200, body: { ...answered('coming'), meals } }],
+      '/api/guest-links/meals': [{ status: 200, body: { ...answered('coming'), meals } }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+
+    expect(screen.getByText('For you · Main · 1 of 1')).toBeDefined();
+    expect(screen.getByRole('heading', { name: /Jollof rice · Chicken or Fish\?/ })).toBeDefined();
+    expect(screen.queryByRole('radio', { name: /Jollof rice/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Chicken/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: /Jollof rice · And a side\?/ })).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /Plantain/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/meals'));
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      picks: [
+        {
+          person: MEALS.you,
+          course: 'main',
+          answer: 'chosen',
+          dish: 'jollof',
+          variant: 'chicken',
+          options: ['plantain'],
+        },
+      ],
+    });
+  });
+
+  it('clears a kept pick on Back that an allergy given since rules out, saying why', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: MEAL_PAGE }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Pounded yam and egusi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'No dessert for me' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(
+      (screen.getByRole('radio', { name: /Pounded yam and egusi/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Milk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const egusi = screen.getByRole('radio', { name: /Pounded yam and egusi/ }) as HTMLInputElement;
+    expect(egusi.checked).toBe(false);
+    expect(egusi.disabled).toBe(true);
+    expect(
+      screen.getByText(
+        'Your pick for you, Pounded yam and egusi, was cleared because it contains milk.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(
+      (screen.getByRole('radio', { name: 'No dessert for me' }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+});
+
+describe('Show this at the door (sc-1301)', () => {
+  const CODE = { code: 'q2k9tD0tX3vYb1mLw7pZc4sRf8hJn6aE5uGi0oKy2Vx', qrSvg: '<svg></svg>' };
+  const NOT_COMING = { ...CHIDI, coming: false };
+
+  it('shows a Coming guest the code, above Add to calendar, telling one with companions coming that it lets them in too', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...answered('coming', undefined, 1, [CHIDI]),
+            checkInCode: CODE,
+            calendarFeed: '/api/guest-calendars/abc.ics',
+          },
+        },
+      ],
+    });
+    open();
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Show this at the door' });
+    const code = screen.getByRole('img', { name: 'Your code for the door. It holds no name.' });
+    const calendar = screen.getByRole('heading', { level: 2, name: 'Add to calendar' });
+
+    expect(heading).toBeDefined();
+    expect(
+      screen.getByText('It lets you and anyone coming with you in. A screenshot works too.'),
+    ).toBeDefined();
+    expect(code.getAttribute('src')).toBe(
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(CODE.qrSvg)}`,
+    );
+    expect(heading.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
+      0,
+    );
+  });
+
+  it('says only that a screenshot works to a guest alone, or whose companions are all not coming', async () => {
+    for (const companions of [[], [NOT_COMING]]) {
+      api({
+        '/api/guest-links/page': [
+          {
+            status: 200,
+            body: {
+              ...answered('coming', undefined, companions.length, companions),
+              checkInCode: CODE,
+            },
+          },
+        ],
+      });
+      const { unmount } = open();
+
+      expect(await screen.findByText('A screenshot works too.')).toBeDefined();
+      expect(screen.queryByText(/coming with you in/u)).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('is not there without a code: no reply, Not coming or Not sure yet', async () => {
+    for (const body of [PAGE, answered('notComing'), answered('maybe')]) {
+      api({ '/api/guest-links/page': [{ status: 200, body: { ...body, checkInCode: null } }] });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Show this at the door' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+describe("on the event's day (sc-24381)", () => {
+  const CODE = { code: 'q2k9tD0tX3vYb1mLw7pZc4sRf8hJn6aE5uGi0oKy2Vx', qrSvg: '<svg></svg>' };
+  const CEREMONY = {
+    title: 'Ceremony',
+    startsAt: '2030-11-14T17:20:00+01:00',
+    day: '2030-11-14',
+    place: null,
+  };
+
+  function today(body: object, more: object = {}) {
+    return { ...body, onTheDay: true, checkInCode: CODE, ...more };
+  }
+
+  function headings(): string[] {
+    return screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent ?? '');
+  }
+
+  it('leads a Coming guest with Your code, then Where, The day and Your answer, the place shown once', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            programme: [CEREMONY],
+            event: { ...PAGE.event, arrivalNote: 'Enter by the garden gate.' },
+          }),
+        },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    expect(headings()).toEqual(['Your code', 'Where', 'The day', 'Your answer']);
+    expect(screen.getAllByText('The Civic Centre')).toHaveLength(1);
+    expect(screen.getAllByText('Ozumba Mbadiwe Ave, Victoria Island, Lagos')).toHaveLength(1);
+    expect(screen.getAllByText('Enter by the garden gate.')).toHaveLength(1);
+    expect(screen.getAllByRole('link', { name: 'Open in maps' })).toHaveLength(1);
+    expect(screen.getByText('Show this at the door')).toBeDefined();
+  });
+
+  it('has no Where without a venue name, an address or a note, and the head keeps the time', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            event: { ...PAGE.event, venue: null, arrivalNote: null },
+          }),
+        },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    expect(headings()).toEqual(['Your code', 'Your answer']);
+    expect(document.querySelector('.gp-cover-line')?.textContent).toMatch(/·/u);
+  });
+
+  it('shows a name with no address without Open in maps', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            event: { ...PAGE.event, venue: { name: 'The Civic Centre', address: null } },
+          }),
+        },
+      ],
+    });
+    open();
+
+    const where = await screen.findByRole('region', { name: 'Where' });
+
+    expect(within(where).getByText('The Civic Centre')).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+  });
+
+  it('sits Your table between Where and The day for a seated Coming guest', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            programme: [CEREMONY],
+            seating: { seat: { kind: 'table', name: 'Table 4', section: null }, elsewhere: [] },
+          }),
+        },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    expect(headings()).toEqual(['Your code', 'Where', 'Your table', 'The day', 'Your answer']);
+  });
+
+  it('drops the time from the head when Where shows', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: today(answered('coming')) }] });
+    open();
+
+    await screen.findByRole('region', { name: 'Where' });
+
+    expect(document.querySelector('.gp-cover-line')?.textContent).not.toMatch(/·/u);
+  });
+
+  it('shows an address with no name and Open in maps', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            event: {
+              ...PAGE.event,
+              venue: { name: null, address: 'Ozumba Mbadiwe Ave, Victoria Island, Lagos' },
+            },
+          }),
+        },
+      ],
+    });
+    open();
+
+    const where = await screen.findByRole('region', { name: 'Where' });
+
+    expect(within(where).getByText('Ozumba Mbadiwe Ave, Victoria Island, Lagos')).toBeDefined();
+    expect(within(where).getByRole('link', { name: 'Open in maps' })).toBeDefined();
+  });
+
+  it('keeps the party line in Your answer, and leaves it out once answers have closed', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: today(answered('coming', undefined, 1, [CHIDI])) },
+      ],
+    });
+    const { unmount } = open();
+
+    expect(await screen.findByText(/· 2 people$/u)).toBeDefined();
+    unmount();
+    vi.restoreAllMocks();
+
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming', undefined, 1, [CHIDI]), { answersOpen: false }),
+        },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByText('Answers have closed. Contact your host if something has changed.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/· 2 people$/u)).toBeNull();
+  });
+
+  it('keeps the usual order for Not coming, Not sure yet and no answer', async () => {
+    for (const body of [answered('notComing'), answered('maybe'), PAGE]) {
+      api({
+        '/api/guest-links/page': [
+          { status: 200, body: { ...body, onTheDay: true, checkInCode: null } },
+        ],
+      });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Where' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('keeps the usual order for a Coming guest on any other day', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...answered('coming'), onTheDay: false, checkInCode: CODE } },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Show this at the door' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+  });
+
+  it('keeps the order the page opened with when the page asks again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...answered('coming'), onTheDay: false, checkInCode: CODE } },
+        { status: 200, body: today(answered('coming')) },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Show this at the door' });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Show this at the door' })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+  });
+});
+
+describe("the screen kept on while the code shows on the event's day (sc-24381)", () => {
+  const CODE = { code: 'q2k9tD0tX3vYb1mLw7pZc4sRf8hJn6aE5uGi0oKy2Vx', qrSvg: '<svg></svg>' };
+
+  function stubs() {
+    const watched: { callback: IntersectionObserverCallback; targets: Element[] }[] = [];
+    const sentinel = Object.assign(new EventTarget(), { release: vi.fn(() => Promise.resolve()) });
+    const request = vi.fn(() => Promise.resolve(sentinel));
+
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        private readonly one: { callback: IntersectionObserverCallback; targets: Element[] };
+        constructor(callback: IntersectionObserverCallback) {
+          this.one = { callback, targets: [] };
+          watched.push(this.one);
+        }
+        observe(target: Element) {
+          this.one.targets.push(target);
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      },
+    );
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request } });
+    const seen = async (isIntersecting: boolean) => {
+      await act(async () => {
+        for (const one of watched) {
+          one.callback(
+            one.targets.map((target) => ({ isIntersecting, target }) as IntersectionObserverEntry),
+            {} as never,
+          );
+        }
+        await Promise.resolve();
+      });
+    };
+
+    return { request, sentinel, seen };
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'wakeLock');
+    vi.unstubAllGlobals();
+  });
+
+  function day(body: object) {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...body, onTheDay: true, checkInCode: CODE } },
+      ],
+    });
+    open();
+  }
+
+  it('asks for the lock with the code in view and lets it go once it scrolls away', async () => {
+    const { request, sentinel, seen } = stubs();
+    day(answered('coming'));
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    await seen(true);
+    expect(request).toHaveBeenCalledWith('screen');
+    await seen(false);
+    expect(sentinel.release).toHaveBeenCalled();
+  });
+
+  it('asks again when the page comes back with the code in view', async () => {
+    const { request, sentinel, seen } = stubs();
+    day(answered('coming'));
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+    await seen(true);
+
+    sentinel.dispatchEvent(new Event('release'));
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('never asks for a guest who is not Coming', async () => {
+    const { request, seen } = stubs();
+    day(answered('notComing'));
+    await screen.findAllByRole('heading', { level: 1 });
+    await seen(true);
+
+    expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe('a guest asked again after a menu change (sc-3913)', () => {
+  const [MAIN, DESSERT] = MEALS.courses as [
+    (typeof MEALS.courses)[number],
+    (typeof MEALS.courses)[number],
+  ];
+  const changed = (course: string, picked: string, why: object = { why: 'removed' }) => ({
+    course,
+    answer: 'menuChanged',
+    dish: null,
+    variant: null,
+    options: [],
+    changed: { picked, ways: null, allergens: [], ...why },
+  });
+  const chosen = (course: string, dish: string) => ({
+    course,
+    answer: 'chosen',
+    dish,
+    variant: null,
+    options: [],
+  });
+  const back = (answers: Record<string, object[]>, courses: object[] = [MAIN, DESSERT]) => ({
+    ...answered('coming', undefined, 1, [CHIDI]),
+    meals: { ...MEALS, courses, answers },
+  });
+
+  it('opens straight on the changed course, says why, and sends the new pick with Send my changes', async () => {
+    const before = back({
+      [MEALS.you]: [changed('main', 'Sea bass'), chosen('dessert', 'cake')],
+      [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+    });
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: before }],
+      '/api/guest-links/meals': [{ status: 200, body: before }],
+    });
+    open();
+
+    const head = await screen.findByRole('heading', { name: /Pick a new main$/ });
+    expect(head.textContent).toContain('For you, Main, 1 of 1.');
+    expect(screen.getByText('You picked Sea bass, which is no longer on the menu.')).toBeDefined();
+    expect(screen.getByRole('radio', { name: /Let the kitchen choose for me/ })).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBe(
+      document.activeElement,
+    );
+    expect(screen.getByText('Not sent yet')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    await waitFor(() => expect(sent.map(({ path }) => path)).toContain('/api/guest-links/meals'));
+    const body = sent.find(({ path }) => path === '/api/guest-links/meals')?.body as {
+      picks: { person: string; course: string; answer: string; dish?: string }[];
+    };
+    expect(body.picks.find((one) => one.person === MEALS.you && one.course === 'main')).toEqual(
+      expect.objectContaining({ answer: 'chosen', dish: 'jollof' }),
+    );
+  });
+
+  it('walks only the changed courses of the people they changed, naming only their added allergens', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back({
+            [MEALS.you]: [chosen('main', 'jollof'), changed('dessert', 'Coconut cake')],
+            [CHIDI.id]: [
+              changed('main', 'Pounded yam and egusi', {
+                why: 'allergen',
+                allergens: ['milk', 'sesame'],
+              }),
+              chosen('dessert', 'cake'),
+            ],
+          }),
+        },
+      ],
+    });
+    open();
+
+    const first = await screen.findByRole('heading', { name: /Pick a new dessert$/ });
+    expect(first.textContent).toContain('For you, Dessert, 1 of 2.');
+    fireEvent.click(screen.getByRole('radio', { name: /No dessert/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const second = await screen.findByRole('heading', { name: /Pick a new main$/ });
+    expect(second.textContent).toContain('For Chidi Okonkwo-Williams, Main, 2 of 2.');
+    expect(
+      screen.getByText(
+        'Chidi Okonkwo-Williams picked Pounded yam and egusi, which now contains milk and sesame.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(await screen.findByRole('heading', { name: /Pick a new dessert$/ })).toBeDefined();
+  });
+
+  it('keeps the row Menu changed on Back, and refuses Send my changes while it is', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back({
+            [MEALS.you]: [
+              changed('main', 'Pounded yam and egusi', { why: 'ways', ways: 2 }),
+              chosen('dessert', 'cake'),
+            ],
+            [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+          }),
+        },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByText('You picked Pounded yam and egusi, which now comes 2 ways.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    const change = await screen.findByRole('button', { name: 'Change main for you' });
+    expect(change).toBe(document.activeElement);
+    expect(screen.getByText('Menu changed')).toBeDefined();
+    expect(change.getAttribute('aria-describedby')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(
+      (await screen.findByText('The menu changed for a pick. Pick again before you send.')).closest(
+        '[role="alert"]',
+      ),
+    ).not.toBeNull();
+    expect(change).toBe(document.activeElement);
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('shows a course closed since read-only, with the host in touch, and does not refuse Send', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back(
+            {
+              [MEALS.you]: [
+                changed('main', 'Jollof rice', { why: 'choices' }),
+                chosen('dessert', 'cake'),
+              ],
+              [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+            },
+            [{ ...MAIN, picksClose: { ...CLOSE, closed: true } }, DESSERT],
+          ),
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('You picked Jollof rice, and its choices have changed.')).toBeDefined();
+    expect(screen.getByText('The host will be in touch.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change main for you' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(
+      await screen.findByText('Nothing has changed, so there is nothing to send.'),
     ).toBeDefined();
   });
 });

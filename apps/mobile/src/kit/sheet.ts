@@ -67,6 +67,8 @@ export interface SheetWindows {
   lower: (id: string) => void;
   /** True while another sheet's window is up and this one's is not. */
   waits: (id: string) => boolean;
+  /** Settles once no sheet's window is up, so what iOS presents next is not taken down with a window still going. */
+  cleared: () => Promise<void>;
   subscribe: (heard: () => void) => () => void;
 }
 
@@ -85,6 +87,19 @@ export function sheetWindows(): SheetWindows {
       if (up.delete(id)) told();
     },
     waits: (id) => !up.has(id) && up.size > 0,
+    cleared: () =>
+      new Promise((done) => {
+        if (up.size === 0) {
+          done();
+          return;
+        }
+        const heard = () => {
+          if (up.size > 0) return;
+          listeners.delete(heard);
+          done();
+        };
+        listeners.add(heard);
+      }),
     subscribe: (heard) => {
       listeners.add(heard);
       return () => listeners.delete(heard);
@@ -94,6 +109,24 @@ export function sheetWindows(): SheetWindows {
 
 /** The top of a phone sheet a drag that moves it starts in, Apple's minimum hit target (sc-27948). */
 export const SHEET_DRAG_STRIP = 44;
+
+/** Whether a finger that landed `from` below the sheet's top landed in its strip. */
+export function sheetStripHas(from: number): boolean {
+  return from >= 0 && from <= SHEET_DRAG_STRIP;
+}
+
+/** One finger landing in the strip holds the sheet's drag, unless the sheet is scrolled away from its top: it goes back to the top before it closes (sc-95217). */
+export function sheetTouchHolds({
+  from,
+  touches,
+  scrolled,
+}: {
+  from: number;
+  touches: number;
+  scrolled: boolean;
+}): boolean {
+  return touches === 1 && !scrolled && sheetStripHas(from);
+}
 
 /** A drag that lands in the strip and moves more down or up than across moves the sheet; `from` is where the finger landed, measured from the sheet's top. */
 export function sheetDragStarts({
@@ -105,7 +138,7 @@ export function sheetDragStarts({
   dx: number;
   dy: number;
 }): boolean {
-  return from >= 0 && from <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx);
+  return sheetStripHas(from) && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx);
 }
 
 /** How fast the finger was moving down as it let go, in pt per ms, over its last tenth of a second. */

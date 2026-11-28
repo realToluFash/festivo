@@ -6,12 +6,17 @@ import {
   type TodaySub,
   formatEventClock,
   notThisYear,
+  numberFormat,
+  type TodayArrivals,
+  todayArrivalsOf,
+  todayRepliesOf,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import {
   type AgendaItem,
+  type ArrivedFigure,
   type EventCard,
   meshFor,
   type Moment,
@@ -19,6 +24,7 @@ import {
   type ShownEvent,
 } from './today.ts';
 import { daysWords } from './eventsList.ts';
+import { needsToday } from './todayNeeds.ts';
 
 export interface Reader {
   timeZone: string;
@@ -37,7 +43,7 @@ export function shownEvent(event: ListedEvent): ShownEvent {
 const SHORT_DAY: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
 
 /** A wall day, `2026-11-03`, written in the reader's language. */
-function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+export function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
   );
@@ -109,7 +115,65 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
     live: one.live,
     draft: one.draft,
     stage: one.finalWeek ? t('todayScreen.finalWeek') : null,
-    ready: null,
+    ready: readyOf(event, one.draft, t),
+  };
+}
+
+function arrivedWords(arrivals: TodayArrivals, t: TFunction): string {
+  return arrivals.kind === 'alone'
+    ? t('todayScreen.arrivedAlone', { count: arrivals.attended })
+    : t('todayScreen.arrivedOf', { count: arrivals.attended, expected: arrivals.expected });
+}
+
+/** Now's figure once anyone has arrived (sc-29978), its numbers in the reader's language. */
+function arrivedFigure(event: ListedEvent, locale: string, t: TFunction): ArrivedFigure | null {
+  const arrivals = todayArrivalsOf(event.guests);
+
+  if (arrivals == null) return null;
+
+  const numbers = numberFormat(locale);
+  const count = numbers.format(arrivals.attended);
+  const label = t('todayScreen.arrivedCount', { count: arrivals.attended });
+  const spoken = arrivedWords(arrivals, t);
+
+  return arrivals.kind === 'alone'
+    ? { count, of: null, share: null, label, spoken }
+    : {
+        count,
+        of: numbers.format(arrivals.expected),
+        share: arrivals.attended / arrivals.expected,
+        label,
+        spoken,
+      };
+}
+
+/** sc-29978's arrived line once anyone has arrived, otherwise sc-29881's, from the figures Events counts (sc-3786), so Today and Events agree. */
+function readyOf(event: ListedEvent, draft: boolean, t: TFunction): EventCard['ready'] {
+  const arrivals = draft ? null : todayArrivalsOf(event.guests);
+
+  if (arrivals != null)
+    return arrivals.kind === 'alone'
+      ? { words: arrivedWords(arrivals, t), percent: 0 }
+      : { words: arrivedWords(arrivals, t), percent: arrivals.percent, track: true };
+
+  const replies = todayRepliesOf(event.guests, draft);
+
+  if (replies == null) return null;
+  if (replies.kind === 'notSent') return { words: t('todayScreen.invitationsNotSent'), percent: 0 };
+
+  const parts = {
+    coming: t('todayScreen.repliesComing', { count: replies.coming }),
+    replied: t('todayScreen.repliesShare', {
+      count: replies.percent,
+      share: replies.percent / 100,
+    }),
+  };
+
+  return {
+    words: t('todayScreen.replies', parts),
+    spoken: t('todayScreen.repliesSpoken', parts),
+    percent: replies.percent,
+    track: true,
   };
 }
 
@@ -132,13 +196,12 @@ function nowOf(now: TodayNow<ListedEvent>, at: Date, reader: Reader, t: TFunctio
         : now.endsIn === 1
           ? t('todayScreen.endsTomorrow', ends)
           : t('todayScreen.endsOn', ends),
-    // Only the dates are known: what is happening, the rail and arrivals have no source yet, so a moment that is not `full` never draws them.
+    // Only the dates and the arrivals are known: what is happening and the rail have no source here, so a moment that is not `full` never draws them.
     happening: '',
     until: '',
     behind: '',
     next: { time: '', title: '' },
-    arrived: 0,
-    expected: 0,
+    arrived: arrivedFigure(event, reader.locale, t),
     rail: [],
     at: 0,
   };
@@ -178,6 +241,18 @@ export function todayMoment(
 ): Moment {
   const view = todayView(loaded, now, reader);
   const shortDay = (day: string) => dayWords(day, reader.locale, SHORT_DAY);
+  // A first run can see no event, so it has no row and no tick (sc-29884).
+  const needs =
+    view.kind === 'first'
+      ? null
+      : needsToday(
+          loaded.events,
+          shownEvent,
+          now,
+          (day, withYear) =>
+            dayWords(day, reader.locale, withYear ? { ...SHORT_DAY, year: 'numeric' } : SHORT_DAY),
+          t,
+        );
 
   return {
     name: view.kind === 'day' ? 'dayNow' : view.kind === 'plan' ? 'planNow' : view.kind,
@@ -189,9 +264,12 @@ export function todayMoment(
       name === ''
         ? t(`todayScreen.hello.${view.greeting}`)
         : t(`todayScreen.helloName.${view.greeting}`, { name }),
-    lead: null,
+    lead:
+      needs != null && needs.length > 0
+        ? t('todayScreen.needsLead', { count: needs.length })
+        : null,
     sub: subOf(view.sub, now, reader, t),
-    needs: null,
+    needs,
     days: view.days.map(({ day, today: isToday, dots }) => ({
       weekday: dayWords(day, reader.locale, { weekday: 'short' }),
       number: dayWords(day, reader.locale, { day: 'numeric' }),

@@ -22,9 +22,9 @@ use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Repository\EventRepository;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedActiveEventsLimit;
 use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Double\ScriptedEventAmounts;
+use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -38,6 +38,8 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class EventsTest extends ApiTestCase
 {
@@ -111,6 +113,8 @@ final class EventsTest extends ApiTestCase
         yield 'a type outside the list' => [['type' => 'burial'], 'type', 'Choose what kind of event it is.'];
         yield 'a type by its label' => [['type' => 'Wedding'], 'type', 'Choose what kind of event it is.'];
         yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
+        yield 'a name past 120 marked letters' => [['name' => Str\repeat("e\u{0323}\u{0300}", 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
+        yield 'a name of one letter of many marks' => [['name' => 'a' . Str\repeat("\u{0301}", 480)], 'name', 'Shorten the name to 120 characters or fewer.'];
         yield 'no start' => [['startsAt' => ''], 'startsAt', 'Choose when the event starts.'];
         yield 'no end' => [['endsAt' => ''], 'endsAt', 'Choose when the event ends.'];
         yield 'an end before the start' => [['endsAt' => '2026-11-14T15:59'], 'endsAt', 'The end is before the start. Choose a later end.'];
@@ -446,7 +450,7 @@ final class EventsTest extends ApiTestCase
 
         $listed = self::page($this->as($this->owner, 'GET', $this->path('events')))['events'];
 
-        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null]], $listed[0]['milestones']);
+        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false]], $listed[0]['milestones']);
     }
 
     /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
@@ -706,8 +710,8 @@ final class EventsTest extends ApiTestCase
     public function aDraftIsMadeLiveAndAudited(): void
     {
         $id = $this->hosted($this->create('Owambe', self::AHEAD));
-        $limit = self::service(ScriptedActiveEventsLimit::class);
-        $asked = $limit->consulted;
+        $limit = self::service(ScriptedHardLimits::class);
+        $asked = $limit->asked('requireLiveRoom');
 
         $event = $this->event($this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live'));
 
@@ -716,7 +720,7 @@ final class EventsTest extends ApiTestCase
         self::assertNotNull($event['madeLiveAt']);
         self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), new DateTimeImmutable($event['madeLiveAt'])->getTimestamp(), 5);
         self::assertNotSame('', $this->tag());
-        self::assertSame($asked + 1, $limit->consulted, 'the plan limit was not consulted');
+        self::assertSame($asked + 1, $limit->asked('requireLiveRoom'), 'the plan limit was not consulted');
         self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE, 'subjectType' => 'Event']);
@@ -783,33 +787,28 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
-        self::assertSame("This event's end has passed, so it cannot be made live. Change its dates first.", $this->last()['detail'] ?? null);
+        self::assertSame('This event’s end has passed, so it cannot be made live. Change its dates first.', $this->last()['detail'] ?? null);
         $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
         self::assertSame(['draft', null], [$kept['status'], $kept['madeLiveAt']]);
     }
 
-    /** @return iterable<string, array{int, string}> */
-    public static function planLimits(): iterable
-    {
-        yield 'three' => [3, 'Not made live. Your Free plan allows 3 events to be live or paused at a time.'];
-        yield 'one' => [1, 'Not made live. Your Free plan allows 1 event to be live or paused at a time.'];
-    }
-
     #[Test]
-    #[DataProvider('planLimits')]
-    public function overThePlansLimitItStaysADraftAndSaysWhichLimit(int $limit, string $detail): void
+    public function overThePlansLimitItStaysADraftAndSaysWhichLimitAndWhichEventEndsFirst(): void
     {
+        $this->live(self::AHEAD, '2030-11-16T02:00');
+        $first = $this->live(self::AHEAD, '2030-11-15T23:00');
         $id = $this->hosted($this->create('Owambe', self::AHEAD));
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', $limit);
+        self::service(ScriptedHardLimits::class)->enforce();
 
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
 
         self::assertSame(403, $this->statusCode());
-        self::assertSame(ErrorCode::PlanLimit->type(), $this->last()['type'] ?? null);
-        self::assertSame(['Free', $limit], [$this->last()['plan'] ?? null, $this->last()['limit'] ?? null]);
-        self::assertSame($detail, $this->last()['detail'] ?? null);
+        self::assertSame(ErrorCode::PlanLimitReached->type(), $this->last()['type'] ?? null);
+        self::assertSame(['live_events', 'free', 2, 2], [$this->last()['limit'] ?? null, $this->last()['plan'] ?? null, $this->last()['used'] ?? null, $this->last()['allowed'] ?? null]);
+        self::assertSame(['id' => $first['id'], 'name' => $first['name'], 'endsAt' => $first['endsAt'], 'timeZone' => $first['timeZone']], $this->last()['event'] ?? null);
+        self::assertSame('Not made live. Your Free plan allows 2 events to be live or paused at a time.', $this->last()['detail'] ?? null);
         self::assertSame('draft', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
-        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE]));
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE, 'subjectId' => Uuid::fromString($id)]));
     }
 
     #[Test]
@@ -1163,15 +1162,16 @@ final class EventsTest extends ApiTestCase
     {
         $event = $this->live(self::AHEAD, '2030-11-15T02:00');
         $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/pause');
-        $limit = self::service(ScriptedActiveEventsLimit::class);
-        $limit->reach('Free', 1);
-        $asked = $limit->consulted;
+        $this->live(self::AHEAD, '2030-11-15T02:00');
+        $limit = self::service(ScriptedHardLimits::class);
+        $limit->enforce();
+        $asked = $limit->asked('requireLiveRoom');
 
         $resumed = $this->event($this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/resume'));
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame('live', $resumed['status']);
-        self::assertSame($asked, $limit->consulted, 'Resume consulted the plan limit');
+        self::assertSame($asked, $limit->asked('requireLiveRoom'), 'Resume consulted the plan limit');
     }
 
     /** Make live and End now work as before around a pause, and the guest list, seating and replies are another table's: nothing here touches them. */
@@ -1225,6 +1225,67 @@ final class EventsTest extends ApiTestCase
         self::assertSame('This event is over, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
         self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventEditor::UPDATED]), 'only the move into the past was recorded');
+    }
+
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function calledOffScheduleChanges(): iterable
+    {
+        yield 'the start' => [['startsAt' => '2030-11-14T17:00']];
+        yield 'the end' => [['endsAt' => '2030-11-15T03:00']];
+        yield 'the zone' => [['timeZone' => 'Europe/London']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('calledOffScheduleChanges')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOff(array $change): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], $change, $this->tagOf($event['id']));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
+    #[Test]
+    public function aScheduleSavedFromBeforeTheCallOffIsStale(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $read = $this->tagOf($event['id']);
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], ['startsAt' => '2030-11-14T17:00'], $read);
+
+        self::assertSame(412, $this->statusCode());
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
+    /** @return iterable<string, array{string, ?string, string}> */
+    public static function calledOffLanguages(): iterable
+    {
+        yield 'en by Accept-Language' => ['', 'en', 'en'];
+        yield 'es by ?locale=' => ['?locale=es', null, 'es'];
+        yield 'fr by Accept-Language' => ['', 'fr', 'fr'];
+        yield 'pt by ?locale=' => ['?locale=pt', null, 'pt'];
+    }
+
+    #[Test]
+    #[DataProvider('calledOffLanguages')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOffInEachLanguage(string $query, ?string $language, string $locale): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        $this->as($this->owner, 'PATCH', '/api/events/' . $event['id'] . $query, ['timeZone' => 'Europe/London'], $this->tagOf($event['id']), $language);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(self::service(TranslatorInterface::class)->trans('event.schedule_called_off', [], null, $locale), $this->last()['detail'] ?? null);
     }
 
     #[Test]
@@ -1367,6 +1428,10 @@ final class EventsTest extends ApiTestCase
     {
         yield 'a venue name past 120' => [['name' => Str\repeat('a', 121)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
         yield 'an address past 300' => [['address' => Str\repeat('a', 301)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
+        yield 'a venue name past 120 marked letters' => [['name' => Str\repeat("e\u{0323}\u{0300}", 121)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
+        yield 'a venue name of one letter of many marks' => [['name' => 'a' . Str\repeat("\u{0301}", 480)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
+        yield 'an address past 300 marked letters' => [['address' => Str\repeat("e\u{0323}\u{0300}", 301)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
+        yield 'an address of one letter of many marks' => [['address' => 'a' . Str\repeat("\u{0301}", 1200)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
     }
 
     /** @param array<string, string> $venue */
@@ -1384,6 +1449,22 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(422, $this->statusCode());
         self::assertSame([$field => $message], $this->violations());
+    }
+
+    #[Test]
+    public function theLimitInLettersWithADotAndAToneEachIsSavedAndReadBack(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        foreach (["\u{1EB9}\u{0300}", "e\u{0323}\u{0300}"] as $letter) {
+            $this->edit($id, ['name' => Str\repeat($letter, 120), 'venue' => ['name' => Str\repeat($letter, 120), 'address' => Str\repeat($letter, 300)], 'arrivalNote' => Str\repeat($letter, 500)], $this->tagOf($id));
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+            $event = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+            $venue = Type\shape(['name' => Type\string(), 'address' => Type\shape(['formatted' => Type\string()], true)])->coerce($event['venue']);
+            self::assertSame([Str\repeat($letter, 120), Str\repeat($letter, 120), Str\repeat($letter, 300)], [$event['name'], $venue['name'], $venue['address']['formatted']]);
+            self::assertSame(Str\repeat($letter, 500), $event['arrivalNote']);
+        }
     }
 
     #[Test]
@@ -1471,6 +1552,155 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anArrivalNoteIsSavedTrimmedWithItsLineBreaks(): void
+    {
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => "\n  Side gate on Marylebone Road.\n\nDoors at 17:30.  \n "]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame("Side gate on Marylebone Road.\n\nDoors at 17:30.", $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteStaysWithNeitherVenueNameNorAddress(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['venue' => null, 'arrivalNote' => 'Address to follow; doors at 8'], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([null, 'Address to follow; doors at 8'], [$this->event($this->last())['venue'], $this->event($this->last())['arrivalNote']]);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function noNotes(): iterable
+    {
+        yield 'emptied' => [''];
+        yield 'only spaces and blank lines' => ["  \n\n \t "];
+    }
+
+    #[Test]
+    #[DataProvider('noNotes')]
+    public function anArrivalNoteEmptiedIsRemoved(string $typed): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $this->edit($id, ['arrivalNote' => $typed], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertNull($this->event($this->last())['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteOf500DecomposedLettersIsSavedAsTyped(): void
+    {
+        $note = Str\repeat("o\u{0323}\u{0301}", 500);
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['arrivalNote' => " {$note}\n"], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($note, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['arrivalNote']);
+    }
+
+    #[Test]
+    public function anEditLeavingTheArrivalNoteOutKeepsIt(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $this->edit($id, ['venue' => null, 'name' => 'Renamed'], $this->tagOf($id));
+
+        self::assertSame('Gate 2', $this->event($this->last())['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteOf500CodePointsWithAccentsAndAnEmojiIsSavedAnd501IsRefused(): void
+    {
+        $note = Str\repeat('a', 494) . 'éñç🚗 b';
+        self::assertSame(500, Str\length($note));
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note . '  ']);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+
+        $id = $this->event($body)['id'];
+        $this->edit($id, ['arrivalNote' => $note . 'c'], $this->tagOf($id));
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['arrivalNote' => 'Shorten the arrival note to 500 characters or fewer.'], $this->violations());
+
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note . 'c']);
+        self::assertSame(422, $this->statusCode());
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function arrivalNotesPast500Letters(): iterable
+    {
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 501)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 2001)];
+    }
+
+    #[Test]
+    #[DataProvider('arrivalNotesPast500Letters')]
+    public function anArrivalNotePast500LettersIsRefused(string $note): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['arrivalNote' => 'Shorten the arrival note to 500 characters or fewer.'], $this->violations());
+    }
+
+    #[Test]
+    public function aNoteOf500EndingInSpacesTheClientsTrimIsSaved(): void
+    {
+        $note = Str\repeat('a', 500);
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => "\u{3000}" . $note . "\u{2028}\u{202F}\u{3000}"]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function anAccentTypedAsTwoCodePointsCountsAsOne(): void
+    {
+        $note = Str\repeat("e\u{301}", 500);
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function aMemberWhoCannotChangeTheVenueCannotChangeTheArrivalNote(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $tag = $this->tagOf($id);
+        $member = $this->member('member@ire.events', SeededRole::Member, $id, EventRole::CanView);
+
+        $this->as($member, 'PATCH', '/api/events/' . $id, ['arrivalNote' => 'Theirs'], $tag);
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::PermissionRequired->type(), $this->last()['type'] ?? null);
+        self::assertNull($this->event($this->as($member, 'GET', '/api/events/' . $id))['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteIsAuditedAsPartOfTheEventsEdit(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame(['arrivalNote' => [null, 'Gate 2']], $entry->getChanges());
+    }
+
+    #[Test]
     public function aNewEventHasNoHosts(): void
     {
         self::assertSame([], $this->event($this->as($this->owner, 'POST', $this->path('events'), self::valid()))['hosts']);
@@ -1539,7 +1769,9 @@ final class EventsTest extends ApiTestCase
     public static function hostRefusals(): iterable
     {
         yield 'blank' => [['Funmi Adeyemi', " \n "], 'hosts[1]', 'Enter a name or remove this host.'];
-        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
+        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 1.'];
         yield 'a repeat, regardless of case' => [['Funmi Adeyemi', 'Tayo', ' funmi ADEYEMI'], 'hosts[2]', 'Funmi Adeyemi is already a host.'];
         yield 'a seventh' => [['A', 'B', 'C', 'D', 'E', 'F', 'G'], 'hosts', 'An event can have at most 6 hosts.'];
     }
@@ -1569,6 +1801,18 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($hosts, $this->event($this->last())['hosts']);
+    }
+
+    #[Test]
+    public function hostsOf60LettersWithADotAndAToneOrOfEmojiAreTaken(): void
+    {
+        $hosts = [Str\repeat("\u{1EB9}\u{0300}", 60), Str\repeat("e\u{0323}\u{0300}", 59) . 'a', Str\repeat('a', 57) . "👨\u{200D}👩\u{200D}👧 🇳🇬"];
+        $id = $this->create('Owambe', self::AHEAD);
+
+        $this->edit($id, ['hosts' => $hosts], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($hosts, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['hosts']);
     }
 
     #[Test]
@@ -1763,7 +2007,7 @@ final class EventsTest extends ApiTestCase
     /**
      * Made live while its end is ahead, then moved to `$startsAt` and `$endsAt` in the database, as time would.
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string}
      */
     private function live(string $startsAt, string $endsAt): array
     {
@@ -1819,7 +2063,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string}
      */
     private function event(array $body): array
     {
@@ -1836,13 +2080,20 @@ final class EventsTest extends ApiTestCase
             'currency' => Type\string(),
             'cover' => Type\null(),
             'venue' => Type\mixed(),
+            'arrivalNote' => Type\nullable(Type\string()),
+            'replyBy' => Type\nullable(Type\string()),
+            'repliesCloseAt' => Type\nullable(Type\string()),
+            'repliesClosedOn' => Type\nullable(Type\string()),
             'hosts' => Type\vec(Type\string()),
+            'thankYou' => Type\nullable(Type\string()),
             'madeLiveAt' => Type\nullable(Type\string()),
             'pausedAt' => Type\nullable(Type\string()),
             'phase' => Type\string(),
             'concludedAt' => Type\nullable(Type\string()),
+            'deleteRefusedBecause' => Type\nullable(Type\string()),
             'createdAt' => Type\string(),
             'permissions' => Type\vec(Type\string()),
+            'roleOnEvent' => Type\nullable(Type\string()),
         ])->assert($body['event'] ?? null);
     }
 
@@ -1902,13 +2153,14 @@ final class EventsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null, ?string $language = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
+            ...null === $language ? [] : ['HTTP_ACCEPT_LANGUAGE' => $language],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
+import { wordsFor } from './guest.ts';
+import { SAMPLE_PARTY, partyLine } from './guestCompanions.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 
 const SLOW = { timeout: 15000 };
@@ -38,7 +40,7 @@ async function guest(state: string) {
   await screen.findByRole('banner');
 }
 
-const CALENDAR = new Set(['Add to calendar', '[Ajouter au calendrier]']);
+const CALENDAR = new Set([wordsFor('en').calendarTitle, wordsFor('fr').calendarTitle]);
 const allHeadings = () =>
   within(document.querySelector('main') as HTMLElement)
     .getAllByRole('heading', { level: 2 })
@@ -117,6 +119,34 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
     );
   });
 
+  it('keeps the party line under Your answer, as the recorded view has it on any day', async () => {
+    await guest('onTheDayWithParty');
+    const answer = screen.getByRole('heading', { name: 'Your answer' }).closest('section')!;
+
+    expect(within(answer).getByText(partyLine(SAMPLE_PARTY, 'en'))).toBeDefined();
+    expect(headings()).toEqual(['Your code', 'Where', 'Your answer']);
+  });
+
+  it('keeps the kitchen’s saved note under Your answer once answers have closed by date', async () => {
+    await guest('onTheDayKitchenSaved');
+    const answer = screen.getByRole('heading', { name: 'Your answer' }).closest('section')!;
+
+    expect(within(answer).getByText('Saved. The kitchen will see this.')).toBeDefined();
+    expect(
+      within(answer).getByRole('button', { name: /what the kitchen should know/iu }),
+    ).toBeDefined();
+  });
+
+  it('drops the kitchen’s saved note and the pencil from Your answer once the event has started', async () => {
+    await guest('onTheDayStartedKitchenSaved');
+    const answer = screen.getByRole('heading', { name: 'Your answer' }).closest('section')!;
+
+    expect(within(answer).queryByText('Saved. The kitchen will see this.')).toBeNull();
+    expect(
+      within(answer).queryByRole('button', { name: /what the kitchen should know/iu }),
+    ).toBeNull();
+  });
+
   it('shows the closed view under Your answer from the start', async () => {
     await guest('onTheDayStarted');
 
@@ -189,7 +219,7 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
   it('reads in French, the host’s words untranslated', async () => {
     await guest('onTheDayFrench');
 
-    expect(headings()).toEqual(['[Votre code]', '[Où]', '[Votre réponse]']);
+    expect(headings()).toEqual(['[Votre code]', '[Où]', 'Votre réponse']);
   });
 });
 

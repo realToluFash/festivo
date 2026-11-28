@@ -13,6 +13,8 @@ import {
   firstName,
   formatDay,
   initials,
+  type LimitRefusal,
+  limitRefusalOf,
   roleName,
 } from '@soirely/domain';
 import { useRef, useState } from 'react';
@@ -20,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import {
   Ask,
   Avatar,
@@ -61,6 +64,7 @@ export function InviteDialog({
   const [picked, setPicked] = useState(first?.id ?? '');
   const [problem, setProblem] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [busy, setBusy] = useState(false);
   const [proving, setProving] = useState<Proving | null>(() => provingOnReturn(returned));
   // Google's or Apple's sign-in is single-use: sent once, never again by a second Confirm it's you.
@@ -113,6 +117,8 @@ export function InviteDialog({
         dropProof();
         return confirmFirst();
       }
+      const limit = limitRefusalOf(error, 'seatInvite', t, dateLocale());
+      if (limit != null) return setLimited(limit);
       if (
         error instanceof ApiError &&
         (error.is('already_a_member') || error.is('validation_failed'))
@@ -219,6 +225,16 @@ export function InviteDialog({
           onGo={onClose}
         />
       )}
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          onBack={() => {
+            setLimited(null);
+            field.current?.focus();
+          }}
+          onWay={onClose}
+        />
+      )}
     </>
   );
 }
@@ -228,12 +244,16 @@ export function RequestDialog({
   organisation,
   member,
   roles,
+  reread,
   onClose,
   onAnswered,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   roles: OrganisationRole[];
+  /** The rows on screen, the counts and Waiting, read again once the answer lands. */
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onClose: () => void;
   onAnswered: (list: MembersList, notice: Notice) => void;
 }) {
@@ -243,6 +263,7 @@ export function RequestDialog({
   const [ask, setAsk] = useState<'turnDown' | 'discard' | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
@@ -255,17 +276,20 @@ export function RequestDialog({
     try {
       if (approve && role != null) {
         await api.approveMember(organisation.id, member.id, role.id);
-        onAnswered(await api.members(organisation.id), {
+        onAnswered(await reread(member.id), {
           kind: 'approved',
           member: member.id,
+          name,
           role: roleName(t, role),
         });
       } else {
         await api.turnDownMember(organisation.id, member.id);
-        onAnswered(await api.members(organisation.id), { kind: 'turnedDown', name });
+        onAnswered(await reread(member.id), { kind: 'turnedDown', name });
       }
     } catch (error) {
       setBusy(false);
+      const limit = approve ? limitRefusalOf(error, 'seatApprove', t, dateLocale(), name) : null;
+      if (limit != null) return setLimited(limit);
       setFailed(
         error instanceof ApiError
           ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
@@ -352,6 +376,9 @@ export function RequestDialog({
           onKeep={() => setAsk(null)}
           onGo={onClose}
         />
+      )}
+      {limited != null && (
+        <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} onWay={onClose} />
       )}
     </>
   );

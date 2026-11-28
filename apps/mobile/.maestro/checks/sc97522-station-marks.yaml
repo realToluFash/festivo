@@ -1,0 +1,30 @@
+# sc-97522: opens ${EVENT_ID}'s kitchen station, picks the first station offered, then waits for the station header and screenshots its trays (the On and Not on marks) at the top and two scrolls.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station\.title|station\.landing|station\.pick\..*|station\.sheet'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'station\.pick\..*'
+    commands:
+      - tapOn:
+          id: 'station\.pick\..*'
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled2

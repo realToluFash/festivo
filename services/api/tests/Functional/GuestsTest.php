@@ -65,11 +65,11 @@ final class GuestsTest extends ApiTestCase
         $list = $this->as($this->owner, 'GET', $this->guests());
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
     }
 
     #[Test]
-    public function aGuestIsKeptAsTypedWithNoReplyAndTheirCompanionsUnderThem(): void
+    public function aGuestIsKeptAsTypedNotYetInvitedAndTheirCompanionsUnderThem(): void
     {
         $body = $this->as($this->owner, 'POST', $this->guests(), [
             'fullName' => '  ' . self::ADAEZE . ' ',
@@ -80,9 +80,9 @@ final class GuestsTest extends ApiTestCase
 
         self::assertSame(201, $this->statusCode(), Json\encode($body));
         $guest = Type\dict(Type\string(), Type\mixed())->coerce($body['guest'] ?? null);
-        self::assertSame([self::ADAEZE, 'adaeze@example.com', '+2348031234567', 'noReply'], [$guest['fullName'], $guest['email'], $guest['mobile'], $guest['reply']]);
+        self::assertSame([self::ADAEZE, 'adaeze@example.com', '+2348031234567', 'noReply', null], [$guest['fullName'], $guest['email'], $guest['mobile'], $guest['reply'], $guest['invitation']]);
         self::assertSame(
-            [['Obi Okonkwo', 'held'], [null, 'held'], [null, 'held']],
+            [['Obi Okonkwo', 'notYetInvited'], [null, 'notYetInvited'], [null, 'notYetInvited']],
             Vec\map(Type\vec(Type\shape(['fullName' => Type\nullable(Type\string()), 'state' => Type\string()], true))->coerce($guest['companions']), static fn (array $companion): array => [$companion['fullName'], $companion['state']]),
         );
 
@@ -106,9 +106,14 @@ final class GuestsTest extends ApiTestCase
     {
         yield 'a blank name' => [['fullName' => '   '], ['fullName' => 'Enter their full name.']];
         yield 'a name too long' => [['fullName' => Str\repeat('a', 201)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a name too long in marked letters' => [['fullName' => Str\repeat("e\u{0323}\u{0300}", 201)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a name of one letter of many marks' => [['fullName' => 'a' . Str\repeat("\u{0301}", 800)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
         yield 'not an email address' => [['fullName' => 'Bisi', 'email' => 'bisi.example.com'], ['email' => 'That does not look like an email address. Check it has an @ and a domain.']];
         yield 'a number too short' => [['fullName' => 'Bisi', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], ['mobile' => 'That number looks too short for Nigeria. Check it and try again.']];
         yield 'a companion named too long' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'Obi'], ['fullName' => Str\repeat('b', 201)]]], ['companions[1].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a companion named too long in marked letters' => [['fullName' => 'Bisi', 'companions' => [['fullName' => Str\repeat("e\u{0323}\u{0300}", 201)]]], ['companions[0].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a companion named with one letter of many marks' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'a' . Str\repeat("\u{0301}", 800)]]], ['companions[0].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a language Soirely does not offer' => [['fullName' => 'Bisi', 'language' => 'de'], ['language' => 'Choose English, Español, Français or Português, or leave it as Not set.']];
         yield 'eleven companions' => [['fullName' => 'Bisi', 'companions' => Vec\fill(11, [])], ['companions' => '10 companions is the most one guest can bring.']];
         yield 'everything at once' => [['fullName' => '', 'email' => 'nope', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], [
             'fullName' => 'Enter their full name.',
@@ -130,6 +135,20 @@ final class GuestsTest extends ApiTestCase
         self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($expected, $this->violations());
         self::assertSame(0, $this->people());
+    }
+
+    #[Test]
+    public function namesOf200LettersWithADotAndAToneOrOfEmojiAreReadBackAsTyped(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 200);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 200);
+        $emoji = Str\repeat('a', 197) . "👨\u{200D}👩\u{200D}👧 🇳🇬";
+        $guest = $this->add(['fullName' => $composed, 'companions' => [['fullName' => $decomposed], ['fullName' => $emoji]]]);
+
+        $read = Type\shape(['fullName' => Type\string(), 'companions' => Type\vec(Type\shape(['fullName' => Type\nullable(Type\string())], true))], true)
+            ->coerce($this->details($this->as($this->owner, 'GET', $this->guest($guest))));
+
+        self::assertSame([$composed, $decomposed, $emoji], [$read['fullName'], ...Vec\map($read['companions'], static fn (array $companion): ?string => $companion['fullName'])]);
     }
 
     #[Test]
@@ -176,11 +195,22 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aGuestAddedWhileTheHubIsDownIsKeptAndAnsweredAsUsual(): void
+    {
+        self::service(RecordingHub::class)->failuresLeft = 2;
+
+        $guest = $this->add(['fullName' => 'Bisi']);
+
+        self::assertSame('Bisi', $guest['fullName'] ?? null);
+        self::assertSame(1, $this->people());
+    }
+
+    #[Test]
     public function eachAddIsPublishedAsTheWholeList(): void
     {
         $this->add(['fullName' => 'Bisi']);
 
-        $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+        $update = self::service(RecordingHub::class)->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertSame(['events/' . $this->eventId . '/guests'], $update->getTopics());
         self::assertTrue($update->isPrivate());
         $viewer = $this->member('ada@ire.events', SeededRole::Member, EventRole::CanView);
@@ -188,14 +218,14 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aSubscriptionNamesThisEventsListAlone(): void
+    public function aSubscriptionNamesThisEventsListAndHeadcountAlone(): void
     {
         $body = $this->as($this->owner, 'POST', $this->guests() . '/subscriptions');
 
         self::assertSame(200, $this->statusCode());
         $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
         self::assertInstanceOf(UnencryptedToken::class, $token);
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests']], $token->claims()->get('mercure'));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $token->claims()->get('mercure'));
     }
 
     /** @return iterable<string, array{EventRole}> */
@@ -276,6 +306,9 @@ final class GuestsTest extends ApiTestCase
             foreach ([$row, $details] as $answer) {
                 self::assertArrayNotHasKey('email', $answer);
                 self::assertArrayNotHasKey('mobile', $answer);
+                self::assertArrayNotHasKey('language', $answer);
+                self::assertArrayNotHasKey('chosenLanguage', $answer);
+                self::assertArrayNotHasKey('messageLanguage', $answer);
                 self::assertSame('Bisi', $answer['fullName'] ?? null);
             }
         }
@@ -303,6 +336,22 @@ final class GuestsTest extends ApiTestCase
         self::assertSame([$unnamed, $tunde], [$companions[0]['id'], $companions[1]['id']]);
         self::assertSame(4, $this->people());
         self::assertSame($this->details($body), $this->details($this->as($this->owner, 'GET', $this->guest($guest))));
+    }
+
+    #[Test]
+    public function theHostsLanguageIsKeptOnAddAndSaveAndASaveWithoutItLeavesItAsItWas(): void
+    {
+        $added = $this->add(['fullName' => 'Inês Duarte', 'language' => 'pt']);
+        self::assertSame(['pt', null, 'pt'], [$added['language'], $added['chosenLanguage'], $added['messageLanguage']]);
+
+        $this->as($this->owner, 'PUT', $this->guest($added), ['fullName' => 'Inês Duarte Silva'], '"1"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('pt', $this->details($this->last())['language']);
+
+        $this->as($this->owner, 'PUT', $this->guest($added), ['fullName' => 'Inês Duarte Silva', 'language' => null], '"2"');
+        $details = $this->details($this->last());
+        self::assertSame([null, 'en'], [$details['language'], $details['messageLanguage']]);
+        self::assertSame('"3"', $this->client->getResponse()->headers->get('ETag'));
     }
 
     #[Test]
@@ -447,9 +496,9 @@ final class GuestsTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->guest($guest), ['fullName' => 'Bisi Adewale', 'email' => 'bisi@example.com'], '"1"');
 
-        $hub = self::service(RecordingHub::class)->published;
-        self::assertCount($published + 1, $hub);
-        $update = Iter\last($hub) ?? self::fail('nothing published');
+        $hub = self::service(RecordingHub::class);
+        self::assertCount($published + 2, $hub->published);
+        $update = $hub->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertStringNotContainsString('bisi@example.com', $update->getData());
         self::assertStringContainsString('Bisi Adewale', $update->getData());
     }

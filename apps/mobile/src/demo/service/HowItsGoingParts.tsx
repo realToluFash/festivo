@@ -36,6 +36,8 @@ export const PATHS = {
   request: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
   flag: ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 22v-7'],
   given: ['M5 12h14', 'm12 5 7 7-7 7'],
+  ban: ['m5.6 5.6 12.8 12.8'],
+  close: ['M18 6 6 18', 'm6 6 12 12'],
 } as const;
 
 export const ALERT_ICON: Record<AlertKind, { paths: readonly string[]; circle: boolean }> = {
@@ -160,7 +162,7 @@ export function TabBar({
 }
 
 export function Strip({ online, refused }: { online: boolean; refused: string }) {
-  const status = online ? 'Connected · up to date 20:24' : 'No connection · as of 20:22';
+  const status = online ? 'Connected · up to date at 20:24' : 'No connection · as of 20:22';
   return (
     <View style={styles.stripWrap}>
       <ReadOut words={status} style={styles.strip} accessibilityRole="text">
@@ -189,7 +191,7 @@ export function Strip({ online, refused }: { online: boolean; refused: string })
   );
 }
 
-export type CountKey = 'served' | 'onTray' | 'kitchen' | 'toServe';
+export type CountKey = 'served' | 'onTray' | 'kitchen' | 'toServe' | 'choice';
 
 /** The board's non-colour cue for each count: Served a filled square, On a tray a dot, Waiting on the kitchen a hatched square, To serve a ring. */
 export function CountShape({ kind }: { kind: CountKey }) {
@@ -200,6 +202,7 @@ export function CountShape({ kind }: { kind: CountKey }) {
       importantForAccessibility="no-hide-descendants"
     >
       {kind === 'kitchen' && <Hatch />}
+      {kind === 'choice' && <Glyph paths={PATHS.ban} ink={tokens.colorInk} side={14} circle />}
     </View>
   );
 }
@@ -265,6 +268,7 @@ const SHAPE = StyleSheet.create({
   onTray: { borderRadius: 7, backgroundColor: tokens.colorAccentTintBorder },
   kitchen: { borderRadius: 3, borderWidth: 1.5, borderColor: tokens.colorInkTertiary },
   toServe: { borderRadius: 7, borderWidth: 2, borderColor: tokens.colorInkSecondary },
+  choice: {},
 });
 
 const styles = StyleSheet.create({

@@ -299,7 +299,7 @@ def drawn_before_its_demo(c, story, state):
         return
     missing = demo_missing(story)
     if missing:
-        raise Refused(f"sc-{story['id']} is not ready to build without its demo: {missing}. "
+        raise Refused(f"sc-{story['id']} is not ready to build without its demo: {missing[1]}. "
                       f"It stays {story['state']}: move it once every pull request on the "
                       "Demo: line has merged")
 
@@ -377,45 +377,56 @@ def stack_up(c, story, held=False):
                   "bring the stack up, or leave the story for another tester")
 
 
-DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
 NOT_BUILT = re.compile(r"\b(being built|not built)\b", re.I)
-SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)", re.I)
+DEMO_OPEN = "open"
+DEMO_ABSENT = "absent"
 
 
 def demo_missing(story):
-    """Why a story the designer drew is not ready to build: a pull request its Demo line
-    names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
-    so nothing is missing, whatever numbers the rest of the line cites."""
-    design = T.find(story.get("description"), "Design")
-    if not design:
+    """(kind, why) for a story the designer drew that is not ready to build, or None.
+    DEMO_OPEN waits: a pull request on its Demo line is still open, or GitHub could not say.
+    DEMO_ABSENT sends it back: no demo, or none of its pull requests merged. A closed one was
+    superseded. A story with no Design section, or whose Demo line reads `none`, shows
+    nothing, so nothing is missing, whatever numbers the rest of the line cites."""
+    if not T.find(story.get("description"), "Design"):
         return None
-    line = next((x for x in design[2].splitlines() if DEMO_LINE.match(x)), None)
+    line = W.demo_line(story)
     if line is None:
-        return "its Design section has no Demo: line"
+        return DEMO_ABSENT, "its Design section has no Demo: line"
     if NOT_BUILT.search(line):
-        return "its Demo: line says the demo is not built"
-    if SHOWS_NOTHING.match(line):
+        return DEMO_ABSENT, "its Demo: line says the demo is not built"
+    if W.SHOWS_NOTHING.match(line):
         return None
     numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
     if not numbers:
-        return "its Demo: line names no pull request"
+        return DEMO_ABSENT, "its Demo: line names no pull request"
     states = {n: pr_state(n) for n in dict.fromkeys(numbers)}
+    states = {n: state for n, state in states.items() if state != NOT_A_PR}
+    if not states:
+        return DEMO_ABSENT, "its Demo: line names no pull request"
     unread = [f"#{n}" for n, state in states.items() if state is None]
     if unread:
-        return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
+        return DEMO_OPEN, (f"GitHub did not answer for {', '.join(unread)}, so its demo is not "
+                           "known merged")
     open_ = [f"#{n}" for n, state in states.items() if state not in ("MERGED", "CLOSED")]
     if open_:
-        return f"its demo {', '.join(open_)} is not merged yet"
+        return DEMO_OPEN, f"its demo {', '.join(open_)} is not merged yet"
     if "MERGED" not in states.values():
-        return f"its demo {', '.join(f'#{n}' for n in states)} was closed without merging"
+        closed = ", ".join(f"#{n}" for n in states)
+        return DEMO_ABSENT, f"its demo {closed} was closed without merging"
     return None
 
 
+NOT_A_PR = "NOT_A_PR"
+
+
 def pr_state(number):
+    """A number GitHub has no pull request for, such as a comment cited beside the demo, is
+    NOT_A_PR rather than unread, so it is skipped instead of blocking the claim."""
     try:
         return github.live(number)["state"]
-    except github.GitHubError:
-        return None
+    except github.GitHubError as error:
+        return NOT_A_PR if github.http_status(error) == 404 else None
 
 
 def claim(c, a):
@@ -437,7 +448,11 @@ def claim(c, a):
         if holders:
             raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
                           "they merge, at Ready For QA or later. Nothing claimed: pick another")
-        missing = story["state"] == "Ready For Dev" and demo_missing(story)
+        kind, missing = (story["state"] == "Ready For Dev" and demo_missing(story)) or (None, None)
+        if kind == DEMO_OPEN:
+            raise Refused(f"sc-{story['id']} is not built without its demo: {missing}. Nothing "
+                          "claimed: wait for the merge, and pick another. It stays Ready For "
+                          "Dev; the demo is drawn, so do not send it back to Needs Design")
         if missing:
             raise Refused(f"sc-{story['id']} is not built without its demo: {missing}. Nothing "
                           f"claimed. Send it back for one:\n  sq {c.role} move sc-{story['id']} "
@@ -815,7 +830,8 @@ def review(c, a):
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        post(c, story, ["ux" if design else R.builder_of(story["labels"])],
+        post(c, story, [W.builder(story, pr) if design or W.ops_pr(story, pr)
+                        else R.builder_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
                 if follow_up or keeps else
@@ -875,8 +891,18 @@ def pr_create(c, a):
         raise Refused(f"the body has no {', '.join(missing)} heading at levels 1-3{levels}; "
                       f"open it in create-pr's shape, since pr-edit can only replace a section "
                       f"it can find")
-    url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
-    return f"opened {url}{resync(c)}"
+    own = github.story_of(a.head, a.title)
+    title, in_title = github.unlink_others(a.title, own)
+    body, in_body = github.unlink_others(a.text, own)
+    url = github.create_pr(a.head, title, body, draft=a.draft)
+    return f"opened {url}{unlinked(in_title + in_body)}{resync(c)}"
+
+
+def unlinked(count):
+    if not count:
+        return ""
+    return (f"; {count} mention{'s' if count != 1 else ''} of other stories written sc\u2011N, "
+            "so Shortcut does not move them on merge")
 
 
 def needs_qa(story):
@@ -1021,9 +1047,10 @@ def merge(c, a):
     if story["state"] not in R.MERGING and not side and not follow_up and not design:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")
-    if not design and R.builder_of(story["labels"]) != c.role and not (
-            c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
-        raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
+    whose = "ops" if W.ops_pr(story, pr) else R.builder_of(story["labels"])
+    if not design and whose != c.role and not (c.role in R.DEVS and whose in R.DEVS):
+        raise Refused(f"PR #{a.pr} is {whose}'s to merge" if W.ops_pr(story, pr)
+                      else f"sc-{story['id']} is {whose}'s to merge")
     verdict = W.latest_verdict(pr)
     carried = pr.get("carried") if head == pr["head_sha"] else None
     if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
@@ -1038,6 +1065,8 @@ def merge(c, a):
     if design:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, and "
                 f"no tester is told{resync(c)}")
+    if W.ops_pr(story, pr):
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     if side:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
                 f"the linguist's to move, and the linguist is woken{resync(c)}")
@@ -1094,15 +1123,44 @@ def pr_edit(c, a):
         raise Refused(f"PR #{a.pr} is closed unmerged")
     owns(c, live["story_id"], live.get("branch"), f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
     found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
-    if len(found) != 1:
-        headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
-        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
-                      f"{a.section}; the body has: {headings or 'no headings'}")
-    body = T.swap(live["body"], found[0], a.text)
+    text, count = github.unlink_others(a.text, live["story_id"])
+    if found:
+        verb = "replaced"
+        heading = found[0]
+        if len(found) != 1:
+            raise Refused(f"{len(found)} headings match {a.section}; the body has: "
+                          f"{existing_headings(live['body'])}")
+        body = T.swap(live["body"], heading, text)
+    else:
+        heading = house_heading(live["body"], a.section)
+        verb = "added"
+        body = T.add_section(live["body"], heading, text, PR_SECTIONS)
     github.edit_body(a.pr, body)
     if known := store.pr(c.db, a.pr):
         store.put_pr(c.db, dict(known, body=body))
-    return f"PR #{a.pr}: replaced {found[0]}"
+    return f"PR #{a.pr}: {verb} {heading}{unlinked(count)}"
+
+
+def existing_headings(body):
+    return "; ".join(h for h, _, _ in T.sections(body) if h != T.TOP) or "no headings"
+
+
+def house_heading(body, name):
+    """The one house heading the name asks for, matched as `pr --section` matches: exactly in
+    any case, else by prefix. Refused when it is none, several, or already there too deep."""
+    wanted = name.strip().lower()
+    exact = [h for h in PR_SECTIONS if h.lower() == wanted]
+    named = exact or [h for h in PR_SECTIONS if wanted and h.lower().startswith(wanted)]
+    if not named:
+        raise Refused(f"no heading matches {name}; the body has: {existing_headings(body)}; "
+                      f"pr-edit can add {', '.join(PR_SECTIONS[:-1])} or {PR_SECTIONS[-1]}")
+    if len(named) > 1:
+        raise Refused(f"{name} matches {' and '.join(named)}; name one of them in full")
+    deeper = {h.lower(): level for h, level, _ in T.sections(body, T.DEEPER) if level}
+    if named[0].lower() in deeper:
+        raise Refused(f"{named[0]} is at level {deeper[named[0].lower()]}; the body would carry "
+                      "it twice: replace the text there, or move the heading to levels 1-3")
+    return named[0]
 
 
 def to_qa(c, a):
@@ -1111,6 +1169,12 @@ def to_qa(c, a):
     linguists_own(c, story, "Ready For QA")
     merged = [pr for pr in store.prs_for_story(c.db, story["id"])
               if pr["state"] == "merged" and not W.design_pr(pr)]
+    if not merged:
+        try:
+            merged = [pr for pr in github.merged_for_story(story["id"]) if not W.design_pr(pr)]
+        except github.GitHubError as error:
+            raise Refused(f"sc-{story['id']} has no merged pull request in the last sync, "
+                          f"and GitHub's search failed: {error}")
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
     if left := open_tasks(story):

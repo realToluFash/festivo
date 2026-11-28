@@ -1,71 +1,113 @@
-import { useEffect, useRef } from 'react';
+import { type FocusEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { duration } from '../leaving.ts';
 
-/** The countdown waits while the pointer or focus is on it, so nobody loses Undo while reaching for it. */
+/** How long a counted toast keeps Undo open, in seconds (sc-3774, WCAG 2.2 §2.2.1). */
+export const COUNTED_SECONDS = 10;
+
+/** The countdown waits while the pointer or focus is on it; a `counted` one restarts from full and has no ×, since its end is what Undo takes back. */
 export function Toast({
   words,
   onUndo,
   onClose,
+  counted,
 }: {
   words: string;
   onUndo?: () => void;
   onClose: () => void;
+  /** Said once with the words to screen readers, which never hear the count. */
+  counted?: { said: string };
 }) {
   const { t } = useTranslation();
-  const held = useRef(false);
+  const pointed = useRef(false);
+  const focused = useRef(false);
   const close = useRef(onClose);
+  const [left, setLeft] = useState(COUNTED_SECONDS);
+  const counts = counted != null;
+  const held = (): boolean => pointed.current || focused.current;
 
   useEffect(() => {
     close.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
+    if (counts) {
+      const timer = window.setInterval(
+        () => setLeft((was) => (held() ? COUNTED_SECONDS : Math.max(was - 1, 0))),
+        1000,
+      );
+
+      return () => window.clearInterval(timer);
+    }
     const lifetime = duration('toastLifetime');
-    let left = lifetime > 0 ? lifetime : 10000;
+    let remaining = lifetime > 0 ? lifetime : 10000;
     const tick = 250;
     const timer = window.setInterval(() => {
-      if (held.current) return;
-      left -= tick;
-      if (left <= 0) close.current();
+      if (held()) return;
+      remaining -= tick;
+      if (remaining <= 0) close.current();
     }, tick);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [counts]);
 
-  const hold = (): void => {
-    held.current = true;
+  useEffect(() => {
+    if (counts && left === 0) close.current();
+  }, [counts, left]);
+
+  const hold = (by: typeof pointed): void => {
+    by.current = true;
+    if (counts) setLeft(COUNTED_SECONDS);
   };
-  const release = (): void => {
-    held.current = false;
+  const blur = (event: FocusEvent<HTMLDivElement>): void => {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    focused.current = false;
   };
 
   return (
     <div
-      className="toast"
+      className={counts ? 'toast is-counted' : 'toast'}
       role="status"
-      onPointerEnter={hold}
-      onPointerLeave={release}
-      onFocus={hold}
-      onBlur={release}
+      onPointerEnter={() => hold(pointed)}
+      onPointerLeave={() => {
+        pointed.current = false;
+      }}
+      onFocus={() => hold(focused)}
+      onBlur={blur}
     >
-      <p className="toast-words">{words}</p>
+      <p className="toast-words">
+        {words}
+        {counted != null && <span className="visually-hidden"> {counted.said}</span>}
+      </p>
+      {counts && (
+        <span className="toast-count" aria-hidden="true">
+          {t('toast.secondsLeft', { count: left })}
+        </span>
+      )}
       {onUndo != null && (
         <button
           type="button"
           className="toast-undo"
+          data-focus="undo"
           onClick={() => {
             onUndo();
-            onClose();
+            if (!counts) onClose();
           }}
         >
           {t('toast.undo')}
         </button>
       )}
-      <button type="button" className="toast-close" aria-label={t('toast.close')} onClick={onClose}>
-        <span aria-hidden="true">×</span>
-      </button>
+      {!counts && (
+        <button
+          type="button"
+          className="toast-close"
+          aria-label={t('toast.close')}
+          onClick={onClose}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      )}
     </div>
   );
 }

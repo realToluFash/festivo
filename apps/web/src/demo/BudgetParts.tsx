@@ -18,6 +18,8 @@ import {
   type Tell,
 } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type Area, type SampleEvent } from './events.ts';
@@ -39,60 +41,63 @@ export function BudgetShell({
   event: SampleEvent;
   area?: Area;
   without?: readonly Area[];
-  trail?: readonly { label: string; to?: string }[];
+  trail?: readonly { label: string; to?: string; onClick?: () => void }[];
   told?: string | null;
   children: (tell: Tell) => ReactNode;
 }) {
   return (
-    <EventsShell
-      told={told}
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area={area}
-          now={NOW}
-          tell={tell}
-          inert={covered}
-          without={without}
-        />
-      )}
-    >
-      {(tell) => (
-        <div className="desk-page ev-page bud">
-          <div className="ev-wide">
-            <div className="ev-crumb-row">
-              <nav className="ev-crumb" aria-label={W.crumb}>
-                <ol>
-                  <li className="ev-crumb-part">
-                    <Link to="/demo/events">{W.events}</Link>
-                  </li>
-                  {[{ label: event.name, to: `/demo/events/${event.id}` }, ...trail].map(
-                    (part, index, all) => (
-                      <li
-                        key={part.label}
-                        className="ev-crumb-part"
-                        aria-current={index === all.length - 1 ? 'page' : undefined}
-                      >
-                        <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                        {part.to != null && index < all.length - 1 ? (
-                          <Link to={part.to}>
+    <KeptArea eventId={event.id} area={area} at={clockWords(NOW, event.timeZone)}>
+      <EventsShell
+        told={told}
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area={area}
+            now={NOW}
+            tell={tell}
+            inert={covered}
+            without={without}
+          />
+        )}
+      >
+        {(tell) => (
+          <div className="desk-page ev-page bud">
+            <div className="ev-wide">
+              <KeptHere />
+              <div className="ev-crumb-row">
+                <nav className="ev-crumb" aria-label={W.crumb}>
+                  <ol>
+                    <li className="ev-crumb-part">
+                      <Link to="/demo/events">{W.events}</Link>
+                    </li>
+                    {[{ label: event.name, to: `/demo/events/${event.id}` }, ...trail].map(
+                      (part, index, all) => (
+                        <li
+                          key={part.label}
+                          className="ev-crumb-part"
+                          aria-current={index === all.length - 1 ? 'page' : undefined}
+                        >
+                          <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                          {part.to != null && index < all.length - 1 ? (
+                            <Link to={part.to} onClick={part.onClick}>
+                              <span className="ev-crumb-name">{part.label}</span>
+                            </Link>
+                          ) : (
                             <span className="ev-crumb-name">{part.label}</span>
-                          </Link>
-                        ) : (
-                          <span className="ev-crumb-name">{part.label}</span>
-                        )}
-                      </li>
-                    ),
-                  )}
-                </ol>
-              </nav>
-              <DemoBell tell={tell} />
+                          )}
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                </nav>
+                <DemoBell tell={tell} />
+              </div>
+              {children(tell)}
             </div>
-            {children(tell)}
           </div>
-        </div>
-      )}
-    </EventsShell>
+        )}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -149,7 +154,9 @@ export function GlassTags({
   washed?: boolean;
 }) {
   return tags.length === 0 ? null : (
-    <ul className={washed ? 'desk-glass-tags is-washed' : 'desk-glass-tags'}>
+    <ul
+      className={washed ? 'desk-glass-tags glass-wraps is-washed' : 'desk-glass-tags glass-wraps'}
+    >
       {tags.map((tag) => (
         <li key={tag.word} className="desk-glass">
           {tag.mark}
@@ -258,7 +265,7 @@ export function MarkWord({ mark, word }: { mark: ReactNode; word: string }) {
   );
 }
 
-export function Amount({ value, line }: { value: string; line?: ReactNode }) {
+export function Amount({ value, line }: { value: ReactNode; line?: ReactNode }) {
   return (
     <span className="bud-amount">
       <span className="bud-amount-value">{value}</span>
@@ -418,14 +425,36 @@ export function OpenedActions({
 }
 
 /** What left and what it changed, with Undo; no timer (WCAG 2.2 2.2.1). */
-export function UndoBar({ words, onUndo }: { words: string; onUndo: () => void }) {
+export function UndoBar({
+  words,
+  onUndo,
+  refused = false,
+  focus = false,
+}: {
+  words: string;
+  onUndo: () => void;
+  refused?: boolean;
+  focus?: boolean;
+}) {
+  const bar = useRef<HTMLDivElement>(null);
+  const undo = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    // Refused, the bar's only button is gone, so focus would fall to the page.
+    if (refused) bar.current?.focus();
+    else if (focus) undo.current?.focus();
+  }, [refused, focus]);
+
   return (
-    <div className="bud-undo" role="status">
+    <div ref={bar} className="bud-undo" role="status" tabIndex={refused ? -1 : undefined}>
+      {refused && <Glyph name="clear" size={16} weight={2.6} />}
       <span className="bud-undo-words">{words}</span>
-      <button type="button" className="bud-undo-do" onClick={onUndo}>
-        <Glyph name="undo" size={16} weight={2.4} />
-        {W.undo}
-      </button>
+      {!refused && (
+        <button ref={undo} type="button" className="bud-undo-do" onClick={onUndo}>
+          <Glyph name="undo" size={16} weight={2.4} />
+          {W.undo}
+        </button>
+      )}
     </div>
   );
 }
@@ -467,11 +496,10 @@ export function InfoLine({ children }: { children: ReactNode }) {
   );
 }
 
-export function ReadOnlyLine({ onPlans }: { onPlans?: () => void }) {
+export function ReadOnlyLine() {
   return (
     <div className="bud-plan-line" role="status">
       <p>{W.readOnlyLine}</p>
-      {onPlans != null && <TextAction label={W.seePlans} onClick={onPlans} />}
     </div>
   );
 }
@@ -481,18 +509,24 @@ export function AskInRow({
   question,
   keep = W.keep,
   go = W.remove,
+  problem = null,
   onKeep,
   onGo,
 }: {
   question: string;
   keep?: string;
   go?: string;
+  problem?: string | null;
   onKeep: () => void;
   onGo: () => void;
 }) {
   const first = useRef<HTMLButtonElement>(null);
+  const goRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => first.current?.focus(), []);
+  useEffect(() => {
+    if (problem != null) goRef.current?.focus();
+  }, [problem]);
 
   return (
     <div className="bud-ask" role="group" aria-label={question}>
@@ -500,9 +534,15 @@ export function AskInRow({
       <button ref={first} type="button" className="desk-text" onClick={onKeep}>
         {keep}
       </button>
-      <button type="button" className="desk-text is-red" onClick={onGo}>
+      <button ref={goRef} type="button" className="desk-text is-red" onClick={onGo}>
         {go}
       </button>
+      {problem != null && (
+        <p className="desk-error bud-ask-problem" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {problem}
+        </p>
+      )}
     </div>
   );
 }

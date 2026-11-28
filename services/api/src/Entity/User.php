@@ -34,7 +34,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $passwordHash = null;
 
-    #[ORM\Column(type: Types::STRING, length: 180)]
+    #[ORM\Column(type: Types::STRING, length: 720)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 180, nullable: true)]
@@ -269,9 +269,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * verified" locks out everyone who signed in with a provider, because
      * those accounts legitimately have no phone.
      */
+    /** A staff account with no email is verified by its confirmed primary phone alone (sc-4235). */
     public function isVerified(): bool
     {
         $email = $this->getPrimaryEmailAddress();
+
+        if (null === $email && AccountOrigin::Staff === $this->origin) {
+            return true === $this->getPrimaryPhoneNumber()?->isVerified();
+        }
 
         if (null === $email || !$email->isVerified()) {
             return false;

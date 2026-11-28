@@ -1,7 +1,9 @@
+import { listFormat } from '@soirely/domain';
 import type { Load } from './members.ts';
 import type { Mark } from '../components/SignInRulesParts.tsx';
 import type { Choice } from '../components/SettingsParts.tsx';
 import { HELD_STEPS, type HeldStep } from './security.ts';
+import { EXEMPT_LINE, type Plan, type Standing, standingOfRules } from './singleSignOn.ts';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
 
 export const ORGANISATION = 'Ire Events';
@@ -51,11 +53,32 @@ export interface RulesPage extends Rules {
   inactivityLimit: { organisation: string; days: number } | null;
   ownTwoFactor: boolean;
   linked: 'Google' | 'Apple' | null;
-  passwordOnly: readonly string[];
+  passwordOnly: People;
   /** Under two-factor for everyone, who still has none: only a manager is told (sc-609). */
-  withoutTwoFactor: readonly string[];
+  withoutTwoFactor: People;
   seen: string | null;
   changes: readonly Change[];
+  sso: Standing;
+}
+
+/** Who a rule leaves short: named up to three, counted past that (sc-18317). */
+export interface People {
+  count: number;
+  names: readonly string[];
+}
+
+const NAMED_UP_TO = 3;
+
+function named(...names: string[]): People {
+  return { count: names.length, names };
+}
+
+function counted(count: number): People {
+  return { count, names: [] };
+}
+
+function number(count: number, locale: string): string {
+  return new Intl.NumberFormat(locale).format(count);
 }
 
 export type RuleKey = 'method' | 'limit' | 'twoFactor';
@@ -72,6 +95,7 @@ export interface RuleRow {
   title: string;
   line: string;
   more?: string;
+  exempt?: string;
   ask: { consequence: string; step: HeldStep } | null;
 }
 
@@ -163,25 +187,30 @@ function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number
 
   if (page.everyoneNeedsTwoFactor) {
     const by = dayIn(page.twoFactorDeadline, locale, thisYear, true);
-    const without = page.withoutTwoFactor.length;
+    const without = page.withoutTwoFactor.count;
+    const exempt = page.sso === 'on' || page.sso === 'required' ? { exempt: EXEMPT_LINE } : {};
     const more =
       without === 0
-        ? {}
+        ? exempt
         : {
+            ...exempt,
             more:
               without === 1
                 ? `1 person doesn’t have two-factor yet. They see a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`
-                : `${without} people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`,
+                : `${number(without, locale)} people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`,
           };
 
     return on
       ? { ...row('met', 'Two-factor for everyone', 'Yours is on.'), ...more }
-      : row(
-          'needs',
-          'Two-factor for everyone',
-          `Not on yet. Turn it on by ${by}.`,
-          `Turn it on by ${by}, or you can’t open ${ORGANISATION} after that.`,
-        );
+      : {
+          ...row(
+            'needs',
+            'Two-factor for everyone',
+            `Not on yet. Turn it on by ${by}.`,
+            `Turn it on by ${by}, or you can’t open ${ORGANISATION} after that.`,
+          ),
+          ...exempt,
+        };
   }
   if (page.administratorsNeedTwoFactor) {
     if (role === 'Member')
@@ -258,7 +287,7 @@ export function rulesCard(rules: readonly RuleRow[], role: Role, hold: Hold): Ru
 
   if (first == null)
     return {
-      says: `You meet ${ORGANISATION}’ rules`,
+      says: `You meet ${ORGANISATION}’s rules`,
       line:
         hold == null
           ? `As ${role === 'Owner' ? 'an owner' : 'an admin'}, you can change them below.`
@@ -454,17 +483,30 @@ export function refusalOf(key: RuleKey, picked: string, page: RulesPage): Refusa
   return null;
 }
 
-export function effectsOf(before: Rules, after: Rules, passwordOnly: readonly string[]): string[] {
+function shortOf(people: People, locale: string): { who: string; one: boolean } | null {
+  if (people.count === 0) return null;
+  if (people.count > NAMED_UP_TO)
+    return { who: `${number(people.count, locale)} people`, one: false };
+
+  return {
+    who: listFormat(locale, { style: 'long', type: 'conjunction' }).format(people.names),
+    one: people.count === 1,
+  };
+}
+
+export function effectsOf(before: RulesPage, after: Rules, locale: string): string[] {
   const said: string[] = [];
+  const stranded = shortOf(before.passwordOnly, locale);
+  const without = shortOf(before.withoutTwoFactor, locale);
 
   if (after.providerOnly !== before.providerOnly) {
     if (after.providerOnly) {
       said.push(
         'Everyone signs in with Google or Apple. Anyone with one linked who signed in with a password is asked to sign in again with it.',
       );
-      if (passwordOnly.length > 0)
+      if (stranded != null)
         said.push(
-          `${listOf(passwordOnly)} can read but not change anything until they link Google or Apple. Their password still signs them in.`,
+          `${stranded.who} can read but not change anything until they link Google or Apple. Their password still signs them in.`,
         );
     } else said.push('People can sign in with their password again.');
   }
@@ -480,12 +522,15 @@ export function effectsOf(before: Rules, after: Rules, passwordOnly: readonly st
         ? 'Owners and admins need two-factor to change members, billing or security. Until they turn it on, only those changes wait; their events keep working.'
         : 'Owners and admins can change members, billing or security without two-factor.',
     );
-  if (after.everyoneNeedsTwoFactor !== before.everyoneNeedsTwoFactor)
-    said.push(
-      after.everyoneNeedsTwoFactor
-        ? 'Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.'
-        : 'Two-factor is no longer required of everyone.',
-    );
+  if (after.everyoneNeedsTwoFactor !== before.everyoneNeedsTwoFactor) {
+    if (after.everyoneNeedsTwoFactor) {
+      said.push(
+        'Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.',
+      );
+      if (without != null)
+        said.push(`${without.who} ${without.one ? 'doesn’t' : 'don’t'} have it yet.`);
+    } else said.push('Two-factor is no longer required of everyone.');
+  }
 
   return said.length > 0 ? said : ['Nothing changes. These are the rules in force.'];
 }
@@ -546,10 +591,11 @@ const RULES: RulesPage = {
   inactivityLimit: { organisation: 'Lumen Studio', days: 7 },
   ownTwoFactor: true,
   linked: 'Google',
-  passwordOnly: ['Priya Shah', 'Ana Souza'],
-  withoutTwoFactor: [],
+  passwordOnly: named('Priya Shah', 'Ana Souza'),
+  withoutTwoFactor: named(),
   seen: '2026-10-28T15:12',
   changes: CHANGES,
+  sso: 'none',
 };
 
 const ONLY_HERE = { organisation: ORGANISATION, days: 30 };
@@ -572,6 +618,8 @@ export const SIGN_IN_RULES_STATES = [
   'method',
   'methodGoogle',
   'methodRefused',
+  'methodFour',
+  'methodMillion',
   'limit',
   'limitPicked',
   'limitDiscard',
@@ -579,6 +627,9 @@ export const SIGN_IN_RULES_STATES = [
   'twoFactor',
   'twoFactorEveryone',
   'twoFactorRefused',
+  'everyoneThree',
+  'everyoneFour',
+  'everyoneMillion',
   'everyoneWithout',
   'limitSaving',
   'limitSaveFailed',
@@ -591,10 +642,16 @@ export interface SignInRulesStart {
 }
 
 /** `now` is the reader's wall clock, for a change saved today. */
-export function signInRulesStart(state: string, by: string, now: string): SignInRulesStart {
+export function signInRulesStart(
+  state: string,
+  by: string,
+  now: string,
+  plan: Plan = 'enterprise',
+): SignInRulesStart {
+  const sso = plan === 'free' ? 'free' : standingOfRules(state);
   const start = (page: Partial<RulesPage> = {}, edit: Edit | null = null): SignInRulesStart => ({
     load: 'loaded',
-    page: { ...RULES, ...page },
+    page: { ...RULES, sso, ...page },
     edit,
   });
   const edit = (key: RuleKey, picked: string, ask = false): Edit => ({ key, picked, ask });
@@ -631,6 +688,10 @@ export function signInRulesStart(state: string, by: string, now: string): SignIn
       return start({}, edit('method', METHOD.provider));
     case 'methodRefused':
       return start({ linked: null }, edit('method', METHOD.provider));
+    case 'methodFour':
+      return start({ passwordOnly: counted(4) }, edit('method', METHOD.provider));
+    case 'methodMillion':
+      return start({ passwordOnly: counted(1_000_000) }, edit('method', METHOD.provider));
     case 'limit':
       return start({}, edit('limit', '30 days'));
     case 'limitPicked':
@@ -639,10 +700,12 @@ export function signInRulesStart(state: string, by: string, now: string): SignIn
       return start({}, { ...edit('limit', '7 days'), saving: true });
     case 'limitSaveFailed':
       return start({}, { ...edit('limit', '7 days'), failed: true });
+    case 'everyoneSso':
+      return start({ everyoneNeedsTwoFactor: true, changes: [EVERYONE, ...CHANGES] });
     case 'everyoneWithout':
       return start({
         everyoneNeedsTwoFactor: true,
-        withoutTwoFactor: ['Priya Shah', 'Ana Souza', 'Tunde Bakare'],
+        withoutTwoFactor: named('Priya Shah', 'Ana Souza', 'Tunde Bakare'),
         changes: [EVERYONE, ...CHANGES],
       });
     case 'limitDiscard':
@@ -660,6 +723,18 @@ export function signInRulesStart(state: string, by: string, now: string): SignIn
       return start({}, edit('twoFactor', TWO_FACTOR.managers));
     case 'twoFactorEveryone':
       return start({}, edit('twoFactor', TWO_FACTOR.everyone));
+    case 'everyoneThree':
+      return start(
+        { withoutTwoFactor: named('Priya Shah', 'Ana Souza', 'Tunde Bakare') },
+        edit('twoFactor', TWO_FACTOR.everyone),
+      );
+    case 'everyoneFour':
+      return start({ withoutTwoFactor: counted(4) }, edit('twoFactor', TWO_FACTOR.everyone));
+    case 'everyoneMillion':
+      return start(
+        { withoutTwoFactor: counted(1_000_000) },
+        edit('twoFactor', TWO_FACTOR.everyone),
+      );
     case 'twoFactorRefused':
       return start({ ...NO_CHANGES, ownTwoFactor: false }, edit('twoFactor', TWO_FACTOR.managers));
     default:
@@ -696,6 +771,8 @@ export const SIGN_IN_RULES_PAGES: readonly { name: string; states: readonly Demo
       rules('method', 'How people sign in, just opened'),
       rules('methodGoogle', 'Google or Apple only picked'),
       rules('methodRefused', 'Google or Apple only, none linked yourself'),
+      rules('methodFour', 'Google or Apple only, 4 people with a password only'),
+      rules('methodMillion', 'Google or Apple only, 1,000,000 people with a password only'),
       rules('limit', 'How long a sign-in lasts, just opened'),
       rules('limitPicked', '7 days picked'),
       rules('limitDiscard', 'Cancel after a change'),
@@ -704,6 +781,9 @@ export const SIGN_IN_RULES_PAGES: readonly { name: string; states: readonly Demo
       rules('limitSaved', 'Saved, the change at the top'),
       rules('twoFactor', 'Two-factor, just opened'),
       rules('twoFactorEveryone', 'For everyone picked'),
+      rules('everyoneThree', 'For everyone, 3 people without it, named'),
+      rules('everyoneFour', 'For everyone, 4 people without it, counted'),
+      rules('everyoneMillion', 'For everyone, 1,000,000 people without it'),
       rules('twoFactorRefused', 'For managers, yours off'),
     ],
   },

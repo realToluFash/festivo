@@ -21,8 +21,7 @@ import {
   type Tab,
   TabBarFade,
 } from '../../components/TodayCover.tsx';
-import { ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
-import { NeedsYou } from './NeedsYou.tsx';
+import { NeedsYou, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
 import { RunBand, RunCover } from './RunCover.tsx';
 import type { RunMoment } from './runOfShow.ts';

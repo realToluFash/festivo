@@ -2,6 +2,7 @@ import {
   type EventsFilters,
   type Milestone,
   NO_EVENTS_FILTERS,
+  calledOff,
   eventPhase,
   eventsHome,
   searching,
@@ -34,9 +35,22 @@ import {
   scheduleLocked as productScheduleLocked,
 } from '../../kit/eventOverview.ts';
 import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
-import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
+import { DUPLICATE_STATES } from './Duplicate.ts';
+import {
+  CLOCKS,
+  DINER,
+  READER_ZONE,
+  SUGGESTIONS,
+  type SampleEvent,
+  type Suggestion,
+} from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
+import { NEW_STATES } from './NewEventModel.ts';
+import { WRITE_STATES } from './GuestsCanWrite.ts';
+import { MAKE_LIVE_STATES } from './MakeLive.ts';
+import { LIVE_ONE_DAY_STATES, dinerDates, liveOneDayClock, liveOneDayOf } from './LiveOneDay.ts';
+import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
   CardStep,
@@ -58,6 +72,7 @@ export function shownEvent(event: SampleEvent, now: Date): Shown {
       {
         ...event,
         place: event.venue?.place ?? null,
+        city: null,
         photo: event.photo ? 'standIn' : null,
         milestones: datesOf(event, now),
       },
@@ -164,6 +179,7 @@ export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Mi
 
 /** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
 export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
+  if (event.id === DINER.id) return dinerDates(event, say.starts(event.name));
   const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
 
   return [
@@ -187,8 +203,11 @@ export function scheduleLocked(event: Shown): boolean {
   return productScheduleLocked(event.phase);
 }
 
+/** A called-off event's locked dates say it was called off (sc-45141); any other locked event keeps the over line. */
 export function datesRow(event: Shown, locale: string): RowWords {
-  return productDatesRow(event, event.phase, locale, t);
+  const row = productDatesRow(event, event.phase, locale, t);
+
+  return scheduleLocked(event) && calledOff(event) ? { ...row, line: W.datesCalledOff } : row;
 }
 
 export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {
@@ -209,6 +228,11 @@ const SAMPLE_FIRST_DAY = 1;
 
 export function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en').replace(/[‘’]/g, "'");
+}
+
+export function suggestionsFor(address: string): readonly Suggestion[] {
+  if (folded(address).length < 3) return [];
+  return SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)));
 }
 
 /** The sample's stand-in for the API's search: any part of the event's or the venue's name, accents ignored. */
@@ -326,6 +350,8 @@ export const LIST_STATES = [
   'eventsFirst',
   'eventsZero',
   'eventsOffline',
+  'liveOneDay',
+  ...NEW_STATES,
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
 
@@ -431,10 +457,15 @@ export const EVENT_STATES = [
   'replyByNow',
   'replyBySaved',
   'replyByRemoved',
+  'replyByGone',
   'venue',
   'venueSuggestions',
   'venueZone',
   'venueDown',
+  'venueOne',
+  'venueShort',
+  'venueNoMatch',
+  'venueFrench',
   'venueNote',
   'venueNoteTooLong',
   'venueNoteRefused',
@@ -450,9 +481,12 @@ export const EVENT_STATES = [
   'currencyRefused',
   'name',
   'nameBlank',
+  'nameGone',
   'cover',
   'coverRefused',
   'coverPhoto',
+  'coverForbidden',
+  'createdNoPhoto',
   'pause',
   'callOff',
   'endNow',
@@ -462,10 +496,13 @@ export const EVENT_STATES = [
   'deleteMismatch',
   'deleteTyped',
   ...REFUSED_STATES,
-  'duplicate',
+  ...DUPLICATE_STATES,
   'muted',
   'muteNotLoaded',
   'muteNotSaved',
+  ...WRITE_STATES,
+  ...CARD_STATES,
+  ...END_STATES,
   'more',
   'needsYou',
   'needsYouOne',
@@ -476,6 +513,8 @@ export const EVENT_STATES = [
   'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
   ...CHANGES_STATES,
+  ...MAKE_LIVE_STATES,
+  ...LIVE_ONE_DAY_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
@@ -483,11 +522,26 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
   return EVENT_STATES.find((state) => state === value) ?? null;
 }
 
+/** The event page's ?state=, unless the open area took it as its own: Messages' loading is not the event's. */
+export function eventStateBeside(
+  value: string | undefined,
+  areaState: string | null,
+): EventDemoState | null {
+  return areaState == null ? eventStateOf(value) : null;
+}
+
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
-  if (state === 'now' || state === 'endNow' || refusedStartOf(state)?.started === true)
+  const liveOneDay = liveOneDayOf(state);
+  if (liveOneDay != null) return liveOneDayClock(liveOneDay);
+  if (
+    state === 'now' ||
+    state === 'endNow' ||
+    isEndState(state) ||
+    refusedStartOf(state)?.started === true
+  )
     return new Date(CLOCKS.happening);
-  if (state === 'finished') return new Date(CLOCKS.finished);
+  if (state === 'finished' || isCardState(state)) return new Date(CLOCKS.finished);
 
   return new Date(CLOCKS.reader);
 }
@@ -511,11 +565,16 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByGone':
       return 'replyBy';
     case 'venue':
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':
@@ -533,10 +592,12 @@ export function editOf(state: EventDemoState | null): EditPart | null {
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameGone':
       return 'name';
     case 'cover':
     case 'coverRefused':
     case 'coverPhoto':
+    case 'coverForbidden':
       return 'cover';
     default:
       return null;

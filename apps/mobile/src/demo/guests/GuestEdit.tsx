@@ -1,7 +1,6 @@
 import { type ReactNode, type Ref, type RefObject, useRef, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   type TextInputInstance,
   View,
@@ -9,16 +8,16 @@ import {
 } from 'react-native';
 
 import { CountryPicker } from '../../components/CountryPicker.tsx';
-import { focusChecked } from '../../components/Field.tsx';
+import { Field, focusChecked } from '../../components/Field.tsx';
+import { Legend, SheetBody, SheetLayer } from '../../components/FormLayers.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { ASK_WIDTH, AlertLine, EventField } from '../events/EventEdits.tsx';
+import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
-import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import {
@@ -33,11 +32,15 @@ import {
   greetAsProblem,
   greetAsSaved,
   recorded,
+  startTicks,
   sameNameAs,
 } from './GuestsModel.ts';
 import { GreetAsField } from './GuestGreetAs.tsx';
+import { Quote } from './PasteReply.tsx';
+import { PW } from './PasteReplyModel.ts';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
-import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
+import { Amber, AmberChoices, AmberLine } from '../../components/Amber.tsx';
+import { DoneLine } from './GuestsParts.tsx';
 import {
   type Companion,
   type GuestLanguage,
@@ -46,7 +49,16 @@ import {
   TODAY,
 } from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
-import { ReplyMark } from './ReplyMark.tsx';
+import { ReplyMark } from '../../components/ReplyMark.tsx';
+import { readOut } from '../../components/ReadOut.tsx';
+import { NO_NEEDS, NW, type Needs, firstFailing, needsLines, savedNeeds } from './GuestNeeds.ts';
+import {
+  NeedsSection,
+  useCompanionNeedsRefs,
+  useGroupChoice,
+  useNeedsRefs,
+} from './GuestNeedsParts.tsx';
+import { groupNeedsStart } from './GuestNeedsStart.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -97,7 +109,7 @@ export function GuestField({
   testID: string;
 }) {
   return (
-    <EventField label={label} optional={optional} error={error} help={help}>
+    <Field label={label} pill={optional ? W.optional : undefined} error={error} help={help}>
       <BoxField
         ref={fieldRef}
         value={value}
@@ -110,7 +122,7 @@ export function GuestField({
         accessibilityLabel={label}
         testID={testID}
       />
-    </EventField>
+    </Field>
   );
 }
 
@@ -137,7 +149,7 @@ export function PhoneField({
   testID: string;
 }) {
   return (
-    <EventField label={W.mobileNumber} optional error={error} help={help}>
+    <Field label={W.mobileNumber} pill={W.optional} error={error} help={help}>
       <View style={styles.phone}>
         <View style={styles.country}>
           <CountryPicker
@@ -145,11 +157,10 @@ export function PhoneField({
             value={country}
             onChange={onCountry}
             withCallingCode
-            compact
             testID={`${testID}.country`}
           />
         </View>
-        <View style={styles.grow}>
+        <View style={styles.number}>
           <BoxField
             ref={fieldRef}
             value={number}
@@ -163,22 +174,7 @@ export function PhoneField({
           />
         </View>
       </View>
-    </EventField>
-  );
-}
-
-export function Legend({ text, line }: { text: string; line?: string | null }) {
-  return (
-    <View style={styles.legend}>
-      <Text size={15} weight="bold" accessibilityRole="header">
-        {text}
-      </Text>
-      {line != null && (
-        <Text size={14.5} weight="medium" style={[styles.secondary, styles.figures]}>
-          {line}
-        </Text>
-      )}
-    </View>
+    </Field>
   );
 }
 
@@ -220,9 +216,11 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
 
 /** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
 function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
-  return state === 'editCompanions' || state === 'editMax'
-    ? startCompanions(state, g).map(() => null)
-    : [...g.companions];
+  if (state === 'editCompanions' || state === 'editMax')
+    return startCompanions(state, g).map(() => null);
+  if (state === 'editCompanionArrived')
+    return g.companions.map((c, at) => (at === 0 ? { ...c, arrived: '18:05' } : c));
+  return [...g.companions];
 }
 
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
@@ -275,6 +273,17 @@ export function EditGuest({
   const [discarding, setDiscarding] = useState(start === 'editDiscard');
   const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
   const [choosing, setChoosing] = useState(false);
+  const [gn] = useState(() => groupNeedsStart(start, g, guests));
+  const [needs, setNeeds] = useState<Needs>(gn.needs);
+  const [needsOpen, setNeedsOpen] = useState(gn.open);
+  const [needsChecked, setNeedsChecked] = useState(gn.checked);
+  const [companionNeeds, setCompanionNeeds] = useState<Needs[]>(() =>
+    startCompanions(start, g).map((_, at) => gn.companionNeeds[at] ?? NO_NEEDS),
+  );
+  const [companionOpen, setCompanionOpen] = useState<number[]>(gn.companionOpen);
+  const group = useGroupChoice(gn, name.trim() === '' ? g.name : name.trim(), 'guest.edit.group');
+  const needsRefs = useNeedsRefs();
+  const companionRefs = useCompanionNeedsRefs();
   const nameRef = useRef<TextInputInstance>(null);
   const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
@@ -291,7 +300,11 @@ export function EditGuest({
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
     language !== (g.language ?? null) ||
+    group.name !== (g.group ?? null) ||
+    JSON.stringify(savedNeeds(needs)) !== JSON.stringify(savedNeeds(g.needs ?? NO_NEEDS)) ||
     companions.join() !== g.companions.map((c) => c.name).join();
+  const lines = needsChecked ? needsLines(needs) : {};
+  const companionLines = companionNeeds.map((one) => (needsChecked ? needsLines(one) : {}));
 
   const next = (): SampleGuest => ({
     ...g,
@@ -300,7 +313,12 @@ export function EditGuest({
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
     language,
-    companions: companionsAfterEdit(companions, seats, g.kind),
+    group: group.name,
+    needs: savedNeeds(needs),
+    companions: companionsAfterEdit(companions, seats, g.kind).map((c, at) => ({
+      ...c,
+      needs: savedNeeds(companionNeeds[at] ?? NO_NEEDS),
+    })),
   });
   const save = (anyway = false) => {
     const problems = {
@@ -309,11 +327,35 @@ export function EditGuest({
       email: emailCheck(email),
       phone: phoneCheck(number, country),
     };
+    const guestLines = needsLines(needs);
+    const theirLines = companionNeeds.map(needsLines);
+    const failing =
+      Object.values(problems).filter((one) => one != null).length +
+      Object.keys(guestLines).length +
+      theirLines.reduce((sum, one) => sum + Object.keys(one).length, 0);
     setChecked(true);
+    setNeedsChecked(true);
+    if (failing > 0) readOut(NW.toFix(failing), { interrupts: true });
+    if (Object.keys(guestLines).length > 0) setNeedsOpen(true);
+    const theirs = theirLines.flatMap((one, at) => (Object.keys(one).length > 0 ? [at] : []));
+    if (theirs.length > 0) setCompanionOpen([...new Set([...companionOpen, ...theirs])]);
     if (problems.name != null) return focusChecked(nameRef);
     if (problems.greetAs != null) return focusChecked(greetAsRef);
     if (problems.email != null) return focusChecked(emailRef);
     if (problems.phone != null) return focusChecked(numberRef);
+    const first = firstFailing([guestLines, ...theirLines]);
+    if (first != null) {
+      if (first.at > 3) setShownAll(true);
+      setTimeout(
+        () =>
+          focusChecked(
+            first.at === 0 ? needsRefs[first.field] : companionRefs(first.at - 1)[first.field],
+          ),
+        300,
+      );
+      return;
+    }
+    if (group.refusedOnSave()) return;
     if (!anyway && name.trim() !== g.name && sameNameAs(guests, name, g.key) != null) {
       setSame(true);
       return;
@@ -336,6 +378,10 @@ export function EditGuest({
     setRemoved(companions[index] ?? '');
     setCompanions(companions.filter((_, i) => i !== index));
     setSeats(seats.filter((_, i) => i !== index));
+    setCompanionNeeds(companionNeeds.filter((_, i) => i !== index));
+    setCompanionOpen(
+      companionOpen.filter((at) => at !== index).map((at) => (at > index ? at - 1 : at)),
+    );
   };
   const seat = removing == null ? null : (seats[removing] ?? null);
   const seatedName = removing == null ? '' : (companions[removing] ?? '');
@@ -375,7 +421,7 @@ export function EditGuest({
               },
               () => setChoosing(false),
             )
-          : null
+          : group.over
       }
       testID="guest.edit"
     >
@@ -388,7 +434,7 @@ export function EditGuest({
             yours={joinPhone(country, number) ?? W.none}
           />
           <AmberLine text={W.conflictLine} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.useTheirs,
               onPress: () => {
@@ -409,7 +455,7 @@ export function EditGuest({
       {same && (
         <Amber title={say.sameName(name.trim())} testID="guest.edit.same">
           <AmberLine text={W.sameName} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.saveAnyway,
               onPress: () => {
@@ -453,6 +499,7 @@ export function EditGuest({
         fieldRef={greetAsRef}
         testID="guest.edit.greetAs"
       />
+      {group.field}
       <GuestField
         label={W.emailAddress}
         value={email}
@@ -480,39 +527,80 @@ export function EditGuest({
         onOpen={() => setChoosing(true)}
         testID="guest.edit.language"
       />
+      <NeedsSection
+        title={NW.needs}
+        needs={needs}
+        onChange={setNeeds}
+        open={needsOpen}
+        onToggle={() => setNeedsOpen(!needsOpen)}
+        lines={lines}
+        refs={needsRefs}
+        testID="guest.edit.needs"
+      />
       <View style={styles.companions}>
         <Legend
           text={W.companions}
           line={companions.length === 0 ? say.noneYet(0) : say.ofTen(companions.length)}
         />
-        {shown.map((c, index) => (
-          <View key={`${index}`} style={styles.companion}>
-            <View style={styles.grow}>
-              <BoxField
-                value={c}
-                onChangeText={(text) =>
-                  setCompanions(companions.map((one, i) => (i === index ? text : one)))
+        {shown.map((c, index) => {
+          const arrived = seats[index]?.arrived != null;
+          const stays = say.companionStays(
+            c.trim() !== '' ? c.trim() : say.guestOf(name.trim() !== '' ? name.trim() : g.name),
+          );
+
+          return (
+            <View key={`${index}`} style={styles.companionBlock}>
+              <View style={styles.companion}>
+                <View style={styles.grow}>
+                  <BoxField
+                    value={c}
+                    onChangeText={(text) =>
+                      setCompanions(companions.map((one, i) => (i === index ? text : one)))
+                    }
+                    accessibilityLabel={W.companionName}
+                    {...(arrived ? { accessibilityHint: stays } : {})}
+                    testID={`guest.edit.companion.${index}`}
+                  />
+                </View>
+                {!arrived && (
+                  <TextAction
+                    label={W.remove}
+                    plain
+                    onPress={() => {
+                      const held = seats[index];
+                      if (held != null && (held.table != null || held.meal === true)) {
+                        setRemoving(index);
+                        return;
+                      }
+                      drop(index);
+                    }}
+                    accessibilityLabel={`${W.remove} ${c}`}
+                    testID={`guest.edit.remove.${index}`}
+                  />
+                )}
+              </View>
+              {arrived && <DoneLine text={stays} size={14} reads={false} />}
+              <NeedsSection
+                title={NW.theirNeeds}
+                needs={companionNeeds[index] ?? NO_NEEDS}
+                onChange={(next) =>
+                  setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
                 }
-                accessibilityLabel={W.companionName}
-                testID={`guest.edit.companion.${index}`}
+                open={companionOpen.includes(index)}
+                onToggle={() =>
+                  setCompanionOpen(
+                    companionOpen.includes(index)
+                      ? companionOpen.filter((at) => at !== index)
+                      : [...companionOpen, index],
+                  )
+                }
+                lines={companionLines[index] ?? {}}
+                refs={companionRefs(index)}
+                testID={`guest.edit.companion.${index}.needs`}
               />
             </View>
-            <TextAction
-              label={W.remove}
-              plain
-              onPress={() => {
-                const held = seats[index];
-                if (held != null && (held.table != null || held.meal === true)) {
-                  setRemoving(index);
-                  return;
-                }
-                drop(index);
-              }}
-              accessibilityLabel={`${W.remove} ${c}`}
-              testID={`guest.edit.remove.${index}`}
-            />
-          </View>
-        ))}
+          );
+        })}
         {shown.length < companions.length && (
           <TextAction
             label={say.moreCompanions(companions.length - shown.length)}
@@ -534,6 +622,7 @@ export function EditGuest({
             onPress={() => {
               setCompanions([...companions, '']);
               setSeats([...seats, null]);
+              setCompanionNeeds([...companionNeeds, NO_NEEDS]);
             }}
             testID="guest.edit.addCompanion"
           />
@@ -710,7 +799,14 @@ export function CheckRow({
   );
 }
 
-/** Record a reply (sc-3787): nothing chosen when it opens; both answers needed before Save. */
+/** sc-54450: Record a reply opened from a copied message, the quote above it and Back to Whose reply is this?. */
+export interface FromMessage {
+  quote: string;
+  offline: boolean;
+  start: 'open' | 'blank' | 'offline' | null;
+}
+
+/** Record a reply (sc-3787): nothing chosen when it opens; both answers needed before Save. From a message, By message is chosen. */
 export function RecordReply({
   open,
   guest: g,
@@ -719,6 +815,7 @@ export function RecordReply({
   opener,
   onClose,
   onSaved,
+  message = null,
 }: {
   open: boolean;
   guest: SampleGuest;
@@ -727,18 +824,30 @@ export function RecordReply({
   opener: Opener;
   onClose: () => void;
   onSaved: (next: SampleGuest) => void;
+  message?: FromMessage | null;
 }) {
-  const [answer, setAnswer] = useState<Answer | null>(start === 'recordComing' ? 'coming' : null);
-  const [how, setHow] = useState<string | null>(start === 'recordComing' ? HOW_TOLD[0] : null);
-  const [ticked, setTicked] = useState<boolean[]>(() => g.companions.map(() => true));
-  const [checked, setChecked] = useState(start === 'recordRefused');
+  const [answer, setAnswer] = useState<Answer | null>(
+    start === 'recordComing' || message?.start === 'offline' ? 'coming' : null,
+  );
+  const [how, setHow] = useState<string | null>(
+    message != null ? PW.byMessage : start === 'recordComing' ? HOW_TOLD[0] : null,
+  );
+  const [ticked, setTicked] = useState<boolean[]>(() => startTicks(g));
+  const [checked, setChecked] = useState(start === 'recordRefused' || message?.start === 'blank');
   const [asking, setAsking] = useState(start === 'recordReplace');
   const [failed, setFailed] = useState(start === 'recordNotSaved');
+  const [refused, setRefused] = useState(message?.start === 'offline');
+  const [all, setAll] = useState(false);
   const first = useRef<ViewInstance>(null);
   const save = () => {
     setChecked(true);
     if (answer == null || how == null) return;
     setFailed(false);
+    if (message?.offline === true) {
+      setRefused(true);
+      readOut(`${W.offline} ${W.offlineLine}`, { interrupts: true });
+      return;
+    }
     onSaved(recorded(g, answer, how, ticked, TODAY));
   };
   const comps = answer === 'coming' && g.companions.length > 0;
@@ -748,6 +857,7 @@ export function RecordReply({
       open={open}
       title={W.recordReply}
       verb={{ label: W.save, on: !asking, onPress: save, testID: 'guest.record.save' }}
+      back={message == null ? undefined : PW.whose}
       onCancel={onClose}
       cancelTestID="guest.record.cancel"
       opener={opener}
@@ -764,7 +874,7 @@ export function RecordReply({
           testID="guest.record.replace"
         >
           <AmberLine text={W.replaceTheirsLine} />
-          <Choices
+          <AmberChoices
             primary
             first={{
               label: W.replaceTheirs,
@@ -776,6 +886,13 @@ export function RecordReply({
         </Amber>
       )}
       {failed && <AlertLine text={W.notSaved} />}
+      {refused && (
+        <View style={styles.tight} testID="guest.record.offline">
+          <AlertLine text={W.offline} />
+          <AmberLine text={W.offlineLine} />
+        </View>
+      )}
+      {message != null && <Quote text={message.quote} all={all} onShowAll={() => setAll(true)} />}
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {say.forName(g.name)}
       </Text>
@@ -859,7 +976,14 @@ export function MarkInvited({
   };
 
   return (
-    <Sheet open={open} onClose={onClose} opener={opener} scrimLabel={W.cancel} testID="guest.mark">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      opener={opener}
+      scrimLabel={W.cancel}
+      docked
+      testID="guest.mark"
+    >
       <SheetBody title={W.markAsInvited} close={W.cancel} onClose={onClose}>
         {failed && <AlertLine text={W.markNotSaved} />}
         <View accessibilityRole="radiogroup" style={styles.tight}>
@@ -898,65 +1022,7 @@ export function MarkInvited({
   );
 }
 
-/** A sheet over a focused screen, in that screen's window, since iOS shows one window at a time. */
-export function SheetLayer({
-  onClose,
-  label,
-  alert = false,
-  children,
-}: {
-  onClose: () => void;
-  label: string;
-  alert?: boolean;
-  children: ReactNode;
-}) {
-  const phone = useShell().layout === 'phone';
-
-  return (
-    <View style={[StyleSheet.absoluteFill, !phone && styles.centred]}>
-      <Pressable
-        style={[StyleSheet.absoluteFill, styles.scrim]}
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      />
-      <View
-        style={phone ? styles.layerPhone : styles.layerWide}
-        accessibilityViewIsModal
-        onAccessibilityEscape={onClose}
-        accessibilityRole={alert ? 'alert' : undefined}
-      >
-        <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </View>
-    </View>
-  );
-}
-
-export function SheetBody({
-  title,
-  close,
-  onClose,
-  children,
-}: {
-  title: string;
-  close: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.sheet}>
-      <View style={styles.sheetHead}>
-        <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow}>
-          {title}
-        </Text>
-        <TextAction label={close} onPress={onClose} testID="guests.sheet.close" />
-      </View>
-      {children}
-    </View>
-  );
-}
+export { Legend, SheetBody, SheetLayer };
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
@@ -967,11 +1033,12 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.45 },
   tight: { gap: 6 },
-  phone: { flexDirection: 'row', gap: tokens.spaceSm },
-  country: { width: 112 },
-  legend: { gap: 4 },
+  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  country: { flexGrow: 1, flexBasis: 140 },
+  number: { flexGrow: 2, flexBasis: 180 },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  companionBlock: { gap: 4 },
   differs: {
     gap: 2,
     paddingVertical: 8,
@@ -1024,26 +1091,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: tokens.radiusRow,
   },
-  sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 34 },
-  centred: { alignItems: 'center', justifyContent: 'center' },
-  scrim: { backgroundColor: tokens.scrimSheet },
-  layerPhone: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxHeight: '88%',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    backgroundColor: tokens.colorCard,
-  },
-  layerWide: {
-    width: 540,
-    maxWidth: '92%',
-    maxHeight: '88%',
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorCard,
-    overflow: 'hidden',
-  },
-  sheetHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
 });

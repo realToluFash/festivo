@@ -49,9 +49,14 @@ export const PAYMENTS_STATES: readonly string[] = [
   'already_paid',
   'already_cancelled',
   'marked',
+  'marked_long_reference',
   'cancel',
   'cancelled',
   'already_made',
+  'made_as_is',
+  'made_under',
+  'made_over',
+  'made_over_already',
   'made_early',
   'mark_currency',
   'mark_plan',
@@ -66,6 +71,7 @@ export const SHAPE_STATES: readonly string[] = [
   'shape_clamped',
   'shape_short',
   'shape_refused',
+  'shape_too_small',
   'shape_failed',
   'shape_raced',
 ];
@@ -205,6 +211,36 @@ export function madeProblems(draft: MadeDraft, quote: Quote | undefined): MadePr
   return problems;
 }
 
+export interface Totals {
+  paid: number;
+  scheduled: number;
+}
+
+/** sc-75579's inset: the vendor's totals as they stand, and after an amount sc-88 accepts, which counts in both at its amount paid. */
+export interface MadeInset {
+  vendor: string;
+  now: Totals;
+  after: Totals | null;
+  over: number | null;
+}
+
+export function madeInset(budget: Budget, draft: MadeDraft): MadeInset | null {
+  const quote = budget.quotes.find((one) => one.vendor.id === draft.vendorId);
+  if (quote == null) return null;
+  const counted = scheduledFor(budget, draft.vendorId);
+  const now = {
+    paid: counted.reduce((total, one) => total + (one.paid?.amount ?? 0), 0),
+    scheduled: counted.reduce((total, one) => total + one.amount, 0),
+  };
+  const amount = parsedAmount(draft.amount);
+  const after =
+    amount == null ? null : { paid: now.paid + amount, scheduled: now.scheduled + amount };
+  const over =
+    after != null && after.scheduled > quote.amount ? after.scheduled - quote.amount : null;
+
+  return { vendor: quote.vendor.name, now, after, over };
+}
+
 export function madePayment(draft: MadeDraft, payments: readonly Payment[], by: string): Payment {
   const amount = parsedAmount(draft.amount) ?? 0;
 
@@ -294,7 +330,7 @@ export function typedShare(typed: string): number | null {
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(plain)) return null;
   const share = Number(plain);
 
-  return share <= SHAPE_LIMITS.share ? share : null;
+  return share > 0 && share <= SHAPE_LIMITS.share ? share : null;
 }
 
 export function typedShapeDays(typed: string): number | null {
@@ -318,9 +354,16 @@ export function shapeProblems(one: Term, draft: ShapeDraft): ShapeProblems {
   return problems;
 }
 
-export function shapingProblems(shaping: Shaping): ShapeProblems[] {
-  return shaping.terms.map((one, index) =>
+/** With the quote's amount, a percentage in range whose row rounds to nothing is refused at that row too. */
+export function shapingProblems(shaping: Shaping, quoted?: number): ShapeProblems[] {
+  const found = shaping.terms.map((one, index) =>
     shapeProblems(one, shaping.typed[index] ?? draftOfTerm(one)),
+  );
+  if (quoted == null) return found;
+  const amounts = shapeAmounts(typedTerms(shaping), quoted);
+
+  return found.map((one, index) =>
+    one.share == null && amounts[index] === 0 ? { ...one, share: PW.shareTooSmall(money(1)) } : one,
   );
 }
 
@@ -346,12 +389,17 @@ export function sharesTyped(shaping: Shaping): boolean {
   return shaping.typed.every((one) => typedShare(one.share) != null);
 }
 
-export function retyped(shaping: Shaping, index: number, change: Partial<ShapeDraft>): Shaping {
+export function retyped(
+  shaping: Shaping,
+  index: number,
+  change: Partial<ShapeDraft>,
+  quoted?: number,
+): Shaping {
   const next: Shaping = {
     ...shaping,
     typed: shaping.typed.map((one, at) => (at === index ? { ...one, ...change } : one)),
   };
-  const now = shapingProblems(next);
+  const now = shapingProblems(next, quoted);
 
   return {
     ...next,
@@ -360,7 +408,7 @@ export function retyped(shaping: Shaping, index: number, change: Partial<ShapeDr
 }
 
 export function offersShapes(budget: Budget, vendorId: string): boolean {
-  return !budget.payments.some((one) => one.vendorId === vendorId);
+  return !budget.payments.some((one) => one.vendorId === vendorId && one.cancelled == null);
 }
 
 export interface EventDays {
@@ -393,14 +441,26 @@ export interface ShapeRow extends Term {
 }
 
 /** Each row rounded to the minor unit; when the shares come to 100 the last takes what is left, so the rows add up to the quote. */
+export function shapeAmounts(terms: readonly Term[], quoted: number): number[] {
+  const parts = terms.map((one) => Math.round(one.share * 100));
+  const whole = parts.reduce((sum, one) => sum + one, 0) === 10000;
+  let given = 0;
+
+  return parts.map((part, index) => {
+    const amount =
+      whole && index === parts.length - 1 ? quoted - given : Math.round((quoted * part) / 10000);
+    given += amount;
+
+    return amount;
+  });
+}
+
 export function shapeRows(
   terms: readonly Term[],
   quote: Pick<Quote, 'amount' | 'quotedOn'>,
   days: EventDays,
 ): ShapeRow[] {
-  const parts = terms.map((one) => Math.round(one.share * 100));
-  const whole = parts.reduce((sum, one) => sum + one, 0) === 10000;
-  let given = 0;
+  const amounts = shapeAmounts(terms, quote.amount);
 
   return terms.map((one, index) => {
     const counted =
@@ -410,13 +470,13 @@ export function shapeRows(
           ? addDays(days.starts, -one.days)
           : addDays(days.ends, one.days);
     const clamped = counted < quote.quotedOn;
-    const amount =
-      whole && index === terms.length - 1
-        ? quote.amount - given
-        : Math.round((quote.amount * (parts[index] ?? 0)) / 10000);
-    given += amount;
 
-    return { ...one, dueOn: clamped ? quote.quotedOn : counted, clamped, amount };
+    return {
+      ...one,
+      dueOn: clamped ? quote.quotedOn : counted,
+      clamped,
+      amount: amounts[index] ?? 0,
+    };
   });
 }
 
@@ -490,6 +550,15 @@ export function remindersStart(state: string): { days: number; changing: Changin
     : { days: REMINDER_DAYS, changing: null };
 }
 
+const MADE_STATES: readonly string[] = [
+  'already_made',
+  'made_as_is',
+  'made_under',
+  'made_over',
+  'made_over_already',
+  'made_early',
+];
+
 export interface PaymentsStart extends QuotesStart {
   marking: Marking | null;
   marked: string | null;
@@ -518,7 +587,7 @@ const ADDED: readonly Payment[] = [
     what: 'Buttonholes',
     amount: 12000,
     dueOn: '2026-11-02',
-    paid: { amount: 12000, on: '2026-11-02', by: READER, reference: '' },
+    paid: { amount: 12000, on: '2026-11-02', by: READER, reference: 'Cheque 004417' },
     cancelled: null,
   },
 ];
@@ -528,6 +597,8 @@ export function deletedLine(payment: Payment, vendor: string): string {
 }
 
 const WHY = 'The venue supplies the arch flowers';
+export const LONGEST_REFERENCE =
+  'BLOOMCO-ADAEZE-TUNDE-WEDDING-BALANCE-PAID-03NOV2026-FROM-IRE-EVENTS-CURRENT-ACCOUNT-TRANSFER-REF-001';
 const LONG_REFERENCE =
   'Paid by bank transfer on the Tuesday after the meeting with Ngozi, reference given on the phone that evening';
 const TOO_LONG_WHAT =
@@ -583,7 +654,13 @@ export function paymentsStart(
           : null,
     };
   }
-  if (state === 'payments_read_only') return { ...start, readOnly: true };
+  if (state === 'payments_read_only')
+    return {
+      ...start,
+      readOnly: true,
+      budget: { ...base.budget, payments: [...base.budget.payments, ...ADDED] },
+      addedPaid: ADDED.map((one) => one.id),
+    };
   if (state === 'add_payment') return shaped(shapingOf('rows'));
   if (state === 'shape_deposit') return shaped(shapingOf('deposit'));
   if (state === 'shape_clamped')
@@ -611,19 +688,43 @@ export function paymentsStart(
 
     return shaped({ ...refused, problems: shapingProblems(refused) });
   }
+  if (state === 'shape_too_small') {
+    const tiny = 10;
+    const offered = shapingFrom(
+      'instalments',
+      SHAPE_TERMS.instalments.map((one, index) => ({ ...one, share: index === 2 ? 10 : 45 })),
+    );
+
+    return shaped(
+      { ...offered, problems: shapingProblems(offered, tiny) },
+      {
+        ...none,
+        quotes: none.quotes.map((one) =>
+          one.vendor.id === vendorId ? { ...one, amount: tiny } : one,
+        ),
+      },
+    );
+  }
   if (state === 'shape_failed') return shaped({ ...shapingOf('instalments'), failed: true });
   if (state === 'shape_raced') return shaped(shapingOf('deposit', true), base.budget);
-  if (state === 'already_made' || state === 'made_early') {
+  if (MADE_STATES.includes(state)) {
+    const under = state === 'made_under';
     const draft: MadeDraft = {
-      vendorId,
-      what: 'Buttonholes',
-      amount: '120.00',
+      vendorId: under ? SAVOUR : vendorId,
+      what: under ? 'Wine for the toasts' : 'Buttonholes',
+      amount: state === 'made_as_is' ? '' : under ? '1,000.00' : '120.00',
       paidOn: state === 'made_early' ? '2026-10-05' : '2026-11-02',
       reference: '',
     };
+    const stems = ADDED[0];
+    const already = state === 'made_over_already' && stems != null;
 
     return {
       ...start,
+      budget: already
+        ? { ...base.budget, payments: [...base.budget.payments, stems] }
+        : start.budget,
+      addedPaid: already ? [stems.id] : [],
       made: { draft, problems: state === 'made_early' ? madeProblems(draft, quote) : {} },
     };
   }
@@ -675,9 +776,18 @@ export function paymentsStart(
       return { ...start, marking: marking({ draft, problems: markProblems(draft, due) }) };
     }
     case 'marked':
+    case 'marked_long_reference':
       return {
         ...start,
-        budget: change({ ...due, paid: { amount: more, on: TODAY, by: READER, reference: '' } }),
+        budget: change({
+          ...due,
+          paid: {
+            amount: more,
+            on: TODAY,
+            by: READER,
+            reference: state === 'marked' ? 'FP-0001' : LONGEST_REFERENCE,
+          },
+        }),
         marked: due.id,
         said: QW.markedPaid(money(more), longDay(TODAY)),
       };
@@ -692,8 +802,16 @@ export function paymentsStart(
 
 const bloom = (state: string) => budgetAt(state, { vendor: BLOOM });
 const savour = (state: string) => budgetAt(state, { vendor: SAVOUR });
-const reminders = (state: string, as?: string) =>
-  `/demo/settings/payment-reminders?${new URLSearchParams({ ...(as == null ? {} : { as }), state }).toString()}`;
+const reminders = (state: string, as?: string) => remindersPath(state, as);
+
+export function remindersPath(state: string, as?: string | null, plan?: string | null): string {
+  const query = new URLSearchParams();
+  if (as != null) query.set('as', as);
+  query.set('state', state);
+  if (plan != null) query.set('plan', plan);
+
+  return `/demo/settings/payment-reminders?${query.toString()}`;
+}
 
 export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
@@ -738,10 +856,30 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
     name: 'Marked, cancelled, already made',
     states: [
-      { to: bloom('marked'), name: 'Marked paid, £60.00 more, with Undo (marked)' },
+      { to: bloom('marked'), name: 'Marked paid, £60.00 more; every paid row has Undo (marked)' },
+      {
+        to: bloom('marked_long_reference'),
+        name: 'Marked with a 100-character reference and no spaces: it wraps inside the row (marked_long_reference)',
+      },
       { to: bloom('cancel'), name: 'Cancel payment: why it is not owed (cancel)' },
       { to: bloom('cancelled'), name: 'Cancelled, with Restore (cancelled)' },
       { to: bloom('already_made'), name: 'Add a payment already made: Buttonholes (already_made)' },
+      {
+        to: bloom('made_as_is'),
+        name: 'Already made, no amount yet: Bloom & Co’s totals as they stand (made_as_is)',
+      },
+      {
+        to: bloom('made_under'),
+        name: 'Already made to Savour Kitchen, £1,000.00: under the quote, nothing said (made_under)',
+      },
+      {
+        to: bloom('made_over'),
+        name: 'Already made, £120.00: the schedule £120.00 over the quote (made_over)',
+      },
+      {
+        to: bloom('made_over_already'),
+        name: 'Already £60.00 over: the line gives the gap after, £180.00 (made_over_already)',
+      },
       { to: bloom('made_early'), name: 'Dated before the vendor’s first quote (made_early)' },
       {
         to: bloom('added'),
@@ -753,7 +891,7 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       },
       {
         to: budgetAt('payments_read_only', { vendor: BLOOM, plan: 'downgraded' }),
-        name: 'Read only after a downgrade: the overdue balance is no longer chased (payments_read_only)',
+        name: 'Read only after a downgrade: no Undo, the overdue balance no longer chased (payments_read_only)',
       },
     ],
   },
@@ -775,6 +913,10 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
         name: 'Refused at the field: blank, too long, percentage, days (shape_refused)',
       },
       {
+        to: savour('shape_too_small'),
+        name: 'A £0.10 quote at 45%, 45%, 10%: the last row comes to £0.00, refused (shape_too_small)',
+      },
+      {
         to: savour('shape_failed'),
         name: 'The save failed: nothing added, rows as filled, Save 3 payments sends them again (shape_failed)',
       },
@@ -784,6 +926,11 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
     name: 'Payment reminders, in Settings (sc-95)',
     states: [
+      { to: '/demo/settings/vendors', name: 'The way in: the Payment reminders row on Vendors' },
+      {
+        to: '/demo/settings/vendors?plan=downgraded',
+        name: 'The way in after a downgrade: the row says reminders are off',
+      },
       { to: reminders('reminders'), name: 'When reminders go, and who hears (reminders)' },
       { to: reminders('reminders_bad'), name: 'Change, refused: 31 days (reminders_bad)' },
       {

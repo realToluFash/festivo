@@ -1,5 +1,5 @@
 import { serverClock } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 const TICK_MS = 15_000;
@@ -20,6 +20,29 @@ export function useServerNow(): Date {
       listener.remove();
     };
   }, []);
+
+  return now;
+}
+
+/** The corrected clock's time, read again when `edges` change and as each one passes: a window that opens on a tap and closes on time cannot wait for a tick (sc-4015). */
+export function useServerNowAt(edges: readonly number[]): Date {
+  const [now, setNow] = useState(() => serverClock.now());
+  const key = edges.join(' ');
+  const seen = useRef(key);
+
+  useEffect(() => {
+    if (seen.current !== key) {
+      seen.current = key;
+      setNow(serverClock.now());
+    }
+    const current = serverClock.now().getTime();
+    const next = Math.min(...edges.filter((edge) => edge > current));
+    if (!Number.isFinite(next)) return undefined;
+    const timer = setTimeout(() => setNow(serverClock.now()), next - current);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for `edges`, so a new array with the same edges sets no clock
+  }, [key, now]);
 
   return now;
 }

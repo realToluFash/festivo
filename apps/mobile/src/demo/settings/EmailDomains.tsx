@@ -46,6 +46,8 @@ import { DataSubPage, Lead, TagRow, useDataNav } from './DataParts.tsx';
 import { dataSayIn, type Domain, DERIVED, zoneFor } from './DataSample.ts';
 import { DATA_WORDS as H, DOMAINS_WORDS as D } from './DataWords.ts';
 import { ProveScreen, RecordScreen } from './EmailDomainsScreens.tsx';
+import { pageStateOf } from './EnterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 
 const CHECK_MS = 1200;
 /** A linked Verifying… holds long enough to be looked at, then answers. */
@@ -58,7 +60,7 @@ const ONLY_INDENT = 40;
 export function EmailDomainsSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const { viewer } = useDataNav();
-  const name = domainsStateOf(state);
+  const name = domainsStateOf(pageStateOf('emailDomains', state));
   const owns = domainsOwns(name, viewer);
   const email = owns ? DATA_PEOPLE[viewer].email : DATA_PEOPLE.julien.email;
   const looking = useMemo(() => memberLooking(email), [email]);
@@ -66,7 +68,7 @@ export function EmailDomainsSection() {
   return (
     <SeenBy looking={looking}>
       <DomainsPage
-        key={`${name}:${String(owns)}`}
+        key={`${name}:${String(owns)}:${state ?? ''}`}
         start={domainsStart(name, owns)}
         owns={owns}
         held={name === 'ed_checking'}
@@ -162,8 +164,7 @@ function DomainsPage({ start, owns, held }: { start: DomainsModel; owns: boolean
     setModel((now) => ({ ...now, prove: { typed: '', problem: null } }));
   };
   const go = (to: Go) => {
-    if (to.kind === 'contact') shell.tell(H.contacting);
-    else if (to.kind === 'prove') {
+    if (to.kind === 'prove') {
       from.current = 'card';
       setProveVisit((count) => count + 1);
       setModel((now) => ({ ...now, prove: { typed: '', problem: null } }));
@@ -181,13 +182,13 @@ function DomainsPage({ start, owns, held }: { start: DomainsModel; owns: boolean
       <DataSubPage title={D.title}>
         <SummaryCard
           size={shell.layout === 'portrait' ? 'wide' : 'page'}
-          height={card.step == null ? 170 : 210}
+          height={card.step == null && model.plan !== 'locked' ? 170 : 210}
           step={
             card.step == null
               ? null
               : {
                   label: card.step.label,
-                  onPress: () => go(card.step?.go ?? { kind: 'contact' }),
+                  onPress: () => card.step && go(card.step.go),
                   testID: 'domains.step',
                   ref: cardStep,
                 }
@@ -196,6 +197,7 @@ function DomainsPage({ start, owns, held }: { start: DomainsModel; owns: boolean
         >
           <CardSays text={card.says} size={pane ? 26 : 24} heading />
           <OnCard text={card.line} />
+          {model.plan === 'locked' && <EnterpriseStep testID="domains.enterprise" />}
         </SummaryCard>
         {model.plan !== 'locked' && (
           <Section

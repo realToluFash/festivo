@@ -9,13 +9,18 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 
 ## The pieces
 
-| Piece                      | What it is                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                            |
-| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action |
-| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first      |
-| `EventDates`               | the first source: the event's own dates, as they happened                             |
-| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client   |
+| Piece                      | What it is                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                                             |
+| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action, done            |
+| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first                       |
+| `EventDates`               | the first source: the event's own dates, as they happened                                              |
+| `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)                       |
+| `RunOfShowDates`           | each event day's **Run of show begins** and every fixed-time item, owner Event (sc-3893)               |
+| `TableSharingDates`        | **Share tables** at the end of a saved Share by, then **Tables shared**, owner You (sc-4022)           |
+| `FinalNumbersDates`        | **Give final numbers to the kitchen** at 23:59 on Final numbers due, owner You (sc-30812)              |
+|                            | **Give the changes to the kitchen** while the sheet differs from the latest copy, owner You (sc-30692) |
+| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client                    |
 
 ## Adding an area's milestones
 
@@ -47,7 +52,13 @@ and the timeline, the route and the clients do not change.
   changes: `<area>.<what>`, such as `event.starts`. The calendar feed builds each
   milestone's `UID` from it, so a subscribed calendar moves the entry rather than adding a
   second one (sc-3626). Its `SEQUENCE` is the event's version, so a source whose dates can
-  change without the event's row changing has to give the feed another way to see it.
+  change without the event's row changing has to give the feed another way to see it: a
+  milestone's `revision`, added to the version, as `FinalNumbersDates` does (sc-30812).
+
+A source only reads. **Give the changes to the kitchen** reads the stored moment the sheet
+first differed: it is written after each write that can move the sheet, and when one event's
+timeline is read, which is how a course that has closed is seen. The events list and the
+calendar feed show what is stored (sc-30692).
 
 `EventDates` is the worked example: the start, titled "{name} starts", unless the event was
 called off, and the end, "{name} ends", only when `EventDayCount` says the event touches more
@@ -81,7 +92,8 @@ after a call-off are not. A source that says nothing keeps returning its dates a
       "note": null,
       "owner": "event",
       "area": "events",
-      "action": null
+      "action": null,
+      "done": false
     }
   ]
 }
@@ -98,8 +110,10 @@ the same reader, so Events Home's **Next up** is the timeline's without one requ
 ## Next up
 
 `nextUp(milestones, now)` in `packages/domain` is the earliest milestone at or after `now`.
-An overdue `you` milestone stays Next up until the area stops returning it, because a missed
-deadline should not vanish from the screen. When every milestone has passed there is none.
+An overdue `you` milestone stays Next up until the area stops returning it or returns it
+`done`, because a missed deadline should not vanish from the screen. A `done` milestone is
+something the organiser has already seen through, such as **Tables shared**: it is Passed once
+its instant is behind `now`, never Overdue (sc-4022). When every milestone has passed there is none.
 A milestone is **Passed** once its instant is behind `now` and it is not Next up.
 On an Ended event the `events` area's milestones are Passed whatever the clock reads, so
 every caller passes `ended` to `nextUp`, `markedMilestones` and `comingUp` (sc-16709).

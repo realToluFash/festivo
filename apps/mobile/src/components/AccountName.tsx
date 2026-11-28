@@ -1,4 +1,4 @@
-import { ACCOUNT_NAME_MAXIMUM, nameToSave } from '@soirely/domain';
+import { nameToSave } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type RefObject, useRef, useState } from 'react';
 import type { TextInputInstance } from 'react-native';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type AskProps, FocusedScreen } from './Summary.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 /** Cancel after a change: what stays, Keep editing first and Discard in red. */
 export function discardAsk(
@@ -51,6 +52,7 @@ export function NameScreen({
   const [error, setError] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true), onClose);
 
   async function save(): Promise<void> {
     if (saving) return;
@@ -85,13 +87,22 @@ export function NameScreen({
         testID: 'account.name.save',
       }}
       waits={saving}
-      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave()}
       cancelTestID="account.name.cancel"
       opener={opener}
       ask={discardAsk(
         discarding,
         t('account.nameStays', { name: held }),
-        { keep: () => setDiscarding(false), discard: onClose },
+        {
+          keep: () => {
+            setDiscarding(false);
+            leaves.keep();
+          },
+          discard: () => {
+            setDiscarding(false);
+            leaves.discard();
+          },
+        },
         'account.name',
         t,
       )}
@@ -109,7 +120,6 @@ export function NameScreen({
           textContentType="name"
           autoCorrect={false}
           spellCheck={false}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
           returnKeyType="done"
           onChangeText={(text) => {
             typed.current = text;

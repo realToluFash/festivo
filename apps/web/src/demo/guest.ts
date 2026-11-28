@@ -22,9 +22,17 @@ import {
   isGuestDayState,
   leadsWithCode,
 } from './guestDay.ts';
+import {
+  type ProgrammeSet,
+  guestProgrammeStarts,
+  isGuestProgrammeState,
+} from './guestProgramme.ts';
+import { type GuestSeating, guestTableStarts, guestTableStateOf } from './guestTable.ts';
 import type { DemoLink } from './settings.ts';
+import { U } from './unsubscribe.ts';
 import { type AskView, afterAnswer } from './guestAsk.ts';
 import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
+import { guestLinkStarts, isGuestLinkState } from './guestLink.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
 export const EVENT: SampleEvent = sampleEvent('evt-wed-4') as SampleEvent;
@@ -142,14 +150,32 @@ export interface Reach {
   saved: Channel | null;
 }
 
+/** What a press on Your messages sends: the lead button's Email off, Undo's Email on, or one switch. */
+export type Press = 'stop' | 'undo' | Channel;
+
+/** sc-3969's page as an email's link or the guest's page opens it; `lead` is the button or the words in its place. */
+export interface Yours {
+  from: 'email' | 'page';
+  opening: 'loading' | 'open' | 'broken';
+  emailAddress: boolean;
+  lead: 'button' | 'stopped' | 'undone' | null;
+  busy: Press | null;
+  retrying: boolean;
+  failed: Press | null;
+}
+
+/** Where the Yes steps were entered from, and so where their Back returns: an answer link returns to its pre-selected answer (sc-1291). */
+export type StepFrom = 'answer' | 'changing' | 'link';
+
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
-  | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
+  | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: StepFrom }
   | { kind: 'kitchen'; busy?: boolean }
-  | { kind: 'recorded'; same: boolean }
+  | { kind: 'recorded'; same: boolean; downAs?: true }
+  | { kind: 'link'; picked: Answer; busy: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
-  | { kind: 'withYou'; from: 'answer' | 'changing' }
+  | { kind: 'withYou'; from: StepFrom }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
 
 /** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
@@ -225,6 +251,8 @@ export interface Visit {
   draft: string;
   draftFailed: boolean;
   draftTried: boolean;
+  /** sc-3978: the box to write to the hosts, gone once stopped or switched off, refused on a page already open. */
+  box: 'open' | 'none' | 'refused';
   arrival: boolean;
   /** sc-3790: the switch said once in the new language, and a choice the guest's record did not take. */
   said: number;
@@ -237,6 +265,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  yours: Yours;
   note: GuestNote;
   party: Party;
   /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
@@ -246,11 +275,35 @@ export interface Visit {
   day: Day;
   where: WhereShown;
   dayOrder: boolean;
+  /** sc-3899: which items the hosts show to guests, from the Schedule demo's sample. */
+  programme: ProgrammeSet;
+  /** sc-4022: null until the hosts share the tables, as the API sends no seating field before then. */
+  seating: GuestSeating | null;
+  tableMoves: boolean;
+  /** sc-1291: none of sc-1439's Yes steps applies to this guest, so Coming records at once, as the other two do. */
+  yesRecords: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
 const RECORDED: View = { kind: 'recorded', same: false };
+
+/** Back from a Yes step: the answers, the new answer, or the link's Coming still chosen with nothing recorded. */
+export function stepBack(from: StepFrom): View {
+  if (from === 'changing') return { kind: 'changing', busy: null };
+  if (from === 'link') return { kind: 'link', picked: 'coming', busy: false };
+  return OPEN;
+}
 const CLOSED: View = { kind: 'closed' };
+
+export const FROM_PAGE: Yours = {
+  from: 'page',
+  opening: 'open',
+  emailAddress: true,
+  lead: null,
+  busy: null,
+  retrying: false,
+  failed: null,
+};
 
 const BASE: Visit = {
   page: 'event',
@@ -271,6 +324,7 @@ const BASE: Visit = {
   draft: '',
   draftFailed: false,
   draftTried: false,
+  box: 'open',
   arrival: false,
   said: 0,
   unsaved: false,
@@ -281,6 +335,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  yours: FROM_PAGE,
   note: 'host',
   party: NO_PLACES,
   ask: null,
@@ -288,11 +343,23 @@ const BASE: Visit = {
   day: 'before',
   where: 'full',
   dayOrder: false,
+  programme: 'none',
+  seating: null,
+  tableMoves: false,
+  yesRecords: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
 const MESSAGED: Partial<Visit> = { recorded: COMING, view: RECORDED, messages: 3 };
 const SENT_MINE: Mine = { words: MINE, at: MINE_AT, sent: true };
+
+function yourMessages(yours: Partial<Yours>, rest: Partial<Visit> = {}): Partial<Visit> {
+  return { page: 'messages', mobile: true, yours: { ...FROM_PAGE, ...yours }, ...rest };
+}
+
+const EMAIL_LINK: Partial<Yours> = { from: 'email', lead: 'button' };
+const STOPPED: Partial<Yours> = { from: 'email', lead: 'stopped' };
+const EMAIL_OFF: Partial<Visit> = { reach: { email: false, sms: true, saved: null } };
 
 function check(extra: Partial<Extract<View, { kind: 'check' }>> = {}): View {
   return { kind: 'check', busy: false, failed: false, refused: false, from: 'answer', ...extra };
@@ -457,6 +524,15 @@ const STATES = {
     name: 'Closed at the start, Coming',
     starts: { started: true, recorded: COMING, view: CLOSED },
   },
+  closedSaved: {
+    name: 'Closed at the start, Coming, the kitchen needs saved: the note and the pencil go',
+    starts: {
+      started: true,
+      recorded: COMING,
+      view: CLOSED,
+      kitchen: closedKitchen(COMPANIONS, EARLIER, { saved: true }),
+    },
+  },
   closedNever: {
     name: 'Closed at the start, never answered',
     starts: { started: true, view: CLOSED },
@@ -574,6 +650,14 @@ const STATES = {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
   },
+  noBox: {
+    name: 'No box: stopped, or guests can’t write',
+    starts: { ...MESSAGED, box: 'none' },
+  },
+  noBoxOpen: {
+    name: 'A page already open: the send fails',
+    starts: { ...MESSAGED, box: 'refused', draft: MINE, draftFailed: true, want: 'sendMessage' },
+  },
   messagesWhatsAppOff: {
     name: 'Your messages: WhatsApp off, never agreed',
     starts: { page: 'messages', mobile: true },
@@ -606,6 +690,76 @@ const STATES = {
     name: 'Your messages: no mobile number on record',
     starts: { page: 'messages' },
   },
+  messagesTextsOff: {
+    name: 'Your messages: Text messages turned off, saved',
+    starts: yourMessages(
+      {},
+      { reach: { email: true, sms: false, saved: 'sms' }, want: 'switch-sms' },
+    ),
+  },
+  messagesSwitchSaving: {
+    name: 'Your messages: saving, on a switch',
+    starts: yourMessages({ busy: 'sms' }, { want: 'switch-sms' }),
+  },
+  messagesSwitchFailed: {
+    name: 'Your messages: a switch that did not save',
+    starts: yourMessages({ failed: 'sms' }, { want: 'switch-sms' }),
+  },
+  messagesTwoOff: {
+    name: 'Your messages: two channels off',
+    starts: yourMessages(
+      {},
+      { reach: { email: false, sms: false, saved: null }, whatsApp: 'agreed' },
+    ),
+  },
+  messagesNoEmail: {
+    name: 'Your messages: no email address on record',
+    starts: yourMessages({ emailAddress: false }),
+  },
+  messagesNothing: {
+    name: 'Your messages: nothing on record',
+    starts: yourMessages({ emailAddress: false }, { mobile: false }),
+  },
+  messagesFromEmail: {
+    name: 'Your messages from an email’s link, before the tap',
+    starts: yourMessages(EMAIL_LINK),
+  },
+  messagesStopSaving: {
+    name: 'Your messages: saving, the button',
+    starts: yourMessages({ ...EMAIL_LINK, busy: 'stop' }, { want: 'stop' }),
+  },
+  messagesStopFailed: {
+    name: 'Your messages: a save that failed, the button',
+    starts: yourMessages({ ...EMAIL_LINK, failed: 'stop' }, { want: 'stop' }),
+  },
+  messagesStopped: {
+    name: 'Your messages: emails turned off',
+    starts: yourMessages(STOPPED, { ...EMAIL_OFF, want: 'yoursLead' }),
+  },
+  messagesUndoSaving: {
+    name: 'Your messages: saving, Undo',
+    starts: yourMessages({ ...STOPPED, busy: 'undo' }, { ...EMAIL_OFF, want: 'undo' }),
+  },
+  messagesUndoFailed: {
+    name: 'Your messages: Undo that failed',
+    starts: yourMessages({ ...STOPPED, failed: 'undo' }, { ...EMAIL_OFF, want: 'undo' }),
+  },
+  messagesUndone: {
+    name: 'Your messages: Undo done',
+    starts: yourMessages({ from: 'email', lead: 'undone' }, { want: 'yoursLead' }),
+  },
+  messagesEmailOff: {
+    name: 'Your messages from an email’s link, already off',
+    starts: yourMessages({ from: 'email' }, EMAIL_OFF),
+  },
+  messagesLoading: {
+    name: 'Your messages: loading, as an email’s link opens it',
+    starts: yourMessages({ ...EMAIL_LINK, opening: 'loading' }),
+  },
+  messagesLinkBroken: {
+    name: 'Your messages: this link does not work',
+    starts: yourMessages({ from: 'email', opening: 'broken' }),
+  },
 } satisfies Record<string, { name: string; starts: Partial<Visit> }>;
 
 export type GuestStateName = keyof typeof STATES;
@@ -622,9 +776,13 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestLinkState(value)) return guestLinkStarts(value);
   if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
+  if (isGuestProgrammeState(value)) return guestProgrammeStarts(value);
+  const table = guestTableStateOf(value);
+  if (table != null) return guestTableStarts(table);
 
   return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
 }
@@ -689,6 +847,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyByClosedSaved',
         'closedRefused',
         'closed',
+        'closedSaved',
         'closedNever',
         'paused',
         'pausedNever',
@@ -736,6 +895,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyFailed',
         'calledOffMessages',
         'finishedMessages',
+        'noBox',
+        'noBoxOpen',
       ] as const
     ).map(link),
   },
@@ -752,6 +913,29 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'messagesWhatsAppOn',
         'messagesWhatsAppTurnedOff',
         'messagesNoMobile',
+        'messagesTextsOff',
+        'messagesSwitchSaving',
+        'messagesSwitchFailed',
+        'messagesTwoOff',
+        'messagesNoEmail',
+        'messagesNothing',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Your messages, from an email’s link (sc-3969)',
+    states: (
+      [
+        'messagesFromEmail',
+        'messagesStopSaving',
+        'messagesStopFailed',
+        'messagesStopped',
+        'messagesUndoSaving',
+        'messagesUndoFailed',
+        'messagesUndone',
+        'messagesEmailOff',
+        'messagesLoading',
+        'messagesLinkBroken',
       ] as const
     ).map(link),
   },
@@ -940,6 +1124,18 @@ const BOARD_ENGLISH = {
   notSent: 'Your answer was not sent. Everything you chose is still here. Try again.',
   notSentTap: 'Your answer was not sent. Check your connection and choose it again.',
   same: 'You’re already down as {{answer}}. Nothing has changed.',
+  confirmAnswer: 'Confirm your answer',
+  fromMessage: 'From your message',
+  confirm: 'Confirm',
+  carryOn: 'Carry on',
+  chooseDifferent: 'Choose a different answer',
+  alreadyComing: 'You’re already down as coming.',
+  alreadyNotComing: 'You’re already down as not coming.',
+  alreadyNotSure: 'You’re already down as not sure yet.',
+  since: 'Since {{date}}. There is nothing to confirm.',
+  downAsComing: 'You’re down as coming.',
+  downAsNotComing: 'You’re down as not coming.',
+  downAsNotSure: 'You’re down as not sure yet.',
   unsent: 'You haven’t sent your answer yet.',
   closedBy: 'Answers closed on {{date}}. Contact your host if something has changed.',
   closedByNotSure: 'Answers closed on {{date}}. Contact your host if you can still come.',
@@ -971,7 +1167,7 @@ const BOARD_ENGLISH = {
   tellThanksOther:
     'Thank you. {{hosts}} have been told and will look into it. You can close this page.',
   doorTitle: 'Show this at the door',
-  doorLine: 'It lets you and your companions in. A screenshot works too.',
+  doorLine: 'It lets you and anyone coming with you in. A screenshot works too.',
   doorLineAlone: 'A screenshot works too.',
   doorCode: 'Your code for the door. It holds no name.',
   calendarTitle: 'Add to calendar',
@@ -1011,6 +1207,16 @@ const BOARD_ENGLISH = {
   whatsAppOff: 'WhatsApp messages from {{organisation}} are off.',
   yourMessagesFoot:
     'Only you can turn these back on. {{organisation}} can see which you have turned off, and when.',
+  noEmail: '{{organisation}} has no email address for you.',
+  stopEmails: 'Stop emails from {{organisation}}',
+  stopped: 'You won’t get emails from {{organisation}} any more.',
+  undo: 'Undo',
+  saving: U.saving,
+  saveFailed: U.failed,
+  linkBroken: U.unknownTitle,
+  linkBrokenBody:
+    'Nothing has changed. Open the link again from the most recent email you were sent.',
+  wayIn: 'Choose how {{organisation}} can reach you',
   switched: 'This page is now in English.',
   notSaved:
     'Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.',
@@ -1027,18 +1233,28 @@ export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
 
 type Slots = Record<string, string | number>;
 
+/** The guest page's own words in this language, once l10n has written them (sc-1439). */
+function productWord(lang: Exclude<Lang, 'en'>, key: BoardKey): string | undefined {
+  const word: unknown = i18next.getResource(lang, 'translation', `guest.${key}`);
+
+  return typeof word === 'string' &&
+    word !== i18next.getResource('en', 'translation', `guest.${key}`)
+    ? word
+    : undefined;
+}
+
 export function wordsFor(lang: Lang) {
   const t = i18next.getFixedT(lang);
   const numbers = new Intl.NumberFormat(TAGS[lang]);
   const board = (key: BoardKey, slots: Slots = {}): string =>
-    ((lang === 'en' ? undefined : BOARD_SAMPLES[lang][key]) ?? BOARD_ENGLISH[key]).replaceAll(
-      /\{\{(\w+)\}\}/gu,
-      (whole, slot: string) => {
-        const value = slots[slot];
+    (
+      (lang === 'en' ? undefined : (productWord(lang, key) ?? BOARD_SAMPLES[lang][key])) ??
+      BOARD_ENGLISH[key]
+    ).replaceAll(/\{\{(\w+)\}\}/gu, (whole, slot: string) => {
+      const value = slots[slot];
 
-        return value == null ? whole : typeof value === 'number' ? numbers.format(value) : value;
-      },
-    );
+      return value == null ? whole : typeof value === 'number' ? numbers.format(value) : value;
+    });
   const hosts = hostsOf(lang);
   const one = new Intl.PluralRules('en').select(EVENT.hosts.length) === 'one';
   const answerWord = (answer: Answer): string => board(answer);
@@ -1110,6 +1326,32 @@ export function wordsFor(lang: Lang) {
       ),
     companions: board('companionsOnHold'),
     companionsNotComing: board('companionsNotComing'),
+    confirmAnswer: board('confirmAnswer'),
+    fromMessage: board('fromMessage'),
+    confirm: board('confirm'),
+    carryOn: board('carryOn'),
+    chooseDifferent: board('chooseDifferent'),
+    already: (answer: Answer): string =>
+      board(
+        (
+          {
+            coming: 'alreadyComing',
+            notComing: 'alreadyNotComing',
+            notSure: 'alreadyNotSure',
+          } as const
+        )[answer],
+      ),
+    since: (date: string) => board('since', { date }),
+    downAs: (answer: Answer): string =>
+      board(
+        (
+          {
+            coming: 'downAsComing',
+            notComing: 'downAsNotComing',
+            notSure: 'downAsNotSure',
+          } as const
+        )[answer],
+      ),
     change: board('change'),
     newAnswer: board('newAnswer'),
     answerNow: board('answerNow'),
@@ -1182,6 +1424,18 @@ export function wordsFor(lang: Lang) {
     savedLine: (channel: Channel, on: boolean): string =>
       board(`${channel}${on ? 'On' : 'Off'}`, { organisation: ORGANISATION }),
     yourMessagesFoot: board('yourMessagesFoot', { organisation: ORGANISATION }),
+    noEmail: board('noEmail', { organisation: ORGANISATION }),
+    stopEmails: board('stopEmails', { organisation: ORGANISATION }),
+    lead: (lead: 'stopped' | 'undone'): string =>
+      lead === 'stopped'
+        ? board('stopped', { organisation: ORGANISATION })
+        : board('emailOn', { organisation: ORGANISATION }),
+    undo: board('undo'),
+    saving: board('saving'),
+    saveFailed: board('saveFailed'),
+    linkBroken: board('linkBroken'),
+    linkBrokenBody: board('linkBrokenBody'),
+    wayIn: board('wayIn', { organisation: ORGANISATION }),
     switched: board('switched'),
     notSaved: board('notSaved'),
   };

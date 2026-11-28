@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { rememberedFor } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -84,7 +85,7 @@ describe('a few details', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined();
     expect(screen.getByText('Step 2 of 2')).toBeDefined();
     expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('Folake Adeyemi');
-    expect((screen.getByLabelText('Full name') as HTMLInputElement).maxLength).toBe(180);
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).maxLength).toBe(-1);
     expect(screen.getByLabelText('Organisation name')).toBeDefined();
     expect(screen.getByText('Your events belong to it. You can rename it later.')).toBeDefined();
     expect(screen.getByLabelText('Country')).toBeDefined();
@@ -198,7 +199,7 @@ describe('a few details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     expect(screen.getByText('Add your name to carry on.')).toBeDefined();
-    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+    expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByLabelText('Full name').getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(screen.getByLabelText('Full name'));
     expect(sent).toEqual([]);
@@ -514,6 +515,59 @@ describe('an organisation at the domain of the address (sc-561)', () => {
 
     await waitFor(() => expect(sent.some((request) => request.method === 'DELETE')).toBe(true));
   });
+
+  describe('a managed account (sc-563)', () => {
+    const MANAGED = {
+      domain: 'ire.events',
+      organisation: { id: 'org_ire', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+
+    it('asks to join with the banner in place of Start my own, and no intro', async () => {
+      answering({ 'GET /api/join-offers': () => json({ ...OFFERS, managed: MANAGED }) });
+      at('/complete-profile', ADA);
+
+      expect(await screen.findByText('Managed by Ìrè Events')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
+      expect(screen.queryByText(/Your address is at ire\.events/u)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
+      expect(screen.queryByText('Change your main email address')).toBeNull();
+    });
+
+    it('marks the offer with the organisation’s tile, and asks for no mobile number', async () => {
+      answering({ 'GET /api/join-offers': () => json({ ...OFFERS, managed: MANAGED }) });
+      at('/complete-profile', ADA);
+
+      const title = await screen.findByText('Ìrè Events uses Soirely');
+      expect(title.closest('.join-offer')?.querySelector('.org-tile')?.textContent).toBe('ÌE');
+      expect(screen.queryByLabelText(/Mobile number/u)).toBeNull();
+    });
+
+    it('with nothing to join, saves the name alone, with no organisation', async () => {
+      const sent = answering({
+        'GET /api/join-offers': () => json({ ...OFFERS, offers: [], managed: MANAGED }),
+        'PATCH /api/auth/complete-profile': () =>
+          json({ account: { ...ACCOUNT, name: 'Ada Okeke' }, verificationNeeded: false }),
+        'GET /api/orgs': () => json({ organisations: [] }),
+      });
+      at('/complete-profile', ADA);
+
+      expect(await screen.findByText('Managed by Ìrè Events')).toBeDefined();
+      expect(screen.queryByLabelText('Organisation name')).toBeNull();
+      expect(screen.queryByText('Change your main email address')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+      await waitFor(() =>
+        expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+          name: 'Ada Okeke',
+          phoneCountryCode: expect.any(String) as string,
+          phoneNumber: '',
+        }),
+      );
+    });
+  });
 });
 
 // Every key InvitationsController::preview writes, as GET /api/invitations lists them.
@@ -528,6 +582,7 @@ function preview(id: string, organisation: { id: string; name: string }, inviter
     refusal: null,
     forYou: true,
     signedInAs: 'folake@ire.events',
+    managed: null,
   };
 }
 
@@ -582,6 +637,36 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     ).toBeDefined();
   });
 
+  it('lists those a managed account cannot accept as on any other, until a press is refused (sc-73668)', async () => {
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    answering(
+      invited(
+        { ...preview('inv_1', ADUNNI, 'Bisi Adeyemi'), managed },
+        { ...preview('inv_2', KOLA, 'Kola Bello'), managed },
+      ),
+    );
+    at('/complete-profile');
+
+    expect(
+      await screen.findByText(
+        'You have 2 invitations waiting. Accept one to join that organisation, or start your own below.',
+      ),
+    ).toBeDefined();
+    const group = screen.getByRole('group', { name: 'Adunni Weddings' });
+    expect(
+      within(group).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
+    ).toBeDefined();
+    expect(
+      within(group).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Managed by Ìrè Events' })).toBeNull();
+  });
+
   it('asks for an organisation or an invitation when Save is pressed with neither', async () => {
     const sent = answering(invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')));
     at('/complete-profile');
@@ -631,7 +716,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
       phoneCountryCode: expect.any(String),
       phoneNumber: '',
     });
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_7',
+    );
   });
 
   it('holds Save while an accept is in flight, so a typed organisation is never sent beside it', async () => {
@@ -708,7 +795,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_9',
+    );
   });
 
   it('declining every one leaves the organisation fields as they were, and the row says so', async () => {
@@ -731,7 +820,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(screen.getByRole('group', { name: 'Adunni Weddings' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+    expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
   });
 
   it('keeps the organisation fields when a press is refused', async () => {

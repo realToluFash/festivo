@@ -1,5 +1,6 @@
 import { BAR, DOOR_EVENT } from './doorCode.ts';
 import type { Reply } from './guests.ts';
+import { type Night, nightOf } from './myNight.ts';
 import { HUGO } from './redeem.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -18,7 +19,7 @@ export interface DoorPerson {
 }
 
 export type Holder = 'shift' | 'code';
-export type Phase = 'open' | 'before' | 'ended';
+export type Phase = 'open' | 'before';
 export type Gone = 'link_gone' | 'outside_window' | 'outside_window_ended' | 'level_view';
 
 export const CHECK_IN_STATES = [
@@ -35,7 +36,6 @@ export const CHECK_IN_STATES = [
   'not_recorded',
   'live',
   'before_open',
-  'ended',
   'loading',
   'empty',
   'empty_closed',
@@ -52,6 +52,13 @@ export type CheckInState = (typeof CHECK_IN_STATES)[number];
 
 export function checkInStateOf(value: string | null): CheckInState {
   return CHECK_IN_STATES.find((one) => one === value) ?? 'list';
+}
+
+/** sc-60684: whether anyone on the event has a taken seat; until then no row carries a seat line. */
+export type Seating = 'seated' | 'none';
+
+export function seatingOf(value: string | null): Seating {
+  return value === 'none' ? 'none' : 'seated';
 }
 
 export function holderOf(value: string | null): Holder {
@@ -71,8 +78,15 @@ export const OPENS_AT = '16:00';
 export const SHIFT_NAME = 'Bisi Adeyemi';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
+/** Sign out on the shift page opened from the staff link lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). From check-in's Your shift it stays put (ShiftPage). */
+export const SIGNED_OUT_HREF = '/demo/staff-sign-in?state=signed-out';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
+
+/** The shift page check-in leads back to: sc-3915's Your night, for a door job with no station, so it is headed "Tonight you're on Door". */
+export function doorNight(): Night {
+  return { ...nightOf('no_station'), event: DOOR_EVENT, name: SHIFT_NAME, job: JOB };
+}
 
 /** The job beside the event's name: the shift's, or the label of the code a door-code holder came in on, as "You're in for…" shows it. */
 export function jobOf(holder: Holder): string {
@@ -121,8 +135,6 @@ export const CW = {
   opensAt: (time: string) => `Check-in opens at ${time}`,
   opensBody: (time: string) =>
     `Search works now. Arrivals and walk-ins can be recorded from ${time}.`,
-  ended: 'This event has ended.',
-  endedBody: 'The list stays readable. Arrivals can no longer be marked or undone.',
   emptyTitle: 'Nobody is on the list yet',
   emptyLine: 'Anyone who arrives can be added as a walk-in.',
   loading: 'Loading the list',
@@ -141,28 +153,33 @@ export const CW = {
   },
   linkEnded: {
     title: 'This link has ended.',
-    body: 'It stopped working 2 hours after your last shift.',
+    body: 'Staff links stop working 2 hours after your last shift, or when the event ends.',
     next: 'If you are working another event, you will get a new link for it.',
     foot: 'Nothing stays on this device.',
   },
   notSignedIn: {
     title: 'Sign in from your link or code',
-    body: 'To check guests in, open the link we sent you, or enter your door code again.',
+    body: 'Open the link we sent you, or enter your door code again.',
     cta: 'Enter a door code',
   },
-  shift: {
-    only: 'Tonight only · ends 02:00',
-    hello: 'Hi Bisi, you’re on tonight',
-    yourShift: 'Your shift',
-    times: '16:00 to 23:00',
-    clocked: 'Clocked in at 17:52',
-    signedInAs: (name: string) => `Signed in as ${name}`,
-    signedOutAt: 'You’ll be signed out at 02:00',
-    signOut: 'Sign out',
-    signOutLater: 'Signing out has its own design (sc-4235).',
-  },
   connectionBack: 'Demo: the connection is back',
+  noSeat: 'No seat yet',
 } as const;
+
+/** Taken seats, in sc-4022's words with the host's own names; the held companions, the unseated and walk-ins read No seat yet. */
+const SEATS: Readonly<Record<string, string>> = {
+  adaeze: 'Row C, seat 14 · Upper balcony east',
+  bisi: 'Table 4 · Main hall',
+  kemi: 'Table 4 · Main hall',
+  folasade: 'Table 2',
+  marie: 'Seat 3 · By the bar',
+  tunde: 'Table 1 · Main hall',
+  zainab: 'Table 2',
+};
+
+export function seatOf(id: string, seating: Seating): string | null {
+  return seating === 'none' ? null : (SEATS[id] ?? CW.noSeat);
+}
 
 const ARRIVED_BEFORE: Readonly<Record<string, [string, string]>> = {
   bisi: ['19:31', OTHER],
@@ -384,25 +401,6 @@ export function checkInStart(state: CheckInState, holder: Holder): CheckInStart 
       return { ...start, live: true };
     case 'before_open':
       return { ...start, phase: 'before', people: [...PEOPLE] };
-    case 'ended':
-      return {
-        ...start,
-        phase: 'ended',
-        people: seeded(
-          {
-            ...ARRIVED_BEFORE,
-            adaeze: ['19:42', '@me'],
-            a1: ['19:42', '@me'],
-            a2: ['19:43', '@me'],
-            emeka: ['20:05', OTHER],
-            folasade: ['19:50', '@me'],
-            ngozi: ['19:44', OTHER],
-            zainab: ['20:12', OTHER],
-            marie: ['19:58', '@me'],
-          },
-          me,
-        ),
-      };
     case 'loading':
       return { ...start, loading: true };
     case 'empty':
@@ -447,6 +445,14 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       { to: '/demo/check-in/shift', name: 'The shift page, Check-in under the clock card' },
       { to: '/demo/check-in/shift?level=view', name: 'The shift page at Can view: no Check-in' },
+      {
+        to: '/demo/check-in/shift?state=signed_out',
+        name: 'The shift page after Sign out: Signed out. above the not-signed-in page',
+      },
+      {
+        to: '/demo/check-in/shift?state=not_signed_in',
+        name: 'The shift page not signed in, or reloaded after Sign out',
+      },
       { to: '/demo/redeem?state=browser-in', name: 'You’re in, from a door code: Check-in first' },
       { to: '/demo/redeem?state=browser-in-view', name: 'You’re in at Can view: no Check-in' },
       { to: '/demo/redeem?state=from-check-in', name: 'You’re in, back from check-in' },
@@ -466,6 +472,7 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
       at('not_recorded', 'Not recorded'),
       at('live', 'Another device’s arrival, not announced'),
       at('empty', 'Nobody on the list yet'),
+      { to: '/demo/check-in?state=list&seats=none', name: 'Nobody seated yet: no seat line' },
     ],
   },
   {
@@ -483,7 +490,6 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       at('before_open', 'Before check-in opens: search works'),
       at('empty_closed', 'Before check-in opens, nobody on the list'),
-      at('ended', 'The event has ended: read only'),
       at('offline', 'Offline: nothing queued'),
       at('offline_back', 'Back online: what landed meanwhile'),
     ],
@@ -491,7 +497,7 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'When access ends',
     states: [
-      at('link_gone', 'The link was replaced or removed'),
+      at('link_gone', 'The link was replaced or removed, or the event ended'),
       at('outside_window', 'Outside the link’s window, before'),
       at('outside_window_ended', 'Outside the link’s window, after'),
       at('level_view', 'The job changed to Can view: back on the shift page'),

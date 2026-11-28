@@ -7,6 +7,7 @@ import {
   countryChoices,
   currencyChoices,
   currencyLabel,
+  heldFirstCurrencyChoices,
   deviceCountry,
   heldCurrencyLabel,
   deviceRegion,
@@ -25,6 +26,14 @@ describe('regions', () => {
 
     expect(nigeria?.name).toBe('Nigeria');
     expect(countryChoices('en').find((choice) => choice.code === 'DE')?.name).toBe('Germany');
+  });
+
+  it('sorts the countries as the language sorts, one list each time it is asked', () => {
+    expect(countryChoices('fr')).toBe(countryChoices('fr'));
+    const names = countryChoices('fr').map((choice) => choice.name);
+
+    expect(names).toEqual([...names].sort(new Intl.Collator('fr').compare));
+    expect(names.indexOf('Égypte')).toBeLessThan(names.indexOf('Espagne'));
   });
 
   it('labels a timezone by its city, then the identifier that is stored', () => {
@@ -77,6 +86,21 @@ describe('currencies', () => {
     expect(offered).toContain('XOF');
     for (const code of ['SLL', 'ZWL', 'HRK', 'XXX', 'XTS', 'XAU', 'XDR', 'BOV'])
       expect(offered).not.toContain(code);
+  });
+
+  it("opens an event's currency list on the event's own currency, named without its code", () => {
+    const choices = heldFirstCurrencyChoices('GBP', 'en', 'No longer in use');
+
+    expect(choices[0]).toEqual({ code: 'GBP', name: 'British Pound' });
+    expect(choices[1]?.code).toBe('AFN');
+    expect(choices.filter(({ code }) => code === 'GBP')).toHaveLength(1);
+  });
+
+  it('keeps a retired currency an event holds first, under its retired words and not its code again', () => {
+    expect(heldFirstCurrencyChoices('HRK', 'en', 'No longer in use')[0]).toEqual({
+      code: 'HRK',
+      name: 'No longer in use',
+    });
   });
 
   describe('on an engine that names SLE, ZWG, XCG and VED by their codes, as Chrome does', () => {

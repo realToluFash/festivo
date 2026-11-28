@@ -1,10 +1,11 @@
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
-import { SW } from './seatingWords.ts';
+import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
+import { SHARE_STATES } from './shareTables.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
-export { SW };
+export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
 
 const WORDS = demoWords(SW);
 
@@ -30,6 +31,10 @@ export interface Chair {
   state: ChairState;
   who?: string | undefined;
   party?: string | undefined;
+  reply?: Reply | undefined;
+  /** Auto-seat's proposal on an Empty chair (sc-4019): the seat stays free until it is accepted. */
+  proposed?: string | undefined;
+  proposedParty?: string | undefined;
 }
 
 export interface Item {
@@ -78,11 +83,58 @@ export interface Party {
   behind?: boolean;
 }
 
+export function freedParty(who: string): Party {
+  return { id: `back-${who}`, name: who, companions: [], group: null, reply: 'coming' };
+}
+
+export function freedFrom(items: readonly Item[]): Party[] {
+  return items.flatMap((item) =>
+    item.chairs.flatMap((chair) =>
+      chair.state === 'taken' && chair.who != null ? [freedParty(chair.who)] : [],
+    ),
+  );
+}
+
 export interface Person {
   name: string;
   initials: string;
   tone: number;
   viewer: boolean;
+}
+
+/** `seat` counts chairs from 0; the ring's name says it from 1. */
+export interface Choice {
+  who: Person;
+  seat?: number;
+}
+
+export type Rings = Readonly<Record<string, readonly Choice[]>>;
+
+export type Presence = 'chips' | 'overflow' | 'reconnecting';
+
+const isColleague = (one: Choice): boolean => !one.who.viewer;
+
+export function chosenWords(choices: readonly Choice[] | undefined): string {
+  const shown = (choices ?? []).filter(isColleague);
+  const whole = shown.filter((one) => one.seat == null).map((one) => one.who.name);
+  const seats = shown
+    .filter((one) => one.seat != null)
+    .map((one) => say(SW.seatChosenBy, { n: (one.seat ?? 0) + 1, name: one.who.name }));
+
+  return (whole.length === 0 ? '' : say(SW.chosenBy, { name: listed(whole) })) + seats.join('');
+}
+
+/** The colleagues whose choice marks an item, in the order they chose it: never a viewer, and nobody while your own connection is down (sc-60717). */
+export function marksOf(rings: Rings, presence: Presence, id: string): readonly Choice[] {
+  if (presence === 'reconnecting') return [];
+  return (rings[id] ?? []).filter(isColleague);
+}
+
+/** A chair's own words: who chose that seat, joined as the language joins a list. */
+export function seatChosenWords(choices: readonly Choice[], seat: number): string {
+  const names = choices.filter((one) => one.seat === seat).map((one) => one.who.name);
+
+  return names.length === 0 ? '' : say(SW.chosenBy, { name: listed(names) });
 }
 
 export const EVENT_ID = 'evt-wed-4';
@@ -228,6 +280,9 @@ const SEATED_AT: Readonly<Record<string, readonly string[]>> = {
   door: ['Grace Obi'],
 };
 
+/** The seated who have not said Coming; everyone else seated is Coming. */
+const SEATED_REPLY: Readonly<Record<string, Reply>> = { 'Sofia Rossi': 'notSure' };
+
 function chairsFor(
   id: string,
   seats: number,
@@ -245,7 +300,9 @@ function chairsFor(
     if (held.includes(number)) return { state: 'held' };
     if (left <= 0) return { state: 'empty' };
     left -= 1;
-    return { state: 'taken', who: names.shift() };
+    const who = names.shift();
+
+    return { state: 'taken', who, reply: who == null ? undefined : SEATED_REPLY[who] };
   });
 }
 
@@ -375,6 +432,8 @@ const GAP_COCKTAIL = 24;
 const ROW_TAB = 52;
 export const AT_100 = 0.5;
 export const ZOOMS: readonly number[] = [25, 40, 50, 75, 100, 150, 200, 300, 400];
+export const SMALLEST_SCALE = 0.25 * AT_100;
+export const LARGEST_SCALE = 4 * AT_100;
 export const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
 
 export type Point = readonly [number, number];
@@ -452,6 +511,25 @@ export function chairsOf(item: Item): Point[] {
   }
 }
 
+export const POINTER_TARGET = 44;
+
+/** The closest two of a table's chairs, in cm: a chair takes a pointer once this is a 44 target on screen (sc-5030). */
+export function chairGap(item: Item): number {
+  const points = chairsOf(item);
+  let gap = Infinity;
+
+  points.forEach(([ax, ay], a) => {
+    points.slice(a + 1).forEach(([bx, by]) => {
+      gap = Math.min(gap, Math.hypot(ax - bx, ay - by));
+    });
+  });
+  return gap;
+}
+
+export function chairsTakePointer(item: Item, s: number): boolean {
+  return chairGap(item) * s >= POINTER_TARGET - 1e-9;
+}
+
 export function extent(item: Item): Point {
   switch (item.kind) {
     case 'round':
@@ -474,8 +552,44 @@ export function extent(item: Item): Point {
   }
 }
 
+/** A Tables card's drawing (sc-4013), and its chairs as targets: 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
+export const CARD_SIZE = { w: 188, h: 132 } as const;
+export const CHAIR_HIT = 24;
+
+/** How much smaller than the room a card draws its table: as large as the card holds, never above 0.45. */
+export function cardScale(item: Item): number {
+  const [ex, ey] = extent(item);
+  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
+
+  return Math.min(
+    (CARD_SIZE.w - 16) / (2 * turned[0]!),
+    (CARD_SIZE.h - 12) / (2 * turned[1]!),
+    0.45,
+  );
+}
+
+/** Whether a card draws its chairs far enough apart for each to be a 24 px target (WCAG 2.2 SC 2.5.8); a long row does not, and is one target. */
+export function chairsFit(item: Item): boolean {
+  const s = cardScale(item);
+  const at = chairsOf(item).map((point) => turn(point, item.rot));
+
+  return at.every(([x, y], i) =>
+    at.slice(i + 1).every(([x2, y2]) => Math.hypot(x - x2, y - y2) * s >= CHAIR_HIT),
+  );
+}
+
 export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
+}
+
+/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361); with `drawn`, the box is the drawn one that already holds the halo, so only the half stroke. */
+export function focusReach(item: Item, drawn = false): number {
+  const reach = (drawn ? 0 : 17.5) + 5 / 2;
+
+  if (isRound(item)) return reach;
+  const angle = (item.rot * Math.PI) / 180;
+
+  return reach * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
 }
 
 export function turns(item: Item): boolean {
@@ -587,29 +701,90 @@ export function snapTo(value: number, units: Units, on = true): number {
   return on ? Math.round(value / step) * step : Math.round(value);
 }
 
+export const PLACE_CLEAR = 46;
+export const SEAT_NAME_ROOM = 160;
+
+function placingBox(item: Item, at: Point = [item.x, item.y]) {
+  const box = bounds(item, at);
+
+  return item.kind === 'single' ? { ...box, x1: box.x1 + SEAT_NAME_ROOM } : box;
+}
+
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+function apart(a: Box, b: Box, clear: number): boolean {
+  return (
+    a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
+  );
+}
+
+function shifted(box: Box, x: number, y: number): Box {
+  return { x0: box.x0 + x, y0: box.y0 + y, x1: box.x1 + x, y1: box.y1 + y };
+}
+
+export function keepsClear(item: Item, items: readonly Item[], clear = PLACE_CLEAR): boolean {
+  const a = placingBox(item);
+
+  return items.every((other) => other.id === item.id || apart(a, placingBox(other), clear));
+}
+
+function preferred([dx, dy]: Point): number {
+  if (Math.abs(dy) > Math.abs(dx)) return dy > 0 ? 0 : 1;
+  return dx > 0 ? 2 : 3;
+}
+
+const RING_STEP = 10;
+const CLEAR_REACH = Math.ceil((PLACE_CLEAR + SEAT_NAME_ROOM) / RING_STEP);
+const rings: Point[][] = [];
+
+function ringOf(ring: number): Point[] {
+  const known = rings[ring];
+
+  if (known != null) return known;
+  const tries: Point[] = [];
+
+  for (let dx = -ring; dx <= ring; dx += 1)
+    for (let dy = -ring; dy <= ring; dy += 1)
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
+        tries.push([dx * RING_STEP, dy * RING_STEP]);
+  tries.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) || preferred(a) - preferred(b));
+  rings[ring] = tries;
+
+  return tries;
+}
+
 export function nearestFree(item: Item, items: readonly Item[], room: Room, from: Point): Point {
-  const step = 20;
-  const limit = Math.max(room.w, room.l);
+  const others = items.filter((other) => other.id !== item.id);
+  const spaces = others.map((other) => placingBox(other));
+  const bodies = others.map((other) => bounds(other));
+  const space = placingBox(item, [0, 0]);
+  const body = bounds(item, [0, 0]);
+  const last = Math.ceil(Math.max(room.w, room.l) / RING_STEP);
+  let free: Point | null = null;
+  let freeRing = 0;
 
-  for (let ring = 0; ring * step <= limit; ring += 1) {
-    const tries: Point[] = [];
+  for (let ring = 0; ring <= last; ring += 1) {
+    if (free != null && ring > freeRing + CLEAR_REACH) return free;
+    for (const [dx, dy] of ringOf(ring)) {
+      const x = Math.round((from[0] + dx) / 10) * 10;
+      const y = Math.round((from[1] + dy) / 10) * 10;
+      const at = shifted(body, x, y);
 
-    for (let dx = -ring; dx <= ring; dx += 1)
-      for (let dy = -ring; dy <= ring; dy += 1)
-        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
-          tries.push([from[0] + dx * step, from[1] + dy * step]);
-    tries.sort(
-      (a, b) =>
-        Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]),
-    );
-    for (const at of tries) {
-      const moved = { ...item, x: Math.round(at[0] / 10) * 10, y: Math.round(at[1] / 10) * 10 };
+      if (at.x0 < -0.5 || at.y0 < -0.5 || at.x1 > room.w + 0.5 || at.y1 > room.l + 0.5) continue;
+      const mine = shifted(space, x, y);
 
-      if (inside(moved, room) && overlapsOf(moved, items).length === 0) return [moved.x, moved.y];
+      if (spaces.every((other) => apart(mine, other, PLACE_CLEAR))) return [x, y];
+      if (free != null) continue;
+      const moved = { ...item, x, y };
+
+      if (others.every((other, i) => apart(at, bodies[i]!, 0) || !overlap(moved, other))) {
+        free = [x, y];
+        freeRing = ring;
+      }
     }
   }
 
-  return within(item, room, from);
+  return free ?? within(item, room, from);
 }
 
 export function readingOrder(items: readonly Item[]): Item[] {
@@ -623,16 +798,100 @@ export function fitOf(
 ): { s: number; ox: number; oy: number } {
   const w = width - FIT_PAD.left - FIT_PAD.right;
   const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
+
+  return centred(width, height, room, Math.max(0.05, Math.min(w / room.w, h / room.l)));
+}
+
+export function clampScale(s: number): number {
+  return Math.min(LARGEST_SCALE, Math.max(SMALLEST_SCALE, s));
+}
+
+/** The plan's Fit the room, held to the zoom bar's 25% to 400%: a room too large to fit at 25% shows its centre (sc-57678). */
+export function planFitOf(
+  width: number,
+  height: number,
+  room: Room,
+): { s: number; ox: number; oy: number } {
+  return centred(width, height, room, clampScale(fitOf(width, height, room).s));
+}
+
+function centred(width: number, height: number, room: Room, s: number) {
+  const w = width - FIT_PAD.left - FIT_PAD.right;
+  const h = height - FIT_PAD.top - FIT_PAD.bottom;
 
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
+}
+
+/** How far to slide the picture, in screen px, so a focused box (canvas px) shows clear of the floating bars (WCAG 2.2 2.4.11). Each axis is decided on its own: one where the box is larger than the view lines up with its top or left edge, and the bars are cleared along the other (sc-57361). */
+export function intoView(
+  box: Box,
+  width: number,
+  height: number,
+  bars: readonly Box[] = [],
+  margin = 8,
+): Point {
+  const left = FIT_PAD.left + margin;
+  const right = width - FIT_PAD.right - margin;
+  const top = FIT_PAD.top + margin;
+  const bottom = height - FIT_PAD.bottom - margin;
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+  const wide = box.x1 - box.x0 > right - left;
+  const tall = box.y1 - box.y0 > bottom - top;
+  let dx = slide(box.x0, box.x1, left, right);
+  let dy = slide(box.y0, box.y1, top, bottom);
+
+  for (const bar of bars) {
+    if (wide && tall) break;
+    const x0 = box.x0 + dx;
+    const x1 = box.x1 + dx;
+    const y0 = box.y0 + dy;
+    const y1 = box.y1 + dy;
+
+    if (x1 <= bar.x0 - margin || x0 >= bar.x1 + margin) continue;
+    if (y1 <= bar.y0 - margin || y0 >= bar.y1 + margin) continue;
+    const across: Point[] = [
+      [bar.x0 - margin - x1, 0],
+      [bar.x1 + margin - x0, 0],
+    ];
+    const along: Point[] = [
+      [0, bar.y0 - margin - y1],
+      [0, bar.y1 + margin - y0],
+    ];
+    const ways = wide ? along : tall ? across : [...across, ...along];
+    const shortest = ways
+      .filter(
+        ([mx, my]) =>
+          (wide || (x0 + mx >= left && x1 + mx <= right)) &&
+          (tall || (y0 + my >= top && y1 + my <= bottom)),
+      )
+      .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b[0]) - Math.abs(b[1]))[0];
+
+    if (shortest != null) {
+      dx += shortest[0];
+      dy += shortest[1];
+    } else if (wide) {
+      dy = top - box.y0;
+    } else if (tall) {
+      dx = left - box.x0;
+    }
+  }
+
+  return [dx, dy];
 }
 
 export function percentOf(s: number): number {
   return Math.round((s / AT_100) * 100);
 }
 
-/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
+export function percentWritten(pct: number, locale = 'en'): string {
+  return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
+}
+
+/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% their numbers. */
 export type Detail = 'out' | 'fit' | 'near';
 
 export function detailOf(s: number): Detail {
@@ -736,9 +995,23 @@ export function itemName(plan: Plan, item: Item, extra = ''): string {
   );
 }
 
+const REPLY_WORD: Record<Reply, string> = {
+  coming: SW.coming,
+  notSure: SW.notSureYet,
+  noReply: SW.noReply,
+};
+
 export function chairWord(chair: Chair): string {
   if (chair.state === 'taken') return chair.who ?? SW.taken;
+  if (chair.proposed != null) return say(SW.proposedChair, { name: chair.proposed });
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
+}
+
+/** Only the chair on the picture adds its guest's reply, Coming included (sc-5030); Tables and the List keep chairWord. */
+export function chairSaid(chair: Chair): string {
+  if (chair.state === 'taken' && chair.who != null)
+    return `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
+  return chairWord(chair);
 }
 
 export function stateWord(state: ChairState): string {
@@ -769,7 +1042,7 @@ export function leastUsed(sections: readonly Section[]): Colour {
   return COLOURS.reduce((best, colour) => (used(colour) < used(best) ? colour : best), COLOURS[0]!);
 }
 
-export function natural(a: string, b: string): number {
+function natural(a: string, b: string): number {
   return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 }
 
@@ -857,6 +1130,66 @@ export function readItemSize(text: string, units: Units): { cm: number } | { ref
     return cm < 30.48 - 1e-6 ? { refused: SW.sizeMinFeet } : { cm };
   }
   return cm == null || cm < 30 ? { refused: SW.sizeMin } : { cm };
+}
+
+export const TABLE_LIMITS = {
+  seats: 30,
+  cm: { min: 40, max: 1000 },
+  feet: { min: 16 * 2.54, max: 393 * 2.54 },
+} as const;
+
+function unitWords(value: number, unit: 'centimeter' | 'meter' | 'foot' | 'inch'): string {
+  return new Intl.NumberFormat('en', { style: 'unit', unit, maximumFractionDigits: 2 }).format(
+    value,
+  );
+}
+
+export function limitWords(cm: number, units: Units): string {
+  if (units === 'metric')
+    return cm < 100 ? unitWords(cm, 'centimeter') : unitWords(cm / 100, 'meter');
+  const inches = Math.round(cm / 2.54);
+  const ft = unitWords(Math.floor(inches / 12), 'foot');
+
+  return inches % 12 === 0
+    ? ft
+    : say(SW.feetInches, { feet: ft, inches: unitWords(inches % 12, 'inch') });
+}
+
+export function tableSizeRefusal(units: Units): string {
+  const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
+
+  return say(SW.tableSize, {
+    min: limitWords(range.min, units),
+    max: limitWords(range.max, units),
+  });
+}
+
+export function readTableSize(text: string, units: Units): { cm: number } | { refused: string } {
+  const cm = readSize(text, units);
+  const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
+  const refused = tableSizeRefusal(units);
+
+  if (cm == null && units === 'us') return { refused: SW.usHint };
+  if (cm == null || cm < range.min - 1e-6 || cm > range.max + 1e-6) return { refused };
+  return { cm };
+}
+
+export function readTableSeats(
+  text: string,
+  cocktail: boolean,
+): { n: number } | { refused: string } {
+  const n = readCount(text);
+
+  if (n == null || n < 1 || n > TABLE_LIMITS.seats)
+    return { refused: cocktail ? SW.placesRange : SW.seatsRange };
+  return { n };
+}
+
+export function readEnds(text: string, seats: number): { n: number } | { refused: string } {
+  const n = readCount(text);
+
+  if (n == null || n > seats) return { refused: say(SW.endsRange, { max: seats }) };
+  return { n };
 }
 
 export function readCount(text: string): number | null {
@@ -1064,6 +1397,23 @@ export function planCounts(plan: Plan): string {
   );
 }
 
+/** Deleting a section names every kind it leaves with no section, the verb from the total; an empty section says nothing (sc-54060). */
+export function sectionDeleteWords(items: readonly Item[], sec: string): string {
+  const inIt = items.filter((item) => item.sec === sec);
+  const tables = inIt.filter(isTable).length;
+  const rows = inIt.filter((item) => item.kind === 'row').length;
+  const singles = inIt.filter((item) => item.kind === 'single').length;
+  const counts = listed(
+    [
+      tables > 0 ? many('tables', tables) : null,
+      rows > 0 ? many('rows', rows) : null,
+      singles > 0 ? many('singles', singles) : null,
+    ].filter((part): part is string => part != null),
+  );
+
+  return counts === '' ? '' : many('sectionDeleteBody', tables + rows + singles, { counts });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat, held chairs too; a sentence with nothing to say is left out. */
 export function deletePlanWords(plan: Plan): string {
   const counts = planCounts(plan);
@@ -1121,10 +1471,15 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
     chairs: item.chairs.map((chair, index) => {
       const at = chairs.indexOf(index);
 
-      return at < 0 || who[at] == null ? chair : { state: 'taken', who: who[at], party: party.id };
+      return at < 0 || who[at] == null
+        ? chair
+        : { state: 'taken', who: who[at], party: party.id, reply: party.reply };
     }),
   };
 }
+
+const SHARE_GROUP = 'Share tables with guests (sc-4022)';
+const AUTO_GROUP = 'Auto-seat by group (sc-4019)';
 
 export const SEATING_STATES = [
   { key: 'plan', name: 'The plan in use, nothing chosen', group: 'The plan' },
@@ -1135,6 +1490,16 @@ export const SEATING_STATES = [
   { key: 'loading', name: 'Loading', group: 'The plan' },
   { key: 'failed', name: 'Could not load', group: 'The plan' },
   { key: 'readOnly', name: 'Read only, Can view', group: 'The plan' },
+  {
+    key: 'readOnlyTable',
+    name: 'Read only, a rectangular table chosen',
+    group: 'The plan',
+  },
+  {
+    key: 'readOnlyTableUs',
+    name: 'Read only, a default rectangular table in feet',
+    group: 'The plan',
+  },
   { key: 'zoomOut', name: 'Zoomed out, 40%', group: 'The plan' },
   { key: 'corner', name: 'One corner at 200%, seat 9 chosen', group: 'The plan' },
   { key: 'sparse', name: 'The sparse plan, one table', group: 'The plan' },
@@ -1154,13 +1519,33 @@ export const SEATING_STATES = [
   { key: 'sectionEdit', name: 'Edit a section', group: 'The room and its sections' },
   { key: 'sectionDelete', name: 'Delete a section', group: 'The room and its sections' },
   {
+    key: 'sectionDeleteRows',
+    name: 'Delete a section of rows and single seats',
+    group: 'The room and its sections',
+  },
+  {
     key: 'sectionDeleteEmpty',
-    name: 'Delete a section with no tables',
+    name: 'Delete an empty section',
     group: 'The room and its sections',
   },
   { key: 'addMenu', name: 'Add table, the four shapes', group: 'Tables, rows and seats' },
   { key: 'placing', name: 'Placing a round table', group: 'Tables, rows and seats' },
   { key: 'placed', name: 'Placed, its fields open', group: 'Tables, rows and seats' },
+  {
+    key: 'zoomAbove',
+    name: 'The zoom above the folded bar, as in pt at 1024',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'zoomAboveMap',
+    name: 'The zoom above the folded bar, the small map above it',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'rowStepped',
+    name: 'Saved and Print a line down, as at 1024',
+    group: 'Tables, rows and seats',
+  },
   {
     key: 'tapChooses',
     name: 'A click chooses a table for Arrange',
@@ -1173,6 +1558,11 @@ export const SEATING_STATES = [
   { key: 'squeeze', name: 'The squeeze warning', group: 'Tables, rows and seats' },
   { key: 'nameTaken', name: 'A table name already used', group: 'Tables, rows and seats' },
   { key: 'belowSeated', name: 'Fewer seats than guests', group: 'Tables, rows and seats' },
+  { key: 'fieldBlank', name: 'A table’s name left blank', group: 'Tables, rows and seats' },
+  { key: 'seatsRange', name: 'Seats out of range', group: 'Tables, rows and seats' },
+  { key: 'sizeRange', name: 'A size out of range', group: 'Tables, rows and seats' },
+  { key: 'notNumber', name: 'A size that is not a number', group: 'Tables, rows and seats' },
+  { key: 'endsRange', name: 'More on the ends than seats', group: 'Tables, rows and seats' },
   { key: 'chair', name: 'A chair chosen', group: 'Tables, rows and seats' },
   { key: 'unusable', name: 'A chair marked unusable', group: 'Tables, rows and seats' },
   {
@@ -1195,6 +1585,16 @@ export const SEATING_STATES = [
   { key: 'deleteRow', name: 'Delete a row', group: 'Tables, rows and seats' },
   { key: 'seatAdded', name: 'Add seat', group: 'Tables, rows and seats' },
   { key: 'seatNameTaken', name: 'A seat name already used', group: 'Tables, rows and seats' },
+  {
+    key: 'rowChanged',
+    name: 'A colleague changed the row (412)',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'seatChanged',
+    name: 'A colleague changed the seat (412)',
+    group: 'Tables, rows and seats',
+  },
   { key: 'drag', name: 'Dragging Table 10', group: 'Moving and the keyboard' },
   { key: 'resize', name: 'Resizing Table 9', group: 'Moving and the keyboard' },
   { key: 'turn', name: 'R turns Table 9', group: 'Moving and the keyboard' },
@@ -1214,16 +1614,95 @@ export const SEATING_STATES = [
     name: 'A screen reader entering the room',
     group: 'Moving and the keyboard',
   },
+  { key: 'boxDrawing', name: 'A box drawn on empty floor, tables joining', group: 'Choosing many' },
+  { key: 'addOff', name: 'Add to choice off, Table 1 chosen', group: 'Choosing many' },
+  { key: 'addOn', name: 'Add to choice on, its hint and rules', group: 'Choosing many' },
+  {
+    key: 'addBox',
+    name: 'Add to choice on, a box adding a row and a seat',
+    group: 'Choosing many',
+  },
+  { key: 'addMixed', name: 'Add to choice on, a mixed choice of 6', group: 'Choosing many' },
+  { key: 'selectAll', name: 'Select all', group: 'Choosing many' },
+  { key: 'kindMenu', name: 'Select all of a kind', group: 'Choosing many' },
+  { key: 'selection', name: 'Six tables chosen, the Selection panel', group: 'Choosing many' },
+  { key: 'spaceTwo', name: 'Two chosen, Space evenly off', group: 'Choosing many' },
+  { key: 'aligned', name: 'Lined up on their top edges, with Undo', group: 'Choosing many' },
+  { key: 'gridOpen', name: 'Arrange in a grid, the outline', group: 'Choosing many' },
+  { key: 'gridWall', name: 'A grid crossing the wall, amber', group: 'Choosing many' },
+  { key: 'gridEdge', name: 'A grid refused at the wall', group: 'Choosing many' },
+  { key: 'gridWide', name: 'A grid wider than the room', group: 'Choosing many' },
+  { key: 'gridFields', name: 'Columns and Gap out of range', group: 'Choosing many' },
+  { key: 'gridFeet', name: 'A gap out of range, in feet', group: 'Choosing many' },
+  { key: 'renumberOpen', name: 'Renumber, a row in the choice', group: 'Choosing many' },
+  { key: 'renumberClash', name: 'Renumber, a name already taken', group: 'Choosing many' },
+  { key: 'renumberBlank', name: 'Renumber, Start at blank', group: 'Choosing many' },
+  { key: 'sectionOpen', name: 'Section for five tables', group: 'Choosing many' },
+  { key: 'duplicatedMany', name: 'Duplicate, the copies chosen', group: 'Choosing many' },
+  { key: 'deleteMany', name: 'Delete 6 tables, guests seated', group: 'Choosing many' },
+  { key: 'deleteManyEmpty', name: 'Delete 3 tables, nobody seated', group: 'Choosing many' },
+  { key: 'deleteMixed', name: 'Delete 3 items, mixed kinds', group: 'Choosing many' },
+  {
+    key: 'deleteManyChanged',
+    name: '6 tables deleted, a freed guest seated since',
+    group: 'Choosing many',
+  },
+  { key: 'toolChanged', name: 'A colleague changed one first (412)', group: 'Choosing many' },
+  {
+    key: 'readOnlyMany',
+    name: 'Read only, nothing to choose for changing',
+    group: 'Choosing many',
+  },
   { key: 'presenceOne', name: 'Priya Shah is here', group: 'Who else is here' },
   { key: 'presenceChose', name: 'Priya Shah has chosen Table 7', group: 'Who else is here' },
   { key: 'presenceBoth', name: 'You and Priya Shah chose Table 7', group: 'Who else is here' },
   { key: 'presenceSix', name: 'Six people here', group: 'Who else is here' },
   { key: 'presenceViewer', name: 'A viewer’s choice', group: 'Who else is here' },
+  {
+    key: 'presenceSeatTables',
+    name: 'Tables: Julien Moreau has chosen seat 2 of Table 9',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceSeatList',
+    name: 'List: Julien Moreau’s seat, Table 9 open',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoTables',
+    name: 'Tables: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoList',
+    name: 'List: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceBothTables',
+    name: 'Tables: you and Priya Shah chose Table 7',
+    group: 'Who else is here',
+  },
   { key: 'reconnecting', name: 'Reconnecting', group: 'Who else is here' },
   { key: 'left', name: 'Priya Shah left', group: 'Who else is here' },
   { key: 'arriving', name: 'A colleague’s change arrives', group: 'Who else is here' },
   { key: 'seat', name: 'Seat: Without a seat 12', group: 'Seating guests' },
-  { key: 'picked', name: 'A party picked', group: 'Seating guests' },
+  { key: 'picked', name: 'A party picked, every table free or Full', group: 'Seating guests' },
+  {
+    key: 'pickedOut',
+    name: 'A party picked at 40%, the table the target',
+    group: 'Seating guests',
+  },
+  {
+    key: 'chairLabel',
+    name: 'A party picked at 150%, a chair’s label on hover',
+    group: 'Seating guests',
+  },
+  {
+    key: 'pickedTight',
+    name: 'A party picked, tables close together: each free tag where it can be read',
+    group: 'Seating guests',
+  },
   { key: 'seated', name: 'Seated, with Undo', group: 'Seating guests' },
   { key: 'apart', name: 'Not side by side', group: 'Seating guests' },
   { key: 'full', name: 'A full table', group: 'Seating guests' },
@@ -1233,6 +1712,11 @@ export const SEATING_STATES = [
   { key: 'undoRefused', name: 'Undo refused', group: 'Seating guests' },
   { key: 'tableGuests', name: 'A table’s guests', group: 'Seating guests' },
   { key: 'moveAll', name: 'Move everyone to…', group: 'Seating guests' },
+  {
+    key: 'moveAllNone',
+    name: 'Move everyone to…, no other table has room',
+    group: 'Seating guests',
+  },
   { key: 'emptyTable', name: 'An empty table', group: 'Seating guests' },
   { key: 'everyoneSeated', name: 'Everyone coming has a seat', group: 'Seating guests' },
   { key: 'nobodyComing', name: 'Nobody coming yet', group: 'Seating guests' },
@@ -1240,6 +1724,22 @@ export const SEATING_STATES = [
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },
   { key: 'tablesPicked', name: 'The Tables view, a party picked', group: 'Seating guests' },
+  {
+    key: 'tablesChair',
+    name: 'The Tables view, a guest picked and a free chair under the pointer',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesSwap',
+    name: 'The Tables view, a taken chair tapped: Swap with',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesMoving',
+    name: 'The Tables view, a seated guest picked to move',
+    group: 'Seating guests',
+  },
+  { key: 'tablesMoved', name: 'The Tables view, a seated guest moved', group: 'Seating guests' },
   { key: 'list', name: 'The List view', group: 'Seating guests' },
   { key: 'listOpen', name: 'The List, Table 8 opened', group: 'Seating guests' },
   { key: 'print', name: 'Print', group: 'Print and paper' },
@@ -1255,9 +1755,67 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'autoBefore', name: 'Auto-seat by group, before a run', group: AUTO_GROUP },
+  { key: 'autoAsk', name: 'The confirmation: who it seats', group: AUTO_GROUP },
+  { key: 'autoNobody', name: 'Nobody to seat: the button disabled', group: AUTO_GROUP },
+  {
+    key: 'autoProposed',
+    name: 'Proposed: the room, the tray and the announcement',
+    group: AUTO_GROUP,
+  },
+  {
+    key: 'autoLeftOver',
+    name: 'Proposed, a smaller room: every reason left over',
+    group: AUTO_GROUP,
+  },
+  { key: 'autoAccepted', name: 'One table accepted, with Undo', group: AUTO_GROUP },
+  { key: 'autoChanged', name: 'A table changed since: Accept refused', group: AUTO_GROUP },
+  { key: 'autoAllChanged', name: 'Accept all with a changed table', group: AUTO_GROUP },
+  {
+    key: 'autoReplace',
+    name: 'Run again: the confirmation replaces Priya Shah’s',
+    group: AUTO_GROUP,
+  },
+  { key: 'autoTables', name: 'Proposed, in the Tables view', group: AUTO_GROUP },
+  { key: 'autoList', name: 'Proposed, in the List view', group: AUTO_GROUP },
+  { key: 'autoReadOnly', name: 'Without seating.manage: no button', group: AUTO_GROUP },
+  { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
+  { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
+  { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },
+  { key: 'shareByBlank', name: SHARE_STATES.shareByBlank.name, group: SHARE_GROUP },
+  { key: 'shareByAfterEvent', name: SHARE_STATES.shareByAfterEvent.name, group: SHARE_GROUP },
+  { key: 'shareByPast', name: SHARE_STATES.shareByPast.name, group: SHARE_GROUP },
+  { key: 'shareByPassed', name: SHARE_STATES.shareByPassed.name, group: SHARE_GROUP },
+  { key: 'shareConfirm', name: SHARE_STATES.shareConfirm.name, group: SHARE_GROUP },
+  { key: 'shareFailed', name: SHARE_STATES.shareFailed.name, group: SHARE_GROUP },
+  { key: 'shareShared', name: SHARE_STATES.shareShared.name, group: SHARE_GROUP },
+  { key: 'shareConfirmStop', name: SHARE_STATES.shareConfirmStop.name, group: SHARE_GROUP },
+  { key: 'shareStopped', name: SHARE_STATES.shareStopped.name, group: SHARE_GROUP },
+  { key: 'shareReadOnly', name: SHARE_STATES.shareReadOnly.name, group: SHARE_GROUP },
+  { key: 'shareReadOnlyShared', name: SHARE_STATES.shareReadOnlyShared.name, group: SHARE_GROUP },
+  { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
+  { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
+  {
+    key: 'crumbWidths',
+    name: 'The header band at 320 and 375, English and French',
+    group: 'The breadcrumb',
+  },
+  { key: 'crumbFocus', name: 'A focused link, its ring whole', group: 'The breadcrumb' },
 ] as const;
 
 export type SeatingState = (typeof SEATING_STATES)[number]['key'];
+
+const LONG_STATES: readonly (SeatingState | null)[] = ['longName', 'longNameFr'];
+
+export function crumbOf(
+  state: SeatingState | null,
+  name: string,
+): { name: string; lang: CrumbLang } {
+  return {
+    name: LONG_STATES.includes(state) ? LONG_NAME : name,
+    lang: state === 'longNameFr' ? 'fr' : 'en',
+  };
+}
 
 export function seatingStateOf(raw: string | null): SeatingState | null {
   return SEATING_STATES.find((one) => one.key === raw)?.key ?? null;

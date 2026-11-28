@@ -61,7 +61,22 @@ abstract readonly class EventChangeType implements NotificationTypeInterface
         return null;
     }
 
-    public function collapseKey(): ?string
+    public function carriesCode(): bool
+    {
+        return false;
+    }
+
+    public function supersedesEarlier(): bool
+    {
+        return false;
+    }
+
+    public function reachesSuppressed(): bool
+    {
+        return false;
+    }
+
+    public function collapseKey(array $payload): ?string
     {
         return null;
     }

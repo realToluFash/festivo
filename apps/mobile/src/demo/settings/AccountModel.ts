@@ -35,6 +35,9 @@ export const ACCOUNT_STATES = [
   'verifyPhone',
   'verifyPhoneExpired',
   'verifyPhoneDone',
+  'undeliverable',
+  'undeliverableTwo',
+  'undeliverableUnverified',
 ] as const;
 
 export type AccountState = (typeof ACCOUNT_STATES)[number];
@@ -61,8 +64,11 @@ export interface AccountStart {
   zoneHeld: boolean;
   /** Add a phone number's Code as it opens: blank when the device names no country. */
   phoneCountry: string;
+  /** The addresses sc-4332 stopped sending to, by id: AC, not yet built, so the sample says which. */
+  undeliverable: readonly string[];
 }
 
+export const PRIMARY_EMAIL_ID = 'email-1';
 export const SECOND_EMAIL_ID = 'email-2';
 export const SECOND_PHONE_ID = 'phone-2';
 export const WRONG_CODE = '482170';
@@ -91,6 +97,7 @@ const AT_REST: AccountStart = {
   typedZone: '',
   zoneHeld: false,
   phoneCountry: PHONE_COUNTRY,
+  undeliverable: [],
 };
 
 /** What a state link opens on: the rows as its board frame drew them, and the screen or Ask over them. */
@@ -146,6 +153,16 @@ export function accountStart(state: AccountState, t: TFunction): AccountStart {
       return phone('entering');
     case 'verifyPhoneExpired':
       return phone('expired');
+    case 'undeliverable':
+      return {
+        ...AT_REST,
+        emails: EMAILS.filter((row) => row.primary),
+        undeliverable: [PRIMARY_EMAIL_ID],
+      };
+    case 'undeliverableTwo':
+      return { ...AT_REST, emails: proved(), undeliverable: [PRIMARY_EMAIL_ID, SECOND_EMAIL_ID] };
+    case 'undeliverableUnverified':
+      return { ...AT_REST, undeliverable: [SECOND_EMAIL_ID] };
     case 'verifyPhoneDone': {
       const phones = withSecondPhone(true);
 

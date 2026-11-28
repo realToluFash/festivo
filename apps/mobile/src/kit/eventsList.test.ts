@@ -1,11 +1,25 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { numberFormat } from '@soirely/domain';
+import { numberFormat, placeWords } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { cardStep, dayTiles, daysWords, listEventOf, rowTag, shownEvent } from './eventsList.ts';
+import {
+  cardStep,
+  dayTiles,
+  daysWords,
+  listEventOf,
+  rowLine,
+  rowTag,
+  shownEvent,
+  tabsFit,
+} from './eventsList.ts';
 
-const t = ((key: string) => key) as unknown as TFunction;
+const t = ((key: string, o?: Record<string, string>) =>
+  key === 'search.line.venueCity'
+    ? `${o?.venue}, ${o?.city}`
+    : key === 'todayScreen.dayAndPlace'
+      ? `${o?.day} · ${o?.place}`
+      : key) as unknown as TFunction;
 
 const EVENT = {
   id: 'ev-1',
@@ -21,6 +35,36 @@ const EVENT = {
   milestones: [],
 } as unknown as ListedEvent;
 
+describe('placeWords', () => {
+  it('writes the venue, a comma and its city, as Search does', () => {
+    const lineOf = (e: { place: string | null; city: string | null }) =>
+      placeWords(e.place, e.city, (key, values) => t(key, values ?? {}));
+    const of = (name: string | null, city: string | null) =>
+      lineOf(
+        listEventOf({
+          ...EVENT,
+          venue: { name, address: { formatted: 'Calle 1', city } },
+        } as unknown as ListedEvent),
+      );
+
+    expect(of('Finca Pilar', 'Toledo')).toBe('Finca Pilar, Toledo');
+    expect(of('Finca Pilar', null)).toBe('Finca Pilar');
+    expect(of(null, 'Toledo')).toBe('Calle 1');
+    expect(lineOf(listEventOf(EVENT))).toBe('search.line.venueToBeConfirmed');
+  });
+
+  it("is the place in the row's line", () => {
+    const event = listEventOf({
+      ...EVENT,
+      venue: { name: 'Finca Pilar', address: { formatted: 'Calle 1', city: 'Toledo' } },
+    } as unknown as ListedEvent);
+
+    expect(rowLine(shownEvent(event, 'live' as never), new Date('2026-11-01'), 'en', t)).toContain(
+      'Finca Pilar, Toledo',
+    );
+  });
+});
+
 describe('listEventOf', () => {
   it('has no place and no photo until the event has a venue and a cover', () => {
     expect(listEventOf(EVENT)).toMatchObject({ place: null, photo: null });
@@ -32,6 +76,19 @@ describe('listEventOf', () => {
 
     expect(listEventOf(named as unknown as ListedEvent).place).toBe('Finca Pilar');
     expect(listEventOf(unnamed as unknown as ListedEvent).place).toBe('Calle 1');
+  });
+
+  it("pairs the venue's name with its city only when the name is the place", () => {
+    const venue = (name: string | null, city: string | null) =>
+      listEventOf({
+        ...EVENT,
+        venue: { name, address: { formatted: 'Calle 1', city } },
+      } as unknown as ListedEvent).city;
+
+    expect(venue('Finca Pilar', 'Toledo')).toBe('Toledo');
+    expect(venue('Finca Pilar', null)).toBeNull();
+    expect(venue('Finca Pilar', '')).toBeNull();
+    expect(venue(null, 'Toledo')).toBeNull();
   });
 
   it('carries the cover with the event type it is drawn for', () => {
@@ -75,8 +132,22 @@ describe('cardStep', () => {
     expect(cardStep(unread('happening_now'), NOW, 'en', t)).toBeNull();
   });
 
-  it('offers Duplicate once a live event has no milestone left', () => {
-    expect(cardStep(shownEvent(listEventOf(EVENT), 'live'), NOW, 'en', t)).toMatchObject({
+  it('offers no step while an event is on with no milestone left, in the room its Duplicate takes', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'happening_now'), NOW, 'en', t)).toEqual({
+      kind: 'none',
+      keeps: {
+        kind: 'button',
+        line: 'timeline.finished',
+        label: 'eventDuplicate.open',
+        action: 'duplicate',
+      },
+    });
+  });
+
+  it('offers Duplicate once it is over', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'finished'), NOW, 'en', t)).toMatchObject({
+      kind: 'button',
+      line: 'timeline.finished',
       action: 'duplicate',
     });
   });
@@ -89,7 +160,15 @@ describe('cardStep', () => {
         {
           ...listEventOf(EVENT),
           milestones: [
-            { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+            {
+              at,
+              title: 'ends',
+              note: null,
+              owner: 'event' as const,
+              area: 'event',
+              action: null,
+              done: false,
+            },
           ],
         },
         'live',
@@ -244,5 +323,18 @@ describe('daysWords', () => {
     expect(
       daysWords({ ...day, endsAt: '2027-01-02T12:00:00+01:00' }, now, 'en-US', true, words),
     ).toBe('eventsScreen.days {"first":"Saturday, Nov 14, 2026","last":"Saturday, Jan 2, 2027"}');
+  });
+});
+
+describe('the tabs’ words at the largest sizes', () => {
+  it('keeps their size where every tab fits', () => {
+    expect(tabsFit(340, [90, 60, 50], [23, 4, 4], 24)).toBe(1);
+  });
+
+  it('steps every tab’s words down together until the row holds them, the tick and the pads unscaled', () => {
+    const fit = tabsFit(340, [250, 180, 140], [23, 4, 4], 24);
+
+    expect(fit).toBeCloseTo((340 - 3 * 24 - 31) / (570 - 31));
+    expect(23 + 227 * fit + 4 + 176 * fit + 4 + 136 * fit + 3 * 24).toBeCloseTo(340);
   });
 });

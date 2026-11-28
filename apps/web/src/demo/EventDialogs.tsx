@@ -5,11 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
-import { DuplicateBody } from '../components/DuplicateBody.tsx';
+import { CopyGuestsBox, DuplicateBody } from '../components/DuplicateBody.tsx';
 import { copyStart } from '../copyStart.ts';
 import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
+import { AskOwner, AskSwitches } from './LimitAsk.tsx';
+import { type Owners } from './limitReached.ts';
 import { Ask, Dialog } from '../components/SettingsParts.tsx';
 import {
   type Refusal,
@@ -284,7 +286,6 @@ export function DuplicateDialog({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const id = useId();
   const box = useRef<HTMLInputElement>(null);
   const when = useRef<HTMLDivElement>(null);
   const [start, setStart] = useState(() => (cleared ? { date: '', time: '' } : copyStart(event)));
@@ -381,29 +382,14 @@ export function DuplicateDialog({
         when={when}
       >
         {guests > 0 && (
-          <label className="ev-copy-guests">
-            <span className="ev-copy-box">
-              <input
-                ref={box}
-                type="checkbox"
-                className="ev-copy-input"
-                checked={ticked}
-                disabled={busy}
-                aria-labelledby={`${id}-copy`}
-                aria-describedby={`${id}-copy-hint`}
-                onChange={() => setTicked((was) => !was)}
-              />
-              {ticked && <Glyph name="tick" size={16} weight={3} className="ev-copy-tick" />}
-            </span>
-            <span className="ev-copy-words">
-              <span id={`${id}-copy`} className="ev-copy-label">
-                {DW.box(guests)}
-              </span>
-              <span id={`${id}-copy-hint`} className="ev-copy-hint">
-                {DW.hint}
-              </span>
-            </span>
-          </label>
+          <CopyGuestsBox
+            label={DW.box(guests)}
+            hint={DW.hint}
+            ticked={ticked}
+            busy={busy}
+            onTick={() => setTicked((was) => !was)}
+            box={box}
+          />
         )}
         <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
           {busy ? DW.creating : ''}
@@ -429,11 +415,13 @@ function Refusal({
 }) {
   const plan = problem.type === 'plan_limit_reached' ? problem : null;
   const title = plan != null ? DW.planTitle(plan.limit) : DW.ceilingTitle(CEILING);
+  const [offline, setOffline] = useState(false);
+  const [owners, setOwners] = useState<Owners>('several');
 
   return (
     <Dialog title={title} verb={null} dismiss={DW.backToForm} onDismiss={onBack} onConfirm={onBack}>
       <NotBuilt words={W.notBuilt('sc-3930')} />
-      <p className="desk-line">
+      <p className="desk-line lr-hard-limit">
         {plan != null
           ? DW.overPlan(plan.count, plan.limit)
           : DW.overCeiling(problem.count, CEILING)}
@@ -451,14 +439,22 @@ function Refusal({
           {DW.changePlan}
         </button>
       )}
-      {plan != null && !billing && !asked && (
-        <button type="button" className="button" onClick={onAsk}>
-          {DW.askOwner}
-        </button>
+      {plan != null && !billing && (
+        <AskOwner
+          start={asked ? { now: 'sent', owners } : { now: 'ready' }}
+          offline={offline}
+          owners={owners}
+          onSent={onAsk}
+        />
       )}
-      <p className="desk-note" role="status">
-        {plan != null && !billing && asked ? DW.asked : ''}
-      </p>
+      {plan != null && !billing && (
+        <AskSwitches
+          offline={offline}
+          owners={owners}
+          onOffline={setOffline}
+          onOwners={setOwners}
+        />
+      )}
     </Dialog>
   );
 }

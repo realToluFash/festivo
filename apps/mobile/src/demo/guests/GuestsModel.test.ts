@@ -6,6 +6,18 @@ import { describe, expect, it } from 'vitest';
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
+  changesSince,
+  lastLooked,
+  markLooked,
+  repliesUnread,
+  seedLook,
+  takeLook,
+} from './ChangedSince.ts';
+import {
+  changedRows,
+  chooseChanged,
+  notCopiedLine,
+  filterWord,
   DOOR_STATES,
   countAfter,
   addedGuest,
@@ -29,6 +41,7 @@ import {
   filtersFor,
   groupRows,
   guestOf,
+  guestPageShows,
   guestsAt,
   handMarked,
   invitationWords,
@@ -41,13 +54,17 @@ import {
   phoneCheck,
   planRoom,
   recorded,
+  startTicks,
   replyLine,
   reviewProblems,
   roleOf,
   rowsOf,
   sameNameAs,
+  START_COUNTRY,
+  addHoldsChange,
 } from './GuestsModel.ts';
 import {
+  CLOCKS,
   DRAFT_GUESTS,
   GUESTS,
   GUEST_LANGUAGES,
@@ -74,7 +91,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(110);
+    expect(GUESTS_STATES).toHaveLength(192);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -85,14 +102,25 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(guestOf('recordReplace')).toBe('ngozi');
     expect(guestOf('editMax')).toBe('musa');
     expect(guestOf('editSeated')).toBe('ines');
+    expect(guestOf('editCompanionArrived')).toBe('ines');
     expect(guestOf('edit412')).toBe('kwame');
     expect(guestOf('inUse')).toBeNull();
+  });
+
+  it('shows a guest no longer there over the guest it opened on (sc-31780)', () => {
+    const start = areaStart('notFound');
+    expect(start.open).toBe('emeka');
+    expect(guestPageShows(start.guestPhase, true)).toBe('notFound');
+    expect(guestPageShows(areaStart('guestLoading').guestPhase, true)).toBe('loading');
+    expect(guestPageShows(areaStart('guest').guestPhase, true)).toBe('guest');
+    expect(guestPageShows('ok', false)).toBe('loading');
   });
 
   it('starts each group with its screen open', () => {
     expect(areaStart('edit412').overlay).toBe('edit');
     expect(areaStart('recordComing').overlay).toBe('record');
     expect(areaStart('addOffline').overlay).toBe('add');
+    expect(areaStart('addDiscard').overlay).toBe('add');
     expect(areaStart('picker').overlay).toBe('picker');
     expect(areaStart('androidPick').overlay).toBe('android');
     expect(areaStart('androidNone').overlay).toBe('android');
@@ -103,6 +131,50 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(areaStart('markRefused').overlay).toBe('mark');
     expect(areaStart('filterNone')).toMatchObject({ filter: 'held', typed: 'marta' });
     expect(areaStart('contactsAdded')).toMatchObject({ added: 23, toast: 'manyAdded' });
+  });
+
+  it('opens sc-55558’s link states on their guest, event and start', () => {
+    expect(guestOf('flagged')).toBe('emeka');
+    expect(guestOf('flaggedViewer')).toBe('emeka');
+    expect(roleOf('flaggedViewer')).toBe('viewer');
+    expect(guestOf('copyFailed')).toBe('bisi');
+    expect(guestOf('draftLink')).toBe('funke');
+    expect(eventOf('draftLink')).toBe('evt-draft-4');
+    expect(guestsAt('draftLink')).toEqual(DRAFT_GUESTS);
+    expect(guestOf('pausedLink')).toBe('daniel');
+    expect(eventOf('pausedLink')).toBe('evt-party-2');
+    expect(guestsAt('pausedLink')).toEqual(PAUSED_GUESTS);
+    expect(areaStart('flagged')).toMatchObject({ flagged: ['emeka'], overlay: null });
+    expect(areaStart('flaggedReplaceAsk')).toMatchObject({
+      flagged: ['emeka'],
+      overlay: 'replace',
+      focus: 'flagReplace',
+    });
+    expect(areaStart('flaggedReplaced')).toMatchObject({
+      flagged: [],
+      replaced: true,
+      focus: 'replace',
+    });
+    expect(areaStart('flaggedNotReplaced')).toMatchObject({
+      flagged: ['emeka'],
+      notReplaced: 'notice',
+    });
+    expect(areaStart('copyFailed')).toMatchObject({ copyFailed: true, focus: 'copy' });
+    expect(areaStart('copyFailedPt')).toMatchObject({ copyFailed: true, focus: 'copy' });
+    expect(guestOf('copyFailedPt')).toBe('bisi');
+    expect(areaStart('notYetInvited')).toMatchObject({ flagged: [], copyFailed: false });
+  });
+
+  it('words the notice with the guest’s full name, twice', () => {
+    expect(say.flaggedLine('Dr Emeka Nwosu')).toBe(
+      'Someone who opened Dr Emeka Nwosu’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send Dr Emeka Nwosu the new one.',
+    );
+    expect(notCopiedLine('copyFailed')).toBe(
+      'Not copied. The link is not on your clipboard. Try again.',
+    );
+    expect(notCopiedLine('copyFailedPt')).toBe(
+      'Não foi possível copiar. A ligação não está na área de transferência. Tente novamente.',
+    );
   });
 
   it('reads as door staff or Can view only where the spec says', () => {
@@ -213,6 +285,15 @@ describe('the counts (sc-99), as Messaging B and Events count the wedding', () =
     });
   });
 
+  it('lists a recorded reply as any other: the word and the day, never who recorded it', () => {
+    const after = GUESTS.map((g) =>
+      g.key === 'emeka' ? recorded(g, 'coming', 'By phone', [true], '2026-11-03') : g,
+    );
+    const row = rowsOf(after, 'all', '', EN, REPLY_BY).find((r) => r.name === 'Dr Emeka Nwosu');
+    expect(row?.line).toMatch(/^Coming · replied Nov 3 · /);
+    expect(row?.line).not.toContain('recorded');
+  });
+
   it('counts a guest marked as invited as No reply, and 23 from contacts as Not yet invited', () => {
     const after = GUESTS.map((g) =>
       g.key === 'bisi' ? markedInvited(g, 'WhatsApp', '2026-11-03') : g,
@@ -260,6 +341,8 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
     expect(guestOf('invitedWhenReplied')).toBe('ngozi');
     expect(areaStart('unmarked')).toMatchObject({ open: 'emeka', unmarked: 'done' });
     expect(areaStart('unmarkRefused')).toMatchObject({ open: 'seun', unmarked: 'refused' });
+    expect(areaStart('unmarkNotSaved')).toMatchObject({ open: 'emeka', unmarked: 'notSaved' });
+    expect(handMarked(guestsAt('unmarkNotSaved').find((g) => g.key === 'emeka')!)).toBe(true);
     expect(say.unmarkRefused('Oluwaseun Ajayi', 'Coming', 'Nov 3')).toBe(
       'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
     );
@@ -270,6 +353,69 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
       tags: [{ word: 'Finished', mark: 'finished' }],
       line: 'This event has finished, so guests can’t be invited.',
       step: null,
+    });
+  });
+});
+
+describe('an empty list on a Draft, a Paused or a Finished event (sc-46879)', () => {
+  const none = countsFrom([]);
+
+  it('opens each on an event of that phase, with nobody on the list', () => {
+    expect(eventOf('emptyDraft')).toBe('evt-cena-4');
+    expect(eventOf('emptyDraftViewer')).toBe('evt-cena-4');
+    expect(eventOf('emptyPaused')).toBe('evt-party-2');
+    expect(eventOf('emptyFinished')).toBe('evt-off');
+    for (const state of ['emptyDraft', 'emptyPaused', 'emptyFinished'] as const) {
+      expect(areaStart(state).empty).toBe(true);
+      expect(guestsAt(state)).toEqual([]);
+      expect(guestsOpening(state, eventOf(state), EN).counts.list).toBe(0);
+    }
+    expect(roleOf('emptyDraft')).toBe('owner');
+    expect(roleOf('emptyDraftViewer')).toBe('viewer');
+  });
+
+  it('keeps No guests yet and Add guest, with the phase’s chip and line under the title', () => {
+    expect(cardWords('emptyDraft', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'addGuest',
+      also: 'makeLive',
+    });
+    expect(cardWords('emptyPaused', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Paused', mark: 'paused' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited while this event is paused.',
+      step: 'addGuest',
+    });
+    expect(cardWords('emptyFinished', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Finished', mark: 'finished' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'This event has finished, so guests can’t be invited.',
+      step: 'addGuest',
+    });
+  });
+
+  it('gives someone without events.manage the line alone: no Add guest, no Make live', () => {
+    expect(cardWords('emptyDraftViewer', 'viewer', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: null,
+    });
+  });
+
+  it('leaves the first-time card on a Live event as it was', () => {
+    expect(cardWords('first', 'owner', none, true, EN, null)).toEqual({
+      tags: [],
+      says: 'No guests yet',
+      count: null,
+      line: null,
+      step: 'addGuest',
     });
   });
 });
@@ -321,9 +467,9 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Inês Duarte',
       'Rui Duarte',
     ]);
-    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · 1 companion');
+    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · Bride’s side · 1 companion');
     expect(groupRows(GUESTS, 'maybe', EN, REPLY_BY)[1]?.line).toBe(
-      'Held · comes only if their host accepts',
+      'Held · comes only if their host accepts · Bride’s side',
     );
   });
 
@@ -336,10 +482,14 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Oluwaseun Ajayi',
       'Tomás Ferreira',
     ]);
-    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9 · Bride’s side');
     expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.name)).toEqual([
       'Guest of Chief Mrs Folasade Okonkwo-Williams',
       'Adanna Nwosu',
+    ]);
+    expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.line)).toEqual([
+      'Held · comes only if their host accepts · Bride’s side',
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts · Bride’s side',
     ]);
   });
 
@@ -384,6 +534,25 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
       g.key === 'emeka' ? recorded(g, 'coming', 'By phone', [false], '2026-11-03') : g,
     );
 
+  it('opens Record a reply again with Adanna unticked, as she was recorded', () => {
+    expect(startTicks(emeka)).toEqual([true]);
+    const again = walk().find((g) => g.key === 'emeka');
+    if (again == null) throw new Error('emeka');
+    expect(startTicks(again)).toEqual([false]);
+    expect(startTicks(recorded(again, 'notcoming', 'By phone', [true], '2026-11-03'))).toEqual([
+      false,
+    ]);
+  });
+
+  it('keeps Adanna unticked while Not sure yet holds her, her last choice (sc-3779)', () => {
+    const again = walk().find((g) => g.key === 'emeka');
+    if (again == null) throw new Error('emeka');
+    const held = recorded(again, 'maybe', 'By phone', [true], '2026-11-03');
+    expect(held.companions[0]?.kind).toBe('held');
+    expect(startTicks(held)).toEqual([false]);
+    expect(startTicks(recorded(held, 'coming', 'By phone', [true], '2026-11-03'))).toEqual([true]);
+  });
+
   it('Record a reply for Dr Emeka Nwosu, Coming, Adanna unticked: Coming gains Emeka only', () => {
     const after = walk();
     const coming = groupRows(after, 'coming', EN, REPLY_BY).map((row) => row.name);
@@ -392,7 +561,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
     const notComing = groupRows(after, 'notcoming', EN, REPLY_BY);
     expect(notComing.map((row) => [row.name, row.line, row.companion])).toContainEqual([
       'Adanna Nwosu',
-      'Guest of Dr Emeka Nwosu',
+      'Guest of Dr Emeka Nwosu · Bride’s side',
       false,
     ]);
     expect(groupRows(after, 'noreply', EN, REPLY_BY).map((row) => row.name)).not.toContain(
@@ -656,5 +825,147 @@ describe('the door’s count, one rule for Check-in and the scanner (sc-1454, 5 
       arrived: 41,
       expected: 98,
     });
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const now = new Date(CLOCKS.reader);
+
+  it('lists the bell item’s guests newest first, the answer and when', () => {
+    expect(
+      changedRows(GUESTS, changesSince(null), '', now, 'en-US').map((p) => `${p.name}: ${p.line}`),
+    ).toEqual([
+      'Lucía Ortega: Not sure yet · Changed at 09:31 · Old school friends',
+      'Inês Duarte: Coming · Replied at 08:40 · Work',
+      'Amaka Eze: Coming · Replied at 07:52 · Bride’s side',
+      'Camille Dubois: Not coming · Replied Nov 2 · Work',
+      'Alhaji Musa Bello: Coming · Replied Nov 2 · Bride’s side',
+    ]);
+  });
+
+  it('counts what changed after the last look, and a search narrows it', () => {
+    expect(changesSince('2026-11-03T08:00:00Z').map((one) => one.key)).toEqual(['lucia', 'ines']);
+    expect(changesSince(now.toISOString())).toEqual([]);
+    expect(changedRows(GUESTS, changesSince(null), 'eze', now, 'en-US')).toHaveLength(1);
+  });
+
+  it('shows the bell’s label for a change that is not a reply', () => {
+    const [row] = changedRows(
+      GUESTS,
+      [{ key: 'kwame', kind: 'needs', at: '2026-11-02T10:00:00Z' }],
+      '',
+      now,
+      'en-US',
+    );
+    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2 · Groom’s side');
+  });
+
+  it('keeps the bell’s item and the filter on one look: bell, filter, bell', () => {
+    seedLook(null, now);
+    expect(repliesUnread()).toBe(true);
+    expect(changesSince(lastLooked())).toHaveLength(5);
+
+    const since = takeLook(now);
+    expect(changesSince(since)).toHaveLength(5);
+    expect(repliesUnread()).toBe(false);
+    expect(changesSince(lastLooked())).toEqual([]);
+
+    expect(changesSince(takeLook(now))).toEqual([]);
+    expect(repliesUnread()).toBe(false);
+  });
+
+  it('marks the item read with Mark all read, and a state sets the look it opens on', () => {
+    seedLook(null, now);
+    markLooked(now);
+    expect(repliesUnread()).toBe(false);
+
+    seedLook('2026-11-03T08:00:00Z', now);
+    expect(changesSince(lastLooked()).map((one) => one.key)).toEqual(['lucia', 'ines']);
+    expect(repliesUnread()).toBe(true);
+
+    seedLook(undefined, now);
+    expect(repliesUnread()).toBe(false);
+  });
+
+  it('opens each state as its board draws it', () => {
+    expect(areaStart('changed')).toMatchObject({ filter: 'changed', since: null });
+    expect(areaStart('changedRow')).toMatchObject({ filter: 'all', menu: true, looked: null });
+    expect(areaStart('changedFails')).toMatchObject({
+      filter: 'all',
+      menu: true,
+      looked: null,
+      changeFails: 'onChoose',
+    });
+    expect(areaStart('changedFailed')).toMatchObject({ filter: 'all', changeFails: 'failed' });
+    expect(areaStart('changed').changeFails).toBeNull();
+    expect(W.changedFailed).toBe('We could not load what changed.');
+  });
+
+  it('keeps the list when Changed since you looked fails, and applies it once Try again works', () => {
+    expect(chooseChanged('changed', true)).toEqual({ failed: true, applies: false });
+    expect(chooseChanged('changed', false)).toEqual({ failed: false, applies: true });
+    expect(chooseChanged('coming', true)).toEqual({ failed: false, applies: true });
+    expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
+    expect(filterWord('changed')).toBe('Changed since you looked');
+  });
+});
+
+describe('a reply from a guest nobody invited yet (sc-52829)', () => {
+  it('invites them when it is recorded, counts them straight away, and offers no undo', () => {
+    const bisi = recorded(byKey('bisi'), 'coming', 'By phone', [], '2026-11-03');
+    const after = GUESTS.map((g) => (g.key === 'bisi' ? bisi : g));
+    const was = countsOf(GUESTS);
+
+    expect(invitationWords(bisi, EN)).toBe('Invited when they replied, Nov 3');
+    expect(handMarked(bisi)).toBe(false);
+    expect(countsOf(after)).toMatchObject({
+      invited: was.invited + 1,
+      coming: was.coming + 1,
+      notyet: was.notyet - 1,
+    });
+  });
+
+  it('opens its states on Bisi Adewale: the form, then the guest after saving', () => {
+    expect(guestOf('recordNotYet')).toBe('bisi');
+    expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
+    expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
+    expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
+  });
+});
+
+describe('Add guest asks on Cancel only while it holds a change (sc-82245)', () => {
+  const empty = {
+    texts: ['', ' '],
+    country: START_COUNTRY,
+    language: null,
+    companions: 0,
+    needs: false,
+    group: false,
+  };
+
+  it('leaves an empty form without asking', () => {
+    expect(addHoldsChange(empty)).toBe(false);
+  });
+
+  it('asks once anything is typed or chosen', () => {
+    expect(addHoldsChange({ ...empty, texts: ['Bimpe Adeyemi', ''] })).toBe(true);
+    expect(addHoldsChange({ ...empty, country: 'NG' })).toBe(true);
+    expect(addHoldsChange({ ...empty, language: 'fr' })).toBe(true);
+    expect(addHoldsChange({ ...empty, companions: 1 })).toBe(true);
+    expect(addHoldsChange({ ...empty, needs: true })).toBe(true);
+    expect(addHoldsChange({ ...empty, group: true })).toBe(true);
+  });
+});
+
+describe("A guest form with no name to use asks with the event form's line (sc-82245, pm 25 Nov)", () => {
+  it('names the guest when there is a name', () => {
+    expect(say.discardLine('Bimpe Adeyemi')).toBe(
+      'Your changes to Bimpe Adeyemi have not been saved.',
+    );
+  });
+
+  it('never reads a blank name', () => {
+    expect(say.discardLine('')).toBe('What you changed here is not saved.');
+    expect(say.discardLine('   ')).toBe('What you changed here is not saved.');
   });
 });

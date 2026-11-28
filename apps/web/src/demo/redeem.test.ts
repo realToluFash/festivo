@@ -7,6 +7,7 @@ import {
   EVENT_LINE,
   eventLines,
   joinCodeLine,
+  nameLine,
   R,
   REDEEM_PAGES,
   REDEEM_STATES,
@@ -24,6 +25,15 @@ describe('the browser’s redeem pages (sc-72, sc-4235)', () => {
     expect(joinCodeLine('q7km-4xp2')).toBeNull();
     expect(codeOpens('q7km-4xp2')).toBe(true);
     expect(codeOpens('Q7KM 4XP3')).toBe(false);
+  });
+
+  it('asks a name only while the grant is the device’s', () => {
+    expect(nameLine(' ')).toBe('Enter your full name.');
+    expect(nameLine('João Pereira')).toBeNull();
+    expect(redeemStart('name').step).toMatchObject({ kind: 'named', usedUp: false });
+    expect(redeemStart('name-used-up')).toMatchObject({ name: 'Hugo Faria' });
+    expect(redeemStart('browser-name')).toMatchObject({ name: '' });
+    expect(redeemStart('joining').step).toMatchObject({ busy: 'held' });
   });
 
   it('asks for a name and a number long enough for the country, in the app’s words', () => {
@@ -69,6 +79,8 @@ describe('the browser’s redeem pages (sc-72, sc-4235)', () => {
       problem: 'exhausted',
     });
     expect(redeemStart('join-as')).toMatchObject({ name: 'Kemi Okafor' });
+    expect(redeemStart('join-as-long').name).toHaveLength(60);
+    expect(redeemStart('join-as-longest').name).toHaveLength(180);
     expect(redeemStart('event-blank')).toMatchObject({ name: '', number: '' });
     expect(redeemStart('event-short')).toMatchObject({ name: 'João Pereira', number: '912 345' });
     expect(redeemStart('signed-out').step).toMatchObject({

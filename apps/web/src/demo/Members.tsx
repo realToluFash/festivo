@@ -1,7 +1,17 @@
+import { Glyph } from '../components/Glyph.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { HandoverAsk } from './Handover.tsx';
 import {
@@ -17,6 +27,7 @@ import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import { At320 } from './WrapAction.tsx';
+import './members.css';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -39,12 +50,16 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  type More,
+  MORE_WORDS,
+  NOT_DELIVERED,
   organisationOf,
   at320,
   type Notice,
   ORGANISATION,
   type Person,
   type PersonEvent,
+  PEOPLE_PAGE,
   PROOF_MINUTES,
   RECOVERY_WORDS as RR,
   type Recovery,
@@ -56,6 +71,7 @@ import {
   restoredBy,
   revoked,
   rowLine,
+  showingLine,
   suspendAsk,
   suspendedBy,
   tagOf,
@@ -66,19 +82,21 @@ import {
   Ask,
   Avatar,
   BackRow,
-  Card,
-  CardStep as Step,
-  Chevron,
   Head,
   Menu,
-  OnCard,
   RowWords,
-  Says,
   Tag,
   TextAction,
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
+import {
+  MemberRow,
+  MembersCardView,
+  MembersEmpty,
+  MembersFailed,
+  MembersLoading,
+} from '../components/MembersParts.tsx';
 
 const RETRY_MS = 1200;
 
@@ -111,6 +129,11 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [proved, setProved] = useState(false);
   const [leads, setLeads] = useState(start.leads);
   const [handed, setHanded] = useState(start.handed);
+  const [paging, setPaging] = useState({ filter: start.filter, pages: 1, more: start.more });
+  const [asked, setAsked] = useState(0);
+  const rows = useRef<HTMLUListElement>(null);
+  const firstNew = useRef(0);
+  const page = paging.filter === filter ? paging : { filter, pages: 1, more: 'idle' as More };
   const split = useDeskSplit();
   const landsOnCard =
     start.dialog == null &&
@@ -132,6 +155,19 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (asked === 0) return;
+    const timer = setTimeout(() => {
+      setPaging((now) => ({ ...now, pages: now.pages + 1, more: 'idle' }));
+      window.requestAnimationFrame(() => {
+        const row = rows.current?.children[firstNew.current];
+        row?.querySelector<HTMLElement>('button')?.focus();
+      });
+    }, RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [asked]);
 
   useEffect(() => {
     if (!proved) return;
@@ -182,9 +218,19 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         return setDialog({ kind: 'claim', check: 'checking', copied: null, ask: false });
     }
   };
+  const showMore = () => {
+    if (page.more === 'loading') return;
+    firstNew.current = page.pages * PEOPLE_PAGE;
+    setPaging({ ...page, more: 'loading' });
+    setAsked((count) => count + 1);
+  };
   const list = {
     viewer,
     people,
+    pages: page.pages,
+    more: page.more,
+    rowsRef: rows,
+    onMore: showMore,
     recoveries,
     lit,
     invitations,
@@ -271,7 +317,11 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       <Page>
         <DemoOffline />
         <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
-        {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
+        {load === 'failed' ? (
+          <MembersFailed onRetry={() => setLoad('retrying')} />
+        ) : (
+          <MembersLoading words="Loading members…" />
+        )}
       </Page>
     );
 
@@ -314,7 +364,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     return split ? (
       <>
         <Column title={<TitleRow title="Members" action={invite} compact />}>
-          <MembersCardView card={card} size="column" onStep={step} />
+          <MembersCard card={card} size="column" onStep={step} />
           <MembersBlocks {...list} column />
         </Column>
         <Page>
@@ -340,7 +390,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     <Page>
       <DemoOffline />
       <TitleRow title="Members" action={invite} bell={<DemoBell tell={tell} />} />
-      <MembersCardView card={card} onStep={step} />
+      <MembersCard card={card} onStep={step} />
       {claim === 'found' && (
         <TextAction label="Withdraw my claim" onClick={() => setDialog({ kind: 'withdraw' })} />
       )}
@@ -367,37 +417,7 @@ function Column({ title, children }: { title: ReactNode; children: ReactNode }) 
   );
 }
 
-function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label="Loading members…">
-      <span className="desk-unseen">Loading members…</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows has-lead" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk is-face" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Failed({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="desk-failed" role="alert">
-      <h2>We could not load the members.</h2>
-      <p className="desk-line">Check your connection and try again.</p>
-      <TextAction label="Try again" onClick={onRetry} />
-    </div>
-  );
-}
-
-function MembersCardView({
+function MembersCard({
   card,
   size = 'page',
   onStep,
@@ -407,25 +427,18 @@ function MembersCardView({
   onStep: (step: CardStep) => void;
 }) {
   return (
-    <Card size={size}>
-      <div className="desk-said-lines" tabIndex={-1}>
-        <Says focusable>{card.says}</Says>
-        {card.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
-      </div>
-      {card.faces.length > 0 && (
-        <div className="desk-faces" aria-hidden="true">
-          {card.faces.map((face) => (
-            <Avatar key={face.id} initials={face.initials} tone={face.tone} size="face" />
-          ))}
-          {card.more > 0 && <span className="desk-more">+{card.more}</span>}
-        </div>
-      )}
-      {card.step != null && (
-        <Step label={card.step.label} onClick={() => card.step != null && onStep(card.step)} />
-      )}
-    </Card>
+    <MembersCardView
+      card={{
+        ...card,
+        faces: card.faces.map((face) => ({
+          key: face.id,
+          initials: face.initials,
+          tone: face.tone,
+        })),
+      }}
+      size={size}
+      onStep={onStep}
+    />
   );
 }
 
@@ -440,6 +453,10 @@ interface BlocksProps {
   say: SettingsSay;
   picked: string | null;
   column: boolean;
+  pages: number;
+  more: More;
+  rowsRef: RefObject<HTMLUListElement | null>;
+  onMore: () => void;
   onMenu: (open: boolean) => void;
   onFilter: (filter: Filter) => void;
   onPerson: (id: string) => void;
@@ -497,14 +514,24 @@ function MembersBlocks(props: BlocksProps) {
             <p className="desk-foot">{INVITATIONS_NOTE}</p>
           </>
         ) : filter !== 'invited' && shown.length > 0 ? (
-          <PeopleRows {...props} shown={shown} />
+          <>
+            <PeopleRows {...props} shown={shown.slice(0, props.pages * PEOPLE_PAGE)} />
+            {shown.length > props.pages * PEOPLE_PAGE && (
+              <MorePeople
+                shown={props.pages * PEOPLE_PAGE}
+                total={shown.length}
+                more={props.more}
+                onMore={props.onMore}
+              />
+            )}
+          </>
         ) : (
           empty != null && (
-            <div className="desk-empty">
-              <p className="desk-empty-title">{empty.title}</p>
-              {empty.line != null && <p className="desk-line">{empty.line}</p>}
-              <TextAction label="Show everyone" onClick={() => onFilter('all')} />
-            </div>
+            <MembersEmpty
+              title={empty.title}
+              line={empty.line ?? undefined}
+              onEveryone={() => onFilter('all')}
+            />
           )
         )}
       </section>
@@ -613,15 +640,55 @@ function WaitingRow({
   onAnswer: (id: string) => void;
 }) {
   return (
-    <button type="button" className="desk-row" onClick={() => onAnswer(person.id)}>
-      <Avatar initials={person.initials} tone={person.tone} />
-      <RowWords
-        title={person.name}
-        tag={<Tag {...tagOf(person)} />}
-        lines={[waitingLine(person, say)]}
-      />
-      <Chevron />
-    </button>
+    <MemberRow
+      initials={person.initials}
+      tone={person.tone}
+      name={person.name}
+      tag={<Tag {...tagOf(person)} />}
+      line={waitingLine(person, say)}
+      onPress={() => onAnswer(person.id)}
+    />
+  );
+}
+
+/** Under the rows while more remain: their shapes while the next page comes, Show more, why it failed, and how far down the list is. */
+function MorePeople({
+  shown,
+  total,
+  more,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  more: More;
+  onMore: () => void;
+}) {
+  return (
+    <div className="members-more">
+      {more === 'loading' && (
+        <ul className="desk-rows has-lead" aria-hidden="true">
+          {[1, 2].map((bar) => (
+            <li key={bar} className="desk-row is-bones">
+              <span className="desk-sunk is-face" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bar}`} />
+                <span className={`desk-sunk is-line b${bar}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <TextAction label={MORE_WORDS.showMore} onClick={onMore} />
+      {more === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {MORE_WORDS.failed}
+        </p>
+      )}
+      <p className="desk-note" role="status">
+        {more === 'loading' ? MORE_WORDS.loading : showingLine(shown, total)}
+      </p>
+    </div>
   );
 }
 
@@ -631,11 +698,12 @@ function PeopleRows({
   say,
   picked,
   column,
+  rowsRef,
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly Person[] }) {
   return (
-    <ul className="desk-rows has-lead">
+    <ul className="desk-rows has-lead" ref={rowsRef}>
       {shown.map((one) => {
         const tag = one.status === 'active' ? undefined : <Tag {...tagOf(one)} />;
         const on = column && one.id === picked;
@@ -644,22 +712,17 @@ function PeopleRows({
           <li key={one.id}>
             {one.status === 'pendingApproval' ? (
               <WaitingRow person={one} say={say} onAnswer={onAnswer} />
-            ) : one.status === 'former' ? (
-              <div className="desk-row">
-                <Avatar initials={one.initials} tone={one.tone} />
-                <RowWords title={one.name} tag={tag} lines={[rowLine(one, viewer)]} />
-              </div>
             ) : (
-              <button
-                type="button"
-                className={on ? 'desk-row is-on' : 'desk-row'}
-                aria-current={on || undefined}
-                onClick={() => onPerson(one.id)}
-              >
-                <Avatar initials={one.initials} tone={one.tone} size={column ? 'small' : 'row'} />
-                <RowWords title={one.name} tag={tag} lines={[rowLine(one, viewer)]} />
-                <Chevron />
-              </button>
+              <MemberRow
+                initials={one.initials}
+                tone={one.tone}
+                name={one.name}
+                tag={tag}
+                line={rowLine(one, viewer)}
+                {...(one.status === 'former'
+                  ? {}
+                  : { size: column ? 'small' : 'row', on, onPress: () => onPerson(one.id) })}
+              />
             )}
           </li>
         );
@@ -680,7 +743,14 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
             <RowWords
               title={invitation.email}
               tag={row.tag == null ? undefined : <Tag kind="ended" word={row.tag} />}
-              lines={[row.line, row.dates]}
+              lines={[
+                row.line,
+                row.notDelivered ? (
+                  <NotDeliveredDates ended={row.ended} />
+                ) : (
+                  `${row.sent} · ${row.ended}`
+                ),
+              ]}
             />
             {viewer.manages &&
               (invitation.status === 'pending' ? (
@@ -692,6 +762,20 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
         );
       })}
     </ul>
+  );
+}
+
+/** The broken mark before Not delivered, as a field error has it, so the reading is a shape with its word (sc-46109). */
+function NotDeliveredDates({ ended }: { ended: string }) {
+  return (
+    <span className="not-delivered">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <span>
+        <span className="not-delivered-word">{NOT_DELIVERED}</span> · {ended}
+      </span>
+    </span>
   );
 }
 

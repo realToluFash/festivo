@@ -1,0 +1,18 @@
+# sc-92959: on the phone, the bell's screen while its list refreshes. Needs scripts/qa-slow-proxy.mjs in front of the API (QA_API_URL), holding GET /api/notifications ~15 s and dropping POST /api/notifications/read-all: Mark all read goes unanswered, the screen goes stale, and Try again refreshes with the rows still shown. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'Notifica.*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { text: 'Ada Okafor.*' }, timeout: 40000 }
+- takeScreenshot: loaded
+- tapOn: { id: 'notifications.markAllRead' }
+- extendedWaitUntil: { visible: { id: 'offline.retry' }, timeout: 45000 }
+- takeScreenshot: stale
+- tapOn: { id: 'offline.retry' }
+- extendedWaitUntil: { visible: { id: 'notifications.refreshing' }, timeout: 8000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: refreshing

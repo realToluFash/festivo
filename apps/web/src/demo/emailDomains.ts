@@ -131,6 +131,15 @@ export function domainLine(domain: Domain, locale: string, zone: ReaderZone): st
   }
 }
 
+/** After leaving Enterprise nothing is checked, so a kept row names only when it was proved. */
+export function keptLine(domain: Domain, locale: string, zone: ReaderZone): string {
+  if (domain.status === 'proved') return `Proved ${when(domain.at, locale, zone)}`;
+  if (domain.status === 'missing' && domain.provedAt != null)
+    return `Proved ${when(domain.provedAt, locale, zone)}`;
+
+  return DOMAIN_WORDS.failed;
+}
+
 /** The record's own last line: the hourly check, or where its row says it stands. */
 export function recordFoot(domain: Domain, locale: string, zone: ReaderZone): string {
   const line = domainLine(domain, locale, zone);
@@ -258,9 +267,9 @@ export function domainsCard(
     };
   if (view.plan === 'left')
     return {
-      says: `Switched off on ${dayOf(CLOCK.left, locale, zoneFor(viewer))}`,
+      says: 'Switched off',
       line: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
-      step: { does: 'contact' },
+      step: null,
     };
 
   const said = view.said == null ? null : saidCard(view, view.said, viewer, locale);
@@ -384,6 +393,7 @@ const IRE: Domain = {
   only: 'off',
   onAt: null,
 };
+const LONG: Domain = { ...IRE, name: 'associacaodeorganizadoresdeeventosdelisboaeporto.com.pt' };
 const IRE_COM: Domain = {
   name: WAITING_DOMAIN,
   status: 'waiting',
@@ -427,6 +437,7 @@ export const DOMAIN_STATES = [
   'oo_on',
   'oo_turned_off',
   'oo_not_owner',
+  'oo_long_name',
   'loading',
   'failed',
 ] as const;
@@ -496,7 +507,7 @@ export function domainsStart(state: string): DomainsStart {
     case 'ed_locked':
       return { ...base, view: { plan: 'free', domains: [], said: null } };
     case 'ed_downgraded':
-      return { ...base, view: { plan: 'left', domains: [IRE], said: null } };
+      return { ...base, view: { plan: 'left', domains: [IRE, IRE_COM], said: null } };
     case 'oo_off':
       return alone;
     case 'oo_confirm':
@@ -513,6 +524,8 @@ export function domainsStart(state: string): DomainsStart {
       };
     case 'oo_turned_off':
       return { ...alone, view: onlyOff(alone.view, PROVED_DOMAIN, 'turnedOff') };
+    case 'oo_long_name':
+      return { ...base, view: enterprise([LONG]) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };

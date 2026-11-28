@@ -1,6 +1,6 @@
 type Rgb = readonly [number, number, number];
 
-function rgbOf(hex: string): Rgb {
+export function rgbOf(hex: string): Rgb {
   const value = Number.parseInt(hex.replace('#', '').slice(0, 6), 16);
 
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -10,7 +10,7 @@ function hexOf([r, g, b]: Rgb): string {
   return `#${[r, g, b].map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
 }
 
-function mixed(under: Rgb, over: Rgb, alpha: number): Rgb {
+export function mixed(under: Rgb, over: Rgb, alpha: number): Rgb {
   return [0, 1, 2].map(
     (i) => (under[i] ?? 0) * (1 - alpha) + (over[i] ?? 0) * alpha,
   ) as unknown as Rgb;

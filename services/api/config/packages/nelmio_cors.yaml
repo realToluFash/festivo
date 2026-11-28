@@ -27,6 +27,7 @@ nelmio_cors:
                 'Accept-Language',
                 'Authorization',
                 'Content-Type',
+                'Idempotency-Key',
                 'If-Match',
                 'X-Device-Id',
                 'X-Timezone',
@@ -36,7 +37,7 @@ nelmio_cors:
         # is how a list says where its next page is. ETag is the version an
         # edit sends back as If-Match. Date is the server's time, by which a
         # client corrects a device clock that is wrong (sc-3585).
-        expose_headers: ['Date', 'ETag', 'Link', 'Retry-After']
+        expose_headers: ['Content-Disposition', 'Date', 'ETag', 'Link', 'Retry-After']
         max_age: 3600
     paths:
         '^/api': ~

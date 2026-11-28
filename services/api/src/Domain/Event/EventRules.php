@@ -11,6 +11,7 @@ use App\Entity\Event;
 use App\Enum\ErrorCode;
 use App\Enum\EventType;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psl\Iter;
@@ -30,13 +31,13 @@ final readonly class EventRules
     }
 
     /**
-     * The venue and the hosts are checked only when they are in the fields, and are in what this returns only then.
+     * The venue, the arrival note, the hosts and Reply by are checked only when they are in the fields, and are in what this returns only then.
      *
-     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields
-     * @param ?string                                                                                                                                                                                                       $held      the event's currency on an edit, which may stay although no longer offered
-     * @param ?Venue                                                                                                                                                                                                        $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
+     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?string} $fields
+     * @param ?string                                                                                                                                                                                                                                                 $held      the event's currency on an edit, which may stay although no longer offered
+     * @param ?Venue                                                                                                                                                                                                                                                  $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
      *
-     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, hosts?: list<string>}
+     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?DateTimeImmutable}
      */
     public function check(array $fields, ?string $held = null, ?Venue $heldVenue = null): array
     {
@@ -47,7 +48,7 @@ final readonly class EventRules
 
         if ('' === $name) {
             $violations[] = $this->violation('name', 'validation.event_name_required');
-        } elseif (Str\length($name) > Event::NAME_MAXIMUM) {
+        } elseif (VisibleText::tooLong($name, Event::NAME_MAXIMUM)) {
             $violations[] = $this->violation('name', 'validation.event_name_too_long', ['{count}' => (string) Event::NAME_MAXIMUM]);
         }
 
@@ -70,12 +71,18 @@ final readonly class EventRules
 
         $venue = Iter\contains_key($fields, 'venue') ? $this->venueResolver->resolve($fields['venue'], $heldVenue) : null;
 
-        if (null !== $venue?->name && Str\length($venue->name) > Venue::NAME_MAXIMUM) {
+        if (null !== $venue?->name && VisibleText::tooLong($venue->name, Venue::NAME_MAXIMUM)) {
             $violations[] = $this->violation('venueName', 'validation.event_venue_name_too_long', ['{count}' => (string) Venue::NAME_MAXIMUM]);
         }
 
-        if (null !== $venue?->address && Str\length($venue->address->formatted) > Venue::ADDRESS_MAXIMUM) {
+        if (null !== $venue?->address && VisibleText::tooLong($venue->address->formatted, Venue::ADDRESS_MAXIMUM)) {
             $violations[] = $this->violation('venueAddress', 'validation.event_venue_address_too_long', ['{count}' => (string) Venue::ADDRESS_MAXIMUM]);
+        }
+
+        $note = Iter\contains_key($fields, 'arrivalNote') ? ArrivalNote::saved($fields['arrivalNote']) : null;
+
+        if (null !== $note && VisibleText::tooLong($note, Event::ARRIVAL_NOTE_MAXIMUM)) {
+            $violations[] = $this->violation('arrivalNote', 'validation.event_arrival_note_too_long', ['{count}' => (string) Event::ARRIVAL_NOTE_MAXIMUM]);
         }
 
         $hosts = Iter\contains_key($fields, 'hosts') ? Vec\map($fields['hosts'], self::hostName(...)) : null;
@@ -84,12 +91,18 @@ final readonly class EventRules
             $this->checkHosts($hosts, $violations);
         }
 
+        $replyBy = Iter\contains_key($fields, 'replyBy') ? $this->day($fields['replyBy'], $violations) : null;
+
         if (null !== $zone && null !== $startsAt && null !== $endsAt) {
             $startsAt = LocalTimeResolver::resolve($startsAt, new DateTimeZone($zone));
             $endsAt = LocalTimeResolver::resolve($endsAt, new DateTimeZone($zone));
 
             if ($endsAt < $startsAt) {
                 $violations[] = $this->violation('endsAt', 'validation.event_end_before_start');
+            }
+
+            if (null !== $replyBy && $replyBy->format('Y-m-d') >= $startsAt->format('Y-m-d')) {
+                $violations[] = $this->violation('replyBy', 'validation.event_reply_by_not_before_start');
             }
         }
 
@@ -103,8 +116,16 @@ final readonly class EventRules
             $checked['venue'] = $venue;
         }
 
+        if (Iter\contains_key($fields, 'arrivalNote')) {
+            $checked['arrivalNote'] = $note;
+        }
+
         if (null !== $hosts) {
             $checked['hosts'] = $hosts;
+        }
+
+        if (Iter\contains_key($fields, 'replyBy')) {
+            $checked['replyBy'] = $replyBy;
         }
 
         return $checked;
@@ -145,12 +166,12 @@ final readonly class EventRules
 
         foreach ($hosts as $index => $host) {
             $path = 'hosts[' . $index . ']';
-            $length = Str\length($host);
+            $length = VisibleText::length($host);
             $folded = Str\lowercase($host);
 
             if ('' === $host) {
                 $violations[] = $this->violation($path, 'validation.event_host_blank');
-            } elseif ($length > Event::HOST_NAME_MAXIMUM) {
+            } elseif (VisibleText::tooLong($host, Event::HOST_NAME_MAXIMUM)) {
                 $violations[] = $this->violation($path, 'validation.event_host_too_long', ['{count}' => (string) Event::HOST_NAME_MAXIMUM, '{length}' => (string) $length]);
             } elseif (Iter\contains_key($seen, $folded)) {
                 $violations[] = $this->violation($path, 'validation.event_host_duplicate', ['{name}' => $seen[$folded]]);
@@ -158,6 +179,28 @@ final readonly class EventRules
                 $seen[$folded] = $host;
             }
         }
+    }
+
+    /**
+     * A day as `Y-m-d`, at midnight UTC as a DATE column holds it; null clears it.
+     *
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
+     */
+    private function day(?string $typed, array &$violations): ?DateTimeImmutable
+    {
+        if (null === $typed) {
+            return null;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
+
+        if (false === $parsed || $parsed->format('Y-m-d') !== Str\trim($typed)) {
+            $violations[] = $this->violation('replyBy', 'validation.event_reply_by_invalid');
+
+            return null;
+        }
+
+        return $parsed;
     }
 
     /**

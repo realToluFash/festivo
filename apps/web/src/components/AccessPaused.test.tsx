@@ -7,10 +7,11 @@ import { membership } from '../test-memberships.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 
 function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrganisation {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-    id: 'org_1',
-    name: 'Ìrè Events',
-  });
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
+      id: 'org_1',
+      name: 'Ìrè Events',
+    });
 
   return {
     id,
@@ -19,6 +20,8 @@ function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrgan
     currency,
     timezone,
     contactAddress,
+    plan,
+    subscription,
     locale,
     suspension: {
       reason,
@@ -55,6 +58,11 @@ describe('AccessPaused', () => {
     expect(
       screen.getByText(
         'If nobody restores your access by Sunday, Nov 15 at 09:40 WAT, you are removed from Ìrè Events.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your other organisations and your access to single events are not affected.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('link', { name: 'Account settings' })).toBeDefined();
@@ -109,6 +117,37 @@ describe('AccessPaused', () => {
     ).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Account settings' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+    expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
+  });
+
+  it('names no other organisation when the member is past the deadline for two-factor in the only other', () => {
+    const onSwitch = vi.fn();
+    const overdue = membership({
+      id: 'org_3',
+      name: 'Adeyemi Weddings',
+      twoFactorDue: {
+        at: '2026-10-24T13:20:00+00:00',
+        written: 'Saturday, Oct 24 at 14:20 WAT',
+        overdue: true,
+      },
+    });
+    render(
+      <MemoryRouter>
+        <AccessPaused
+          paused={paused('domain_closed')}
+          others={[overdue]}
+          onSwitch={onSwitch}
+          onChoose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+    expect(onSwitch).toHaveBeenCalledWith(overdue);
   });
 
   it('tells the only owner they are still the owner and are not removed', () => {
@@ -185,12 +224,12 @@ describe('AccessPaused', () => {
     ).toBeDefined();
     expect(screen.getByText('Ownership passes on Tuesday 27 Oct at 10:00 WAT.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
-    expect(document.activeElement).toBe(screen.getByText("Stop Bisi's claim?"));
+    expect(document.activeElement).toBe(screen.getByText('Stop Bisi’s claim?'));
     fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
 
     expect(
       await screen.findByText(
-        "You stopped Bisi's claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+        'You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.',
       ),
     ).toBeDefined();
     expect(String(stopped.mock.calls[0]?.[0])).toBe(
@@ -241,7 +280,7 @@ describe('AccessPaused', () => {
       );
 
       const line = await screen.findByText(
-        "You stopped Bisi's claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+        'You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.',
       );
       await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
       expect(line.closest('[role="status"]')).toBeNull();

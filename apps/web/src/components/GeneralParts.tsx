@@ -4,8 +4,66 @@ import { createPortal } from 'react-dom';
 import { ActionPair } from './ActionPair.tsx';
 import { Glyph } from './Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
-import { RowWords } from './SettingsParts.tsx';
+import { Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './GeneralParts.css';
+
+/** General's card at rest: the organisation's tile, its name, and the line under it. */
+export function OrganisationWho({
+  tile,
+  name,
+  line,
+}: {
+  tile: string;
+  name: string;
+  line: string | null;
+}) {
+  return (
+    <div className="desk-who">
+      <span className="desk-disc general-tile" aria-hidden="true">
+        {tile}
+      </span>
+      <div className="desk-who-words">
+        <p className="desk-name">{name}</p>
+        <OnCard>{line}</OnCard>
+      </div>
+    </div>
+  );
+}
+
+/** Why the card only reads, beside a lock. */
+export function CardLock({ line }: { line: string }) {
+  return (
+    <div className="general-lock">
+      <Glyph name="lock" size={16} weight={2.2} />
+      <OnCard>{line}</OnCard>
+    </div>
+  );
+}
+
+/** The organisation's details, each its value over its name, and the note on what they set. */
+export function DetailsBlock({
+  title,
+  rows,
+  note,
+}: {
+  title: string;
+  rows: readonly { label: string; value: string }[];
+  note: string;
+}) {
+  return (
+    <section className="desk-block">
+      <Head title={title} />
+      <ul className="desk-rows">
+        {rows.map((row) => (
+          <li key={row.label} className="desk-row is-plain">
+            <RowWords title={row.value} lines={[row.label]} />
+          </li>
+        ))}
+      </ul>
+      <p className="desk-foot">{note}</p>
+    </section>
+  );
+}
 
 /** B's switch with its On or Off word beside it, so the state is never colour alone. */
 export function Switch({

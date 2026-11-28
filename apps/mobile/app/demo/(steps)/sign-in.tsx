@@ -1,10 +1,26 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
+import {
+  Animated,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
 import { withBoldText } from '../../../src/demo/boldText/BoldTextSwitch.tsx';
-import { DemoScreen, NavBar, goBack, useInSheet } from '../../../src/demo/DemoScreen.tsx';
+import { DemoScreen, NavBar, finish, goBack, useInSheet } from '../../../src/demo/DemoScreen.tsx';
+import {
+  BreakGlass,
+  SsoHandoff,
+  useHandoff,
+} from '../../../src/demo/settings/SingleSignOnHandoff.tsx';
+import {
+  atSsoDomain,
+  signInSsoOf,
+  ssoWayFor,
+} from '../../../src/demo/settings/SingleSignOnSignIn.ts';
 import { tap } from '../../../src/steps/haptics.ts';
 import { type FieldState, InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Says } from '../../../src/steps/Lines.tsx';
@@ -21,7 +37,10 @@ function SignIn() {
     password?: string;
     after?: string;
     timedOut?: string;
+    state?: string;
   }>();
+  const sso = signInSsoOf(params.state);
+  const [anotherWay, setAnotherWay] = useState(false);
   const inSheet = useInSheet();
   const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState(params.password ?? '');
@@ -30,6 +49,10 @@ function SignIn() {
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
   const { shaken, shake } = useShake();
+  const way = ssoWayFor(sso, email, anotherWay);
+  const handoffOpener = useRef<ViewInstance>(null);
+  const handoff = useHandoff(handoffOpener, () => finish());
+  const handsOff = way === 'handoff' || way === 'required';
 
   function refuse(next: NonNullable<Wrong>): void {
     setWrong(next);
@@ -66,6 +89,11 @@ function SignIn() {
       tap.done();
       if (params.after === 'tfaAgain') router.replace('/demo/tfa-again');
       else if (params.after === 'join') router.replace('/demo/join-message');
+      else if (params.after === 'passkey' || params.after === 'passkeyOnly')
+        router.push({
+          pathname: '/demo/passkey',
+          params: { email: email.trim(), only: params.after === 'passkeyOnly' ? '1' : '0' },
+        });
       else router.push({ pathname: '/demo/two-factor', params: { email: email.trim() } });
     }, 600);
   }
@@ -74,12 +102,21 @@ function SignIn() {
     <DemoScreen
       nav={<NavBar left={inSheet ? { label: 'Cancel', onPress: goBack } : 'back'} />}
       foot={
-        <PrimaryButton
-          label={busy ? 'Signing in…' : 'Sign in'}
-          busy={busy}
-          onPress={signIn}
-          testID="demo.signIn"
-        />
+        handsOff ? (
+          <PrimaryButton
+            ref={handoffOpener}
+            label={handoff.label}
+            onPress={handoff.start}
+            testID="demo.sso.continue"
+          />
+        ) : (
+          <PrimaryButton
+            label={busy ? 'Signing in…' : 'Sign in'}
+            busy={busy}
+            onPress={signIn}
+            testID="demo.signIn"
+          />
+        )
       }
     >
       <Heading title="Sign in" />
@@ -108,34 +145,52 @@ function SignIn() {
         />
         {wrong?.field === 'email' && <Says words={wrong.words} />}
       </Animated.View>
-      <Animated.View style={[styles.next, shaken]}>
-        <InsideField
-          ref={passwordField}
-          label="Password"
-          value={password}
-          onChangeText={(text) => {
-            setPassword(text);
-            if (wrong != null) setWrong(null);
-          }}
-          password
-          state={wrong?.field === 'password' && wrong.state === 'blank' ? 'blank' : 'plain'}
-          autoComplete="current-password"
-          textContentType="password"
-          returnKeyType="go"
-          submitBehavior="submit"
-          onSubmitEditing={signIn}
-          autoFocus={params.email != null}
-          testID="demo.password"
+      {handsOff && (
+        <SsoHandoff
+          way={way}
+          email={email}
+          failed={handoff.failed}
+          onAnotherWay={way === 'handoff' ? () => setAnotherWay(true) : null}
         />
-      </Animated.View>
-      {wrong?.field === 'password' && <Says words={wrong.words} />}
-      <View style={styles.forgot}>
-        <QuietButton
-          label="Forgot your password?"
-          onPress={() => router.push({ pathname: '/demo/reset', params: { email: email.trim() } })}
-          testID="demo.forgot"
-        />
-      </View>
+      )}
+      {handoff.sheet}
+      {!handsOff && (
+        <>
+          <Animated.View style={[styles.next, shaken]}>
+            <InsideField
+              ref={passwordField}
+              label="Password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (wrong != null) setWrong(null);
+              }}
+              password
+              state={wrong?.field === 'password' && wrong.state === 'blank' ? 'blank' : 'plain'}
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              submitBehavior="submit"
+              onSubmitEditing={signIn}
+              autoFocus={params.email != null}
+              testID="demo.password"
+            />
+          </Animated.View>
+          {wrong?.field === 'password' && <Says words={wrong.words} />}
+          <View style={styles.forgot}>
+            <QuietButton
+              label="Forgot your password?"
+              onPress={() =>
+                router.push({ pathname: '/demo/reset', params: { email: email.trim() } })
+              }
+              testID="demo.forgot"
+            />
+          </View>
+          {(way === 'breakGlass' || (sso != null && anotherWay && atSsoDomain(email))) && (
+            <BreakGlass owner={way === 'breakGlass'} onBack={() => setAnotherWay(false)} />
+          )}
+        </>
+      )}
     </DemoScreen>
   );
 }

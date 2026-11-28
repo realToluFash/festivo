@@ -149,8 +149,7 @@
 .mn-dishes,
 .mn-choices,
 .mn-item-chips,
-.mn-item-rows,
-.mn-variants {
+.mn-item-rows {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -354,12 +353,30 @@
   white-space: nowrap;
   box-shadow: 0 8px 24px rgb(20 22 28 / 14%);
   transform: translateX(-50%);
-  pointer-events: none;
 }
 
-.mn-icon-button:hover + .mn-hint,
+.mn-icon:last-child > .mn-hint {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.mn-hint::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 8px;
+  content: '';
+}
+
+.mn-icon:hover > .mn-hint,
 .mn-icon-button:focus-visible + .mn-hint {
   display: block;
+}
+
+.mn-icon.is-dismissed > .mn-hint {
+  display: none;
 }
 
 .mn-panel {
@@ -456,6 +473,8 @@
 }
 
 .mn-item-rows {
+  --mnItemN: 20px;
+
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
@@ -471,7 +490,7 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 20px;
+  width: var(--mnItemN);
   height: var(--sizeHit);
   color: var(--colorInkSecondary);
   font: 600 14px/1 var(--fontFamily);
@@ -493,6 +512,8 @@
 }
 
 .mn-choice-item {
+  --mnChoiceGlyph: 16px;
+
   display: flex;
   align-items: center;
   gap: var(--spaceSm);
@@ -504,6 +525,12 @@
   border-radius: var(--radiusField);
   background: var(--colorInset);
   font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mn-choice-item > svg {
+  flex: none;
+  width: var(--mnChoiceGlyph);
+  height: var(--mnChoiceGlyph);
 }
 
 .mn-choice-item-name {
@@ -580,31 +607,36 @@
   clip-path: inset(50%);
 }
 
-.mn-variants-box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  margin-left: var(--spaceXl);
-}
-
-.mn-variants {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceXs) var(--spaceMd);
-}
-
-.mn-variant {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceXxs);
-  padding-left: var(--spaceMd);
-  border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusPill);
-  background: var(--colorCard);
-  color: var(--colorInk);
-  font: 600 14px/1.3 var(--fontFamily);
-}
-
 .mn-offer-button .mn-tag {
   margin-left: var(--spaceXxs);
+}
+
+/* sc-32279: at 320 px an item's field takes the row and its move and remove buttons sit under it, so a name is never squeezed. */
+@media (width <= 40rem) {
+  .mn-item-row {
+    flex-wrap: wrap;
+  }
+
+  .mn-item-main {
+    flex-basis: calc(100% - var(--mnItemN) - var(--spaceSm));
+  }
+
+  .mn-item-acts {
+    margin-inline-start: calc(var(--mnItemN) + var(--spaceSm));
+  }
+
+  .mn-choice-item {
+    flex-wrap: wrap;
+    padding-block: var(--spaceXs);
+  }
+
+  .mn-choice-item-name {
+    flex: 1 1 calc(100% - var(--mnChoiceGlyph) - var(--spaceSm));
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .mn-choice-item-name + * {
+    margin-inline-start: calc(var(--mnChoiceGlyph) + var(--spaceSm));
+  }
 }

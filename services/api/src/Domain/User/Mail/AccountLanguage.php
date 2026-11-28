@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Mail;
 
+use App\Entity\PhoneNumber;
+use App\Entity\PhoneSignIn;
+use App\Entity\TextableContact;
 use App\Entity\User;
 use App\Locale\Listener\RequestLocaleListener;
 use App\Locale\SupportedLocales;
@@ -32,10 +35,28 @@ final readonly class AccountLanguage
         return SupportedLocales::narrow($asked ?? $this->translator->getLocale());
     }
 
-    /** What a screen writes a date in (sc-9267): the language the request asked for, which a picker switch sends before the account has saved it; else theirs. */
+    /** A code's text in its account's language; a number with no account yet in the language it asked in (sc-4235). */
+    public function ofContact(TextableContact $contact): string
+    {
+        return match (true) {
+            $contact instanceof PhoneNumber => $this->of($contact->getUser()),
+            $contact instanceof PhoneSignIn => SupportedLocales::narrow($contact->getLocale()),
+            default => SupportedLocales::narrow($this->translator->getLocale()),
+        };
+    }
+
+    /** What a screen writes a date in (sc-9267, sc-65714): the request's formatting tag when it asked for a language; else theirs. */
     public function shown(User $user): string
     {
-        return self::askedIn($this->requestStack->getMainRequest()) ?? $this->of($user);
+        return null === self::askedIn($this->requestStack->getMainRequest()) ? $this->of($user) : $this->answeredFormatting();
+    }
+
+    /** The request's language with the device's region while the device speaks it, for a date a screen shows. */
+    public function answeredFormatting(): string
+    {
+        $formatting = $this->requestStack->getMainRequest()?->attributes->get(RequestLocaleListener::FORMATTING);
+
+        return \is_string($formatting) ? $formatting : $this->answered();
     }
 
     /** What the API's own sentences are in (sc-10700), and so a date written inside one (sc-11329): the language the listener settled for the request, which its `detail` is translated in; never the account's. */

@@ -13,6 +13,8 @@ import { closeBoldTextBoard, openBoldTextBoard } from '../boldText/boldTextStore
 import { YOU } from '../settings/sample.ts';
 import { TextSizeBar } from './TextSizeBar.tsx';
 import { TextSizeCard } from './TextSizeCard.tsx';
+import { TextSizePhone } from './TextSizePhone.tsx';
+import { TextSizeWeek } from './TextSizeWeek.tsx';
 import {
   LANGUAGES,
   LONG_EMAIL,
@@ -22,6 +24,8 @@ import {
   TEXT_SIZES,
   type TextSizeChoice,
   type TextSizeLanguage,
+  type TextSizePart,
+  type TextSizeWeekState,
 } from './textSizeRules.ts';
 
 export interface TextSizeStart {
@@ -31,6 +35,8 @@ export interface TextSizeStart {
   longEmail: boolean;
   bold: boolean;
   at: Tab;
+  part: TextSizePart;
+  week: TextSizeWeekState;
 }
 
 /** The Settings card and the phone's tab bar at a text size the board chooses, in the app's own words for each language. */
@@ -43,6 +49,8 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
   const [longOrganisation, setLongOrganisation] = useState(start.longOrganisation);
   const [longEmail, setLongEmail] = useState(start.longEmail);
   const [at, setAt] = useState<Tab>(start.at);
+  const [part, setPart] = useState(start.part);
+  const [week, setWeek] = useState(start.week);
   const [drawn, setDrawn] = useState({ size: 0, slot: 0 });
   const onSize = useCallback((size: number, slot: number) => setDrawn({ size, slot }), []);
   const words = useMemo(
@@ -69,28 +77,63 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
         <NavBar />
         <View style={styles.page}>
           <I18nextProvider i18n={words}>
-            <TextSizeCard
-              scale={scale}
-              name={YOU.name}
-              initials={YOU.initials}
-              email={longEmail ? LONG_EMAIL : YOU.email}
-              organisation={longOrganisation ? LONG_ORGANISATION : QA_ORGANISATION}
-            />
+            {part === 'phone' ? (
+              <TextSizePhone scale={fontScale} />
+            ) : part === 'week' ? (
+              <TextSizeWeek scale={scale} language={language} state={week} />
+            ) : (
+              <TextSizeCard
+                scale={scale}
+                name={YOU.name}
+                initials={YOU.initials}
+                email={longEmail ? LONG_EMAIL : YOU.email}
+                organisation={longOrganisation ? LONG_ORGANISATION : QA_ORGANISATION}
+              />
+            )}
           </I18nextProvider>
-          <DemoOnly title="Stand in for the phone’s own settings and qa’s account. The card and the bar are drawn at the size chosen; no string is added.">
-            <Choices
-              heading="Text size"
-              options={TEXT_SIZES}
-              chosen={size}
-              onChoose={setSize}
-              id="size"
-            />
+          <DemoOnly
+            title={
+              part === 'phone'
+                ? 'Stand in for qa’s account. The kit’s boxes take this phone’s own text size, so no size is chosen here: the country box goes over the number from iOS’s eighth Larger Text step (Settings › Accessibility › Display & Text Size › Larger Text) and Android’s 200% font size. No string is added.'
+                : 'Stand in for the phone’s own settings and qa’s account. The card, Home’s This week and the bar are drawn at the size chosen; no string is added.'
+            }
+          >
+            {part === 'phone' ? null : (
+              <Choices
+                heading="Text size"
+                options={TEXT_SIZES}
+                chosen={size}
+                onChoose={setSize}
+                id="size"
+              />
+            )}
             <Choices
               heading="Language"
               options={LANGUAGES}
               chosen={language}
               onChoose={setLanguage}
               id="language"
+            />
+            <Choices
+              heading="Shows"
+              options={[
+                { key: 'card', label: 'The Settings card' },
+                { key: 'week', label: 'Home’s This week' },
+                { key: 'phone', label: 'A phone number, at this phone’s size' },
+              ]}
+              chosen={part}
+              onChoose={setPart}
+              id="part"
+            />
+            <Choices
+              heading="This week"
+              options={[
+                { key: 'events', label: 'An event this week' },
+                { key: 'nothing', label: 'Nothing this week' },
+              ]}
+              chosen={week}
+              onChoose={setWeek}
+              id="week"
             />
             <Choices
               heading="Organisation"

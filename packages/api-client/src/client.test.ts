@@ -14,6 +14,7 @@ import {
   phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
+import { asGuestList } from './guests.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -994,6 +995,35 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test("an organisation carries its subscription's status and period end (sc-3927)", async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            id: 'org_1',
+            name: 'Ìrè Events',
+            countryCode: 'NG',
+            currency: 'NGN',
+            timezone: 'Africa/Lagos',
+            contactAddress: 'hello@ire.events',
+            locale: 'en',
+            plan: 'enterprise',
+            subscription: { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+          }),
+          { status: 200 },
+        ),
+    });
+
+    const saved = await client.updateOrganisation('org_1', { name: 'Ìrè Events' });
+
+    expect([saved.plan, saved.subscription]).toEqual([
+      'enterprise',
+      { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+    ]);
+  });
+
   test('an organisation is created with its name, country and the device timezone', async () => {
     let sent: { method: string | undefined; path: string; body: unknown } | null = null;
 
@@ -1095,7 +1125,6 @@ describe('a browser never holds the refresh token', () => {
               seededAs: 'administrator',
               permissions: ['members.read'],
               holders: 1,
-              holderNames: [{ name: 'Julien Moreau', suspended: false }],
             },
           ],
           areas: [],
@@ -1125,10 +1154,6 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
-      holderNames: [
-        { name: 'Ada Okeke', suspended: false },
-        { name: 'Émeka Obi', suspended: true },
-      ],
     };
 
     const client = new ApiClient({
@@ -1154,7 +1179,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
-    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
+    expect(catalogue.roles[0]?.holders).toBe(2);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {
@@ -1186,6 +1211,7 @@ describe('a browser never holds the refresh token', () => {
               withheldUntilTwoFactor: ['members.manage'],
               readOnlyUntilLinked: true,
               withheldUntilLinked: ['events.manage', 'organisation.manage'],
+              onAnEvent: [],
               signInRules: {
                 providerOnly: true,
                 inactivityTimeoutDays: 7,
@@ -1223,13 +1249,17 @@ describe('a browser never holds the refresh token', () => {
           was: false,
         },
       ],
-      passwordOnly: [
-        {
-          userId: 'user_2',
-          name: 'Bola Ade',
-          role: { id: 'role_2', seededAs: 'coordinator', name: null },
-        },
-      ],
+      passwordOnly: {
+        count: 1,
+        named: [
+          {
+            userId: 'user_2',
+            name: 'Bola Ade',
+            role: { id: 'role_2', seededAs: 'coordinator', name: null },
+          },
+        ],
+      },
+      withoutTwoFactor: { count: 1_000_000, named: [] },
       ownTwoFactor: true,
       ownProvider: true,
     };
@@ -1253,7 +1283,8 @@ describe('a browser never holds the refresh token', () => {
 
     expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
-    expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
+    expect(read.passwordOnly?.named[0]?.name).toBe('Bola Ade');
+    expect(read.withoutTwoFactor).toEqual({ count: 1_000_000, named: [] });
     expect(read.ownTwoFactor).toBe(true);
     expect(read.ownProvider).toBe(true);
     expect(sent).toEqual([
@@ -1490,6 +1521,7 @@ describe('recovering a password', () => {
     expect(await client.checkResetLink('t1')).toEqual({
       email: 'folake@ire.events',
       twoFactor: false,
+      factors: { app: true, passkeys: false },
     });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
@@ -1590,18 +1622,31 @@ describe('company domain joining (sc-561)', () => {
       domain: 'ire.events',
       offers: [{ id: 'org_1', name: 'Ìrè Events' }],
       request: null,
+      managed: null,
     });
+  });
+
+  test('reads a managed account’s home organisation and the sentence to show (sc-563)', async () => {
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    const { client } = answering({ domain: 'ire.events', offers: [], request: null, managed });
+
+    expect((await client.joinOffers()).managed).toEqual(managed);
   });
 
   test('reads the list of domains, and escapes the one removed', async () => {
     const { client, sent } = answering({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });
 
     expect(await client.removeCompanyDomain('org_1', 'ire.events')).toEqual({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });
@@ -1684,6 +1729,7 @@ describe('requests to join (sc-562)', () => {
       organisation: { name: 'Ìrè Events' },
       standing: 'cooling_off',
       askAgainFrom: '2026-11-20T09:00:00+00:00',
+      managed: null,
     });
     expect(sent).toEqual([
       { url: 'http://api.test/api/request-links/link', method: 'POST', body: { token: 'ab12' } },
@@ -1751,13 +1797,33 @@ describe('the bell (sc-3980)', () => {
 
   test('reads the feed and leaves out an item it cannot read', async () => {
     const { client, sent } = answering({
-      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
+      items: [item, { id: 'n2', category: 'event_changes', createdAt: 'y' }],
       unreadCount: 1,
       next: 'n1',
     });
 
     expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
     expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
+  });
+
+  test('keeps an item of a category it does not know, with the category as sent', async () => {
+    const news = { ...item, id: 'n2', category: 'venue_news' };
+    const { client } = answering({ items: [news, item], unreadCount: 2, next: null });
+
+    expect(await client.notifications()).toEqual({
+      items: [news, item],
+      unreadCount: 2,
+      next: null,
+    });
+    expect(asNotificationArrival({ ...news, unreadCount: 3 })).toEqual({
+      item: news,
+      unreadCount: 3,
+    });
+    expect(asNotificationRead({ updated: news, unreadCount: 1 })).toEqual({
+      id: 'n2',
+      unreadCount: 1,
+      updated: news,
+    });
   });
 
   test('one switch is sent as category, channel and on', async () => {
@@ -1865,6 +1931,15 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** What every page of Members carries besides its rows (sc-49170). */
+const PAGE_REST = {
+  next: null,
+  counts: { all: 1, active: 1, waiting: 0, suspended: 0, former: 1 },
+  owners: 1,
+  faces: [],
+  waiting: [],
+};
+
 const ACCOUNT = {
   id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
   name: 'Folake Ire',
@@ -1880,6 +1955,8 @@ const ACCOUNT = {
   twoFactorSetupPrompt: false,
   colourScheme: null,
   waitingFor: null,
+  outsideEvents: [],
+  signedOutAt: null,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
@@ -1903,6 +1980,51 @@ describe('who is signed in', () => {
     expect(account.name).toBe('Folake Ire');
     expect(account.businessName).toBe('Ire Events');
     expect(account.emailAddresses).toHaveLength(2);
+  });
+
+  test('reads the events the account is on from outside its organisations (sc-71)', async () => {
+    const outside = {
+      id: 'e1',
+      name: 'Owambe',
+      organisationName: 'Ìrè Events',
+      role: 'can_view',
+      jobLabel: 'Kitchen',
+      startsAt: '2030-11-14T16:00:00+01:00',
+      endsAt: '2030-11-14T15:00:00+00:00',
+      timeZone: 'Europe/Lisbon',
+    };
+    const account = await client(
+      json({ ...ACCOUNT, outsideEvents: [outside, { id: 'e2', role: 'lead' }] }),
+    ).me();
+
+    expect(account.outsideEvents).toEqual([outside]);
+  });
+
+  test('reads someone not joined yet on People, with or without their address (sc-71)', async () => {
+    const pending = {
+      id: 'p1',
+      membershipId: null,
+      user: null,
+      role: 'can_view',
+      jobLabel: null,
+      outside: true,
+      endsAt: '2030-11-14T15:00:00+00:00',
+    };
+    const people = await client(
+      json({
+        people: [
+          { ...pending, address: '+2348035550142', addressKind: 'mobile' },
+          { ...pending, id: 'p2', address: null, addressKind: null },
+        ],
+        owners: [],
+        admins: [],
+      }),
+    ).eventPeople('e1');
+
+    expect(people.people.map((one) => [one.user, one.address, one.addressKind])).toEqual([
+      [null, '+2348035550142', 'mobile'],
+      [null, null, null],
+    ]);
   });
 
   test('the primary address is the one identified by its flag', () => {
@@ -2323,6 +2445,8 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
+      phone: null,
+      factors: { app: true, passkeys: false },
     });
     expect(tokens.saved).toBeNull();
   });
@@ -2529,19 +2653,24 @@ describe('getting back in without the second factor', () => {
 });
 
 describe('invitations and members', () => {
-  function client(response: Response, sent: { line: string; body: unknown }[] = []) {
+  function client(
+    response: Response | (() => Response),
+    sent: { line: string; query?: string | undefined; body: unknown }[] = [],
+  ) {
     return {
       api: new ApiClient({
         baseUrl: () => 'http://api.test',
         tokens: store('live', null),
         refreshTokenIn: 'cookie',
         fetch: async (url, init) => {
+          const { pathname, search } = new URL(String(url));
           sent.push({
-            line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+            line: `${init?.method ?? 'GET'} ${pathname}`,
+            query: search === '' ? undefined : decodeURIComponent(search),
             body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
           });
 
-          return response;
+          return typeof response === 'function' ? response() : response;
         },
       }),
       sent,
@@ -2559,6 +2688,9 @@ describe('invitations and members', () => {
     refusal: null,
     forYou: null,
     signedInAs: null,
+    signedInAsPhone: null,
+    needsEmail: false,
+    managed: null,
   };
 
   test('a link opens on who invited whom, to what, until when', async () => {
@@ -2632,6 +2764,7 @@ describe('invitations and members', () => {
   test('the members list reads every state and its history', async () => {
     const { api, sent } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm1',
@@ -2670,6 +2803,7 @@ describe('invitations and members', () => {
             invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
             status: 'pending',
             sentAt: '2026-10-18T10:00:00+00:00',
+            undelivered: false,
             expiresAt: '2026-10-25T10:00:00+00:00',
             acceptedAt: null,
             declinedAt: null,
@@ -2687,9 +2821,68 @@ describe('invitations and members', () => {
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/members');
   });
 
+  test('a page of members is asked for under its option, after the last row read', async () => {
+    const { api, sent } = client(json({ ...PAGE_REST, members: [], invitations: [] }));
+
+    await api.members('org_1', { show: 'former', after: 'm50', limit: 50 });
+
+    expect(sent[0]?.query).toBe('?show=former&after=m50&limit=50');
+  });
+
+  test('every member is read page after page until there is no next', async () => {
+    const row = (id: string) => ({
+      id,
+      user: { id: `u_${id}`, name: id, email: null },
+      role: { id: 'role_1', seededAs: 'owner', name: null },
+      status: 'active',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    });
+    const pages = [
+      { ...PAGE_REST, next: 'm1', members: [row('m1')], invitations: [] },
+      { ...PAGE_REST, members: [row('m2')], invitations: [] },
+    ];
+    const { api, sent } = client(() => json(pages.shift() ?? {}));
+
+    const every = await api.everyMember('org_1', 'active');
+
+    expect(every.map((one) => one.id)).toEqual(['m1', 'm2']);
+    expect(sent.map((one) => one.query)).toEqual([
+      '?show=active&limit=500',
+      '?show=active&after=m1&limit=500',
+    ]);
+  });
+
+  test('a later page carries no invitations, and one person reads as their row', async () => {
+    const row = {
+      id: 'm9',
+      user: { id: 'u_m9', name: 'Ada', email: null },
+      role: { id: 'role_1', seededAs: 'member', name: null },
+      status: 'suspended',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    };
+    const answers = [json({ ...PAGE_REST, members: [row] }), json({ member: row })];
+    const { api, sent } = client(() => answers.shift() ?? json({}));
+
+    expect((await api.members('org_1', { after: 'm8' })).invitations).toEqual([]);
+    expect((await api.member('org_1', 'm9')).status).toBe('suspended');
+    expect(sent[1]?.line).toBe('GET /api/orgs/org_1/members/m9');
+  });
+
   test('a members list in a shape it does not know names where to look', async () => {
     await expect(
-      client(json({ members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
+      client(json({ ...PAGE_REST, members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
     ).rejects.toThrow(/MembersController/);
   });
 
@@ -2703,6 +2896,7 @@ describe('invitations and members', () => {
           invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
           status: 'pending',
           sentAt: null,
+          undelivered: true,
           expiresAt: '2026-10-25T10:00:00+00:00',
           acceptedAt: null,
           declinedAt: null,
@@ -2714,6 +2908,7 @@ describe('invitations and members', () => {
     const sentInvitation = await api.inviteMember('org_1', 'amara@example.com', 'role_5');
 
     expect(sentInvitation.id).toBe('inv_2');
+    expect(sentInvitation.undelivered).toBe(true);
     expect(sent[0]).toEqual({
       line: 'POST /api/orgs/org_1/members/invite',
       body: { email: 'amara@example.com', roleId: 'role_5' },
@@ -2735,6 +2930,7 @@ describe('invitations and members', () => {
   test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
     const { api } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm_ada',
@@ -2807,10 +3003,25 @@ describe('invitations and members', () => {
     expect(await api.eventDeletion('event_1')).toEqual({
       needsName: true,
       people: 421,
+      deleteRefusedBecause: null,
       restoreClosesAt: '2026-11-16T13:20:00+00:00',
       restoreCloses: 'Monday 16 Nov at 14:20 WAT',
     });
     expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event deletion preview says why it would be refused (sc-14445)', async () => {
+    const { api } = client(
+      json({
+        needsName: true,
+        people: 3,
+        deleteRefusedBecause: 'guestsInvited',
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect((await api.eventDeletion('event_1')).deleteRefusedBecause).toBe('guestsInvited');
   });
 
   test('an event delete sends the name as typed, and none for a Draft', async () => {
@@ -2842,13 +3053,17 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
     concludedAt: null,
+    deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
+    roleOnEvent: null,
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -2878,16 +3093,22 @@ describe('events (sc-1486)', () => {
       owner: 'event',
       area: 'events',
       action: null,
+      done: false,
     };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25, attended: 87, expected: 99 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
-      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+      json({
+        events: [{ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS }, later],
+        total: 12,
+      }),
     );
 
     const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
     expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS });
+    expect(page.events[1]?.guests).toBeNull();
     expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
   });
@@ -2997,6 +3218,81 @@ describe('events (sc-1486)', () => {
     await expect(odd.eventHosts('org_1')).rejects.toThrow('/events/hosts');
   });
 
+  test('Search reads each kind, null where the caller may not find it, and refuses a shape it does not know (sc-39534)', async () => {
+    const guest = {
+      id: 'g1',
+      name: 'Inês Duarte',
+      event: {
+        id: 'e1',
+        name: 'Gala',
+        startsAt: '2026-11-14T16:00:00+01:00',
+        timeZone: 'Africa/Lagos',
+      },
+    };
+    const invited = {
+      id: 'i1',
+      kind: 'invitation',
+      name: null,
+      email: 'ines@example.com',
+      role: { id: 'r1', seededAs: 'member' },
+      status: 'invited',
+    };
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        urls.push(String(url).replace('http://api.test', ''));
+
+        return json({
+          events: { total: 7, matches: [EVENT] },
+          guests: { total: 1, matches: [guest] },
+          members: null,
+        });
+      },
+    });
+
+    expect(await api.search('org_1', 'inês')).toEqual({
+      events: { total: 7, matches: [expect.objectContaining({ id: EVENT.id })] },
+      guests: { total: 1, matches: [guest] },
+      members: null,
+    });
+    expect(urls).toEqual(['/api/orgs/org_1/search?q=in%C3%AAs']);
+
+    await api.search('org_1', 'ines', { invitations: false });
+    expect(urls.at(-1)).toBe('/api/orgs/org_1/search?q=ines&invitations=false');
+
+    const { api: members } = client(() =>
+      json({ events: null, guests: null, members: { total: 1, matches: [invited] } }),
+    );
+
+    expect((await members.search('org_1', 'ines')).members?.matches).toEqual([
+      { ...invited, role: { id: 'r1', seededAs: 'member', name: null } },
+    ]);
+
+    const { api: odd } = client(() =>
+      json({
+        events: null,
+        guests: { total: 1, matches: [{ ...guest, event: null }] },
+        members: null,
+      }),
+    );
+
+    await expect(odd.search('org_1', 'ines')).rejects.toThrow('/search');
+  });
+
+  test('what Search may find is read, and a shape it does not know is refused (sc-39534)', async () => {
+    const { api, sent } = client(() => json({ events: true, guests: true, members: false }));
+
+    expect(await api.searchReach('org_1')).toEqual({ events: true, guests: true, members: false });
+    expect(sent).toEqual([{ line: 'GET /api/orgs/org_1/search/reach', body: null }]);
+
+    const { api: odd } = client(() => json({ events: true }));
+
+    await expect(odd.searchReach('org_1')).rejects.toThrow('/search/reach');
+  });
+
   test('an event is created with local times and its zone, and read by its id', async () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {
@@ -3025,6 +3321,23 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('a copy brings the guest list when asked, and says how many guests came (sc-3656)', async () => {
+    const { api, sent } = client(() =>
+      json({ event: { ...EVENT, id: 'e2' }, guestsCopied: 118 }, 201),
+    );
+
+    expect(await api.duplicateEventWithGuests(EVENT.id, '2027-05-15T16:00')).toEqual({
+      event: { ...EVENT, id: 'e2' },
+      guestsCopied: 118,
+    });
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/duplicate`,
+        body: { startsAt: '2027-05-15T16:00', copyGuests: true },
+      },
+    ]);
+  });
+
   test('an event’s timeline is read as served, and a shape it does not know is an error', async () => {
     const timeline = {
       timeZone: 'Europe/Madrid',
@@ -3036,6 +3349,7 @@ describe('events (sc-1486)', () => {
           owner: 'event',
           area: 'events',
           action: null,
+          done: false,
         },
         {
           at: '2026-10-26T02:00:00+01:00',
@@ -3044,6 +3358,7 @@ describe('events (sc-1486)', () => {
           owner: 'you',
           area: 'budget',
           action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+          done: true,
         },
       ],
     };
@@ -3062,6 +3377,11 @@ describe('events (sc-1486)', () => {
       client(() =>
         json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
       ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() => json({ ...timeline, milestones: [{ ...first, done: 'no' }] })).api.eventTimeline(
+        'e1',
+      ),
     ).rejects.toThrow(/EventTimelineController/);
     await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
       /EventTimelineController/,
@@ -3085,6 +3405,17 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("a Member's role on the event comes with it, and a role the client does not know is refused (sc-59617)", async () => {
+    const member = { ...EVENT, permissions: ['events.read'], roleOnEvent: 'can_check_in' };
+
+    expect((await client(() => json({ event: member })).api.event('e1')).roleOnEvent).toBe(
+      'can_check_in',
+    );
+    await expect(
+      client(() => json({ event: { ...EVENT, roleOnEvent: 'usher' } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 
@@ -3159,10 +3490,51 @@ describe('events (sc-1486)', () => {
     expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/end`, body: null }]);
   });
 
+  test('a thank-you goes with End now, and is saved or removed by its own PUT (sc-6476)', async () => {
+    const thanked = {
+      ...EVENT,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-11-13T10:00:00+01:00',
+      thankYou: 'Thank you for coming.',
+    };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: thanked }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"5"' },
+        });
+      },
+    });
+
+    expect(await api.endEvent(EVENT.id, 'Thank you for coming.')).toEqual({
+      event: thanked,
+      tag: '"5"',
+    });
+    await api.endEvent(EVENT.id, '   ');
+    await api.setThankYou(EVENT.id, '');
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/end`,
+        body: JSON.stringify({ thankYou: 'Thank you for coming.' }),
+      },
+      { line: `POST /api/events/${EVENT.id}/end`, body: null },
+      { line: `PUT /api/events/${EVENT.id}/thank-you`, body: JSON.stringify({ thankYou: '' }) },
+    ]);
+  });
+
   test.each([
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['a deleteRefusedBecause that is not a string or null', { deleteRefusedBecause: true }],
     ['no permissions', { permissions: undefined }],
     ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
@@ -3392,7 +3764,9 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -3449,6 +3823,19 @@ describe("an event's venue (sc-3589)", () => {
 
   test('refuses an event with no venue field, naming where to look', async () => {
     await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  test("reads the host's arrival note, with its line breaks, apart from the venue (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const read = await client(
+      json({ event: { ...event, venue: null, arrivalNote: note } }),
+    ).api.event('e1');
+
+    expect(read.venue).toBeNull();
+    expect(read.arrivalNote).toBe(note);
+    await expect(
+      client(json({ event: { ...event, venue: null, arrivalNote: 5 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
   });
 
   const answers = JSON.parse(
@@ -3627,5 +4014,376 @@ describe('the calendar feed link (sc-3626)', () => {
     const { client } = answering({ url: 'https://elsewhere.test/x.ics' });
 
     await expect(client.calendarFeed('org_1')).rejects.toThrow(/CalendarFeedController/);
+  });
+});
+
+describe("the guest's calendar on their page (sc-3627)", () => {
+  const PAGE = {
+    guest: {
+      fullName: 'Adaeze Okonkwo',
+      reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+      needs: {
+        allergies: [],
+        otherAllergy: null,
+        diet: [],
+        otherDiet: null,
+        access: [],
+        otherAccess: null,
+        changed: null,
+      },
+      places: 0,
+      unnamed: [],
+      companions: [],
+    },
+    language: { chosen: null, host: null, organisation: 'en' },
+    event: {
+      id: 'ev_1',
+      name: 'Owambe',
+      type: 'party',
+      cover: null,
+      hosts: ['Funmi'],
+      thankYou: null,
+      startsAt: '2030-11-14T16:00:00+01:00',
+      timeZone: 'Africa/Lagos',
+      venue: null,
+    },
+    phase: 'live',
+    started: false,
+    onTheDay: false,
+    answersOpen: true,
+  };
+
+  function answering(body: unknown) {
+    return new ApiClient({
+      baseUrl: () => 'https://api.soirely.test/',
+      fetch: async () =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    });
+  }
+
+  test('offers the feed as webcal for Apple and Outlook, and by URL to Google Calendar', async () => {
+    const client = answering({ ...PAGE, calendarFeed: '/api/guest-calendars/abc.ics' });
+
+    expect((await client.guestPage('tok')).calendar).toEqual({
+      webcal: 'webcal://api.soirely.test/api/guest-calendars/abc.ics',
+      google:
+        'https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fapi.soirely.test%2Fapi%2Fguest-calendars%2Fabc.ics',
+    });
+  });
+
+  test('has none when the API gives none', async () => {
+    expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test("reads the event's day as the API sends it, and an older API's silence as not the day", async () => {
+    const { onTheDay: _omitted, ...older } = PAGE;
+
+    expect((await answering({ ...PAGE, onTheDay: true }).guestPage('tok')).onTheDay).toBe(true);
+    expect((await answering(older).guestPage('tok')).onTheDay).toBe(false);
+  });
+
+  test('refuses a feed that is not a path', async () => {
+    await expect(
+      answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
+  });
+
+  test('reads whether each unnamed place is coming, and refuses one without it (sc-48740)', async () => {
+    const place = { id: 'pl_1', coming: false, needs: PAGE.guest.needs };
+    const guest = { ...PAGE.guest, places: 1, unnamed: [place] };
+
+    expect(
+      (await answering({ ...PAGE, guest, calendarFeed: null }).guestPage('tok')).guest.unnamed,
+    ).toEqual([place]);
+    await expect(
+      answering({
+        ...PAGE,
+        guest: { ...guest, unnamed: [{ id: 'pl_1', needs: PAGE.guest.needs }] },
+        calendarFeed: null,
+      }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
+  });
+});
+
+describe('guest groups (sc-3775)', () => {
+  const counts = { people: 3, guests: 2, companions: 1 };
+
+  test('makes, renames and deletes a group under its event', async () => {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return init?.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ group: { id: 'gr_1', name: 'Work' } }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+      },
+    });
+
+    expect(await client.makeGuestGroup('ev 1', 'Work')).toEqual({ id: 'gr_1', name: 'Work' });
+    expect(await client.renameGuestGroup('ev 1', 'gr_1', 'Work')).toEqual({
+      id: 'gr_1',
+      name: 'Work',
+    });
+    await client.deleteGuestGroup('ev 1', 'gr_1');
+
+    expect(sent.map(({ method, url, body }) => [method, url, body])).toEqual([
+      ['POST', 'http://api.test/api/events/ev%201/guest-groups', { name: 'Work' }],
+      ['PUT', 'http://api.test/api/events/ev%201/guest-groups/gr_1', { name: 'Work' }],
+      ['DELETE', 'http://api.test/api/events/ev%201/guest-groups/gr_1', null],
+    ]);
+  });
+
+  test('reads the list’s groups with their counts, and a list without them as all in No group', () => {
+    expect(
+      asGuestList({
+        guests: [],
+        counts,
+        groups: [{ id: 'gr_1', name: 'Work', counts }],
+        ungrouped: { people: 0, guests: 0, companions: 0 },
+      })?.groups,
+    ).toEqual([{ id: 'gr_1', name: 'Work', counts }]);
+    expect(asGuestList({ guests: [], counts })).toEqual({
+      guests: [],
+      counts,
+      groups: [],
+      ungrouped: counts,
+    });
+    expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
+  });
+});
+
+describe('door codes (sc-72)', () => {
+  const CARD = {
+    id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+    code: 'K7P2QX9M',
+    link: 'https://soirely.test/d/K7P2QX9M',
+    qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    role: 'can_check_in',
+    jobLabel: 'Bar',
+    useCap: 30,
+    used: 14,
+    status: 'working',
+    expiresAt: '2026-11-14T23:30:00+00:00',
+    stoppedAt: null,
+    createdAt: '2026-11-07T16:00:00+00:00',
+  };
+  const OPENED = {
+    role: 'can_view',
+    jobLabel: null,
+    event: {
+      id: 'e1',
+      name: 'Joana & Rui’s wedding',
+      startsAt: '2026-11-14T15:00:00+00:00',
+      endsAt: '2026-11-14T23:30:00+00:00',
+      timeZone: 'Europe/Lisbon',
+      organisation: 'Lumen Feiras',
+      country: 'PT',
+    },
+    standing: null,
+  };
+  const REDEEMED = {
+    eventId: 'e1',
+    name: 'João Pereira',
+    role: 'can_view',
+    jobLabel: null,
+    endsAt: '2026-11-14T23:30:00+00:00',
+    again: false,
+    shift: null,
+  };
+
+  function client(
+    response: Response,
+    tokens: TokenStore,
+    sent: { path: string; body: unknown; auth: string | null }[] = [],
+  ) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (url, init) => {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        sent.push({
+          path: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          auth: headers.Authorization ?? null,
+        });
+
+        return response;
+      },
+    });
+  }
+
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+  test('lists, makes and stops the cards People shows', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+
+    expect(
+      await client(json({ doorCodes: [CARD] }), store('live', null), sent).doorCodes('e1'),
+    ).toEqual([CARD]);
+    expect(
+      await client(json({ doorCode: CARD }, 201), store('live', null), sent).makeDoorCode('e1', {
+        role: 'can_check_in',
+        jobLabel: 'Bar',
+        useCap: 30,
+        expiresAt: CARD.expiresAt,
+      }),
+    ).toEqual(CARD);
+    await client(
+      json({ doorCode: { ...CARD, status: 'stopped', stoppedAt: CARD.createdAt } }),
+      store('live', null),
+      sent,
+    ).stopDoorCode('e1', CARD.id);
+
+    expect(sent.map((one) => one.path)).toEqual([
+      'GET /api/events/e1/door-codes',
+      'POST /api/events/e1/door-codes',
+      `POST /api/events/e1/door-codes/${CARD.id}/stop`,
+    ]);
+    expect(sent[1]?.body).toEqual({
+      role: 'can_check_in',
+      jobLabel: 'Bar',
+      useCap: 30,
+      expiresAt: CARD.expiresAt,
+    });
+  });
+
+  test('refuses a card in a shape it does not know', async () => {
+    await expect(
+      client(json({ doorCodes: [{ ...CARD, status: 'paused' }] }), store('live', null)).doorCodes(
+        'e1',
+      ),
+    ).rejects.toThrow(/DoorCodesController/);
+  });
+
+  test('opens a code before a name is asked for', async () => {
+    expect(await client(json(OPENED), store(null, null)).openDoorCode('K7P2QX9M')).toEqual(OPENED);
+  });
+
+  test('signed out, Send code sends the name and the number typed', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const answer = await client(
+      json({ handle: 'h1', cooldownSeconds: 60 }),
+      store(null, null),
+      sent,
+    ).sendDoorCodeSignIn('K7P2QX9M', 'João Pereira', 'PT', '912 344 512');
+
+    expect(answer).toEqual({ handle: 'h1', cooldownSeconds: 60 });
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in/send',
+      body: { name: 'João Pereira', countryCode: 'PT', number: '912 344 512' },
+      auth: null,
+    });
+  });
+
+  test('signed out, the right code keeps the session it answers with and You’re in', async () => {
+    const tokens = store(null, null);
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const signedIn = await client(
+      json({ accessToken: 'door', sessionId: 's1', account: ACCOUNT, ...REDEEMED }),
+      tokens,
+      sent,
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
+
+    expect(signedIn.redeemed).toEqual(REDEEMED);
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in',
+      body: { handle: 'h1', code: '123456', refreshTokenIn: 'cookie' },
+      auth: null,
+    });
+    expect((tokens.saved as IssuedTokens | null)?.accessToken).toBe('door');
+  });
+
+  test('signed out, two-factor comes before You’re in and names the masked number', async () => {
+    const signedIn = await client(
+      json(
+        {
+          twoFactorChallenge: 'c1',
+          challengeExpiresAt: '2026-11-25T20:00:00Z',
+          email: null,
+          phone: { countryCode: 'PT', lastDigits: '4512' },
+          factors: { app: true, passkeys: false },
+        },
+        202,
+      ),
+      store(null, null),
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
+
+    expect(signedIn.redeemed).toBeNull();
+    expect(signedIn.outcome).toMatchObject({
+      kind: 'twoFactor',
+      email: '',
+      phone: { countryCode: 'PT', lastDigits: '4512' },
+    });
+  });
+
+  test('signed in, redeeming is the account’s and lands on You’re in again', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const redeemed = await client(
+      json({ ...REDEEMED, again: true }),
+      store('live', null),
+      sent,
+    ).redeemDoorCode('K7P2QX9M');
+
+    expect(redeemed.again).toBe(true);
+    expect(sent[0]?.auth).toBe('Bearer live');
+  });
+
+  test('reads where a code naming a shift lands, and drops a shift it does not know (sc-234)', async () => {
+    const read = async (shift: unknown) =>
+      (
+        await client(json({ ...REDEEMED, shift }), store('live', null), []).redeemDoorCode(
+          'K7P2QX9M',
+        )
+      ).shift;
+
+    expect(await read({ landsOn: 'night' })).toEqual({ landsOn: 'night' });
+    expect(await read({ landsOn: 'in', notJoined: 'ended', job: 'Waiter' })).toEqual({
+      landsOn: 'in',
+      notJoined: 'ended',
+      job: 'Waiter',
+    });
+    expect(await read({ landsOn: 'in', notJoined: 'gone', job: 'Waiter' })).toBeNull();
+    expect(await read(undefined)).toBeNull();
+  });
+
+  test('reads the door code someone came in by on People', async () => {
+    const people = await client(
+      json({
+        people: [
+          {
+            id: 'p1',
+            membershipId: null,
+            user: { id: 'u1', name: 'João Pereira' },
+            role: 'can_view',
+            jobLabel: null,
+            outside: true,
+            address: null,
+            addressKind: null,
+            endsAt: '2026-11-14T23:30:00+00:00',
+            doorCode: 'K7P2QX9M',
+            joinedAt: '2026-11-14T13:31:00+00:00',
+          },
+        ],
+        owners: [],
+        admins: [],
+      }),
+      store('live', null),
+    ).eventPeople('e1');
+
+    expect(people.people[0]?.doorCode).toBe('K7P2QX9M');
+    expect(people.people[0]?.joinedAt).toBe('2026-11-14T13:31:00+00:00');
   });
 });

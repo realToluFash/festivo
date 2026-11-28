@@ -1,16 +1,20 @@
+import { realtimeTopic } from '@soirely/api-client';
 import {
+  type Choice,
   type EventsFilters,
   type EventsSearch,
   type EventsTab,
   NO_EVENTS_FILTERS,
   eventsSearchOf,
   firstDayOfWeek,
+  followedIds,
   rememberEventsTab,
   rememberedEventsTab,
   roleHolds,
   serverClock,
   takesCardStep,
   wallDay,
+  withFiguresFrom,
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
@@ -22,11 +26,13 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { eventHref } from '../kit/eventNav.ts';
+import { changeDatesHref, eventHref, guestsHref } from '../kit/eventNav.ts';
+import { followReadingAgain } from '../followTopic.ts';
+import { DUPLICATING } from '../kit/eventDuplicate.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
-import { useOffline } from '../offline.ts';
+import { useOffline, usePullToRefresh } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -52,21 +58,18 @@ import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './Li
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { LIST_EDGES, LIST_GAP } from './listFrame.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { NewEventScreen } from './NewEvent.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
-import {
-  type Anchor,
-  LoadingBlock,
-  SunkTabs,
-  PageToast,
-  anchorUnder,
-  useAnchorFollowsTurn,
-} from './Summary.tsx';
+import { type Anchor, LoadingBlock, SunkTabs, PageToast, anchorUnder } from './Summary.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
 
 const PAST_PAGE = 10;
+
+/** How often each event's guest figures are read again while no live line to the hub is open: a reply shows within 10 seconds (sc-3786). */
+const FIGURES_AGAIN_MS = 10_000;
 
 /** How long typing rests before it searches; Return searches at once. */
 const SEARCH_PAUSE_MS = 300;
@@ -89,7 +92,15 @@ function readerZone(): string {
 const LOADING: Load = { kind: 'loading' };
 
 /** Events, `EventsHome-*` (sc-1593): the organisation's events; an event's page is pushed over it (sc-22103). The search and Filter stay while the person stays in Events (sc-30302). */
-export function EventsScreen() {
+/** `searched` is the term it opens searched for, as Search's Show all opens it (sc-39534). */
+export function EventsScreen({
+  searched: opened = '',
+  opensNew = false,
+}: {
+  searched?: string | undefined;
+  /** Opened at /events/new: New event over the list (sc-48607). */
+  opensNew?: boolean;
+} = {}) {
   const { t } = useTranslation();
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const insets = useSafeAreaInsets();
@@ -99,6 +110,9 @@ export function EventsScreen() {
   const reads = organisation != null;
   const creates = organisation != null && roleHolds(organisation, 'events.create');
   const [deleted, setDeleted] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(opensNew);
+  const [newKey, setNewKey] = useState(0);
+  const newOpener = useRef<ViewInstance>(null);
 
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
     in: organisationId,
@@ -115,15 +129,14 @@ export function EventsScreen() {
     locale,
   };
   const [lookIn, setLookIn] = useState(organisationId);
-  const [typed, setTyped] = useState('');
-  const [searched, setSearched] = useState('');
+  const [typed, setTyped] = useState(opened);
+  const [searched, setSearched] = useState(opened);
   const [filters, setFilters] = useState<EventsFilters>(NO_EVENTS_FILTERS);
   const [hosts, setHosts] = useState<readonly string[]>([]);
   const [found, setFound] = useState<Found | null>(null);
   const [searchAttempt, setSearchAttempt] = useState(0);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
-  useAnchorFollowsTurn(filterRef, menuAt != null, setMenuAt);
   const filterWords = useFilterWords(filters, locale);
   if (lookIn !== organisationId) {
     setLookIn(organisationId);
@@ -148,6 +161,7 @@ export function EventsScreen() {
     reload,
     focusTitle: () => moveScreenReaderFocus(title.current),
   });
+  const pull = usePullToRefresh(load.kind === 'loaded' && load.refreshing, stale?.retry ?? freshen);
 
   const searchOff = stale != null;
   const search = searchOff
@@ -271,6 +285,49 @@ export function EventsScreen() {
     };
   }, [organisationId, reads, attempt, watch]);
 
+  const followed =
+    load.kind === 'loaded' && organisationId != null ? followedIds(load.unfinished).join(',') : '';
+
+  useEffect(() => {
+    if (organisationId == null || followed === '') return;
+    const ids = followed.split(',');
+    let live = true;
+    const readFigures = () =>
+      api.unfinishedEvents(organisationId).then(
+        (read) => {
+          if (!live) return;
+          setHeld((before) =>
+            before.in === organisationId && before.load.kind === 'loaded'
+              ? {
+                  ...before,
+                  load: {
+                    ...before.load,
+                    unfinished: withFiguresFrom(before.load.unfinished, read),
+                  },
+                }
+              : before,
+          );
+          setFound((before) =>
+            before?.kind === 'loaded'
+              ? { ...before, unfinished: withFiguresFrom(before.unfinished, read) }
+              : before,
+          );
+        },
+        () => undefined,
+      );
+    const stop = followReadingAgain(
+      ids.flatMap((id) => [realtimeTopic('EventHeadcount', id), realtimeTopic('EventCheckIn', id)]),
+      () => api.headcountsSubscription(organisationId, ids),
+      () => void readFigures(),
+      FIGURES_AGAIN_MS,
+    );
+
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [organisationId, followed]);
+
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [moreShown, setMoreShown] = useState<string | null>(null);
   const showMore = () => {
@@ -300,13 +357,29 @@ export function EventsScreen() {
     return <Redirect href={DESTINATION_HREF.home} />;
   }
 
-  const newEvent = () => router.push('/events/new');
+  const newEvent = () => {
+    setNewKey((was) => was + 1);
+    setNewOpen(true);
+  };
+  const closeNew = () => {
+    setNewOpen(false);
+    if (opensNew && router.canGoBack()) router.back();
+  };
+  const createdNew = (eventId: string) => {
+    setNewOpen(false);
+    if (opensNew) router.replace(eventHref(eventId));
+    else router.push(eventHref(eventId));
+  };
   const openEvent = (id: string, fromHappeningNow: boolean) => {
     setDeleted(null);
     router.push(eventHref(id, fromHappeningNow));
   };
+  const openFigure = (id: string, filter: Choice) => {
+    setDeleted(null);
+    router.push(guestsHref(id, filter));
+  };
 
-  const searchRow = (off: boolean) => (
+  const searchRow = (off: boolean, filterUnseen = false) => (
     <SearchRow
       offline={searchOff}
       field={
@@ -327,6 +400,7 @@ export function EventsScreen() {
           off={off}
           open={menuAt != null}
           onPress={() => anchorUnder(filterRef, setMenuAt)}
+          unseen={filterUnseen}
         />
       }
     />
@@ -351,6 +425,7 @@ export function EventsScreen() {
         typed={searched}
         filters={filters}
         onOpen={openEvent}
+        onFigure={openFigure}
         onClearSearch={clearSearch}
         onClearFilters={() => setFilters(NO_EVENTS_FILTERS)}
       />
@@ -358,7 +433,7 @@ export function EventsScreen() {
 
   const list = !reads ? null : load.kind === 'loading' ? (
     <View style={styles.loading}>
-      {searchRow(true)}
+      {searchRow(true, true)}
       <SunkTabs />
       <LoadingBlock words={t('eventsScreen.loading')} />
     </View>
@@ -385,16 +460,17 @@ export function EventsScreen() {
               setTab({ in: organisationId, tab: next });
             }}
             onOpen={openEvent}
+            onFigure={openFigure}
             takes={(action) => organisation != null && takesCardStep(organisation, action)}
             onStep={(event, step) => {
               const id = encodeURIComponent(event.id);
 
               if (step.action === 'changeDates') {
                 setDeleted(null);
-                router.push(`/events/${id}/edit?at=starts`);
+                router.push(changeDatesHref(event.id));
               } else if (step.action === 'duplicate') {
                 setDeleted(null);
-                router.push(`/events/${id}/duplicate`);
+                router.push(`/events/${id}?${DUPLICATING}=1`);
               } else {
                 openEvent(event.id, event.phase === 'happening_now');
               }
@@ -407,7 +483,7 @@ export function EventsScreen() {
       )}
       <EventsFilterMenu
         at={menuAt}
-        onClose={() => setMenuAt(null)}
+        onAt={setMenuAt}
         opener={filterRef}
         filters={filters}
         onFilters={setFilters}
@@ -442,7 +518,12 @@ export function EventsScreen() {
       underTitle={underTitle}
       primary={
         creates
-          ? { label: t('eventsScreen.newEvent'), onPress: newEvent, testID: 'events.new' }
+          ? {
+              label: t('eventsScreen.newEvent'),
+              onPress: newEvent,
+              testID: 'events.new',
+              ref: newOpener,
+            }
           : undefined
       }
       listUnderTabs
@@ -450,11 +531,7 @@ export function EventsScreen() {
       <ListAndPage
         kind={kind}
         list={list}
-        listRefresh={
-          reads && load.kind === 'loaded' ? (
-            <RefreshControl refreshing={load.refreshing} onRefresh={stale?.retry ?? freshen} />
-          ) : undefined
-        }
+        listRefresh={reads && load.kind === 'loaded' ? <RefreshControl {...pull} /> : undefined}
         page={null}
         pageInFront={false}
         pageless
@@ -473,6 +550,16 @@ export function EventsScreen() {
                 ? Math.max(insets.bottom, tokens.spaceLg) - Math.max(insets.bottom, tokens.spaceMd)
                 : Math.max(insets.bottom, tokens.spaceLg)
           }
+        />
+      )}
+      {organisation != null && creates && (
+        <NewEventScreen
+          key={`${organisation.id}:${newKey}`}
+          open={newOpen}
+          organisation={organisation}
+          opener={newOpener}
+          onClose={closeNew}
+          onCreated={createdNew}
         />
       )}
     </AppFrame>

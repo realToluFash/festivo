@@ -1,31 +1,34 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { copyEndsLine, roleHolds } from '@soirely/domain';
-import { Redirect, router, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { copyEndsLine } from '@soirely/domain';
+import { router } from 'expo-router';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { duplicateEvent } from '../kit/eventDuplicate.ts';
-import { type Opened, openedOf } from '../kit/eventsOpen.ts';
-import { goUpToEvent } from '../kit/upToEvent.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
+import {
+  type DuplicateRun,
+  OPENING_AFTER,
+  type Starts,
+  answeredRun,
+  duplicateEvent,
+  duplicateRunOf,
+  pickedRun,
+  startsAfter,
+} from '../kit/eventDuplicate.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { cardFrame } from './cardFrame.ts';
-import { focusPicker } from './CountryPicker.tsx';
-import { InSight, Moment } from './EventForm.tsx';
-import { FormFrame, formGap } from './EventFormScreen.tsx';
-import { EventState } from './Events.tsx';
-import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
+import { AlertLine } from './AlertLine.tsx';
+import { EventNotice } from './EventNotice.tsx';
+import { MomentBox, type Picking, PickerLayer, pick } from './MomentPick.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { useShellLayout } from './settingsShell.ts';
+import { FocusedScreen, SectionHead } from './Summary.tsx';
 import { Text } from './Text.tsx';
-import { useSystemBack } from './useSystemBack.ts';
-import { Arrived, Skeleton } from './Skeleton.tsx';
 
-const OPENING_AFTER = 700;
+type Opener = RefObject<ScreenReaderTarget | null>;
+type Original = Pick<OrganisationEvent, 'name' | 'startsAt' | 'endsAt' | 'timeZone'>;
 
 const COPIED = [
   'copiedName',
@@ -44,237 +47,216 @@ const NOT_COPIED = [
   'notCopiedHappened',
 ] as const;
 
-/** An event's page > Duplicate, `AppDuplicate` (sc-22145): the web's Duplicate (sc-3593) as a screen of its own. */
-export function DuplicateEventScreen({ eventId }: { eventId: string }) {
-  const { t } = useTranslation();
-  const { kind } = useLayout();
-  const { organisation } = useSignedIn();
-  const organisationId = organisation?.id;
-  const creates = organisation != null && roleHolds(organisation, 'events.create');
-  const navigation = useNavigation();
-  const [held, setHeld] = useState<Opened>({ kind: 'loading' });
-  const [attempt, setAttempt] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const toOriginal = useCallback(
-    () => goUpToEvent(navigation, router, eventId),
-    [navigation, eventId],
-  );
-
-  useEffect(() => {
-    if (organisationId == null || !creates) return;
-    let live = true;
-
-    api.event(eventId).then(
-      (event) => live && setHeld(openedOf({ event }, organisationId)),
-      (error: unknown) => live && setHeld(openedOf({ error }, organisationId)),
-    );
-
-    return () => {
-      live = false;
-    };
-  }, [eventId, organisationId, creates, attempt]);
-
-  if (organisation != null && !creates)
-    return <Redirect href={`/events/${encodeURIComponent(eventId)}`} />;
-
-  const name = held.kind === 'loaded' ? held.event.name : null;
-
-  return (
-    <FormFrame
-      kind={kind}
-      title={name == null ? t('eventDuplicate.open') : t('eventDuplicate.title', { event: name })}
-      shortTitle={t('eventDuplicate.open')}
-      onCancel={toOriginal}
-      cancelOff={busy}
-    >
-      {held.kind === 'loading' && (
-        <Skeleton
-          words={t('eventsScreen.loadingEvent')}
-          shape="cards"
-          cards={[
-            { lines: 0, fields: 2 },
-            { lines: 0, fields: 2 },
-            { lines: 1, options: 1 },
-          ]}
-        />
-      )}
-      {held.kind === 'failed' && (
-        <View style={styles.stack} accessibilityRole="alert">
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            body={t('eventsScreen.failedLoad')}
-            announce
-          />
-          <SecondaryButton
-            label={t('eventsScreen.retry')}
-            onPress={() => {
-              void rereadOrganisations();
-              setHeld({ kind: 'loading' });
-              setAttempt((n) => n + 1);
-            }}
-            testID="eventDuplicate.retry"
-          />
-        </View>
-      )}
-      {held.kind === 'notFound' && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          title={t('eventsScreen.notFound')}
-          heading
-        />
-      )}
-      {held.kind === 'loaded' && (
-        <Arrived style={formGap(kind)}>
-          <DuplicateForm kind={kind} event={held.event} onBusy={setBusy} />
-        </Arrived>
-      )}
-    </FormFrame>
-  );
+/** The copy's start, a year on from the original's, as the screen opens. */
+export function firstStarts(event: Pick<OrganisationEvent, 'startsAt'>): Starts {
+  return startsAfter({ date: event.startsAt.slice(0, 10), time: event.startsAt.slice(11, 16) });
 }
 
-function DuplicateForm({
-  kind,
+/** An event's page > Duplicate (sc-3593, sc-22145), over the page: the API's answer in the demo's screen. */
+export function DuplicateEvent({
+  open,
   event,
-  onBusy,
+  opener,
+  onClose,
 }: {
-  kind: LayoutKind;
+  open: boolean;
   event: OrganisationEvent;
-  onBusy: (busy: boolean) => void;
+  opener: Opener;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = dateLocale();
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [status, setStatus] = useState<'editing' | 'creating' | 'failed' | 'created'>('editing');
+  const [run, setRun] = useState(() => duplicateRunOf(firstStarts(event)));
+  const [refusals, setRefusals] = useState(0);
   const [landing, setLanding] = useState<`/events/${string}` | null>(null);
-  const [focusOn, setFocusOn] = useState<{ half: 'date' | 'time' } | null>(null);
-  const datePicker = useRef<ViewInstance>(null);
-  const timePicker = useRef<ViewInstance>(null);
-  const startField = useRef<ViewInstance>(null);
-  const busy = status === 'creating' || status === 'created';
-  const phone = kind === 'phone';
-  const endsLine = copyEndsLine(date, time, event, locale, t);
 
-  useSystemBack(busy, () => {});
-
-  useEffect(() => onBusy(busy), [busy, onBusy]);
+  const closing = useRef(onClose);
 
   useEffect(() => {
-    if (focusOn == null) return undefined;
-    return focusPicker(focusOn.half === 'date' ? datePicker : timePicker, startField);
-  }, [focusOn]);
+    closing.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
-    if (landing == null) return;
-    const id = setTimeout(() => router.replace(landing), OPENING_AFTER);
+    if (landing == null) return undefined;
+    const id = setTimeout(() => {
+      closing.current();
+      router.push(landing);
+    }, OPENING_AFTER);
 
     return () => clearTimeout(id);
   }, [landing]);
 
   async function create(): Promise<void> {
-    if (busy) return;
-
-    if (date !== '' && time !== '') setStatus('creating');
+    const { date, time } = run.starts;
+    if (date !== '' && time !== '') setRun({ ...run, status: 'creating', error: null });
     const answer = await duplicateEvent(api, event.id, date, time, t);
 
-    if (answer.kind === 'refused') {
-      setStatus('editing');
-      setError(answer.message);
-      setFocusOn({ half: answer.focus });
-    } else if (answer.kind === 'failed') {
-      setStatus('failed');
-    } else {
-      setStatus('created');
-      setLanding(answer.href);
-    }
+    setRun((now) => answeredRun(now, answer));
+    if (answer.kind === 'refused') setRefusals((count) => count + 1);
+    if (answer.kind === 'created') setLanding(answer.href);
   }
 
   return (
-    <>
-      {status === 'failed' && (
-        <InSight>
-          <ReadOut words={t('eventDuplicate.notCreated')} interrupts accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('eventDuplicate.notCreated')}
-            />
-          </ReadOut>
-        </InSight>
-      )}
-      {status === 'created' && (
-        <InSight>
-          <ReadOut words={t('eventDuplicate.created')} interrupts style={styles.created}>
-            <EventState phase="draft" />
-            <Text size={tokens.typeBodyPhone.size} style={styles.fill}>
-              {t('eventDuplicate.created')}
-            </Text>
-          </ReadOut>
-        </InSight>
-      )}
-
-      <View style={cardFrame(kind)}>
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('eventDuplicate.body')}
-        </Text>
-
-        <View style={[styles.inset, !phone && styles.insetBeside]}>
-          <Listed
-            heading={t('eventDuplicate.copied')}
-            items={COPIED.map((key) => t(`eventDuplicate.${key}`))}
-            beside={!phone}
-          />
-          <Listed
-            heading={t('eventDuplicate.notCopied')}
-            items={NOT_COPIED.map((key) => t(`eventDuplicate.${key}`))}
-            beside={!phone}
-          />
-        </View>
-
-        <Moment
-          label={t('eventDuplicate.starts')}
-          help={endsLine}
-          hint={endsLine}
-          date={date}
-          time={time}
-          timeZone={event.timeZone}
-          error={error}
-          disabled={busy}
-          readOnly={false}
-          pickerRef={datePicker}
-          timePickerRef={timePicker}
-          fieldRef={startField}
-          testID="eventDuplicate.start"
-          onPick={(pickedDate, pickedTime) => {
-            setDate(pickedDate);
-            setTime(pickedTime);
-            if (pickedDate !== '' && pickedTime !== '') setError(undefined);
-            if (status === 'failed') setStatus('editing');
-          }}
-        />
-
-        <PrimaryButton
-          label={t('eventDuplicate.create')}
-          onPress={() => void create()}
-          busy={busy}
-          testID="eventDuplicate.create"
-        />
-      </View>
-    </>
+    <DuplicateScreen
+      open={open}
+      event={event}
+      locale={dateLocale()}
+      run={run}
+      refusals={refusals}
+      opener={opener}
+      onClose={onClose}
+      onPick={(starts) => setRun((now) => pickedRun(now, starts))}
+      onCreate={() => void create()}
+      testID="eventDuplicate"
+    />
   );
 }
 
-function Listed({ heading, items, beside }: { heading: string; items: string[]; beside: boolean }) {
+/** Duplicate makes a draft: what is copied and what is not, and the copy's start with its end worked out. */
+export function DuplicateScreen({
+  open,
+  event,
+  locale,
+  run,
+  refusals,
+  opener,
+  onClose,
+  onPick,
+  onCreate,
+  testID,
+}: {
+  open: boolean;
+  event: Original;
+  locale: string;
+  run: DuplicateRun;
+  /** Counts each refused start, so each one moves focus to the half it names. */
+  refusals: number;
+  opener: Opener;
+  onClose: () => void;
+  onPick: (starts: Starts) => void;
+  onCreate: () => void;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+  const { starts, status, error } = run;
+  const [picking, setPicking] = useState<Picking | null>(null);
+  const date = useRef<ViewInstance>(null);
+  const time = useRef<ViewInstance>(null);
+  const busy = status === 'creating' || status === 'created';
+  const gap = useShellLayout() === 'phone' ? tokens.spaceXl : tokens.spaceLg;
+  const startsLabel = t('eventDuplicate.starts');
+  const choose = (mode: 'date' | 'time') =>
+    pick(
+      {
+        title: t('eventForm.timesIn', { zone: event.timeZone }),
+        mode,
+        field: starts,
+        take: onPick,
+      },
+      setPicking,
+    );
+
+  useEffect(() => {
+    if (refusals === 0 || !open) return undefined;
+    const later = setTimeout(
+      () => moveScreenReaderFocus((run.focus === 'time' ? time : date).current),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(later);
+  }, [refusals, open, run.focus]);
+
   return (
-    <View style={[styles.listed, beside && styles.fill]}>
-      <Text size={tokens.typeBody.size} weight="semibold" accessibilityRole="header">
-        {heading}
+    <FocusedScreen
+      gap={gap}
+      open={open}
+      title={t('eventDuplicate.open')}
+      verb={{
+        label: t('eventDuplicate.create'),
+        on: true,
+        busy,
+        onPress: () => {
+          if (!busy) onCreate();
+        },
+        testID: `${testID}.create`,
+      }}
+      waits={busy}
+      onCancel={onClose}
+      cancelTestID={`${testID}.cancel`}
+      opener={opener}
+      toast={
+        status === 'created' ? { words: t('eventDuplicate.created'), onClose: () => {} } : null
+      }
+      over={
+        picking == null
+          ? null
+          : {
+              layer: (
+                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
+              ),
+              onClose: () => setPicking(null),
+            }
+      }
+      testID={testID}
+    >
+      {status === 'failed' && (
+        <EventNotice tone="broken" words={t('eventDuplicate.notCreated')} interrupts />
+      )}
+      <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
+        {t('eventDuplicate.title', { event: event.name })}
       </Text>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {t('eventDuplicate.body')}
+      </Text>
+      <Listed
+        title={t('eventDuplicate.copied')}
+        items={COPIED.map((key) => t(`eventDuplicate.${key}`))}
+      />
+      <Listed
+        title={t('eventDuplicate.notCopied')}
+        items={NOT_COPIED.map((key) => t(`eventDuplicate.${key}`))}
+      />
+      <View style={styles.starts}>
+        <Text size={14} weight="semibold" style={styles.label}>
+          {startsLabel}
+        </Text>
+        <View style={styles.pair}>
+          <MomentBox
+            ref={date}
+            label={`${startsLabel}, ${t('eventForm.date')}`}
+            mode="date"
+            value={starts.date}
+            locale={locale}
+            wrong={error != null && (starts.date === '' || run.focus === 'date')}
+            onPress={() => choose('date')}
+            testID={`${testID}.date`}
+          />
+          <MomentBox
+            ref={time}
+            label={`${startsLabel}, ${t('eventForm.time')}`}
+            mode="time"
+            value={starts.time}
+            locale={locale}
+            width={104}
+            wrong={error != null && starts.time === ''}
+            onPress={() => choose('time')}
+            testID={`${testID}.time`}
+          />
+        </View>
+        {error != null && <AlertLine text={error} />}
+      </View>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
+        {copyEndsLine(starts.date, starts.time, event, locale, t)}
+      </Text>
+    </FocusedScreen>
+  );
+}
+
+function Listed({ title, items }: { title: string; items: readonly string[] }) {
+  return (
+    <View>
+      <SectionHead title={title} />
       {items.map((item) => (
-        <Text key={item} size={tokens.typeBody.size} style={styles.secondary}>
+        <Text key={item} size={15} weight="medium" style={styles.bullet}>
           {`• ${item}`}
         </Text>
       ))}
@@ -283,18 +265,12 @@ function Listed({ heading, items, beside }: { heading: string; items: string[]; 
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: tokens.spaceMd },
-  fill: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
-  created: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
-  inset: {
-    gap: tokens.spaceLg,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-    backgroundColor: tokens.colorInset,
-  },
-  insetBeside: { flexDirection: 'row' },
-  listed: { gap: tokens.spaceXxs },
+  title: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
+  bullet: { lineHeight: 15 * 1.45 },
+  lines: { lineHeight: 15 * 1.45 },
+  label: { lineHeight: 14 * 1.3 },
+  said: { lineHeight: 14 * 1.45 },
+  starts: { gap: 7 },
+  pair: { flexDirection: 'row', gap: tokens.spaceSm },
 });

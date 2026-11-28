@@ -1,22 +1,36 @@
-import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type DimensionValue,
+  Keyboard,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { moreChip } from '@soirely/domain';
 
 import { Initials } from './Initials.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { FrameSwitched } from './AppFrame.tsx';
 import { useTappedSwitch } from '../tappedSwitch.ts';
-import { type TextHandle, Text } from './Text.tsx';
-import { Toast } from './Toast.tsx';
+import { type TextHandle, Text, TitleCap } from './Text.tsx';
+import { Toast, type ToastAction } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
 import type { Box } from '../kit/confettiClearance.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
@@ -27,6 +41,8 @@ import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
 import { TitleFocus } from './SummaryOverlays.tsx';
+import { capChipInDisc } from '../layout/textSize.ts';
+import { WholeWords } from './Title.tsx';
 
 export {
   bringIntoView,
@@ -43,8 +59,10 @@ export {
   Line,
   Row,
   RowList,
+  RowRule,
   type RowTag,
   Section,
+  SectionFoot,
   SectionHead,
   SELECTED_ROW,
   TITLE_BESIDE_TAG,
@@ -78,14 +96,60 @@ const hidden = {
 
 export interface PageToastProps {
   words: string;
+  /** Tells this toast from an earlier one with the same words, so its box is laid out again. */
+  id?: string | undefined;
+  action?: ToastAction | null | undefined;
   onClose: () => void;
 }
 
-export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom: number }) {
+/** Where a page's toast shows: the top of its box in the window, for the toast it shows. */
+export interface ToastAt {
+  words: string;
+  id?: string | undefined;
+  top: number;
+}
+
+export function PageToast({
+  words,
+  id,
+  action,
+  onClose,
+  bottom,
+  onAt,
+}: PageToastProps & {
+  bottom: number;
+  /** Called as each words' toast is laid out, and with null as the toast goes. */
+  onAt?: ((at: ToastAt | null) => void) | undefined;
+}) {
+  const box = useRef<ViewInstance>(null);
+  const at = useRef(onAt);
+
+  useEffect(() => {
+    at.current = onAt;
+  }, [onAt]);
+
+  useEffect(() => () => at.current?.(null), []);
+
+  const measure = useCallback(
+    () => box.current?.measureInWindow((_x, top) => at.current?.({ words, id, top })),
+    [words, id],
+  );
+
+  // A toast laid out over the keys moves down with its place as the window grows back, and its own box is not laid out again (sc-86228).
+  useEffect(() => {
+    const hidden = Keyboard.addListener('keyboardDidHide', () => requestAnimationFrame(measure));
+
+    return () => hidden.remove();
+  }, [measure]);
+
   return (
-    <View style={[styles.toast, { bottom }]}>
-      <Toast key={words} words={words} onClose={onClose} />
-    </View>
+    <TitleCap.Provider value={null}>
+      <View style={[styles.toast, { bottom }]} onLayout={measure}>
+        <View key={id ?? words} ref={box} onLayout={measure}>
+          <Toast words={words} action={action} onClose={onClose} />
+        </View>
+      </View>
+    </TitleCap.Provider>
   );
 }
 
@@ -93,10 +157,12 @@ export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom:
 export function SummaryColumn({
   title,
   scrollRef,
+  onScroll,
   children,
 }: {
   title: string;
   scrollRef?: Ref<ScrollViewInstance>;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -104,6 +170,8 @@ export function SummaryColumn({
   return (
     <ScrollView
       ref={scrollRef}
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll == null ? undefined : 64}
       contentContainerStyle={COLUMN}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -241,57 +309,64 @@ export function StepButton({ label, onPress, testID, ref, busy = false }: StepPr
   );
 }
 
+/** A card's second step, in glass, so the white step stays the card's one filled button. */
+export function GlassStep({ label, onPress, testID, ref, busy = false }: StepProps) {
+  return (
+    <Pressable
+      ref={ref}
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [pressed && !busy && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: busy, busy }}
+      testID={testID}
+    >
+      <Glass height={tokens.sizeHit} grows style={styles.glassStep}>
+        <Text size={15} weight="semibold" accessible={false} style={styles.white}>
+          {label}
+        </Text>
+      </Glass>
+    </Pressable>
+  );
+}
+
 export function CardSays({
   text,
   size = 24,
   heading = false,
+  besideGlyph = false,
   accessible,
   ref,
+  testID,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  /** Beside a card's glyph, where the words' column already bounds the line. */
+  besideGlyph?: boolean;
   accessible?: boolean | undefined;
   ref?: Ref<TextHandle> | undefined;
+  testID?: string | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
-    <Text
+    <WholeWords
       ref={ref}
       accessible={accessible}
       size={size}
+      start={size * fontScale}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
+      testID={testID}
       style={[
         styles.white,
-        styles.says,
+        !besideGlyph && styles.says,
         { lineHeight: Math.round(size * 1.15), letterSpacing: size * -0.015 },
       ]}
     >
       {text}
-    </Text>
-  );
-}
-
-export function CardCounts({
-  counts,
-  label,
-}: {
-  counts: readonly { value: number; word: string }[];
-  label: string;
-}) {
-  return (
-    <View style={styles.counts} accessible accessibilityLabel={label}>
-      {counts.map(({ value, word }) => (
-        <View key={word}>
-          <Text size={30} weight="bold" accessible={false} style={[styles.white, styles.number]}>
-            {String(value)}
-          </Text>
-          <Text size={13} weight="semibold" accessible={false} style={styles.white}>
-            {word}
-          </Text>
-        </View>
-      ))}
-    </View>
+    </WholeWords>
   );
 }
 
@@ -344,8 +419,16 @@ export function Faces({
       {more > 0 && (
         <View style={[styles.ring, ringed, styles.overlap]}>
           <View style={[styles.more, { width: side, height: side, borderRadius: side / 2 }]}>
-            <Text size={13} weight="bold" accessible={false} style={styles.accent}>
-              {`+${more}`}
+            <Text
+              size={MORE_SIZE}
+              weight="bold"
+              accessible={false}
+              numberOfLines={1}
+              maxFontSizeMultiplier={capChipInDisc(side, MORE_SIZE, moreChip(more).length)}
+              adjustsFontSizeToFit
+              style={styles.accent}
+            >
+              {moreChip(more)}
             </Text>
           </View>
         </View>
@@ -353,6 +436,8 @@ export function Faces({
     </View>
   );
 }
+
+const MORE_SIZE = 13;
 
 /** A person's initials as a white disc on Confetti, as on the Settings card. */
 export function CardFace({ name, side }: { name: string; side: number }) {
@@ -398,9 +483,9 @@ export function GlassTag({
   testID?: string | undefined;
 }) {
   return (
-    <Glass height={28} style={styles.glassTag} testID={testID}>
+    <Glass height={28} grows style={styles.glassTag} testID={testID}>
       {shape ?? (mark != null && <ShapeMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
-      <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
+      <Text size={13} weight="semibold" style={[styles.white, styles.glassTagWord]}>
         {word}
       </Text>
     </Glass>
@@ -564,8 +649,6 @@ const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
   onCard: { lineHeight: 14.5 * 1.4 },
-  counts: { flexDirection: 'row', gap: 26 },
-  number: { lineHeight: 33, fontVariant: ['tabular-nums'] },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
@@ -582,6 +665,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
     backgroundColor: tokens.colorCard,
   },
+  glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
   faces: { flexDirection: 'row', alignItems: 'center', marginLeft: -2.5 },
   ring: { backgroundColor: tokens.colorCard },
   overlap: { marginLeft: -14 },
@@ -589,7 +673,15 @@ const styles = StyleSheet.create({
   cardFace: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   glyphRing: { alignItems: 'center', justifyContent: 'center', margin: -RING, overflow: 'hidden' },
   ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
-  glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingLeft: 9, paddingRight: 11 },
+  glassTag: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+    gap: tokens.spaceXs,
+    paddingLeft: 9,
+    paddingRight: 11,
+    paddingVertical: tokens.spaceXxs,
+  },
+  glassTagWord: { flexShrink: 1 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },

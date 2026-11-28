@@ -124,16 +124,21 @@ describe('Settings › Data and control at a desk (sc-560)', () => {
     expect(await screen.findByRole('dialog', { name: 'Prove a domain' })).toBeDefined();
   });
 
-  it.each([
-    ['locked', 'These come with Enterprise'],
-    ['downgraded', 'Ire Events left Enterprise on Sunday, Oct 18'],
-  ])('locks the Enterprise jobs, %s, and still opens them', async (state, says) => {
-    await hub(`${HUB}?state=${state}`);
+  it('locks the Enterprise jobs on the free plan, and still opens them', async () => {
+    await hub(`${HUB}?state=locked`);
 
-    expect(screen.getByText(says)).toBeDefined();
+    expect(screen.getByText('These come with Enterprise')).toBeDefined();
     expect(screen.getAllByText('Enterprise')).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'Contact Soirely about Enterprise' }));
-    expect(screen.getByText('Contacting Soirely has its own design.')).toBeDefined();
+    expect(await screen.findByRole('dialog', { name: 'Compare plans' })).toBeDefined();
+  });
+
+  it('keeps the Enterprise jobs after Enterprise, with no date and no step', async () => {
+    await hub(`${HUB}?state=downgraded`);
+
+    expect(screen.getByText('Ire Events left Enterprise')).toBeDefined();
+    expect(screen.getAllByText('Enterprise')).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeNull();
   });
 
   it('loads, and fails with Try again back to the hub', async () => {

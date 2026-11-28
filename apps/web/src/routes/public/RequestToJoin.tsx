@@ -5,11 +5,13 @@ import {
   formatDay,
   formatTimeOfDay,
   lockLiftsAt,
+  requestMessageLength,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
+import { ManagedBanner } from '../../components/Managed.tsx';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
@@ -195,10 +197,13 @@ function Asking({
       {view.kind === 'sent' && <Sent organisation={organisation} answer={answer} />}
       {view.kind === 'limited' && <Limited until={view.until} answer={answer} />}
       {view.kind === 'open' && !signedIn && <SignedOut token={token} organisation={organisation} />}
-      {view.kind === 'open' && signedIn && preview.standing != null && (
+      {view.kind === 'open' && signedIn && preview.managed != null && (
+        <ManagedBanner managed={preview.managed} alert />
+      )}
+      {view.kind === 'open' && signedIn && preview.managed == null && preview.standing != null && (
         <Standing preview={preview} answer={answer} brought={brought} />
       )}
-      {view.kind === 'open' && signedIn && preview.standing == null && (
+      {view.kind === 'open' && signedIn && preview.managed == null && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
       )}
     </>
@@ -249,7 +254,7 @@ function Ask({
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>
-      Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
+      requestMessageLength(value) > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
     () => document.getElementById('request-message')?.focus(),
@@ -310,6 +315,21 @@ function Ask({
       return;
     }
 
+    if (problem.is('domain_managed')) {
+      onChange({
+        kind: 'open',
+        preview: {
+          ...preview,
+          managed: {
+            domain: problem.problem.domain ?? '',
+            organisation: { id: '', name: problem.problem.organisation ?? '' },
+            message: problem.problem.detail ?? '',
+          },
+        },
+      });
+      return;
+    }
+
     if (problem.is('request_link_dead')) {
       onChange({ kind: 'dead' });
       return;
@@ -362,7 +382,7 @@ function Ask({
           <p className="field-help" id="request-message-help">
             {t('requestToJoin.messageHelp', {
               count: REQUEST_MESSAGE_MAXIMUM,
-              length: Array.from(message.trim()).length,
+              length: requestMessageLength(message),
             })}
           </p>
         </div>

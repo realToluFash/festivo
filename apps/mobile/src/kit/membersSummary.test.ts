@@ -4,7 +4,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 
-import { membersCard, membersCounts, memberLine, memberTag } from './membersSummary.ts';
+import { membersListOf } from '../test-members.ts';
+import {
+  membersCard,
+  membersCounts,
+  memberLine,
+  memberTag,
+  personInFront,
+} from './membersSummary.ts';
 
 beforeAll(() =>
   init({
@@ -35,6 +42,7 @@ function member(
     self: false,
     history: [],
     suspension: null,
+    alsoMemberOf: null,
     ...more,
   };
 }
@@ -47,10 +55,13 @@ const people = [
   member('daniel', 'Daniel Kim', 'left_or_removed'),
 ];
 
-const card = (over: Partial<Parameters<typeof membersCard>[0]> = {}) =>
+const card = ({
+  members = people,
+  ...over
+}: Partial<Parameters<typeof membersCard>[0]> & { members?: OrganisationMember[] } = {}) =>
   membersCard({
     t,
-    members: people,
+    list: membersListOf(members),
     manages: true,
     organisation: 'Ire Events',
     said: null,
@@ -277,6 +288,40 @@ describe("Members' rows", () => {
   });
 
   it('counts the filter menu as the web does: All is active and suspended', () => {
-    expect(membersCounts(people)).toEqual({ all: 3, active: 2, suspended: 1, former: 1 });
+    expect(membersCounts(membersListOf(people))).toEqual({
+      all: 3,
+      active: 2,
+      suspended: 1,
+      former: 1,
+    });
+  });
+
+  it('counts the whole organisation, however few rows are held (sc-49170)', () => {
+    const list = {
+      ...membersListOf(people, 'suspended'),
+      counts: { all: 12345, active: 12000, waiting: 1, suspended: 345, former: 20 },
+    };
+
+    expect(membersCounts(list)).toEqual({ all: 12345, active: 12000, suspended: 345, former: 20 });
+    expect(
+      membersCard({ t, list, manages: false, organisation: 'Ire Events', said: null, claim: null })
+        .says,
+    ).toBe('12,345 people');
+  });
+});
+
+describe('a person’s page with no title over its card (sc-37693)', () => {
+  it('stands in front of the list on a phone and on an iPad upright, as the demo’s `priya` draws it', () => {
+    expect(personInFront('phone', true)).toBe(true);
+    expect(personInFront('tabletPortrait', true)).toBe(true);
+  });
+
+  it('sits beside the list on its side, under the frame’s own title', () => {
+    expect(personInFront('tabletLandscape', true)).toBe(false);
+  });
+
+  it('leaves the list titled while nobody is open', () => {
+    expect(personInFront('phone', false)).toBe(false);
+    expect(personInFront('tabletPortrait', false)).toBe(false);
   });
 });

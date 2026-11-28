@@ -13,15 +13,14 @@ use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
 use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Domain\User\UserRegistrar;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\RefreshTokenRepository;
 use App\Repository\SignInProofRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -100,6 +99,7 @@ final class ChangePasswordTest extends ApiTestCase
     {
         $here = $this->signIn();
         $elsewhere = $this->signIn();
+        self::drainNotifications();
 
         $this->change($here, 'not the password at all', self::NEW_PASSWORD);
 
@@ -292,7 +292,7 @@ final class ChangePasswordTest extends ApiTestCase
         return new RecentProof(
             self::service(PasswordResolver::class),
             self::service(SecondFactorCheck::class),
-            self::service(TwoFactorFactorRepository::class),
+            self::service(SecondFactors::class),
             self::service(ProviderIdentityRepository::class),
             self::service(SignInProofRepository::class),
             self::em(),
@@ -322,7 +322,6 @@ final class ChangePasswordTest extends ApiTestCase
             $rules ?? self::service(NewPasswordRules::class),
             self::service(TokenIssuer::class),
             self::service(PasswordChangeMailer::class),
-            self::service(AfterResponse::class),
             $em ?? self::em(),
             self::service(TranslatorInterface::class),
             new NativeClock(),

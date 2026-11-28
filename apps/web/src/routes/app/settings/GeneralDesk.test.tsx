@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { pagedMembers } from '../../../test-members.ts';
 import { atPhoneWidth } from '../../../test-widths.ts';
 import { routes } from '../../index.tsx';
 
@@ -124,7 +125,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>> =
     const answer = all[line];
     if (answer == null) throw new TypeError('Failed to fetch');
 
-    return answer();
+    return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();
   });
 
   return sent;
@@ -213,6 +214,8 @@ describe('Settings > General at a desk (sc-30191)', () => {
     signedIn(held());
     answering();
     const router = settings();
+    const arrivals: unknown[] = [];
+    router.subscribe((state) => arrivals.push(state.location.state));
 
     const hold = await screen.findByText(
       'Ìrè Events asks its owners and admins to use two-factor. Until you turn it on, you can see these but not change them.',
@@ -226,6 +229,7 @@ describe('Settings > General at a desk (sc-30191)', () => {
     );
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals).toContainEqual({ opens: 'turnOn' });
   });
 
   it('saves only what changed, and says so on the card', async () => {
@@ -454,6 +458,30 @@ describe('Settings > General at a desk (sc-30191)', () => {
     expect(within(remove).getByText('That matches.')).toBeDefined();
   });
 
+  it('tags a joining domain this organisation proved under Email domains Proved (sc-560)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/domains': () =>
+        json({
+          ...DOMAINS,
+          domains: [
+            { domain: 'ire.events', stopped: false, proved: true },
+            { domain: 'ire.ng', stopped: false, proved: false },
+          ],
+        }),
+    });
+    settings();
+
+    const proved = (await screen.findByText('ire.events', { selector: '.desk-row-name' })).closest(
+      'li',
+    ) as HTMLElement;
+    const plain = screen
+      .getByText('ire.ng', { selector: '.desk-row-name' })
+      .closest('li') as HTMLElement;
+    expect(within(proved).getByText('Proved')).toBeDefined();
+    expect(within(plain).queryByText('Proved')).toBeNull();
+  });
+
   it('removes a domain after asking, and names it in a toast', async () => {
     signedIn();
     answering({
@@ -673,5 +701,19 @@ describe('Settings > General at a desk (sc-30191)', () => {
         /That is 2 domains, the most the list can hold\. Remove one to add another\./u,
       ),
     ).toBeDefined();
+  });
+});
+
+describe('the sign-in rules’ notices on General at a desk (sc-39471, #87594)', () => {
+  it('stand in the page’s column above its title, not across the Settings card', async () => {
+    signedIn(membership({ id: 'org_1', name: 'Ìrè Events', withheldUntilTwoFactor: MANAGES }));
+    answering();
+    settings();
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'General' });
+    const notice = screen.getByText('Two-factor required by Ìrè Events').closest('.rn-box');
+
+    expect(notice?.closest('.settings-desk-page')).not.toBeNull();
+    expect(notice?.compareDocumentPosition(title)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

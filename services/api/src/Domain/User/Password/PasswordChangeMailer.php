@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Password;
 
+use App\Domain\User\Mail\MailCode;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Str;
 use SensitiveParameter;
@@ -25,7 +27,7 @@ final readonly class PasswordChangeMailer
     {
         $locale = $this->userMailer->localeFor($user, $asked);
 
-        $this->userMailer->sendTo($user, 'password.changed.subject', [
+        $this->userMailer->sendTo(AccountMail::PasswordChanged, $user, 'password.changed.subject', [
             $this->userMailer->line('password.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->userMailer->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('password.changed.devices', $locale),
@@ -39,12 +41,12 @@ final readonly class PasswordChangeMailer
     {
         $locale = $this->userMailer->localeFor($user, $asked);
 
-        $this->userMailer->sendTo($user, 'password.code.subject', [
+        $this->userMailer->sendTo(AccountMail::PasswordCode, $user, 'password.code.subject', [
             $this->userMailer->line('password.code.body', $locale),
             $code,
             $this->userMailer->line('password.code.expiry', $locale, ['{minutes}' => (string) VerificationChallenge::LIFETIME_MINUTES]),
             $this->userMailer->line('password.code.ignore', $locale),
-        ], $locale);
+        ], $locale, new MailCode($code, VerificationChallenge::LIFETIME_MINUTES));
     }
 
     /** `$asked` is the language it was done in: these sends run after the response, which has forgotten it. */
@@ -52,7 +54,7 @@ final readonly class PasswordChangeMailer
     {
         $locale = $this->userMailer->localeFor($user, $asked);
 
-        $this->userMailer->sendTo($user, 'password.added.subject', [
+        $this->userMailer->sendTo(AccountMail::PasswordAdded, $user, 'password.added.subject', [
             $this->userMailer->line('password.added.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->userMailer->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('password.added.notYou', $locale),

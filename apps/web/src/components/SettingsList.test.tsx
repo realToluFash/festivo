@@ -1,3 +1,4 @@
+import type { PausedOrganisation } from '@soirely/api-client';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -6,9 +7,22 @@ import { __setSessionState, type Session } from '../session.ts';
 import { membership } from '../test-memberships.ts';
 import { SettingsList } from './SettingsList.tsx';
 
+const CASA_LUMEN: PausedOrganisation = {
+  ...membership({ id: 'org_casa', name: 'Casa Lumen Eventos' }),
+  suspension: {
+    reason: 'address_gone',
+    domain: 'casalumen.es',
+    since: { at: '2026-11-02T09:00:00+00:00', written: 'Monday, Nov 2' },
+    removesAt: null,
+    onlyOwner: false,
+  },
+  ownerClaim: null,
+};
+
 function listFor(
   seededAs: 'owner' | 'administrator' | 'member',
   at = '/app/settings',
+  paused: { alone: boolean } | null = null,
 ): HTMLElement {
   const organisation = membership({
     role: { id: `role_${seededAs}`, seededAs, name: null },
@@ -24,8 +38,9 @@ function listFor(
     userId: 'u_folake',
     needsOrganisation: false,
     hasPassword: true,
-    organisation,
-    organisations: [organisation],
+    organisation: paused?.alone === true ? null : organisation,
+    organisations: paused?.alone === true ? [] : [organisation],
+    pausedIn: paused == null ? null : CASA_LUMEN,
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -62,17 +77,19 @@ describe('the Settings list (sc-30190)', () => {
   });
 
   it.each(['owner', 'administrator'] as const)(
-    'gives an %s General, Members and Sign-in rules, and no Roles',
+    'gives an %s General, Members, Sign-in rules, Vendors and Data and control, and no Roles',
     (seededAs) => {
       expect(groupOf(listFor(seededAs), 'Organisation settings')).toEqual([
         expect.stringMatching(/General$/),
         'Members',
         'Sign-in rules',
+        'Vendors',
+        'Data and control',
       ]);
     },
   );
 
-  it('gives a member General and Sign-in rules, and no Members', () => {
+  it('gives a member General and Sign-in rules, and no Members, Vendors or Data and control', () => {
     expect(groupOf(listFor('member'), 'Organisation settings')).toEqual([
       expect.stringMatching(/General$/),
       'Sign-in rules',
@@ -87,6 +104,12 @@ describe('the Settings list (sc-30190)', () => {
     ['/app/settings', 'General', 'General – Settings – Soirely'],
     ['/app/settings/members', 'Members', 'Members – Settings – Soirely'],
     ['/app/settings/sign-in-rules', 'Sign-in rules', 'Sign-in rules – Settings – Soirely'],
+    ['/app/settings/vendors', 'Vendors', 'Vendors – Settings – Soirely'],
+    [
+      '/app/settings/data-and-control/export',
+      'Data and control',
+      'Data and control – Settings – Soirely',
+    ],
   ])('at %s selects %s alone, and titles the page', (at, name, title) => {
     const list = listFor('owner', at);
     const current = within(list)
@@ -97,4 +120,16 @@ describe('the Settings list (sc-30190)', () => {
     expect(current[0]?.className).toContain('is-on');
     expect(document.title).toBe(title);
   });
+
+  it.each([
+    ['an owner in another organisation', false],
+    ['in no other organisation', true],
+  ])(
+    'lists the paused organisation’s General, with its initials, then Sign-in rules, for a member %s (sc-86077)',
+    (_, alone) => {
+      expect(
+        groupOf(listFor('owner', '/app/settings', { alone }), 'Organisation settings'),
+      ).toEqual(['CLGeneral', 'Sign-in rules']);
+    },
+  );
 });

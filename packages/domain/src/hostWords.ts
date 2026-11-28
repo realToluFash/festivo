@@ -40,6 +40,27 @@ export function hostErrorsOf(rows: readonly HostRow[], t: Translate): HostErrors
   return found;
 }
 
+/** Hosted by's messages as an edit shows them while typing: a repeat and an overlong name at once, a blank one once Save was tried. */
+export function hostErrorsShownOf(
+  rows: readonly HostRow[],
+  t: Translate,
+  tried: boolean,
+): HostErrors {
+  if (tried) return hostErrorsOf(rows, t);
+
+  const found = hostErrorsOf(rows, t);
+  const problems = hostProblems(rows.map((row) => row.name));
+  const shown: HostErrors = {};
+
+  rows.forEach((row, index) => {
+    const message = found[row.key];
+
+    if (message != null && problems[index]?.problem !== 'hostBlank') shown[row.key] = message;
+  });
+
+  return shown;
+}
+
 const HOST_PATH = /^hosts\[(\d+)\]$/;
 
 /** The server's refusals of the hosts, each under its row; one of the whole list goes under the last. */
@@ -76,6 +97,14 @@ export function firstRefusedOf(
   if (field != null && (field === 'name' || field === 'type' || host == null)) return { field };
 
   return host == null ? null : { host: host.key };
+}
+
+/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
+export function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
+  if (first == null) return false;
+  if ('host' in first) return true;
+
+  return first.field === 'name' || first.field === 'type';
 }
 
 /** What a screen reader calls a row: its name, or "Host n" while it is empty. */
@@ -145,6 +174,8 @@ export function hostsArrival(rows: readonly HostRow[]): HostFocus {
 export type EventSaveRefusal =
   | { kind: 'changed' }
   | { kind: 'failed' }
+  | { kind: 'forbidden' }
+  | { kind: 'gone' }
   | {
       kind: 'refused';
       errors: Partial<Record<EventFormField, string>>;
@@ -152,7 +183,7 @@ export type EventSaveRefusal =
       currencyInUse: boolean;
     };
 
-/** What a refused save of an event says, the same in Edit details and in a part edited in place: `changed` on a 412, else each refusal under the field or host row it names. */
+/** What a refused save of an event says, the same in Edit details and in a part edited in place: `changed` on a 412, `forbidden` when the role no longer allows it, `gone` on a 404 for an event deleted or no longer theirs (sc-75689), else each refusal under the field or host row it names. */
 export function eventSaveRefusal(
   error: unknown,
   rows: readonly HostRow[],
@@ -160,6 +191,8 @@ export function eventSaveRefusal(
 ): EventSaveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.status === 412) return { kind: 'changed' };
+  const stopped = eventSaveStopped(error);
+  if (stopped != null) return { kind: stopped };
   if (error.is('event_concluded'))
     return refusal({ startsAt: t('eventEdit.scheduleConcluded') }, {});
   if (error.is('event_currency_in_use'))
@@ -177,6 +210,23 @@ export function eventSaveRefusal(
   return Object.keys(errors).length + Object.keys(hosts).length === 0
     ? { kind: 'failed' }
     : refusal(errors, hosts);
+}
+
+/** The one reading of a save on an event that the role no longer allows, or that hit an event deleted or no longer theirs (sc-75689), shared by every part and the cover on both clients. */
+export function eventSaveStopped(error: unknown): 'forbidden' | 'gone' | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.is('permission_required')) return 'forbidden';
+  if (error.status === 404) return 'gone';
+
+  return null;
+}
+
+/** The line a cover's save says when `eventSaveStopped` reads it, the same on the web and the app; null leaves the cover's own refusal. */
+export function eventSaveStoppedWords(error: unknown, t: Translate): string | null {
+  const stopped = eventSaveStopped(error);
+  if (stopped == null) return null;
+
+  return t(stopped === 'gone' ? 'eventEdit.eventGone' : 'eventEdit.forbidden');
 }
 
 function refusal(

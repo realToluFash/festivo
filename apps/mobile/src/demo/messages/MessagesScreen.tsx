@@ -13,7 +13,6 @@ import {
   Animated,
   Easing,
   Keyboard,
-  KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -41,9 +40,12 @@ import type { AreaKey } from '../events/EventsSample.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Bell } from '../settings/Frame.tsx';
+import { BellPlace } from './BellPlace.tsx';
+import type { BellState } from './BellStates.ts';
 import { Back } from '../../components/SettingsParts.tsx';
-import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
+import { type Anchor, useAnchorFollowsTurn } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
+import { KeysClear } from './KeysClear.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
 import { MessagesList, rowName } from './MessagesList.tsx';
 import {
@@ -55,7 +57,7 @@ import {
   type ReachedOf,
   type RowId,
   anyOnItsWay,
-  badgeOf,
+  badgeShown,
   blankDraft,
   channelsWords,
   checkOf,
@@ -69,14 +71,7 @@ import {
   spokenAt,
   toChip,
 } from './MessagesModel.ts';
-import {
-  BellPlace,
-  FilterPicker,
-  MatchPicker,
-  ToPicker,
-  TopToast,
-  WhenItGoes,
-} from './MessagesOverlays.tsx';
+import { FilterPicker, MatchPicker, ToPicker, TopToast, WhenItGoes } from './MessagesOverlays.tsx';
 import {
   FIXED_ADDRESS,
   GUESTS,
@@ -88,18 +83,43 @@ import {
   INVITE_TIME,
   PARKING_TIME,
 } from './MessagesSample.ts';
-import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { CHANNEL_WORD, type ChannelKey, W, say, sayStop } from './MessagesWords.ts';
 import { waitsCheckOf } from './CheckWaits.ts';
 import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
-import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
-import { ContactEdit, WhoReached } from './WhoReached.tsx';
-import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
+import { type ReachPerson, emailBounced, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
+import { ContactEdit, type RowActions, WhoReached } from './WhoReached.tsx';
+import { InsertMenu } from './WriteItOnce.tsx';
+import {
+  STOP_MS,
+  type StopSave,
+  type Stopping,
+  chooseItem,
+  closeActions,
+  itemLabel,
+  keepWriting,
+  openActions,
+  press,
+  settled,
+  stoppingOf,
+} from './StopWriting.ts';
+import { SHARED_NUMBER, readsOnly } from './NoticeStates.ts';
+import { NoManageCard } from './NoticeParts.tsx';
+import { StopActions, StopAsk } from './StopWritingParts.tsx';
+import { HoldTop } from './HoldTop.tsx';
+import { markLooked } from '../guests/ChangedSince.ts';
+import { measuredUnder } from '../measuredUnder.ts';
+import { openOnceSettled } from '../menuSettles.ts';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
+/** The confirm opens once the actions' window has gone, since iOS shows one window at a time. */
+const ASK_AFTER_MS = 800;
+
+const MENU_AFTER_MS = 300;
+
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
-  const told = channelsWords(SAMPLE_CHANNELS, locale);
+  const told = channelsWords(m.sample === 'reasons' ? ['email'] : SAMPLE_CHANNELS, locale);
   if (of === 'parking' || of === 'receipts')
     return [
       W.allGuests,
@@ -133,16 +153,13 @@ const CLOSED_WORDS: Record<Closed, string> = {
 };
 
 export function badgeFor(m: Messages): AreaBadge | null {
-  const badge = badgeOf(m);
-
-  return badge == null
-    ? null
-    : {
-        count: badge.total,
-        name: say.badgeName(badge.waiting, badge.notMatched),
-        words: say.counts(badge.waiting, badge.notMatched),
-      };
+  return badgeShown(m);
 }
+
+const SHARERS = [
+  { name: 'Kwame Mensah', line: SHARED_NUMBER },
+  { name: 'Abena Mensah', line: SHARED_NUMBER },
+] as const;
 
 /** Messages B in the event: the list and a conversation pushed over it on the phone, the two side by side on the iPad. */
 export function MessagesScreen({
@@ -153,6 +170,7 @@ export function MessagesScreen({
   more,
   onMore,
   onArea,
+  onChanged,
   start,
   extra,
 }: {
@@ -163,7 +181,9 @@ export function MessagesScreen({
   more: boolean;
   onMore: (open: boolean) => void;
   onArea: (area: AreaKey) => void;
-  start: { fix: boolean; push: boolean; keys: boolean };
+  /** sc-4331: the bell's Guest replies item opens the guest list on Changed since you looked. */
+  onChanged?: () => void;
+  start: { fix: boolean; push: boolean; keys: boolean; bell: BellState };
   extra?: ReactNode;
 }) {
   const shell = useShell();
@@ -172,6 +192,11 @@ export function MessagesScreen({
   const wide = !phone;
   const insets = useSafeAreaInsets();
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const liveRef = (key: string): RefObject<ViewInstance | null> => ({
+    get current() {
+      return refs.current[key] ?? null;
+    },
+  });
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
   const reachedHeadRef = useRef<TextHandle>(null);
@@ -179,6 +204,19 @@ export function MessagesScreen({
   const bodyRef = useRef<TextInputInstance>(null);
   const answerRef = useRef<TextInputInstance>(null);
   const bellRef = useRef<ViewInstance>(null);
+  const moreRef = useRef<ViewInstance>(null);
+  const insetRef = useRef<TextHandle>(null);
+  const afterAsk = useRef<'more' | 'inset'>('more');
+  const askOpener = useMemo(
+    () => ({
+      get current() {
+        return afterAsk.current === 'inset' ? insetRef.current : moreRef.current;
+      },
+    }),
+    [],
+  );
+  const saving = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const asksLater = useRef<ReturnType<typeof setTimeout> | null>(null);
   const opener = useRef<ScreenReaderTarget | null>(null);
   const openerRef = useMemo(
     () => ({
@@ -191,19 +229,22 @@ export function MessagesScreen({
   const caret = useRef<number | null>(null);
   const focusBody = useRef(start.keys);
   const focusOver = useRef(m.draft?.over[0] ?? null);
-  const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
+  const reading = readsOnly(m);
+  const closed = m.closed == null || reading ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
-  const [insertAt, setInsertAt] = useState<Anchored | null>(null);
+  const [insertAt, setInsertAt] = useState<Anchor | null>(null);
   const [bellAt, setBellAt] = useState<Anchor | null>(null);
   const [filterAt, setFilterAt] = useState<Anchor | null>(null);
+  const [actionsAt, setActionsAt] = useState<Anchor | null>(null);
   const [fix, setFix] = useState(() => {
     const person = NOT_REACHED[0];
     return {
       key: person?.key ?? ('tomas' as const),
       how: 'fixEmail' as FixKind,
       name: person?.name ?? '',
-      bounced: person?.bounced ?? '',
+      was: person?.bounced ?? '',
+      bounced: person == null ? false : emailBounced(person),
       start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
     };
   });
@@ -292,37 +333,37 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.picking || phone) return undefined;
-    const later = setTimeout(() => {
-      const chip = refs.current.to;
-      if (chip != null) anchorUnder({ current: chip }, setToAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('to')), setToAt, MENU_AFTER_MS);
   }, [m.picking, phone]);
 
   useEffect(() => {
     if (!m.filtering || phone) return undefined;
-    const later = setTimeout(() => {
-      const button = refs.current.filter;
-      if (button != null) anchorUnder({ current: button }, setFilterAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('filter')), setFilterAt, MENU_AFTER_MS);
   }, [m.filtering, phone]);
 
   useEffect(() => {
     if (!m.inserting || phone) return undefined;
-    const later = setTimeout(() => anchorAt(refs.current.insert, setInsertAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('insert')), setInsertAt, MENU_AFTER_MS);
   }, [m.inserting, phone]);
+
+  const stop = stoppingOf(m);
+  useEffect(() => {
+    if (!stop.menu || phone) return undefined;
+    return openOnceSettled(measuredUnder(moreRef), setActionsAt, MENU_AFTER_MS);
+  }, [stop.menu, phone]);
+  useEffect(
+    () => () => {
+      if (saving.current != null) clearTimeout(saving.current);
+      if (asksLater.current != null) clearTimeout(asksLater.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!m.bell || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(bellRef, setBellAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(bellRef), setBellAt, MENU_AFTER_MS);
   }, [m.bell, phone]);
+  useAnchorFollowsTurn(bellRef, m.bell && !phone && bellAt != null, setBellAt);
 
   const open = (id: RowId) => {
     from(`row.${rowName(id)}`);
@@ -334,7 +375,7 @@ export function MessagesScreen({
     else dispatch({ type: 'open', open: id });
   };
   const onNew = (picking: boolean) => {
-    if (m.closed != null) return;
+    if (m.closed != null || reading) return;
     dispatch({ type: 'newMessage' });
     focusBody.current = !picking;
     if (picking) dispatch({ type: 'picking', open: true });
@@ -346,6 +387,38 @@ export function MessagesScreen({
     const next = sectionsOf({ ...m, done: [key, ...m.done] }).needs[0];
     const node = next == null ? null : refs.current[`row.${rowName(next)}`];
     setTimeout(() => moveScreenReaderFocus(node ?? null), 300);
+  };
+  const stopKey = m.open?.kind === 'guest' && m.open.key !== 'unknown' ? m.open.key : null;
+  const stopName = stopKey == null ? '' : GUESTS[stopKey].name;
+  const changeStop = (change: (now: Stopping) => Stopping) =>
+    dispatch({ type: 'stopping', change });
+  const save = (key: GuestKey, what: StopSave) => {
+    changeStop((now) => press(now, what));
+    if (saving.current != null) clearTimeout(saving.current);
+    saving.current = setTimeout(() => {
+      saving.current = null;
+      if (what === 'stop') afterAsk.current = 'inset';
+      changeStop((now) => settled(now, key, true));
+      if (what === 'stop') return;
+      dispatch({ type: 'told', words: sayStop.writesAgain(GUESTS[key].name) });
+      setTimeout(() => moveScreenReaderFocus(moreRef.current), 350);
+    }, STOP_MS);
+  };
+  const closeStopActions = () => {
+    setActionsAt(null);
+    changeStop(closeActions);
+  };
+  const chooseStopItem = () => {
+    if (stopKey == null) return;
+    setActionsAt(null);
+    afterAsk.current = 'more';
+    changeStop(closeActions);
+    if (stop.stopped[stopKey] != null) save(stopKey, 'letAgain');
+    else
+      asksLater.current = setTimeout(
+        () => changeStop((now) => chooseItem(now, stopKey)),
+        ASK_AFTER_MS,
+      );
   };
   const talk: Talk = {
     m,
@@ -454,6 +527,13 @@ export function MessagesScreen({
       dispatch({ type: 'told', words: say.queued(sent) });
     },
     ownDesign,
+    stop,
+    moreRef,
+    insetRef,
+    onActions: () => changeStop(openActions),
+    onLetAgain: (key) => {
+      if (stop.saving == null) save(key, 'letAgain');
+    },
   };
 
   const insert = (token: string) => {
@@ -492,7 +572,10 @@ export function MessagesScreen({
         onNew(false);
       }}
       onTell={() => dispatch({ type: 'telling', open: true })}
-      onDismiss={() => dispatch({ type: 'dismissUntold' })}
+      onDismiss={() => {
+        dispatch({ type: 'dismissUntold' });
+        dispatch({ type: 'told', words: W.dismissed });
+      }}
       closed={closed}
     />
   );
@@ -506,6 +589,25 @@ export function MessagesScreen({
     dispatch({ type: 'notNowFor', key: person.key });
     focusPerson(person);
   };
+  const focusRef = (key: string) =>
+    setTimeout(() => moveScreenReaderFocus(refs.current[key] ?? null), 350);
+  const rowActions: RowActions = {
+    onFix: (person, fixing) => fixPerson(person, fixing),
+    onSendAgain: sendAgain,
+    onNotNow: notNow,
+    onTrySms: (person) => {
+      dispatch({ type: 'trySms', key: person.key });
+      focusRef(`${person.key}.trySmsOpen`);
+    },
+    onSendBySms: (person) => {
+      dispatch({ type: 'sendBySms', key: person.key });
+      setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
+    },
+    onCancelSms: (person) => {
+      dispatch({ type: 'cancelTrySms' });
+      focusRef(`${person.key}.trySms`);
+    },
+  };
   const fixPerson = (person: ReachPerson, fixing: string) => {
     from(`${person.key}.${fixing}`);
     const how = fixKindOf(fixing);
@@ -514,7 +616,8 @@ export function MessagesScreen({
         key: person.key,
         how,
         name: person.name,
-        bounced: person.bounced ?? '',
+        was: person.bounced ?? '',
+        bounced: emailBounced(person),
         start: how === 'fixEmail' ? (person.bounced ?? '') : '',
       });
       dispatch({ type: 'fixing', open: true });
@@ -544,8 +647,7 @@ export function MessagesScreen({
     <WhoReached
       view={reachViewOf(m, of)}
       headRef={reachedHeadRef}
-      onSendAgain={sendAgain}
-      onNotNow={notNow}
+      actions={rowActions}
       closed={closed}
       head={
         <>
@@ -555,7 +657,6 @@ export function MessagesScreen({
       }
       refFor={refFor}
       bottom={bottom}
-      onFix={fixPerson}
       onFilter={openFilter}
       onShowNotReached={() => dispatch({ type: 'filter', filter: 'notReached' })}
       onResend={() => resendFrom(of)}
@@ -602,6 +703,7 @@ export function MessagesScreen({
         open={m.fixing}
         how={fix.how}
         name={fix.name}
+        was={fix.was}
         bounced={fix.bounced}
         start={fix.start}
         opener={openerRef}
@@ -617,13 +719,21 @@ export function MessagesScreen({
         at={m.bell ? bellAt : null}
         opener={bellRef}
         push={start.push}
+        state={start.bell}
+        allRead={m.allRead}
+        onAllRead={() => {
+          dispatch({ type: 'allRead' });
+          markLooked(now);
+        }}
         onClose={() => dispatch({ type: 'bell', open: false })}
         onSettings={() => shell.openSection('notifications')}
         onItem={(key) => {
           dispatch({ type: 'bell', open: false });
           if (key === 'missed')
             dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } });
-          else if (key === 'change') onArea('overview');
+          else if (key === 'security') shell.openSection('security');
+          else if (key !== 'replies') onArea('overview');
+          else if (onChanged != null) onChanged();
           else if (phone) dispatch({ type: 'open', open: null });
         }}
       />
@@ -633,9 +743,18 @@ export function MessagesScreen({
         phone={phone}
         address={GUESTS.unknown.head}
         opener={openerRef}
+        {...(m.notice?.shared == null
+          ? {}
+          : {
+              picks: SHARERS,
+              first: { search: 'Mensah', picked: GUESTS[m.notice.key].name },
+              hinted: false,
+            })}
         onClose={() => dispatch({ type: 'matching', open: false })}
         onMatch={(name) => {
-          dispatch({ type: 'match', name });
+          dispatch(
+            m.notice?.shared == null ? { type: 'match', name } : { type: 'matching', open: false },
+          );
           readOut(say.matchedSaid(name));
           setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
         }}
@@ -653,6 +772,30 @@ export function MessagesScreen({
           dispatch({ type: 'schedule', at });
           readOut(say.scheduledSaid(dayWords(at.date, locale), at.time));
           setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
+        }}
+      />
+      <StopActions
+        open={stop.menu && stopKey != null && (phone || actionsAt != null)}
+        phone={phone}
+        at={stop.menu ? actionsAt : null}
+        item={stopKey == null ? '' : itemLabel(stop, stopKey, stopName)}
+        opener={moreRef}
+        onChoose={chooseStopItem}
+        onClose={closeStopActions}
+      />
+      <StopAsk
+        open={stop.asking && stopKey != null}
+        name={stopName}
+        layout={shell.layout}
+        saving={stop.saving === 'stop'}
+        failed={stop.failed === 'stop'}
+        opener={askOpener}
+        onConfirm={() => {
+          if (stopKey != null && stop.saving == null) save(stopKey, 'stop');
+        }}
+        onKeep={() => {
+          afterAsk.current = 'more';
+          changeStop(keepWriting);
         }}
       />
       {extra}
@@ -716,7 +859,11 @@ export function MessagesScreen({
           </>
         }
       >
-        {m.forbidden ? <Refusal /> : <PhoneList list={list} onNew={onNew} closed={closed} />}
+        {m.forbidden ? (
+          <Refusal />
+        ) : (
+          <PhoneList list={list} onNew={onNew} closed={closed} readOnly={reading} />
+        )}
       </EventFrame>
     );
 
@@ -729,15 +876,23 @@ export function MessagesScreen({
       <View style={styles.fill}>
         <View style={styles.centred}>
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.middle]}>
-            {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
+            {m.phase === 'first'
+              ? W.noneLine
+              : closed == null && !reading
+                ? W.pickOne
+                : W.pickOneClosed}
           </Text>
         </View>
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {reading ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     );
   else if (m.open.kind === 'reached')
@@ -816,10 +971,12 @@ function PhoneList({
   list,
   onNew,
   closed,
+  readOnly,
 }: {
   list: ReactNode;
   onNew: (picking: boolean) => void;
   closed: string | null;
+  readOnly: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
@@ -842,12 +999,16 @@ function PhoneList({
         style={[styles.pinned, { bottom: pinned }]}
         onLayout={(event) => setComposer(event.nativeEvent.layout.height)}
       >
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {readOnly ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     </View>
   );
@@ -898,11 +1059,63 @@ function PhoneConversation({
   const insets = useSafeAreaInsets();
   const keysUp = useKeysUp();
   const stream = useRef<ScrollViewInstance>(null);
-  const [sides, setSides] = useState({ left: 0, right: 0 });
+  const [sides, setSides] = useState({ left: 0, right: 0, nav: 0, title: 0 });
+  const room = sides.nav - sides.left - Math.max(sides.left, sides.right) - 2 * tokens.spaceXl;
+  const moved = parts.right != null && sides.nav > 0 && sides.title > room;
+  const rightAt = (
+    <View
+      onLayout={(event) => setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))}
+      style={moved ? styles.movedRight : undefined}
+    >
+      {parts.right}
+    </View>
+  );
+  const view = useRef<{ content: number; height: number; held: number | null }>({
+    content: 0,
+    height: 0,
+    held: null,
+  });
+  const toEnd = parts.align === 'end';
+  // With the keys and iOS's suggestion bar up, the nav, the To and channel rows and the composer outgrow a phone,
+  // and the composer went under the keys; the rows scroll with the stream instead, just above it (sc-31370).
+  const headFixed = parts.head != null && !keysUp;
+  const settle = useCallback(() => {
+    const { content, height, held } = view.current;
+    if (held == null || height === 0) stream.current?.scrollToEnd({ animated: false });
+    else
+      stream.current?.scrollTo({
+        y: Math.min(held, Math.max(content - height, 0)),
+        animated: false,
+      });
+  }, []);
+  const hold = useCallback(
+    (y: number | null) => {
+      view.current.held = y;
+      if (y != null && toEnd) settle();
+    },
+    [settle, toEnd],
+  );
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={[styles.fill, { paddingTop: insets.top }]}>
-      <View style={styles.nav}>
+    <KeysClear style={[styles.fill, { paddingTop: insets.top }]}>
+      <View
+        style={styles.nav}
+        onLayout={(event) => setSides((now) => ({ ...now, nav: event.nativeEvent.layout.width }))}
+      >
+        <Text
+          size={17}
+          weight="bold"
+          numberOfLines={1}
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={styles.measure}
+          onLayout={(event) =>
+            setSides((now) => ({ ...now, title: event.nativeEvent.layout.width }))
+          }
+        >
+          {parts.title}
+        </Text>
         <View
           onLayout={(event) =>
             setSides((now) => ({ ...now, left: event.nativeEvent.layout.width }))
@@ -915,7 +1128,7 @@ function PhoneConversation({
             styles.navTitle,
             {
               left: sides.left + tokens.spaceXl,
-              right: Math.max(sides.left, sides.right) + tokens.spaceXl,
+              right: (moved ? sides.left : Math.max(sides.left, sides.right)) + tokens.spaceXl,
             },
           ]}
           pointerEvents="none"
@@ -925,23 +1138,22 @@ function PhoneConversation({
           </Text>
         </View>
         <View style={styles.grow} />
-        <View
-          onLayout={(event) =>
-            setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))
-          }
-        >
-          {parts.right}
-        </View>
+        {!moved && rightAt}
       </View>
-      {(parts.head != null || parts.line != null) && (
+      {(headFixed || (parts.head == null && parts.line != null) || moved) && (
         <View style={styles.phoneHead}>
-          {parts.head ?? (
-            <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
-              {parts.line}
-            </Text>
-          )}
+          {headFixed
+            ? parts.head
+            : parts.head == null &&
+              parts.line != null && (
+                <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
+                  {parts.line}
+                </Text>
+              )}
+          {moved && rightAt}
         </View>
       )}
+      {parts.under != null && <View style={styles.phoneUnder}>{parts.under}</View>}
       <ScrollView
         ref={stream}
         style={styles.fill}
@@ -950,11 +1162,17 @@ function PhoneConversation({
           parts.align === 'end' ? styles.toFoot : styles.toTop,
         ]}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => {
-          if (parts.align === 'end') stream.current?.scrollToEnd({ animated: false });
+        onLayout={(event) => {
+          view.current.height = event.nativeEvent.layout.height;
+          if (toEnd) settle();
+        }}
+        onContentSizeChange={(_, height) => {
+          view.current.content = height;
+          if (toEnd) settle();
         }}
       >
-        {parts.stream}
+        <HoldTop.Provider value={hold}>{parts.stream}</HoldTop.Provider>
+        {parts.head != null && !headFixed && parts.head}
       </ScrollView>
       {parts.foot != null && (
         <View
@@ -967,7 +1185,7 @@ function PhoneConversation({
           {parts.foot}
         </View>
       )}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 
@@ -984,7 +1202,7 @@ function PaneConversation({
   const stream = useRef<ScrollViewInstance>(null);
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.fill}>
+    <KeysClear style={styles.fill}>
       {parts.bare !== true && (
         <View style={styles.paneHead}>
           {parts.head ?? (
@@ -1012,6 +1230,7 @@ function PaneConversation({
           )}
         </View>
       )}
+      {parts.under != null && <View style={styles.paneUnder}>{parts.under}</View>}
       <ScrollView
         ref={stream}
         style={styles.fill}
@@ -1027,7 +1246,7 @@ function PaneConversation({
         {parts.stream}
       </ScrollView>
       {parts.foot != null && <View style={styles.paneFoot}>{parts.foot}</View>}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 
@@ -1095,6 +1314,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  measure: { position: 'absolute', top: 0, left: 0, opacity: 0 },
+  movedRight: { alignSelf: 'flex-end' },
   phoneHead: {
     paddingVertical: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,
@@ -1102,6 +1323,8 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colorBorder,
   },
   headLine: { lineHeight: 14 * 1.4 },
+  phoneUnder: { paddingTop: tokens.spaceMd, paddingHorizontal: tokens.spaceXxl },
+  paneUnder: { paddingTop: tokens.spaceMd },
   streamBody: {
     flexGrow: 1,
     gap: 14,

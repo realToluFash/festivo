@@ -1,13 +1,20 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { atPhoneWidth } from '../test-widths.ts';
+import { LONGEST_EVENT_NAME, ONE_WORD_EVENT_NAME } from './vendors.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
+const PHONE_CSS = readFileSync(join(import.meta.dirname, 'phone.css'), 'utf8');
+const SHELL_CSS = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
 const REFUSED = 'That is not a phone number for United Kingdom. Check it and try again.';
 
 function main(): HTMLElement {
@@ -42,7 +49,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     const router = await open('/demo/settings/members');
     const sections = within(list())
       .getAllByRole('link')
-      .map((one) => one.querySelector('.today-grow')?.textContent);
+      .map((one) => one.querySelector('.desk-section-name')?.textContent);
 
     expect(sections.slice(-5)).toEqual([
       'General',
@@ -64,6 +71,64 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     expect(within(list()).getByRole('link', { name: 'Vendors' }).getAttribute('aria-current')).toBe(
       'page',
     );
+  });
+
+  it(
+    'fits a phone’s window as the product does, and Members keeps its desk frame',
+    SLOW,
+    async () => {
+      await open('/demo/settings/vendors');
+
+      expect(document.querySelector('.today.desk')?.classList.contains('dp-fit')).toBe(true);
+      expect(screen.getByRole('button', { name: 'Menu' })).toBeTruthy();
+
+      cleanup();
+      await open('/demo/settings/members');
+
+      expect(document.querySelector('.today.desk')?.classList.contains('dp-fit')).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Menu' })).toBeNull();
+    },
+  );
+
+  it(
+    'keeps its bell in the bar beside Menu at a phone’s width, as the product’s shell does',
+    SLOW,
+    async () => {
+      atPhoneWidth();
+
+      try {
+        await open('/demo/settings/vendors');
+        await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+        const bar = screen.getByRole('navigation', { name: 'Soirely' });
+
+        expect(within(bar).getByRole('button', { name: /notification/iu })).toBeTruthy();
+        expect(within(main()).queryByRole('button', { name: /notification/iu })).toBeNull();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
+
+  it('draws the bar’s bell as the product’s shell does, on the card’s colour with the nav’s corners', () => {
+    const shell = /\.notifications-bell \{[^}]*\}/u.exec(SHELL_CSS)?.[0] ?? '';
+    const bar = /\.dp-fit \.today-side > \.desk-bell \{[^}]*\}/u.exec(PHONE_CSS)?.[0] ?? '';
+
+    for (const rule of ['background: var(--colorCard);', 'border-radius: var(--radiusNav);']) {
+      expect(shell).toContain(rule);
+      expect(bar).toContain(rule);
+    }
+  });
+
+  it('keeps its bell beside the title at a desk', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+
+    expect(within(main()).getByRole('button', { name: /notification/iu })).toBeTruthy();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Soirely' })).queryByRole('button', {
+        name: /notification/iu,
+      }),
+    ).toBeNull();
   });
 
   it('keeps the old address, and its query, on the new one', SLOW, async () => {
@@ -256,7 +321,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
   });
 
   it(
-    'refuses the three fields of add_invalid, and the number each time it is sent',
+    'refuses two fields of add_invalid before sending, and the number once it is sent',
     SLOW,
     async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -265,7 +330,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       const email = within(dialog).getByLabelText('Email address', { exact: false });
 
       expect(within(dialog).getByRole('alert').textContent).toBe(
-        '3 fields need fixing, so nothing was sent.',
+        '2 fields need fixing, so nothing was sent.',
       );
       expect(
         within(dialog).getByText(
@@ -277,7 +342,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
           'Enter a web address that starts with https:// or http://, or leave that part off.',
         ),
       ).toBeDefined();
-      expect(within(dialog).getByText(REFUSED)).toBeDefined();
+      expect(within(dialog).queryByText(REFUSED)).toBeNull();
       await waitFor(() => expect(document.activeElement).toBe(email));
 
       fireEvent.change(email, { target: { value: 'sam@harbourboats.co.uk' } });
@@ -294,7 +359,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       );
 
       fireEvent.change(within(dialog).getByLabelText('Phone number', { exact: false }), {
-        target: { value: '7700 900123' },
+        target: { value: '0117 496 0123' },
       });
 
       expect(within(dialog).queryByText(REFUSED)).toBeNull();
@@ -307,7 +372,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Add a vendor' });
     const phone = within(dialog).getByLabelText('Phone number', { exact: false });
 
-    fireEvent.change(phone, { target: { value: '7700 900877' } });
+    fireEvent.change(phone, { target: { value: '0117 496 0877' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
     expect(within(dialog).getByText('Choose a country.')).toBeDefined();
@@ -366,6 +431,27 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     },
   );
 
+  it.each([
+    ['archive_refused', 'Adaeze & Tunde’s wedding'],
+    ['archive_refused_long', LONGEST_EVENT_NAME],
+    ['archive_refused_one_word', ONE_WORD_EVENT_NAME],
+  ])(
+    'opens %s with each owed event’s link wrapping whole, every word in the link (sc-91886)',
+    SLOW,
+    async (state, name) => {
+      await open(`/demo/settings/vendors?state=${state}`);
+      const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+      const links = within(dialog).getAllByRole('link');
+
+      expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+        [`Payments to Bloom & Co on ${name}`, '/demo/events/evt-wed-4?area=budget&vendor=v3'],
+        ['Payments to Bloom & Co on Ireti at 40', '/demo/events/evt-ireti-2?area=budget&vendor=v3'],
+      ]);
+      expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+      expect(links.every((one) => one.childElementCount === 0)).toBe(true);
+    },
+  );
+
   it('opens archived_toast with Bloom & Co gone to Archived', SLOW, async () => {
     await open('/demo/settings/vendors?state=archived_toast');
 
@@ -395,17 +481,21 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
 
   it('refuses a member inside Settings, with no Vendors in their list', SLOW, async () => {
     for (const path of ['/demo/settings/vendors?state=member', '/demo/settings/vendors?as=ana']) {
-      await open(path);
+      const router = await open(path);
 
       expect(within(main()).getByRole('alert').textContent).toContain(
         'You do not have access to this',
       );
       expect(within(list()).queryByRole('link', { name: 'Vendors' })).toBeNull();
       expect(within(list()).queryByRole('link', { name: 'Members' })).toBeNull();
-      expect(
-        within(main()).getByRole('link', { name: 'Back to Settings' }).getAttribute('href'),
-      ).toBe('/demo/settings/account?as=ana');
+      expect(within(main()).getByRole('alert').textContent).toContain(
+        'Your account does not have permission for this page.',
+      );
       expect(within(main()).queryByRole('heading', { name: 'Vendors' })).toBeNull();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Back to the dashboard' }));
+
+      await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'));
       cleanup();
     }
   });
@@ -423,5 +513,52 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('28 vendors', {}, WAIT)).toBeDefined();
+  });
+
+  it(
+    'keeps the card, Search and its focus through a search that got no answer (search_failed)',
+    SLOW,
+    async () => {
+      await open('/demo/settings/vendors?state=search_failed');
+      const search = within(main()).getByRole('searchbox', { name: 'Search vendors' });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip');
+      expect(within(main()).getByText('28 vendors')).toBeDefined();
+      expect(filter(/In use/)).toBeDefined();
+      expect(filter(/All categories/)).toBeDefined();
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+      expect(within(main()).getByText('Check your connection and try again.')).toBeDefined();
+      expect(within(main()).queryByRole('list', { name: 'Vendors' })).toBeNull();
+
+      fireEvent.change(search, { target: { value: 'tulip l' } });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip l');
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(rows()).toHaveLength(1), WAIT);
+      expect(within(main()).queryByText('We could not load the vendors.')).toBeNull();
+      expect(within(main()).getByText('1 vendor')).toBeDefined();
+      await waitFor(() => expect(document.activeElement).toBe(search), WAIT);
+    },
+  );
+
+  it('puts the focus on the heading after Try again with nothing in Search', SLOW, async () => {
+    await open('/demo/settings/vendors?state=search_failed');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear the search' })[0]!);
+    fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(rows()).toHaveLength(25), WAIT);
+    await waitFor(
+      () =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'Vendors' }),
+        ),
+      WAIT,
+    );
   });
 });

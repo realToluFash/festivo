@@ -2,9 +2,13 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
+import { Glyph } from './Glyph.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
-import { STYLES, cssRule } from '../test-styles.ts';
+import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
+import { placeUnder } from './bellPlace.ts';
+
+const BELL_CSS = stylesheet(import.meta.dirname, 'BellPanel.css');
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -46,11 +50,18 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function renderedBell(desk = false) {
+function renderedBell(
+  look: 'band' | 'desk' | 'banner' = 'band',
+  accountZone: string | null = null,
+) {
   const router = createMemoryRouter(
     [
-      { path: '/app', element: <NotificationsBell userId="u1" desk={desk} /> },
+      {
+        path: '/app',
+        element: <NotificationsBell userId="u1" accountZone={accountZone} look={look} />,
+      },
       { path: '/app/events/:id', element: <p>Event page</p> },
+      { path: '/app/due/:id', element: <p>Due now</p> },
     ],
     { initialEntries: ['/app'] },
   );
@@ -63,13 +74,15 @@ function bell() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe.each([
-  ['in the band', false],
-  ['in the title row at a desk (sc-39471)', true],
-])('the bell %s', (_where, desk) => {
+  ['in the band', 'band'],
+  ['in the title row at a desk (sc-39471)', 'desk'],
+  ["on Today's banner at a desk (sc-39509)", 'banner'],
+] as const)('the bell %s', (_where, look) => {
   it('carries the unread count in its name, and none at 0', async () => {
     let unread = 3;
     answering({
@@ -79,7 +92,7 @@ describe.each([
         return json({ unreadCount: 0 });
       },
     });
-    renderedBell(desk);
+    renderedBell(look);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 3 unread' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
@@ -91,7 +104,7 @@ describe.each([
     answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
     });
-    renderedBell(desk);
+    renderedBell(look);
 
     const bellButton = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
     expect(bellButton.getAttribute('aria-expanded')).toBe('false');
@@ -156,6 +169,20 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByText(/^Ada & Tomi · at \d\d:\d\d$/)).toBeTruthy();
   });
 
+  it("gives an item's time in the account's zone, not the browser's (sc-82298)", async () => {
+    const createdAt = '2026-11-22T05:15:00Z';
+    vi.useFakeTimers({ now: new Date('2026-11-22T12:00:00Z'), toFake: ['Date'] });
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ createdAt })], unreadCount: 1, next: null }),
+    });
+    renderedBell('band', 'Asia/Tokyo');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(await screen.findByText('Ada & Tomi · at 14:15')).toBeTruthy();
+  });
+
   it('opening an item marks it read and goes to its place', async () => {
     const sent = answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
@@ -168,6 +195,21 @@ describe('the bell (sc-3980)', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/e1'));
     expect(sent).toContain('POST /api/notifications/n1/read');
+  });
+
+  it('a payment reminder opens Due now with the page that was open under it (sc-1331)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ place: '/app/due/r1' })], unreadCount: 1, next: null }),
+      'POST /api/notifications/n1/read': () => json({ item: item({ read: true }), unreadCount: 0 }),
+    });
+    const router = bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/due/r1'));
+    expect(router.state.location.state).toMatchObject({ under: { pathname: '/app' } });
   });
 
   it('an item whose event is gone says so instead of navigating', async () => {
@@ -255,8 +297,8 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
 
     const line = await screen.findByRole('alert');
-    expect(line.textContent).toBe('!Could not mark them all read. Try again.');
-    expect(line.querySelector('.mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(line.textContent).toBe('Could not mark them all read. Try again.');
+    expect(line.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
   });
 
@@ -328,7 +370,7 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('a feed that did not load is the broken notice, the mark, the words and Try again under them (sc-23233)', async () => {
+  it('a feed that did not load is its line in ink with Try again under it (sc-83081)', async () => {
     let attempts = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       attempts += 1;
@@ -341,10 +383,9 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
 
     const notice = await screen.findByRole('alert');
-    expect(notice.className).toContain('notice-broken');
-    expect(notice.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(notice.className).toBe('bell-failed');
     expect(within(notice).getByText('Your notifications did not load.').className).toBe(
-      'notice-title',
+      'desk-line is-ink',
     );
 
     fireEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
@@ -368,11 +409,11 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(more);
 
     const mute = await screen.findByRole('switch', { name: 'Mute this event' });
-    await waitFor(() => expect((mute as HTMLInputElement).disabled).toBe(false));
+    await waitFor(() => expect(mute.getAttribute('aria-busy')).toBe('false'));
     fireEvent.click(mute);
 
     await waitFor(() => expect(sent).toContain('PUT /api/events/e1/mute'));
-    await waitFor(() => expect((mute as HTMLInputElement).checked).toBe(true));
+    await waitFor(() => expect(mute.getAttribute('aria-checked')).toBe('true'));
     expect(screen.queryByText('Muted')).toBeNull();
 
     mute.focus();
@@ -408,9 +449,9 @@ describe('the bell (sc-3980)', () => {
     render(<RouterProvider router={router} />);
 
     const page = within(screen.getByRole('region', { name: 'Just for you' }));
-    const pageSwitch = (await page.findByRole('switch')) as HTMLInputElement;
-    await waitFor(() => expect(pageSwitch.disabled).toBe(false));
-    expect(pageSwitch.checked).toBe(false);
+    const pageSwitch = await page.findByRole('switch');
+    await waitFor(() => expect(pageSwitch.getAttribute('aria-busy')).toBe('false'));
+    expect(pageSwitch.getAttribute('aria-checked')).toBe('false');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
     fireEvent.click(
@@ -418,11 +459,11 @@ describe('the bell (sc-3980)', () => {
     );
     const more = (await screen.findAllByRole('switch', { name: 'Mute this event' })).find(
       (shown) => shown !== pageSwitch,
-    ) as HTMLInputElement;
-    await waitFor(() => expect(more.disabled).toBe(false));
+    ) as HTMLElement;
+    await waitFor(() => expect(more.getAttribute('aria-busy')).toBe('false'));
     fireEvent.click(more);
 
-    await waitFor(() => expect(pageSwitch.checked).toBe(true));
+    await waitFor(() => expect(pageSwitch.getAttribute('aria-checked')).toBe('true'));
   });
 
   it('More says when the mute state did not load, and Try again reads it again', async () => {
@@ -445,14 +486,18 @@ describe('the bell (sc-3980)', () => {
     );
 
     expect(await screen.findByText('Could not check whether this event is muted.')).toBeTruthy();
-    const mute = screen.getByRole('switch', { name: 'Mute this event' }) as HTMLInputElement;
-    expect(mute.disabled).toBe(true);
+    const mute = screen.getByRole('switch', { name: 'Mute this event' });
+    expect(mute.getAttribute('aria-busy')).toBe('true');
     expect(screen.queryByText('Not saved. Try again.')).toBeNull();
 
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Try again' }));
+    fireEvent.click(
+      within(
+        screen.getByRole('dialog', { name: 'More for Ada Obi changed the event, Ada & Tomi' }),
+      ).getByRole('button', { name: 'Try again' }),
+    );
 
-    await waitFor(() => expect(mute.checked).toBe(true));
-    expect(mute.disabled).toBe(false);
+    await waitFor(() => expect(mute.getAttribute('aria-checked')).toBe('true'));
+    expect(mute.getAttribute('aria-busy')).toBe('false');
     expect(screen.queryByText('Could not check whether this event is muted.')).toBeNull();
   });
 
@@ -635,48 +680,199 @@ describe('the push ask', () => {
   });
 });
 
-describe('the bell in [fd] (sc-23233)', () => {
-  it("dims More's switch while the mute has not loaded, when nothing else would say it does nothing", () => {
-    expect(
-      cssRule(
-        '.notification-mute .notification-switch:has(input:disabled) .notification-switch-track',
-      ),
-    ).toMatch(/background: var\(--colorInset\);/u);
+describe('the bell in the B frame (sc-83081)', () => {
+  it('opens a popover 380 wide under the bell, its right edge in line with it', () => {
+    const pop = cssRule('.bell-pop', BELL_CSS);
+    expect(pop).toMatch(/right: 0;/u);
+    expect(pop).toMatch(/width: 380px;/u);
+    expect(pop).toMatch(/max-width: calc\(100vw - 48px\);/u);
+    expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
   });
 
-  it("marks the edge of More's knob with the board's shadow", () => {
-    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
-      /box-shadow: var\(--shadowKnob\);/u,
+  function bellAt(bottom: number, right: number): HTMLElement {
+    const bell = document.createElement('button');
+    bell.getBoundingClientRect = () =>
+      ({ top: bottom - 44, bottom, left: right - 44, right, width: 44, height: 44 }) as DOMRect;
+    return bell;
+  }
+
+  it('is fixed under the bell, so a hero that clips its overflow cannot cut it off (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+
+    const pop = document.createElement('div');
+    placeUnder(bellAt(78, 1240), pop);
+
+    expect(pop.style.position).toBe('fixed');
+    expect(pop.style.top).toBe('86px');
+    expect(pop.style.right).toBe('40px');
+    expect(pop.style.maxHeight).toBe('704px');
+  });
+
+  it("stays inside a 320 window when the bell sits left of the popover's width (sc-3931)", () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(320);
+
+    const pop = document.createElement('div');
+    vi.spyOn(pop, 'offsetWidth', 'get').mockReturnValue(272);
+
+    placeUnder(bellAt(78, 92), pop);
+    expect(pop.style.right).toBe('24px');
+    placeUnder(bellAt(78, 300), pop);
+    expect(pop.style.right).toBe('20px');
+  });
+
+  it('keeps its foot in the window when a band above moves the bell down (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+
+    const pop = document.createElement('div');
+
+    placeUnder(bellAt(144, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 152 - 10}px`);
+    placeUnder(bellAt(40, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 96}px`);
+  });
+
+  it('places the open popover under the bell, and again on a scroll outside it but not inside it (#84360)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+
+    expect(pop?.style.position).toBe('fixed');
+    expect(pop?.style.top).toBe('86px');
+    expect(pop?.style.right).toBe('40px');
+
+    bottom = 144;
+    fireEvent.scroll(container.querySelector('.bell-body') ?? document);
+    expect(pop?.style.top).toBe('86px');
+
+    fireEvent.scroll(document);
+    expect(pop?.style.top).toBe('152px');
+  });
+
+  it('follows the bell when the offline band of the page arrives above it and leaves (#84630)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+    expect(pop?.style.top).toBe('86px');
+
+    const band = document.createElement('div');
+    bottom = 144;
+    document.body.prepend(band);
+    await waitFor(() => expect(pop?.style.top).toBe('152px'));
+
+    bottom = 78;
+    band.remove();
+    await waitFor(() => expect(pop?.style.top).toBe('86px'));
+  });
+
+  it('scrolls only the items', () => {
+    expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
+    expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
+  });
+
+  it('draws each mark in a tinted 40 square', () => {
+    const glyph = cssRule('.bell-glyph', BELL_CSS);
+    expect(glyph).toMatch(/width: 40px;/u);
+    expect(glyph).toMatch(/height: 40px;/u);
+    expect(glyph).toMatch(/background: var\(--colorInset\);/u);
+  });
+
+  it('keeps the gone line inset under its item, over the popover reset of p margins', () => {
+    expect(cssRule('.bell-pop p', BELL_CSS)).toMatch(/margin: 0;/u);
+    expect(cssRule('.bell-gone', BELL_CSS)).toBe('');
+    expect(cssRule('.bell-row > .bell-gone', BELL_CSS)).toMatch(
+      /margin: calc\(-1 \* var\(--spaceSm\)\) 0 var\(--spaceLg\) 56px;/u,
     );
   });
 
-  it("moves in the board's motion", () => {
-    expect(cssRule('.notifications-panel')).toMatch(/animation: rise-in var\(--motionBase\)/u);
-    expect(cssRule('.notification-mute')).toMatch(/animation: rise-in var\(--motionBase\)/u);
-    expect(cssRule('.notifications-failure-line')).toMatch(
-      /animation: drop-in var\(--motionFast\)/u,
-    );
-    expect(cssRule('.notifications-failed')).toMatch(/animation: drop-in var\(--motionFast\)/u);
-    expect(cssRule('.notifications-skeleton')).toMatch(
-      /animation: skeleton-pulse var\(--motionPulse\)/u,
-    );
-    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
-      /transition: transform var\(--motionBase\)/u,
-    );
-  });
-
-  it('fades, and holds the skeleton and the switch still, under Reduce Motion', () => {
-    expect(STYLES).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{\s*\.notifications-panel,\s*\.notification-mute,\s*\.notifications-failure-line,\s*\.notifications-failed \{\s*animation-name: fade-in;\s*\}\s*\.notifications-skeleton \{\s*animation: none;\s*\}\s*\.notification-mute \.notification-switch-track,\s*\.notification-mute \.notification-switch-knob \{\s*transition: none;\s*\}\s*\}/u,
+  it('holds the popover still under Reduce Motion', () => {
+    expect(BELL_CSS).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.bell-pop \{\s*animation: none;\s*\}\s*\}/u,
     );
   });
 });
 
-describe('the heading at 320px (sc-21358)', () => {
-  it('keeps the heading whole and wraps Mark all as read under it', () => {
-    expect(cssRule('.notifications-header')).toMatch(/flex-wrap: wrap;/u);
-    expect(cssRule('.notifications-header h2')).toMatch(/flex: none;/u);
-    expect(cssRule('.notifications-header .link-button')).toMatch(/text-align: start;/u);
+describe('the marks (sc-83081)', () => {
+  it.each([
+    ['guest_replies', 'users'],
+    ['messages', 'message'],
+    ['event_changes', 'calendar'],
+    ['event_day', 'day'],
+    ['money', 'wallet'],
+    ['account_security', 'shield'],
+  ])('gives %s its category mark, hidden from a screen reader', async (category) => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ category })], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const shown = await screen.findByRole('button', { name: /^Ada Obi changed the event/ });
+
+    expect(shown.querySelector('.bell-glyph svg')).not.toBeNull();
+    expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('keeps an item of a category it does not know, with the plain bell for its mark, and counts it (sc-84143)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [
+            item({
+              id: 'n9',
+              category: 'venue_news',
+              title: 'Ana Souza added a note to the event',
+              lines: [],
+            }),
+          ],
+          unreadCount: 1,
+          next: null,
+        }),
+      'POST /api/notifications/read-all': () => json({ unreadCount: 0 }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const shown = await screen.findByRole('button', {
+      name: /^Ana Souza added a note to the event/,
+    });
+    const { container: plain } = render(<Glyph name="bell" size={20} />);
+
+    expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
+    expect(shown.querySelector('.bell-glyph')?.innerHTML).toBe(plain.innerHTML);
+    expect(shown.textContent).toContain('Unread');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByText('All read.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^Ana Souza added a note to the event/ }).textContent,
+    ).not.toContain('Unread');
   });
 });
 
@@ -708,7 +904,7 @@ describe('offline (sc-27096)', () => {
     });
   }
 
-  const band = () => document.querySelector('.notifications-band');
+  const band = () => document.querySelector('.bell-band');
 
   it('shows its own band under the header, keeps the feed, and Try again reloads only the feed with what arrived meanwhile', async () => {
     let unseen = false;
@@ -732,7 +928,7 @@ describe('offline (sc-27096)', () => {
     goOffline(net);
 
     expect(band()?.textContent).toMatch(/^Offline · as of /);
-    expect(band()?.previousElementSibling?.classList.contains('notifications-header')).toBe(true);
+    expect(band()?.previousElementSibling?.classList.contains('bell-head')).toBe(true);
     expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
 
     net.reachable = true;
@@ -746,7 +942,7 @@ describe('offline (sc-27096)', () => {
       name: /^(Kemi replied|Ada Obi changed the event)/,
     });
     expect(rows[0]?.textContent).toMatch(/^Kemi replied.*Unread/);
-    expect(rows[0]?.classList.contains('unread')).toBe(true);
+    expect(rows[0]?.querySelector('.bell-title.is-unread')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' })),
@@ -865,10 +1061,9 @@ describe('offline (sc-27096)', () => {
     const heading = screen.getByRole('heading', { name: 'Notifications' });
     expect(heading.textContent).toBe('Notifications');
     expect(heading.contains(refreshing)).toBe(false);
-    expect(refreshing.closest('.notifications-heading')).toBe(heading.parentElement);
+    expect(refreshing.closest('.bell-heading')).toBe(heading.parentElement);
     expect(band()?.textContent).toMatch(/^Offline · as of /);
-    expect(cssRule('.notifications-heading')).toMatch(/flex-wrap: wrap;/u);
-    expect(cssRule('.notifications-band')).toMatch(/padding-inline: var\(--spaceXl\);/u);
+    expect(cssRule('.bell-heading', BELL_CSS)).toMatch(/flex-wrap: wrap;/u);
   });
 
   it('shows the band above an empty feed, and Try again reloads it', async () => {

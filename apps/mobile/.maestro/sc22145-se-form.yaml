@@ -31,15 +31,15 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: se-refused
 - tapOn:
-    id: 'eventDuplicate.start.date'
+    id: 'eventDuplicate.date'
 - tapOn:
-    id: 'eventDuplicate.start.done'
+    id: 'events.pick.done'
 - tapOn:
-    id: 'eventDuplicate.start.time'
+    id: 'eventDuplicate.time'
 - waitForAnimationToEnd
 - takeScreenshot: se-time-sheet
 - tapOn:
-    id: 'eventDuplicate.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - swipe:
     start: 50%, 80%

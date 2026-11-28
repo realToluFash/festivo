@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { showPushInForeground } from '../src/appPush.ts';
 import { LandingToast } from '../src/components/LandingToast.tsx';
 import { WindowOrigin } from '../src/components/Screen.tsx';
+import { opensOver } from '../src/steps/signInOver.ts';
 import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
@@ -20,6 +21,7 @@ import { useRereadOnMoves } from '../src/rereadOnMoves.ts';
 import { loadBoldText } from '../src/theme/boldText.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 
 void SplashScreen.preventAutoHideAsync();
 showPushInForeground();
@@ -36,6 +38,7 @@ export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const reduced = useReducedMotion();
   const sheet = useStepsInSheet();
+  const phone = useLayout().kind === 'phone';
   useRereadOnMoves();
   const [message, setMessage] = useState('');
 
@@ -103,10 +106,20 @@ export default function RootLayout() {
             >
               {/* On an iPad, email sign-in opens as a sheet over welcome and rises with the keys (sc-29076). */}
               <Stack.Screen
-                name="sign-in"
-                options={({ navigation }) => ({
-                  presentation: sheet && navigation.canGoBack() ? 'formSheet' : 'card',
+                name="(sign-in)"
+                options={({ route }) => ({
+                  presentation:
+                    sheet && route.key != null && opensOver(route.key) ? 'formSheet' : 'card',
                 })}
+              />
+              {/* On a tablet Search is a palette over the page it was opened from (sc-39534). */}
+              <Stack.Screen
+                name="search"
+                options={
+                  phone
+                    ? {}
+                    : { presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }
+                }
               />
             </Stack>
             <LandingToast />

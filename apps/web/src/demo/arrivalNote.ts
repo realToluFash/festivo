@@ -23,7 +23,6 @@ export const NOTE_WORDS = {
   hint: 'How to find the entrance, where to park, when the doors open. Every guest sees this on their page.',
   tooLong: `Shorten the arrival note to ${String(NOTE_MOST)} characters or fewer.`,
   oneField: '1 field needs fixing, so nothing was sent.',
-  forbidden: 'Nothing was changed. Your role does not include the permission this needs.',
 } as const;
 
 /** What the form, the app and the API count: code points after NFC, of the text that will be saved. */

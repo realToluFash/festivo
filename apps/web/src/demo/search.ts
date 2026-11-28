@@ -42,14 +42,15 @@ export const TYPING_PAUSE_MS = 250;
 
 export const SEARCH_WORDS = {
   search: 'Search',
-  placeholder: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][0],
-  idle: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][1],
+  idle: (reach: Reach) => HINT_WORDS[kindsOf(reach)],
   short: 'Type at least 2 characters.',
   searching: 'Searching…',
   showAll: 'Show all in Events',
   nothing: (term: string) => `Nothing matches “${term}”.`,
   clear: 'Clear search',
   offline: 'Search needs a connection.',
+  failed: 'Search did not work. Try again in a moment.',
+  tryAgain: 'Try again',
   keys: '↑ ↓ to move · Enter to open · Esc to close',
   results: 'Results',
   matches: (count: number) => (count === 1 ? '1 match' : `${count} matches`),
@@ -59,16 +60,16 @@ export const SEARCH_WORDS = {
 
 type Kinds = '' | 'e' | 'g' | 'm' | 'eg' | 'em' | 'gm' | 'egm';
 
-/** One whole sentence for each combination of kinds, never assembled from words; nothing to find is "Search" and no hint. */
-const FIELD_WORDS: Record<Kinds, readonly [string, string | null]> = {
-  egm: ['Search events, guests and members', 'Find an event, a guest or a member.'],
-  eg: ['Search events and guests', 'Find an event or a guest.'],
-  em: ['Search events and members', 'Find an event or a member.'],
-  gm: ['Search guests and members', 'Find a guest or a member.'],
-  e: ['Search events', 'Find an event.'],
-  g: ['Search guests', 'Find a guest.'],
-  m: ['Search members', 'Find a member.'],
-  '': ['Search', null],
+/** The field reads "Search" for everyone (sc-53041); the hint names the scope, one whole sentence per combination, never assembled. */
+const HINT_WORDS: Record<Kinds, string | null> = {
+  egm: 'Find an event, a guest or a member.',
+  eg: 'Find an event or a guest.',
+  em: 'Find an event or a member.',
+  gm: 'Find a guest or a member.',
+  e: 'Find an event.',
+  g: 'Find a guest.',
+  m: 'Find a member.',
+  '': null,
 };
 
 function kindsOf(reach: Reach): Kinds {
@@ -316,7 +317,7 @@ export function browserPlatform(): string | undefined {
   return agent.userAgentData?.platform ?? navigator.platform;
 }
 
-export type Phase = 'idle' | 'short' | 'loading' | 'found' | 'offline';
+export type Phase = 'idle' | 'short' | 'loading' | 'found' | 'offline' | 'failed';
 
 export const SEARCH_STATES = [
   { key: 'idle', term: '', name: 'Idle, an owner: Find an event, a guest or a member.' },
@@ -339,6 +340,11 @@ export const SEARCH_STATES = [
   { key: 'two-events', term: 'duarte', name: '“duarte”: one guest on two events, two rows' },
   { key: 'long', term: 'quinta', name: '“quinta”: Events 6 with Show all in Events, a long name' },
   { key: 'offline', term: 'ines', name: 'Offline: Search needs a connection.' },
+  {
+    key: 'failed',
+    term: 'ines',
+    name: 'Online, the search failed: Search did not work. Try again in a moment.',
+  },
 ] as const;
 
 export type SearchStateName = (typeof SEARCH_STATES)[number]['key'];
@@ -370,7 +376,8 @@ export function searchStart(
   reach: Reach = REACHES.owner,
 ): SearchStart {
   const term = SEARCH_STATES.find((one) => one.key === state)?.term ?? '';
-  const phase = state === 'loading' ? 'loading' : state === 'offline' ? 'offline' : phaseOf(term);
+  const phase =
+    state === 'loading' || state === 'offline' || state === 'failed' ? state : phaseOf(term);
 
   return {
     term,

@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { type Action, type Messages, startOf } from './MessagesModel.ts';
 import type { PersonKey } from './MessagesSample.ts';
-import { EMPTY_LINE, isEmail, isPhone, reachViewOf, reduceReach, resendOf } from './Reach.ts';
+import { say } from './MessagesWords.ts';
+import {
+  EMPTY_LINE,
+  emailBounced,
+  isEmail,
+  isPhone,
+  reachViewOf,
+  reduceReach,
+  resendOf,
+} from './Reach.ts';
+import { REASON_GROUPS } from './ReasonsSample.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduceReach, m);
 const ELEVEN = [
@@ -40,6 +50,20 @@ describe('the address checks', () => {
     expect(isPhone('+46 70 123 45 67')).toBe(true);
     expect(isPhone('070 123 45 67')).toBe(false);
     expect(isPhone('+44 12')).toBe(false);
+  });
+});
+
+describe('Fix email address', () => {
+  it('says which bounced only when the email line reads Bounced', () => {
+    const lineOf = (key: string) => {
+      const person = REASON_GROUPS.flatMap((group) => group.people).find((one) => one.key === key);
+      return person == null ? null : say.wasAddress(person.bounced ?? '', emailBounced(person));
+    };
+
+    expect(lineOf('tomas')).toBe('Was tomas.ferreira@gmial.com, which bounced.');
+    expect(lineOf('chidi')).toBe('Was chidi.okeke@gmail.com.');
+    expect(lineOf('rafael')).toBe('Was rafael.costa@uol.com.br.');
+    expect(lineOf('yuki')).toBe('Was yuki.tanaka@icloud.com.');
   });
 });
 
@@ -249,7 +273,7 @@ describe('the resend', () => {
       still: 8,
       names: [
         'Joaquín Ruiz · No email address · No phone number',
-        'Sophie Laurent · Unsubscribed · Texted STOP',
+        'Sophie Laurent · Unsubscribed · Stopped texts',
       ],
     });
   });
@@ -294,6 +318,61 @@ describe('on an event that can’t send (?state=closedEnded)', () => {
     expect(reachViewOf(marked, 'parking').title).toBe('Reached 132 of 142');
     expect(reachViewOf(run(marked, { type: 'undoTold', key: 'yuki' }), 'parking').title).toBe(
       'Reached 131 of 142',
+    );
+  });
+});
+
+describe('read without sending (?state=noManage)', () => {
+  it('shows every status and reason, with no fix, no mark, no Send again and no Resend', () => {
+    const m = run(startOf('noManage', false), {
+      type: 'open',
+      open: { kind: 'reached', of: 'parking' },
+    });
+    const view = reachViewOf(m, 'parking');
+    const people = view.groups.flatMap((group) => group.people);
+
+    expect(view.title).toBe('Reached 131 of 142');
+    expect(people.length).toBeGreaterThan(0);
+    expect(people.every((person) => person.fixes.length === 0 && !person.offer)).toBe(true);
+    expect(people.some((person) => person.lines.length > 0)).toBe(true);
+    expect(view.resend).toBe(0);
+    expect(run(m, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+  });
+});
+
+describe('texts that failed (?state=reachedSmsFailed)', () => {
+  it('lists six more in Reached, email delivered and SMS failed with its reason, the counts unchanged', () => {
+    const failed = reachViewOf(startOf('reachedSmsFailed', false), 'draft');
+    const sent = reachViewOf(startOf('sentReached', false), 'draft');
+    const reached = failed.groups.find((group) => group.key === 'reached');
+
+    expect(failed.title).toBe(sent.title);
+    expect(failed.parts).toEqual(sent.parts);
+    expect(reached?.count).toBe(38);
+    expect(reached?.more).toBe('and 31 more');
+    expect(
+      reached?.people
+        .slice(1)
+        .map((person) => [
+          person.name,
+          ...person.lines.map((line) => [line.mark, line.word, line.reason]),
+        ]),
+    ).toEqual(
+      [
+        ['Chidi Okonkwo', 'Number not in use (30005)'],
+        ['Ana Pereira', 'Number cannot receive texts (30006)'],
+        ['Hana Sato', 'Phone off or out of signal (30003)'],
+        ['Mateo García', 'Blocked by their network (30007)'],
+        ['Léa Martin', 'No reason given (30008)'],
+        ['João Santos', 'No reason given'],
+      ].map(([name, reason]) => [
+        name,
+        ['delivered', 'Email · Delivered', '09:41'],
+        ['bounced', 'SMS · Failed', reason],
+        name === 'Chidi Okonkwo'
+          ? ['delivered', 'Their page', 'Seen 09:42']
+          : ['none', 'Their page', 'Not seen yet'],
+      ]),
     );
   });
 });

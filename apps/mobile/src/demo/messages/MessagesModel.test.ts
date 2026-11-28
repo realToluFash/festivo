@@ -1,7 +1,9 @@
+import { BELL_STATES } from './BellStates.ts';
 import { init } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
+import { NOTICE_STATES } from './NoticeStates.ts';
 
 import {
   type Action,
@@ -36,6 +38,7 @@ import {
   overOf,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
+import { SMS_STATES } from './Sms.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import {
   NOT_REACHED,
@@ -49,6 +52,7 @@ import { filledAs } from './PreviewModel.ts';
 import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
+import { REASON_STATES } from './TrySms.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 
@@ -62,9 +66,16 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(85);
-    expect(MESSAGES_STATES.slice(72, 75)).toEqual([
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s nine, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-46343’s 12, sc-3978’s, sc-3946’s, sc-3966’s seven, sc-4330’s, sc-83081’s eleven and sc-84143’s one, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(197);
+    expect(MESSAGES_STATES.slice(-12)).toEqual([...BELL_STATES]);
+    const reasonsAt = MESSAGES_STATES.indexOf('reasons');
+    expect(MESSAGES_STATES.slice(reasonsAt, reasonsAt + 7)).toEqual([...REASON_STATES]);
+    expect(MESSAGES_STATES.slice(MESSAGES_STATES.indexOf('sendWithout') + 1).slice(0, 17)).toEqual([
+      ...NOTICE_STATES,
+    ]);
+    expect(MESSAGES_STATES.slice(127, 133)).toEqual([...SMS_STATES]);
+    expect(MESSAGES_STATES.slice(79, 82)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
       'whatsAppRead',
@@ -77,7 +88,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27, 59)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 62)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -109,6 +120,9 @@ describe('the states', () => {
       'longMessage',
       'closedDraft',
       'closedEnded',
+      'noManage',
+      'noManageDraft',
+      'noManageEnded',
       'forbidden',
     ]);
   });
@@ -256,6 +270,7 @@ describe('the check', () => {
       credits: 31,
       after: '1,469',
       whatsApp: false,
+      smsReach: 'SMS reaches 31 of 96 · 65 have no mobile number',
     });
   });
 
@@ -578,6 +593,19 @@ describe('a scheduled message', () => {
     expect(sectionsOf(saved).scheduled.map(nameOf)).toEqual(['sched']);
   });
 
+  it('previews an edit of a scheduled message, goes back to it, and saves from the preview', () => {
+    const editing = run(startOf('scheduledEdit', false), { type: 'body', text: 'New words' });
+    const previewed = reduce(editing, { type: 'preview' });
+    expect(previewed.draft).toMatchObject({ step: 'preview', body: 'New words' });
+    expect(previewed.draft?.was).not.toBeNull();
+
+    expect(reduce(previewed, { type: 'edit' }).draft).toMatchObject({ step: 'write' });
+    expect(reduce(previewed, { type: 'edit' }).draft?.was).not.toBeNull();
+
+    const saved = reduce(previewed, { type: 'saveScheduled' });
+    expect(saved.draft).toMatchObject({ step: 'scheduled', was: null, body: 'New words' });
+  });
+
   it('sends now through the check and the ten seconds, or keeps its time', () => {
     const now = reduce(startOf('scheduled', false), { type: 'sendNow' });
     expect(now.draft?.step).toBe('check');
@@ -694,7 +722,7 @@ describe('Tell guests after a change', () => {
     };
     const change = tellChange(wedding, moved, 'en-US');
 
-    expect(change.what).toEqual(['New dates', 'New venue']);
+    expect(change.what).toEqual(['New date', 'New venue']);
     expect(change.lines[0]).toMatch(/^The dates are now .+ \(was .+\)\.$/u);
     expect(change.lines[1]).toBe('The venue is now Oslo Hall (was The Landmark).');
   });
@@ -884,6 +912,43 @@ describe('sc-32077’s four states', () => {
     expect(done.done).toContain('lucia');
     expect(run(done, { type: 'markWaiting', key: 'lucia' }).done).not.toContain('lucia');
     expect(run(ended, { type: 'match', name: 'Marie Dubois' }).matched).toBe('Marie Dubois');
+  });
+
+  it('reads without sending with messages.read alone, on a live, a Draft and a long-finished event', () => {
+    expect(startOf('noManage', false)).toMatchObject({
+      noManage: true,
+      closed: null,
+      phase: 'list',
+    });
+    expect(startOf('noManageDraft', false)).toMatchObject({
+      noManage: true,
+      closed: 'draft',
+      phase: 'first',
+      kept: [],
+    });
+    expect(startOf('noManageEnded', true)).toMatchObject({ noManage: true, closed: 'ended' });
+    expect(startOf('noManage', false).reader).toBe('Kofi Mensah');
+    expect(startOf('closedEnded', false).noManage).toBe(false);
+  });
+
+  it('opens no New message, follow-up, resend or answer for a member who only reads', () => {
+    const m = startOf('noManage', true);
+    expect(run(m, { type: 'newMessage' })).toEqual(m);
+    expect(run(m, { type: 'followUp', base: 'parking' })).toEqual(m);
+    expect(run(m, { type: 'resending', open: true }).resending).toBe(false);
+    expect(run(m, { type: 'answer', key: 'lucia', text: 'See you there' }).answers).toEqual({});
+    const writing = { ...m, draft: sampleDraft('write'), open: { kind: 'draft' } as const };
+    expect(run(writing, { type: 'send' }).draft?.step).toBe('write');
+  });
+
+  it('leaves a scheduled message as it is for a member who only reads', () => {
+    const scheduled = { ...startOf('scheduled', false), noManage: true };
+    expect(run(scheduled, { type: 'sendNow' })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'editScheduled' })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'askCancel', open: true })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'cancelScheduled' })).toEqual(scheduled);
+    const editing = { ...startOf('scheduledEdit', false), noManage: true };
+    expect(run(editing, { type: 'saveScheduled' })).toEqual(editing);
   });
 
   it('refuses without messages.read: no count', () => {

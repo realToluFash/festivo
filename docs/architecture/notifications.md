@@ -41,8 +41,9 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
   delivery, cancelled. A payment reminder answers false once the payment is made.
 - **`thread()`** names the bell item a type's messages share, or null for an item of its
   own. See [Threads](#threads).
-- **`collapseKey()`**: rows due together for one person on one channel that share a key go
-  out as one message, rendered from every payload at once.
+- **`collapseKey($payload)`**: rows due together for one person on one channel that share a key go
+  out as one message, rendered from every payload at once, and a push replaces the one shown
+  under the same key.
 - **`render()`** writes the message in the recipient's language.
 
 A type that answers an event action also replaces its `Notice::awaiting('sc-N')` entry in
@@ -97,6 +98,11 @@ between is handled as they are then.
   each with an optional `except`, the person who acted. The fan-out reads roles; each
   delivery then asks the member's grants again, as narrowed by sign-in rules, and cancels
   when they no longer hold it.
+- **Members as of a moment**: `Audience::membersJoinedBy` leaves out whoever joined after it,
+  so a change told to every member is not told to somebody who joined under it. A change of
+  sign-in rules goes this way (`SignInRulesNotice`, sc-18317): one row per save, fanned out
+  by the worker, never one email per member written inside the request. It is not urgent,
+  so a code queued behind a million of them still goes first.
 - **Guests**: `Audience::guests($eventId, $conditions)` is accepted and stored. sc-3942
   adds its resolver with All guests and Choose guests, and sc-3957 adds the conditions to
   it; until sc-3942 merges such a row is recorded Failed.
@@ -107,9 +113,27 @@ between is handled as they are then.
   still asks again when the row goes. So somebody who joins mid-window hears nothing from
   before they joined, and every change costs about a dozen statements per member before
   the request returns. The in-app items are still one row per change, resolved when sent.
+- **One person** (`Audience::person`) is the other exception: every account and security
+  email (`AccountMail`, sc-4332) goes to the address it was written to when it was queued.
+  `UserMailer::send` writes the scheduled row and its one email delivery together, in the
+  caller's transaction, with the subject and body already in the person's language, so the
+  organisation deletion email still reaches every member after the organisation has gone.
+  The scheduler refuses a send with no transaction open: the change it tells of is written
+  in the same one, so a queue write that fails takes the change back with it. Each type is
+  urgent and cannot be switched off. A code's delivery carries the code's expiry as
+  `send_by`: past it, it is recorded Failed with `code expired`, and a newer code to the
+  same address records the older pending one Superseded. Its scheduled row's payload, which
+  holds the code or the link's token, is emptied once its delivery is over, sent or not.
+  The idempotency key's source is the code's issue for a code, so the same code queued
+  twice sends once and a resend is a new send. The sign-up's "you already have an account"
+  email is queued on every sign-up for a taken address, superseding like a code, and the
+  worker records it Cancelled when one went to the address in the last hour, so a taken
+  address costs the request exactly what a fresh one does.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
-  push only rides along with another channel and is never the only way somebody hears.
+  push only rides along with another channel and is never the only way somebody hears,
+  except for a type that offers push alone: what it says is told nowhere else, so missing it
+  loses nothing. The run-of-show card (sc-66580) is the one such type.
 
 ## The worker
 
@@ -175,7 +199,10 @@ one sender, `PushSender`, and two providers behind `PushServiceInterface`:
   way a session ends), and with the account, by the foreign key. A session that runs out
   unused is never sent to. Expo's receipts are not polled: no story runs its own sweep.
 - **Collapse**: `collapseKey()` is the Web Push `Topic` (hashed to its 32 characters) and
-  Expo's `collapseId`, `threadId` and `tag`.
+  Expo's `collapseId`, `threadId` and `tag`. iOS takes 64 bytes of it.
+- **Silent** (`RenderedNotification::$silent`): the app alone, passive on iOS and on the app's
+  `run_of_show` Android channel, which makes no sound and no pop-up. The run-of-show card
+  (sc-66580), which the app also writes itself under the same key, so either replaces the other.
 - **One attempt** sends to every live device. It succeeds if any took it, and fails to be
   retried only when none did; a member with no live device is **Failed** at once, as email
   is with no address.
@@ -227,6 +254,28 @@ pause or a delete, not a retry's backoff, not a claim in progress.
 - **Failing**: more than 5% of the last hour's sends ended Failed, in an hour of at least 20.
 
 The local stack runs no scheduler, so run it by hand there. sc-1612 routes the lines.
+
+`app:mail:check-rates` does the same for email over 24 hours: a `critical` line when hard
+bounces exceed 2% or complaints 0.08% of the emails sent, both from the provider's reports.
+The prod crontab runs it hourly, at a quarter past.
+
+## The mail provider's webhook
+
+`POST /api/webhooks/mail` takes the provider's reports (sc-4332). Postmark signs nothing, so
+the request needs the basic-auth credentials in `MAIL_WEBHOOK_SECRET` (`user:password`) and
+a client address inside `MAIL_WEBHOOK_ALLOWED_RANGES` (CIDRs, commas); either unset refuses
+every report with a 401. The email carries its delivery id as `X-PM-Metadata-delivery`,
+which Postmark returns as `Metadata.delivery`. Delivered, Bounced (hard bounces only) and
+Complained go on the delivery's `provider_report`, whose status stays Sent, and a milder
+report never replaces a worse one. A hard bounce or a complaint adds the address to
+`email_suppressions`: from then on a non-security email to it is recorded Cancelled with
+`address suppressed` and never handed to the provider, while security mail (codes,
+recovery, new device, two-factor) still goes. The list keeps no address, only its keyed
+hash (`EmailAddressHash`: HMAC-SHA256 of the address lowercased and trimmed, under
+`GUEST_COMPLAINT_KEY`, sc-93044, sc-93364). That key is never rotated, because a new value
+un-stops every address on the list and nothing holds the addresses to hash again; a new
+`APP_SECRET` leaves the list as it was. Locally, POST
+Postmark's JSON with the stack's credentials to stand in for the provider.
 
 ## Deleted events
 

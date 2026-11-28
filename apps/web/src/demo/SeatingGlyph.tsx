@@ -65,6 +65,51 @@ const SEATING_GLYPHS = {
     { cx: 3.5, cy: 12, r: 1 },
     { cx: 3.5, cy: 18, r: 1 },
   ],
+  alignLeft: [
+    { d: 'M4 3v18' },
+    { x: 7, y: 6, w: 12, h: 4, rx: 1 },
+    { x: 7, y: 14, w: 7, h: 4, rx: 1 },
+  ],
+  alignCentre: [
+    { d: 'M12 3v18' },
+    { x: 5, y: 6, w: 14, h: 4, rx: 1 },
+    { x: 8, y: 14, w: 8, h: 4, rx: 1 },
+  ],
+  alignRight: [
+    { d: 'M20 3v18' },
+    { x: 5, y: 6, w: 12, h: 4, rx: 1 },
+    { x: 10, y: 14, w: 7, h: 4, rx: 1 },
+  ],
+  alignTop: [
+    { d: 'M3 4h18' },
+    { x: 6, y: 7, w: 4, h: 12, rx: 1 },
+    { x: 14, y: 7, w: 4, h: 7, rx: 1 },
+  ],
+  alignMiddle: [
+    { d: 'M3 12h18' },
+    { x: 6, y: 5, w: 4, h: 14, rx: 1 },
+    { x: 14, y: 8, w: 4, h: 8, rx: 1 },
+  ],
+  alignBottom: [
+    { d: 'M3 20h18' },
+    { x: 6, y: 5, w: 4, h: 12, rx: 1 },
+    { x: 14, y: 10, w: 4, h: 7, rx: 1 },
+  ],
+  spaceAcross: [{ d: 'M3 4v16' }, { d: 'M21 4v16' }, { x: 9, y: 8, w: 6, h: 8, rx: 1 }],
+  spaceDown: [{ d: 'M4 3h16' }, { d: 'M4 21h16' }, { x: 8, y: 9, w: 8, h: 6, rx: 1 }],
+  selectAll: [
+    { x: 4, y: 4, w: 16, h: 16, rx: 3 },
+    { x: 8, y: 8, w: 8, h: 8, rx: 1 },
+  ],
+  choiceAdd: [
+    { d: 'M4 8V5a1 1 0 0 1 1-1h3' },
+    { d: 'M16 4h3a1 1 0 0 1 1 1v3' },
+    { d: 'M20 16v3a1 1 0 0 1-1 1h-3' },
+    { d: 'M8 20H5a1 1 0 0 1-1-1v-3' },
+    { d: 'M12 9v6' },
+    { d: 'M9 12h6' },
+  ],
+  choiceOn: [{ x: 4, y: 4, w: 16, h: 16, rx: 3 }, { d: 'M8 12.5l2.5 2.5L16 9.5' }],
   cloudOff: [
     { d: 'M3 3l18 18' },
     { d: 'M8.5 6.3A6 6 0 0 1 17.6 10H18a4 4 0 0 1 2.4 7.2' },

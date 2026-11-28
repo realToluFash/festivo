@@ -37,6 +37,8 @@ import {
   SubPage,
 } from './DataControlParts.tsx';
 import { useLoad, useOpen } from './useDataControl.ts';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import { DataSettings } from './DataSettings.tsx';
 import { EmailDomains } from './EmailDomains.tsx';
 import { ExportData } from './ExportData.tsx';
@@ -51,11 +53,10 @@ const LEADS: Record<HubRow['page'], DrawnName | 'globe' | 'users'> = {
   guestRequest: 'users',
 };
 
-const STEP_WORDS: Record<HubStep, string> = {
+const STEP_WORDS: Record<Exclude<HubStep, 'contact'>, string> = {
   download: W.download,
   seeRecord: W.seeRecord,
   prove: W.prove,
-  contact: S.contact,
   checkRun: W.checkRun(RUN_COUNT),
 };
 
@@ -97,7 +98,7 @@ export function DataControl({
 
 function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
-  const [start] = useState(() => hubStart(state));
+  const [start] = useState(() => hubStart(pageStateOf('hub', state)));
   const [load, retry] = useLoad(start.load);
   const [view, setView] = useState(start.view);
   const said = useRef<HTMLDivElement>(null);
@@ -105,7 +106,7 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
 
   if (load !== 'loaded')
     return (
-      <SubPage page="hub" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="hub" title={W.title} viewer={viewer} tell={tell} above="notices">
         {load === 'failed' ? (
           <PageFailed words={W.failed} onRetry={retry} />
         ) : (
@@ -114,27 +115,29 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
       </SubPage>
     );
 
-  const onStep = (step: HubStep) => {
+  const onStep = (step: Exclude<HubStep, 'contact'>) => {
     if (step === 'download') {
       setView((now) => ({ ...now, exported: 'used' }));
       focusWhenFree(() => said.current);
     } else if (step === 'seeRecord') open('emailDomains', 'ed_record');
     else if (step === 'prove') open('emailDomains', 'ed_add');
-    else if (step === 'checkRun') open('deleteGuestData', 'rt_held');
-    else tell(S.contactTold);
+    else open('deleteGuestData', 'rt_held');
   };
   const card = hubCard(view, viewer, locale);
+  const shown = card.step;
   const rows = hubRows(view, viewer, locale);
 
   return (
-    <SubPage page="hub" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="hub" title={W.title} viewer={viewer} tell={tell} above="offline">
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step != null && (
-          <CardStep label={STEP_WORDS[card.step]} onClick={() => card.step && onStep(card.step)} />
+        {shown === 'contact' ? (
+          <EnterpriseStep viewer={viewer} state={state} tell={tell} />
+        ) : (
+          shown != null && <CardStep label={STEP_WORDS[shown]} onClick={() => onStep(shown)} />
         )}
       </Card>
       <HubGroup title={W.control} rows={rows.control} viewer={viewer} />

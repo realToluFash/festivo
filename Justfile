@@ -32,6 +32,7 @@ setup:
 # Start everything and wait until each service can answer, not merely exist.
 # The notification worker answers once the database is migrated.
 up:
+    node scripts/migrate-storage-key.mjs
     {{COMPOSE}} up -d --remove-orphans
     services="$(node scripts/stack-services.mjs)" && {{COMPOSE}} up -d --wait --no-recreate $services
 
@@ -54,8 +55,8 @@ logs service="api":
 #
 # Rebuild the API image and restart it.
 rebuild-api:
-    {{COMPOSE}} build api notification-worker
-    {{COMPOSE}} up -d api notification-worker
+    {{COMPOSE}} build api notification-worker service-heartbeat
+    {{COMPOSE}} up -d api notification-worker service-heartbeat
 
 # A shell in the API container.
 shell:

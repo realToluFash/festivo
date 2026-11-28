@@ -2,10 +2,11 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Animated, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -15,6 +16,7 @@ import { useLoad } from '../settings/MembersLoading.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
+import { TagLineCheck, WholeWordsTag } from './PeopleTag.tsx';
 import {
   ADD_PROMPT,
   addedToast,
@@ -36,13 +38,14 @@ import {
   READ_ONLY,
   removedToast,
   rowLine,
+  seenBy,
   seesEveryEvent,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './PeopleSample.ts';
 import { AddBox, PeopleLoading } from '../../components/PeopleParts.tsx';
-import { useShell } from '../../components/settingsShell.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 
 const LIT_MS = 2000;
@@ -54,14 +57,17 @@ interface Opened {
   visit: number;
 }
 
-/** People on an event in A, one list with the role in a sheet, on sample data. */
-export function PeopleSection() {
-  const { state, code, show, hold } = useLocalSearchParams<{
-    state?: string;
-    code?: string;
-    show?: string;
-    hold?: string;
-  }>();
+export type PeopleParams = {
+  state?: string;
+  code?: string;
+  show?: string;
+  hold?: string;
+};
+
+/** People on an event in A, one list with the role in a sheet, on sample data; `params` in place of the route's, as the event page's own query is not People's. */
+export function PeopleSection({ params }: { params?: PeopleParams }) {
+  const route = useLocalSearchParams<PeopleParams>();
+  const { state, code, show, hold } = params ?? route;
   const shown = show ?? hold;
   const door = useMemo(() => doorStartOf(state, code, shown), [state, code, shown]);
   const name = peopleStateOf(state);
@@ -79,8 +85,10 @@ function openedAtStart(start: PeopleStart): Opened | null {
 }
 
 function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
-  const { layout } = useShell();
   const { load, retry } = useLoad(start.load);
+  const { fontScale } = useWindowDimensions();
+  const tagWhole = atAccessibilitySizes(fontScale);
+  const [tagBreaks, setTagBreaks] = useState<Readonly<Record<string, boolean>>>({});
   const viewer = start.viewer;
   const [world] = useState(() => start.world ?? ireWorld());
   const members = world.members;
@@ -143,7 +151,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   }
 
   const back = {
-    label: layout === 'phone' ? 'More' : 'Overview',
+    label: 'Overview',
     onPress: () => (router.canGoBack() ? router.back() : router.replace('/demo')),
   };
 
@@ -163,7 +171,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
       </PeoplePage>
     );
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
 
   return (
     <>
@@ -207,6 +215,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                 const isLit = lit?.id === one.id;
                 const opensRow = opens(one, viewer, onEvent);
                 const line = rowLine(one, viewer);
+                const tag = one.outside ? outsideTag(world.organisation) : null;
+                const tagChecked = tag != null && tagWhole;
+                const tagUnder = tagChecked && tagBreaks[one.id] === true;
 
                 return {
                   key: one.id,
@@ -226,10 +237,36 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                           else rows.current.set(one.id, node);
                         }}
                         title={one.name}
-                        line={line}
+                        titleMayBeAddress
+                        line={tagUnder ? undefined : line}
+                        below={
+                          tagChecked ? (
+                            <>
+                              <TagLineCheck
+                                word={tag}
+                                onBreaks={(breaks) =>
+                                  setTagBreaks((now) =>
+                                    now[one.id] === breaks ? now : { ...now, [one.id]: breaks },
+                                  )
+                                }
+                              />
+                              {tagUnder && <WholeWordsTag word={tag} />}
+                              {tagUnder && line != null && (
+                                <Text
+                                  size={14}
+                                  weight="medium"
+                                  accessible={false}
+                                  style={styles.rowLine}
+                                >
+                                  {line}
+                                </Text>
+                              )}
+                            </>
+                          ) : undefined
+                        }
                         lead={<Face person={one} side={40} />}
                         tag={
-                          one.outside ? { kind: 'now', word: outsideTag(world.organisation) } : null
+                          tag == null || tagUnder ? null : { kind: 'now', word: tag, wraps: true }
                         }
                         trail={
                           opensRow ? (
@@ -243,11 +280,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                         }
                         accent={isLit}
                         onPress={opensRow ? () => openRole(one) : undefined}
-                        accessibilityLabel={[
-                          one.name,
-                          one.outside ? outsideTag(world.organisation) : null,
-                          line,
-                        ]
+                        accessibilityLabel={[one.name, tag, line]
                           .filter((part) => part != null)
                           .join('. ')}
                         testID={`people.row.${one.id}`}
@@ -289,14 +322,23 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           viewer={viewer}
           organisation={world.organisation}
           opener={focusBack}
+          country={world.country}
           refuses={start.addRefuses}
+          startTyped={start.addTyped}
+          startRole={start.addRole}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}
-          onAdd={(role, added, finished) => {
-            const next = withAdded(onEvent, role, added);
-            setOnEvent(next.onEvent);
+          onAdd={(added, finished) => {
+            const next = withAdded(onEvent, added.role, added.members);
+            const all =
+              added.outside == null
+                ? next.onEvent
+                : withOutside(next.onEvent, added.role, added.outside.address, added.outside.job);
+            setOnEvent(all);
             if (!finished) return;
             setAdding((was) => ({ ...was, open: false }));
-            setToast(addedToast(next.names, role));
+            const names =
+              added.outside == null ? next.names : [...next.names, added.outside.address.shown];
+            setToast(addedToast(names, added.role));
           }}
         />
       )}
@@ -306,6 +348,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
 
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
+  rowLine: { color: tokens.colorInkSecondary, lineHeight: 14 * 1.4 },
   count: { fontVariant: ['tabular-nums'] },
   nobody: { gap: tokens.spaceXs },
   lit: {

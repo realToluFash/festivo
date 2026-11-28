@@ -7,10 +7,12 @@ export const OTHER = 'Grace Udo';
 export const COURSE = 'Mains';
 export const BEHIND_AFTER = 20;
 
-export type Word = 'behind' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
+export type Word =
+  'behind' | 'choice' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
 
 export const WORD_ORDER: readonly Word[] = [
   'behind',
+  'choice',
   'serve',
   'tray',
   'kitchen',
@@ -20,6 +22,7 @@ export const WORD_ORDER: readonly Word[] = [
 ];
 
 export const WORD: Record<Word, string> = {
+  choice: 'Waiting for a choice',
   behind: 'Behind',
   serve: 'To serve',
   tray: 'On a tray',
@@ -99,6 +102,7 @@ export interface RoomTable {
   has: Partial<Record<Exclude<Word, 'behind'>, boolean>>;
   earlier?: string | undefined;
   wait: number | null;
+  waitUnheld?: number | null | undefined;
   seats: Seat[];
   trays: Tray[];
   requests: Request[];
@@ -155,7 +159,8 @@ export function closedRequests(t: RoomTable): Request[] {
 
 export function isBehind(t: RoomTable): boolean {
   const onItsWay = t.trays.some((tr) => tr.stage === 'On its way' && !tr.paused);
-  return t.wait != null && t.wait >= BEHIND_AFTER && !onItsWay;
+  const wait = t.waitUnheld === undefined ? t.wait : t.waitUnheld;
+  return wait != null && wait >= BEHIND_AFTER && !onItsWay;
 }
 
 export function wordOf(t: RoomTable): Word {
@@ -601,7 +606,7 @@ export type Strip = 'connected' | 'offline' | 'notStarted' | 'refreshing' | 'unr
 export function stripLine(strip: Strip): string {
   switch (strip) {
     case 'connected':
-      return `Connected · up to date ${NOW}`;
+      return `Connected · up to date at ${NOW}`;
     case 'offline':
       return `No connection · as of ${AS_OF}`;
     case 'notStarted':
@@ -640,6 +645,7 @@ export const ROOM_STATES = [
   'loading',
   'refreshing',
   'unreachable',
+  'runOutPlan',
 ] as const;
 
 export type RoomStateName = (typeof ROOM_STATES)[number];
@@ -677,7 +683,11 @@ export const ROOM_STATE_WHAT: Record<RoomStateName, string> = {
   loading: 'Loading',
   refreshing: 'Refreshing',
   unreachable: 'Couldn’t refresh, trying again',
+  runOutPlan:
+    'Chicken run out (sc-59384): tables 3, 9, 12 and 14 read Waiting for a choice; held guests add no wait toward Behind, so table 9 is not Behind and Section B is Behind on table 8',
 };
+
+const WAITING_FOR_CHOICE = [3, 9, 12, 14];
 
 export interface Room {
   name: RoomStateName;
@@ -808,6 +818,19 @@ export function roomSeed(name: RoomStateName): Room {
       return { ...base, strip: 'refreshing' };
     case 'unreachable':
       return { ...base, strip: 'unreachable' };
+    case 'runOutPlan':
+      return {
+        ...base,
+        tables: base.tables.map((t) =>
+          WAITING_FOR_CHOICE.includes(t.n)
+            ? {
+                ...t,
+                has: { ...(t.has.notFired === true ? { serve: true } : t.has), choice: true },
+                waitUnheld: null,
+              }
+            : t,
+        ),
+      };
   }
 }
 

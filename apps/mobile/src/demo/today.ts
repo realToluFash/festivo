@@ -1,4 +1,4 @@
-import { greetingAt } from '@soirely/domain';
+import { greetingAt, sharePercent } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { writtenTime } from './clock.ts';
@@ -18,7 +18,8 @@ import {
 } from '../kit/today.ts';
 import { EVENT_OF_KEY as IDS } from './events/EventsSample.ts';
 import { type Guests, SAMPLE_GUESTS } from './events/GuestCounts.ts';
-import { needsOf, type YouEvent } from './today/needsYou.ts';
+import { needsOf, type YouEvent } from '../kit/todayNeeds.ts';
+import { demoT } from './today/needsYou.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 
@@ -63,7 +64,7 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2026-11-28',
     place: 'Clerkenwell, London',
     draft: false,
-    mesh: 'accent',
+    mesh: 'party',
   },
   draft: {
     name: 'Bisi & Kola’s engagement',
@@ -121,24 +122,19 @@ export function howFar(today: string, date: string): string {
   return days === 1 ? 'tomorrow' : `in ${days} days`;
 }
 
-type Item = readonly [time: string, title: string, event: EventKey, note: string];
+type Item = readonly [
+  time: string,
+  title: string | ((guests: GuestsOf) => string),
+  event: EventKey,
+  note: string,
+];
 
 const AGENDA: Record<
   Exclude<MomentName, 'first' | 'dayNow'>,
   readonly (readonly [string, Item[]])[]
 > = {
   plan: [
-    [
-      '2026-11-03',
-      [
-        [
-          '10:00',
-          `Reminder goes to the ${owedOf('ireti')} who haven’t replied`,
-          'ireti',
-          'Automatic',
-        ],
-      ],
-    ],
+    ['2026-11-03', [['10:00', (guests) => reminderOf('ireti', guests), 'ireti', 'Automatic']]],
     ['2026-11-04', [['09:00', 'Meal choices close', 'wed', 'Automatic']]],
     ['2026-11-05', [['18:00', 'Welcome dinner', 'wed', 'Day 1 of 3']]],
     [
@@ -177,14 +173,6 @@ function builtNow(today: string): readonly (readonly [string, Item[]])[] {
   return [[today, []], ...AGENDA.planNow.filter(([date]) => date > today)];
 }
 
-/** To the nearest whole percent, except that 100% means everyone and 0% nobody (sc-29881). */
-export function sharePercent(part: number, whole: number): number {
-  if (part >= whole) return 100;
-  if (part <= 0) return 0;
-
-  return Math.min(99, Math.max(1, Math.round((part / whole) * 100)));
-}
-
 type GuestsOf = Readonly<Record<string, Guests>>;
 
 /** `?invites=none`: the planning day before the end-of-year party's invitations have gone out. */
@@ -192,6 +180,26 @@ export const INVITES_NOT_SENT: GuestsOf = {
   ...SAMPLE_GUESTS,
   [IDS.party]: { invited: 0, coming: 0, replied: 0 },
 };
+
+/** `?invites=unanswered`: the party's invitations are out and nobody has replied yet. */
+export const NO_REPLIES_YET: GuestsOf = {
+  ...SAMPLE_GUESTS,
+  [IDS.party]: { invited: SAMPLE_GUESTS[IDS.party]?.invited ?? 0, coming: 0, replied: 0 },
+};
+
+/** `?figures=hidden` (no guests.read) and `?figures=failed`: no guest number reaches the device. */
+export const NO_FIGURES: GuestsOf = {};
+
+export function planGuests(
+  invites: string | undefined,
+  figures: string | undefined,
+): GuestsOf | undefined {
+  if (figures === 'hidden' || figures === 'failed') return NO_FIGURES;
+  if (invites === 'none') return INVITES_NOT_SENT;
+  if (invites === 'unanswered') return NO_REPLIES_YET;
+
+  return undefined;
+}
 
 /** sc-29881's line, from the guests Events' tiles count (sc-23284), so Today and Events agree. */
 export function repliesOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): EventCard['ready'] {
@@ -202,13 +210,16 @@ export function repliesOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): Even
 
   const percent = sharePercent(guests.replied, guests.invited);
 
-  return { words: `${guests.coming} coming · ${percent}% replied`, percent };
+  return { words: `${guests.coming} coming · ${percent}% replied`, percent, track: true };
 }
 
-function owedOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): number {
+/** With no figures on the device the reminder names nobody's number (sc-29881). */
+function reminderOf(key: EventKey, sample: GuestsOf): string {
   const guests = sample[IDS[key]];
 
-  return guests == null ? 0 : guests.invited - guests.replied;
+  return guests == null
+    ? 'Reminder goes to those who haven’t replied'
+    : `Reminder goes to the ${guests.invited - guests.replied} who haven’t replied`;
 }
 
 /** The events whose line each moment draws. */
@@ -420,6 +431,8 @@ function owedOn([key, due, title = KITCHEN]: Owed): YouEvent {
   return {
     shown: sample(key),
     startsAt: `${EVENTS[key].first}T12:00:00Z`,
+    endsAt: `${EVENTS[key].first}T22:00:00Z`,
+    status: 'live',
     timeZone: SAMPLE_ZONE,
     permissions: ['menu.manage'],
     milestones: [
@@ -444,7 +457,9 @@ function needs(
           : null;
 
   // Half a minute into the minute, so a milestone at 23:59 has passed at the demo's 23:59.
-  return owed == null ? null : needsOf(owed.map(owedOn), new Date(`${date}T${time}:30Z`), say.day);
+  return owed == null
+    ? null
+    : needsOf(owed.map(owedOn), new Date(`${date}T${time}:30Z`), say.day, demoT);
 }
 
 function now(today: string, time: string, say: Say): Now {
@@ -464,8 +479,13 @@ function now(today: string, time: string, say: Say): Now {
     until: `until ${say.clock('17:30')}`,
     behind: '10 min behind',
     next: { time: say.clock('18:00'), title: 'Dinner is served' },
-    arrived: 87,
-    expected: 99,
+    arrived: {
+      count: '87',
+      of: '99',
+      share: 87 / 99,
+      label: 'arrived',
+      spoken: '87 of 99 arrived',
+    },
     rail: RAIL.map(([stop, name], index) => ({
       time: say.hour(stop),
       name,
@@ -561,7 +581,7 @@ export function momentOf(
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
         allDay: at === '',
-        title,
+        title: typeof title === 'string' ? title : title(guests),
         event: sample(event),
         note,
       })),

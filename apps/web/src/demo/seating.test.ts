@@ -1,32 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chairSaid,
+  chairWord,
+  chairsTakePointer,
   type Item,
+  type Point,
+  keepsClear,
+  newItem,
   EVENT_DAY,
   MADE_AT,
   asOf,
   eventDay,
   SEATING_PAGES,
+  CRUMB_WORDS,
+  LONG_NAME,
+  crumbOf,
   SEATING_STATES,
   SW,
   bounds,
+  chairsFit,
   chairsOf,
   deletePlanWords,
   extent,
   feet,
   filled,
   fitOf,
+  freedFrom,
+  focusReach,
+  intoView,
   inside,
   keepSeats,
+  marksOf,
   leastUsed,
+  many,
+  seatChosenWords,
   metres,
   nearestFree,
   nextName,
   overlap,
   percentOf,
+  percentWritten,
   planCounts,
+  planFitOf,
   readFeet,
   readItemSize,
+  readEnds,
+  readTableSeats,
+  readTableSize,
   readMetres,
   readRoom,
   readingOrder,
@@ -36,12 +57,14 @@ import {
   sampleTray,
   unsureLeft,
   peopleIn,
+  sectionDeleteWords,
   sectionLine,
   sideBySide,
   squeezed,
   usable,
   detailOf,
   endsLine,
+  isTable,
 } from './seating.ts';
 import { seedOf } from './seatingSeed.ts';
 
@@ -115,7 +138,60 @@ describe('the sample (seating-a-spec §8)', () => {
   });
 });
 
+describe('deleting a section names what loses it (sc-54060)', () => {
+  const into = (ids: readonly string[]) =>
+    samplePlan().items.map((item) => ({ ...item, sec: ids.includes(item.id) ? 'quiet' : null }));
+  const firstTables = (n: number) =>
+    samplePlan()
+      .items.filter((item) => item.kind !== 'row' && item.kind !== 'single')
+      .slice(0, n)
+      .map((item) => item.id);
+
+  it('names each kind alone, the verb from the total', () => {
+    expect(sectionDeleteWords(into(firstTables(3)), 'quiet')).toBe(
+      'Its 3 tables stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into(firstTables(1)), 'quiet')).toBe(
+      'Its 1 table stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['rowA']), 'quiet')).toBe(
+      'Its 1 row stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['door']), 'quiet')).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['door', 'interp']), 'quiet')).toBe(
+      'Its 2 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('joins the kinds it has, zeros left out, and counts a row once', () => {
+    expect(sectionDeleteWords(into([...firstTables(3), 'rowA', 'door']), 'quiet')).toBe(
+      'Its 3 tables, 1 row and 1 single seat stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into([...firstTables(1), 'rowA']), 'quiet')).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into(['rowA', 'door']), 'quiet')).toBe(
+      'Its 1 row and 1 single seat stay where they are, with no section.',
+    );
+  });
+
+  it('says nothing for an empty section', () => {
+    expect(sectionDeleteWords(into([]), 'quiet')).toBe('');
+  });
+});
+
 describe('the room to scale (sc-4007)', () => {
+  it('says it for one item outside the room and them for more, as the product does (sc-4000)', () => {
+    const sizes = { width: '20 m', length: '18 m' };
+
+    expect(many('shrinkRefused', 1, sizes)).toBe('1 item sits outside 20 m × 18 m. Move it first.');
+    expect(many('shrinkRefused', 3, sizes)).toBe(
+      '3 items sit outside 20 m × 18 m. Move them first.',
+    );
+  });
+
   it('fits the 24 × 18 m room at 57% in the desk’s 718 × 719 room, with 84 above and below', () => {
     const fit = fitOf(718, 719, samplePlan().room!);
 
@@ -123,11 +199,103 @@ describe('the room to scale (sc-4007)', () => {
     expect(fit.ox).toBe(16);
   });
 
-  it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {
+  it('fits a 100 × 80 m room at 25%, its centre at the centre of the floor (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 10000, l: 8000 });
+
+    expect(percentOf(fit.s)).toBe(25);
+    expect(fit.ox + (10000 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (8000 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a 2 × 2 m room at 400%, whole and centred (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 200, l: 200 });
+
+    expect(percentOf(fit.s)).toBe(400);
+    expect(fit.ox + (200 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (200 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a room between 25% and 400% as the whole-room fit does (sc-57678)', () => {
+    const room = samplePlan().room!;
+
+    expect(planFitOf(718, 719, room)).toEqual(fitOf(718, 719, room));
+  });
+
+  it.each([
+    ['en', /^150%$/],
+    ['es', /^150\s%$/],
+    ['fr', /^150\s%$/],
+    ['pt', /^150%$/],
+  ])('writes the zoom percent the way %s does, as the product does (#2559)', (locale, shown) => {
+    expect(percentWritten(150, locale)).toMatch(shown);
+  });
+
+  it('slides the picture just enough to show a focused item clear of the bars, and not at all when it shows', () => {
+    expect(intoView({ x0: 200, y0: 300, x1: 300, y1: 400 }, 718, 719)).toEqual([0, 0]);
+    expect(intoView({ x0: 800, y0: 300, x1: 900, y1: 400 }, 718, 719)).toEqual([-206, 0]);
+    expect(intoView({ x0: -400, y0: -50, x1: -300, y1: 50 }, 718, 719)).toEqual([424, 142]);
+    expect(intoView({ x0: 100, y0: 600, x1: 200, y1: 700 }, 718, 719)).toEqual([0, -73]);
+    expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719)).toEqual([924, 0]);
+  });
+
+  it('slides a focused item out from under the small map by the shorter way that stays in view', () => {
+    const smallMap = { x0: 530, y0: 507, x1: 702, y1: 639 };
+
+    expect(intoView({ x0: 600, y0: 540, x1: 660, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      0, -101,
+    ]);
+    expect(intoView({ x0: 300, y0: 540, x1: 360, y1: 600 }, 718, 719, [smallMap])).toEqual([0, 0]);
+  });
+
+  it('slides a row wider than the view up from under the small map, keeping its left edge, as the product does (sc-57361)', () => {
+    const smallMap = { x0: 534, y0: 499, x1: 706, y1: 639 };
+
+    expect(intoView({ x0: -900, y0: 550, x1: 900, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      924, -109,
+    ]);
+  });
+
+  it('slides a box taller than the view sideways clear of a bar, keeping its top edge (sc-57361)', () => {
+    const bar = { x0: 24, y0: 200, x1: 80, y1: 500 };
+
+    expect(intoView({ x0: 50, y0: 500, x1: 100, y1: 1400 }, 718, 719, [bar])).toEqual([38, -408]);
+  });
+
+  it('lines a wide row up with its top edge when no pan up or down clears the bar (sc-57361)', () => {
+    const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
+
+    expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+
+  it('reaches 20 px past a focused item for its ring and halo, further once it is turned (sc-57361)', () => {
+    const row = { ...newItem('row', [], [0, 0]), rot: 0 };
+
+    expect(focusReach(row)).toBe(20);
+    expect(focusReach({ ...row, rot: 90 })).toBeCloseTo(20);
+    expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
+  });
+
+  it('draws outlines under 50%, chairs from 50%, and their numbers from 150%', () => {
     expect(detailOf(0.2)).toBe('out');
     expect(detailOf(0.25)).toBe('fit');
     expect(detailOf(0.5)).toBe('fit');
     expect(detailOf(0.75)).toBe('near');
+  });
+
+  it('adds the reply only to the chair on the picture (sc-5030)', () => {
+    const chair = { state: 'taken' as const, who: 'Chidi Obi' };
+
+    expect(chairWord(chair)).toBe('Chidi Obi');
+    expect(chairSaid(chair)).toBe('Chidi Obi, Coming');
+    expect(chairSaid({ ...chair, reply: 'notSure' as const })).toBe('Chidi Obi, Not sure yet');
+    expect(chairSaid({ state: 'empty' })).toBe(chairWord({ state: 'empty' }));
+  });
+
+  it('gives a chair the pointer only once it is a 44 target, table by table', () => {
+    expect(chairsTakePointer(byId('t1'), 0.5)).toBe(false);
+    expect(chairsTakePointer(byId('t1'), 0.75)).toBe(true);
+    expect(chairsTakePointer(byId('rowA'), 0.75)).toBe(false);
+    expect(chairsTakePointer(byId('rowA'), 1)).toBe(true);
   });
 
   it('puts seat 1 at the top of a round table and goes clockwise', () => {
@@ -181,6 +349,55 @@ describe('moving and overlapping (sc-5028)', () => {
     expect(plan.items.some((item) => overlap(placed, item))).toBe(false);
     expect(inside(placed, plan.room!)).toBe(true);
   });
+
+  it('keeps rows 90 cm apart and a single seat clear of the last one and its name', () => {
+    const room = { name: 'Hall', w: 2400, l: 1800 };
+    const centre: Point = [1200, 900];
+    const rowA = { ...newItem('row', [], centre), x: 1200, y: 900 };
+    const rowB = newItem('row', [rowA], centre);
+    const [, by] = nearestFree(rowB, [rowA], room, centre);
+
+    expect(by - rowA.y).toBe(90);
+
+    const one = { ...newItem('single', [], centre), x: 1200, y: 900 };
+    const two = newItem('single', [one], centre);
+    const [tx, ty] = nearestFree(two, [one], room, centre);
+    const placed = { ...two, x: tx, y: ty };
+
+    expect([tx, ty]).toEqual([1200, 990]);
+    expect(keepsClear(placed, [one])).toBe(true);
+    expect(keepsClear({ ...placed, x: 1260, y: 900 }, [one])).toBe(false);
+  });
+
+  it('falls back to no overlap when nothing keeps the clearance', () => {
+    const room = { name: 'Box', w: 140, l: 60 };
+    const one = { ...newItem('single', [], [30, 30]), x: 30, y: 30 };
+    const [x, y] = nearestFree(newItem('single', [one], [30, 30]), [one], room, [30, 30]);
+    const placed = { ...newItem('single', [one], [30, 30]), x, y };
+
+    expect(overlap(placed, one)).toBe(false);
+    expect(inside(placed, room)).toBe(true);
+  });
+
+  it('places every new row and seat quickly, even once the hall is full', () => {
+    const room = { name: 'Hall', w: 2400, l: 1800 };
+    const centre: Point = [1200, 900];
+    const items: Item[] = [];
+    let slowest = 0;
+
+    for (let n = 0; n < 120; n += 1) {
+      const draft = newItem(n % 3 === 2 ? 'single' : 'row', items, centre);
+      const began = performance.now();
+      const [x, y] = nearestFree(draft, items, room, centre);
+
+      slowest = Math.max(slowest, performance.now() - began);
+      items.push({ ...draft, x, y });
+    }
+
+    expect(items.some((item) => !keepsClear(item, items))).toBe(true);
+    expect(items.every((item) => inside(item, room))).toBe(true);
+    expect(slowest).toBeLessThan(500);
+  }, 30_000);
 
   it('names the next table, row and seat by the first free number or letter', () => {
     const items = sampleItems();
@@ -264,6 +481,43 @@ describe('sizes in the organisation’s units', () => {
   });
 });
 
+describe('a table’s limits (sc-4000)', () => {
+  it('takes 1 to 30 seats or places, refusing blank, words and out of range', () => {
+    expect(readTableSeats('30', false)).toEqual({ n: 30 });
+    expect(readTableSeats('31', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('0', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('ten', true)).toEqual({ refused: SW.placesRange });
+  });
+
+  it('takes a size from 40 cm to 10 m, or 1 ft 4 in to 32 ft 9 in', () => {
+    expect(readTableSize('40', 'metric')).toEqual({ cm: 40 });
+    expect(readTableSize('1000', 'metric')).toEqual({ cm: 1000 });
+    expect(readTableSize('39', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
+    expect(readTableSize('1001', 'metric')).toEqual({
+      refused: 'Enter a size from 40 cm to 10 m.',
+    });
+    expect(readTableSize('', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
+    expect(readTableSize('16 in', 'us')).toEqual({ cm: 40.64 });
+    expect(readTableSize('15 in', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
+    expect(readTableSize('33 ft', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
+    expect(readTableSize('wide', 'us')).toEqual({ refused: SW.usHint });
+  });
+
+  it('takes 0 to the table’s seats on the ends', () => {
+    expect(readEnds('0', 8)).toEqual({ n: 0 });
+    expect(readEnds('8', 8)).toEqual({ n: 8 });
+    expect(readEnds('9', 8)).toEqual({
+      refused: 'Enter 0 to 8, no more than the table has seats.',
+    });
+    expect(readEnds('', 8)).toEqual({ refused: 'Enter 0 to 8, no more than the table has seats.' });
+  });
+});
+
 describe('Delete the plan’s ask (pm, 8 Nov 2026)', () => {
   it('names what it deletes, sections counted, then who loses a seat, a held chair too', () => {
     const plan = samplePlan();
@@ -314,10 +568,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in seven groups', () => {
+  it('links every state from the demo’s home, in eleven groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(7);
+    expect(SEATING_PAGES).toHaveLength(11);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });
@@ -332,5 +586,69 @@ describe('the states (§6)', () => {
     expect(words).not.toMatch(/—/u);
     expect(words).not.toMatch(/\bMaybe\b/u);
     expect(words).not.toMatch(/\b(AM|PM)\b/u);
+  });
+});
+
+describe('the breadcrumb (sc-55300)', () => {
+  it('names the event at the longest an event name may be', () => {
+    expect([...LONG_NAME]).toHaveLength(120);
+  });
+
+  it('gives the long name and the French words only to their states', () => {
+    expect(crumbOf('plan', 'Wedding')).toEqual({ name: 'Wedding', lang: 'en' });
+    expect(crumbOf('longName', 'Wedding')).toEqual({ name: LONG_NAME, lang: 'en' });
+    expect(crumbOf('longNameFr', 'Wedding')).toEqual({ name: LONG_NAME, lang: 'fr' });
+    expect(CRUMB_WORDS.fr).toEqual({
+      crumb: 'Fil d’Ariane',
+      events: 'Événements',
+      area: 'Plan de table',
+    });
+  });
+});
+
+describe('a colleague’s marks on Tables and the List (sc-60717)', () => {
+  const ana = { name: 'Ana Souza', initials: 'AS', tone: 2, viewer: false };
+  const sade = { name: 'Sade Bello', initials: 'SB', tone: 1, viewer: true };
+  const rings = { t7: [{ who: sade }, { who: ana, seat: 2 }] };
+
+  it('never marks a viewer’s choice, and marks nothing while reconnecting', () => {
+    expect(marksOf(rings, 'chips', 't7').map((one) => one.who.name)).toEqual(['Ana Souza']);
+    expect(marksOf(rings, 'reconnecting', 't7')).toEqual([]);
+    expect(marksOf(rings, 'chips', 'nothing')).toEqual([]);
+  });
+
+  it('names who chose a chair, and nobody on another', () => {
+    const marks = marksOf(rings, 'chips', 't7');
+
+    expect(seatChosenWords(marks, 2)).toBe(', chosen by Ana Souza');
+    expect(seatChosenWords(marks, 0)).toBe('');
+  });
+});
+
+describe('the guests a deleted or emptied item frees', () => {
+  it('sends each taken chair back to Without a seat on their own, coming, and skips held or empty chairs', () => {
+    const table: Item = {
+      ...newItem('round', [], [0, 0]),
+      chairs: [
+        { state: 'taken', who: 'Ines Duarte', party: 'p1' },
+        { state: 'held', who: 'Musa Bello' },
+        { state: 'empty' },
+        { state: 'taken', who: 'Kofi Mensah' },
+      ],
+    };
+
+    expect(freedFrom([table])).toEqual([
+      { id: 'back-Ines Duarte', name: 'Ines Duarte', companions: [], group: null, reply: 'coming' },
+      { id: 'back-Kofi Mensah', name: 'Kofi Mensah', companions: [], group: null, reply: 'coming' },
+    ]);
+  });
+});
+
+describe('a Tables card’s chairs (sc-4013)', () => {
+  it('gives each chair a 24 px target where the card leaves room, and a long row none', () => {
+    const tight = samplePlan().items.filter((item) => !chairsFit(item));
+
+    expect(tight.map((item) => item.name)).toEqual(['Row A']);
+    expect(samplePlan().items.filter(isTable).every(chairsFit)).toBe(true);
   });
 });

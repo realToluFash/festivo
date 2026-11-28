@@ -44,6 +44,7 @@ function event(id: string, name: string, rest: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,
@@ -135,14 +136,21 @@ describe('the sidebar’s Your events at a desk (sc-39290)', () => {
     expect(within(sidebar()).getByRole('link', { name: /^Folake Adeyemi/u })).toBeDefined();
   });
 
-  it('leaves an event’s page its own sidebar', async () => {
+  it('leaves an event’s page its own sidebar once the event has loaded', async () => {
     signedIn(membership({ id: 'org_1' }));
-    const fetched = serving({ org_1: EVENTS });
+    const listed = serving({ org_1: EVENTS });
+    const read = listed.getMockImplementation();
+    listed.mockImplementation(async (input, init) =>
+      new URL(String(input)).pathname === '/api/events/ev_sooner'
+        ? new Response(JSON.stringify({ event: event('ev_sooner', 'Tunde & Amaka’s wedding') }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ETag: '"1"' },
+          })
+        : read!(input, init),
+    );
     open('/app/events/ev_sooner');
 
-    await waitFor(() => expect(fetched).toHaveBeenCalled());
-    await act(async () => {});
-
+    await within(sidebar()).findByRole('link', { name: /Guests/u });
     expect(within(sidebar()).queryByRole('heading', { name: 'Your events' })).toBeNull();
   });
 

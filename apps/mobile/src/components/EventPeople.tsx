@@ -1,39 +1,51 @@
 import {
   type AddableMember,
+  type DoorCodeCard,
+  EVENT_LEVELS,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { firstName, initials, numberFormat } from '@soirely/domain';
+import { initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
+import { AppState, Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
+import { atWords, inMadeOrder, shownCode } from '../kit/doorCodes.ts';
 import {
+  JOB_LABEL_MOST,
   addRefused,
+  holderOf,
   inListOrder,
   joinedLine,
+  keepWord,
   managesPeople,
+  notChangedLine,
   nowCan,
+  offerLine,
   offered,
   opensRow,
+  personShown,
   rowLine,
   seesEveryEvent,
 } from '../kit/eventPeople.ts';
 import { toneOf } from '../kit/personFace.ts';
 import { refusalSaid } from '../kit/refusal.ts';
 import { glide } from '../motion.ts';
+import { useServerNow } from '../kit/serverNow.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { DoorCodes } from './DoorCodes.tsx';
 import { Glyph } from './Glyph.tsx';
 import {
   AddBox,
   AddScreen,
   type AddWords,
+  type OutsideAdd,
   PeopleLoading,
   PersonFace,
   RoleSheet,
@@ -43,6 +55,7 @@ import {
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { codeClock } from './useCodeAsk.ts';
 
 /** `addable` is null for whoever may not change People, and when its read failed: Add people stays off and the list still shows. */
 type Load =
@@ -54,9 +67,13 @@ type Load =
       owners: string[];
       admins: string[];
       addable: AddableMember[] | null;
+      /** Null for whoever may not change People, and when its read failed; in the order they were made. */
+      doorCodes: DoorCodeCard[] | null;
     };
 
 const LIT_MS = 2000;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
 const ROW_INSET = 40 + tokens.spaceLg;
 const FIRST_ROLE: EventRole = 'can_view';
 
@@ -66,9 +83,29 @@ function Face({ name, id, side }: { name: string; id: string; side: number }) {
   return <PersonFace initials={letters} tone={toneOf(id)} side={side} />;
 }
 
-function roleWords(t: TFunction): RoleWords<EventRole> {
+function PersonMark({ person, side }: { person: EventPerson; side: number }) {
+  const shown = personShown(person);
+  if (shown.kind === 'named') return <Face name={shown.name} id={shown.userId} side={side} />;
+
+  return (
+    <PersonFace
+      initials={null}
+      tone={toneOf(person.id)}
+      side={side}
+      mark={shown.kind === 'address' ? shown.mark : 'user'}
+    />
+  );
+}
+
+function nameOf(t: TFunction, person: EventPerson): string {
+  const shown = personShown(person);
+
+  return shown.kind === 'notJoined' ? t('eventPeople.notJoined') : shown.name;
+}
+
+function roleWords(t: TFunction, roles: readonly EventRole[] = EVENT_ROLES): RoleWords<EventRole> {
   return {
-    roles: EVENT_ROLES,
+    roles,
     name: (role) => t(`eventPeople.role.${role}`),
     means: (role) => t(`eventPeople.roleMeans.${role}`),
     saving: t('eventPeople.saving'),
@@ -81,25 +118,23 @@ function sheetWords(
   person: EventPerson,
   organisation: string,
 ): RoleSheetWords<EventRole> {
-  const name = person.user.name;
+  const name = nameOf(t, person);
 
   return {
-    ...roleWords(t),
+    ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
     title: t('eventPeople.roleTitle'),
     done: t('eventPeople.done'),
     remove: t('eventPeople.remove'),
     removeTitle: t('eventPeople.removeTitle', { name }),
-    removeLine: t('eventPeople.removeLine', { organisation }),
-    keep: t('eventPeople.keep', { name: firstName(name) }),
+    removeLine: person.outside
+      ? t('eventPeople.removeLineOutside')
+      : t('eventPeople.removeLine', { organisation }),
+    keep: keepWord(t, person),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
     savedHeard: (role) =>
       t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
-    notChanged: (held) =>
-      t('eventPeople.changeFailed', {
-        name: firstName(name),
-        role: t(`eventPeople.role.${held}`),
-      }),
+    notChanged: (held) => notChangedLine(t, person, name, held),
     removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
   };
 }
@@ -112,7 +147,7 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     cancel: t('eventPeople.cancel'),
     done: t('eventPeople.done'),
     theirRole: t('eventPeople.theirRole'),
-    find: t('eventPeople.find'),
+    find: t('eventPeople.findAnyone'),
     inOrganisation: t('eventPeople.inOrganisation', { organisation }),
     noMatch: (typed) => t('eventPeople.noMatch', { organisation, typed }),
     discardTitle: t('eventPeople.discardTitle'),
@@ -121,6 +156,23 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     discard: t('eventPeople.discard'),
     refusal: (error, role, went, left) => addRefused(t, error, role, went, left),
     everyoneOn: nothingLeft ? t('eventPeople.everyoneOn', { organisation }) : undefined,
+  };
+}
+
+function outsideWords(
+  t: TFunction,
+  organisation: string,
+): OutsideAdd<EventRole, EventPerson>['words'] {
+  return {
+    find: t('eventPeople.findAnyone'),
+    findName: t('eventPeople.find'),
+    fromOutside: t('eventPeople.fromOutside', { organisation }),
+    leadOff: t('eventPeople.leadOff', { organisation }),
+    pickAnother: t('eventPeople.pickAnother'),
+    unusable: t('eventPeople.unusable'),
+    onAlready: (name) => t('eventPeople.onAlready', { name }),
+    jobLabel: t('eventPeople.jobLabel'),
+    jobHelp: (job) => t('eventPeople.jobHelp', { length: [...job].length, most: JOB_LABEL_MOST }),
   };
 }
 
@@ -136,8 +188,11 @@ export function EventPeople({
   const { account, organisation } = useSignedIn();
   const locale = currentLocale();
   const userId = account?.id ?? null;
-  const organisationName = organisation?.name ?? '';
+  const outsideIn = account?.outsideEvents.find((one) => one.id === event.id);
+  const organisationName = organisation?.name ?? outsideIn?.organisationName ?? '';
+  const country = organisation?.countryCode ?? '';
   const manages = managesPeople(event);
+  const now = useServerNow();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [opened, setOpened] = useState<{ id: string; open: boolean; visit: number } | null>(null);
@@ -154,9 +209,13 @@ export function EventPeople({
     const addableRead = manages
       ? api.addableEventMembers(event.id).catch(() => null)
       : Promise.resolve(null);
+    const codesRead = manages
+      ? api.doorCodes(event.id).then(inMadeOrder, () => null)
+      : Promise.resolve(null);
 
-    Promise.all([api.eventPeople(event.id), addableRead]).then(
-      ([read, addable]) => live && setLoad({ kind: 'loaded', ...read, addable }),
+    Promise.all([api.eventPeople(event.id), addableRead, codesRead]).then(
+      ([read, addable, doorCodes]) =>
+        live && setLoad({ kind: 'loaded', ...read, addable, doorCodes }),
       () => live && setLoad({ kind: 'failed' }),
     );
 
@@ -164,6 +223,45 @@ export function EventPeople({
       live = false;
     };
   }, [event.id, attempt, manages]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const next = () => {
+      timer = setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (AppState.currentState !== 'active') return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? inMadeOrder(await api.doorCodes(event.id)) : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!live) return;
+          // A change made on the screen while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => live && next(),
+      );
+    };
+    next();
+
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
 
   useEffect(() => {
     if (lit == null || lit.held) return;
@@ -228,7 +326,7 @@ export function EventPeople({
     );
     setOpened((was) => (was == null ? null : { ...was, open: false }));
     setLit(null);
-    tell(t('eventPeople.removed', { name: gone.user.name }));
+    tell(t('eventPeople.removed', { name: nameOf(t, gone) }));
     api.addableEventMembers(event.id).then(
       (addable) => setLoad((was) => (was.kind !== 'loaded' ? was : { ...was, addable })),
       () => undefined,
@@ -260,7 +358,7 @@ export function EventPeople({
       nowCan(
         t,
         role,
-        added.map((one) => one.user.name),
+        added.map((one) => nameOf(t, one)),
       ),
     );
   }
@@ -269,6 +367,18 @@ export function EventPeople({
     <View style={styles.blocks}>
       {manages && addable != null && (
         <AddBox ref={addBox} label={t('eventPeople.addPrompt')} onPress={openAdd} />
+      )}
+      {manages && load.doorCodes != null && (
+        <DoorCodes
+          event={event}
+          codes={load.doorCodes}
+          onCodes={(change) =>
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, doorCodes: change(was.doorCodes ?? []) } : was,
+            )
+          }
+          tell={tell}
+        />
       )}
       {people.length === 0 ? (
         <View style={styles.nobody}>
@@ -290,8 +400,12 @@ export function EventPeople({
           <RowList
             items={people.map((one) => {
               const isLit = lit?.id === one.id;
-              const opens = opensRow(one.user.id, manages, userId);
+              const opens = opensRow(one.user?.id ?? null, manages, userId);
               const line = rowLine(t, one, userId);
+              const name = nameOf(t, one);
+              const tag = one.outside
+                ? t('eventPeople.outsideTag', { organisation: organisationName })
+                : null;
 
               return {
                 key: one.id,
@@ -310,9 +424,11 @@ export function EventPeople({
                         if (node == null) rows.current.delete(one.id);
                         else rows.current.set(one.id, node);
                       }}
-                      title={one.user.name}
+                      title={name}
+                      titleMayBeAddress
                       line={line}
-                      lead={<Face name={one.user.name} id={one.user.id} side={40} />}
+                      lead={<PersonMark person={one} side={40} />}
+                      tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}
                       trail={
                         opens ? (
                           <Glyph name="down" size={18} ink={tokens.colorInkTertiary} weight={2.3} />
@@ -320,7 +436,9 @@ export function EventPeople({
                       }
                       accent={isLit}
                       onPress={opens ? () => openRole(one) : undefined}
-                      accessibilityLabel={`${one.user.name}. ${line}`}
+                      accessibilityLabel={[name, tag, line]
+                        .filter((part) => part != null)
+                        .join('. ')}
                       testID={`people.row.${one.id}`}
                     />
                   </View>
@@ -338,14 +456,46 @@ export function EventPeople({
         <RoleSheet
           key={`role-${opened.visit}`}
           person={{
-            name: person.user.name,
+            name: nameOf(t, person),
             line: joinedLine([
-              t('eventPeople.memberOf', { organisation: organisationName }),
+              person.outside
+                ? t('eventPeople.fromOutside', { organisation: organisationName })
+                : t('eventPeople.memberOf', { organisation: organisationName }),
               person.jobLabel,
             ]),
-            face: <Face name={person.user.name} id={person.user.id} side={44} />,
+            face: <PersonMark person={person} side={44} />,
           }}
+          notes={
+            person.doorCode != null && person.joinedAt != null ? (
+              <>
+                <Line
+                  text={t('doorCodes.joinedWith', {
+                    code: shownCode(person.doorCode),
+                    time: atWords(person.joinedAt, codeClock(event, now), t),
+                  })}
+                  size={14}
+                />
+                <Line text={t('eventPeople.outsideEnds')} size={14} />
+                <Line text={t('eventPeople.serviceClosing')} size={14} />
+              </>
+            ) : (
+              person.outside && (
+                <>
+                  <Line text={t('eventPeople.outsideEnds')} size={14} />
+                  <Line text={t('eventPeople.serviceClosing')} size={14} />
+                </>
+              )
+            )
+          }
           start={person.role}
+          off={
+            person.outside
+              ? {
+                  roles: ['lead'],
+                  line: t('eventPeople.leadOff', { organisation: organisationName }),
+                }
+              : undefined
+          }
           words={sheetWords(t, person, organisationName)}
           open={opened.open}
           opener={focusBack}
@@ -370,8 +520,22 @@ export function EventPeople({
               id: member.membershipId,
               name: member.name,
               face: <Face name={member.name} id={member.membershipId} side={40} />,
+              line: offerLine(t, member),
             }))
           }
+          outside={{
+            country,
+            lead: 'lead',
+            holder: (address) => holderOf(load.people, address, t('eventPeople.notJoined')),
+            add: (role, address, job) =>
+              api.addEventPersonFromOutside(
+                event.id,
+                address.address,
+                role,
+                job === '' ? null : job,
+              ),
+            words: outsideWords(t, organisationName),
+          }}
           words={addWords(t, organisationName, addable.length === 0)}
           opener={focusBack}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}

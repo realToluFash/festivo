@@ -1,29 +1,69 @@
-import { fallsOnEarlierDay, formatDay, formatTimeOfDay, nextMidnight } from '@soirely/domain';
+import {
+  fallsOnEarlierDay,
+  formatDay,
+  formatEventClock,
+  formatEventWeekday,
+  formatTimeOfDay,
+  nextMidnight,
+} from '@soirely/domain';
 import {
   type ReactNode,
   type Ref,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import { type Stale, StaleScreen } from '../offline.ts';
 import { TextAction } from './SettingsParts.tsx';
+import './SettingsParts.css';
 import './OfflineBox.css';
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
-  const [stale, show] = useState<Stale | null>(null);
+  const [shown, setShown] = useState<ReadonlyMap<symbol, Stale>>(new Map());
+  const [hushed, hush] = useState(false);
+  const show = useCallback((screen: symbol, stale: Stale | null) => {
+    setShown((was) => {
+      if (stale == null && !was.has(screen)) return was;
 
-  return <StaleScreen.Provider value={{ stale, show }}>{children}</StaleScreen.Provider>;
+      const next = new Map(was);
+
+      if (stale == null) next.delete(screen);
+      else next.set(screen, stale);
+
+      return next;
+    });
+  }, []);
+  const stale = useMemo(() => together([...shown.values()]), [shown]);
+  const value = useMemo(() => ({ stale, show, hushed, hush }), [stale, show, hushed]);
+
+  return <StaleScreen.Provider value={value}>{children}</StaleScreen.Provider>;
+}
+
+/** An event and its area each load on their own (sc-65646): the box says when the event last loaded, and Try again asks for both. */
+function together(stales: Stale[]): Stale | null {
+  if (stales.length <= 1) return stales[0] ?? null;
+
+  const event = stales.find((stale) => stale.event);
+
+  return {
+    at: event?.at ?? new Date(Math.min(...stales.map((stale) => stale.at.getTime()))),
+    retry: () => stales.forEach((stale) => stale.retry()),
+    unanswered: stales.reduce((sum, stale) => sum + stale.unanswered, 0),
+  };
 }
 
 /** Under the header, taking its own room: what was in view stays in view, as `ReleaseBand` keeps it. */
 export function OfflineBand() {
-  const { stale } = useContext(StaleScreen);
+  const { stale: loaded, hushed } = useContext(StaleScreen);
+  const stale = hushed ? null : loaded;
   const band = useRef<HTMLDivElement>(null);
   const before = useRef<{ edge: number; scrolled: boolean; field: Element | null } | null>(null);
   const showing = stale != null;
@@ -68,9 +108,9 @@ export function OfflineBand() {
 
 /** Above the title of a page in its own card at a desk, where the band would be (sc-39471): the same words and Try again, in Events' amber box. */
 export function OfflineBox() {
-  const { stale } = useContext(StaleScreen);
+  const { stale, hushed } = useContext(StaleScreen);
 
-  return <StaleBand stale={stale} box />;
+  return <StaleBand stale={hushed ? null : stale} box />;
 }
 
 /** The amber box's look, for whatever says it is offline. */
@@ -86,16 +126,18 @@ export function OfflineBoxLook({ words, onRetry }: { words: string; onRetry: () 
   );
 }
 
-/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. `box` draws it as the amber box instead. */
+/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. `box` draws it as the amber box instead; `timeZone` reads it on an event's clock, as the rows under it are. */
 export function StaleBand({
   stale,
   className = 'offline-band',
   box = false,
+  timeZone,
   ref,
 }: {
   stale: Stale | null;
   className?: string;
   box?: boolean;
+  timeZone?: string;
   ref?: Ref<HTMLDivElement>;
 }) {
   const { t } = useTranslation();
@@ -116,15 +158,7 @@ export function StaleBand({
     return () => window.clearTimeout(timer);
   }, [at]);
 
-  const words =
-    at == null
-      ? ''
-      : fallsOnEarlierDay(at, now)
-        ? t('offline.asOfDay', {
-            day: formatDay(at, dateLocale()),
-            time: formatTimeOfDay(at, dateLocale()),
-          })
-        : t('offline.asOf', { time: formatTimeOfDay(at, dateLocale()) });
+  const words = at == null ? '' : asOfWords(at, now, timeZone, t);
 
   const showing = stale != null;
   const unanswered = stale?.unanswered ?? 0;
@@ -175,6 +209,27 @@ export function StaleBand({
       )}
     </div>
   );
+}
+
+function asOfWords(at: Date, now: Date, timeZone: string | undefined, t: TFunction): string {
+  const locale = dateLocale();
+
+  if (timeZone == null)
+    return fallsOnEarlierDay(at, now)
+      ? t('offline.asOfDay', { day: formatDay(at, locale), time: formatTimeOfDay(at, locale) })
+      : t('offline.asOf', { time: formatTimeOfDay(at, locale) });
+
+  const moment = at.toISOString();
+  const time = formatEventClock(moment, timeZone, locale);
+
+  return dayIn(at, timeZone) < dayIn(now, timeZone)
+    ? t('offline.asOfDay', { day: formatEventWeekday(moment, timeZone, locale), time })
+    : t('offline.asOf', { time });
+}
+
+/** `2026-11-26` in that zone, which sorts as the calendar does. */
+function dayIn(moment: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(moment);
 }
 
 /** sc-4028's crossed-out signal, so one state has one shape. */

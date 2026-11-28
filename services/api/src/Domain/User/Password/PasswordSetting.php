@@ -11,7 +11,6 @@ use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Entity\PasswordSetCode;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordSetCodeRepository;
 use Doctrine\DBAL\LockMode;
@@ -34,7 +33,6 @@ final readonly class PasswordSetting
         private PasswordResolver $passwordResolver,
         private NewPasswordRules $newPasswordRules,
         private PasswordChangeMailer $passwordChangeMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordSetAccountLimiter,
@@ -57,14 +55,16 @@ final readonly class PasswordSetting
         $code = VerificationCodeIssuer::generate();
         $hash = VerificationCodeIssuer::hash($code);
 
-        if (null === $held) {
-            $this->entityManager->persist(new PasswordSetCode($user, $hash, $now));
-        } else {
-            $held->newCode($hash, $now);
-        }
+        $this->entityManager->wrapInTransaction(function () use ($user, $held, $hash, $now, $code, $asked): void {
+            if (null === $held) {
+                $this->entityManager->persist(new PasswordSetCode($user, $hash, $now));
+            } else {
+                $held->newCode($hash, $now);
+            }
 
-        $this->entityManager->flush();
-        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendCode($user, $code, $asked));
+            $this->entityManager->flush();
+            $this->passwordChangeMailer->sendCode($user, $code, $asked);
+        });
 
         return null;
     }
@@ -111,17 +111,13 @@ final readonly class PasswordSetting
             $user->setPassword($this->passwordResolver->hash($password));
             $this->entityManager->remove($held);
             $this->entityManager->flush();
+            $this->passwordChangeMailer->sendAdded($user, $now, $request?->headers->get('User-Agent'), $request?->getClientIp(), $request?->getLocale());
             $connection->commit();
         } catch (Throwable $e) {
             $connection->rollBack();
 
             throw $e;
         }
-
-        $userAgent = $request?->headers->get('User-Agent');
-        $ipAddress = $request?->getClientIp();
-        $asked = $request?->getLocale();
-        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendAdded($user, $now, $userAgent, $ipAddress, $asked));
     }
 
     /** A wrong code counts against the code itself too, which the commit keeps before the refusal is thrown. */

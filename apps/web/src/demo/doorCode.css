@@ -1,7 +1,7 @@
 /* The door code at a desk, in B Confetti. Measurements are the boards' (Access-A-Web.dc.html, page e28); colours are tokens, so a scheme recolours it. */
 
 .dc-codes,
-.dc-code {
+.dc-code-item {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -20,7 +20,7 @@
   padding: 18px var(--spaceXxl) var(--spaceXxl);
 }
 
-.dc-none {
+.dc-none-words {
   display: flex;
   flex-direction: column;
   gap: var(--spaceMd);
@@ -392,6 +392,14 @@
 .no-org-menu {
   inset: auto auto calc(100% + var(--spaceXxs)) 0;
   width: 100%;
+}
+
+.no-org-menu.is-wide {
+  position: fixed;
+  inset: auto;
+  width: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .no-org-lead {

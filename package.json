@@ -8,7 +8,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:php && npm run lint:actions",
-    "lint:js": "eslint .",
+    "lint:js": "eslint . --concurrency=auto",
     "lint:css": "stylelint \"apps/web/src/**/*.css\"",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
     "lint:actions": "node scripts/lint-actions.mjs",
@@ -23,6 +23,7 @@
     "test:db": "node scripts/test-db.mjs",
     "qa:account": "node scripts/qa-account.mjs",
     "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",
+    "test:api:parallel": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/paratest --processes 4\"",
     "test:packages": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "format": "npm run format:js && npm run format:php",

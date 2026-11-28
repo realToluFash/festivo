@@ -1,6 +1,7 @@
 import {
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -11,22 +12,27 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { offField } from '../offField.ts';
 import { LayersContext } from '../layers.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Ask, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import './eventsDesk.css';
 import './eventPage.css';
+import './arrivalNote.css';
 
-/** The page's way back: Events, then the event's name as where you are once it has loaded. */
+/** The page's way back: Events, then the event's name as where you are once it has loaded; under an area, the name opens the event and the area is where you are. */
 export function Crumb({
   to,
   back,
   name,
+  area,
   children,
 }: {
-  to: string;
+  /** None for an account with no organisation, which has no list to go back to (sc-71). */
+  to: string | null;
   back: string;
   name: string | null;
+  area?: { label: string; event: string } | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -35,13 +41,31 @@ export function Crumb({
     <div className="ev-crumb-row">
       <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
         <ol>
-          <li className="ev-crumb-part">
-            <Link to={to}>{back}</Link>
-          </li>
+          {to != null && (
+            <li className="ev-crumb-part">
+              <Link to={to}>{back}</Link>
+            </li>
+          )}
           {name != null && (
+            <li className="ev-crumb-part" aria-current={area == null ? 'page' : undefined}>
+              {to != null && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
+              {area == null ? (
+                <span className="ev-crumb-name">{name}</span>
+              ) : (
+                <Link className="ev-crumb-name" to={area.event}>
+                  {name}
+                </Link>
+              )}
+            </li>
+          )}
+          {area != null && (
             <li className="ev-crumb-part" aria-current="page">
-              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-              <span className="ev-crumb-name">{name}</span>
+              {(to != null || name != null) && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
+              <span className="ev-crumb-name">{area.label}</span>
             </li>
           )}
         </ol>
@@ -124,22 +148,21 @@ export function PartRow({
 export function Opened({
   label,
   changed,
+  unsaved = changed,
   verb,
   asking: first = null,
-  refused = false,
   busy = false,
-  onLatest,
   onCancel,
   onSave,
   children,
 }: {
   label: string;
   changed: boolean;
+  /** What Cancel asks about, when it is more than what Save would save: a photo still uploading. */
+  unsaved?: boolean;
   verb?: string;
-  asking?: 'discard' | 'latest' | null;
-  refused?: boolean;
+  asking?: 'discard' | null;
   busy?: boolean;
-  onLatest?: () => void;
   onCancel: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -148,7 +171,7 @@ export function Opened({
   const [asking, setAsking] = useState(first);
   const cancel = () => {
     if (busy) return;
-    if (changed) setAsking('discard');
+    if (unsaved) setAsking('discard');
     else onCancel();
   };
   const box = useRef<HTMLDivElement>(null);
@@ -164,26 +187,17 @@ export function Opened({
       if (event.key !== 'Escape' || event.defaultPrevented || open || busy) return;
       event.preventDefault();
       event.stopPropagation();
-      if (changed) setAsking('discard');
+      if (unsaved) setAsking('discard');
       else onCancel();
     };
 
     node.addEventListener('keydown', keys);
 
     return () => node.removeEventListener('keydown', keys);
-  }, [asking, busy, changed, onCancel]);
+  }, [asking, busy, unsaved, onCancel]);
 
   return (
     <div className="ev-opened" role="group" aria-label={label} ref={box}>
-      {refused && (
-        <Broken
-          action={
-            <TextAction label={t('eventEdit.showLatest')} onClick={() => setAsking('latest')} />
-          }
-        >
-          {t('eventEdit.changedElsewhere')}
-        </Broken>
-      )}
       {children}
       <div className="ev-opened-actions">
         <TextAction label={t('eventEdit.cancel')} onClick={cancel} />
@@ -212,19 +226,6 @@ export function Opened({
           }}
         />
       )}
-      {asking === 'latest' && (
-        <Ask
-          title={t('eventEdit.showLatestTitle')}
-          line={t('eventEdit.showLatestBody')}
-          keep={t('eventEdit.keepEditing')}
-          go={t('eventEdit.showLatest')}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onLatest?.();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -236,20 +237,34 @@ export interface Wall {
 
 /** A date and a time in the event's zone, one label for the two. */
 export function DateTime({
+  id: given,
   legend,
   wall,
   wrong = false,
   told,
+  focus = 0,
+  off = false,
   onChange,
 }: {
+  /** Its inputs are `{id}-date` and `{id}-time`. */
+  id?: string;
   legend: string;
   wall: Wall;
   wrong?: boolean;
   told?: string | undefined;
+  /** Its date takes focus whenever this count moves past 0, at mount too. */
+  focus?: number;
+  off?: boolean;
   onChange: (wall: Wall) => void;
 }) {
   const { t } = useTranslation();
-  const id = useId();
+  const made = useId();
+  const id = given ?? made;
+  const date = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focus > 0) date.current?.focus();
+  }, [focus]);
 
   return (
     <fieldset className="ev-when">
@@ -259,10 +274,12 @@ export function DateTime({
           {`${legend}, ${t('eventForm.date')}`}
         </label>
         <input
+          ref={date}
           id={`${id}-date`}
           type="date"
           className={wrong ? 'ev-input is-wrong' : 'ev-input'}
           value={wall.date}
+          {...offField(off)}
           aria-invalid={wrong}
           aria-describedby={told}
           onChange={(event) => onChange({ ...wall, date: event.target.value })}
@@ -275,6 +292,7 @@ export function DateTime({
           type="time"
           className={wrong ? 'ev-input is-time is-wrong' : 'ev-input is-time'}
           value={wall.time}
+          {...offField(off)}
           aria-invalid={wrong}
           aria-describedby={told}
           onChange={(event) => onChange({ ...wall, time: event.target.value })}
@@ -286,28 +304,29 @@ export function DateTime({
 
 /** One line of text in an edit: its label, Optional where it is, its help, and what is wrong with it. */
 export function EditText({
+  id: given,
   label,
   optional = false,
   value,
   help,
   error,
   inputRef,
-  maxLength,
   onChange,
   input,
 }: {
+  id?: string;
   label: string;
   optional?: boolean;
   value: string;
   help?: string | null;
   error?: string | null;
   inputRef?: RefObject<HTMLInputElement | null>;
-  maxLength?: number;
   onChange: (value: string) => void;
   input?: Partial<InputHTMLAttributes<HTMLInputElement>>;
 }) {
   const { t } = useTranslation();
-  const id = useId();
+  const made = useId();
+  const id = given ?? made;
   const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
     .filter(Boolean)
     .join(' ');
@@ -324,7 +343,6 @@ export function EditText({
           id={id}
           type="text"
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           aria-invalid={error != null}
           aria-describedby={told === '' ? undefined : told}
@@ -428,10 +446,26 @@ export function Alert({ children }: { children: ReactNode }) {
   );
 }
 
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** The broken notice and what to do about it; with `landing`, focus reads it instead of an announcement. */
+export function Broken({
+  children,
+  action,
+  landing,
+  held,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  landing?: Ref<HTMLDivElement> | undefined;
+  /** A ref that, unlike `landing`, leaves the notice an alert that focus does not land on. */
+  held?: Ref<HTMLDivElement>;
+}) {
   return (
-    <div className="notice notice-broken ev-notice" role="alert">
+    <div
+      className="notice notice-broken ev-notice"
+      role={landing == null ? 'alert' : undefined}
+      ref={landing ?? held}
+      tabIndex={landing == null ? undefined : -1}
+    >
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

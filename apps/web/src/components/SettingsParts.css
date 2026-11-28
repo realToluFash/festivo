@@ -85,6 +85,7 @@
 .desk-title {
   flex: 1;
   min-width: 0;
+  margin: 0;
   font: 700 30px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
 }
@@ -114,8 +115,12 @@
   justify-content: center;
   width: var(--sizeHit);
   height: var(--sizeHit);
+  padding: 0;
+  border: 0;
   border-radius: var(--radiusPill);
   background: var(--colorNeutralFill);
+  color: inherit;
+  cursor: pointer;
 }
 
 .desk-bell:hover {
@@ -350,14 +355,50 @@
   align-self: flex-start;
   align-items: center;
   gap: var(--spaceSm);
-  height: var(--sizeHit);
+  min-height: var(--sizeHit);
+  max-width: 100%;
   margin-top: auto;
-  padding: 0 var(--spaceXl) 0 18px;
+  padding: var(--spaceSm) var(--spaceXl) var(--spaceSm) 18px;
   border-radius: var(--radiusPill);
   background: var(--colorCard);
   color: var(--colorAccent);
-  font: 600 15px/1 var(--fontFamily);
-  white-space: nowrap;
+  font: 600 15px/1.25 var(--fontFamily);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.desk-step > svg {
+  flex: none;
+}
+
+.desk-summary {
+  container: desk-summary / inline-size;
+}
+
+@container desk-summary (width < 560px) {
+  .desk-summary > .desk-piece {
+    display: none;
+  }
+}
+
+/* Each margin is how far the confetti reaches in from the inner box's right edge, rotation included. */
+@container desk-summary (width >= 560px) {
+  .desk-summary :is(.desk-says, .desk-name) {
+    max-width: min(80%, calc(100% - 176px));
+  }
+
+  .desk-summary .desk-on-card {
+    max-width: calc(100% - 112px);
+  }
+
+  .desk-summary .desk-step {
+    max-width: calc(100% - 200px);
+  }
+
+  .desk-summary.is-p6-covered > .p6 {
+    display: none;
+  }
 }
 
 .desk-who {
@@ -409,12 +450,14 @@
   flex: none;
   align-items: center;
   gap: var(--spaceXs);
-  height: 28px;
-  padding: 0 11px 0 9px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: var(--spaceXs) 11px var(--spaceXs) 9px;
   border-radius: 14px;
   background: var(--deskGlass);
-  font: 600 13px/1 var(--fontFamily);
-  white-space: nowrap;
+  font: 600 13px/16px var(--fontFamily);
+  text-align: start;
+  overflow-wrap: anywhere;
   backdrop-filter: blur(14px);
 }
 
@@ -1220,6 +1263,24 @@
   box-shadow: inset 0 0 0 2px var(--colorBroken);
 }
 
+.desk-box.is-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .desk-box.is-area textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  min-height: 72px;
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
 .desk .desk-box input {
   flex: 1;
   min-width: 0;
@@ -1290,6 +1351,7 @@
   box-shadow: 0 0 0 2.5px var(--colorInkOnDark);
   color: var(--colorAccent);
   font: 700 13px/1 var(--fontFamily);
+  white-space: nowrap;
 }
 
 .desk-split .desk-block {

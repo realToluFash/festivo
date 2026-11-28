@@ -48,6 +48,9 @@ PASSED = re.compile(r"Review passed at ([0-9a-f]{7,40})")
 BACK = re.compile(r"(?:Failed code review|Back to In Progress): (\d+) blocking")
 STORY = re.compile(r"sc-(\d+)")
 SUFFIX = re.compile(r"\(sc-(\d+)\)\s*$")
+MENTION = re.compile(r"(?<![\w-])sc-(\d+)(?!\d)", re.I)
+# A non-breaking hyphen reads the same, and Shortcut does not link it.
+UNLINKED = "sc\u2011"
 REMOTE = re.compile(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$")
 LIMITED = re.compile(r"rate limit", re.I)
 # A thread read over REST has no GraphQL id until the next GraphQL sync.
@@ -182,6 +185,14 @@ def story_of(branch, title):
     return int(found.group(1)) if found else None
 
 
+def unlink_others(text, own):
+    """Shortcut links, and on merge moves, every story a pull request names as sc-N. Only
+    its own story keeps the link. Returns the text and how many mentions changed."""
+    others = [m for m in MENTION.finditer(text or "") if int(m.group(1)) != own]
+    return MENTION.sub(lambda m: m.group(0) if int(m.group(1)) == own
+                       else UNLINKED + m.group(1), text or ""), len(others)
+
+
 def slim(node):
     return {
         "number": node["number"],
@@ -224,6 +235,29 @@ def rest_node(pull, merged):
             "baseRefName": pull["base"]["ref"], "mergedAt": pull.get("merged_at"),
             "body": pull.get("body"), "updatedAt": pull["updated_at"],
             "mergeCommit": {"oid": pull["merge_commit_sha"]} if merged else None}
+
+
+def pull(number):
+    """One pull request read now, for one the sync's window of 15 merges has passed."""
+    owner, name = repository()
+    found = api(f"repos/{owner}/{name}/pulls/{number}")
+    pr = slim({**rest_node(found, bool(found.get("merged_at"))), "reviews": {"nodes": []}})
+    pr["lead"] = lead_verdicts(rest_reviews(owner, name, number))
+    pr["carried"] = None
+    if pr["state"] == "open":
+        pr["threads"] = rest_threads(owner, name, number, [])
+        pr["checks"] = rest_checks(owner, name, pr["head_sha"])
+        pr["mergeable"] = MERGEABLE[found.get("mergeable")].lower()
+    return pr
+
+
+def merged_for_story(story_id):
+    """A story's merged pull requests, found by search rather than the last sync's window."""
+    owner, name = repository()
+    found = api(f"search/issues?q=repo:{owner}/{name}+is:pr+is:merged+%22sc-{story_id}%22"
+                "&per_page=30")
+    prs = [pull(item["number"]) for item in (found or {}).get("items", [])]
+    return sorted((pr for pr in prs if pr["story_id"] == story_id), key=lambda pr: pr["number"])
 
 
 def rest_reviews(owner, name, number):
@@ -414,7 +448,14 @@ def live(number):
 
 
 HUNK = re.compile(r"^@@[^\n]*", re.M)
-UNCOMPARABLE = re.compile(r"HTTP 4(04|22)")
+HTTP_STATUS = re.compile(r"HTTP (\d{3})")
+
+
+def http_status(error):
+    """The HTTP status gh printed in an error, or None. The one place an error's text is read
+    for its status, so a change in how gh prints it is fixed once."""
+    match = HTTP_STATUS.search(str(error))
+    return int(match.group(1)) if match else None
 
 
 def change_key(files):
@@ -436,7 +477,7 @@ def same_change(before, after):
     except RateLimited:
         raise
     except GitHubError as error:
-        if UNCOMPARABLE.search(str(error)):
+        if http_status(error) in (404, 422):
             return False
         raise
     return keys[0] is not None and keys[0] == keys[1]

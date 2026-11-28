@@ -1,19 +1,29 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
+import { type Address, type OutsideView, outsideView } from '../kit/eventPeople.ts';
+import { toneOf } from '../kit/personFace.ts';
 import { type PickAnswer, RolePicks } from '../kit/rolePicks.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
+import { addressParts, addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
 import { useShellLayout } from './settingsShell.ts';
 import { Avatar } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetScrollView } from './Sheet.tsx';
 import {
   Ask,
   type AskProps,
@@ -26,7 +36,12 @@ import {
   SectionHead,
   TextAction,
 } from './Summary.tsx';
+import { NameText } from './SummaryRows.tsx';
+import { MeasuredWords } from './Title.tsx';
+import { atAccessibilitySizes, wordsIn } from '../layout/textSize.ts';
+import { cancelUnder } from '../layout/titleFit.ts';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Sending = 'idle' | 'saving' | 'saved';
@@ -42,21 +57,24 @@ export interface RoleWords<R extends string> {
   saved: string;
 }
 
+/** Initials, or with none a mark: mail or phone for an address, a plain person for "Not joined yet". */
 export function PersonFace({
   initials,
   tone,
   side,
+  mark = 'phone',
 }: {
   initials: string | null;
   tone: number;
   side: number;
+  mark?: 'mail' | 'phone' | 'user';
 }) {
   return (
     <Avatar
       initials={initials ?? ''}
       side={side}
       tone={tone}
-      glyph={initials == null ? 'phone' : undefined}
+      glyph={initials == null ? mark : undefined}
     />
   );
 }
@@ -80,7 +98,7 @@ export function AddBox({
       testID="people.add.open"
     >
       <Glyph name="plus" size={19} ink={tokens.colorAccent} weight={2.4} />
-      <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
+      <Text size={16} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
         {label}
       </Text>
     </Pressable>
@@ -182,6 +200,75 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
   removeFailed: (error: unknown) => string;
 }
 
+/** sc-95215: the sheet's heading and its line, each word whole. From the accessibility sizes the face is not drawn and the words take the row; Done stays beside them where the widest word, the gap and Done fit the room, else it goes under the line at the row's end. */
+function PersonHead({
+  person,
+  done,
+  phone,
+}: {
+  person: { name: string; line: string; face: ReactNode };
+  done: { label: string; onPress: () => void } | null;
+  phone: boolean;
+}) {
+  const fontScale = useWindowDimensions().fontScale;
+  const big = phone && atAccessibilitySizes(fontScale);
+  const [row, setRow] = useState(0);
+  const [doneWidth, setDoneWidth] = useState(0);
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const nameParts = addressParts(person.name) ?? wordsIn([person.name]);
+  const lineWords = wordsIn([person.line]);
+  const widthOf = (kind: 'n' | 'l', word: string) => measured[`${fontScale}|${kind}|${word}`];
+  const widths = [
+    ...nameParts.map((word) => widthOf('n', word)),
+    ...lineWords.map((word) => widthOf('l', word)),
+  ];
+  const widest = widths.every((width) => width != null) ? Math.max(0, ...widths) : 0;
+  const gap = big ? tokens.spaceMd : tokens.spaceLg;
+  const under =
+    done != null &&
+    cancelUnder({
+      room: big ? row : row - tokens.sizeHit - tokens.spaceLg,
+      widest,
+      cancel: doneWidth,
+      gap,
+    });
+  const record = (kind: 'n' | 'l') => (word: string, width: number) => {
+    const key = `${fontScale}|${kind}|${word}`;
+    setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+  };
+  const action =
+    done == null ? null : (
+      <View
+        style={under ? styles.doneUnder : big ? undefined : styles.doneBesideName}
+        onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}
+      >
+        <DoneAction label={done.label} onPress={done.onPress} testID="people.role.done" />
+      </View>
+    );
+
+  return (
+    <View onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
+      {phone && (
+        <>
+          <MeasuredWords words={nameParts} size={18} weight="bold" onWidth={record('n')} />
+          <MeasuredWords words={lineWords} size={14} weight="medium" onWidth={record('l')} />
+        </>
+      )}
+      <View style={[styles.person, big && styles.personBig, under && styles.personUnder]}>
+        {!big && person.face}
+        <View style={styles.grow}>
+          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
+          <Text size={14} weight="medium" style={styles.secondary}>
+            {person.line}
+          </Text>
+        </View>
+        {!under && action}
+      </View>
+      {under && action}
+    </View>
+  );
+}
+
 /** `save` applies the change wherever it lives before it resolves, so a pick overtaken by a later one still lands. */
 export function RoleSheet<R extends string>({
   person,
@@ -263,13 +350,14 @@ export function RoleSheet<R extends string>({
   }
 
   const ask: AskProps = {
-    title: words.removeTitle,
+    title: addressRuns(person.name) == null ? words.removeTitle : breakableEmail(words.removeTitle),
     line: words.removeLine,
     keep: { label: words.keep, off: removing === 'sending', testID: 'people.remove.keep' },
     confirm: {
       label: words.removeConfirm,
       removes: true,
       busy: removing === 'sending' ? words.removing : undefined,
+      busyWords: words.removing,
       testID: 'people.remove.confirm',
     },
     failed: removeFailed,
@@ -278,18 +366,11 @@ export function RoleSheet<R extends string>({
   };
   const parts = (
     <>
-      <View style={styles.person}>
-        {person.face}
-        <View style={styles.grow}>
-          <Text size={18} weight="bold" accessibilityRole="header">
-            {person.name}
-          </Text>
-          <Text size={14} weight="medium" style={styles.secondary}>
-            {person.line}
-          </Text>
-        </View>
-        {phone && <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />}
-      </View>
+      <PersonHead
+        person={person}
+        phone={phone}
+        done={phone ? { label: words.done, onPress: onClose } : null}
+      />
       {notes}
       {failed != null && <Refused failed={failed} />}
       <EventRoles
@@ -338,7 +419,15 @@ export function RoleSheet<R extends string>({
         headingTakesFocus
         testID="people.roleSheet"
       >
-        <View style={styles.sheetBody}>{parts}</View>
+        <SheetScrollView
+          holdsHeading
+          style={styles.sheetScroll}
+          contentContainerStyle={styles.sheetBody}
+          bounces={false}
+          testID="people.roleSheet.scroll"
+        >
+          {parts}
+        </SheetScrollView>
       </Sheet>
       <Ask open={open && removing != null} opener={opener} {...ask} />
     </>
@@ -442,6 +531,29 @@ export interface AddWords<R extends string> extends RoleWords<R> {
   everyoneOn?: string | undefined;
 }
 
+/** Someone from outside the organisation, by email address or mobile number (sc-71). */
+export interface OutsideAdd<R extends string, T> {
+  country: string;
+  lead: R;
+  /** Who on the event already holds this address, if anyone. */
+  holder: (address: Address) => string | null;
+  add: (role: R, address: Address, job: string) => Promise<T>;
+  words: {
+    find: string;
+    findName: string;
+    fromOutside: string;
+    leadOff: string;
+    pickAnother: string;
+    unusable: string;
+    onAlready: (name: string) => string;
+    jobLabel: string;
+    jobHelp: (job: string) => string;
+  };
+}
+
+const NO_OUTSIDE: OutsideView = { kind: 'none' };
+const OUTSIDE_ID = 'outside:';
+
 function Unsent({ failed }: { failed: { line: string; times: number } }) {
   return (
     <ReadOut words={failed.line} answer={failed.times} style={styles.failed}>
@@ -453,11 +565,13 @@ function Unsent({ failed }: { failed: { line: string; times: number } }) {
   );
 }
 
-/** Sends each ticked member in turn; a refusal stops there and leaves the screen open, the ones not added still ticked. */
+/** Sends each ticked member in turn, then anyone from outside; a refusal stops there and leaves the screen open, the ones not added still ticked. */
 export function AddScreen<R extends string, T>({
   open,
   first,
+  startTyped = '',
   offered,
+  outside,
   words,
   opener,
   onClose,
@@ -466,7 +580,9 @@ export function AddScreen<R extends string, T>({
 }: {
   open: boolean;
   first: R;
+  startTyped?: string | undefined;
   offered: (typed: string) => readonly Offer[];
+  outside?: OutsideAdd<R, T> | undefined;
   words: AddWords<R>;
   opener: Opener;
   onClose: () => void;
@@ -475,24 +591,56 @@ export function AddScreen<R extends string, T>({
 }) {
   const [role, setRole] = useState<R>(first);
   const [picking, setPicking] = useState(false);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(startTyped);
+  const [cleared, setCleared] = useState(0);
   const [ticked, setTicked] = useState<readonly string[]>([]);
+  const [outsideOn, setOutsideOn] = useState(true);
+  const [job, setJob] = useState('');
   const [discarding, setDiscarding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<{ line: string; times: number } | null>(null);
   const shown = offered(typed);
-  const nobody = typed.trim() !== '' && shown.length === 0;
-  const canAdd = ticked.length > 0 && !busy;
+  const fromOutside =
+    outside == null
+      ? NO_OUTSIDE
+      : outsideView(typed, outside.country, role === outside.lead, outside.holder);
+  const address = fromOutside.kind === 'offer' ? fromOutside.address : null;
+  const sendsOutside = address != null && outsideOn;
+  const nobody =
+    typed.trim() !== '' &&
+    shown.length === 0 &&
+    fromOutside.kind !== 'offer' &&
+    fromOutside.kind !== 'leadOff';
+  const canAdd = (ticked.length > 0 || sendsOutside) && !busy;
+  const find =
+    outside == null
+      ? words.find
+      : role === outside.lead
+        ? outside.words.findName
+        : outside.words.find;
   const roleName = words.name(role);
   const roleMeans = words.means(role);
+  const leaves = useLeaveAsk(
+    (typed.trim() !== '' || ticked.length > 0) && !busy,
+    () => setDiscarding(true),
+    onClose,
+  );
 
   async function send(): Promise<void> {
     if (!canAdd) return;
     setBusy(true);
     setFailed(null);
+    const going = sendsOutside ? address : null;
+    const outsideId = going == null ? null : `${OUTSIDE_ID}${going.address}`;
+    const ids = outsideId == null ? ticked : [...ticked, outsideId];
     const named = new Map(offered('').map((one) => [one.id, one.name]));
-    const names = (ids: readonly string[]) => ids.map((id) => named.get(id) ?? '');
-    const sent = await addInTurn(ticked, (id) => add(role, id));
+    const names = (all: readonly string[]) =>
+      all.map((id) => (id === outsideId ? (going?.shown ?? '') : (named.get(id) ?? '')));
+    const sent = await addInTurn(ids, (id) =>
+      id === outsideId && going != null && outside != null
+        ? outside.add(role, going, job.trim())
+        : add(role, id),
+    );
     if (sent.kind === 'all') {
       onAdded(role, sent.added, true);
       return;
@@ -500,14 +648,23 @@ export function AddScreen<R extends string, T>({
     const { added, went, left, error } = sent;
     setBusy(false);
     setTicked((now) => now.filter((id) => !went.includes(id)));
+    if (outsideId != null && went.includes(outsideId)) {
+      setTyped('');
+      setJob('');
+      setCleared((n) => n + 1);
+    }
     const line = words.refusal(error, role, names(went), names(left));
     setFailed((was) => ({ line, times: (was?.times ?? 0) + 1 }));
     if (added.length > 0) onAdded(role, added, false);
   }
 
   function cancel(): void {
-    if (typed.trim() !== '' || ticked.length > 0) setDiscarding(true);
-    else onClose();
+    leaves.leave();
+  }
+
+  function type(text: string): void {
+    setTyped(text);
+    setOutsideOn(true);
   }
 
   function tick(id: string): void {
@@ -520,8 +677,14 @@ export function AddScreen<R extends string, T>({
         line: words.discardLine,
         keep: { label: words.discardKeep, testID: 'people.add.keep' },
         confirm: { label: words.discard, removes: true, testID: 'people.add.discard' },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
   const over: Layer | null = picking
@@ -581,16 +744,20 @@ export function AddScreen<R extends string, T>({
           testID="people.add.role"
         />
       </View>
-      <Field label={words.find}>
+      <Field label={find}>
         <TextField
-          autoFocus
-          autoCapitalize="words"
+          key={`who-${cleared}`}
+          defaultValue={typed}
+          autoFocus={startTyped === ''}
+          autoCapitalize={outside == null ? 'words' : 'none'}
           autoComplete="off"
-          onChangeText={setTyped}
+          autoCorrect={false}
+          spellCheck={false}
+          onChangeText={type}
           returnKeyType="done"
           submitBehavior="submit"
           onSubmitEditing={() => void send()}
-          accessibilityLabel={words.find}
+          accessibilityLabel={find}
           testID="people.add.who"
         />
       </Field>
@@ -616,9 +783,61 @@ export function AddScreen<R extends string, T>({
         </View>
       )}
       {nobody && (
-        <Text size={16} weight="semibold">
-          {words.noMatch(typed.trim())}
-        </Text>
+        <View style={styles.lines}>
+          <Text size={16} weight="semibold">
+            {words.noMatch(typed.trim())}
+          </Text>
+          {outside != null && fromOutside.kind === 'unusable' && (
+            <Line text={outside.words.unusable} />
+          )}
+          {outside != null && fromOutside.kind === 'onEvent' && (
+            <Line text={outside.words.onAlready(fromOutside.name)} />
+          )}
+        </View>
+      )}
+      {outside != null && fromOutside.kind === 'leadOff' && (
+        <View style={styles.lines}>
+          <Text size={16} weight="semibold">
+            {outside.words.leadOff}
+          </Text>
+          <Line text={outside.words.pickAnother} />
+        </View>
+      )}
+      {outside != null && address != null && (
+        <View style={styles.outside}>
+          <View>
+            <SectionHead title={outside.words.fromOutside} />
+            <Ticked
+              on={outsideOn}
+              face={
+                <PersonFace
+                  initials={null}
+                  tone={toneOf(address.address)}
+                  side={40}
+                  mark={address.kind === 'email' ? 'mail' : 'phone'}
+                />
+              }
+              title={address.shown}
+              onPress={() => setOutsideOn((now) => !now)}
+              testID="people.add.outside"
+            />
+          </View>
+          {outsideOn && (
+            <Field label={outside.words.jobLabel} help={outside.words.jobHelp(job)}>
+              <TextField
+                key={`job-${cleared}`}
+                defaultValue={job}
+                onChangeText={setJob}
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                submitBehavior="submit"
+                onSubmitEditing={() => void send()}
+                accessibilityLabel={outside.words.jobLabel}
+                testID="people.add.job"
+              />
+            </Field>
+          )}
+        </View>
       )}
       {words.everyoneOn != null && typed.trim() === '' && shown.length === 0 && (
         <Line text={words.everyoneOn} />
@@ -665,7 +884,8 @@ const styles = StyleSheet.create({
   notice: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   addBox: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
@@ -676,11 +896,16 @@ const styles = StyleSheet.create({
   },
   person: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceHair,
     paddingBottom: tokens.spaceXxs,
   },
+  // Done's word level with the name's first line, however many lines the name takes.
+  doneBesideName: { marginTop: -10 },
+  doneUnder: { alignSelf: 'flex-end', marginTop: tokens.spaceSm },
+  personBig: { gap: tokens.spaceMd },
+  personUnder: { paddingBottom: 0 },
   done: {
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,
@@ -691,9 +916,10 @@ const styles = StyleSheet.create({
   },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   remove: { borderTopWidth: 1, borderTopColor: tokens.colorBorder, paddingTop: tokens.spaceXxs },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
   sheetBody: {
     gap: tokens.spaceLg,
-    paddingTop: 27,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },
@@ -738,6 +964,8 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: tokens.colorControlBorder,
   },
+  lines: { gap: tokens.spaceXs },
+  outside: { gap: tokens.spaceLg },
   loading: { gap: 26 },
   sunkGroup: { gap: tokens.spaceMd },
   sunkHead: {

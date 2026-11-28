@@ -143,6 +143,28 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertSame('a las 13:05 UTC', $worded('2026-10-25 13:04:10 UTC'));
     }
 
+    /** A limit reaches an ICU key as a number, so each locale writes it its own way: 2,000 and 2 000 (sc-3776). */
+    #[Test]
+    public function aViolationsNumberIsWrittenByTheLocalesKey(): void
+    {
+        $worded = function (string $locale): mixed {
+            $translator = new Translator($locale);
+            $translator->addLoader('array', new ArrayLoader());
+            $translator->addResource('array', ['validation.guests_too_many' => 'up to {most, number}'], $locale, 'messages+intl-icu');
+            $refusal = ApiException::validation([[
+                'propertyPath' => 'guestIds',
+                'message' => 'validation.guests_too_many',
+                'code' => ErrorCode::ValidationFailed->value,
+                'parameters' => ['{most}' => 2000],
+            ]]);
+
+            return $this->handleWith($refusal, $translator)['violations'][0]['message'];
+        };
+
+        self::assertSame('up to 2,000', $worded('en'));
+        self::assertSame("up to 2\u{202F}000", $worded('fr'));
+    }
+
     /** sc-11329: a limit hit signed out has no account to take a zone from, so every reader is given UTC. */
     #[Test]
     public function aTryAgainMinuteIsUtcWhateverZoneTheWindowEndsIn(): void

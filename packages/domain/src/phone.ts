@@ -34,13 +34,33 @@ export function callingCode(country: string): string | null {
   return isPhoneCountry(country) ? `+${getCountryCallingCode(country)}` : null;
 }
 
+const PHONE_COUNTRIES: ReadonlySet<string> = new Set(getCountries());
+
 function isPhoneCountry(country: string): country is CountryCode {
-  return (getCountries() as string[]).includes(country);
+  return PHONE_COUNTRIES.has(country);
+}
+
+/** "+351 ••• ••• 4512": a number before sign-in completes, its country's code and the last digits (sc-4235). */
+export function maskedPhone(hint: { countryCode: string | null; lastDigits: string }): string {
+  const calling = hint.countryCode == null ? null : callingCode(hint.countryCode);
+
+  return `${calling ?? ''} ••• ••• ${hint.lastDigits}`.trim();
 }
 
 /** "+234 803 555 0142": an E.164 number as people read it. */
 export function formatPhone(e164: string): string {
   return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;
+}
+
+/** A search typed as a number finds a stored one from 3 digits with no letters, with or without spaces, its country code or the national 0 (sc-3772): "0803 123 4567" finds +234 803 123 4567. */
+export function phoneMatches(e164: string, typed: string): boolean {
+  const digits = typed.replaceAll(/\D/gu, '');
+
+  if (/\p{L}/u.test(typed) || digits.length < 3) return false;
+  if (e164.replaceAll(/\D/gu, '').includes(digits)) return true;
+  const national = parsePhoneNumberFromString(e164)?.nationalNumber ?? '';
+
+  return digits.startsWith('0') && national.startsWith(digits.slice(1));
 }
 
 /** An E.164 number as the code-and-number field shows it: "+2348031234567" is NG and "0803 123 4567". */

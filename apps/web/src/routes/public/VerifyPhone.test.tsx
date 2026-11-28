@@ -185,7 +185,7 @@ describe('check your messages', () => {
 
     await waitFor(() =>
       expect(line.textContent).toBe(
-        "WhatsApp didn't reach you, so we texted it to +234 803 555 0142.",
+        'WhatsApp didn’t reach you, so we texted it to +234 803 555 0142.',
       ),
     );
     vi.useRealTimers();

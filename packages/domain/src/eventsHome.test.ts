@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  comingUpPanel,
   type HomeEvent,
   type HowSoon,
+  calledOffDay,
   cardDate,
   eventDayWords,
   eventDays,
@@ -348,6 +350,7 @@ describe('nextStep', () => {
     owner: 'event' as const,
     area: 'event',
     action: null,
+    done: false,
   };
   const draft = {
     status: 'draft' as const,
@@ -366,12 +369,18 @@ describe('nextStep', () => {
     expect(nextStep({ ...draft, status: 'paused' }, 'paused', NOW)).toEqual({ kind: 'resume' });
   });
 
-  it('names the next milestone of any other event, and nothing once none is next', () => {
+  it('names the next milestone of any other event, and nothing while it is on with none next', () => {
     const live = { ...draft, status: 'live' as const };
 
     expect(nextStep(live, 'live', NOW)).toEqual({ kind: 'nextUp', milestone: ends });
     expect(nextStep({ ...live, milestones: [] }, 'happening_now', NOW)).toBeNull();
-    expect(nextStep({ ...live, status: 'ended' }, 'finished', NOW)).toBeNull();
+  });
+
+  it('says a finished event is over, which an event on with nothing ahead is not', () => {
+    const live = { ...draft, status: 'live' as const };
+
+    expect(nextStep({ ...live, status: 'ended' }, 'finished', NOW)).toEqual({ kind: 'over' });
+    expect(nextStep({ ...live, milestones: [] }, 'finished', NOW)).toEqual({ kind: 'over' });
   });
 });
 
@@ -471,7 +480,7 @@ describe('eventDayWords', () => {
     };
 
     expect(eventDayWords(off, now, 'en-US')).toEqual({ kind: 'calledOffOn', date: 'Nov 3, 2025' });
-    expect(eventDayWords(off, now, 'en-US', true)).toEqual({
+    expect(eventDayWords(off, now, 'en-US', { keepDays: true })).toEqual({
       kind: 'oneDay',
       day: 'Friday, Nov 14, 2025',
     });
@@ -535,6 +544,20 @@ describe('milestoneMoment', () => {
     expect(milestoneMoment('2025-12-31T20:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
       'Wed, Dec 31, 2025, 20:00',
     );
+  });
+});
+
+describe('calledOffDay', () => {
+  const zone = 'Europe/London';
+  const now = new Date('2026-11-13T12:00:00Z');
+
+  it('leaves the year out of a day in this year', () => {
+    expect(calledOffDay('2026-11-13T09:00:00Z', zone, now, 'en-GB')).toBe('Fri 13 Nov');
+    expect(calledOffDay('2026-11-13T09:00:00Z', zone, now, 'en-US')).toBe('Fri, Nov 13');
+  });
+
+  it('names the year of a day in another year', () => {
+    expect(calledOffDay('2025-11-13T09:00:00Z', zone, now, 'en-GB')).toBe('Thu, 13 Nov 2025');
   });
 });
 
@@ -667,5 +690,48 @@ describe('howSoonPhrase', () => {
     expect(
       howSoonPhrase(event, 'finished', new Date('2026-11-13T12:00:00+01:00'), 'en', endsIn),
     ).toBeNull();
+  });
+});
+
+describe('comingUpPanel', () => {
+  const NOW = new Date('2026-11-01T12:00:00Z');
+  const later = {
+    at: '2026-11-01T18:00:00Z',
+    title: 'Dinner',
+    note: null,
+    owner: 'event' as const,
+    area: 'events',
+    action: null,
+    done: false,
+  };
+  const passed = { ...later, at: '2026-11-01T10:00:00Z', title: 'Doors' };
+  const onNow = {
+    status: 'live' as const,
+    startsAt: '2026-11-01T09:00:00Z',
+    endsAt: '2026-11-01T23:00:00Z',
+  };
+
+  it('shows what is ahead while there is any', () => {
+    expect(comingUpPanel(onNow, [passed, later], NOW)).toEqual({
+      kind: 'rows',
+      rows: [{ milestone: later, standing: 'upcoming', nextUp: true }],
+    });
+  });
+
+  it('says when it ends while it is on with nothing ahead, never that it is finished', () => {
+    expect(comingUpPanel(onNow, [passed], NOW)).toEqual({ kind: 'endsToday' });
+    expect(comingUpPanel(onNow, [], NOW)).toEqual({ kind: 'endsToday' });
+  });
+
+  it('says finished once it is over, ended early or not yet started with nothing ahead', () => {
+    expect(comingUpPanel({ ...onNow, endsAt: '2026-11-01T11:00:00Z' }, [passed], NOW)).toEqual({
+      kind: 'finished',
+    });
+    expect(comingUpPanel({ ...onNow, status: 'ended' }, [passed, later], NOW)).toEqual({
+      kind: 'finished',
+    });
+    expect(comingUpPanel({ ...onNow, startsAt: '2026-11-01T13:00:00Z' }, [], NOW)).toEqual({
+      kind: 'finished',
+    });
   });
 });

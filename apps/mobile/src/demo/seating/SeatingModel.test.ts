@@ -18,6 +18,7 @@ import {
   handlePoints,
   handleReach,
   inside,
+  keepsClear,
   detailOf,
   feetInches,
   fit,
@@ -42,10 +43,15 @@ import {
 import {
   SEATING_STATES,
   type Seating,
+  accName,
+  chairChosenWords,
+  choicesOn,
   freeCount,
   handlesLive,
   itemOf,
+  isTable,
   noSectionLine,
+  sectionDeleteLine,
   nobodyComing,
   placedCount,
   roomLine,
@@ -79,7 +85,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(102);
+    expect(SEATING_STATES).toHaveLength(115);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -243,7 +249,7 @@ describe('the iPad room’s words below 50% (sc-31783)', () => {
     const add = (id: string, mark: { ring?: true; lit?: true }) =>
       (marks[id] = { ...marks[id], ...mark });
     [...m.lit, ...(m.chosen == null ? [] : [m.chosen])].forEach((id) => add(id, { lit: true }));
-    Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: true }));
+    Object.keys(m.rings).forEach((id) => choicesOn(m, id).length > 0 && add(id, { ring: true }));
     return marks;
   };
   const says = (m: Seating, s: number) =>
@@ -420,6 +426,34 @@ describe('the room to scale', () => {
     const at = nearestFree(item(pad, 't10'), pad.items, ROOM, { x: 1200, y: 1020 });
     expect(overlapping({ ...item(pad, 't10'), ...at }, pad.items)).toEqual([]);
   });
+});
+
+describe('new rows and seats land clear of each other (sc-4003)', () => {
+  const empty = { ...pad, items: [] };
+
+  it('puts rows 90 cm apart and a single seat clear of the last one and its name', () => {
+    const rows = run(empty, { type: 'addRow' }, { type: 'addRow' }).items;
+    expect((rows[1]?.y ?? 0) - (rows[0]?.y ?? 0)).toBe(90);
+
+    const seats = run(empty, { type: 'addSeat' }, { type: 'addSeat' }).items;
+    expect(seats[0]).toMatchObject({ x: 1200, y: 900 });
+    expect(seats[1]).toMatchObject({ x: 1200, y: 990 });
+    expect(keepsClear(seats[1]!, seats)).toBe(true);
+    expect(keepsClear({ ...seats[1]!, x: 1260, y: 900 }, seats)).toBe(false);
+  });
+
+  it('places every add quickly, even once the hall is full', () => {
+    let m: Seating = empty;
+    let slowest = 0;
+    for (let n = 0; n < 120; n += 1) {
+      const began = performance.now();
+      m = run(m, { type: n % 3 === 2 ? 'addSeat' : 'addRow' });
+      slowest = Math.max(slowest, performance.now() - began);
+    }
+    expect(m.items).toHaveLength(120);
+    expect(m.items.every((it) => inside(it, ROOM))).toBe(true);
+    expect(slowest).toBeLessThan(500);
+  }, 30_000);
 });
 
 describe('a tap', () => {
@@ -631,6 +665,19 @@ describe('a table’s fields apply as each is entered', () => {
     );
   });
 
+  it('say a colleague changed the row or the seat first (412)', () => {
+    const row = startOf('rowChanged', 'landscape');
+    expect(row.fields.changedBy).toBe(
+      'Priya Shah just changed this row. Your change was not saved.',
+    );
+    expect(row.rings.rowA?.[0]?.who.name).toBe('Priya Shah');
+    const seat = startOf('seatChanged', 'portrait');
+    expect(seat.fields.changedBy).toBe(
+      'Priya Shah just changed this seat. Your change was not saved.',
+    );
+    expect(seat.rings.door?.[0]?.who.name).toBe('Priya Shah');
+  });
+
   it('take sizes in feet and inches where the organisation is US customary', () => {
     const us = { ...pad, units: 'us' as const };
     const t9 = run(
@@ -660,7 +707,7 @@ describe('a table’s fields apply as each is entered', () => {
     expect(feetInches(item(m, 'rowA').spacing)).toBe('2 ft 0 in');
   });
 
-  it('refuse a size it cannot read, or under 30 cm, beside the field', () => {
+  it('refuse a size it cannot read, or outside 40 cm to 10 m, beside the field', () => {
     const us = run(
       startOf('usCustomary', 'landscape'),
       { type: 'draft', key: 'Diameter', text: '6' },
@@ -674,14 +721,64 @@ describe('a table’s fields apply as each is entered', () => {
       { type: 'draft', key: 'Diameter', text: '20' },
       { type: 'apply', key: 'Diameter' },
     );
-    expect(small.fields.errors.Diameter).toBe('Use 30 cm or more.');
+    expect(small.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
     const unread = run(
       pad,
       { type: 'tapItem', id: 't4' },
       { type: 'draft', key: 'Diameter', text: 'wide' },
       { type: 'apply', key: 'Diameter' },
     );
-    expect(unread.fields.errors.Diameter).toBe('Use 30 cm or more.');
+    expect(unread.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
+    const big = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Diameter', text: '1001' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(big.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
+    expect(item(big, 't4').d).toBe(180);
+    const feet = run(
+      startOf('usCustomary', 'landscape'),
+      { type: 'draft', key: 'Diameter', text: '15 in' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(feet.fields.errors.Diameter).toBe('Enter a size from 1 ft 4 in to 32 ft 9 in.');
+  });
+
+  it('refuse a blank name, seats outside 1 to 30, and ends past the seats', () => {
+    const typed = (id: string, key: string, text: string) =>
+      run(pad, { type: 'tapItem', id }, { type: 'draft', key, text }, { type: 'apply', key });
+    expect(typed('t4', 'Name', ' ').fields.errors.Name).toBe('Enter a name for the table.');
+    expect(typed('t4', 'Seats', '31').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(typed('t4', 'Seats', '').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(typed('bar1', 'Seats', '0').fields.errors.Seats).toBe(
+      'Enter a number of places from 1 to 30.',
+    );
+    const ends = typed('t9', 'Ends', '9');
+    expect(ends.fields.errors.Ends).toBe('Enter 0 to 8, no more than the table has seats.');
+    expect(item(ends, 't9').ends).toBe(2);
+    expect(typed('t9', 'Ends', 'two').fields.errors.Ends).toBe(
+      'Enter 0 to 8, no more than the table has seats.',
+    );
+    expect(startOf('fieldBlank', 'landscape').fields.errors.Name).toBe(
+      'Enter a name for the table.',
+    );
+    expect(startOf('seatsRange', 'landscape').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(startOf('sizeRange', 'landscape').fields.errors.Diameter).toBe(
+      'Enter a size from 40 cm to 10 m.',
+    );
+    expect(startOf('notNumber', 'landscape').fields.errors.Width).toBe(
+      'Enter a size from 40 cm to 10 m.',
+    );
+    expect(startOf('endsRange', 'landscape').fields.errors.Ends).toBe(
+      'Enter 0 to 8, no more than the table has seats.',
+    );
   });
 
   it('keep a table chosen when what was typed is refused on leaving, then let go on a second tap', () => {
@@ -806,16 +903,59 @@ describe('sections', () => {
     expect(item(m, 't1').sec).toBeNull();
   });
 
-  it('asks with its tables counted, and with no line when it has none (pm, 9 Nov)', () => {
-    expect(say.sectionDeleteBody(5)).toBe('Its 5 tables stay where they are, with no section.');
-    expect(say.sectionDeleteBody(1)).toBe('Its 1 table stays where it is, with no section.');
-    expect(say.sectionDeleteBody(0)).toBe('');
+  it('names each kind it leaves with no section, the verb from the total (sc-54060)', () => {
+    expect(say.sectionDeleteBody(5, 0, 0)).toBe(
+      'Its 5 tables stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(1, 0, 0)).toBe('Its 1 table stays where it is, with no section.');
+    expect(say.sectionDeleteBody(0, 1, 0)).toBe('Its 1 row stays where it is, with no section.');
+    expect(say.sectionDeleteBody(0, 0, 1)).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(say.sectionDeleteBody(0, 0, 2)).toBe(
+      'Its 2 single seats stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(3, 2, 1)).toBe(
+      'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(1, 1, 0)).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(0, 0, 0)).toBe('');
+    expect(W.sectionStays).toBe(
+      'Its tables, rows and single seats stay where they are, with no section.',
+    );
   });
 
-  it('asks about Quiet corner, a section holding rows and no tables, with its state', () => {
+  it('asks about Quiet corner, a section of a row and a single seat, which keep their places', () => {
+    const m = startOf('sectionDeleteRows', 'landscape');
+    expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
+    expect(m.items.filter((it) => it.sec === 'quiet').map((it) => it.id)).toEqual(['rowA', 'door']);
+    expect(sectionDeleteLine(m, 'quiet')).toBe(
+      'Its 1 row and 1 single seat stay where they are, with no section.',
+    );
+    const t = m.items.find((it) => isTable(it) && it.sec !== 'quiet');
+    const more = {
+      ...m,
+      items: [
+        ...m.items.map((it) => (it === t ? { ...it, sec: 'quiet' } : it)),
+        { ...item(m, 'door'), id: 'door2' },
+      ],
+    };
+    expect(sectionDeleteLine(more, 'quiet')).toBe(
+      'Its 1 table, 1 row and 2 single seats stay where they are, with no section.',
+    );
+    const done = run(m, { type: 'confirm' });
+    expect(done.sections.map((s) => s.key)).not.toContain('quiet');
+    expect(item(done, 'rowA').sec).toBeNull();
+    expect(item(done, 'door').sec).toBeNull();
+    expect(item(done, 'rowA').chairs).toEqual(item(m, 'rowA').chairs);
+  });
+
+  it('asks about Quiet corner, an empty section, with its state (pm, 9 Nov)', () => {
     const m = startOf('sectionDeleteEmpty', 'landscape');
     expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
-    expect(m.items.some((it) => it.sec === 'quiet' && it.kind === 'row')).toBe(true);
+    expect(m.items.some((it) => it.sec === 'quiet')).toBe(false);
     const done = run(m, { type: 'confirm' });
     expect(done.sections.map((s) => s.key)).not.toContain('quiet');
   });
@@ -826,6 +966,10 @@ describe('the room and the plan', () => {
     const m = startOf('shrinkRefused', 'landscape');
     expect(m.roomDraft.error).toBe('3 items sit outside 20 m × 18 m. Move them first.');
     expect(m.outside).toEqual(['t5', 't10', 'bar2']);
+  });
+
+  it('says it for one item outside the room, as the product does (sc-4000)', () => {
+    expect(say.outside(1, '20 m', '18 m')).toBe('1 item sits outside 20 m × 18 m. Move it first.');
   });
 
   it('asks before deleting the plan with what it deletes, then who loses a seat, held chairs too (pm, 8 Nov)', () => {
@@ -1128,5 +1272,71 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
       const [corner] = handlePoints(t4, s, pad);
       expect(sideFrom(corner?.x ?? 0, handleReach(t4, s, pad).x, s)).toBe(t4.d);
     });
+  });
+});
+
+describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
+  const names = (m: Seating, id: string) => choicesOn(m, id).map((one) => one.who.name);
+
+  it('open on the iPad with View set, both ways up', () => {
+    for (const layout of ['landscape', 'portrait'] as const) {
+      expect(startOf('presenceSeatTables', layout).view).toBe('Tables');
+      expect(startOf('presenceTwoTables', layout).view).toBe('Tables');
+      expect(startOf('presenceBothTables', layout).view).toBe('Tables');
+      const list = startOf('presenceSeatList', layout);
+      expect([list.view, list.listTab, list.listOpen]).toEqual(['List', 'All', 't9']);
+      expect(startOf('presenceTwoList', layout).listTab).toBe('All');
+    }
+  });
+
+  it('keep each colleague in the order they chose it', () => {
+    const m = startOf('presenceTwoTables', 'landscape');
+    expect(names(m, 't7')).toEqual(['Priya Shah', 'Ana Souza']);
+    expect(names(m, 't9')).toEqual(['Julien Moreau', 'Tom Baker', 'Ngozi Eze']);
+  });
+
+  it('name one, two and three colleagues as English joins a list, and a seat by its number', () => {
+    const chose = startOf('presenceChose', 'landscape');
+    expect(accName(chose, item(chose, 't7'))).toMatch(/, chosen by Priya Shah$/u);
+    const two = startOf('presenceTwoList', 'portrait');
+    expect(accName(two, item(two, 't7'))).toMatch(/, chosen by Priya Shah and Ana Souza$/u);
+    expect(accName(two, item(two, 't9'))).toMatch(
+      /, chosen by Julien Moreau, Tom Baker and Ngozi Eze$/u,
+    );
+    const seat = startOf('presenceSeatList', 'landscape');
+    expect(accName(seat, item(seat, 't9'))).toMatch(/, seat 2 chosen by Julien Moreau$/u);
+    expect(chairChosenWords(choicesOn(seat, 't9'), 1)).toBe(', chosen by Julien Moreau');
+    expect(chairChosenWords(choicesOn(seat, 't9'), 0)).toBe('');
+  });
+
+  it('carry every mark across a View switch, and expanding a row chooses nothing', () => {
+    for (const state of ['presenceChose', 'presenceBoth', 'presenceTwoTables'] as const) {
+      const m = startOf(state, 'landscape');
+      const away = run(m, { type: 'setView', view: 'List' }, { type: 'setView', view: 'Tables' });
+      expect(away.rings, state).toEqual(m.rings);
+      expect(run(m, { type: 'setView', view: 'Floor plan' }).rings, state).toEqual(m.rings);
+    }
+    const list = run(startOf('presenceTwoList', 'landscape'), { type: 'listOpen', id: 't4' });
+    expect([list.chosen, list.lit]).toEqual([null, []]);
+  });
+
+  it('show both your Tint and her ring on one card', () => {
+    const m = startOf('presenceBothTables', 'portrait');
+    expect(m.chosen).toBe('t7');
+    expect(names(m, 't7')).toEqual(['Priya Shah']);
+  });
+
+  it('never mark a viewer’s choice, and mark nothing while reconnecting', () => {
+    const viewer = startOf('presenceViewer', 'landscape');
+    expect(viewer.rings.t2?.length).toBe(1);
+    expect(choicesOn(viewer, 't2')).toEqual([]);
+    expect(accName(viewer, item(viewer, 't2'))).not.toMatch(/chosen by/u);
+    const down = {
+      ...startOf('presenceTwoTables', 'landscape'),
+      presence: 'reconnecting' as const,
+    };
+    expect(choicesOn(down, 't7')).toEqual([]);
+    expect(accName(down, item(down, 't7'))).not.toMatch(/chosen by/u);
+    expect(choicesOn(startOf('left', 'landscape'), 't7')).toEqual([]);
   });
 });

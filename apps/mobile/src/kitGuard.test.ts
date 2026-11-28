@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const SHELL_READERS = ['/settingsShell.ts', '/Summary.tsx'];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('nothing loads react-native whole at run time', () => {
@@ -38,6 +39,39 @@ describe('nothing loads react-native whole at run time', () => {
   });
 });
 
+describe('a picked photo is read through pickedBytes (sc-53493)', () => {
+  it('in no .blob() in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      text
+        .split('\n')
+        .map((line, index) => ({ line: index + 1, code: line.trim() }))
+        .filter(({ code }) => !/^(\/\/|\/\*|\*)/u.test(code) && /\.blob\(\)/u.test(code))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'A fetch(uri).blob() reaches an Android PUT as the text `File not found`: read the file with pickedBytes from src/kit/pickedBytes.ts.',
+    ).toEqual([]);
+  });
+});
+
+describe('a product part reads the shell only where the shell is mounted', () => {
+  it('in no component outside the Settings parts', () => {
+    const offenders = sources(['src/components'])
+      .filter(
+        ({ path, text }) =>
+          !SHELL_READERS.some((name) => path.endsWith(name)) && /\buseShell\(\)/u.test(text),
+      )
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'useShell() throws outside Settings (sc-48600): read useShellLayout() from src/components/settingsShell.ts.',
+    ).toEqual([]);
+  });
+});
+
 describe("every TextInput starts from the kit's defaults", () => {
   it('in every TextInput in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
@@ -48,7 +82,7 @@ describe("every TextInput starts from the kit's defaults", () => {
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
+      'Spread fieldDefaults(), codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
@@ -62,7 +96,7 @@ describe("every TextInput starts from the kit's defaults", () => {
       0,
     );
     expect(
-      selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
+      selfClosing('TextInput', '<TextInput {...fieldDefaults(Platform.OS)} style={x} />').filter(
         (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(0);
@@ -458,6 +492,19 @@ describe('a screen reader reaches each button in a group', () => {
   });
 });
 
+describe('a field that hides its selection hides its handles too (sc-80268)', () => {
+  it('in every TextInput with a transparent selection, on Android where the kit gives the handles ink', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      selfClosing('TextInput', text)
+        .filter(({ markup }) => markup.includes('selectionColor="transparent"'))
+        .filter(({ markup }) => !markup.includes('selectionHandleColor="transparent"'))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
@@ -626,9 +673,8 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts);
-  // Security's proofs, Sign out everywhere else among them, take ConfirmScreen's.
-  const RECOVERY_CODE_FIELDS = ['${testID}.code', '${idPrefix}.code'];
+  // Every proof, Sign out everywhere else among them, takes ConfirmScreen's.
+  const RECOVERY_CODE_FIELDS = ['${testID}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
@@ -696,6 +742,19 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
   });
 });
 
+describe('a shown password hides again on a send, a screen left and the app sent away (sc-79989)', () => {
+  it('in every component that can show a password', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /(?:\.|&\s*)passwordProps\(/u.test(text))
+      .filter(({ text }) => !/=\s*useRevealed\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''));
+
+    expect(offenders, 'Take what is shown from useRevealed in src/components/Field.tsx.').toEqual(
+      [],
+    );
+  });
+});
+
 describe('a button or link taking keyboard focus moves on from the landing toast (sc-41296)', () => {
   const pressables = (file: string) => {
     const text = readFileSync(join(__dirname, file), 'utf8');
@@ -725,10 +784,29 @@ describe('a button or link taking keyboard focus moves on from the landing toast
 describe('Your organisation mounts once it knows whether it lists invitations (sc-41296)', () => {
   it('so Organisation name never takes focus on a step that then drops it', () => {
     const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
-    const waits = text.indexOf('if (!loaded.read || !offersRead) return null;');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
 
     expect(waits).toBeGreaterThan(0);
     expect(waits).toBeLessThan(text.indexOf('<StepScreen nav={nav} foot={foot}>'));
+  });
+});
+
+describe('a step still reading is not a landing the landing toast is said over (sc-87539)', () => {
+  it('Your organisation waits as waiting', () => {
+    const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
+
+    expect(text.indexOf('<StepScreen nav={nav} waiting>', waits)).toBe(
+      text.indexOf('<StepScreen', waits),
+    );
+  });
+
+  it('StepScreen registers the step only once it is no longer waiting', () => {
+    const text = readFileSync(join('src', 'steps', 'StepScreen.tsx'), 'utf8');
+    const holds = text.indexOf('if (waiting) return undefined;');
+
+    expect(holds).toBeGreaterThan(0);
+    expect(holds).toBeLessThan(text.indexOf('const step = stepShown();'));
   });
 });
 
@@ -777,7 +855,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
   // sc-20209 carries it to adding and checking an address or a number, and to A few details. sc-20210: the signed-out forms.
   const HELD_FORMS = [
-    'src/components/ConfirmItsYou.tsx',
+    'src/components/AccountConfirm.tsx',
     'src/components/SecurityPassword.tsx',
     'src/components/AccountName.tsx',
     'src/components/AccountZone.tsx',
@@ -796,7 +874,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'app/complete-profile.tsx',
     'app/verify-email.tsx',
     'app/verify-phone.tsx',
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/register.tsx',
     'app/forgot-password.tsx',
     'app/reset-password.tsx',
@@ -864,12 +942,28 @@ describe('Ask to join holds its message rather than disabling it (sc-9674)', () 
   const text = readFileSync(join('app', 'join', '[token].tsx'), 'utf8');
 
   it('in join/[token].tsx', () => {
-    const fields = selfClosing('InsideField', text);
+    const fields = selfClosing('MessageBox', text);
 
     expect(fields).toHaveLength(1);
     expect(fields.filter((tag) => /\beditable=/u.test(tag.markup))).toEqual([]);
     expect(bareFocus(JOIN, text), FOCUS_THROUGH).toEqual([]);
     expect(text.match(/\bfocusChecked\(input\)/gu), 'the Message check').toHaveLength(1);
+  });
+
+  it('lifts its MessageBox again as a refusal or the count grows it (sc-57219)', () => {
+    const box = readFileSync(join('src', 'steps', 'MessageBox.tsx'), 'utf8');
+    const lift = /const \{ ref: (\w+), onLayout(?:: (\w+))? \} = useAboveKeyboard\(\);/u.exec(box);
+    const group = lift?.[1] ?? '';
+    const onLayout = lift?.[2] ?? 'onLayout';
+    const outer = /return \(\s*<View\b([\s\S]*?)\n\s*>/u.exec(box)?.[1] ?? '';
+
+    expect(lift, 'MessageBox takes both ref and onLayout from useAboveKeyboard').not.toBeNull();
+    expect(outer, 'its group carries the ref').toMatch(
+      new RegExp(String.raw`\bref=\{${group}\}`, 'u'),
+    );
+    expect(outer, 'and the onLayout that re-lifts it as it grows').toMatch(
+      new RegExp(String.raw`\bonLayout=\{${onLayout}\}`, 'u'),
+    );
   });
 
   it('drops the keys only when the link is dead, which no message can fix (sc-11741)', () => {
@@ -949,7 +1043,7 @@ describe('a signed-out submit sends one request, and none with the keys down ope
   // Where each submit starts its request, and what its first return waits on: the request, and a 429 where one locks the button.
   const SIGNED_OUT = [
     [
-      'app/sign-in.tsx',
+      'app/(sign-in)/sign-in.tsx',
       /^\s*onSubmit\(/u,
       ["status.kind === 'signingIn'", "status.kind === 'rateLimited'"],
     ],
@@ -1131,11 +1225,6 @@ describe('a submit with the keys down keeps them down (sc-20209)', () => {
 });
 
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
-  const offWhile = (file: string, busy: string) =>
-    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
-      .filter(({ markup }) => markup.includes(`off={${busy}}`))
-      .map(({ markup }) => propValue(markup, 'testID'));
-
   it('in Password, where each screen that sends waits on Cancel while it is busy', () => {
     const source = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8');
     const screens = [...source.matchAll(/<FocusedScreen\b/gu)].map(({ index }) =>
@@ -1155,16 +1244,13 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
     ['AccountName.tsx', 'saving'],
     ['AccountZone.tsx', 'saving'],
     ['AccountAdd.tsx', 'sending'],
+    ['AccountConfirm.tsx', 'checking'],
   ])('in %s, where the focused screen waits on Cancel while %s', (file, busy) => {
     const source = readFileSync(join('src', 'components', file), 'utf8');
     const start = source.indexOf('<FocusedScreen');
     const screen = source.slice(start, tagEnd(source, start));
 
     expect(propValue(screen, 'waits')).toBe(`{${busy}}`);
-  });
-
-  it("in Confirm it's you, beside Continue", () => {
-    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
   });
 });
 
@@ -1566,7 +1652,7 @@ function fixedAroundText(text: string): number[] {
 }
 
 function startsFromKitDefaults(markup: string): boolean {
-  return /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup);
+  return /\{\.\.\.(fieldDefaults\(|codeProps\(|passwordProps\()/u.test(markup);
 }
 
 function takesRecoveryCode(markup: string): boolean {
@@ -1855,6 +1941,15 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
     expect(text).not.toContain('AnswerInView');
   });
 
+  it('lifts the saved toast on an event clear of the phone tab bar, as the demo does (sc-3780)', () => {
+    const text = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /<PageToast[\s\S]{0,200}?bottom=\{\s*phone\s*\?\s*phoneTabBarClearance\(insets\.bottom\)/u,
+    );
+    expect(text).toMatch(/:\s*Math\.max\(insets\.bottom, tokens\.spaceLg\)/u);
+  });
+
   it('notices a notice left where it shows', () => {
     expect(answersInView('<ReadOut words={failed} interrupts>', 'words={failed}')).toBe(false);
     expect(
@@ -1871,6 +1966,34 @@ function answersInView(text: string, said: string): boolean {
 
   return /<AnswerInView\b[^>]*>\s*$/u.test(text.slice(0, opened));
 }
+
+describe('the faces’ chip writes its count through moreChip (sc-48825)', () => {
+  it('in Faces, so 1,321 left out reads 99+ inside its circle', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const faces = summary.slice(summary.indexOf('export function Faces('));
+
+    expect(faces.slice(0, faces.indexOf('\n}\n'))).toContain('{moreChip(more)}');
+  });
+});
+
+describe('a card’s sentence steps down rather than break a word (sc-37693)', () => {
+  it('in CardSays, so 7 people never reads peopl / e at the largest text', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const says = summary.slice(summary.indexOf('export function CardSays('));
+
+    expect(says.slice(0, says.indexOf('\n}\n'))).toContain('<WholeWords');
+  });
+
+  it.each(['SecurityCard.tsx', 'NotificationsCard.tsx'])(
+    'in %s, whose heading beside the glyph is a CardSays, so Double authentification désactivée never reads authentifica / tion (sc-13281)',
+    (file) => {
+      const card = readFileSync(join(__dirname, 'components', file), 'utf8');
+
+      expect(card).toContain('<CardSays');
+      expect(card).not.toMatch(/<Text[\s>]/u);
+    },
+  );
+});
 
 describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([
@@ -1892,7 +2015,7 @@ describe('a screen still reading says so in words (sc-23279)', () => {
 
 describe('every sign-in lands through nextAfterSignIn (sc-39703)', () => {
   it.each([
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/reset-password.tsx',
     'src/components/ProviderSignIn.tsx',
     'src/steps/SignInSecondFactor.tsx',
@@ -1939,5 +2062,103 @@ describe('a failing check keeps the keys up on a field Android holds focused, ov
   it('raises the keys there through the native focus command, with no blur first', () => {
     expect(android).toContain('raiseKeysOn(input);');
     expect(android).not.toMatch(/\.blur\(|Keyboard\.isVisible\(/u);
+  });
+});
+
+describe("a hidden measure reads a word at its own width, whatever the caller's style stretches (sc-37693)", () => {
+  const text = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+  const measured = /export function MeasuredWords\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const word = /\n {2}word: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("ends every measured word's style with styles.word", () => {
+    expect(measured).toMatch(/<Text\b[^>]*\bstyle=\{\[[^\]]*,\s*styles\.word\s*\]\}/u);
+  });
+
+  it('keeps styles.word at its natural width', () => {
+    expect(
+      word,
+      'SectionHead stretches its title; measured stretched, a heading steps down to 18 at AX5.',
+    ).toMatch(/alignSelf: 'flex-start'/u);
+  });
+});
+
+describe("a section's hint is drawn in lines of whole points (sc-13281)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const foot = /export function SectionFoot\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const footStyle = /\n {2}foot: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("gives SectionFoot's Text wholeLines", () => {
+    expect(
+      textTags(foot).map(({ markup }) => markup),
+      'Without it the last line of a hint is clipped at the larger text sizes (QA #75205).',
+    ).toEqual([expect.stringMatching(/\bwholeLines\b/u)]);
+  });
+
+  it('sets no line height of its own over it', () => {
+    expect(footStyle).not.toMatch(/lineHeight/u);
+  });
+});
+
+describe("a row's line under its title is drawn in lines of whole points (sc-94081)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const line = /\{line != null && \(([\s\S]*?)\n\s*\)\}/u.exec(text)?.[1] ?? '';
+
+  it('gives the line its ratio through wholeLines', () => {
+    expect(
+      line,
+      'At 14 × 1.4 the line is 19.6 pt, and iOS draws its last line cut with an empty line under it (qa3, #94027).',
+    ).toMatch(/\bwholeLines=\{ROW_LINE\}/u);
+  });
+
+  it('sets no fractional line height under a title', () => {
+    expect(text).not.toMatch(/\n {2}line: \{/u);
+  });
+});
+
+describe('a pill with words grows with them rather than cutting them (sc-13281)', () => {
+  const styleOf = (file: string, name: string) =>
+    new RegExp(`\\n {2}${name}: \\{([^}]*)\\}`, 'u').exec(
+      readFileSync(join('src', 'components', file), 'utf8'),
+    )?.[1] ?? '';
+
+  it.each([
+    ['TodayParts.tsx', 'create', 'Créer votre premier événement (QA #76223)'],
+    ['CreateWalkParts.tsx', 'tag', 'De cet appareil (QA #76223)'],
+    ['TodayParts.tsx', 'needRow', 'a Needs you row at the ninth step'],
+    ['TodayParts.tsx', 'chip', "an event card's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'chipSmall', "a tile's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'count', "Home's Needs you count of 10 or more at the ninth step"],
+  ])('%s %s sets a least height, never a height', (file, name, seen) => {
+    const style = styleOf(file, name);
+
+    expect(style, seen).toMatch(/\bminHeight:/u);
+    expect(style, seen).not.toMatch(/(?<![A-Za-z])height:/u);
+  });
+
+  it("lets an event card's chips take a second line rather than end in an ellipsis", () => {
+    const text = readFileSync(join('src', 'components', 'TodayParts.tsx'), 'utf8');
+    const chips =
+      /function CountChip\([\s\S]*?\nfunction StageChip\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+
+    expect(chips, 'En cours · 12 invités beside Publié on a 232-wide tile').toMatch(/StageChip/u);
+    expect(chips).not.toMatch(/numberOfLines/u);
+    expect(styleOf('TodayParts.tsx', 'tileChips')).toMatch(/flexWrap: 'wrap'/u);
+    expect(styleOf('TodayParts.tsx', 'rowChips')).toMatch(/flexWrap: 'wrap'/u);
+  });
+});
+
+describe("a field's label inside the box wraps and the box grows (sc-13281)", () => {
+  const text = readFileSync(join('src', 'steps', 'InsideField.tsx'), 'utf8');
+  const label = /<Text\s+nativeID=\{labelID\}[\s\S]*?<\/Text>/u.exec(text)?.[0] ?? '';
+
+  it("never ends Nom de l'organisation in an ellipsis at the ninth step (QA #77151)", () => {
+    expect(label).toMatch(/onLayout=/u);
+    expect(label).not.toMatch(/numberOfLines/u);
+  });
+
+  it('sizes the box and the space above the value from the label as drawn', () => {
+    expect(text).toMatch(/minHeight: restingHeight/u);
+    expect(text).toMatch(/\(restingHeight - labelHeight\) \/ 2/u);
+    expect(text).toMatch(/\(labelHeight \* LABEL_SMALL\) \/ LABEL_LARGE/u);
   });
 });

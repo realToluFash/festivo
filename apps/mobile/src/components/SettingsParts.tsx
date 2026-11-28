@@ -1,6 +1,7 @@
-import { type ReactElement, type ReactNode, type Ref, useContext } from 'react';
+import { type ReactElement, type ReactNode, type Ref, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   type StyleProp,
   StyleSheet,
@@ -12,19 +13,34 @@ import {
 
 import { Text, TitleCap } from './Text.tsx';
 import {
+  type BackSizing,
   PILL_ABOVE,
   PILL_GAP,
-  PILL_GLYPH,
   PILL_LEFT,
   PILL_RIGHT,
-  PILL_TEXT,
-  backLeast,
+  backRoomIsLaid,
+  backRoomStands,
   backScale,
+  backWordSize,
+  pillBack,
 } from '../layout/focusedHeader.ts';
+import type { Family, WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import {
+  besideGlyphInPill,
+  capInDisc,
+  capUnderTitle,
+  grownPad,
+  piecesIn,
+  windowAt,
+  wordsIn,
+  wrapOf,
+} from '../layout/textSize.ts';
+import { useWindowFrame } from '../layout/useLayout.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
+import { MeasuredWords } from './Title.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 
 export const TYPE = {
@@ -112,6 +128,7 @@ export function Pill({
   busy = false,
   full = true,
   height = tokens.sizeHitPhoneHero,
+  grows = false,
   accessibilityLabel,
   testID,
   ref,
@@ -123,27 +140,42 @@ export function Pill({
   busy?: boolean;
   full?: boolean;
   height?: number;
+  /** At least `height`, and as tall as its words: the label grows with the text size, each word whole (sc-66900). */
+  grows?: boolean;
   accessibilityLabel?: string;
   testID?: string;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   const look = PILL[busy ? 'off' : kind];
   const off = busy || kind === 'off';
+  const textSize = height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body;
+  const ring = look.ring == null ? 0 : 1.5;
+  const grown = useGrownLabel({
+    on: grows,
+    label,
+    size: textSize,
+    glyph: busy || glyph == null ? 0 : PILL_GLYPH_SIZE / textSize,
+    beside: busy ? TURNING_SIDE + tokens.spaceSm : glyph == null ? 0 : tokens.spaceSm,
+    chrome: 2 * (tokens.spaceXxl + ring),
+    pad: grownPad(height, textSize, ring) + ring,
+    ring,
+  });
 
   return (
     <Pressable
       ref={ref}
       onPress={off ? undefined : onPress}
       disabled={off}
+      onLayout={grows ? (event) => grown.room(event.nativeEvent.layout.width) : undefined}
       style={({ pressed }) => [
         styles.pill,
-        {
-          height,
-          borderRadius: height / 2,
-          backgroundColor: look.fill,
-          borderWidth: look.ring == null ? 0 : 1.5,
-          borderColor: look.ring,
-        },
+        grows
+          ? [
+              styles.pillGrows,
+              { minHeight: height, paddingVertical: grownPad(height, textSize, ring) },
+            ]
+          : { height, borderRadius: height / 2 },
+        { backgroundColor: look.fill, borderWidth: ring, borderColor: look.ring },
         full ? styles.pillFull : styles.pillFit,
         kind === 'quiet' && styles.pillQuiet,
         pressed && styles.pressed,
@@ -153,19 +185,117 @@ export function Pill({
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
     >
-      {busy && <TurningMark side={16} />}
-      {!busy && glyph != null && <Glyph name={glyph} size={18} ink={look.ink} weight={2.1} />}
+      {grown.measure}
+      {busy && <TurningMark side={TURNING_SIDE} />}
+      {!busy && glyph != null && (
+        <Glyph name={glyph} size={PILL_GLYPH_SIZE * grown.glyphScale} ink={look.ink} weight={2.1} />
+      )}
       <Text
-        size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
+        size={textSize}
         weight="semibold"
-        numberOfLines={1}
+        numberOfLines={grows ? undefined : 1}
+        maxFontSizeMultiplier={grows ? grown.multiplier : undefined}
         accessible={false}
-        style={{ color: look.ink }}
+        style={[{ color: look.ink }, grows && styles.pillWords]}
       >
         {label}
       </Text>
     </Pressable>
   );
+}
+
+const PILL_GLYPH_SIZE = 18;
+const TURNING_SIDE = 16;
+
+/** A growing pill's label: its full size while its widest word fits beside the glyph, which grows with it; else the largest that fits, never under `size` (sc-13496). */
+export function useGrownLabel({
+  on,
+  label,
+  size,
+  weight = 'semibold',
+  family = 'sans',
+  glyph,
+  beside,
+  chrome,
+  pad,
+  ring,
+}: {
+  on: boolean;
+  label: string;
+  size: number;
+  weight?: WeightName;
+  family?: Family;
+  /** The glyph's side per unit of the label's size, 0 when it does not grow. */
+  glyph: number;
+  /** What sits beside the words at every size: the gap, and a mark that does not grow. */
+  beside: number;
+  /** The pill's sides and ring. */
+  chrome: number;
+  /** Its padding and ring above and below the words. */
+  pad: number;
+  ring: number;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
+  const start = size * capUnderTitle(cap ?? Infinity, size, fontScale);
+  const key = `${start}|${label}`;
+  const words = [...new Set([...wordsIn([label]), ...piecesIn([label])])];
+  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
+    key: '',
+    widths: {},
+  });
+  const [width, setWidth] = useState<number | null>(null);
+  const widths = measured.key === key ? measured.widths : {};
+  const whole = widths[`\n${label}`];
+  const known = whole != null && words.every((word) => widths[word] != null);
+  const keep = (name: string, measuredWidth: number) =>
+    setMeasured((now) => {
+      const kept = now.key === key ? now.widths : {};
+
+      return kept[name] === measuredWidth
+        ? now
+        : { key, widths: { ...kept, [name]: measuredWidth } };
+    });
+  const drawn =
+    !on || width == null || !known
+      ? start
+      : besideGlyphInPill({
+          size,
+          start,
+          wrap: wrapOf(label, widths, whole),
+          glyph,
+          beside,
+          width,
+          sides: chrome / 2,
+          pad,
+          ring,
+        });
+
+  return {
+    measure: on ? (
+      <>
+        <MeasuredWords
+          words={words.filter((word) => widths[word] == null)}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={keep}
+        />
+        <MeasuredWords
+          words={whole == null ? [label] : []}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={(_, measuredWidth) => keep(`\n${label}`, measuredWidth)}
+        />
+      </>
+    ) : null,
+    multiplier: drawn / size,
+    glyphScale: on ? Math.max(1, Math.min(drawn / size, fontScale)) : 1,
+    room: (next: number) => setWidth((now) => (now === next ? now : next)),
+  };
 }
 
 /** A pair of choices: on a phone a stack with the confirming one on top, on a tablet a row with the dismissive one first. */
@@ -194,53 +324,94 @@ export function Pair({
   );
 }
 
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778) or a turn changes the window or its frame (sc-90463), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
+export function useBackWord(word: string, back: BackSizing, besideShown = false) {
+  const { width: windowWidth } = useWindowDimensions();
+  const key = `${back.full}|${word}`;
+  const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
+  const roomKey = `${key}|${windowAt(windowWidth, useWindowFrame().width)}|${besideShown}`;
+  const [room, setRoom] = useState<{
+    key: string;
+    width: number;
+    size: number;
+    word: number | null;
+  } | null>(null);
+  const measured = width?.key === key ? width.width : null;
+  const known = room?.key === roomKey && backRoomStands(back, room, measured) ? room.width : null;
+  const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
+
+  return {
+    size,
+    measure: (
+      <MeasuredWords
+        words={[word]}
+        size={back.full}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(_, drawn) => setWidth({ key, width: drawn })}
+      />
+    ),
+    onLayout: (event: LayoutChangeEvent) => {
+      const laid = event.nativeEvent.layout.width;
+
+      if (size === back.full || (measured != null && backRoomIsLaid(back, measured, size, laid)))
+        setRoom({ key: roomKey, width: laid, size, word: measured });
+    },
+  };
+}
+
 /** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
 export function Back({
   label,
   onPress,
   off = false,
+  besideShown = false,
   testID,
 }: {
   label?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  besideShown?: boolean;
   testID?: string;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
-  const size = PILL_TEXT * scale;
+  const back = pillBack(scale);
+  const word = useBackWord(place, back, besideShown);
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={t('frame.backTo', { place })}
-      accessibilityState={{ disabled: off }}
-      testID={testID}
-    >
-      <Glyph
-        name="back"
-        size={PILL_GLYPH * scale}
-        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
-        weight={2.4}
-      />
-      <Text
-        size={size}
-        weight="semibold"
-        muted={off}
-        allowFontScaling={false}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={backLeast(scale)}
-        accessible={false}
+    <>
+      {word.measure}
+      <Pressable
+        onPress={onPress}
+        onLayout={word.onLayout}
+        disabled={off}
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('frame.backTo', { place })}
+        accessibilityState={{ disabled: off }}
+        testID={testID}
       >
-        {place}
-      </Text>
-    </Pressable>
+        <Glyph
+          name="back"
+          size={(back.glyph / back.least) * word.size}
+          ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+          weight={2.4}
+        />
+        <Text
+          size={word.size}
+          weight="semibold"
+          muted={off}
+          allowFontScaling={false}
+          numberOfLines={1}
+          accessible={false}
+        >
+          {place}
+        </Text>
+      </Pressable>
+    </>
   );
 }
 
@@ -353,6 +524,7 @@ export function Avatar({
   glyph?: GlyphName | undefined;
 }) {
   const look = AVATAR_TONES[tone % AVATAR_TONES.length] ?? AVATAR_TONES[0];
+  const size = Math.max(12, Math.round(side * 0.36));
 
   return (
     <View
@@ -365,9 +537,10 @@ export function Avatar({
     >
       {glyph == null ? (
         <Text
-          size={Math.max(12, Math.round(side * 0.36))}
+          size={size}
           weight="bold"
           accessible={false}
+          maxFontSizeMultiplier={capInDisc(side, size)}
           style={{ color: look.ink }}
         >
           {initials}
@@ -473,7 +646,9 @@ const styles = StyleSheet.create({
   pillFull: { alignSelf: 'stretch', paddingHorizontal: tokens.spaceXxl },
   pillFit: { alignSelf: 'flex-start', paddingHorizontal: 22 },
   pillQuiet: { paddingHorizontal: tokens.spaceXxs, minHeight: tokens.sizeHit },
-  pressed: { opacity: 0.8 },
+  pillGrows: { borderRadius: tokens.radiusPill },
+  pillWords: { textAlign: 'center' },
+  pressed: { opacity: tokens.opacityPressed },
   stack: { gap: tokens.spaceMd },
   pairRow: {
     flexDirection: 'row',

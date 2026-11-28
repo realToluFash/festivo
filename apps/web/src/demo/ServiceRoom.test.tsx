@@ -1,13 +1,12 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
 
-beforeAll(() => import('./Demo.tsx'), 60000);
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 afterEach(() => __setConfig(tested));
 

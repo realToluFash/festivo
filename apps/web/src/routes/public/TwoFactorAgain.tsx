@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
+import { takeHeldReturn } from '../../heldReturn.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { SignedInAs } from '../../components/Onboarding.tsx';
 import { PendingPage } from '../../components/Pending.tsx';
@@ -10,6 +11,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
+import { SECURITY, securityOn } from '../app/settings/signInRulesDesk.ts';
 
 /** After an approved recovery (sc-509): set two-factor up again, or carry on and find it in Security. */
 export function TwoFactorAgain() {
@@ -31,7 +33,7 @@ export function TwoFactorAgain() {
     setSkipping(true);
     await api.dismissTwoFactorPrompt().catch(() => {});
     await refreshAccount();
-    navigate('/app', { replace: true });
+    navigate(takeHeldReturn() ?? '/app', { replace: true });
   }
 
   return (
@@ -44,7 +46,7 @@ export function TwoFactorAgain() {
         <p>{t('lostTwoFactor.setupIntro')}</p>
       </div>
       <div className="auth-buttons">
-        <Link className="button button-primary" to="/app/account/security">
+        <Link className="button button-primary" to={SECURITY} state={securityOn('turnOn')}>
           {t('lostTwoFactor.setup')}
         </Link>
         <button className="button" type="button" aria-busy={skipping} onClick={() => void notNow()}>

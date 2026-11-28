@@ -1,4 +1,12 @@
-import { type Ref, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -19,13 +27,15 @@ import {
   MESSAGE_MOST,
   type NoticeCost,
   SUBJECT_MOST,
+  insteadOf,
   matchesNobody,
+  smsLine,
   toChip,
   whatsAppLine,
 } from './MessagesModel.ts';
 import { formatCount, piecesOf } from './MessagesSample.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
-import { WhatsAppReach } from './WhatsAppParts.tsx';
+import { ChannelReach, InsteadLine } from './WhatsAppParts.tsx';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
@@ -150,6 +160,8 @@ export function ToHead({
   onTo: () => void;
   onChannel: (key: ChannelKey) => void;
 }) {
+  const instead = matchesNobody(draft) ? null : insteadOf(draft);
+
   return (
     <View style={styles.head}>
       <View style={styles.headRow}>
@@ -203,7 +215,11 @@ export function ToHead({
           ))}
         </View>
       </View>
-      {draft.channels.wa && <WhatsAppReach line={whatsAppLine(draft.to)} />}
+      {draft.channels.sms && !matchesNobody(draft) && (
+        <ChannelReach channel="sms" line={smsLine(draft.to)} />
+      )}
+      {draft.channels.wa && <ChannelReach channel="wa" line={whatsAppLine(draft.to)} />}
+      {instead != null && <InsteadLine line={instead} />}
     </View>
   );
 }
@@ -223,6 +239,7 @@ export function NewComposer({
   onCaret,
   onInsert,
   onPreview,
+  previewOff,
   onSend,
   editing,
 }: {
@@ -239,6 +256,8 @@ export function NewComposer({
   onCaret?: (at: number) => void;
   onInsert?: () => void;
   onPreview?: () => void;
+  /** Why Preview is not offered, said beside it. */
+  previewOff?: string | undefined;
   onSend?: () => void;
   editing?: { onChangeWhen: () => void; onSave: () => void } | undefined;
 }) {
@@ -299,7 +318,7 @@ export function NewComposer({
         </View>
       )}
       {tools && (
-        <View style={styles.tools}>
+        <View style={[styles.tools, editing != null && styles.toolsWrap]}>
           <TextAction
             ref={insertRef}
             label={W.insert}
@@ -307,15 +326,15 @@ export function NewComposer({
             onPress={onInsert ?? (() => undefined)}
             testID="messages.insert"
           />
+          <TextAction
+            label={W.preview}
+            glyph="eye"
+            onPress={onPreview ?? (() => undefined)}
+            off={!on || previewOff != null || matchesNobody(draft)}
+            testID="messages.preview"
+          />
           {editing == null ? (
             <>
-              <TextAction
-                label={W.preview}
-                glyph="eye"
-                onPress={onPreview ?? (() => undefined)}
-                off={!on}
-                testID="messages.preview"
-              />
               <View style={styles.grow}>
                 <Text size={13} weight="medium" style={[styles.secondary, styles.goes]}>
                   {W.goesOnTheirPage}
@@ -331,17 +350,30 @@ export function NewComposer({
                 onPress={editing.onChangeWhen}
                 testID="messages.changeWhen"
               />
-              <View style={styles.grow} />
-              <Pill
-                label={W.save}
-                height={tokens.sizeHit}
-                full={false}
-                kind={on ? 'primary' : 'off'}
-                onPress={editing.onSave}
-                testID="messages.saveScheduled"
-              />
+              <View style={styles.saveAt}>
+                <Pill
+                  label={W.save}
+                  height={tokens.sizeHit}
+                  full={false}
+                  kind={on ? 'primary' : 'off'}
+                  onPress={editing.onSave}
+                  testID="messages.saveScheduled"
+                />
+              </View>
             </>
           )}
+        </View>
+      )}
+      {tools && previewOff != null && (
+        <View style={styles.previewOff} testID="messages.previewOff">
+          <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+          <Text
+            size={13.5}
+            weight="medium"
+            style={[styles.secondary, styles.grow, styles.previewOffWords]}
+          >
+            {previewOff}
+          </Text>
         </View>
       )}
     </View>
@@ -434,9 +466,12 @@ export function AnswerBox({
   onChange,
   onTellBy,
   onSend,
+  notice = {},
 }: {
   name: string;
   channel: ChannelKey;
+  /** sc-3976: the 24 hours closed over the line, a refusal in its place, a quiet-hours wait under the cost, and Ask an owner for the app's line. */
+  notice?: { closed?: ReactNode; refused?: ReactNode; quiet?: string | null; ask?: ReactNode };
   cost?: NoticeCost | null;
   others?: readonly ChannelKey[];
   value: string;
@@ -454,26 +489,39 @@ export function AnswerBox({
   return (
     <View style={styles.answer}>
       {closed && <WhyNot words={reason} />}
-      <View style={styles.answerLine}>
-        <View style={styles.markTop}>
-          <MessageGlyph name="page" size={15} ink={INK2} />
-        </View>
-        <View style={[styles.grow, styles.lines]}>
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
-            {say.answerLine(name, CHANNEL_IN_LINE[channel])}
-          </Text>
-          {cost != null && !cost.waits && (
-            <Text
-              size={13.5}
-              weight="medium"
-              style={[styles.secondary, styles.line]}
-              testID="messages.answer.cost"
-            >
-              {say.noticeCost(cost.channel, cost.credits, formatCount(cost.after))}
+      {notice.closed}
+      {notice.refused ?? (
+        <View style={styles.answerLine}>
+          <View style={styles.markTop}>
+            <MessageGlyph name="page" size={15} ink={INK2} />
+          </View>
+          <View style={[styles.grow, styles.lines]}>
+            <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+              {say.answerLine(name, CHANNEL_IN_LINE[channel])}
             </Text>
-          )}
+            {cost != null && !cost.waits && (
+              <Text
+                size={13.5}
+                weight="medium"
+                style={[styles.secondary, styles.line]}
+                testID="messages.answer.cost"
+              >
+                {say.noticeCost(cost.channel, cost.credits, formatCount(cost.after))}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      )}
+      {notice.quiet != null && (
+        <View style={[styles.answerLine, styles.quiet]} testID="messages.answer.quiet">
+          <View style={styles.markTop}>
+            <DeliveryMark mark="sending" side={15} />
+          </View>
+          <Text size={14} weight="semibold" style={[styles.grow, styles.line]}>
+            {notice.quiet}
+          </Text>
+        </View>
+      )}
       {cost?.waits === true && (
         <View style={styles.waits} testID="messages.answer.waits">
           <View style={styles.answerLine}>
@@ -484,9 +532,11 @@ export function AnswerBox({
               <Text size={14} weight="semibold" style={styles.line}>
                 {say.noticeWaits(cost.channel)}
               </Text>
-              <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
-                {W.creditsNotInApp}
-              </Text>
+              {notice.ask ?? (
+                <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+                  {W.creditsNotInApp}
+                </Text>
+              )}
             </View>
           </View>
           {others.length > 0 && onTellBy != null && (
@@ -597,16 +647,16 @@ export function WhyNot({ words }: { words: string }) {
   );
 }
 
-/** The preview's one-line bar: back to the words, Preview on, and Send. */
+/** The preview's one-line bar: back to the words, Preview on, and Send; with onSave, a scheduled message being edited, Save instead, and it still goes at its time. */
 export function PreviewBar({
   sendRef,
   onEdit,
   onSend,
+  onSave,
 }: {
   sendRef?: Ref<ViewInstance> | undefined;
   onEdit: () => void;
-  onSend: () => void;
-}) {
+} & ({ onSend: () => void; onSave?: undefined } | { onSend?: undefined; onSave: () => void })) {
   return (
     <View style={styles.bar}>
       <TextAction label={W.edit} glyph="edit" onPress={onEdit} testID="messages.edit" />
@@ -618,7 +668,18 @@ export function PreviewBar({
         testID="messages.previewOn"
       />
       <View style={styles.grow} />
-      <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      {onSave == null ? (
+        <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      ) : (
+        <Pill
+          label={W.save}
+          height={tokens.sizeHit}
+          full={false}
+          kind="primary"
+          onPress={onSave}
+          testID="messages.preview.save"
+        />
+      )}
     </View>
   );
 }
@@ -686,6 +747,7 @@ const styles = StyleSheet.create({
   subjectRow: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   bodyError: { paddingBottom: tokens.spaceXs },
   whyNot: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  quiet: { paddingLeft: 23 },
   whyMark: { paddingTop: 2 },
   whyWords: { flex: 1, lineHeight: 14 * 1.4 },
   nobody: {
@@ -707,6 +769,11 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
   tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  previewOff: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  previewOffWords: { lineHeight: 13.5 * 1.45 },
+  // A phone has no room for Insert, Preview, Change when and Save in one row, so Save goes under them whole.
+  toolsWrap: { flexWrap: 'wrap', rowGap: 0 },
+  saveAt: { flexShrink: 0, marginLeft: 'auto' },
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
   answerLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },

@@ -1,24 +1,32 @@
-import { addDays, copyEndsLine, typedNameMatches } from '@soirely/domain';
-import { type RefObject, useState } from 'react';
+import { typedNameMatches } from '@soirely/domain';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useTranslation } from 'react-i18next';
+
+import { BoxField } from '../../components/MomentPick.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { Ask, type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { guestAnswer, guestCopyStart, guestsToCopy } from './DuplicateGuests.ts';
+import { DuplicateGuestsScreen, copyRefusal } from './DuplicateGuestsScreen.tsx';
 import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
-import { wallOf } from './EventsModel.ts';
 import {
-  BoxField,
-  MomentBox,
-  type Picking,
-  PickerLayer,
-  pick,
-} from '../../components/MomentPick.tsx';
+  CREATING_MS,
+  type DuplicateAction,
+  type DuplicateState,
+  OPENING_MS,
+  copyOf,
+  duplicateStart,
+  reduceDuplicate,
+} from './Duplicate.ts';
+import { startsAfter } from '../../kit/eventDuplicate.ts';
+import { instantOf, wallOf } from './EventsModel.ts';
 import { type Refusal, type RefusedVerb, refusalWords } from './DeleteRefusal.ts';
 import { ORGANISATION, RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
-import { W, say, t } from './EventsWords.ts';
+import { W, say } from './EventsWords.ts';
 import { figureOf } from './GuestCounts.ts';
-import { Ask, type AskProps, FocusedScreen, SectionHead } from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -230,11 +238,15 @@ export function DeleteScreen({
   );
 }
 
-/** Duplicate makes a draft: what is copied and what is not, and the copy's start with its end worked out. */
+/** The product's Duplicate (sc-48601) with sc-101394's box, on the demo's answers: unticked, Create draft always comes back created; ticked, the plan's people per event decides. */
 export function DuplicateScreen({
   open,
   event,
   locale,
+  start,
+  guests,
+  people,
+  permissions,
   opener,
   onClose,
   onCreated,
@@ -242,95 +254,75 @@ export function DuplicateScreen({
   open: boolean;
   event: SampleEvent;
   locale: string;
+  start: DuplicateState | null;
+  /** Guests on the list, each once without companions. */
+  guests: number;
+  /** The people the list brings, companions counted, as the plan counts them. */
+  people: number;
+  permissions: readonly string[];
   opener: Opener;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (copy: SampleEvent) => void;
 }) {
-  const begins = wallOf(event.startsAt, event.timeZone);
-  const [starts, setStarts] = useState({
-    date: addDays(begins.date, 52 * 7),
-    time: begins.time,
-  });
-  const [picking, setPicking] = useState<Picking | null>(null);
-  const choose = (mode: 'date' | 'time') =>
-    pick({ title: say.timesIn(event.timeZone), mode, field: starts, take: setStarts }, setPicking);
-  const gap = useEditGap();
-
-  return (
-    <FocusedScreen
-      gap={gap}
-      open={open}
-      title={W.duplicate}
-      verb={{
-        label: W.createDraft,
-        on: true,
-        onPress: onCreated,
-        testID: 'event.duplicate.create',
-      }}
-      onCancel={onClose}
-      cancelTestID="event.duplicate.cancel"
-      opener={opener}
-      over={
-        picking == null
-          ? null
-          : {
-              layer: (
-                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
-              ),
-              onClose: () => setPicking(null),
-            }
-      }
-      testID="event.duplicate"
-    >
-      <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
-        {say.duplicateTitle(event.name)}
-      </Text>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-        {W.duplicateLine}
-      </Text>
-      <Listed title={W.copied} items={W.copiedList} />
-      <Listed title={W.notCopied} items={W.notCopiedList} />
-      <View style={styles.starts}>
-        <Text size={14} weight="semibold" style={styles.label}>
-          {W.starts}
-        </Text>
-        <View style={styles.pair}>
-          <MomentBox
-            label={`${W.starts}, ${W.date}`}
-            mode="date"
-            value={starts.date}
-            locale={locale}
-            onPress={() => choose('date')}
-            testID="event.duplicate.date"
-          />
-          <MomentBox
-            label={`${W.starts}, ${W.time}`}
-            mode="time"
-            value={starts.time}
-            locale={locale}
-            width={104}
-            onPress={() => choose('time')}
-            testID="event.duplicate.time"
-          />
-        </View>
-      </View>
-      <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-        {copyEndsLine(starts.date, starts.time, event, locale, t)}
-      </Text>
-    </FocusedScreen>
+  const { t } = useTranslation();
+  const [run, setRun] = useState(() =>
+    duplicateStart(start, startsAfter(wallOf(event.startsAt, event.timeZone))),
   );
-}
+  const [copy, setCopy] = useState(() => guestCopyStart(start, guests));
+  const [refusals, setRefusals] = useState(run.focus == null ? 0 : 1);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shown = guestsToCopy(guests, copy.manages ? permissions : []);
+  const ticked = shown != null && copy.ticked;
+  const act = (action: DuplicateAction) => setRun((now) => reduceDuplicate(now, action));
+  const create = () => {
+    const next = reduceDuplicate(run, { type: 'create' });
+    setRun(next);
+    if (next.status !== 'creating') {
+      setRefusals((count) => count + 1);
+      return;
+    }
+    timer.current = setTimeout(() => {
+      if (ticked && guestAnswer(people) === 'refused') {
+        setRun((now) => ({ ...now, status: 'editing' }));
+        setCopy((now) => ({ ...now, refused: true }));
+        return;
+      }
+      setCopy((now) => ({ ...now, copied: ticked ? guests : null }));
+      act({ type: 'created' });
+      timer.current = setTimeout(
+        () => onCreated(copyOf(event, instantOf(run.starts.date, run.starts.time, event.timeZone))),
+        OPENING_MS,
+      );
+    }, CREATING_MS);
+  };
 
-function Listed({ title, items }: { title: string; items: readonly string[] }) {
+  useEffect(
+    () => () => {
+      if (timer.current != null) clearTimeout(timer.current);
+    },
+    [],
+  );
+
   return (
-    <View>
-      <SectionHead title={title} />
-      {items.map((item) => (
-        <Text key={item} size={15} weight="medium" style={styles.bullet}>
-          {`• ${item}`}
-        </Text>
-      ))}
-    </View>
+    <DuplicateGuestsScreen
+      open={open}
+      event={event}
+      locale={locale}
+      run={run}
+      refusals={refusals}
+      guests={shown}
+      ticked={ticked}
+      copied={copy.copied}
+      refusal={copy.refused ? copyRefusal(copy.over, people, t) : null}
+      billing={copy.owner || permissions.includes('billing.manage')}
+      opener={opener}
+      onClose={onClose}
+      onPick={(starts) => act({ type: 'picked', starts })}
+      onTick={() => setCopy((now) => ({ ...now, ticked: !now.ticked }))}
+      onCreate={create}
+      onBack={() => setCopy((now) => ({ ...now, refused: false }))}
+      testID="event.duplicate"
+    />
   );
 }
 
@@ -340,8 +332,4 @@ const styles = StyleSheet.create({
   tight: { gap: tokens.spaceHair },
   bullet: { lineHeight: 15 * 1.45 },
   lines: { lineHeight: 15 * 1.45 },
-  label: { lineHeight: 14 * 1.3 },
-  said: { lineHeight: 14 * 1.45 },
-  starts: { gap: 7 },
-  pair: { flexDirection: 'row', gap: tokens.spaceSm },
 });

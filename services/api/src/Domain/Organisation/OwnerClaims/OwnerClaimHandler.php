@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\OwnerClaims;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\EmailDomains\ProvedDomains;
 use App\Domain\Organisation\Interfaces\TxtRecordLookupInterface;
 use App\Domain\Organisation\Members\MemberActions;
 use App\Domain\Organisation\Roles\RoleAssignment;
@@ -21,7 +22,6 @@ use App\Enum\MembershipStatus;
 use App\Enum\OwnerClaimMoment;
 use App\Enum\OwnerClaimOutcome;
 use App\Enum\SeededRole;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationDomainRepository;
@@ -36,7 +36,6 @@ use Psl\SecureRandom;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** An organisation whose only Owner is suspended gets one back (sc-6640): fresh DNS proof, then 72 hours anyone may stop. */
@@ -69,8 +68,7 @@ final readonly class OwnerClaimHandler
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
-        private AfterResponse $afterResponse,
-        private RequestStack $requestStack,
+        private ProvedDomains $provedDomains,
     ) {
     }
 
@@ -113,7 +111,7 @@ final readonly class OwnerClaimHandler
             return $own;
         }
 
-        $proved = Vec\filter($listings, static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt());
+        $proved = Vec\filter($listings, fn (OrganisationDomain $listing): bool => $this->provedDomains->isProvedBy($listing->getDomain(), $organisation));
 
         return (Iter\first($proved) ?? Iter\first($listings))?->getDomain();
     }
@@ -157,12 +155,12 @@ final readonly class OwnerClaimHandler
 
             $this->entityManager->flush();
 
+            if ($foundNow) {
+                $this->ownerClaimMailer->sendStarted($claim);
+            }
+
             return [$claim, $foundNow];
         });
-
-        if ($foundNow) {
-            $this->mail(fn () => $this->ownerClaimMailer->sendStarted($claim));
-        }
 
         return $claim;
     }
@@ -181,20 +179,17 @@ final readonly class OwnerClaimHandler
             throw new ApiException(ErrorCode::OwnerClaimOwn, $this->translator->trans('owner_claims.own'));
         }
 
-        $claim = $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
+        return $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
             $claim = $this->lockedOpen($organisation)
                 ?? throw new ApiException(ErrorCode::OwnerClaimEnded, $this->translator->trans('owner_claims.nothing_to_stop'));
             $claim->setOutcome(OwnerClaimOutcome::Stopped, $this->clock->now());
             $claim->setStoppedBy($by);
             $this->record(self::STOPPED, $claim, $by, ['outcome' => [null, OwnerClaimOutcome::Stopped->value]]);
             $this->entityManager->flush();
+            $this->ownerClaimMailer->sendStopped($claim, $by);
 
             return $claim;
         });
-
-        $this->mail(fn () => $this->ownerClaimMailer->sendStopped($claim, $by));
-
-        return $claim;
     }
 
     /** The claimant changing their mind (sc-8204): nobody objected, so unlike a stop it leaves the way open. */
@@ -218,15 +213,15 @@ final readonly class OwnerClaimHandler
             $this->record(self::WITHDRAWN, $claim, $by, ['outcome' => [null, OwnerClaimOutcome::Withdrawn->value]]);
             $this->entityManager->flush();
 
+            if (null !== $claim->getFoundAt()) {
+                $this->ownerClaimMailer->sendWithdrawn($claim);
+            }
+
             return $claim;
         });
 
         if ($claim instanceof ApiException) {
             throw $claim;
-        }
-
-        if (null !== $claim->getFoundAt()) {
-            $this->mail(fn () => $this->ownerClaimMailer->sendWithdrawn($claim));
         }
 
         return $claim;
@@ -253,15 +248,15 @@ final readonly class OwnerClaimHandler
                 $moment = $claim->isOpen() ? $this->settle($claim) : null;
                 $this->entityManager->flush();
 
+                match ($moment) {
+                    OwnerClaimMoment::Found => $this->ownerClaimMailer->sendStarted($claim),
+                    OwnerClaimMoment::Passed => $this->ownerClaimMailer->sendGranted($claim),
+                    OwnerClaimMoment::Lapsed => $this->ownerClaimMailer->sendLapsed($claim),
+                    OwnerClaimMoment::Ended, null => null,
+                };
+
                 return $moment;
             });
-
-            match ($moment) {
-                OwnerClaimMoment::Found => $this->mail(fn () => $this->ownerClaimMailer->sendStarted($claim)),
-                OwnerClaimMoment::Passed => $this->mail(fn () => $this->ownerClaimMailer->sendGranted($claim)),
-                OwnerClaimMoment::Lapsed => $this->mail(fn () => $this->ownerClaimMailer->sendLapsed($claim)),
-                OwnerClaimMoment::Ended, null => null,
-            };
             $moved += null === $moment ? 0 : 1;
         }
 
@@ -361,12 +356,7 @@ final readonly class OwnerClaimHandler
             throw new ApiException(ErrorCode::OwnerClaimAddress, $this->translator->trans('owner_claims.address', ['{domain}' => $domain]));
         }
 
-        $managedElsewhere = Iter\any(
-            $this->organisationDomainRepository->findListings($domain),
-            static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt() && !$listing->getOrganisation()->getId()->equals($organisation->getId()),
-        );
-
-        if ($managedElsewhere) {
+        if ($this->provedDomains->isProvedElsewhere($domain, $organisation)) {
             throw new ApiException(ErrorCode::OwnerClaimManaged, $this->translator->trans('owner_claims.managed', ['{domain}' => $domain]));
         }
 
@@ -451,17 +441,5 @@ final readonly class OwnerClaimHandler
     private function record(string $action, OwnerClaim $claim, ?User $by, array $changes): void
     {
         $this->auditor->record($action, self::SUBJECT, $claim->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), $changes);
-    }
-
-    /** After the response in a request; at once from the console, where no response ever ends. */
-    private function mail(callable $send): void
-    {
-        if (null === $this->requestStack->getCurrentRequest()) {
-            $send();
-
-            return;
-        }
-
-        $this->afterResponse->defer($send);
     }
 }

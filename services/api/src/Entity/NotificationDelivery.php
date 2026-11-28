@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\DeliveryNotSentReason;
+use App\Enum\MailProviderReport;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
 use App\Enum\NotificationDeliveryStatus;
@@ -95,6 +97,24 @@ class NotificationDelivery
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $providerMessageId = null;
 
+    /** The mail provider's webhook on a sent email (sc-4332): its status stays Sent, as sc-104 counts it. */
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: MailProviderReport::class)]
+    private ?MailProviderReport $providerReport = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $providerReportedAt = null;
+
+    /** The email address it went to, fixed when it was queued, so a later correction never rewrites where it went (sc-3942). */
+    #[ORM\Column(type: Types::STRING, length: 254, nullable: true)]
+    private ?string $address = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: DeliveryNotSentReason::class)]
+    private ?DeliveryNotSentReason $notSentReason = null;
+
+    /** The receiving server's enhanced status code on a bounce (RFC 3463), "5.1.1" say. */
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true)]
+    private ?string $providerCode = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
@@ -120,6 +140,21 @@ class NotificationDelivery
         $this->dueAt = $dueAt;
         $this->nextAttemptAt = $dueAt;
         $this->createdAt = $createdAt;
+    }
+
+    public function getAddress(): ?string
+    {
+        return $this->address;
+    }
+
+    public function getNotSentReason(): ?DeliveryNotSentReason
+    {
+        return $this->notSentReason;
+    }
+
+    public function getProviderCode(): ?string
+    {
+        return $this->providerCode;
     }
 
     public function getId(): Uuid
@@ -190,6 +225,16 @@ class NotificationDelivery
     public function getProviderMessageId(): ?string
     {
         return $this->providerMessageId;
+    }
+
+    public function getProviderReport(): ?MailProviderReport
+    {
+        return $this->providerReport;
+    }
+
+    public function getProviderReportedAt(): ?DateTimeImmutable
+    {
+        return $this->providerReportedAt;
     }
 
     public function getFinishedAt(): ?DateTimeImmutable

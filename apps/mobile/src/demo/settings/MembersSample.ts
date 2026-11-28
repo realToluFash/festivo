@@ -1,6 +1,7 @@
-import { memberStanding, type MemberStanding } from '@soirely/domain';
+import { activeOwners, memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
+import { crowdName } from '../sampleNames.ts';
 
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
 import {
@@ -118,12 +119,11 @@ export function membersSayIn(locale: string): MembersSay {
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
-  const dayOnly = format({ month: 'short', day: 'numeric' });
   const day = format({ weekday: 'long', month: 'short', day: 'numeric' });
 
   return {
     date: (at) => date.format(new Date(`${at}T00:00Z`)),
-    day: (at) => dayOnly.format(new Date(`${at}T00:00Z`)),
+    day: (at) => day.format(new Date(`${at}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
     deadline: (at) => `${day.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
@@ -284,7 +284,7 @@ export function standingOf(
   });
   const withheld = ORG_ROLES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),
@@ -315,6 +315,12 @@ export const MEMBERS_STATES = [
   'readOnly',
   'nobodySuspended',
   'nobodyLeft',
+  'ninetyNine',
+  'crowd',
+  'largest',
+  'moreLoading',
+  'moreFailed',
+  'moreOffline',
   'loading',
   'failed',
   'approving',
@@ -417,6 +423,9 @@ export interface Removal {
 export interface MembersStart {
   viewer: MembersViewer;
   load: Load;
+  more: More;
+  /** sc-49170: the next page did not load because Soirely did not answer, so the offline band shows above the rows (sc-22586). */
+  offline: boolean;
   people: Person[];
   filter: Filter;
   open: string | null;
@@ -751,6 +760,50 @@ const MORE_PEOPLE: readonly (readonly [string, string, string])[] = [
   ['Pierre Lambert', 'PL', 'pierre.lambert'],
 ];
 
+/** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
+export const CROWDS = { ninetyNine: 104, crowd: 1326, largest: 12345 } as const;
+
+/** People arrive a page at a time as the list's end nears; the build picks its own page (sc-49170). */
+export const PEOPLE_PAGE = 50;
+
+/** The next page of People: on its way as the end nears, or failed with the rows already shown kept. */
+export type More = 'idle' | 'loading' | 'failed';
+
+export { nearsEnd } from '@soirely/domain';
+
+export const MORE_WORDS = {
+  loading: 'Loading more people…',
+  failed: 'More people did not load.',
+  failedLine: 'Check your connection and try again.',
+} as const;
+
+/** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
+export function crowdOf(people: readonly Person[], total: number): Person[] {
+  const shown = people.filter((one) => isShown(one.status, 'all')).length;
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => {
+    const name = crowdName(index);
+    const id = `crowd-${index + 1}@${DOMAIN}`;
+
+    return {
+      name,
+      initials: name
+        .split(' ')
+        .map((part) => part[0] ?? '')
+        .join(''),
+      email: id,
+      id,
+      role: 'Member',
+      status: 'active' as const,
+      how: 'Company email address',
+      when: '2026-10-05',
+      tone: people.length + index,
+      gone: null,
+    };
+  });
+
+  return [...people, ...extra];
+}
+
 /** handoverSearch's Ire Events: eleven more people, 18 in all, so the menu offers 16 and starts with its search. */
 export function withMorePeople(people: readonly Person[]): Person[] {
   return [
@@ -806,6 +859,8 @@ export function membersStart(
   const base: MembersStart = {
     viewer: VIEWERS.folake,
     load: 'loaded',
+    more: 'idle',
+    offline: false,
     people,
     filter: 'all',
     open: null,
@@ -900,6 +955,19 @@ export function membersStart(
       return { ...base, people: restored(people, MARTA), filter: 'suspended' };
     case 'nobodyLeft':
       return { ...base, people: people.filter(({ id }) => id !== DANIEL), filter: 'former' };
+    case 'ninetyNine':
+    case 'crowd':
+    case 'largest':
+      return { ...base, people: crowdOf(people, CROWDS[state]) };
+    case 'moreLoading':
+    case 'moreFailed':
+      return {
+        ...base,
+        people: crowdOf(people, CROWDS.largest),
+        more: state === 'moreLoading' ? 'loading' : 'failed',
+      };
+    case 'moreOffline':
+      return { ...base, people: crowdOf(people, CROWDS.largest), more: 'failed', offline: true };
     case 'loading':
     case 'failed':
       return { ...base, load: state };

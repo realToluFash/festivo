@@ -9,7 +9,7 @@ import {
 
 import { useBoldText } from '../theme/boldText.ts';
 import { type Family, WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
-import { capUnderTitle } from '../layout/textSize.ts';
+import { capUnderTitle, drawnSize, wholeLineHeight } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { subscribeTextLaidOut, textLayoutsAtNewScale } from './textLaidOut.ts';
 
@@ -31,6 +31,8 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   size?: number;
   muted?: boolean;
   family?: Family;
+  /** Lines of whole points at the size it is drawn at, so a wrapping text's last line is never drawn clipped on the one above (sc-69816); a number is the line's height as a ratio of the size (sc-94081). */
+  wholeLines?: boolean | number;
   ref?: Ref<TextHandle> | undefined;
 }
 
@@ -44,6 +46,7 @@ export function Text({
   size = 16,
   muted = false,
   family = 'sans',
+  wholeLines = false,
   style,
   maxFontSizeMultiplier,
   ...rest
@@ -52,6 +55,8 @@ export function Text({
   const cap = useContext(TitleCap);
   const laidOut = useSyncExternalStore(subscribeTextLaidOut, textLayoutsAtNewScale);
   const bold = useBoldText();
+  const multiplier =
+    cap == null ? maxFontSizeMultiplier : capUnderTitle(cap, size, maxFontSizeMultiplier);
 
   return (
     <RNText
@@ -62,15 +67,20 @@ export function Text({
         [
           styles.base,
           { fontWeight: WEIGHTS[weight], fontSize: size },
+          wholeLines !== false && {
+            lineHeight: wholeLineHeight(
+              size,
+              drawnSize(size, fontScale, multiplier),
+              wholeLines === true ? undefined : wholeLines,
+            ),
+          },
           muted && styles.muted,
           style,
         ],
         family,
         bold,
       )}
-      maxFontSizeMultiplier={
-        cap == null ? maxFontSizeMultiplier : capUnderTitle(cap, size, maxFontSizeMultiplier)
-      }
+      maxFontSizeMultiplier={multiplier}
       {...rest}
     />
   );

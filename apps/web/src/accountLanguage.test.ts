@@ -23,6 +23,8 @@ const ACCOUNT: Account = {
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],
+  outsideEvents: [],
+  signedOutAt: null,
 };
 
 function saved(): { path: string; body: unknown }[] {

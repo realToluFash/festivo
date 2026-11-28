@@ -1,8 +1,4 @@
-import {
-  ACCOUNT_NAME_MAXIMUM,
-  PASSWORD_MINIMUM_LENGTH,
-  meetsPasswordLength,
-} from '@soirely/domain';
+import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import type { NativeStackNavigationProp } from 'expo-router/native-stack';
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +24,7 @@ import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 type Which = 'name' | 'email' | 'password';
 
@@ -138,7 +135,14 @@ export default function Register() {
     <StepScreen
       nav={
         <NavBar
-          onLeft={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
+          onLeft={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            signInOver(false);
+            router.replace('/sign-in');
+          }}
           step={[1, 4]}
           testID="register"
         />
@@ -185,7 +189,6 @@ export default function Register() {
           state={said.name != null ? 'blank' : 'plain'}
           line={said.name}
           submitting={busy}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
           autoCapitalize="words"
           autoComplete="name"
           textContentType="name"

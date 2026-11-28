@@ -4,20 +4,26 @@ import type {
   RecoveryRequest,
 } from '@soirely/api-client';
 import {
+  type MembersMore,
   formatDay,
   grantableRoles,
   recoveryAnswerable,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  rereadLimit,
   roleHolds,
+  withChanged,
+  withPagesSince,
+  withNextPage,
   withheldRoles,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
+import { SEARCHED_MEMBER } from '../../src/kit/searchLinks.ts';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import {
   type ListAndPageSpacing,
@@ -37,6 +43,7 @@ import {
   MembersCardView,
   NobodyPicked,
   People,
+  peopleRows,
   Waiting,
 } from '../../src/components/MembersSummary.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
@@ -55,9 +62,11 @@ import {
   type MembersFilter,
   type MembersSaid,
   type MembersStep,
+  memberIn,
   membersCard,
   membersCounts,
   membersShown,
+  personInFront,
   waitingToJoin,
 } from '../../src/kit/membersSummary.ts';
 import {
@@ -75,9 +84,27 @@ import { PAGE_TITLE, pageTitle } from '../../src/components/topTitle.ts';
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
-  | { kind: 'loaded'; list: Members; roles: OrganisationRole[]; recovery: RecoveryRequest[] };
+  | {
+      kind: 'loaded';
+      list: Members;
+      /** The option under Show the rows were read for (sc-49170). */
+      listed: MembersFilter;
+      more: MembersMore;
+      roles: OrganisationRole[];
+      recovery: RecoveryRequest[];
+    };
 
 const LOADING: Load = { kind: 'loading' };
+
+const EMPTY: Members = {
+  members: [],
+  next: null,
+  counts: { all: 0, active: 0, waiting: 0, suspended: 0, former: 0 },
+  owners: 0,
+  faces: [],
+  waiting: [],
+  invitations: [],
+};
 
 type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance | null>>>>;
 
@@ -85,7 +112,10 @@ type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance 
 export default function MembersScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, [SEARCHED_MEMBER]: searched } = useLocalSearchParams<{
+    from?: string;
+    [SEARCHED_MEMBER]?: string;
+  }>();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const alone = !settingsListBeside(useLayout().kind);
   const { organisation } = useSignedIn();
@@ -96,6 +126,12 @@ export default function MembersScreen() {
   });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
+  const [switchAttempt, setSwitchAttempt] = useState(0);
+  const [seen, setSeen] = useState<Members['members'][number] | null>(null);
+  const shownFilter = useRef<MembersFilter>('all');
+  const shown = useRef<{ in: string | undefined; list: Members; listed: MembersFilter } | null>(
+    null,
+  );
   const [view, setView] = useState<{
     in: string | undefined;
     open: string | null;
@@ -126,6 +162,16 @@ export default function MembersScreen() {
     }),
     [],
   );
+  // Kept the same from render to render, so a page arriving under People draws only its own rows (sc-49170).
+  const rowRef = useCallback(
+    (id: string): Ref<ViewInstance> =>
+      (view) => {
+        rows.current[id] = view;
+      },
+    [],
+  );
+  const opens = useRef<(id: string) => void>(() => undefined);
+  const openRow = useCallback((id: string) => opens.current(id), []);
   const language = useShownLanguage();
   const load = held.in === organisationId ? held.load : LOADING;
   const setLoad = (next: Load) => setHeld({ in: organisationId, load: next });
@@ -152,26 +198,39 @@ export default function MembersScreen() {
   useEffect(() => {
     if (organisationId == null) return;
     let live = true;
+    // Asked again, as the app comes back online, it reads every row the pages brought, so the person keeps their place (sc-49170).
+    const again = shown.current?.in === organisationId ? shown.current : null;
+    const listed = again?.listed ?? shownFilter.current;
 
     // Members and its requests to get back in load, and fail, as one (pm, Decided 8 Nov).
     watch(
       Promise.all([
-        api.members(organisationId),
+        again == null
+          ? api.members(organisationId, { show: listed })
+          : api.members(organisationId, { show: listed, limit: rereadLimit(again.list) }),
         api.roles(organisationId),
         manages ? api.recoveryRequests() : Promise.resolve([]),
       ]),
     ).then(
       ([list, catalogue, requests]) =>
         live &&
-        setHeld({
+        setHeld((before) => ({
           in: organisationId,
           load: {
             kind: 'loaded',
-            list,
+            list:
+              again != null &&
+              before.in === organisationId &&
+              before.load.kind === 'loaded' &&
+              before.load.listed === listed
+                ? withPagesSince(list, before.load.list)
+                : list,
+            listed,
+            more: 'idle',
             roles: catalogue.roles,
             recovery: recoveryShownIn(requests, organisationId),
           },
-        }),
+        })),
       () =>
         live &&
         setHeld((before) =>
@@ -185,6 +244,41 @@ export default function MembersScreen() {
       live = false;
     };
   }, [organisationId, manages, attempt, refresh, language, watch]);
+
+  useEffect(() => {
+    shownFilter.current = current.filter;
+  }, [current.filter]);
+
+  useEffect(() => {
+    shown.current =
+      held.load.kind === 'loaded'
+        ? { in: held.in, list: held.load.list, listed: held.load.listed }
+        : null;
+  }, [held]);
+
+  const switchTo = load.kind === 'loaded' && load.listed !== current.filter ? current.filter : null;
+
+  // Another option under Show starts again from its first page (sc-49170).
+  useEffect(() => {
+    if (organisationId == null || switchTo == null) return;
+    let live = true;
+    const settle = (next: (loaded: Extract<Load, { kind: 'loaded' }>) => Load) =>
+      live &&
+      setHeld((before) =>
+        before.in === organisationId && before.load.kind === 'loaded'
+          ? { in: organisationId, load: next(before.load) }
+          : before,
+      );
+
+    api.members(organisationId, { show: switchTo }).then(
+      (list) => settle((loaded) => ({ ...loaded, list, listed: switchTo, more: 'idle' })),
+      () => settle((loaded) => ({ ...loaded, more: 'failed' })),
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [organisationId, switchTo, switchAttempt]);
 
   useEffect(() => () => clearTimeout(lighting.current), []);
 
@@ -202,28 +296,85 @@ export default function MembersScreen() {
     return () => clearTimeout(focus);
   }, [backTo]);
 
+  // A member Search found takes the focus once the list is drawn (sc-39534).
+  useEffect(() => {
+    if (searched == null || load.kind !== 'loaded') return;
+    const focus = setTimeout(() => {
+      moveScreenReaderFocus(rows.current[searched] ?? membersTitle.current);
+      router.setParams({ [SEARCHED_MEMBER]: undefined });
+    }, SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [searched, load.kind]);
+
+  useEffect(() => {
+    opens.current = openPerson;
+  });
+
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
 
   const members = load.kind === 'loaded' ? load.list.members : [];
-  const member =
-    current.open == null ? null : (members.find((one) => one.id === current.open) ?? null);
+  const found =
+    current.open == null || load.kind !== 'loaded' ? null : memberIn(load.list, current.open);
+  // A person whose change takes them out of the option shown keeps their page open (sc-49170).
+  if (found != null && found !== seen) setSeen(found);
+  const member = found ?? (seen != null && seen.id === current.open ? seen : null);
   const asked =
-    current.request == null ? null : (members.find((one) => one.id === current.request) ?? null);
+    current.request == null || load.kind !== 'loaded' ? null : memberIn(load.list, current.request);
+  const more: MembersMore =
+    load.kind !== 'loaded'
+      ? 'idle'
+      : switchTo != null && load.more !== 'failed'
+        ? 'loading'
+        : load.more;
   const recovery = load.kind === 'loaded' && manages ? load.recovery : [];
   const recoveryAsked =
     recoveryAsk == null ? null : (recovery.find((one) => one.id === recoveryAsk.id) ?? null);
-  const listBehind = !landscape && member != null;
+  const listBehind = personInFront(kind, member != null);
   const day = (at: string) => formatDay(at, dateLocale());
-  const rowRef =
-    (id: string): Ref<ViewInstance> =>
-    (view) => {
-      rows.current[id] = view;
-    };
 
   function moveOn(): void {
     owner.moveOn();
+  }
+
+  /** Every row held, read again as it now is after a change to `changed`, their own row included wherever it is held. */
+  function reread(changed: string): Promise<Members> {
+    if (organisationId == null || load.kind !== 'loaded')
+      return Promise.reject(new Error('unread'));
+    const { list, listed } = load;
+
+    return Promise.all([
+      api.members(organisationId, { show: listed, limit: rereadLimit(list) }),
+      api.member(organisationId, changed),
+    ]).then(([again, one]) => withChanged(again, list, one, listed));
+  }
+
+  /** The next page of People, as the list's end nears or by Try again. */
+  function loadMore(): void {
+    if (organisationId == null || load.kind !== 'loaded') return;
+    if (switchTo != null) {
+      setLoad({ ...load, more: 'idle' });
+      setSwitchAttempt((n) => n + 1);
+      return;
+    }
+    const { list, listed } = load;
+    if (list.next == null || load.more === 'loading') return;
+    const settle = (next: (loaded: Extract<Load, { kind: 'loaded' }>) => Load) =>
+      setHeld((before) =>
+        before.in === organisationId &&
+        before.load.kind === 'loaded' &&
+        before.load.listed === listed
+          ? { in: organisationId, load: next(before.load) }
+          : before,
+      );
+    setLoad({ ...load, more: 'loading' });
+    api.members(organisationId, { show: listed, after: list.next }).then(
+      (page) =>
+        settle((loaded) => ({ ...loaded, list: withNextPage(loaded.list, page), more: 'idle' })),
+      () => settle((loaded) => ({ ...loaded, more: 'failed' })),
+    );
   }
 
   function openPerson(id: string | null): void {
@@ -333,7 +484,7 @@ export default function MembersScreen() {
       ? null
       : membersCard({
           t,
-          members,
+          list: load.kind === 'loaded' ? load.list : EMPTY,
           manages,
           organisation: organisation.name,
           said:
@@ -342,7 +493,7 @@ export default function MembersScreen() {
           claim: owner.banner,
           recovery: recoveryAnswerable(recovery),
         });
-  const waiting = manages ? waitingToJoin(members) : [];
+  const waiting = manages && load.kind === 'loaded' ? waitingToJoin(load.list) : [];
   const roles =
     load.kind === 'loaded' && organisation != null ? grantableRoles(load.roles, organisation) : [];
 
@@ -370,6 +521,26 @@ export default function MembersScreen() {
       {refreshingWords}
     </View>
   );
+
+  const listed =
+    load.kind === 'loaded' && load.listed === current.filter
+      ? members
+      : membersShown(members, current.filter);
+  const people =
+    load.kind === 'loaded' && organisation != null && card != null
+      ? peopleRows({
+          t,
+          listed,
+          open: landscape ? (member?.id ?? null) : null,
+          dense: landscape,
+          manages,
+          rowRef,
+          more,
+          onOpen: openRow,
+          onTryAgain: loadMore,
+          onEndNear: loadMore,
+        })
+      : undefined;
 
   const list =
     load.kind === 'loading' ? (
@@ -427,19 +598,16 @@ export default function MembersScreen() {
           />
         )}
         <People
-          listed={membersShown(members, current.filter)}
-          counts={membersCounts(members)}
+          listed={listed}
+          counts={membersCounts(load.kind === 'loaded' ? load.list : EMPTY)}
           filter={current.filter}
+          switching={switchTo != null}
           organisation={organisation.name}
-          open={landscape ? (member?.id ?? null) : null}
-          dense={landscape}
-          manages={manages}
-          rowRef={rowRef}
           onFilter={(filter) => {
             moveOn();
+            if (load.kind === 'loaded' && load.more !== 'idle') setLoad({ ...load, more: 'idle' });
             change({ filter, said: null });
           }}
-          onOpen={(id) => openPerson(id)}
         />
       </View>
     );
@@ -453,6 +621,7 @@ export default function MembersScreen() {
           organisation={organisation}
           member={member}
           list={load.list}
+          reread={reread}
           roles={roles}
           withheld={withheldRoles(load.roles, organisation)}
           manages={manages}
@@ -470,6 +639,7 @@ export default function MembersScreen() {
           onGoToOrganisation={() =>
             router.replace({ pathname: SECTION_HREF.organisation, params: from ? { from } : {} })
           }
+          onMembers={() => openPerson(null)}
         />
       </View>
     ) : null;
@@ -481,6 +651,7 @@ export default function MembersScreen() {
       listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
+      untitled={listBehind}
       title={
         phone
           ? listBehind
@@ -514,13 +685,16 @@ export default function MembersScreen() {
             settingsColumn={givesWay}
             heading={heading}
             list={list}
-            page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
+            listRows={people}
+            page={page || undefined}
+            nothingOpen={landscape && load.kind === 'loaded' ? <NobodyPicked /> : undefined}
             pageKey={member?.id ?? ''}
             pageInFront={listBehind}
             back={{
-              label: t('membersScreen.backToList'),
+              label: t('membersScreen.title'),
               onPress: () => openPerson(null),
               testID: 'members.back',
+              pill: true,
             }}
             spacing={SPACING}
           />
@@ -532,6 +706,7 @@ export default function MembersScreen() {
           organisation={organisation}
           member={asked}
           list={load.list}
+          reread={reread}
           roles={roles}
           open={asked.status === 'pending_approval'}
           opener={opener}
@@ -587,4 +762,5 @@ const SPACING: ListAndPageSpacing = {
   column: styles.column,
   listWidth: SETTINGS_LIST_WIDTH,
   between: 0,
+  settingsTitle: true,
 };

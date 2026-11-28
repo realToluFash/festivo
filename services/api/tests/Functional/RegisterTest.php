@@ -78,7 +78,7 @@ final class RegisterTest extends ApiTestCase
         self::assertNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress('new.person@example.com'), 'no account until the code');
     }
 
-    /** Measured without the email, which goes after the answer: both hash the password, so both cost the same. */
+    /** Both hash the password and queue one email with the same writes, so both cost the same; the first start warms the path. */
     #[Test]
     public function aTakenAddressAnswersInTheTimeANewOneDoes(): void
     {
@@ -91,6 +91,7 @@ final class RegisterTest extends ApiTestCase
             return (\hrtime(true) - $start) / 1e6;
         };
 
+        $registrations->start('warm@example.com', 'Warm', self::GOOD_PASSWORD, 'en');
         $new = $time(static fn () => $registrations->start('fresh@example.com', 'Fresh', self::GOOD_PASSWORD, 'en'));
         $taken = $time(static fn () => $registrations->start('taken@example.com', 'Taken', self::GOOD_PASSWORD, 'en'));
 

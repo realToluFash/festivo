@@ -1,24 +1,62 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from './Glyph.tsx';
 import type { Moment, Now, Open } from './today.ts';
 import './today.css';
+import './phoneFit.css';
+import './todayFit.css';
 
 /** Confetti cut from the mark's half disc and bar, placed from the banner's right edge in today.css. */
 const PIECES = ['half', 'bar', 'half', 'bar', 'half', 'bar'] as const;
 
-/** What the banner offers: New event for a role that can create one, and the bell where the page has no other. */
+/** What the banner offers: New event for a role that can create one, and the bell. */
 export interface BannerActions {
   create: boolean;
-  /** Unread notifications for the banner's own bell; null leaves the bell to the page's frame. */
-  unread: number | null;
+  /** The bell, or the demo's unread count for a bell of its own; neither leaves the banner without one. */
+  bell: ReactNode | { unread: number };
 }
 
-function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
+/** The banner's glass bell, a red dot for unread. */
+export function BannerBell({
+  ref,
+  unread,
+  expanded,
+  onOpen,
+}: {
+  ref?: Ref<HTMLButtonElement>;
+  unread: number;
+  expanded?: boolean;
+  onOpen: () => void;
+}) {
   const { t } = useTranslation();
 
-  if (!actions.create && actions.unread == null) return null;
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="today-glass today-bell"
+      aria-expanded={expanded}
+      aria-label={
+        unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
+      }
+      onClick={onOpen}
+    >
+      <Glyph name="bell" size={19} />
+      {unread > 0 && <span className="today-unread" aria-hidden="true" />}
+    </button>
+  );
+}
+
+function isCount(bell: BannerActions['bell']): bell is { unread: number } {
+  return typeof bell === 'object' && bell != null && 'unread' in bell;
+}
+
+export function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
+  const { t } = useTranslation();
+  const { bell } = actions;
+
+  if (!actions.create && bell == null) return null;
 
   return (
     <div className="today-actions">
@@ -28,20 +66,10 @@ function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
           {t('events.newEvent')}
         </button>
       )}
-      {actions.unread != null && (
-        <button
-          type="button"
-          className="today-glass today-bell"
-          aria-label={
-            actions.unread > 0
-              ? t('today.notificationsUnread', { count: actions.unread })
-              : t('today.notifications')
-          }
-          onClick={() => open({ to: 'notifications' })}
-        >
-          <Glyph name="bell" size={19} />
-          {actions.unread > 0 && <span className="today-unread" aria-hidden="true" />}
-        </button>
+      {isCount(bell) ? (
+        <BannerBell unread={bell.unread} onOpen={() => open({ to: 'notifications' })} />
+      ) : (
+        bell
       )}
     </div>
   );

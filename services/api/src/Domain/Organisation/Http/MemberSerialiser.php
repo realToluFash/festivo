@@ -16,18 +16,20 @@ use DateTimeInterface;
 use Psl\Iter;
 use Psl\Vec;
 
-/** Settings > Organisation > Members (sc-67): what an administrator reads. Delivery is support's and is not here. */
+/** Settings > Organisation > Members (sc-67): what an administrator reads. Of delivery, only that an invitation did not arrive (sc-46109); why is support's. */
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition>         $history    this membership's, oldest first
-     * @param list<Invitation>                   $accepted   invitations this member accepted here
-     * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
-     * @param array<string, mixed>|null          $suspension MemberSuspension::describe(), for the caller
+     * @param list<MembershipTransition>         $history      this membership's, oldest first
+     * @param list<Invitation>                   $accepted     invitations this member accepted here
+     * @param Closure(DateTimeImmutable): string $written      a deadline as the caller reads it (sc-868)
+     * @param array<string, mixed>|null          $suspension   MemberSuspension::describe(), for the caller
+     * @param array<string, DateTimeImmutable>   $sentAt       InvitationDeliveries::sentAt(), by invitation id
+     * @param ?int                               $alsoMemberOf how many other organisations a person this one manages belongs to (sc-563), for its owners and admins only
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null, array $sentAt = [], ?int $alsoMemberOf = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
@@ -51,8 +53,9 @@ final readonly class MemberSerialiser
             'since' => self::at($last?->getOccurredAt()),
             'removesAt' => null === $removesAt ? null : ['at' => self::at($removesAt), 'written' => $written($removesAt)],
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
-            'invitedAt' => self::at($invitation?->getSentAt() ?? $invitation?->getCreatedAt()),
+            'invitedAt' => self::at(null === $invitation ? null : $sentAt[$invitation->getId()->toRfc4122()] ?? $invitation->getCreatedAt()),
             'self' => $user->getId()->equals($caller->getId()),
+            'alsoMemberOf' => $alsoMemberOf,
             'history' => Vec\map($history, static fn (MembershipTransition $step): array => [
                 'from' => $step->getFromStatus()?->value,
                 'to' => $step->getToStatus()->value,
@@ -63,8 +66,13 @@ final readonly class MemberSerialiser
         ];
     }
 
-    /** @return array<string, mixed> */
-    public static function invitation(Invitation $invitation, DateTimeImmutable $now): array
+    /**
+     * @param ?DateTimeImmutable $sentAt      when its latest send went, from its delivery record
+     * @param bool               $undelivered InvitationDeliveries::undelivered() names it
+     *
+     * @return array<string, mixed>
+     */
+    public static function invitation(Invitation $invitation, DateTimeImmutable $now, ?DateTimeImmutable $sentAt = null, bool $undelivered = false): array
     {
         $role = $invitation->getRole();
 
@@ -74,7 +82,8 @@ final readonly class MemberSerialiser
             'role' => null === $role ? null : self::role($role),
             'invitedBy' => self::person($invitation->getInvitedBy()),
             'status' => $invitation->getStatusAt($now)->value,
-            'sentAt' => self::at($invitation->getSentAt() ?? $invitation->getCreatedAt()),
+            'sentAt' => self::at($sentAt ?? $invitation->getCreatedAt()),
+            'undelivered' => $undelivered,
             'expiresAt' => self::at($invitation->getExpiresAt()),
             'acceptedAt' => self::at($invitation->getAcceptedAt()),
             'declinedAt' => self::at($invitation->getDeclinedAt()),

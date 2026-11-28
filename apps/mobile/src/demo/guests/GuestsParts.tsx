@@ -1,15 +1,37 @@
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  type TextLayoutEvent,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import {
+  BodyTitle,
+  MeasuredWords,
+  PageTitleDrawn,
+  usePageTitleDrawn,
+} from '../../components/Title.tsx';
+import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
+import { type TextHandle, Text, TitleCap } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
+import { Glass } from '../../components/TodayCover.tsx';
 import {
   CardSays,
   GlassTag,
@@ -20,7 +42,17 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
-import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
+import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
+import { DoneLine } from '../../components/FormLayers.tsx';
+import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
+import {
+  actionsUnder,
+  brokeOn,
+  statusFits,
+  titleRoomBeside,
+  titleRowKey,
+} from '../../layout/titleFit.ts';
+import { titleSize } from '../../layout/textSize.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -50,12 +82,15 @@ export function GuestsCard({
   layout,
   onStep,
   stepLabel,
+  also = null,
 }: {
   event: Shown;
   words: GuestsCardWords;
   layout: Layout;
   onStep: () => void;
   stepLabel: string | null;
+  /** sc-46879: the quieter second step, in glass beside the white one. */
+  also?: { label: string; onPress: () => void } | null;
 }) {
   return (
     <SummaryCard
@@ -84,11 +119,39 @@ export function GuestsCard({
       )}
       {words.line != null && <OnCard text={words.line} />}
       {stepLabel != null && (
-        <View style={styles.foot}>
+        <View style={[styles.foot, styles.steps]}>
           <StepButton label={stepLabel} onPress={onStep} testID="guests.card.step" />
+          {also != null && <GlassStep {...also} testID="guests.card.also" />}
         </View>
       )}
     </SummaryCard>
+  );
+}
+
+/** A card's second step: glass, so the white step stays the card's one filled button. */
+function GlassStep({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+    >
+      <Glass height={tokens.sizeHit} grows style={styles.glassStep}>
+        <Text size={15} weight="semibold" accessible={false} style={styles.white}>
+          {label}
+        </Text>
+      </Glass>
+    </Pressable>
   );
 }
 
@@ -107,7 +170,7 @@ export function GuestCover({
   kind: MarkKind;
   word: string;
   name: string;
-  line: string;
+  line: string | null;
   step: { label: string; onPress: () => void } | null;
   layout: Layout;
   nameRef?: Ref<TextHandle>;
@@ -126,101 +189,13 @@ export function GuestCover({
         />
       </View>
       <CardSays text={name} heading ref={nameRef} />
-      <OnCard text={line} />
+      {line != null && <OnCard text={line} />}
       {step != null && (
         <View style={styles.foot}>
           <StepButton label={step.label} onPress={step.onPress} testID="guest.card.step" />
         </View>
       )}
     </SummaryCard>
-  );
-}
-
-/** The amber panel: duplicates, the 412, the plan limit, replacing a guest's own reply. */
-export function Amber({
-  title,
-  children,
-  testID,
-}: {
-  title: string | null;
-  children?: ReactNode;
-  testID?: string;
-}) {
-  useReadOut(title);
-
-  return (
-    <View style={styles.amber} accessibilityRole="alert" testID={testID}>
-      {title != null && (
-        <View style={styles.amberHead}>
-          <View style={styles.amberMark}>
-            <Glyph name="alert" size={17} ink={tokens.colorAttentionText} weight={2.2} />
-          </View>
-          <Text
-            size={15.5}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.amberTitle]}
-          >
-            {title}
-          </Text>
-        </View>
-      )}
-      {children}
-    </View>
-  );
-}
-
-export function AmberLine({ text, ink = false }: { text: string; ink?: boolean }) {
-  return (
-    <Text size={14} weight="medium" style={[ink ? null : styles.secondary, styles.lines]}>
-      {text}
-    </Text>
-  );
-}
-
-export function Choices({
-  first,
-  second,
-  primary = false,
-}: {
-  first: { label: string; onPress: () => void; testID: string };
-  second: { label: string; onPress: () => void; testID: string };
-  primary?: boolean;
-}) {
-  return (
-    <View style={styles.choices}>
-      <Pill
-        label={first.label}
-        kind={primary ? 'primary' : 'secondary'}
-        height={tokens.sizeHit}
-        full={false}
-        onPress={first.onPress}
-        testID={first.testID}
-      />
-      <Pill
-        label={second.label}
-        kind="secondary"
-        height={tokens.sizeHit}
-        full={false}
-        onPress={second.onPress}
-        testID={second.testID}
-      />
-    </View>
-  );
-}
-
-export function DoneLine({ text, size = 15 }: { text: string; size?: number }) {
-  useReadOut(text);
-
-  return (
-    <View style={styles.done}>
-      <View style={styles.doneMark}>
-        <Glyph name="tick" size={17} ink={tokens.marks.done.fill} weight={2.6} />
-      </View>
-      <Text size={size} weight="semibold" style={[styles.grow, { lineHeight: size * 1.4 }]}>
-        {text}
-      </Text>
-    </View>
   );
 }
 
@@ -337,53 +312,230 @@ export function ShownLine({
   );
 }
 
-/** The title: "Guests" with the round plus on the phone, Add guest beside it on an iPad. */
+/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, or broke beside them all the same, those two go together to a row under it (sc-68417). */
 export function GuestsTitle({
   layout,
   title = W.guests,
   plus,
   onPlus,
   plusLabel = W.addGuest,
+  extra = null,
+  extraWidest = null,
+  refreshing = null,
 }: {
   layout: Layout;
   title?: string;
   plus: boolean;
   onPlus: () => void;
   plusLabel?: string;
+  extra?: ReactNode;
+  /** Export again, drawn hidden and never pressed, measured at its widest (sc-71821). */
+  extraWidest?: ReactNode;
+  /** Refreshing… while it shows; `row` where main draws it on this row, a tablet's (sc-71821). */
+  refreshing?: { node: ReactNode; row: boolean } | null;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
-
-  return (
-    <View style={styles.titleRow}>
-      <Text
-        size={size}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.grow, { lineHeight: size * 1.12, letterSpacing: size * -0.02 }]}
-      >
-        {title}
-      </Text>
-      {plus &&
-        (layout === 'phone' ? (
-          <Pressable
-            onPress={onPlus}
-            style={({ pressed }) => [styles.plus, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={plusLabel}
-            testID="guests.add"
+  const titleStyle = { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
+  const label = usePrimaryLabel({
+    title,
+    size,
+    style: titleStyle,
+    label: plus ? plusLabel : undefined,
+    gap: tokens.spaceMd,
+    labelled: layout !== 'phone',
+  });
+  const bell = useBellInPane();
+  const [room, setRoom] = useState(0);
+  const [extraWidth, setExtraWidth] = useState(0);
+  const [widest, setWidest] = useState(0);
+  const [titleWidth, setTitleWidth] = useState(0);
+  const [plusWidth, setPlusWidth] = useState(0);
+  const [statusWidth, setStatusWidth] = useState(0);
+  const [titleDrawn, setTitleDrawn] = useState(0);
+  // The title steps down from its slot's width rather than from a wrap it must first see.
+  const [slot, setSlot] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const pageDrawn = usePageTitleDrawn();
+  const capOver = useContext(TitleCap);
+  const drawn = useRef(0);
+  const [broke, setBroke] = useState<string | null>(null);
+  const row = titleRowKey({ room, title, fontScale });
+  const under =
+    broke === row ||
+    actionsUnder({
+      room,
+      title: titleWidth,
+      extra: extra == null ? 0 : widest || extraWidth,
+      plus: plus ? tokens.sizeHit : 0,
+      bell: bell ? tokens.sizeHit : 0,
+      gap: tokens.spaceMd,
+    });
+  // Refreshing… counts toward nothing above: it stays on the row only in what the title as drawn, Export, the + and the bell leave it (sc-71821).
+  const onRow =
+    refreshing != null &&
+    refreshing.row &&
+    !under &&
+    statusFits({
+      room,
+      lead: titleDrawn,
+      ends: [
+        ...(extra == null ? [] : [extraWidth]),
+        ...(plus ? [plusWidth] : []),
+        ...(bell ? [tokens.sizeHit] : []),
+      ],
+      status: statusWidth,
+      gap: tokens.spaceMd,
+    });
+  const line = refreshing != null && !onRow;
+  // As the product: the title steps down beside Export as if Export were at its widest, so the two never resize each other into a broken word (sc-71821).
+  const titleRoom = titleRoomBeside({
+    slot,
+    extra: extra == null || under ? 0 : extraWidth,
+    widest,
+  });
+  const keepsDefault = layout === 'landscape' && under;
+  const onDrawn = useCallback(
+    (next: number) => {
+      drawn.current = next;
+      pageDrawn?.(keepsDefault ? Math.min(next, size) : next);
+    },
+    [pageDrawn, keepsDefault, size],
+  );
+  // Where the device lays the title out wider than it measured hidden, it can break at its floor though the sum says it fits; then the actions go under (sc-68417).
+  const onTitleLines = (event: TextLayoutEvent) => {
+    const start = titleSize(size, fontScale);
+    const lines = event.nativeEvent.lines;
+    setTitleDrawn(Math.ceil(Math.max(0, ...lines.map((one) => one.width))));
+    setBroke((was) =>
+      brokeOn({
+        broke: was,
+        row,
+        under,
+        lines: event.nativeEvent.lines,
+        drawn: drawn.current || start,
+        start,
+        size,
+        slot: titleRoom,
+        title: titleWidth,
+      }),
+    );
+  };
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+  const heading = (
+    <View
+      style={styles.grow}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
+      {label.measure}
+      <PageTitleDrawn.Provider value={onDrawn}>
+        {/* As the product on a tablet on its side: with Export and the + under it, the title keeps its default size, and so caps the card and the sidebar there (sc-67659). */}
+        <TitleCap.Provider value={keepsDefault ? size : capOver}>
+          <BodyTitle
+            size={size}
+            accessibilityRole="header"
+            style={titleStyle}
+            room={titleRoom}
+            onTextLayout={onTitleLines}
+            testID="guests.title"
           >
-            <Glyph name="plus" size={20} ink={tokens.colorInkOnDark} weight={2.6} />
-          </Pressable>
-        ) : (
-          <Pill
+            {title}
+          </BodyTitle>
+        </TitleCap.Provider>
+      </PageTitleDrawn.Provider>
+    </View>
+  );
+  const actions = (
+    <>
+      {extra != null && (
+        <View style={under && styles.shrink} onLayout={widthOf(setExtraWidth)}>
+          {extra}
+        </View>
+      )}
+      {plus && (
+        <View onLayout={widthOf(setPlusWidth)}>
+          <TopPrimary
             label={plusLabel}
-            glyph="plus"
-            height={tokens.sizeHit}
-            full={false}
             onPress={onPlus}
+            wide={label.wide && !under}
             testID="guests.add"
           />
-        ))}
+        </View>
+      )}
+    </>
+  );
+  const status = refreshing != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View onLayout={widthOf(setStatusWidth)}>{refreshing.node}</View>
+    </View>
+  );
+  const measureWidest = extra != null && extraWidest != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <TitleCap.Provider value={titleSize(size, fontScale)}>
+        <View onLayout={widthOf(setWidest)}>{extraWidest}</View>
+      </TitleCap.Provider>
+    </View>
+  );
+  const ownLine = refreshing != null && line && (
+    <View style={styles.statusLine} testID="guests.refreshingLine">
+      {refreshing.node}
+    </View>
+  );
+
+  return (
+    <View
+      style={under || line ? styles.titleStack : styles.titleRow}
+      onLayout={widthOf(setRoom)}
+      testID="guests.titleRow"
+    >
+      <MeasuredWords
+        words={[title]}
+        size={size}
+        weight="bold"
+        style={titleStyle}
+        maxFontSizeMultiplier={1}
+        onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
+      />
+      {status}
+      {measureWidest}
+      {under ? (
+        <>
+          <View style={styles.titleRow}>
+            {heading}
+            <PaneBell />
+          </View>
+          <View style={styles.actionsRow} testID="guests.actionsRow">
+            {actions}
+          </View>
+        </>
+      ) : line ? (
+        <View style={styles.titleRow}>
+          {heading}
+          {actions}
+          <PaneBell />
+        </View>
+      ) : (
+        <>
+          {heading}
+          {onRow && refreshing?.node}
+          {actions}
+          <PaneBell />
+        </>
+      )}
+      {ownLine}
     </View>
   );
 }
@@ -408,6 +560,8 @@ export function useLayoutKind(): Layout {
   return useShell().layout;
 }
 
+export { DoneLine };
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
@@ -416,24 +570,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   foot: { marginTop: 'auto', paddingTop: tokens.spaceXs },
-  count: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  steps: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+  glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
+  count: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10 },
   big: { lineHeight: 42, letterSpacing: 40 * -0.02, fontVariant: ['tabular-nums'] },
-  amber: {
-    gap: tokens.spaceSm,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: tokens.colorAttentionBorder,
-    backgroundColor: tokens.colorAttentionTint,
-  },
-  amberHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  amberMark: { paddingTop: 2 },
-  amberTitle: { lineHeight: 15.5 * 1.35 },
-  lines: { lineHeight: 14 * 1.45 },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  done: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  doneMark: { paddingTop: 1 },
   toast: {
     position: 'absolute',
     left: 16,
@@ -469,12 +609,9 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   shown: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  plus: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    borderRadius: tokens.sizeHit / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccent,
-  },
+  titleStack: { gap: tokens.spaceSm },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  shrink: { flexShrink: 1 },
+  measure: { position: 'absolute', opacity: 0 },
+  statusLine: { flexDirection: 'row' },
 });

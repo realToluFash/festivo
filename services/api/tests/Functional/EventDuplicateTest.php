@@ -18,14 +18,17 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
+use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedActiveEventsLimit;
+use App\Tests\Double\ScriptedHardLimits;
+use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Imagick;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -77,6 +80,28 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame(['draft', '2027-05-15T16:00:00+01:00', '2027-05-16T02:00:00+01:00'], [$copy['status'], $copy['startsAt'], $copy['endsAt']]);
         self::assertSame([null, null, []], [$copy['madeLiveAt'], $copy['concludedAt'], $copy['hosts']]);
         self::assertSame($copy, $this->show($copy['id']));
+    }
+
+    #[Test]
+    public function aCopyKeepsTheArrivalNoteWithTheVenue(): void
+    {
+        $id = $this->original(['venue' => ['name' => 'The Civic Centre', 'address' => '12 Bode Thomas Street, Surulere'], 'arrivalNote' => "Side gate.\nDoors at 17:30."]);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame("Side gate.\nDoors at 17:30.", $copy['arrivalNote']);
+    }
+
+    #[Test]
+    public function aCopyKeepsAnArrivalNoteThatHasNoVenue(): void
+    {
+        $id = $this->original(['arrivalNote' => 'Address to follow; doors at 8']);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([null, 'Address to follow; doors at 8'], [$copy['venue'], $copy['arrivalNote']]);
     }
 
     /**
@@ -144,6 +169,19 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertStringStartsWith('event_cover/' . $copy['id'] . '/', $copied);
         self::assertSame([true, true, true], $this->published($copied));
         self::assertSame([true, true, true], $this->published($photo));
+    }
+
+    #[Test]
+    public function aCoverSavedBeforeLinkCardsIsCopiedWithACardOfItsOwn(): void
+    {
+        $id = $this->original();
+        $this->withCover($id, 50, null, withCard: false);
+
+        $copy = $this->duplicate($id, '2027-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $bucket = Type\string()->coerce($_SERVER['STORAGE_BUCKET_PUBLIC'] ?? null);
+        self::assertTrue(self::service(ObjectStore::class)->exists($bucket, EventCoverEditor::cardKey($this->photoKeyOf($copy['id']))));
     }
 
     #[Test]
@@ -281,12 +319,150 @@ final class EventDuplicateTest extends ApiTestCase
     public function aCopyIsMadeAtThePlansLimitSinceADraftCountsTowardNothing(): void
     {
         $id = $this->live($this->original());
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', 1);
+        $this->live($this->original());
+        self::service(ScriptedHardLimits::class)->enforce();
 
         $copy = $this->duplicate($id, '2027-05-15T16:00');
 
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
         self::assertSame('draft', $copy['status']);
+    }
+
+    #[Test]
+    public function aTickedCopyCarriesEachGuestsNameContactAndCompanionsAndNoReply(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'email' => 'adaeze@example.com', 'mobile' => ['countryCode' => 'NG', 'number' => '0803 123 4567'], 'companions' => [['fullName' => 'Obi Okonkwo'], []]]);
+        $this->addGuest($id, ['fullName' => 'Bisi Lawal']);
+        self::service(Connection::class)->executeStatement("UPDATE guests SET reply = 'coming' WHERE event_id = :id AND host_id IS NULL", ['id' => $id]);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(2, $body['guestsCopied'] ?? null);
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        self::assertSame(['people' => 4, 'guests' => 2, 'companions' => 2], $this->guestList($copy)['counts'] ?? null);
+        self::assertSame(
+            [
+                ['Adaeze Okonkwo', 'adaeze@example.com', '+2348031234567', 'noReply', ['Obi Okonkwo', null]],
+                ['Bisi Lawal', null, null, 'noReply', []],
+            ],
+            $this->onList($copy),
+        );
+    }
+
+    #[Test]
+    public function aCopiedGuestHasALinkOfItsOwn(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo']);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        $token = static fn (string $eventId): ?string => Type\nullable(Type\string())->coerce(self::service(Connection::class)->fetchOne('SELECT link_token FROM guests WHERE event_id = :id AND host_id IS NULL', ['id' => $eventId]));
+        $copied = $token($copy);
+        self::assertNotNull($copied);
+        self::assertNotSame($token($id), $copied);
+    }
+
+    #[Test]
+    public function aCopiedGuestIsNotYetInvitedWithTheirCompanionsThoughTheOriginalWasInvited(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'companions' => [['fullName' => 'Obi Okonkwo']]]);
+        self::service(Connection::class)->executeStatement("UPDATE guests SET invited_at = NOW(), invitation_method = 'whatsapp', invited_by_id = :by WHERE event_id = :id AND host_id IS NULL", ['id' => $id, 'by' => $this->owner->getId()->toRfc4122()]);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        $row = Type\shape(['invitation' => Type\mixed(), 'companions' => Type\vec(Type\shape(['state' => Type\string()], true))], true);
+        $original = Type\vec($row)->coerce($this->guestList($id)['guests'] ?? null)[0];
+        $copied = Type\vec($row)->coerce($this->guestList($copy)['guests'] ?? null)[0];
+        self::assertNotNull($original['invitation']);
+        self::assertSame([null, ['notYetInvited']], [$copied['invitation'], Vec\map($copied['companions'], static fn (array $one): string => $one['state'])]);
+    }
+
+    #[Test]
+    public function aTickedCopyLeavesTheOriginalsListAsItWas(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'companions' => [['fullName' => 'Obi Okonkwo']]]);
+        $before = $this->guestList($id);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+        self::em()->clear();
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($before, $this->guestList($id));
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function untickedCopies(): iterable
+    {
+        yield 'not asked' => [[]];
+        yield 'asked not to' => [['copyGuests' => false]];
+    }
+
+    /** @param array<string, mixed> $flag */
+    #[Test]
+    #[DataProvider('untickedCopies')]
+    public function withoutTheTickTheCopyHasNobody(array $flag): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'companions' => [['fullName' => 'Obi Okonkwo']]]);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', ...$flag]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertArrayNotHasKey('guestsCopied', $body);
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $this->guestList($copy));
+    }
+
+    #[Test]
+    public function aTickedCopyOfAnEventWithNobodyCopiesNobody(): void
+    {
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $this->original() . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(0, $body['guestsCopied'] ?? null);
+    }
+
+    #[Test]
+    public function theGuestListComesOnlyWithGuestsManage(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo']);
+        self::service(WithholdingMembershipDirectory::class)->withhold(Permission::GuestsManage);
+        $events = $this->eventRows();
+        $people = $this->guestRows();
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(ErrorCode::PermissionRequired->type(), $this->last()['type'] ?? null);
+        self::assertSame([$events, $people], [$this->eventRows(), $this->guestRows()]);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00']);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function theAuditSaysHowManyGuestsWereCopied(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'companions' => [['fullName' => 'Obi Okonkwo']]]);
+        $this->addGuest($id, ['fullName' => 'Bisi Lawal']);
+
+        $ticked = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+        $unticked = $this->duplicate($id, '2027-06-15T16:00');
+
+        self::assertSame([null, 2], $this->created(Type\shape(['id' => Type\string()], true)->coerce($ticked['event'] ?? null)['id'])['guestsCopied'] ?? null);
+        self::assertArrayNotHasKey('guestsCopied', $this->created($unticked['id']));
     }
 
     /** @param array<string, mixed> $fields */
@@ -335,11 +511,17 @@ final class EventDuplicateTest extends ApiTestCase
         return (string) $this->client->getResponse()->headers->get('ETag');
     }
 
-    private function withCover(string $id, int $position, ?string $description): string
+    private function withCover(string $id, int $position, ?string $description, bool $withCard = true): string
     {
         $photoKey = 'event_cover/' . $id . '/' . Uuid::v7()->toRfc4122();
+        $photo = new Imagick();
+        $photo->newImage(1920, 1080, 'skyblue');
+        $photo->setImageFormat('webp');
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
-            self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), 'webp', 'image/webp');
+            self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), $photo->getImageBlob(), 'image/webp');
+        }
+        if ($withCard) {
+            self::service(ObjectStore::class)->publish(EventCoverEditor::cardKey($photoKey), 'jpeg', 'image/jpeg');
         }
         self::em()->getConnection()->executeStatement(
             'INSERT INTO event_covers (event_id, photo_key, position, description, created_at, updated_at) VALUES (:id, :photo, :position, :description, NOW(), NOW())',
@@ -360,6 +542,45 @@ final class EventDuplicateTest extends ApiTestCase
         $bucket = Type\string()->coerce($_SERVER['STORAGE_BUCKET_PUBLIC'] ?? null);
 
         return Vec\map(Vec\keys(CoverPhotoProcessor::SIZES), static fn (string $size): bool => self::service(ObjectStore::class)->exists($bucket, EventCoverEditor::sizeKey($photoKey, $size)));
+    }
+
+    /** @param array<string, mixed> $guest */
+    private function addGuest(string $eventId, array $guest): void
+    {
+        $this->as($this->owner, 'POST', '/api/events/' . $eventId . '/guests', $guest);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** @return array<string, mixed> */
+    private function guestList(string $eventId): array
+    {
+        $body = $this->as($this->owner, 'GET', '/api/events/' . $eventId . '/guests');
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+
+        return $body;
+    }
+
+    /** @return list<array{?string, ?string, ?string, string, list<?string>}> */
+    private function onList(string $eventId): array
+    {
+        $companion = Type\shape(['fullName' => Type\nullable(Type\string())], true);
+        $guests = Type\vec(Type\shape(['fullName' => Type\nullable(Type\string()), 'email' => Type\nullable(Type\string()), 'mobile' => Type\nullable(Type\string()), 'reply' => Type\string(), 'companions' => Type\vec($companion)], true))->coerce($this->guestList($eventId)['guests'] ?? null);
+
+        return Vec\map($guests, static fn (array $guest): array => [$guest['fullName'], $guest['email'], $guest['mobile'], $guest['reply'], Vec\map($guest['companions'], static fn (array $one): ?string => $one['fullName'])]);
+    }
+
+    private function guestRows(): int
+    {
+        return Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM guests'));
+    }
+
+    /** @return array<string, mixed> */
+    private function created(string $eventId): array
+    {
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventCreator::CREATED, 'subjectId' => Uuid::fromString($eventId)]);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+
+        return $entry->getChanges();
     }
 
     private function eventRows(): int

@@ -20,7 +20,6 @@ export const AT = {
   onlySwitchedOn: '2026-09-19T10:05:00Z',
   failedAdded: '2026-10-05T08:30:00Z',
   missingSince: '2026-10-17T13:20:00Z',
-  leftEnterprise: '2026-10-18T08:30:00Z',
 } as const;
 
 /** Every other instant is derived from the ones above, as the API derives it. */

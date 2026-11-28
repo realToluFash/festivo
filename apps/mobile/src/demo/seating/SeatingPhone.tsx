@@ -473,11 +473,7 @@ export function SeatingPhone({
       more={more}
       onMore={onMore}
       fill
-      phoneBack={
-        guest
-          ? { label: W.guests, onPress: () => onArea('guests') }
-          : { label: W.more, onPress: () => onMore(true) }
-      }
+      phoneBack={guest ? { label: W.guests, onPress: () => onArea('guests') } : undefined}
       overlay={
         <>
           <Sheets m={m} go={go} />

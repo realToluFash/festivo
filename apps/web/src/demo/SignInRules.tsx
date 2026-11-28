@@ -2,7 +2,7 @@ import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useLater } from '../useLater.ts';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -10,6 +10,7 @@ import { RuleMark, RulesBones } from '../components/SignInRulesParts.tsx';
 import type { Load } from './members.ts';
 import { type HeldStep, heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
+import { SsoRuleRow } from './SingleSignOnParts.tsx';
 import {
   Ask,
   Card,
@@ -74,9 +75,17 @@ export function SignInRules({
   tell: Tell;
 }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [now] = useState(() => wallClock(new Date()));
-  const [start] = useState(() => signInRulesStart(state, viewer.name, now));
+  const [start] = useState(() =>
+    signInRulesStart(
+      state,
+      viewer.name,
+      now,
+      params.get('plan') === 'free' ? 'free' : 'enterprise',
+    ),
+  );
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [page, setPage] = useState(start.page);
   const [edit, setEdit] = useState<Edit | null>(start.edit);
@@ -159,6 +168,10 @@ export function SignInRules({
         {standFootLine != null && <p className="desk-foot">{standFootLine}</p>}
       </section>
       <section className="desk-block">
+        <Head title="Single sign-on" />
+        <SsoRuleRow standing={page.sso} viewer={viewer} />
+      </section>
+      <section className="desk-block">
         <Head title="What changed" />
         <Changes changes={changeRows(page.changes, page.seen, locale, thisYear)} />
         {changedFootLine != null && <p className="desk-foot">{changedFootLine}</p>}
@@ -167,6 +180,7 @@ export function SignInRules({
         <EditDialog
           edit={edit}
           page={page}
+          locale={locale}
           onStep={toSecurity}
           onEdit={setEdit}
           onClose={() => setEdit(null)}
@@ -193,7 +207,7 @@ function RuleWords({ rule }: { rule: RuleRow }) {
       <span className="desk-unseen">{MARK_WORD[rule.mark]} </span>
       <RowWords
         title={rule.title}
-        lines={rule.more == null ? [rule.line] : [rule.line, rule.more]}
+        lines={[rule.line, rule.more, rule.exempt].filter((line) => line != null)}
       />
     </>
   );
@@ -231,6 +245,7 @@ function Changes({ changes }: { changes: readonly ChangeRow[] }) {
 function EditDialog({
   edit,
   page,
+  locale,
   onStep,
   onEdit,
   onClose,
@@ -238,6 +253,7 @@ function EditDialog({
 }: {
   edit: Edit;
   page: RulesPage;
+  locale: string;
   onStep: (step: HeldStep) => void;
   onEdit: (edit: Edit) => void;
   onClose: () => void;
@@ -281,13 +297,11 @@ function EditDialog({
         ) : refused == null ? (
           <div className="desk-after">
             <Head title="What happens when you save" level={3} />
-            {effectsOf(page, applied(edit.key, edit.picked, page), page.passwordOnly).map(
-              (line) => (
-                <p key={line} className="desk-line">
-                  {line}
-                </p>
-              ),
-            )}
+            {effectsOf(page, applied(edit.key, edit.picked, page), locale).map((line) => (
+              <p key={line} className="desk-line">
+                {line}
+              </p>
+            ))}
             {changed && <p className="desk-foot">{EMAIL_NOTE}</p>}
           </div>
         ) : (

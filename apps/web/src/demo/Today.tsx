@@ -1,27 +1,44 @@
 import { formattingLocale } from '@soirely/domain';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { VIEWERS } from './settings.ts';
-import { AccessPaused, Switched } from './OrgSwitcher.tsx';
-import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
-import { INVITES_NOT_SENT, keyOf, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
+import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
+import { inNone, isFresh, useHeld, useSwitcherStart, useWhere } from './switcher.ts';
+import {
+  EVENTS,
+  INVITES_NOT_SENT,
+  isNeedsState,
+  keyOf,
+  MOMENTS,
+  type MomentName,
+  momentOf,
+  sayIn,
+  weekIn,
+} from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
+import { RunNowBanner } from '../components/TodayRunBanner.tsx';
+import { isReadsState, useNowReads } from './NowReads.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { isNowState, runNowOf, runWordsOf, trackAt } from './todayRun.ts';
+import { nightAtUrl } from './night.ts';
+import { isLong, LONG_NAME, renamed } from './longName.ts';
 import { DeskSearch } from './Search.tsx';
 import { REACHES, reachOfRole, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
+import './phone.css';
 
 /** The demo's bell, with its sample's three unread. */
-const ACTIONS: BannerActions = { create: true, unread: 3 };
+const ACTIONS: BannerActions = { create: true, bell: { unread: 3 } };
 
 function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
@@ -38,6 +55,7 @@ const SEARCHERS = new Map<SearchStart['reach'], DeskPerson>([
 export function Today({ search = null }: { search?: SearchStart | null }) {
   useSwitcherStart();
   const where = useWhere();
+  const held = useHeld();
   const [params] = useSearchParams();
   const raw = params.get('moment');
   // A role without Create events: Events' firstAsk, on Today (sc-30413, #36412).
@@ -47,34 +65,65 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const notSent = name === 'plan' && params.get('invites') === 'none';
   const later = name === 'plan' && params.get('starts') === 'later';
   const rows = name === 'plan' && params.get('week') === 'rows';
+  const long = isLong(params);
+  const rawNeeds = params.get('needs');
+  const needing = name === 'plan' && isNeedsState(rawNeeds) ? rawNeeds : undefined;
+  const rawNow = params.get('now');
+  const nowState = isNowState(rawNow) ? rawNow : 'on';
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
+  const locale = formattingLocale(language, navigator.language);
+  // On the event day, a role with run_of_show.read sees the run of show (sc-61017); `?now=` picks the moment, as the app's demo does.
+  const run = useMemo(() => {
+    const { clock, items } = trackAt(nowState);
+
+    return runWordsOf(runNowOf(items, clock), locale, t);
+  }, [nowState, locale, t]);
+  const rawReads = params.get('reads');
+  // Now's own reads aging (sc-62416): `?reads=` shows the line, or runs the reads live; without it Now is as sc-61017 left it.
+  const readsState = name === 'day' && isReadsState(rawReads) ? rawReads : null;
+  const reads = useNowReads(readsState, trackAt(nowState).clock, locale);
   const moment = useMemo(
     () =>
-      momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
-        guests: notSent ? INVITES_NOT_SENT : undefined,
-        first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
-        later,
-        rows,
-      }),
-    [name, notSent, asks, later, rows],
+      renamed(
+        momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
+          guests: notSent ? INVITES_NOT_SENT : undefined,
+          first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
+          later,
+          rows,
+          needing,
+        }),
+        EVENTS.ireti.name,
+        long ? LONG_NAME : EVENTS.ireti.name,
+      ),
+    [name, notSent, asks, later, rows, long, needing],
+  );
+  const week = useMemo(
+    () => ({ ...moment, days: weekIn(moment.days, sayIn(locale)) }),
+    [moment, locale],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
+  const navigate = useNavigate();
   const open = useCallback<Open>(
     (opens) =>
-      tell(
-        opens.to === 'event'
-          ? `${opens.name} has its own design.`
-          : opens.to === 'create'
-            ? 'Create an event has its own design.'
-            : opens.to === 'notifications'
-              ? 'Notifications have their own design.'
-              : opens.to === 'runOfShow'
-                ? 'The run of show has its own design.'
-                : opens.to === 'calendar'
-                  ? 'Calendar has its own design.'
-                  : 'Events has its own design.',
-      ),
-    [tell],
+      // The night page (sc-3895) only stands in for where Open run of show lands: its sample event and track are its own, so its Now is not Today's. In the product both read one track.
+      opens.to === 'runOfShow' && moment.full
+        ? void navigate(nightAtUrl())
+        : tell(
+            opens.to === 'event'
+              ? `${opens.name} has its own design.`
+              : opens.to === 'create'
+                ? 'Create an event has its own design.'
+                : opens.to === 'notifications'
+                  ? 'Notifications have their own design.'
+                  : opens.to === 'runOfShow'
+                    ? 'The run of show has its own design.'
+                    : opens.to === 'calendar'
+                      ? 'Calendar has its own design.'
+                      : 'Events has its own design.',
+          ),
+    [tell, navigate, moment.full],
   );
   const page = useRef<HTMLElement>(null);
   const { layers, covered, setHost } = useDeskLayers();
@@ -83,13 +132,14 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
 
   return (
     <LayersContext value={layers}>
-      <div className="today">
+      <div className="today dp-fit fits-phone">
         <DeskSearch
           first={search}
           reach={asks ? reachOfRole(VIEWERS.ana.role) : REACHES.owner}
           tell={tell}
         >
           <TodaySidebar
+            phone
             events={moment.events.map(({ event }) => keyOf(event.id))}
             person={asks ? VIEWERS.ana : search == null ? undefined : SEARCHERS.get(search.reach)}
             tell={tell}
@@ -98,22 +148,31 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
           />
           <main id="content" ref={page} className="today-main" inert={covered}>
             <Switched />
-            {where.paused ? (
-              <AccessPaused />
+            {held ? (
+              <HeldStandIn />
             ) : (
               <>
-                {moment.now != null ? (
-                  <NowBanner now={moment.now} full={moment.full} actions={ACTIONS} open={open} />
+                {moment.now != null && moment.full && !reads.built ? (
+                  <RunNowBanner
+                    now={moment.now}
+                    run={run}
+                    asOf={readsState == null ? null : reads.asOf}
+                    actions={ACTIONS}
+                    open={open}
+                  />
+                ) : moment.now != null ? (
+                  <NowBanner now={moment.now} full={false} actions={ACTIONS} open={open} />
                 ) : (
                   <Banner moment={moment} actions={ACTIONS} open={open} />
                 )}
+                {reads.controls}
                 {moment.kind === 'first' ? (
                   <FirstRun open={open} create={!asks} />
                 ) : (
                   <div className="today-columns">
                     <div className="today-left">
-                      <NeedsYou moment={moment} tell={tell} />
-                      <ThisWeek moment={moment} open={open} />
+                      <NeedsYou moment={moment} />
+                      <ThisWeek moment={week} open={open} />
                     </div>
                     <div className="today-right">
                       <YourEvents moment={moment} open={open} />

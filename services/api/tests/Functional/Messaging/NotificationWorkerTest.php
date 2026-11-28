@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Messaging\Channel\EmailSender;
 use App\Domain\Messaging\Exception\UnregisteredNotificationType;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
+use App\Entity\Guest;
 use App\Entity\Membership;
 use App\Enum\MembershipStatus;
 use App\Enum\Permission;
@@ -17,6 +20,10 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Type\Exception\CoercionException;
 use Psl\Vec;
+use Symfony\Component\Mailer\Envelope;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\Uid\Uuid;
 
 final class NotificationWorkerTest extends MessagingTestCase
@@ -150,6 +157,23 @@ final class NotificationWorkerTest extends MessagingTestCase
         self::assertSame(5, self::sender()->calls);
         self::assertSame('failed', self::scalar('SELECT status FROM notification_deliveries'));
         self::assertStringContainsString('550 the provider said no', Type\string()->coerce(self::scalar('SELECT last_error FROM notification_deliveries')));
+    }
+
+    #[Test]
+    public function anInactiveRecipientIsRetriedForAnythingButAGuestsMessage(): void
+    {
+        self::sender()->through = new EmailSender(new class implements MailerInterface {
+            public function send(RawMessage $message, ?Envelope $envelope = null): void
+            {
+                throw new TransportException('406 You tried to send to a recipient that has been marked as inactive.', 406);
+            }
+        }, 'notices@soirely.test');
+        self::scheduler()->schedule('test.notice', 'inactive', 'inactive', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+
+        self::runUntilIdle();
+
+        self::assertSame('pending', self::scalar('SELECT status FROM notification_deliveries'));
+        self::assertNull(self::scalar('SELECT not_sent_reason FROM notification_deliveries'));
     }
 
     #[Test]
@@ -329,15 +353,20 @@ final class NotificationWorkerTest extends MessagingTestCase
     }
 
     #[Test]
-    public function aGuestAudienceIsAcceptedAndWaitsForItsResolver(): void
+    public function aGuestAudienceResolvesToTheGuestsOnTheListAndNeverACompanion(): void
     {
         $event = $this->event();
-        self::scheduler()->schedule('test.guest', 'guests', 'guests', Trigger::at(new DateTimeImmutable('-1 minute')), Audience::guests($event->getId(), ['replied' => false]), [], $event);
+        $guest = Guest::listed($event, 'Emeka Nwosu', 'emeka nwosu', 'emeka@example.test', null, null, InvitationLinks::token(), Uuid::v4()->toRfc4122());
+        self::em()->persist($guest);
+        self::em()->persist(Guest::companionOf($guest, 'Ada Nwosu', 'ada nwosu', 1, null));
+        self::em()->flush();
+        self::scheduler()->schedule('test.guest', 'guests', 'guests', Trigger::at(new DateTimeImmutable('-1 minute')), Audience::guests($event->getId(), ['choice' => 'all']), [], $event);
 
         self::runUntilIdle();
 
-        self::assertSame('failed', self::scalar('SELECT status FROM scheduled_notifications'));
-        self::assertSame('nothing resolves a guest audience yet', self::scalar('SELECT outcome FROM scheduled_notifications'));
+        self::assertSame('fanned_out', self::scalar('SELECT status FROM scheduled_notifications'));
+        self::assertSame($guest->getId()->toRfc4122(), self::scalar('SELECT recipient_id FROM notification_deliveries'));
+        self::assertSame(1, self::rowCount('SELECT 1 FROM notification_deliveries'));
     }
 
     private function budgetHolders(): Audience

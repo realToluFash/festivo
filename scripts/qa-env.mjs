@@ -5,6 +5,7 @@ import { createHash, createHmac, randomBytes, X509Certificate } from 'node:crypt
 import { createServer } from 'node:http';
 import {
   chmodSync,
+  closeSync,
   copyFileSync,
   cpSync,
   createWriteStream,
@@ -14,13 +15,14 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  readSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir, hostname, networkInterfaces, tmpdir } from 'node:os';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, posix, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -42,7 +44,14 @@ export const DEVELOPMENT_PORTS = {
   AGENT_GATEWAY_PORT: 8095,
 };
 
-export const TESTERS = [1, 2, 3];
+export const TESTERS = [1, 2, 3, 4, 5];
+
+// At 5000, Mercure's 8000 was another project's on this machine.
+const OFFSETS = { 4: 5100, 5: 5200 };
+
+export function testerOffset(tester) {
+  return OFFSETS[tester] ?? tester * 10000;
+}
 
 // The stack a person on the QA team tests on, from their own phone and laptop: soirely-qa-lan,
 // served on the machine's network address. Only a plan run touches it.
@@ -75,38 +84,59 @@ export function lanAddress(env = process.env, interfaces = networkInterfaces()) 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
 // would overwrite a developer's session. One host for web and API keeps SameSite.
 // A phone passes the machine's network address instead: on a phone, 127.0.0.1 is the phone.
+// WebAuthn refuses an address, so a browser host names what a browser reaches. The app, the
+// harness and the store stay on the address: a simulator may not resolve the name.
 // One compose project with every port moved up by offset. QA and the second developer use it.
-export function stackConfig(project, offset, address = '127.0.0.1', { secure = false } = {}) {
-  const HOST = `${secure ? 'https' : 'http'}://${address}`;
+export function stackConfig(
+  project,
+  offset,
+  address = '127.0.0.1',
+  { secure = false, browserHost = null } = {},
+) {
+  const scheme = secure ? 'https' : 'http';
+  const HOST = `${scheme}://${address}`;
+  const BROWSER = `${scheme}://${browserHost ?? address}`;
   const BUNDLER = `http://${address}`;
   const ports = Object.fromEntries(
     Object.entries(DEVELOPMENT_PORTS).map(([key, port]) => [key, port + offset]),
   );
   const urls = {
     api: `${HOST}:${ports.API_PORT}`,
-    web: `${HOST}:${ports.WEB_PORT}`,
+    web: `${BROWSER}:${ports.WEB_PORT}`,
     mailpit: `${HOST}:${ports.MAILPIT_UI_PORT}`,
     smocker: `${HOST}:${ports.SMOCKER_UI_PORT}`,
     mercure: `${HOST}:${ports.MERCURE_PORT}/.well-known/mercure`,
     metro: `exp://${address}:${ports.METRO_PORT}`,
     oidc: `${HOST}:${ports.OIDC_PORT}`,
   };
+  const browser = {
+    api: `${BROWSER}:${ports.API_PORT}`,
+    mercure: `${BROWSER}:${ports.MERCURE_PORT}/.well-known/mercure`,
+    oidc: `${BROWSER}:${ports.OIDC_PORT}`,
+  };
+  const issuers = (provider, ...more) =>
+    [...new Set([browser.oidc, urls.oidc, 'http://oidc:8080'])]
+      .map((origin) => `${origin}/${provider}`)
+      .concat(more)
+      .join(',');
   // The sandbox signs a token with the address it was reached at: this stack's port from a
   // browser or simulator, oidc:8080 from the API. The issuer lists accept both.
   const overrides = {
     COMPOSE_PROJECT_NAME: project,
     ...ports,
-    MERCURE_PUBLIC_URL: urls.mercure,
+    MERCURE_PUBLIC_URL: browser.mercure,
     MERCURE_CORS_ORIGINS: `${urls.web} ${BUNDLER}:${ports.METRO_PORT}`,
     STORAGE_PUBLIC_ENDPOINT: `${HOST}:${ports.STORAGE_PORT}`,
-    OAUTH_GOOGLE_ISSUERS: `${urls.oidc}/google,http://oidc:8080/google`,
-    OAUTH_APPLE_ISSUERS: `${urls.oidc}/apple,http://oidc:8080/apple,https://appleid.apple.com`,
-    SOIRELY_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
-    SOIRELY_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
+    OAUTH_GOOGLE_ISSUERS: issuers('google'),
+    OAUTH_APPLE_ISSUERS: issuers('apple', 'https://appleid.apple.com'),
+    SOIRELY_GOOGLE_AUTHORIZE_URL: `${browser.oidc}/google/authorize`,
+    SOIRELY_APPLE_AUTHORIZE_URL: `${browser.oidc}/apple/authorize`,
     OAUTH_APPLE_RETURN_URI: `${urls.api}/api/auth/oauth/apple/return`,
-    SOIRELY_API_URL: urls.api,
-    SOIRELY_MERCURE_URL: urls.mercure,
+    DEFAULT_URI: urls.api,
+    SOIRELY_API_URL: browser.api,
+    SOIRELY_MERCURE_URL: browser.mercure,
     CORS_WEB_ORIGIN: urls.web,
+    WEBAUTHN_RP_ID: browserHost ?? address,
     CORS_EXPO_WEB_ORIGIN: `${BUNDLER}:${ports.METRO_PORT}`,
     MAILPIT_URL: urls.mailpit,
   };
@@ -119,23 +149,39 @@ export function stackConfig(project, offset, address = '127.0.0.1', { secure = f
     EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
     EXPO_PUBLIC_APPLE_TOKEN_URL: `${urls.oidc}/apple/token`,
   };
-  return { project, ports, urls, overrides, app };
+  return { project, ports, urls, browser, overrides, app };
+}
+
+export const defaultBrowserHost = (tester) => `qa${tester}.localhost`;
+export const BROWSER_HOST_FILE = '.qa/browser-host';
+
+export function browserHostOf(text) {
+  const host = String(text).trim().toLowerCase();
+  if (!/^([a-z0-9-]+\.)*localhost$/.test(host)) {
+    throw new Error(`browser host ${text} is not localhost or a name under .localhost`);
+  }
+  return host;
 }
 
 // Tester n is its own compose project and worktree, soirely-qa<n>, with every port up n×10000.
-export function qaConfig(tester = 1, address = undefined) {
+export function qaConfig(tester = 1, address = undefined, { browserHost = null } = {}) {
   const lan = tester === LAN;
   if (!lan && !TESTERS.includes(tester)) {
     throw new Error(`no QA tester ${tester}: one of ${TESTERS}, ${LAN}`);
   }
-  const { project, ports, urls, overrides, app } = stackConfig(
+  if (lan && browserHost) {
+    throw new Error('the lan stack is reached at its network address over https: no browser host');
+  }
+  const host = browserHost ? browserHostOf(browserHost) : null;
+  const { project, ports, urls, browser, overrides, app } = stackConfig(
     lan ? 'soirely-qa-lan' : tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
-    lan ? LAN_OFFSET : tester * 10000,
+    lan ? LAN_OFFSET : testerOffset(tester),
     lan ? (address ?? lanAddress()) : '127.0.0.1',
-    { secure: lan },
+    { secure: lan, browserHost: host },
   );
-  // The person brings the phone: setup makes none of its simulators or emulators, and their ports stay unused.
-  const slot = lan ? TESTERS.length + 1 : tester;
+  // The person brings the phone: setup makes none of its simulators or emulators.
+  // The lan stack kept slot 4 when tester 4 came.
+  const slot = lan ? 4 : tester >= 4 ? tester + 1 : tester;
   // Expo names this address in the QR code, so the person's phone reaches Metro.
   if (lan) app.REACT_NATIVE_PACKAGER_HOSTNAME = new URL(urls.api).hostname;
   if (lan) overrides.COMPOSE_FILE = `compose.yaml:${LAN_PROXY_COMPOSE}`;
@@ -149,17 +195,19 @@ export function qaConfig(tester = 1, address = undefined) {
   };
   const avd = label.replace(/ /g, '_');
   const emulators = {
-    phone: { name: `${avd}_Phone`, device: 'pixel_8' },
+    phone: { name: `${avd}_Phone`, device: 'pixel_8', ramMb: 4096 },
     tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet', ramMb: 4096 },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
-  const emulatorPort = 5570 + 2 * slot;
+  const emulatorPort = lan ? null : 5570 + 2 * tester;
   return {
     tester,
     simulated: !lan,
     project,
     ports,
     urls,
+    browser,
+    browserHost: host,
     overrides,
     app,
     simulators,
@@ -416,6 +464,35 @@ export function commitTarget(sha, { verify, remoteBranchesWith }) {
   return { ref: sha, label: sha };
 }
 
+const EXPO_PUSH_PATH = '/expo/--/api/v2/push/send';
+
+// Smocker's history, oldest first, as the product's Expo messages, newest first.
+export function expoPushes(history) {
+  return history
+    .filter(({ request }) => request?.method === 'POST' && request.path === EXPO_PUSH_PATH)
+    .flatMap(({ request }) => {
+      const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+      return Array.isArray(body) ? body : [body];
+    })
+    .reverse();
+}
+
+// Expo's message as the APNs payload Expo would hand Apple; expo-notifications reads data from `body`.
+export function apnsPayload(message) {
+  const aps = {
+    alert: { title: message.title ?? '', body: message.body ?? '' },
+    ...(message.sound ? { sound: message.sound } : {}),
+    ...(message.threadId ? { 'thread-id': message.threadId } : {}),
+    ...(message.interruptionLevel ? { 'interruption-level': message.interruptionLevel } : {}),
+  };
+  return { aps, body: message.data ?? {} };
+}
+
+export function pushPick(args) {
+  const picked = args.find((arg) => /^[1-9]\d*$/.test(arg));
+  return picked === undefined ? 1 : Number(picked);
+}
+
 // One of a tester's simulators runs at a time: the phone unless --ipad or --se asks otherwise.
 export function simulatorFor(args) {
   const open = ['ipad', 'se'].find((key) => args.includes(`--${key}`)) ?? 'phone';
@@ -429,7 +506,7 @@ export function emulatorFor(args) {
 }
 
 // An emulator's 127.0.0.1 is itself; reversed, these reach the host's, as on a simulator.
-export function reversedPorts(ports) {
+export function reversedPorts(ports, env = process.env) {
   const reached = [
     'METRO_PORT',
     'API_PORT',
@@ -438,7 +515,13 @@ export function reversedPorts(ports) {
     'STORAGE_PORT',
     'MAILPIT_UI_PORT',
   ];
-  return reached.map((key) => ports[key]);
+  return [...reached.map((key) => ports[key]), ...proxyPort(env.QA_API_URL)];
+}
+
+function proxyPort(url) {
+  if (!url) return [];
+  const { hostname, port } = new URL(url);
+  return ['127.0.0.1', 'localhost'].includes(hostname) && port ? [Number(port)] : [];
 }
 
 // `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
@@ -458,6 +541,122 @@ export function androidSdk(env = process.env, platform = process.platform, home 
 // Headless on Linux, the host GPU path goes through X's DRI3 and dumps core where that fails.
 export function emulatorGpu(platform = process.platform, env = process.env) {
   return env.SOIRELY_QA_EMULATOR_GPU || (platform === 'linux' ? 'swangle_indirect' : 'host');
+}
+
+export function testerRole(tester) {
+  return tester === 1 ? 'qa' : `qa${tester}`;
+}
+
+export function agentsFile(env = process.env, home = homedir()) {
+  return join(env.SOIRELY_CONFIG ?? join(home, '.config/soirely'), 'agents.json');
+}
+
+const WINDOWS_SDK = '%LOCALAPPDATA%\\Android\\Sdk';
+
+// `emulatorHost` (docs/agents/machines.md): a Windows computer, over ssh. Unset, it runs here.
+export function emulatorHostOf(agents, tester) {
+  const value = agents?.roles?.[testerRole(tester)]?.emulatorHost;
+  if (value === undefined || value === null) return null;
+  const entry = typeof value === 'string' ? { ssh: value } : value;
+  if (typeof entry !== 'object' || typeof entry.ssh !== 'string' || !entry.ssh.trim()) {
+    throw new Error(
+      `emulatorHost of ${testerRole(tester)} in agents.json is not an ssh destination such as "me@laptop"`,
+    );
+  }
+  return {
+    ssh: entry.ssh,
+    name: entry.name ?? entry.ssh.replace(/^.*@/, ''),
+    sdk: entry.sdk ?? WINDOWS_SDK,
+    gpu: entry.gpu ?? 'host',
+  };
+}
+
+// ConnectTimeout covers the handshake too, and a host on Wi-Fi can take over 10 s for it.
+export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=30'];
+export const REACH_TIMEOUT_MS = 45000;
+
+// Windows' OpenSSH ends the emulator with the session, so stopping the unit stops all three.
+export function remoteEmulatorCommand(host, port, args) {
+  return [
+    'ssh',
+    ...SSH_OPTIONS,
+    '-o',
+    'ExitOnForwardFailure=yes',
+    '-o',
+    'ServerAliveInterval=15',
+    '-o',
+    'ServerAliveCountMax=4',
+    '-L',
+    `${port}:127.0.0.1:${port}`,
+    '-L',
+    `${port + 1}:127.0.0.1:${port + 1}`,
+    host.ssh,
+    `${host.sdk}\\emulator\\emulator.exe ${args.join(' ')}`,
+  ];
+}
+
+export function remoteEmulatorScript(port, kill = false) {
+  const found = `Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(emulator|qemu-system)' -and $_.CommandLine -like '*-port ${port}*' }`;
+  const stop = kill
+    ? ` | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2; @(${found})`
+    : '';
+  return `powershell -NoProfile -Command "@(${found}${stop}).Count"`;
+}
+
+// adb scans for emulators only as it starts; one elsewhere is announced to it instead.
+export function adbAnnouncement(port) {
+  const message = `host:emulator:${port + 1}`;
+  return message.length.toString(16).padStart(4, '0') + message;
+}
+
+export function pickPlayImage(paths, abi) {
+  const installed = paths
+    .map((path) => path.split(/[\\/]/))
+    .filter(([, tag, arch]) => tag?.startsWith('google_apis_playstore') && arch === abi)
+    .map(([version, tag]) => ({
+      version,
+      tag,
+      api: Number.parseFloat(version.replace('android-', '')),
+    }))
+    .filter(({ api }) => Number.isFinite(api));
+  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
+  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
+  return `system-images;${version};${tag};${abi}`;
+}
+
+export function setupAgain(tester) {
+  return `\`node scripts/qa-env.mjs setup${tester === 1 ? '' : ` --tester ${tester}`}\` again`;
+}
+
+export function missingRemoteTools(host, what, tester = CONFIG.tester) {
+  return [
+    `  ${host.name} (${host.ssh}) has no ${what} in ${host.sdk}`,
+    `  install it there, then run ${setupAgain(tester)}:`,
+    '    - Android Studio > Settings > Languages & Frameworks > Android SDK > SDK Tools:',
+    '      tick "Android SDK Command-line Tools (latest)" and "Android Emulator", and apply',
+    '    - SDK Platforms, Show Package Details: tick a "Google Play" x86_64 system image',
+    '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
+  ].join('\n');
+}
+
+// avdmanager is a Java program: a host without Android Studio has no JDK for it either.
+export function missingAvdTools(host, { tools, jdk }, avds) {
+  const lacks = [
+    !tools && 'the Android SDK Command-line Tools',
+    !jdk && 'a JDK (17 or later)',
+  ].filter(Boolean);
+  return [
+    `  ${avds.join(' and ')}: not made on ${host.name} (${host.ssh}), which lacks ${lacks.join(' and ')}`,
+    `  install ${lacks.length > 1 ? 'them' : 'it'} there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    ...(tools
+      ? []
+      : [
+          '    - the Command-line Tools zip from developer.android.com/studio, unpacked so that',
+          `      ${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat exists`,
+        ]),
+    ...(jdk ? [] : ['    - a JDK, such as Eclipse Temurin 17, with java on PATH or JAVA_HOME set']),
+    '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
+  ].join('\n');
 }
 
 // The system image and the release APK both read this: an APK for another ABI is refused on install.
@@ -581,6 +780,28 @@ export function releasePlatform(args, platform = process.platform) {
   return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
 }
 
+// The first launch after the fresh install is this link rather than the app's icon.
+export function releaseLink(args, platform = releasePlatform(args)) {
+  const at = args.indexOf('--link');
+  if (at === -1) return null;
+  if (platform !== 'ios')
+    throw new Error('--link is iOS only: release on Android launches the app');
+  const url = args[at + 1] ?? '';
+  if (!/^[a-z][a-z0-9+.-]*:\S/i.test(url))
+    throw new Error(`--link needs a URL with a scheme, such as soirely://sign-in, not "${url}"`);
+  return url;
+}
+
+// An accessibility pass can leave a simulator at its largest text size.
+const DEFAULT_TEXT_SIZE = (udid) => ['simctl', 'ui', udid, 'content_size', 'large'];
+
+export const bootCommands = (udid) => [
+  ['simctl', 'bootstatus', udid, '-b'],
+  DEFAULT_TEXT_SIZE(udid),
+];
+// content_size needs a booted device, so the shut one is reset before it goes down.
+export const shutCommands = (udid) => [DEFAULT_TEXT_SIZE(udid), ['simctl', 'shutdown', udid]];
+
 export function simulatorArch(arch = process.arch) {
   return arch === 'arm64' ? 'arm64' : 'x86_64';
 }
@@ -663,20 +884,13 @@ const directoriesIn = (path) =>
 
 // Only a Play image carries TalkBack, and a host may have any released version of one.
 export function playImage(sdk, arch = process.arch) {
-  const abi = emulatorAbi(arch);
   const root = join(sdk, 'system-images');
-  const installed = directoriesIn(root)
-    .map((version) => ({ version, api: Number.parseFloat(version.replace('android-', '')) }))
-    .filter(({ api }) => Number.isFinite(api))
-    .flatMap(({ version, api }) =>
-      directoriesIn(join(root, version))
-        .filter((tag) => tag.startsWith('google_apis_playstore'))
-        .filter((tag) => existsSync(join(root, version, tag, abi)))
-        .map((tag) => ({ version, tag, api })),
-    );
-  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
-  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
-  return `system-images;${version};${tag};${abi}`;
+  const paths = directoriesIn(root).flatMap((version) =>
+    directoriesIn(join(root, version)).flatMap((tag) =>
+      directoriesIn(join(root, version, tag)).map((abi) => join(version, tag, abi)),
+    ),
+  );
+  return pickPlayImage(paths, emulatorAbi(arch));
 }
 
 export function expoSdkMajor(expoRange) {
@@ -841,6 +1055,42 @@ export function branchForStory(id, remoteBranches) {
 // and the api answers 500 or never boots.
 export const CACHE_CLEARER = 'busybox:1.36';
 
+// A running api or worker rewrites the cache while it is emptied, and rm fails on a directory
+// that filled again (sc-72307). The stack is brought up again further on.
+export function servicesMountingApi(services, root) {
+  const api = resolve(root, 'services/api');
+  return Object.entries(services ?? {})
+    .filter(([, service]) =>
+      (service.volumes ?? []).some(
+        (volume) => volume.type === 'bind' && resolve(root, volume.source ?? '') === api,
+      ),
+    )
+    .map(([name]) => name);
+}
+
+function stopApiMounts(root) {
+  let services;
+  try {
+    services = composeServices(root);
+  } catch {
+    return;
+  }
+  const names = servicesMountingApi(services, root);
+  if (names.length > 0) run('docker', ['compose', 'stop', ...names], { cwd: root, optional: true });
+  return names;
+}
+
+// A checkout that fails would leave the tester's api stopped with nothing to bring it back.
+export function withApiStopped(checkout, { stop, start }) {
+  const stopped = stop() ?? [];
+  try {
+    return checkout();
+  } catch (error) {
+    if (stopped.length > 0) start(stopped);
+    throw error;
+  }
+}
+
 export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
@@ -862,6 +1112,75 @@ export function clearApiCache(root, exec = run) {
     '{}',
     '+',
   ]);
+}
+
+// Docker Desktop's VM can go on serving a mounted file's old bytes after a checkout rewrote
+// it on the host, and nothing short of writing through the mount refreshes it (sc-60846).
+export function staleInContainer(hostHashes, sha256sumOutput) {
+  const served = new Map(
+    sha256sumOutput
+      .split('\n')
+      .map((line) => /^([0-9a-f]{64}) [ *](.+)$/.exec(line))
+      .filter(Boolean)
+      .map(([, hash, path]) => [path.replace(/^\.\//, ''), hash]),
+  );
+  return [...hostHashes].filter(([path, hash]) => served.get(path) !== hash).map(([path]) => path);
+}
+
+export function execOutput(result, label) {
+  if (result.error) throw new Error(`${label}: ${result.error.message}`);
+  if (result.status !== 0) {
+    throw new Error(`${label} exited ${result.status}: ${String(result.stderr ?? '').trim()}`);
+  }
+  return String(result.stdout ?? '');
+}
+
+function apiServedHashes(root, paths) {
+  const result = spawnSync(
+    'docker',
+    ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cd /app && xargs -0 sha256sum'],
+    { cwd: root, input: paths.join('\0'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
+  return execOutput(result, 'docker compose exec api sha256sum');
+}
+
+function proveApiMount(root) {
+  step('The api container, serving this commit');
+  const api = join(root, 'services/api');
+  const hostHashes = new Map(
+    git(['ls-files', '-z'], api)
+      .split('\0')
+      .filter((path) => path && existsSync(join(api, path)))
+      .map((path) => [path, hashOf(join(api, path))]),
+  );
+  const paths = [...hostHashes.keys()];
+  const stale = staleInContainer(hostHashes, apiServedHashes(root, paths));
+  if (stale.length === 0) {
+    console.log(`  api container matches the commit (${paths.length} files)`);
+    return;
+  }
+  for (const path of stale) {
+    console.log(`  stale in the container, rewritten: ${path}`);
+    execOutput(
+      spawnSync(
+        'docker',
+        ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cat > "$1"', 'sh', `/app/${path}`],
+        { cwd: root, input: readFileSync(join(api, path)), encoding: 'utf8' },
+      ),
+      `docker compose exec api rewrite ${path}`,
+    );
+  }
+  const still = staleInContainer(
+    new Map(stale.map((path) => [path, hostHashes.get(path)])),
+    apiServedHashes(root, stale),
+  );
+  if (still.length > 0) {
+    throw new Error(
+      `the api container still serves old bytes of:\n  ${still.join('\n  ')}\n` +
+        'Restart Docker Desktop and run the checkout again.',
+    );
+  }
+  console.log(`  api container matches the commit after rewriting ${stale.length} files`);
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -908,7 +1227,10 @@ export function testerOf(worktree) {
   return match[1] === '-lan' ? LAN : Number(match[1] || 1);
 }
 
-let CONFIG = qaConfig(INSTALLED ? (testerOf(resolve(HERE, '../..')) ?? 1) : 1);
+// Run from a QA worktree, installed or not, the harness is that worktree's tester.
+const OWN_TESTER = testerOf(resolve(HERE, INSTALLED ? '../..' : '..'));
+
+let CONFIG = qaConfig(OWN_TESTER ?? 1);
 
 function git(args, cwd) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -921,9 +1243,49 @@ function mainCheckout() {
   return dirname(resolve(from, git(['rev-parse', '--git-common-dir'], from)));
 }
 
-function qaWorktree() {
+function qaWorktree(project = CONFIG.project) {
   if (INSTALLED) return resolve(HERE, '../..');
-  return process.env.SOIRELY_QA_WORKTREE ?? join(dirname(mainCheckout()), CONFIG.project);
+  return process.env.SOIRELY_QA_WORKTREE ?? join(dirname(mainCheckout()), project);
+}
+
+export function savedBrowserHost(root, read = readFileSync) {
+  try {
+    return browserHostOf(read(join(root, BROWSER_HOST_FILE), 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+export function configFor(tester, root = null, read = readFileSync) {
+  const plain = qaConfig(tester);
+  if (!plain.simulated) return plain;
+  const browserHost = savedBrowserHost(root ?? qaWorktree(plain.project), read);
+  return browserHost ? qaConfig(tester, undefined, { browserHost }) : plain;
+}
+
+function browserHost([asked]) {
+  if (!CONFIG.simulated) throw new Error('the lan stack takes no browser host');
+  const root = qaWorktree();
+  assertQaStack(root);
+  const file = join(root, BROWSER_HOST_FILE);
+  if (asked === 'off') rmSync(file, { force: true });
+  else {
+    const host = browserHostOf(asked ?? defaultBrowserHost(CONFIG.tester));
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${host}\n`);
+  }
+  CONFIG = configFor(CONFIG.tester);
+  step('The environment');
+  writeFileSync(
+    join(root, '.env'),
+    renderQaEnv(readFileSync(join(root, '.env.example'), 'utf8'), CONFIG.overrides, CONFIG.project),
+  );
+  assertQaStack(root);
+  step('The stack, on the new environment');
+  run('docker', ['compose', 'up', '-d'], { cwd: root });
+  console.log(`\nWeb ${CONFIG.urls.web}, API ${CONFIG.browser.api} from a browser.`);
+  console.log(`The app stays on ${CONFIG.urls.api}.`);
 }
 
 function step(label) {
@@ -1029,11 +1391,11 @@ function androidTools() {
   };
 }
 
-export function missingCmdlineTools({ sdk, avdmanager }) {
+export function missingCmdlineTools({ sdk, avdmanager }, tester = CONFIG.tester) {
   return [
     `  no Android SDK command-line tools in ${sdk}`,
     `  expected avdmanager at ${avdmanager}`,
-    '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
+    `  install them either way, then run ${setupAgain(tester)}:`,
     '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
     '      tick "Android SDK Command-line Tools (latest)" and apply',
     '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
@@ -1041,18 +1403,108 @@ export function missingCmdlineTools({ sdk, avdmanager }) {
   ].join('\n');
 }
 
-function createEmulators() {
-  const tools = androidTools();
-  if (!existsSync(tools.avdmanager)) {
-    console.log(missingCmdlineTools(tools));
+function createRemoteEmulators(host) {
+  reachHost(host);
+  const listed = onHost(host, `${host.sdk}\\emulator\\emulator.exe -list-avds`);
+  const existing = (listed.stdout ?? '').split(/\r?\n/).map((line) => line.trim());
+  const missing = Object.values(CONFIG.emulators).filter((avd) => !existing.includes(avd.name));
+  for (const avd of Object.values(CONFIG.emulators)) {
+    if (!missing.includes(avd)) console.log(`  ${avd.name}: already there on ${host.name}`);
+  }
+  if (missing.length) {
+    const avdmanager = `${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat`;
+    const has = onHost(host, `if exist ${avdmanager} (echo found) else (echo missing)`);
+    const java = onHost(
+      host,
+      'if defined JAVA_HOME (if exist "%JAVA_HOME%\\bin\\java.exe" (echo found) else (echo missing)) else (where java >nul 2>nul && echo found || echo missing)',
+    );
+    const found = { tools: has.stdout?.trim() === 'found', jdk: java.stdout?.trim() === 'found' };
+    if (!found.tools || !found.jdk) {
+      console.log(
+        missingAvdTools(
+          host,
+          found,
+          missing.map((avd) => avd.name),
+        ),
+      );
+    } else {
+      const images = onHost(
+        host,
+        `powershell -NoProfile -Command "Get-ChildItem -Directory -Path '${host.sdk}\\system-images\\*\\*\\*' | ForEach-Object { $_.FullName.Substring($_.FullName.IndexOf('system-images') + 14) }"`,
+      );
+      const image = pickPlayImage((images.stdout ?? '').split(/\r?\n/).filter(Boolean), 'x86_64');
+      for (const avd of missing) {
+        const created = onHost(
+          host,
+          `echo no| ${avdmanager} create avd -n ${avd.name} -k "${image}" -d ${avd.device}`,
+          { timeout: 180000 },
+        );
+        console.log(
+          created.status === 0
+            ? `  ${avd.name}: created on ${image} on ${host.name}`
+            : `  ${avd.name}: could not create one on ${host.name}. Is ${image} installed there?`,
+        );
+      }
+    }
+  }
+  for (const avd of Object.values(CONFIG.emulators)) {
+    if (avd.ramMb) raiseRemoteAvdRam(host, avd);
+  }
+  checkConsoleToken(host);
+}
+
+function raiseRemoteAvdRam(host, avd) {
+  const file = `%USERPROFILE%\\.android\\avd\\${avd.name}.avd\\config.ini`;
+  const read = onHost(host, `type ${file}`);
+  if (read.status !== 0) return;
+  const before = read.stdout.replace(/\r\n/g, '\n');
+  const after = withAvdRam(before, avd.ramMb);
+  if (after === before) return;
+  const wrote = onHost(
+    host,
+    `powershell -NoProfile -Command "[Console]::In.ReadToEnd() | Set-Content -NoNewline -Encoding ascii -Path '${file}'"`,
+    { input: after.replace(/\n/g, '\r\n') },
+  );
+  console.log(
+    wrote.status === 0
+      ? `  ${avd.name}: RAM raised to ${avd.ramMb} MB on ${host.name}; it takes effect on its next cold boot`
+      : `  ${avd.name}: could not raise its RAM to ${avd.ramMb} MB on ${host.name}`,
+  );
+}
+
+function checkConsoleToken(host) {
+  const local = join(homedir(), '.emulator_console_auth_token');
+  const theirs = onHost(host, 'type %USERPROFILE%\\.emulator_console_auth_token');
+  const ours = existsSync(local) ? readFileSync(local, 'utf8').trim() : null;
+  if (ours && theirs.status === 0 && theirs.stdout.trim() === ours) {
+    console.log(`  console token: the same on ${host.name}`);
     return;
   }
-  const image = playImage(tools.sdk);
+  console.log(
+    `  console token: ${host.name}'s differs from ${local}, so \`adb emu\` cannot stop its emulator.\n` +
+      '  docs/agents/machines.md, An emulator on another computer, says how to copy it over.',
+  );
+}
+
+function createEmulators() {
+  const host = remoteHost();
+  if (host) {
+    createRemoteEmulators(host);
+    return;
+  }
+  const tools = androidTools();
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
-  for (const avd of Object.values(CONFIG.emulators)) {
+  setUpLocalEmulators(tools, Object.values(CONFIG.emulators), existing);
+}
+
+export function setUpLocalEmulators(tools, emulators, existing) {
+  const canCreate = existsSync(tools.avdmanager);
+  if (!canCreate) console.log(missingCmdlineTools(tools));
+  const image = canCreate ? playImage(tools.sdk) : null;
+  for (const avd of emulators) {
     if (existing.includes(avd.name)) {
       console.log(`  ${avd.name}: already there`);
-    } else {
+    } else if (canCreate) {
       const created = spawnSync(
         tools.avdmanager,
         ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
@@ -1068,7 +1520,8 @@ function createEmulators() {
   }
 }
 
-// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225).
+// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225),
+// and the phone with Expo Go loaded keeps stopping TalkBack (sc-52641).
 export function withAvdRam(config, mb) {
   const current = Number(/^hw\.ramSize\s*=\s*(\d+)/m.exec(config)?.[1] ?? 0);
   if (current >= mb) return config;
@@ -1130,7 +1583,13 @@ function checkout(args) {
     ref = `origin/${name}`;
     label = name;
   }
-  git(['checkout', '--quiet', '--detach', ref], root);
+  if (!capture('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: root })) {
+    throw new Error(`${label} names no commit in the QA worktree`);
+  }
+  withApiStopped(() => git(['checkout', '--quiet', '--detach', ref], root), {
+    stop: () => stopApiMounts(root),
+    start: (names) => run('docker', ['compose', 'start', ...names], { cwd: root, optional: true }),
+  });
   const head = git(['rev-parse', '--short', 'HEAD'], root);
   console.log(`  ${label} at ${head}`);
   clearApiCache(root);
@@ -1172,12 +1631,15 @@ function checkout(args) {
     { cwd: root },
   );
 
+  proveApiMount(root);
+
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  const afterMigrations = servicesAfterMigrations(composeServices(root));
-  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+  const services = composeServices(root);
+  const afterMigrations = servicesAfterMigrations(services);
+  for (const args of databaseCommands(console_, afterMigrations, keepData, 'redis' in services)) {
     run('docker', args, { cwd: root });
   }
 
@@ -1204,8 +1666,9 @@ export function dependencySteps(npmUnchanged, composerUnchanged) {
 }
 
 // With no names, compose stop and up act on the whole stack, so an old commit with no
-// worker skips both.
-export function databaseCommands(console_, afterMigrations, keepData) {
+// worker skips both. Redis is emptied with the database: a cached row, such as the catalogue
+// versions, names ids the new database no longer has, and the API answers 500 (sc-46032).
+export function databaseCommands(console_, afterMigrations, keepData, redis = false) {
   const waiting = afterMigrations.length > 0;
   return [
     // From nothing: an edited unreleased migration leaves a migrated database wrong.
@@ -1216,6 +1679,7 @@ export function databaseCommands(console_, afterMigrations, keepData) {
           ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
           [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
           [...console_, 'doctrine:database:create'],
+          ...(redis ? [['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']] : []),
         ]),
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
@@ -1248,7 +1712,7 @@ function status() {
   console.log(`
 QA environment, tester ${CONFIG.tester} — ${root}
   Checked out  ${state.label ?? '?'} — ${head ?? 'no worktree'}
-  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}
+  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}${CONFIG.browserHost ? `\n  API, browser ${CONFIG.browser.api}` : ''}
   Web          ${CONFIG.urls.web}
   App          ${CONFIG.urls.metro}   (node .qa/bin/qa-env.mjs ios, or android)
   Mailpit      ${CONFIG.urls.mailpit}
@@ -1261,15 +1725,19 @@ QA environment, tester ${CONFIG.tester} — ${root}
   }
 }
 
-function simulatorId(name) {
+function simulatorDevice(name) {
   const list = JSON.parse(
     capture('xcrun', ['simctl', 'list', 'devices', 'available', '-j']) ?? '{}',
   );
   for (const devices of Object.values(list.devices ?? {})) {
     const found = devices.find((d) => d.name === name);
-    if (found) return found.udid;
+    if (found) return found;
   }
   return null;
+}
+
+function simulatorId(name) {
+  return simulatorDevice(name)?.udid ?? null;
 }
 
 // iOS offers to save a password after every sign-in, and on an iPad Maestro cannot see the
@@ -1432,6 +1900,8 @@ function installedIosRelease(root) {
 function shutSimulator(root, key, id) {
   const udid = simulatorId(CONFIG.simulators[key].name);
   if (!udid) return;
+  const [reset, shutdown] = shutCommands(udid);
+  run('xcrun', reset, { optional: true });
   if (iosReleaseOn(root, key)) {
     const gone = uninstallHeld({
       boot: () => bootIos(udid),
@@ -1445,7 +1915,7 @@ function shutSimulator(root, key, id) {
         `  ${id} is still on the ${key} after ${UNINSTALL_BOOTS} boots; next run retries`,
       );
   }
-  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+  run('xcrun', shutdown, { optional: true });
 }
 
 export const UNINSTALL_BOOTS = 4;
@@ -1467,7 +1937,11 @@ export function uninstallHeld({ boot, installed, uninstall, shut }, boots = UNIN
 
 // simctl boot returns before the device is up, and an uninstall made then may not last.
 function bootIos(udid) {
-  return run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true });
+  return run('xcrun', bootCommands(udid)[0], { optional: true });
+}
+
+function openSimulator(udid) {
+  for (const command of bootCommands(udid)) run('xcrun', command, { optional: true });
 }
 
 function uninstallIos(udid, id) {
@@ -1495,6 +1969,7 @@ export function clearIosRelease(root, key) {
 }
 
 async function ios(args) {
+  if (args.includes('--stop')) return stopBundler();
   const root = qaWorktree();
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
@@ -1508,7 +1983,7 @@ async function ios(args) {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
-    bootIos(udid);
+    openSimulator(udid);
     // The record stays: only a later boot that finds the app gone says the uninstall held.
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
@@ -1544,8 +2019,10 @@ function capped(memory, command, args) {
 }
 
 // CI=1 turns off Metro's file watcher, which runs out of inotify watches beside an IDE.
+// QA_API_URL puts a proxy in front of the API, to rewrite a response no account can produce.
 export function bundlerEnv(env, app) {
-  return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+  const api = env.QA_API_URL ? { EXPO_PUBLIC_API_URL: env.QA_API_URL } : {};
+  return { ...env, ...app, ...api, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 }
 
 // --clear: Metro's cache keeps the EXPO_PUBLIC_ values of the build before.
@@ -1580,6 +2057,29 @@ async function startBundler(root, env = process.env, args = []) {
 
   await bundlerUp();
   return metro;
+}
+
+// Only this tester's: whatever listens on its own Metro port, with the group it leads.
+export function bundlerGroups(port, look = capture) {
+  const pids = (look('lsof', ['-nP', '-t', `-iTCP:${port}`, '-sTCP:LISTEN']) ?? '').split('\n');
+  const groups = pids
+    .filter(Boolean)
+    .map((pid) => Number((look('ps', ['-o', 'pgid=', '-p', pid]) ?? '').trim()))
+    .filter((group) => group > 1);
+  return [...new Set(groups)];
+}
+
+function stopBundler() {
+  const port = CONFIG.ports.METRO_PORT;
+  const groups = bundlerGroups(port);
+  for (const group of groups) {
+    try {
+      process.kill(-group, 'SIGTERM');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  }
+  console.log(groups.length ? `Stopped the bundler on ${port}.` : `No bundler on ${port}.`);
 }
 
 async function bundlerUp(seconds = 120) {
@@ -1745,11 +2245,83 @@ async function serve() {
 
 const LAUNCH_RECORDING = '/sdcard/soirely-launch.mp4';
 
+let REMOTE;
+function remoteHost() {
+  if (REMOTE === undefined) {
+    const file = agentsFile();
+    REMOTE = existsSync(file)
+      ? emulatorHostOf(JSON.parse(readFileSync(file, 'utf8')), CONFIG.tester)
+      : null;
+  }
+  return REMOTE;
+}
+
+function onHost(host, command, { input, timeout = 60000 } = {}) {
+  return spawnSync('ssh', [...SSH_OPTIONS, host.ssh, command], {
+    encoding: 'utf8',
+    input,
+    timeout,
+  });
+}
+
+function reachHost(host) {
+  const exe = `${host.sdk}\\emulator\\emulator.exe`;
+  const tried = `ssh ${SSH_OPTIONS.join(' ')} ${host.ssh} "if exist ${exe} echo found"`;
+  const answer = onHost(host, `if exist ${exe} (echo found) else (echo missing)`, {
+    timeout: REACH_TIMEOUT_MS,
+  });
+  if (answer.error || answer.status !== 0) {
+    const why =
+      answer.error?.code === 'ETIMEDOUT'
+        ? `no answer in ${REACH_TIMEOUT_MS / 1000} s`
+        : (answer.stderr || '').trim();
+    throw new Error(
+      `the emulator host ${host.name} (${host.ssh}) could not be reached: ${why || `ssh exited ${answer.status}`}\n` +
+        `  tried: ${tried}\n` +
+        "  is it awake, on mains power and on this network, with OpenSSH Server running and this machine's key?",
+    );
+  }
+  if (answer.stdout.trim() !== 'found')
+    throw new Error(missingRemoteTools(host, 'Android Emulator'));
+}
+
+function remoteEmulators(host, kill = false) {
+  const answer = onHost(host, remoteEmulatorScript(CONFIG.emulatorPort, kill));
+  const count = Number(answer.stdout?.trim());
+  return answer.status === 0 && Number.isFinite(count) ? count : null;
+}
+
+function announceEmulator(tools) {
+  capture(tools.adb, ['start-server'], { env: tools.env });
+  const script =
+    'const s=require("net").connect(5037,"127.0.0.1",()=>s.end(process.argv[1]));s.on("error",()=>{})';
+  spawnSync(process.execPath, ['-e', script, adbAnnouncement(CONFIG.emulatorPort)]);
+}
+
+export function shouldAnnounce({ remote, online, unit }) {
+  return remote && !online() && unit() === 'active';
+}
+
+let SEEN = false;
+function seeRemoteEmulator(tools, { again = false } = {}) {
+  if (SEEN && !again) return;
+  SEEN = true;
+  const due = shouldAnnounce({
+    remote: Boolean(remoteHost()),
+    online: () => emulatorOnline(tools),
+    unit: () => unitState(`${CONFIG.project}-emulator`),
+  });
+  if (!due) return;
+  announceEmulator(tools);
+  for (let i = 0; i < 20 && !emulatorOnline(tools); i++) spawnSync('sleep', ['0.25']);
+}
+
 function emulatorSerial() {
   return `emulator-${CONFIG.emulatorPort}`;
 }
 
 function adbOut(tools, args) {
+  seeRemoteEmulator(tools);
   return capture(tools.adb, ['-s', emulatorSerial(), ...args], { env: tools.env });
 }
 
@@ -1759,18 +2331,53 @@ function emulatorOnline(tools) {
   );
 }
 
+// Maestro's adb client throws on any unauthorized device on the shared server, ours or not (sc-47688).
+export function unauthorizedWarning(devices, ours) {
+  const others = [...devices.matchAll(/^(\S+)\tunauthorized$/gm)].map((m) => m[1]);
+  if (!others.length) return null;
+  return [
+    `  adb here sees ${others.join(', ')} as unauthorized: maestro will then report ${ours} as not connected`,
+    '  authorize it (docs/agents/machines.md, An emulator on another computer, step 2), or have',
+    '  whoever forwarded it disconnect it, then run this again',
+  ].join('\n');
+}
+
+function warnUnauthorized(tools) {
+  const said = unauthorizedWarning(
+    capture(tools.adb, ['devices'], { env: tools.env }) ?? '',
+    emulatorSerial(),
+  );
+  if (said) console.warn(said);
+}
+
 function unitState(unit) {
   return spawnSync('systemctl', ['--user', 'is-active', unit], { encoding: 'utf8' }).stdout.trim();
 }
 
 // adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
-async function reversePorts(tools) {
-  let missing = reversedPorts(CONFIG.ports);
+// The emulator dropping offline for a moment loses them too, so a batch puts them back before each run (sc-71513).
+export async function restoreReverses(adb, ports, { wait = pause } = {}) {
+  let missing = unreversed(adb(['reverse', '--list']), ports);
   for (let i = 0; i < 10 && missing.length; i++) {
-    if (i) await pause(1000);
-    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+    if (i) await wait(1000);
+    for (const port of missing) adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adb(['reverse', '--list']), ports);
   }
+  return missing;
+}
+
+// Another tester's command can restart the shared adb server mid-batch, which forgets ours (sc-76877).
+export async function reversePorts(
+  tools,
+  {
+    see = seeRemoteEmulator,
+    adb = (args) => adbOut(tools, args),
+    ports = reversedPorts(CONFIG.ports),
+    wait = pause,
+  } = {},
+) {
+  see(tools, { again: true });
+  const missing = await restoreReverses(adb, ports, { wait });
   if (missing.length) {
     throw new Error(
       `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
@@ -1784,10 +2391,21 @@ async function stopEmulator(tools) {
   for (let i = 0; i < 60; i++) {
     const stopping =
       usesSystemd() && ['active', 'activating', 'deactivating'].includes(unitState(unit));
-    if (!emulatorOnline(tools) && !stopping) return;
+    if (!emulatorOnline(tools) && !stopping) break;
+    if (remoteHost() && i === 15) capture('systemctl', ['--user', 'stop', unit]);
     await pause(1000);
+    if (i === 59)
+      throw new Error(`the emulator on ${emulatorSerial()} did not stop within a minute`);
   }
-  throw new Error(`the emulator on ${emulatorSerial()} did not stop within a minute`);
+  const host = remoteHost();
+  if (!host) return;
+  capture('systemctl', ['--user', 'stop', unit]);
+  const left = remoteEmulators(host, true);
+  if (left !== 0) {
+    throw new Error(
+      `${host.name} ${left === null ? 'could not be asked whether' : `still runs ${left} emulator process(es)`} on console ${CONFIG.emulatorPort}`,
+    );
+  }
 }
 
 async function bootEmulator(tools, name) {
@@ -1812,7 +2430,31 @@ async function bootEmulator(tools, name) {
   ];
   const unit = `${CONFIG.project}-emulator`;
   let gone;
-  if (usesSystemd()) {
+  const host = remoteHost();
+  if (host) {
+    if (!usesSystemd()) throw new Error('an emulator on another computer needs systemd here');
+    reachHost(host);
+    capture('systemctl', ['--user', 'stop', unit]);
+    remoteEmulators(host, true);
+    const since = Math.floor(Date.now() / 1000);
+    const remoteArgs = args.map((arg) => (arg === emulatorGpu() ? host.gpu : arg));
+    run('systemd-run', [
+      '--user',
+      `--unit=${unit}`,
+      '--collect',
+      '--quiet',
+      ...remoteEmulatorCommand(host, CONFIG.emulatorPort, remoteArgs),
+    ]);
+    console.log(`  ${name}: starting on ${host.name}`);
+    gone = () => {
+      if (!emulatorOnline(tools)) announceEmulator(tools);
+      return emulatorUnitGone(
+        unit,
+        unitState(unit),
+        () => capture('journalctl', emulatorJournalArgs(unit, since)) ?? '(no journal lines)',
+      );
+    };
+  } else if (usesSystemd()) {
     const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
     const since = Math.floor(Date.now() / 1000);
     run('systemd-run', [
@@ -1851,6 +2493,12 @@ async function bootEmulator(tools, name) {
     booted: () => adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1',
     gone,
     pause,
+    unauthorized: () =>
+      (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
+        `${emulatorSerial()}\tunauthorized`,
+      )
+        ? emulatorSerial()
+        : null,
   });
   console.log(`  ${name}: booted on ${emulatorSerial()}`);
 }
@@ -1864,11 +2512,29 @@ export function emulatorUnitGone(unit, state, journal) {
   return `the emulator unit ${unit} stopped (${state || 'gone'}) before it booted:\n${journal()}`;
 }
 
-export async function waitForBoot({ name, booted, gone, pause, tries = 180, everyMs = 1000 }) {
+// A device that has not accepted this machine's adb key refuses getprop, so it never reads as booted (sc-48212).
+export async function waitForBoot({
+  name,
+  booted,
+  gone,
+  pause,
+  unauthorized = () => null,
+  tries = 180,
+  everyMs = 1000,
+  unauthorizedTries = 30,
+}) {
+  let refused = 0;
   for (let i = 0; i < tries; i++) {
     const reason = gone();
     if (reason) throw new Error(`${name}: ${reason}`);
     if (booted()) return;
+    const serial = unauthorized();
+    refused = serial ? refused + 1 : 0;
+    if (refused >= unauthorizedTries) {
+      throw new Error(
+        `${name}: adb here sees ${serial} as unauthorized, so it cannot tell whether it booted; accept this machine's adb key (docs/agents/machines.md, An emulator on another computer, step 2), then run this again`,
+      );
+    }
     await pause(everyMs);
   }
   throw new Error(`${name} did not boot within three minutes`);
@@ -1939,6 +2605,9 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// A large-text pass leaves the text size up, which pushes buttons a flow taps below the fold (sc-88284).
+export const TEXT_SIZE_RESET = [['shell', 'settings', 'put', 'system', 'font_scale', '1.0']];
+
 // Console-sent touches open Gboard's stylus tryout over the app (sc-43614).
 export const STYLUS_HANDWRITING_OFF = [
   ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
@@ -1960,6 +2629,11 @@ export const ANDROID_START = [
     name: 'screen reader off',
     adb: SCREEN_READER_OFF,
     say: '  TalkBack is off: turn it on again in Settings for a screen-reader pass.',
+  },
+  {
+    name: 'text size reset',
+    adb: TEXT_SIZE_RESET,
+    say: '  Text size is back to default: set it again in Settings for a large-text pass.',
   },
   { name: 'stylus handwriting off', adb: STYLUS_HANDWRITING_OFF },
   {
@@ -2143,13 +2817,15 @@ async function resetForBatch(onAndroid, device) {
 }
 
 async function android(args) {
+  if (!CONFIG.simulated) throw new Error('the lan stack runs no emulator: use a tester stack');
   const tools = androidTools();
-  if (!existsSync(tools.emulator)) {
-    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  const host = remoteHost();
+  if (!existsSync(host ? tools.adb : tools.emulator)) {
+    throw new Error(`no Android ${host ? 'adb' : 'emulator'} in ${tools.sdk}: set ANDROID_HOME`);
   }
   if (args.includes('--stop')) {
     await stopEmulator(tools);
-    console.log(`Stopped the emulator on ${emulatorSerial()}.`);
+    console.log(`Stopped the emulator on ${emulatorSerial()}${host ? `, on ${host.name}` : ''}.`);
     return;
   }
   const root = qaWorktree();
@@ -2325,6 +3001,7 @@ function releaseCommit(root) {
 }
 
 function release(args) {
+  releaseLink(args);
   return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
 }
 
@@ -2496,6 +3173,7 @@ async function releaseIos(args) {
   const sha = releaseCommit(root);
   const { open, shut } = simulatorFor(args);
   const offline = args.includes('--offline');
+  const link = releaseLink(args, 'ios');
 
   const app = releaseApp(root, sha);
   if (existsSync(app) && !args.includes('--rebuild')) {
@@ -2510,7 +3188,7 @@ async function releaseIos(args) {
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
-  bootIos(udid);
+  openSimulator(udid);
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
   uninstallIos(udid, id);
@@ -2523,10 +3201,11 @@ async function releaseIos(args) {
   const recording = recordSimulator(udid, video);
   await recording.started;
   await pause(1000);
-  run('xcrun', ['simctl', 'launch', udid, id]);
+  run('xcrun', link ? ['simctl', 'openurl', udid, link] : ['simctl', 'launch', udid, id]);
   await recording.stop();
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      (link ? `, opened by ${link}` : '') +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`ios\` removes it and starts the stack again.` +
@@ -2573,6 +3252,7 @@ async function maestro(args) {
   const onAndroid = args.includes('--android');
   const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
   if (!flow) throw new Error('which flow? `maestro sign-in EMAIL=… PASSWORD=…`');
+  checkOrientation(parseVars(vars));
   const device = maestroDevice(args);
 
   const env = [...Object.entries(flowUrls(CONFIG.urls)).map(([k, v]) => `${k}=${v}`), ...vars];
@@ -2590,6 +3270,7 @@ async function maestro(args) {
     onAndroid,
   });
   const file = join(flows, `${flow}.yaml`);
+  if (onAndroid) warnUnauthorized(androidTools());
 
   const ok = await runAsync(
     maestroBin() ?? 'maestro',
@@ -2605,8 +3286,52 @@ async function maestro(args) {
   );
   helper?.close();
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
+  trimMaestroLogs(out, { failed: !ok });
   console.log(`\nEvidence in ${out}`);
   if (!ok) process.exitCode = 1;
+}
+
+export const KEPT_LOG_BYTES = 5 * 1024 * 1024;
+
+// Maestro's debug logs run to hundreds of MB a run (sc-63635, sc-64887). A failed run keeps the
+// newest of each kind, its tail.
+export const MAESTRO_LOGS = [
+  'maestro.log',
+  'device-simulator.log',
+  'device-logcat.txt',
+  'device-xctest.log',
+  /^xctest_runner_.*\.log$/,
+];
+
+const logKind = (name) =>
+  MAESTRO_LOGS.find((kind) => (typeof kind === 'string' ? kind === name : kind.test(name)));
+
+export function trimMaestroLogs(out, { since = 0, failed = false } = {}) {
+  if (!existsSync(out)) return;
+  const logs = readdirSync(out, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && logKind(entry.name))
+    .map((entry) => join(entry.parentPath, entry.name))
+    .map((path) => ({ path, kind: logKind(basename(path)), stat: statSync(path) }))
+    .filter((log) => log.stat.mtimeMs >= since)
+    .sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+  const kept = new Map();
+  for (const log of logs) {
+    if (failed && !kept.has(log.kind)) kept.set(log.kind, log);
+    else rmSync(log.path, { force: true });
+  }
+  for (const log of kept.values()) keepTail(log);
+}
+
+function keepTail({ path, stat }) {
+  if (stat.size <= KEPT_LOG_BYTES) return;
+  const tail = Buffer.alloc(KEPT_LOG_BYTES);
+  const fd = openSync(path, 'r');
+  try {
+    readSync(fd, tail, 0, KEPT_LOG_BYTES, stat.size - KEPT_LOG_BYTES);
+  } finally {
+    closeSync(fd);
+  }
+  writeFileSync(path, tail);
 }
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -2707,8 +3432,11 @@ export const batchRuns = (checks, languages) =>
 export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
-  if (cold) lines.push('- runFlow: batch/sign-out.yaml');
-  else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
+  if (cold) {
+    // An earlier run left on its side hides Sign out in Settings, so it is put upright first.
+    lines.push('- setOrientation: PORTRAIT', helperStep('/portrait', 'batch/helper.js').trimEnd());
+    lines.push('- runFlow: batch/sign-out.yaml');
+  } else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
   runs.forEach((run, index) => {
     if (index > 0 && run.language !== runs[index - 1].language)
@@ -2740,31 +3468,42 @@ export function composeBatch(
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
   aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
-  const subFlows = (flow, language, caller, chain) =>
+  cpSync(join(source, 'checks'), join(target, '_checks'), {
+    recursive: true,
+    filter: (path) => statSync(path).isDirectory() || !/\.ya?ml$/.test(path),
+  });
+  const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
-      (line, key, quote, name) => {
-        if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+      /^(\s*(?:-\s*runFlow:\s*\{[^\n]*?\bfile|-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$|\s*[,}])/gm,
+      (line, key, quote, ref) => {
+        const name = posix.relative('checks', posix.join('checks', dir, ref));
+        if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))
+          return line;
         if (chain.includes(name))
           throw new Error(`${[...chain, name].join(' → ')}: a check runs itself`);
-        const id = `${caller}.${name}`;
-        const path = join(target, '_checks', `${id}.flow.yaml`);
+        const id = `${caller}.${name.replaceAll('/', '.')}`;
+        const file = posix.join(posix.dirname(name), `${id}.flow.yaml`);
+        const path = join(target, '_checks', file);
         if (!existsSync(path)) {
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
+          mkdirSync(dirname(path), { recursive: true });
           writeFileSync(
             path,
             finish(
               prefixShots(
-                subFlows(localise(sub, catalogues, language, { email }), language, id, [
-                  ...chain,
-                  name,
-                ]),
+                subFlows(
+                  localise(sub, catalogues, language, { email }),
+                  language,
+                  id,
+                  [...chain, name],
+                  posix.dirname(name),
+                ),
                 id,
               ),
             ),
           );
         }
-        return `${key}${id}.flow.yaml`;
+        return `${key}${posix.relative(dir, file)}`;
       },
     );
   for (const run of batchRuns(checks, languages)) {
@@ -2794,17 +3533,33 @@ export function composeBatch(
   if (!cold) writeFileSync(join(target, '_batch.yaml'), finish(batchFlow({ checks, languages })));
 }
 
+const isVar = (arg) => /^[A-Z][A-Z0-9_]*=/.test(arg);
+
+export function parseVars(args) {
+  return Object.fromEntries(
+    args
+      .filter(isVar)
+      .map((arg) => [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)]),
+  );
+}
+
+const ORIENTATIONS = ['PORTRAIT', 'LANDSCAPE_LEFT', 'LANDSCAPE_RIGHT', 'UPSIDE_DOWN'];
+
+// Maestro fails a bare LANDSCAPE only when it reaches setOrientation, deep in a batch (sc-85143).
+// A lowercase ORIENT is a flow's own label for its screenshots, and passes.
+export function checkOrientation({ ORIENT: orient }) {
+  if (orient == null || orient !== orient.toUpperCase() || ORIENTATIONS.includes(orient)) return;
+  throw new Error(`ORIENT=${orient} is no Maestro orientation: use ${ORIENTATIONS.join(', ')}`);
+}
+
 export function parseBatch(args) {
   const positional = [];
-  const vars = {};
   let languages = ['any'];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--lang') languages = (args[++i] ?? '').split(',').filter(Boolean);
     else if (arg.startsWith('--')) continue;
-    else if (/^[A-Z][A-Z0-9_]*=/.test(arg))
-      vars[arg.slice(0, arg.indexOf('='))] = arg.slice(arg.indexOf('=') + 1);
-    else positional.push(arg);
+    else if (!isVar(arg)) positional.push(arg);
   }
   const [name, ...checks] = positional;
   if (!name || checks.length === 0 || languages.length === 0) {
@@ -2812,6 +3567,8 @@ export function parseBatch(args) {
       'which batch? `batch <name> <check>… EMAIL=… PASSWORD=… [--lang en,es] [--cold]`',
     );
   }
+  const vars = parseVars(args);
+  checkOrientation(vars);
   return { name, checks, languages, vars, cold: args.includes('--cold') };
 }
 
@@ -2850,6 +3607,22 @@ async function nextCode(email, secret) {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...used, [email]: step }, null, 2));
   return totp(secret, step);
+}
+
+// The web has no batch to type a code into, so a tester signs in there with this one.
+export function parseCode(args) {
+  const { EMAIL: email, TOTP_SECRET: secret } = parseVars(args);
+  if (!email || !secret) throw new Error('whose code? EMAIL=… TOTP_SECRET=…, from `account`');
+  totp(secret, 0);
+  return { email, secret };
+}
+
+async function code(args) {
+  const { email, secret } = parseCode(args);
+  const value = await nextCode(email, secret);
+  const left = Math.round((STEP_MS - (Date.now() % STEP_MS)) / 1000);
+  process.stderr.write(`valid for about ${left}s; batches for ${email} skip past it\n`);
+  console.log(value);
 }
 
 async function signIn(email, password, secret) {
@@ -3076,9 +3849,14 @@ export function portraitRotation(wmSize) {
   return size.width > size.height ? 1 : 0;
 }
 
-function portraitOnEmulator() {
+// Maestro's LANDSCAPE_LEFT can leave a portrait-native tablet portrait (sc-50565).
+export function landscapeRotation(wmSize) {
+  return 1 - portraitRotation(wmSize);
+}
+
+function turnEmulator(rotationFor) {
   const tools = androidTools();
-  const rotation = portraitRotation(adbOut(tools, ['shell', 'wm', 'size']));
+  const rotation = rotationFor(adbOut(tools, ['shell', 'wm', 'size']));
   for (const [setting, value] of [
     ['accelerometer_rotation', '0'],
     ['user_rotation', String(rotation)],
@@ -3088,6 +3866,9 @@ function portraitOnEmulator() {
   }
   return rotation;
 }
+
+const portraitOnEmulator = () => turnEmulator(portraitRotation);
+const landscapeOnEmulator = () => turnEmulator(landscapeRotation);
 
 export function expoGoRunning(launchctlList) {
   return new RegExp(
@@ -3287,9 +4068,11 @@ export function startHelper({
   device,
   onAndroid,
   changeMembership,
+  readSchedule,
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  landscape = landscapeOnEmulator,
   shoot = (file) => screenshotDevice(device, onAndroid, file),
   out,
   port = CONFIG.helperPort,
@@ -3321,6 +4104,9 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/landscape') {
+        return reply(200, { rotation: onAndroid ? landscape() : null });
       }
       if (url.pathname === '/shot') {
         const name = url.searchParams.get('name') ?? '';
@@ -3358,6 +4144,22 @@ export function startHelper({
           await changeMembership(url.searchParams.get('change'), url.searchParams.get('org')),
         );
       }
+      if (url.pathname === '/schedule') {
+        const event = url.searchParams.get('event') ?? '';
+        if (!UUID.test(event))
+          throw new Error(`whose schedule? /schedule?event=<id> gave ${event}`);
+        const want = Number(url.searchParams.get('done') ?? '0');
+        const place = url.searchParams.get('place');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        for (const deadline = Date.now() + 8000; ; await pause(1000)) {
+          const { items: all } = await readSchedule(event);
+          const items = place === null ? all : all.filter((item) => item.place === place);
+          const started = items.filter((item) => item.startedAt !== null).length;
+          const done = items.filter((item) => item.endedAt !== null).length;
+          if (done >= want) return reply(200, { started, done });
+          if (Date.now() >= deadline) return reply(200, { wait: true });
+        }
+      }
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
@@ -3387,7 +4189,7 @@ export function startHelper({
 
 // A dead driver either ends Maestro at once or hangs it. For the hang a run gets a budget, and a
 // batch whose flows stop calling the harness for STALL_MS is stopped sooner.
-export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
+export const runBudgetMs = (runs) => (3 + 4 * runs) * 60_000;
 export const STALL_MS = 5 * 60_000;
 
 export function runAsync(command, args, { cwd, env, timeoutMs, stall }) {
@@ -3438,6 +4240,19 @@ export async function clearForBatch(
   await reset(onAndroid, device);
 }
 
+// A batch that reuses a name keeps the last run beside it, so a name typed twice costs no
+// re-shoot (sc-72307).
+export function freshBatchDir(root, name) {
+  const out = join(root, '.qa', name);
+  const previous = `${out}.previous`;
+  if (existsSync(out)) {
+    rmSync(previous, { recursive: true, force: true });
+    renameSync(out, previous);
+  }
+  mkdirSync(out, { recursive: true });
+  return out;
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3457,10 +4272,9 @@ async function batch(args) {
   }
 
   await clearForBatch(onAndroid, device);
+  if (onAndroid) warnUnauthorized(androidTools());
 
-  const out = join(root, '.qa', name);
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out, { recursive: true });
+  const out = freshBatchDir(root, name);
   const flows = join(root, '.qa/.batch', name);
   composeBatch(source, flows, {
     checks,
@@ -3472,13 +4286,6 @@ async function batch(args) {
   });
 
   const apiState = composeApi(root, onAndroid);
-  // A batch killed inside withoutReverse left the API's port unreversed.
-  if (onAndroid)
-    adbOut(androidTools(), [
-      'reverse',
-      `tcp:${CONFIG.ports.API_PORT}`,
-      `tcp:${CONFIG.ports.API_PORT}`,
-    ]);
   await apiState.move('up');
   const named = languages[0] !== 'any';
   const signedIn = named ? apiSession(email, password, secret) : null;
@@ -3494,9 +4301,10 @@ async function batch(args) {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
+  const member = apiSession(email, password, secret);
   const changeMembership = membershipChanges({
     email,
-    member: apiSession(email, password, secret),
+    member,
     ownerOf: (asked) => organisationOwner(root, asked),
     alone: () => accountAlone(root),
     sql: async (statement) => {
@@ -3518,6 +4326,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    readSchedule: (event) => member(`/api/events/${event}/schedule`, { method: 'GET' }),
     out,
   });
   // The secret stays with the helper: no flow is handed it.
@@ -3531,34 +4340,44 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
-    return runHeld(held, {
-      begun,
-      passed,
-      crashed,
-      unstarted,
-      heard,
-      watchdog,
-      device,
-      onAndroid,
-      run: (stall) =>
-        runAsync(
-          maestroBin() ?? 'maestro',
-          [
-            ...maestroTarget(device, onAndroid, CONFIG.driverPort),
-            'test',
-            '--debug-output',
-            out,
-            ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
-            flow,
-          ],
-          {
-            cwd: root,
-            env: onAndroid ? androidTools().env : {},
-            timeoutMs: runBudgetMs(held.length),
-            stall,
-          },
-        ),
-    });
+    // A batch killed inside withoutReverse, or an emulator that went offline, left ports unreversed.
+    if (onAndroid) await reversePorts(androidTools());
+    const since = Date.now();
+    let failed = true;
+    try {
+      const after = await runHeld(held, {
+        begun,
+        passed,
+        crashed,
+        unstarted,
+        heard,
+        watchdog,
+        device,
+        onAndroid,
+        run: (stall) =>
+          runAsync(
+            maestroBin() ?? 'maestro',
+            [
+              ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+              'test',
+              '--debug-output',
+              out,
+              ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+              flow,
+            ],
+            {
+              cwd: root,
+              env: onAndroid ? androidTools().env : {},
+              timeoutMs: runBudgetMs(held.length),
+              stall,
+            },
+          ),
+      });
+      failed = held.some((run) => !passed.has(runId(run)));
+      return after;
+    } finally {
+      trimMaestroLogs(out, { since, failed });
+    }
   };
 
   const started = Date.now();
@@ -3892,19 +4711,65 @@ function chrome() {
   ]);
 }
 
+async function push(args) {
+  const answer = await fetch(`${CONFIG.urls.smocker}/history`);
+  if (!answer.ok) throw new Error(`Smocker answered ${answer.status} at ${CONFIG.urls.smocker}`);
+  const pushes = expoPushes(await answer.json());
+  if (pushes.length === 0)
+    throw new Error('the product has sent no push since Smocker last started');
+  if (args.includes('--list')) {
+    pushes.forEach((message, index) =>
+      console.log(`${index + 1}  ${message.title ?? ''} — ${message.body ?? ''}`),
+    );
+    return;
+  }
+  const pick = pushPick(args);
+  const message = pushes[pick - 1];
+  if (!message) throw new Error(`only ${pushes.length} pushes sent; \`push --list\` names them`);
+
+  const root = qaWorktree();
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  const { open } = simulatorFor(args);
+  const device = simulatorDevice(CONFIG.simulators[open].name);
+  if (!device) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  if (device.state !== 'Booted') {
+    throw new Error(
+      `the ${open} simulator is shut: \`xcrun simctl boot ${device.udid}\` boots it, then push again`,
+    );
+  }
+  const { udid } = device;
+  if (!capture('xcrun', ['simctl', 'get_app_container', udid, id])) {
+    throw new Error(`${id} is not on the ${open}: \`release\` installs it`);
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-push-'));
+  try {
+    const file = join(dir, 'payload.json');
+    writeFileSync(file, JSON.stringify(apnsPayload(message)));
+    run('xcrun', ['simctl', 'push', udid, id, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  console.log(
+    `Pushed #${pick} to ${id} on the ${open}: ${message.title ?? ''} — ${message.body ?? ''}`,
+  );
+}
+
 const COMMANDS = {
   setup,
+  'browser-host': browserHost,
   checkout,
   status,
   serve,
   ios,
   android,
   release,
+  push,
   link,
   maestro,
   batch,
   hierarchy,
   account,
+  code,
   chrome,
 };
 
@@ -3913,13 +4778,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const flag = argv.indexOf('--tester');
   if (flag !== -1) {
     const asked = argv[flag + 1] === LAN ? LAN : Number(argv[flag + 1]);
-    if (INSTALLED && asked !== CONFIG.tester) {
+    if (OWN_TESTER !== null && asked !== LAN && asked !== OWN_TESTER) {
       console.error(`this harness belongs to tester ${CONFIG.tester}, not ${argv[flag + 1]}`);
       process.exit(2);
     }
     CONFIG = qaConfig(asked);
     argv.splice(flag, 2);
   }
+  CONFIG = configFor(CONFIG.tester);
   // Node reads extra CAs only at start, so the lan harness reaches its https API as a child.
   const ca = join(lanCaDir(), 'ca.crt');
   if (!CONFIG.simulated && existsSync(ca) && process.env.NODE_EXTRA_CA_CERTS !== ca) {

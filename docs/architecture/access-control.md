@@ -16,12 +16,12 @@ every one of them names a policy.**
 
 ## The four policies
 
-| Attribute                       | Who gets through                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `#[PublicAccess]`               | anybody, signed in or not                                                                               |
-| `#[Authenticated]`              | any signed-in account                                                                                   |
-| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member  |
-| `#[InEvent(permission)]`        | an Owner or Admin of the organisation that owns the event in `{eventId}`, or a Member with a role on it |
+| Attribute                       | Who gets through                                                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `#[PublicAccess]`               | anybody, signed in or not                                                                                                                                          |
+| `#[Authenticated]`              | any signed-in account                                                                                                                                              |
+| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member; with `feature:`, a change also needs the plan to unlock it |
+| `#[InEvent(permission)]`        | an Owner or Admin of the organisation that owns the event in `{eventId}`, or a Member with a role on it                                                            |
 
 All four live in `App\Http\Access\Policy`. One goes on the controller class or on the
 method; the method's wins, and two on the same level is refused at boot. A route that
@@ -76,6 +76,11 @@ Owner or an Admin starts, duplicates or deletes an event. `EventRole::permission
 table above, and `EventRoleTest` holds it to it. Can check guests in reads what Can view
 reads; marking a guest arrived joins it with sc-1454.
 
+An organisation's page that a role on any one event opens, such as the Menu library
+(`#[InOrganisation(…, orOnAnEvent: true)]`), is offered the same way: the organisation read
+lists in `onAnEvent` what a Member's event roles allow beyond their organisation role, and
+the web's `canAnywhere` reads both (sc-3901).
+
 People (`/api/events/{eventId}/people`) is read by everyone on the event. An Owner, an Admin
 or the event's Lead adds, changes and removes people (`people.manage`); nobody changes or
 removes their own role (`403 own_event_role`). People adds members of the organisation only:
@@ -116,17 +121,41 @@ For `#[InEvent]`:
 
 1. **The event is resolved first.** Its organisation comes from the event, never from the
    request.
-2. **Membership of that organisation is checked.** An account that is not an active member
-   gets **404**, the same as an event that does not exist. A 403 would confirm the event
-   exists to somebody outside it.
+2. **Membership of that organisation is checked.** An account that is not an active member,
+   and holds no live grant from outside (sc-71) or staff link (sc-4235) in it, gets **404**,
+   the same as an event that does not exist. A 403 would confirm the event exists to
+   somebody outside it. An expired or revoked grant is no grant, and gets the same 404. On a route with
+   `endedLink`, an account whose staff link on the event was open when the event finished,
+   at its end or its early end, gets **409 `event_concluded`** instead (sc-3918, 27 Nov).
 3. **A Member's role on the event is found.** A Member with no role on it gets the same
    **404**. An Owner's or an Admin's grants are the organisation's.
 4. **Then the permission**, from the role on the event for a Member. A member without it gets **403 `permission_required`**, with
    the permission named in a `permission` member of the problem. Never an internal policy
    name, never a trace.
+5. **Then the plan, for a change to a setting a plan unlocks**, on `#[InOrganisation]` only
+   for now. A route that names one with `#[InOrganisation(…, feature: PlanFeature::…)]` refuses a request that is not `GET`,
+   `HEAD` or `OPTIONS` with **403 `plan_required`**, the feature named in a `feature` member,
+   unless the organisation's plan unlocks it (`Plan::unlocks()`, the one list). Reading stays
+   open, so a client can show the setting locked. The permission is asked first: the plan
+   says nothing to somebody who could not change the setting on any plan. `MembershipDirectory`
+   puts the organisation's plan on every `Grants` it hands out (sc-581), asking
+   `Entitlements::of()`, which reads the current subscription and nothing else (sc-3927).
 
-`#[InOrganisation]` is steps 2 and 3. **Permissions held in another organisation never
-reach this far**: membership of the route's organisation is asked first, so a permission
+`#[InOrganisation]` is steps 2, 4 and 5, and `feature:` works with `orOnAnEvent` too. With
+`orOnAnEvent`, a non-member holding a live grant on one of the organisation's events gets
+**403 `permission_required`** at step 2, not 404: the event is real and they can see it, so
+a 404 would hide nothing (pm, sc-94342, 26 Nov 2026, which rejected the 404). Which accounts
+those are is `StaffLinkGrants::liveOutsideEvents()`, the one list of what an account reaches
+from outside; the account's `outsideEvents` and the end of a phone-code session read it too.
+
+**From outside, a level holds a permission only if its area is one the level opens**
+(`Grants::fromOutside`, sc-94342). `EventRole::areasFromOutside()` names the areas, and the
+permissions of every other area are dropped from the grants, so step 4 refuses them with
+**403 `permission_required`** like any permission the role lacks, reads included, and the
+event's `permissions` never list them. Hiding a tab in a client is not the check (OWASP ASVS
+V4.1.1).
+`#[InEvent]` cannot name a feature yet: the first event-scoped setting a plan unlocks adds
+it. **Permissions held in another organisation never reach this far**: membership of the route's organisation is asked first, so a permission
 can only widen access for somebody already inside. There is no path around step 2.
 
 ## An organisation's sign-in rules narrow what a membership grants
@@ -229,3 +258,10 @@ resend and cooldown, since the details screen can lead there. Logout and refresh
 they never reach it. A route added without being named there is gated, so an unprotected
 one takes a deliberate act. `OnboardingGateTest` checks every name on the list is a real
 route.
+
+A door code's account (sc-72, `AccountOrigin::DoorCode`, no address and no number) has
+nothing to verify, so it is not asked to. It is not let through everywhere instead: it
+reaches only `#[InEvent]` routes, where its grant on the one event decides as for anyone,
+and `OnboardingGate::DEVICE_REACHES` (`me` and the language switcher). Every other route,
+exempt or not, answers it `403 account_unverified`, so it cannot found an organisation,
+run the assistant or reach another organisation's routes. `DoorCodesTest` holds this.

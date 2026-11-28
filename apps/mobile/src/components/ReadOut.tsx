@@ -8,24 +8,33 @@ import {
   shownBeforeAnswer,
   shownOnceSaid,
 } from '../kit/readOut.ts';
+import { onceKeysDownThen } from './keyboardWatch.ts';
 
-/** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. */
+/** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. Pass `afterKeysDown` only for words handed over as the keys go down: the wait then runs from their going down, as TalkBack drops words handed over just before the window grows under keys that close late (sc-43907). */
 export function readOut(
   words: string,
   {
     interrupts = false,
     afterMs = settleMs(Platform.OS),
+    afterKeysDown = false,
     onSaid,
-  }: { interrupts?: boolean; afterMs?: number; onSaid?: (() => void) | undefined } = {},
+  }: {
+    interrupts?: boolean;
+    afterMs?: number;
+    afterKeysDown?: boolean;
+    onSaid?: (() => void) | undefined;
+  } = {},
 ): () => void {
-  const timer = setTimeout(() => {
+  const say = () => {
     onSaid?.();
     if (Platform.OS === 'ios') {
       AccessibilityInfo.announceForAccessibilityWithOptions(words, { queue: !interrupts });
     } else if (Platform.OS === 'android') {
       AccessibilityInfo.announceForAccessibility(words);
     }
-  }, afterMs);
+  };
+  if (afterKeysDown && Platform.OS === 'android') return onceKeysDownThen(say, afterMs);
+  const timer = setTimeout(say, afterMs);
 
   return () => clearTimeout(timer);
 }
@@ -46,12 +55,20 @@ export interface ReadOutOptions {
   quietAtMount?: boolean | undefined;
   /** The tap the words answer: a new one says them again, even in the same words. */
   answer?: unknown;
+  /** On Android, the words wait for keys going down as they are handed over, as readOut's `afterKeysDown`. */
+  afterKeysDown?: boolean | undefined;
 }
 
 /** Applies howToReadOut to a message as its words change. */
 export function useReadOut(
   words: string | null,
-  { afterTyping, interrupts = false, quietAtMount = false, answer }: ReadOutOptions = {},
+  {
+    afterTyping,
+    interrupts = false,
+    quietAtMount = false,
+    answer,
+    afterKeysDown = false,
+  }: ReadOutOptions = {},
 ): void {
   const shown = useRef(shownAtMount(words, quietAtMount));
   const answered = useRef(answer);
@@ -73,12 +90,13 @@ export function useReadOut(
       unsaid.current = readOut(handOver.words, {
         interrupts: !handOver.queue,
         afterMs: handOver.afterMs,
+        afterKeysDown,
         onSaid: () => {
           shown.current = shownOnceSaid(shown.current, handOver, reading);
         },
       });
     }
-  }, [words, afterTyping, typing, interrupts, answer]);
+  }, [words, afterTyping, typing, interrupts, answer, afterKeysDown]);
 
   useEffect(() => () => unsaid.current?.(), []);
 }
@@ -88,10 +106,14 @@ export function ReadOut({
   words,
   interrupts,
   answer,
+  afterKeysDown,
   children,
   ...view
-}: ViewProps & { words: string } & Pick<ReadOutOptions, 'interrupts' | 'answer'>) {
-  useReadOut(words, { interrupts, answer });
+}: ViewProps & { words: string } & Pick<
+    ReadOutOptions,
+    'interrupts' | 'answer' | 'afterKeysDown'
+  >) {
+  useReadOut(words, { interrupts, answer, afterKeysDown });
 
   return children == null ? null : <View {...view}>{children}</View>;
 }
