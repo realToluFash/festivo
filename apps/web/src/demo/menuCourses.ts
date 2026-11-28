@@ -94,6 +94,8 @@ export interface EvCourse {
   pick?: CourseDefault | null;
   /** sc-1362: the people given the default once its date passed. */
   given?: readonly Given[];
+  /** sc-3898: the schedule item this course is linked to; while linked, its start is the course's served time. */
+  linked?: { title: string; at: string } | null;
 }
 
 export const CW = {
@@ -109,6 +111,8 @@ export const CW = {
   ready: (ready: number, all: number) => `${ready} of ${all} courses ready`,
   courseOf: (n: number, all: number) => `Course ${n} of ${all}`,
   served: (time: string) => `served ${time}`,
+  fromSchedule: (time: string, title: string) => `${time}, from the schedule: ${title}`,
+  fromScheduleHelp: 'It follows the item’s start on the Schedule page.',
   readyTag: 'Ready',
   emptyTag: 'Empty · not shown to guests',
   emptyCourse: 'No dishes yet. Guests don’t see this course until it has one.',
@@ -444,6 +448,13 @@ function course(
   more: Partial<EvCourse> = {},
 ): EvCourse {
   return { id, name, servedAt, answer: 'choose', skip: false, dishes, ...more };
+}
+
+/** sc-3898: the sample menu with Main linked to the schedule's Mains go out, which starts at 19:50. */
+function linkedMain(): EvCourse[] {
+  return sampleCourses().map((one) =>
+    one.id === 'k2' ? { ...one, linked: { title: 'Mains go out', at: '19:50' } } : one,
+  );
 }
 
 export function sampleCourses(): EvCourse[] {
@@ -940,6 +951,19 @@ const STATES = {
         press: true,
         serverFull: true,
       },
+    }),
+  courseLinkedLine: () =>
+    start({
+      name: 'A course linked to a schedule item: Main, served at Mains go out’s start',
+      note: 'Main shows 19:50, the start of Mains go out on the Schedule page, not its own 20:00 (sc-3898, Decided 28 Nov).',
+      courses: linkedMain(),
+    }),
+  courseLinkedForm: () =>
+    start({
+      name: 'Edit course on a linked course: Served at is text, from the schedule',
+      note: 'While Main is linked, Served at is its item’s start and not a field; Save keeps that time.',
+      courses: linkedMain(),
+      opened: { kind: 'editCourse', courseId: 'k2' },
     }),
   editCourse: () =>
     start({
@@ -2398,6 +2422,10 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'emptyReadOnly',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'A course linked to a schedule item (sc-3898)',
+    states: (['courseLinkedLine', 'courseLinkedForm'] as const).map(link),
   },
   {
     name: 'When picks close (sc-3905)',
