@@ -223,6 +223,12 @@ export function endsTitle(left: number): string {
   return CONTRACT_WORDS.endsTitle.replace('{{count}}', String(left));
 }
 
+export function endsLine(contract: Contract, locale: string): string {
+  return CONTRACT_WORDS.endsLine
+    .replace('{{date}}', shortDate(addDays(contract.end, 1), locale))
+    .replace('{{organisation}}', contract.organisation);
+}
+
 export const PAYMENT_TERMS = ['net_15', 'net_30', 'net_45', 'net_60'] as const;
 
 export type PaymentTerms = (typeof PAYMENT_TERMS)[number];
@@ -380,9 +386,9 @@ export const CONTRACT_WORDS = {
   download: 'Download',
   readOnlyBanner: 'Read-only until the payment is made. Live events are running normally.',
   endsTitle: 'Ends in {{count}} days',
-  endsTitleOne: 'Ends in 1 day',
+  endsTitleOne: 'Ends tomorrow',
   endsTitleToday: 'Ends today',
-  endsLine: 'On {{date}} {{organisation}} moves to Free. Nothing is deleted.',
+  endsLine: 'On {{date}}, {{organisation}} moves to the free plan. Nothing is deleted.',
   startBlank: 'Enter the date the term starts.',
   endBlank: 'Enter the date the term ends.',
   endOrder: 'Enter an end date after the start date.',
