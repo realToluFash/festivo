@@ -17,6 +17,16 @@ import {
 } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
+export {
+  FIGURE_LABEL,
+  FIGURE_LABEL_LINE,
+  FIGURE_NUMBERS,
+  FIGURE_NUMBERS_LINE,
+  FIGURE_RING,
+  figureRing,
+  figureRoom,
+} from '../../layout/arrivedFigure.ts';
+
 export type TodayName = 'qa' | 'long';
 export type TodayGreeting = 'morning' | 'evening' | 'welcome';
 
@@ -474,24 +484,4 @@ export function arrivedCount(arrived: TodayArrived, step: number): ArrivedCount 
   if (arrived === 'live') return step % 2 === 0 ? null : ARRIVED_COUNTS.one;
 
   return ARRIVED_COUNTS[arrived];
-}
-
-/** Main's arrived figure: its numbers at 18, arrived at 12.5, beside a 44 ring (sc-29978). */
-export const FIGURE_NUMBERS = 18;
-export const FIGURE_LABEL = 12.5;
-export const FIGURE_RING = 44;
-export const FIGURE_NUMBERS_LINE = 1.2;
-export const FIGURE_LABEL_LINE = 1.3;
-
-/** From AX1 the ring is as tall as the two lines beside it, never under main's 44, so it grows with the words and never sits over them. */
-export function figureRing(numbers: number, label: number): number {
-  return Math.max(
-    FIGURE_RING,
-    Math.ceil(numbers * FIGURE_NUMBERS_LINE) + Math.ceil(label * FIGURE_LABEL_LINE),
-  );
-}
-
-/** The figure's words beside its ring, `gap` from it, in a column `column` wide. */
-export function figureRoom(column: number, ring: number, gap: number): number {
-  return Math.max(column - ring - gap, 0);
 }
