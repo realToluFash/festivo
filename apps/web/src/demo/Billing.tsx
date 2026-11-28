@@ -8,7 +8,6 @@ import {
   BILLING_WORDS as W,
   type BillingState,
   type Currency,
-  ENTERPRISE,
   type Method,
   PACKS,
   type Pack,
@@ -23,10 +22,23 @@ import {
   methodLine,
   methodShape,
   money,
-  renewsLine,
   slowIn,
   waitLook,
 } from './billing.ts';
+import { ComparePlans, PlanAsk, type PlanAskKind, type Talk } from './ComparePlans.tsx';
+import {
+  CATALOGUE,
+  COMPARE_WORDS,
+  ENTERPRISE_METER,
+  FREE_METER,
+  type Meter,
+  NEXT_MONTH,
+  NEXT_YEAR,
+  PERIOD_END,
+  type Period,
+  catalogueOf,
+  houseDate,
+} from './comparePlans.ts';
 import { CardLedger, LedgerBones } from './Credits.tsx';
 import {
   CREDITS_WORDS,
@@ -73,8 +85,21 @@ interface Start {
   notAdded: boolean;
   plan: Plan;
   planPaidAt: number | null;
+  /** The test catalogue's self-serve Enterprise, which sc-3933's sandbox checkout sells; at launch it is sold by contract. */
+  selfServe: boolean;
+  fromLine: boolean;
+  period: Period;
+  renews: string;
+  scheduled: boolean;
+  downgraded: boolean;
+  meter: Meter;
+  compare: boolean;
+  ask: PlanAskKind | null;
+  previewed: boolean;
+  talk: Talk;
   method: Method;
   refused: boolean;
+  declined: boolean;
   offline: boolean;
 }
 
@@ -93,6 +118,8 @@ function startFor(state: BillingState, manages: boolean, now: number): Start {
     notAdded: false,
     plan: start.plan === 'confirming' ? 'free' : start.plan,
     planPaidAt: null,
+    compare: false,
+    ask: null,
   };
 }
 
@@ -114,12 +141,64 @@ function startOf(state: BillingState, now: number): Start {
     notAdded: false,
     plan: 'free',
     planPaidAt: null,
+    selfServe: false,
+    fromLine: true,
+    period: 'month',
+    renews: NEXT_MONTH,
+    scheduled: false,
+    downgraded: false,
+    meter: FREE_METER,
+    compare: false,
+    ask: null,
+    previewed: false,
+    talk: { lastAt: null, say: null },
     method: methodFor(state),
     refused: false,
+    declined: false,
     offline: false,
   };
 
+  const selfServe = { ...base, selfServe: true };
+  const onEnterprise: Start = {
+    ...selfServe,
+    plan: 'enterprise',
+    renews: PERIOD_END,
+    meter: ENTERPRISE_METER,
+  };
+
   switch (state) {
+    case 'compare':
+      return { ...base, compare: true };
+    case 'talk_sent':
+      return { ...base, compare: true, talk: { lastAt: now - 60_000, say: 'thanks' } };
+    case 'talk_repeat':
+      return { ...base, compare: true, talk: { lastAt: now - 3 * 60 * 60_000, say: null } };
+    case 'price_off':
+      return { ...base, compare: true, fromLine: false };
+    case 'self_serve':
+      return { ...selfServe, compare: true };
+    case 'upgrade_preview':
+      return { ...selfServe, compare: true, ask: 'upgrade', previewed: true };
+    case 'upgrade_checkout':
+      return { ...selfServe, hosted: { kind: 'plan' } };
+    case 'on_enterprise':
+      return onEnterprise;
+    case 'compare_enterprise':
+      return { ...onEnterprise, compare: true };
+    case 'downgrade_ask':
+      return { ...onEnterprise, compare: true, ask: 'downgrade' };
+    case 'cancel_ask':
+      return { ...onEnterprise, ask: 'cancel' };
+    case 'yearly_ask':
+      return { ...onEnterprise, ask: 'yearly', previewed: true };
+    case 'yearly_refused':
+      return { ...onEnterprise, ask: 'yearly', previewed: true, declined: true };
+    case 'yearly':
+      return { ...onEnterprise, period: 'year', renews: NEXT_YEAR };
+    case 'scheduled':
+      return { ...onEnterprise, scheduled: true };
+    case 'downgraded':
+      return { ...onEnterprise, plan: 'free', downgraded: true };
     case 'packs':
       return { ...base, packsOpen: true };
     case 'checkout_open':
@@ -143,11 +222,11 @@ function startOf(state: BillingState, now: number): Start {
     case 'not_added':
       return { ...base, packsOpen: true, notAdded: true };
     case 'confirming_plan':
-      return { ...base, plan: 'confirming', planPaidAt: now - 4000 };
+      return { ...selfServe, plan: 'confirming', planPaidAt: now - 4000 };
     case 'plan_slow':
-      return { ...base, plan: 'confirming', planPaidAt: now - WAIT_MS };
+      return { ...selfServe, plan: 'confirming', planPaidAt: now - WAIT_MS };
     case 'plan_confirmed':
-      return { ...base, plan: 'enterprise' };
+      return { ...selfServe, plan: 'enterprise' };
     case 'update_open':
       return { ...base, hosted: { kind: 'update' } };
     case 'refused':
@@ -226,6 +305,22 @@ function BillingPage({
   const [notAdded, setNotAdded] = useState(start.notAdded);
   const [plan, setPlan] = useState(start.plan);
   const [planPaidAt, setPlanPaidAt] = useState(start.planPaidAt);
+  const [yearPaidAt, setYearPaidAt] = useState<number | null>(null);
+  const [declined, setDeclined] = useState(start.declined);
+  const planTitle = useRef<HTMLSpanElement>(null);
+  const [period, setPeriod] = useState(start.period);
+  const [renews, setRenews] = useState(start.renews);
+  const [scheduled, setScheduled] = useState(start.scheduled);
+  const [downgraded, setDowngraded] = useState(start.downgraded);
+  const [compare, setCompare] = useState(start.compare);
+  const [ask, setAsk] = useState(start.ask);
+  const [talk, setTalk] = useState(start.talk);
+  const catalogue = useMemo(
+    () => catalogueOf(start.selfServe, start.fromLine),
+    [start.selfServe, start.fromLine],
+  );
+  const opener = useRef<HTMLElement | null>(null);
+  const keepPlan = useRef<HTMLButtonElement>(null);
   const [method, setMethod] = useState(start.method);
   const [refused] = useState(start.refused);
   const [offline, setOffline] = useState(start.offline);
@@ -240,20 +335,29 @@ function BillingPage({
   const update = useRef<HTMLButtonElement>(null);
   const changePlan = useRef<HTMLButtonElement>(null);
   const pressed = useRef(0);
+  const pw = COMPARE_WORDS[lang];
+  const current = plan === 'enterprise' ? 'enterprise' : 'free';
+  const planLine = (on: Period = period, until = renews) =>
+    (on === 'year' ? pw.yearly : pw.monthlyLine)(
+      money(CATALOGUE.enterprise.prices[currency][on], currency, locale),
+      longDate(until, locale),
+    );
   const packsId = useId();
   const can = manages && !refused;
   const planWaiting = plan === 'confirming' && planPaidAt != null;
+  const pending = scheduled || yearPaidAt != null;
 
   useEffect(() => {
     const times = [
       ...waits.map((wait) => slowIn(wait.paidAt, Date.now())),
       ...(planWaiting && planPaidAt != null ? [slowIn(planPaidAt, Date.now())] : []),
+      ...(yearPaidAt == null ? [] : [slowIn(yearPaidAt, Date.now())]),
     ].filter((ms) => ms > 0);
     if (times.length === 0) return;
     const timer = setTimeout(() => setNow(Date.now()), Math.min(...times) + 50);
 
     return () => clearTimeout(timer);
-  }, [waits, planWaiting, planPaidAt, now]);
+  }, [waits, planWaiting, planPaidAt, yearPaidAt, now]);
 
   useEffect(() => {
     live.current = { waits, balance };
@@ -333,8 +437,73 @@ function BillingPage({
   const planLands = () => {
     setPlan('enterprise');
     setPlanPaidAt(null);
+    setDowngraded(false);
     setRefreshing(true);
-    setSaid(`${cw.yourPlan}: ${W.enterprise}. ${renewsLine(locale)}.`);
+    setSaid(`${cw.yourPlan}: ${W.enterprise}. ${planLine()}.`);
+  };
+
+  const openAsk = (kind: PlanAskKind) => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setAsk(kind);
+  };
+
+  const closeCompare = () => {
+    setCompare(false);
+    focusLater(() => changePlan.current);
+  };
+
+  const keepAsk = () => {
+    setAsk(null);
+    setDeclined(false);
+    focusLater(() => opener.current);
+  };
+
+  const updateForYearly = () => {
+    setAsk(null);
+    setDeclined(false);
+    setHosted({ kind: 'update' });
+  };
+
+  const yearLands = () => {
+    setYearPaidAt(null);
+    setPeriod('year');
+    setRenews(NEXT_YEAR);
+    setRefreshing(true);
+    setSaid(`${cw.yourPlan}: ${W.enterprise}. ${planLine('year', NEXT_YEAR)}.`);
+    focusLater(() => changePlan.current);
+  };
+
+  const goAsk = () => {
+    const kind = ask;
+    setAsk(null);
+    setCompare(false);
+    if (kind === 'upgrade') {
+      setHosted({ kind: 'plan' });
+    } else if (kind === 'yearly') {
+      setYearPaidAt(Date.now());
+      setSaid(W.confirming);
+      focusLater(() => planTitle.current);
+    } else {
+      setScheduled(true);
+      setSaid(pw.moving(pw.names.free, houseDate(renews, locale)));
+      focusLater(() => keepPlan.current);
+    }
+  };
+
+  const keepEnterprise = () => {
+    setScheduled(false);
+    setSaid(pw.kept(pw.names.enterprise));
+    focusLater(() => changePlan.current);
+  };
+
+  const periodEnds = () => {
+    setScheduled(false);
+    setPlan('free');
+    setPeriod('month');
+    setDowngraded(true);
+    setRefreshing(true);
+    setSaid(`${cw.yourPlan}: ${cw.free}. ${pw.downgraded}`);
+    focusLater(() => changePlan.current);
   };
 
   const cardSaved = () => {
@@ -359,6 +528,7 @@ function BillingPage({
   const twoMinutes = () => {
     setWaits((all) => all.map((wait) => ({ ...wait, paidAt: wait.paidAt - WAIT_MS })));
     setPlanPaidAt((at) => (at == null ? at : at - WAIT_MS));
+    setYearPaidAt((at) => (at == null ? at : at - WAIT_MS));
     setNow(Date.now());
   };
 
@@ -413,26 +583,74 @@ function BillingPage({
         {page === 'loaded' && (
           <>
             <section className="desk-block bl-card" aria-labelledby="bl-plan">
-              <Head title={<span id="bl-plan">{cw.yourPlan}</span>}>
-                {can && plan === 'free' && (
+              <Head
+                title={
+                  <span id="bl-plan" ref={planTitle} tabIndex={-1}>
+                    {cw.yourPlan}
+                  </span>
+                }
+              >
+                {can && plan !== 'confirming' && !pending && (
                   <button
                     ref={changePlan}
                     type="button"
                     className="desk-text"
-                    onClick={() => setHosted({ kind: 'plan' })}
+                    onClick={() => setCompare(true)}
                   >
                     {cw.changePlan}
                   </button>
                 )}
               </Head>
               <p className="bl-plan-name">{plan === 'enterprise' ? W.enterprise : cw.free}</p>
-              {plan === 'enterprise' && <p className="desk-line">{renewsLine(locale)}</p>}
+              {plan === 'enterprise' && <p className="desk-line">{planLine()}</p>}
+              {downgraded && plan === 'free' && <p className="desk-line">{pw.downgraded}</p>}
+              {plan === 'enterprise' && scheduled && (
+                <div className="bl-inset">
+                  <Glyph name="clock" size={18} weight={2.2} />
+                  <div className="bl-inset-words">
+                    <p>{pw.moving(pw.names.free, houseDate(renews, locale))}</p>
+                  </div>
+                  {can && (
+                    <button
+                      ref={keepPlan}
+                      type="button"
+                      className="desk-text"
+                      onClick={keepEnterprise}
+                    >
+                      {pw.keep(pw.names.enterprise)}
+                    </button>
+                  )}
+                </div>
+              )}
+              {can &&
+                plan === 'enterprise' &&
+                !pending &&
+                catalogue.enterprise.sales === 'self_serve' && (
+                  <div className="bl-plan-steps">
+                    {period === 'month' && (
+                      <button type="button" className="desk-text" onClick={() => openAsk('yearly')}>
+                        {pw.switchYearly}
+                      </button>
+                    )}
+                    <button type="button" className="button" onClick={() => openAsk('cancel')}>
+                      {pw.cancelPlan}
+                    </button>
+                  </div>
+                )}
               {planWaiting && planPaidAt != null && (
                 <WaitInset
                   look={waitLook(planPaidAt, time)}
                   words={W.confirming}
                   onLand={offline ? undefined : planLands}
                   landLabel="Webhook: the plan is paid"
+                />
+              )}
+              {yearPaidAt != null && (
+                <WaitInset
+                  look={waitLook(yearPaidAt, time)}
+                  words={W.confirming}
+                  onLand={offline ? undefined : yearLands}
+                  landLabel="Webhook: the year is paid"
                 />
               )}
               {plan !== 'free' && <p className="bl-caption">{W.sandbox}</p>}
@@ -551,7 +769,16 @@ function BillingPage({
           </>
         )}
 
-        {(waits.length > 0 || planWaiting) && (
+        {scheduled && (
+          <div className="bl-demo-only">
+            <p>Stand-in for the period ending, in the demo only.</p>
+            <button type="button" className="desk-text" onClick={periodEnds}>
+              {longDate(renews, locale)} comes
+            </button>
+          </div>
+        )}
+
+        {(waits.length > 0 || planWaiting || yearPaidAt != null) && (
           <div className="bl-demo-only">
             <p>Stand-in for time passing, in the demo only.</p>
             <button type="button" className="desk-text" onClick={twoMinutes}>
@@ -560,6 +787,40 @@ function BillingPage({
           </div>
         )}
       </div>
+
+      {compare && (
+        <ComparePlans
+          catalogue={catalogue}
+          current={current}
+          meter={start.meter}
+          currency={currency}
+          lang={lang}
+          locale={locale}
+          talk={talk}
+          onTalk={setTalk}
+          onUpgrade={() => openAsk('upgrade')}
+          onDowngrade={() => openAsk('downgrade')}
+          onClose={closeCompare}
+        />
+      )}
+
+      {ask != null && (
+        <PlanAsk
+          kind={ask}
+          catalogue={catalogue}
+          current={current}
+          meter={start.meter}
+          currency={currency}
+          lang={lang}
+          locale={locale}
+          ends={renews}
+          previewed={start.previewed}
+          declined={declined}
+          onKeep={keepAsk}
+          onGo={goAsk}
+          onUpdate={updateForYearly}
+        />
+      )}
 
       {hosted != null && (
         <Dialog
@@ -581,6 +842,15 @@ function BillingPage({
       )}
     </div>
   );
+}
+
+function longDate(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${iso}T00:00:00Z`));
 }
 
 function WaitInset({
@@ -659,8 +929,8 @@ function HostedStandIn({
       ? ['The customer: Ire Events’ billing account', 'The subscription']
       : hosted.kind === 'plan'
         ? [
-            `The catalogue item: ${W.enterprise}, ${money(ENTERPRISE.price, ENTERPRISE.currency, locale)} a month`,
-            `The currency: ${ENTERPRISE.currency}`,
+            `The catalogue item: ${W.enterprise}, ${money(CATALOGUE.enterprise.prices[currency].month, currency, locale)} a month`,
+            `The currency: ${currency}`,
             'The customer: Ire Events’ billing account',
             'The organisation: Ire Events',
           ]

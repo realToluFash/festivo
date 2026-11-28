@@ -6,7 +6,7 @@ import {
   useId,
   useRef,
 } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -24,6 +24,7 @@ import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type Area, type SampleEvent } from './events.ts';
 import { NOW } from './budget.ts';
+import { seesPlans } from './comparePlans.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import './budget.css';
 
@@ -496,10 +497,18 @@ export function InfoLine({ children }: { children: ReactNode }) {
   );
 }
 
+/** sc-87's line after a downgrade; See plans only for billing.manage (sc-3935), and no link for anyone else. */
 export function ReadOnlyLine() {
+  const [params] = useSearchParams();
+
   return (
     <div className="bud-plan-line" role="status">
       <p>{W.readOnlyLine}</p>
+      {seesPlans(params.get('as'), params.get('state')) && (
+        <Link className="desk-text" to="/demo/settings/plan-and-billing?state=compare">
+          {W.seePlans}
+        </Link>
+      )}
     </div>
   );
 }

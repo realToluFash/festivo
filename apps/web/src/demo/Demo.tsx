@@ -15,7 +15,7 @@ import { offField } from '../offField.ts';
 import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
-import { BILLING_PAGES } from './billing.ts';
+import { BILLING_PAGES, COMPARE_PAGES } from './billing.ts';
 import { ContractBilling } from './ContractBilling.tsx';
 import { ContractEmail } from './ContractEmail.tsx';
 import { CONTRACT_PAGES } from './contract.ts';
@@ -747,6 +747,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>Compare plans: change plan after seeing what changes (sc-3935) · desktop</h3>
+        <BoardPages pages={COMPARE_PAGES} />
         <h3>
           Enterprise on a contract, paid by Paddle’s invoice: the overdue banner, the staff form and
           the emails (sc-613) · desktop, the emails at 600 px

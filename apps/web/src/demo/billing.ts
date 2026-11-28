@@ -27,6 +27,22 @@ export const BILLING_STATES = [
   'loading',
   'credits_failed',
   'reread_fails',
+  'compare',
+  'talk_sent',
+  'talk_repeat',
+  'price_off',
+  'self_serve',
+  'upgrade_preview',
+  'upgrade_checkout',
+  'on_enterprise',
+  'compare_enterprise',
+  'downgrade_ask',
+  'cancel_ask',
+  'yearly_ask',
+  'yearly_refused',
+  'yearly',
+  'scheduled',
+  'downgraded',
 ] as const;
 
 export type BillingState = (typeof BILLING_STATES)[number];
@@ -52,9 +68,6 @@ export const PACKS: readonly Pack[] = [
   { credits: 5000, price: { USD: 45, EUR: 50, GBP: 40 } },
   { credits: 20000, price: { USD: 160, EUR: 180, GBP: 145 } },
 ];
-
-/** Enterprise in the sandbox, at the price the board draws: plan checkout is sandbox only, and the board draws it in US dollars alone. */
-export const ENTERPRISE = { price: 249, currency: 'USD' as Currency, renews: '2026-12-02' };
 
 export function money(amount: number, currency: Currency, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -155,17 +168,6 @@ export function boughtSaid(credits: number, balance: number, locale: string): st
   return `${CREDITS_WORDS.en.bought} ${signed(credits, locale)}. ${creditsWord(balance, locale)}.`;
 }
 
-export function renewsLine(locale: string): string {
-  const date = new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${ENTERPRISE.renews}T00:00:00Z`));
-
-  return `${money(ENTERPRISE.price, ENTERPRISE.currency, locale)} a month, renews ${date}`;
-}
-
 /** The board's English; the developer gives each its key in the four locales. */
 export const BILLING_WORDS = {
   refreshing: 'Refreshing…',
@@ -228,6 +230,41 @@ export const BILLING_PAGES: readonly { name: string; states: readonly DemoLink[]
       at('card_brandless', 'A card with no brand'),
       at('card_wallet', 'PayPal'),
       at('card_other', 'A method Paddle names no way to show'),
+    ],
+  },
+];
+
+/** Compare plans (sc-3935): at launch, Free and Enterprise sold by contract; then the test catalogue's self-serve Enterprise. */
+export const COMPARE_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'At launch: on Free, Enterprise by contract',
+    states: [
+      at('compare', 'Compare plans, from Change plan'),
+      at('compare', 'Compare plans in French', '&lang=fr'),
+      at('compare', 'Compare plans in euros', '&currency=EUR'),
+      at('talk_sent', 'Talk to us sent'),
+      at('talk_repeat', 'Talk to us again within 24 hours'),
+      at('price_off', 'The price line off'),
+      at('none', 'A Member: no Change plan', '&as=ana'),
+    ],
+  },
+  {
+    name: 'Self-serve Enterprise (test catalogue)',
+    states: [
+      at('self_serve', 'Compare plans with Upgrade'),
+      at('upgrade_preview', 'Upgrade: the amount due today'),
+      at('upgrade_checkout', 'Paddle’s checkout for Enterprise'),
+      at('confirming_plan', 'Confirming your payment… (sc-3933)'),
+      at('plan_confirmed', 'Enterprise, confirmed (sc-3933)'),
+      at('on_enterprise', 'On Enterprise: Switch to yearly, Cancel plan'),
+      at('yearly_ask', 'Switch to yearly?'),
+      at('yearly_refused', 'Switch to yearly: the provider refuses the charge'),
+      at('yearly', 'On Enterprise, yearly'),
+      at('compare_enterprise', 'Compare plans on Enterprise, with Downgrade'),
+      at('downgrade_ask', 'Downgrade to Free?'),
+      at('cancel_ask', 'Cancel Enterprise?'),
+      at('scheduled', 'Moving to Free on Wednesday, Dec 2'),
+      at('downgraded', 'On Free after the downgrade: nothing deleted'),
     ],
   },
 ];
