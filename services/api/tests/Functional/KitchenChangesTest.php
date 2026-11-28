@@ -238,7 +238,7 @@ final class KitchenChangesTest extends ApiTestCase
         self::service(Connection::class)->executeStatement('UPDATE kitchen_copies SET sheet = jsonb_set(sheet, \'{courses,0,skipped}\', \'5\')');
         $this->give();
 
-        self::assertStringContainsString('<li>Main · Skipped 5 to 0</li>', $this->copyHtml($this->copyIds()[1]));
+        self::assertStringContainsString('<li>Main · Skipped: 5 to 0</li>', $this->copyHtml($this->copyIds()[1]));
     }
 
     #[Test]

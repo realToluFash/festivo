@@ -22,8 +22,8 @@ describe('a course’s own figures in Changes since (sc-30692)', () => {
       });
 
     expect([line('Starter'), line('Dessert')]).toEqual([
-      'Starter · Not chosen yet 3 to 4',
-      'Dessert · Not chosen yet 3 to 4',
+      'Starter · Not chosen yet: 3 to 4',
+      'Dessert · Not chosen yet: 3 to 4',
     ]);
   });
 });
