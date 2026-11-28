@@ -7,6 +7,7 @@ import {
   WAY_IN_STATES,
   type WayInState,
   overviewOf,
+  wayInStateOf,
 } from './wayInBoards.ts';
 import { READ_ANSWERS_IN } from './wayInShown.ts';
 import { stationIdOf, wayBackOf } from './wayInRoute.ts';
@@ -129,6 +130,26 @@ describe('the way in’s demo states (sc-95382)', () => {
     expect(overviewOf('offline', 'Europe/London').station?.line).toBe(
       'Fryer · Mains · as of 18:38',
     );
+  });
+
+  it('draws the Offline band with no connection, as of the row’s own last read and zone (sc-97945)', () => {
+    for (const zone of ['Africa/Lagos', 'America/New_York']) {
+      const shown = overviewOf('offline', zone);
+
+      expect(shown.station?.line).toBe(`Fryer · Mains · as of ${shown.offline?.at}`);
+    }
+    expect(overviewOf('offline', 'Africa/Lagos').offline).toEqual({
+      at: '19:38',
+      answered: 'own_course',
+    });
+    expect(overviewOf('offline', 'America/New_York').offline?.at).toBe('13:38');
+    expect(overviewOf(wayInStateOf(overviewOf('offline').offline?.answered)).station?.line).toBe(
+      'Fryer · Mains',
+    );
+  });
+
+  it('draws no Offline band while connected', () => {
+    expect(WAY_IN_STATES.filter((state) => overviewOf(state).offline != null)).toEqual(['offline']);
   });
 
   it('draws the organiser’s Overview under Your night, or in its place with no shift', () => {
