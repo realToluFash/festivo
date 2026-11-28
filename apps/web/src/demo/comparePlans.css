@@ -58,7 +58,7 @@
 
 .cp-table tbody th {
   color: var(--colorInkSecondary);
-  font: var(--typeLabel);
+  font: var(--typeBody);
 }
 
 .cp-corner {
@@ -82,6 +82,7 @@
   margin-top: var(--spaceXxs);
   color: var(--colorInk);
   font: var(--typeBodyStrong);
+  font-weight: 600;
 }
 
 .cp-head-under {
@@ -147,8 +148,7 @@
 
 .cp-changes-title {
   margin: var(--spaceSm) 0 0;
-  font: var(--typeTitleStep);
-  letter-spacing: var(--typeTitleStepTracking);
+  font: var(--typeTitleSection);
 }
 
 .cp-boxes {
