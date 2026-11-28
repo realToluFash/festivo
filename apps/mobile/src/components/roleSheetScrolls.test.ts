@@ -47,16 +47,15 @@ describe('The role sheet header’s reading order (sc-95215, on lead’s review 
   const head = between(people, 'function PersonHead(', 'export function RoleSheet<');
 
   it('orders the words, then Done, only while there is a Done', () => {
-    expect(head).toContain(
-      'done == null ? undefined : [WORDS_ID, under ? DONE_UNDER_ID : DONE_BESIDE_ID]',
-    );
+    expect(head).toContain('done == null ? undefined : [WORDS_ID, DONE_ID]');
     expect(head).toContain('nativeID={WORDS_ID}');
-    expect(head).toContain('nativeID={under ? DONE_UNDER_ID : DONE_BESIDE_ID}');
+    expect(head).toContain('nativeID={DONE_ID}');
   });
 
-  it('names Done by where it sits, so the order changes by value when Done moves under the line and the native list is rebuilt', () => {
-    expect(people).toContain("const DONE_BESIDE_ID = 'people.role.done.beside';");
-    expect(people).toContain("const DONE_UNDER_ID = 'people.role.done.under';");
-    expect(head).not.toContain('DONE_ID');
+  it('keeps one Done mounted under one parent, so moving it under the line never remounts it out of the native order', () => {
+    expect(people).toContain("const DONE_ID = 'people.role.done.slot';");
+    expect(head.match(/\{action\}/gu)).toHaveLength(1);
+    expect(head).not.toContain('under && action');
+    expect(head).not.toContain('!under && action');
   });
 });
