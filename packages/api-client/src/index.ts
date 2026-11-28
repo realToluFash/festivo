@@ -9,6 +9,7 @@
 export * from './client.ts';
 export * from './problem.ts';
 export * from './phoneHint.ts';
+export * from './handover.ts';
 export * from './oauth.ts';
 export * from './proofRefusal.ts';
 export * from './searchFailure.ts';

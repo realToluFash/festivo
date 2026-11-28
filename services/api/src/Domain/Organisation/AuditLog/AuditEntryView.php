@@ -30,7 +30,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class AuditEntryView
 {
     /** Ids, coordinates, file keys and internal stamps: recorded for the trail, never a change a reader is shown (sc-611, #74875). */
-    public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo'];
+    public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo', 'handedTo', 'events'];
 
     /** What an entry records beside any change, each a row of its own and in this order: an export's format, filters and count, a plan change's reason (sc-76228). */
     private const array RECORDED = [

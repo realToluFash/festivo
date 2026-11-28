@@ -42,7 +42,7 @@ final class AuditTypeTest extends TestCase
         'managed_account.refused',
         'request_link.turned_on', 'request_link.turned_off', 'request_link.replaced',
         'membership.approved', 'membership.turned_down', 'membership.request_expired', 'membership.suspended', 'membership.suspension_expired',
-        'membership.restored', 'membership.role_changed', 'membership.removed', 'membership.left',
+        'membership.restored', 'membership.role_changed', 'membership.removed', 'membership.left', 'membership.work_handed_over',
         'owner_claim.found', 'owner_claim.stopped', 'owner_claim.withdrawn', 'owner_claim.lapsed', 'owner_claim.passed', 'owner_claim.ended',
         'sign_in_rules.changed', 'sign_in_rules.two_factor_held',
         'email_domain.proved', 'email_domain.failed', 'email_domain.record_missing', 'email_domain.lapsed',

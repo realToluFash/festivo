@@ -8,10 +8,13 @@ use App\Audit\Auditor;
 use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\Handover\HandoverMailer;
+use App\Domain\Organisation\Handover\WorkHandover;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\SignInMethods\RecentProof;
+use App\Entity\Event;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -25,6 +28,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
@@ -51,6 +55,8 @@ final readonly class MemberActions
         private HardLimitsInterface $hardLimits,
         private MemberAccessMailer $memberAccessMailer,
         private RecentProof $recentProof,
+        private WorkHandover $workHandover,
+        private HandoverMailer $handoverMailer,
     ) {
     }
 
@@ -121,10 +127,10 @@ final readonly class MemberActions
         });
     }
 
-    /** Their events stay with the organisation: only the membership ends, and its history is kept. */
-    public function remove(Membership $membership, User $by): void
+    /** Their events stay with the organisation: only the membership ends, and its history is kept. The events they lead go to `$handTo`'s member, who is required while there are any (sc-614). */
+    public function remove(Membership $membership, User $by, ?string $handTo = null): void
     {
-        $this->underLock($membership, function () use ($membership, $by): void {
+        $this->underLock($membership, function () use ($membership, $by, $handTo): void {
             $removesAt = $membership->getRemovesAt();
 
             if (MembershipStatus::LeftOrRemoved === $membership->getStatus() || (null !== $removesAt && $removesAt <= $this->clock->now())) {
@@ -133,7 +139,21 @@ final readonly class MemberActions
 
             $this->roleAssignment->release($membership);
             $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
+            $handed = $this->handToOne($membership, $handTo, $by);
             $this->end($membership, self::REMOVED, $by);
+            $this->tell($membership, $handed, $by);
+        });
+    }
+
+    public function handOver(Membership $membership, User $by, ?string $handTo): void
+    {
+        $this->underLock($membership, function () use ($membership, $by, $handTo): void {
+            if (MembershipStatus::Suspended !== $membership->getStatus()) {
+                throw ApiException::conflict($this->translator->trans('members.not_suspended'));
+            }
+
+            $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
+            $this->tell($membership, $this->handToOne($membership, $handTo, $by), $by);
         });
     }
 
@@ -182,12 +202,71 @@ final readonly class MemberActions
         });
     }
 
-    public function leave(Organisation $organisation, User $user): void
+    public function leave(Organisation $organisation, User $user, ?string $handTo = null): void
     {
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
             ?? throw ApiException::notFound('access.not_found');
         $this->roleAssignment->release($membership);
-        $this->end($membership, self::LEFT, $user);
+        $events = $this->workHandover->heldBy($membership);
+
+        if ([] === $events) {
+            $this->end($membership, self::LEFT, $user);
+
+            return;
+        }
+
+        $to = null === $handTo ? $this->workHandover->otherOwners($membership) : [$this->workHandover->recipient($membership, $handTo)];
+
+        if ([] === $to) {
+            throw $this->workHandover->nobodyChosen();
+        }
+
+        $this->entityManager->wrapInTransaction(function () use ($organisation, $membership, $events, $to, $user, $handTo): void {
+            $this->workHandover->hand($membership, $events, $to, $user);
+            $this->entityManager->flush();
+            $this->end($membership, self::LEFT, $user);
+
+            if (null !== $handTo) {
+                $this->tell($membership, ['events' => $events, 'to' => $to[0]], $user);
+
+                return;
+            }
+
+            foreach ($to as $owner) {
+                $others = Vec\map(Vec\filter($to, static fn (Membership $other): bool => !$other->getId()->equals($owner->getId())), static fn (Membership $other): User => $other->getUser());
+                $this->handoverMailer->sendOwnersTook($organisation, $user, $owner->getUser(), $others, $events);
+            }
+        });
+    }
+
+    /**
+     * Flushed, so the membership's end does not find the role it already gave up.
+     *
+     * @return array{events: list<Event>, to: Membership}|null
+     */
+    private function handToOne(Membership $membership, ?string $handTo, User $by): ?array
+    {
+        $events = $this->workHandover->heldBy($membership);
+
+        if ([] === $events) {
+            return null;
+        }
+
+        $to = $this->workHandover->recipient($membership, $handTo);
+        $this->workHandover->hand($membership, $events, [$to], $by);
+        $this->entityManager->flush();
+
+        return ['events' => $events, 'to' => $to];
+    }
+
+    /** @param array{events: list<Event>, to: Membership}|null $handed */
+    private function tell(Membership $from, ?array $handed, User $by): void
+    {
+        if (null === $handed || $handed['to']->getUser()->getId()->equals($by->getId())) {
+            return;
+        }
+
+        $this->handoverMailer->sendReceived($from->getOrganisation(), $from->getUser(), $handed['to']->getUser(), $handed['events']);
     }
 
     private function end(Membership $membership, string $action, User $by): void

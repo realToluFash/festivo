@@ -25,6 +25,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { refusedHandTo } from '../../../components/Handover.tsx';
 import { offButton } from '../../../offButton.ts';
 import {
   PROVIDER_NAMES,
@@ -35,6 +36,7 @@ import {
 } from '../../../providerSignIn.ts';
 import { refreshAccount, useSession } from '../../../session.ts';
 import { DialogAlert } from './GeneralDeskDialogs.tsx';
+import { LeaveHandover } from './LeaveHandover.tsx';
 import { ownsAndManages } from './organisationDetails.ts';
 
 type Opened =
@@ -97,22 +99,25 @@ export function Ownership({
     members != null &&
     !members.some((one) => !one.self && one.status === 'active' && one.role.seededAs === 'owner');
 
-  async function leave(): Promise<void> {
+  async function leave(handTo: string | null = null): Promise<'refused' | null> {
     setLeaving(true);
     setLeaveFailed(null);
 
     try {
-      await api.leaveOrganisation(organisation.id);
+      await api.leaveOrganisation(organisation.id, handTo);
       await refreshAccount();
       void navigate('/app');
     } catch (error) {
       setLeaving(false);
+      if (refusedHandTo(error)) return 'refused';
       if (error instanceof ApiError && error.is('last_owner')) setOpened({ kind: 'onlyOwner' });
       else
         setLeaveFailed(
           error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
         );
     }
+
+    return null;
   }
 
   const steps = [
@@ -183,15 +188,24 @@ export function Ownership({
         />
       )}
       {opened?.kind === 'leave' && (
-        <Ask
-          title={t('ownership.leaveTitle', { organisation: organisation.name })}
-          line={t('ownership.leaveBody', { organisation: organisation.name })}
-          keep={t('ownership.stay')}
-          go={t('ownership.leave', { organisation: organisation.name })}
-          busy={leaving ? t('generalDesk.leaving') : undefined}
-          failed={leaveFailed ?? undefined}
+        <LeaveHandover
+          organisation={organisation}
+          renderPlain={(go) => (
+            <Ask
+              title={t('ownership.leaveTitle', { organisation: organisation.name })}
+              line={t('ownership.leaveBody', { organisation: organisation.name })}
+              keep={t('ownership.stay')}
+              go={t('ownership.leave', { organisation: organisation.name })}
+              busy={leaving ? t('generalDesk.leaving') : undefined}
+              failed={leaveFailed ?? undefined}
+              onKeep={() => setOpened(null)}
+              onGo={go}
+            />
+          )}
+          leaving={leaving}
+          failed={leaveFailed}
           onKeep={() => setOpened(null)}
-          onGo={() => void leave()}
+          onGo={(handTo) => leave(handTo)}
         />
       )}
       {opened?.kind === 'transfer' && owner && (

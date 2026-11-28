@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -136,5 +137,20 @@ final class EventPersonRepository extends ServiceEntityRepository implements Eve
     public function findFor(Membership $membership): array
     {
         return $this->findBy(['membership' => $membership]);
+    }
+
+    /** @return list<EventPerson> the member's Lead roles, on events that are not deleted, each with its event */
+    public function findLedBy(Membership $membership): array
+    {
+        /** @var list<EventPerson> */
+        return $this->createQueryBuilder('p')
+            ->select('p', 'e')
+            ->innerJoin('p.event', 'e')
+            ->where('p.membership = :membership')
+            ->andWhere('p.role = :lead')
+            ->setParameter('membership', $membership->getId(), 'uuid')
+            ->setParameter('lead', EventRole::Lead->value)
+            ->getQuery()
+            ->getResult();
     }
 }

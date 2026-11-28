@@ -626,14 +626,14 @@ export default function MembersScreen() {
           withheld={withheldRoles(load.roles, organisation)}
           manages={manages}
           onChanged={(next) => setLoad({ ...load, list: next })}
-          onRemoved={(next, name) => {
+          onRemoved={(next, name, handed) => {
             setLoad({
               ...load,
               list: next,
               recovery: recoveryEndedByRemoval(load.recovery, member.user.id),
             });
             moveOn();
-            change({ open: null, said: { kind: 'removed', name } });
+            change({ open: null, said: { kind: 'removed', name, handed } });
             setBackTo({ card: true });
           }}
           onGoToOrganisation={() =>

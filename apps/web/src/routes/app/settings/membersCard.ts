@@ -22,7 +22,7 @@ export type Notice =
   | { kind: 'sent'; email: string }
   | { kind: 'approved'; member: string; name: string; role: string }
   | { kind: 'turnedDown'; name: string }
-  | { kind: 'removed'; name: string }
+  | { kind: 'removed'; name: string; handed?: { to: string | null; count: number } | null }
   | { kind: 'recovered'; name: string; answer: RecoveryAnswer };
 
 export type CardStep =
@@ -135,7 +135,13 @@ export function membersCard({
       return {
         ...quiet,
         says: t('membersScreen.card.removed', { name: notice.name }),
-        lines: [t('membersScreen.card.removedLine', { organisation })],
+        lines: [
+          notice.handed == null
+            ? t('membersScreen.card.removedLine', { organisation })
+            : notice.handed.to == null
+              ? t('handover.removedLedByYou', { count: notice.handed.count })
+              : t('handover.removedLedBy', { count: notice.handed.count, name: notice.handed.to }),
+        ],
         step: firstStep(list, recoveries, manages, t) ?? seeFormer,
       };
     case 'recovered': {

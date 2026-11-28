@@ -66,6 +66,7 @@ enum AuditType: string
         'membership.role_changed' => self::Members,
         'membership.removed' => self::Members,
         'membership.left' => self::Members,
+        'membership.work_handed_over' => self::Members,
         'owner_claim.started' => self::Members,
         'owner_claim.found' => self::Members,
         'owner_claim.stopped' => self::Members,

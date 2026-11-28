@@ -1,12 +1,12 @@
 import {
   ApiError,
+  type LedEvent,
   type Membership,
   type MembersList,
   type OrganisationMember,
   type OrganisationRole,
 } from '@soirely/api-client';
 import {
-  firstName,
   formatDay,
   type LimitRefusal,
   limitRefusalOf,
@@ -17,7 +17,7 @@ import {
   roleHolds,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type Ref, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -27,11 +27,12 @@ import { membersAfterWrite, withRemoved, withRestored } from '../kit/membersAfte
 import { memberMark, memberRole, whenKey } from '../kit/membersSummary.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { FieldError } from './Field.tsx';
+import { LeadsBlock, LeadsNotIn } from './Handover.tsx';
+import { type Handed, MemberHandover } from './MemberHandover.tsx';
 import { LimitRefusalSheet } from './LimitRefusal.tsx';
 import { RoleScreen } from './MemberRole.tsx';
 import { readOut } from './ReadOut.tsx';
 import {
-  Ask,
   CardFace,
   CardSays,
   GlassTag,
@@ -73,7 +74,7 @@ export function PersonBody({
   manages: boolean;
   nameRef?: Ref<TextHandle> | undefined;
   onChanged: (list: MembersList) => void;
-  onRemoved: (list: MembersList, name: string) => void;
+  onRemoved: (list: MembersList, name: string, handed: Handed | null) => void;
   onGoToOrganisation: () => void;
   /** Withdraw an invitation and Remove a member, from a restore the seats refused. */
   onMembers: () => void;
@@ -91,11 +92,15 @@ export function PersonBody({
   const waiting = member.status === 'pending_approval';
   const former = member.status === 'left_or_removed';
   const name = member.user.name;
-  const first = firstName(name);
   const [said, setSaid] = useState<readonly string[]>([]);
   const [roleVisit, setRoleVisit] = useState(0);
   const [roleOpen, setRoleOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [handing, setHanding] = useState(false);
+  const seesLeads = suspendedNow && manages;
+  const [leads, setLeads] = useState<LedEvent[] | 'checking' | 'failed'>('checking');
+  const [leadsAsked, setLeadsAsked] = useState(0);
+  const handRef = useRef<ViewInstance>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [refused, setRefused] = useState<{ on: 'restore' | 'remove'; words: string } | null>(null);
@@ -107,6 +112,24 @@ export function PersonBody({
     organisation: organisation.name,
     domain: member.suspension?.domain ?? '',
   };
+
+  useEffect(() => {
+    if (!seesLeads) return;
+    let live = true;
+    api
+      .memberWork(organisation.id, member.id)
+      .then((events) => live && setLeads(events))
+      .catch(() => live && setLeads('failed'));
+
+    return () => {
+      live = false;
+    };
+  }, [seesLeads, organisation.id, member.id, leadsAsked]);
+
+  function rereadLeads(): void {
+    setLeads('checking');
+    setLeadsAsked((now) => now + 1);
+  }
 
   function tell(lines: readonly string[]): void {
     setSaid(lines);
@@ -169,7 +192,11 @@ export function PersonBody({
       setRefused({ on: 'remove', words: refusalTitle(error, t('membersScreen.actionFailed')) });
       return;
     }
-    onRemoved(await membersAfterWrite(() => reread(member.id), list, withRemoved(member.id)), name);
+    onRemoved(
+      await membersAfterWrite(() => reread(member.id), list, withRemoved(member.id)),
+      name,
+      null,
+    );
   }
 
   const step = changes
@@ -227,6 +254,23 @@ export function PersonBody({
         <View accessibilityRole="alert">
           <FieldError message={refused.words} />
         </View>
+      )}
+      {seesLeads && !Array.isArray(leads) && (
+        <LeadsNotIn name={name} failed={leads === 'failed'} onRetry={rereadLeads} />
+      )}
+      {seesLeads && Array.isArray(leads) && leads.length > 0 && (
+        <LeadsBlock
+          events={leads}
+          onHandOver={
+            acts
+              ? () => {
+                  setSaid([]);
+                  setHanding(true);
+                }
+              : null
+          }
+          handRef={handRef}
+        />
       )}
       <Section title={t('membersScreen.details')}>
         <RowList
@@ -292,32 +336,46 @@ export function PersonBody({
           )}
         </View>
       )}
-      <Ask
-        open={removing}
-        opener={removeRef}
-        title={t('membersScreen.removeAsk', { name, organisation: organisation.name })}
-        line={t('membersScreen.removeBody', { organisation: organisation.name })}
-        keep={{
-          label: t('membersScreen.removeKeep', { name: first }),
-          testID: 'members.remove.keep',
-          off: removeBusy,
-        }}
-        confirm={{
-          label: t('membersScreen.removeVerb'),
-          testID: 'members.remove.confirm',
-          removes: true,
-          busy: removeBusy ? t('membersScreen.removing') : undefined,
-          busyWords: t('membersScreen.removing'),
-        }}
-        failed={!onlyOwnerSuspended && refused?.on === 'remove' ? refused.words : null}
-        onKeep={() => {
-          if (removeBusy) return;
-          setRefused(null);
-          setRemoving(false);
-        }}
-        onConfirm={() => void remove()}
-        testID="members.remove.ask"
-      />
+      {!onlyOwnerSuspended && (
+        <MemberHandover
+          kind="remove"
+          open={removing}
+          opener={removeRef}
+          organisation={organisation}
+          member={member}
+          onKeep={() => setRemoving(false)}
+          failedOf={(error) => refusalTitle(error, t('membersScreen.actionFailed'))}
+          onDone={async (handed) => {
+            onRemoved(
+              await membersAfterWrite(() => reread(member.id), list, withRemoved(member.id)),
+              name,
+              handed,
+            );
+          }}
+        />
+      )}
+      {seesLeads && acts && (
+        <MemberHandover
+          kind="hand"
+          open={handing}
+          opener={handRef}
+          organisation={organisation}
+          member={member}
+          onKeep={() => setHanding(false)}
+          failedOf={(error) => refusalTitle(error, t('membersScreen.actionFailed'))}
+          onDone={(handed) => {
+            setHanding(false);
+            rereadLeads();
+            if (handed != null)
+              tell([
+                handed.to == null
+                  ? t('handover.ledByYou', { count: handed.count })
+                  : t('handover.ledBy', { count: handed.count, name: handed.to }),
+                t('handover.handTail', { name, count: handed.count }),
+              ]);
+          }}
+        />
+      )}
       <LimitRefusalSheet
         refusal={limited}
         billing={roleHolds(organisation, 'billing.manage')}

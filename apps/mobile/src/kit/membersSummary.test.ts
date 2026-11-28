@@ -184,6 +184,22 @@ describe("Members' card", () => {
     expect(shown.step?.does).toEqual({ does: 'answer', member: 'lucia' });
   });
 
+  it("says who leads a removed member's events now, by name or as you", () => {
+    const toPriya = card({
+      said: { kind: 'removed', name: 'Femi Ade', handed: { to: 'Priya Shah', count: 2 } },
+    });
+    const toYou = card({
+      said: { kind: 'removed', name: 'Femi Ade', handed: { to: null, count: 1 } },
+    });
+
+    expect(toPriya.line).toBe(
+      'Their 2 events are now led by Priya Shah, who is emailed the list. They are listed under Former, with everything they did kept.',
+    );
+    expect(toYou.line).toBe(
+      'Their 1 event is now led by you. They are listed under Former, with everything they did kept.',
+    );
+  });
+
   it('says the organisation has no active owner, with Become the owner as its step', () => {
     const claim: OwnerClaimBanner = {
       state: 'no_owner',

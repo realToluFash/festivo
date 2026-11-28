@@ -582,10 +582,10 @@ function MembersLoaded({
         }
         reread={reread}
         onChanged={(changed) => onChange(changed)}
-        onRemoved={(changed, name) => {
+        onRemoved={(changed, name, handed) => {
           onChange(changed);
           onRecoveries(recoveryEndedByRemoval(recoveries, person.user.id));
-          setNotice({ kind: 'removed', name });
+          setNotice({ kind: 'removed', name, handed });
           toSays.current = true;
           back();
         }}

@@ -582,5 +582,6 @@
     "timeline.open_kitchen_sheet": "Ouvrir la fiche cuisine",
     "validation.final_numbers_invalid": "Choisissez une date valide.",
     "validation.final_numbers_not_before_event": "La date ne peut pas tomber le jour du début de l’événement ni après. Choisissez une date antérieure.",
-    "validation.final_numbers_past": "La date ne peut pas être passée. Choisissez aujourd’hui ou une date ultérieure."
+    "validation.final_numbers_past": "La date ne peut pas être passée. Choisissez aujourd’hui ou une date ultérieure.",
+    "handover.choose_recipient": "Choose who takes over their events."
 }
