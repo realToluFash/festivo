@@ -1,0 +1,16 @@
+# sc-97614: tap the reminder's switch on the screen as it is, and read the card.
+appId: host.exp.Exponent
+---
+- swipe:
+    start: '50%,30%'
+    end: '50%,85%'
+    duration: 600
+- waitForAnimationToEnd
+- tapOn:
+    id: 'reminder\.switch'
+- extendedWaitUntil:
+    visible:
+      id: 'reminder\.failed'
+    timeout: 20000
+    optional: true
+- takeScreenshot: ${OUT}
