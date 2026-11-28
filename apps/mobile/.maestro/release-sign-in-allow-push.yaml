@@ -7,6 +7,10 @@ appId: com.soirely.app
     appId: com.soirely.app
     permissions:
       notifications: unset
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
 - openLink: soirely://notifications
 - extendedWaitUntil:
     visible:
