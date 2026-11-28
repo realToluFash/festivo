@@ -744,8 +744,8 @@ function editingLate(over: Partial<ScheduleStart> & { name: string }): ScheduleS
   });
 }
 
-const LONG_FR = 'Plat principal : filet de bœuf, purée de patates douces et sauce au poivre';
-const LONG_PT = 'Prato principal: filé ao molho de pimenta com purê de batata-doce e farofa';
+const LONG_FR = 'Plat principal : filet de bœuf et purée de patates douces';
+const LONG_PT = 'Prato principal: filé ao molho de pimenta com purê e farofa';
 
 function longCourse(name: string, label: string): ScheduleStart {
   return start({
@@ -754,6 +754,8 @@ function longCourse(name: string, label: string): ScheduleStart {
     courses: sampleCourses().map((one) => (one.id === 'k2' ? { ...one, name } : one)),
   });
 }
+
+export const LONG_COURSE_NAMES = [LONG_FR, LONG_PT];
 
 const STATES = {
   populated: () => start({ name: 'Friday, three places' }),
