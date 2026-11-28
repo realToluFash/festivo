@@ -201,7 +201,7 @@ describe('an answer link from the invitation (sc-1291)', () => {
 
     expect(
       await screen.findByText(
-        'Your answer was not sent. Check your connection and choose it again.',
+        'Your answer was not sent. Everything you chose is still here. Try again.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Confirm' })).toBe(document.activeElement);

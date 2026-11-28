@@ -2174,7 +2174,7 @@ function LinkAnswer({
           {places && picked === 'notComing' && (
             <Notice kind="attention">{t('guest.companionsNotComing')}</Notice>
           )}
-          {failed && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
+          {failed && <Notice kind="broken">{t('guest.notSent')}</Notice>}
           <Filled busy={busy} focus="linkGo" onClick={() => onConfirm(picked)}>
             {picked === 'coming' ? t('guest.linkCarryOn') : t('guest.linkConfirm')}
           </Filled>
