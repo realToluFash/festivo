@@ -10,7 +10,7 @@ export interface PickerFocusBack {
   opening(opener: RefObject<ScreenReaderTarget | null>): void;
   /** In every close: a choice, Back, its own close, the dim, the escape. */
   closing(): void;
-  /** The opener's key: a new one at each close under TalkBack on Android, where TalkBack takes a hover only once on a view that has had it, so a second close left its focus on the screen's first heading (qa4 #104048). */
+  /** The opener's key: a new one at each close under TalkBack on Android, where TalkBack takes a hover only once on a view that has had it, so a second close left its focus on the screen's first heading (qa4 #104048). Every caller puts it on its opener: one that does not gets the move back once. */
   openerKey: number;
 }
 
