@@ -501,6 +501,7 @@ export function CountryStep({
   const scrolledToPick = useRef(false);
   const [listHeight, setListHeight] = useState(0);
   const offset = useRef(0);
+  const dragged = useRef(false);
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const shown = searching ? countrySearch(all, walk.query, naming.locale) : all;
@@ -525,17 +526,25 @@ export function CountryStep({
     const index = all.findIndex((country) => country.code === walk.country);
     if (index < 0) return;
     const middle = headerHeight + headingHeight + index * rowHeight + rowHeight / 2;
-    const target = Math.max(0, middle - listHeight / 2);
+    const furthest = Math.max(
+      0,
+      headerHeight + headingHeight + all.length * rowHeight - listHeight,
+    );
+    const target = Math.min(furthest, Math.max(0, middle - listHeight / 2));
     let passes = 0;
     let wait: ReturnType<typeof setTimeout>;
     const place = () => {
+      if (dragged.current) {
+        scrolledToPick.current = true;
+        return;
+      }
       list.current?.scrollToOffset({ offset: target, animated: false });
       passes += 1;
       if (passes < 8) wait = setTimeout(check, tokens.motionFast);
       else scrolledToPick.current = true;
     };
     const check = () => {
-      if (Math.abs(offset.current - target) < 2) scrolledToPick.current = true;
+      if (dragged.current || Math.abs(offset.current - target) < 2) scrolledToPick.current = true;
       else place();
     };
     wait = setTimeout(place, tokens.motionFast);
@@ -651,6 +660,9 @@ export function CountryStep({
         contentContainerStyle={look.phone && styles.phoneList}
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
+        onScrollBeginDrag={() => {
+          dragged.current = true;
+        }}
         initialNumToRender={24}
         onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
         onScroll={(event) => {
