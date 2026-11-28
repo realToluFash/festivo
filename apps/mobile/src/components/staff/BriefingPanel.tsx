@@ -2,7 +2,7 @@ import { ApiError, type MyNight, STAFF_RULES_MAXIMUM, type StaffEntry } from '@s
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { api } from '../../api.ts';
 import { dateLocale } from '../../i18n/index.ts';
@@ -61,7 +61,7 @@ export function BriefingPanel({
   /** Beside the roster, the panel fills the frame; upright it sizes to its content. */
   docked: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const title =
     side.kind === 'copy'
       ? t('briefing.copyTitle')
@@ -73,22 +73,14 @@ export function BriefingPanel({
     <View style={[styles.panel, docked && styles.panelDocked]} testID="briefing.panel">
       <View style={styles.top}>
         <View style={styles.shrink}>
-          <Text size={13} weight="semibold" style={styles.secondary}>
-            {t('briefing.card')}
+          <Text size={12} weight="semibold" style={styles.eyebrow}>
+            {t('briefing.card').toLocaleUpperCase(i18n.language)}
           </Text>
-          <Text size={22} weight="bold" accessibilityRole="header">
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
             {title}
           </Text>
         </View>
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={t('briefing.close')}
-          style={styles.close}
-          testID="briefing.close"
-        >
-          <Glyph name="x" size={18} ink={tokens.colorInkSecondary} weight={2.4} />
-        </Pressable>
+        <QuietButton label={t('briefing.close')} onPress={onClose} testID="briefing.close" />
       </View>
       <ScrollView contentContainerStyle={styles.body}>
         {side.kind === 'copy' && (
@@ -513,9 +505,9 @@ function Preview({
           testID="briefing.preview.who"
         />
       </Field>
-      <View style={styles.saved}>
+      <View style={styles.banner}>
         <Glyph name="eye" size={16} ink={tokens.colorAttentionText} />
-        <Text size={15} weight="semibold" style={[styles.attention, styles.shrink]}>
+        <Text size={14} weight="semibold" style={[styles.attention, styles.shrink]}>
           {t('briefing.previewBanner')}
         </Text>
       </View>
@@ -576,12 +568,7 @@ const styles = StyleSheet.create({
   },
   panelDocked: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
-  close: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  eyebrow: { color: tokens.colorInkSecondary, letterSpacing: 1 },
   body: { gap: tokens.spaceLg, paddingBottom: tokens.spaceXl },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
@@ -599,6 +586,14 @@ const styles = StyleSheet.create({
   missed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   held: { gap: tokens.spaceSm },
   saved: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.radiusCardPhone,
+    backgroundColor: tokens.colorAttentionTint,
+  },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: tokens.spaceMd },
   phone: {
     width: '100%',
