@@ -1,0 +1,13 @@
+# sc-92728: Settings upright at the top, one tap on the organisation pill (words or tile alone, any language), the switcher it opens. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn: { id: 'frame.organisation' }
+- waitForAnimationToEnd
+- assertVisible: '(Where are you working.|Où travaillez-vous.*)'
+- takeScreenshot: opened

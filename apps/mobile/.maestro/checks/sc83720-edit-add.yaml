@@ -1,0 +1,18 @@
+# sc-83720 on ${EV}'s Edit details Hosted by (Android phone, two hosts): Add a host gives Host 3 with the cursor and the keyboard up, the row above the keys; a name typed with no tap lands in Host 3. Ends with Host 3 typed and unsaved; nothing is saved.
+# Needs: EV, an event of the signed-in host's with two hosts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: start
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
+- inputText: 'Ade Bello'
+- waitForAnimationToEnd
+- takeScreenshot: typed-no-tap

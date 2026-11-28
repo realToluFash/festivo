@@ -1,0 +1,34 @@
+# sc-87421: on ${EVENT_ID}'s Menu picks, Choose for ${PERSON}: screenshots the dish list, picks ${DISH}, saves, screenshots the override question, picks it anyway and screenshots the saved line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- takeScreenshot: menu-top
+- scrollUntilVisible:
+    element:
+      id: 'menu.wait.${PERSON}'
+    visibilityPercentage: 50
+- tapOn:
+    id: 'menu.wait.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- takeScreenshot: choose-open
+- tapOn:
+    id: 'menu.choose.${DISH}'
+- takeScreenshot: choose-picked
+- tapOn:
+    id: 'menu.choose.save'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.override'
+    timeout: 10000
+- takeScreenshot: override
+- tapOn:
+    id: 'menu.override.anyway'
+- waitForAnimationToEnd
+- takeScreenshot: saved

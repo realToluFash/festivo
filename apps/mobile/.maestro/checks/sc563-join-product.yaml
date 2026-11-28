@@ -1,0 +1,11 @@
+# sc-563: a managed account opens another organisation's request link in the app. Pass METRO_URL and TOKEN: the token of a live request link of an organisation the managed account is not in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      text: 'Managed by.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-join-product

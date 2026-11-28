@@ -1,0 +1,18 @@
+# sc-85893 before check-in opens, Search by name finds by the wider rule
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${BEFORE}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: before-open
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'seun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: before-open-seun
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'segun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: before-open-segun

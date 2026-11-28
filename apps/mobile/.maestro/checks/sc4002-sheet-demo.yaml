@@ -1,0 +1,6 @@
+# sc-4002: the demo's João, someone from outside who joined with the door code.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people?state=code-person
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: outsider-demo

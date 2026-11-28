@@ -1,0 +1,29 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: whosHere.addMobile.${PERSON}
+    timeout: 20000
+- tapOn:
+    id: whosHere.addMobile.${PERSON}
+- extendedWaitUntil:
+    visible:
+      id: whosHere.mobile.number
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: keys-down
+- tapOn:
+    id: whosHere.mobile.number
+- inputText: '07400 12'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- swipe:
+    start: 50%, 25%
+    end: 50%, 60%
+- waitForAnimationToEnd
+- takeScreenshot: keys-up-dragged-down

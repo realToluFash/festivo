@@ -1,0 +1,128 @@
+/* All dates as its demo draws it (sc-98187): one column of 640 under the event's strip, the owner as the lead and the line, a tag only off the rule, the action under its row. */
+.dates {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+}
+
+.dates-intro {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.dates-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.dates-tags {
+  display: flex;
+  flex: none;
+  gap: var(--spaceSm);
+  margin-left: auto;
+}
+
+.dates-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 12px;
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 12.5px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.dates-tag.is-overdue {
+  padding-left: 7px;
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.dates-tag.is-passed {
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+/* The whole margin, not the left alone: the desk's `.ev .ev-maps` pulls an Overview detail's link up under its row, and the demo's All dates has no such pull. */
+.dates .ev-maps {
+  margin: 0 0 0 40px;
+  text-decoration: none;
+}
+
+.dates-key {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.dates-key-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--spaceMd);
+  align-items: center;
+  padding: var(--spaceXs) 0;
+}
+
+.dates-key-row .ev-lead {
+  grid-row: span 2;
+}
+
+.dates-key dt {
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.dates-key dd {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+/* The dates did not load, under the strip, with Try again under its line. */
+.dates-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.dates-failed p {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 15px/1.45 var(--fontFamily);
+}
+
+.dates-failed svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* At 320 (1280 at 400%), the tags leave the title its width and sit under the words, in line with the title. */
+@media (width <= 40rem) {
+  .dates-row {
+    flex-wrap: wrap;
+    row-gap: var(--spaceXs);
+  }
+
+  .dates-row .desk-row-words {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .dates-tags {
+    flex-wrap: wrap;
+    margin-left: 40px;
+  }
+
+  .dates-tags:empty {
+    display: none;
+  }
+}

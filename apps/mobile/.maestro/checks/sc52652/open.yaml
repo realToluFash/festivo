@@ -1,0 +1,18 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.cover'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.cover'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.save'
+    timeout: 20000

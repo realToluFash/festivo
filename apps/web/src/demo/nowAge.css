@@ -1,0 +1,46 @@
+/* The demo's mark, dashed as the app's DemoOnly box is: it never reaches the product. */
+.na-demo-only {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: var(--spaceLg) 0 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.na-demo-only summary {
+  min-height: 24px;
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+  cursor: pointer;
+}
+
+.na-demo-only p {
+  margin: 0;
+}
+
+.na-demo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.na-demo-act {
+  min-height: 32px;
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--spacePillEnd);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+  cursor: pointer;
+}
+
+.na-demo-act[aria-pressed='true'] {
+  border-color: var(--colorInk);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+}

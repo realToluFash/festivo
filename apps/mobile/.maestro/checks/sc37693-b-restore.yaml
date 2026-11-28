@@ -1,0 +1,14 @@
+# sc-37693: b-restore.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'members.row.${MARTA}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${MARTA}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: 'Restore access.*'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: b-restore-ask

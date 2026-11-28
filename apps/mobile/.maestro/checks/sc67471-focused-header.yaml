@@ -1,0 +1,7 @@
+# sc-67471: a focused screen's header (Cancel, its title, its verb) at the largest text size.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../open-create-organisation.yaml
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: focused-header

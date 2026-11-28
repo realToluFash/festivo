@@ -1,0 +1,10 @@
+# sc-28230: Check-in opened from the event's Guests still reads ‹ Guests (ux #97400).
+# Needs ${METRO_URL}, ${EV}. Expo Go signed in, as an account that can check guests in on EV.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: { text: '.*{{t:checkIn.back}}' }
+- assertNotVisible: { text: '.*{{t:myNight.title}}' }
+- takeScreenshot: check-in-from-guests

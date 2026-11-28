@@ -1,0 +1,18 @@
+# sc-84143 on a phone: a tap on the unknown-category item opens the event it names and marks it read.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- tapOn: '${TITLE}'
+- waitForAnimationToEnd
+- takeScreenshot: bell-phone-tap-opened

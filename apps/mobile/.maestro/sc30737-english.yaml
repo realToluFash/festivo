@@ -1,0 +1,6 @@
+# Switches the signed-out language picker to English. sc-30737.
+appId: host.exp.Exponent
+---
+- tapOn: 'Português|Español|Français'
+- tapOn: 'English'
+- waitForAnimationToEnd

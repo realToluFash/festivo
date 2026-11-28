@@ -1,0 +1,62 @@
+# sc-23422, in Portuguese and after a wrong password first: Sign out everywhere else leaves this device alone and counted. Needs ${EMAIL}, ${PASSWORD}, ${API_URL} and ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '2'
+      WAIT_MS: '0'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: card-before
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '0'
+      WAIT_MS: '0'
+- tapOn:
+    id: 'devices.everywhere'
+- extendedWaitUntil:
+    visible:
+      id: 'devices.everywhere.password'
+    timeout: 10000
+- tapOn:
+    id: 'devices.everywhere.password'
+- inputText: 'not-the-password'
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: 'Essa não é a sua palavra-passe.*'
+    timeout: 15000
+- takeScreenshot: wrong-password
+- tapOn:
+    id: 'devices.everywhere.password'
+- eraseText: 60
+- takeScreenshot: step-offers-others
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: 'A sessão foi encerrada .*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.here'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: '1 dispositivo'
+- assertNotVisible: '0 dispositivos'
+- assertNotVisible:
+    id: 'devices.everywhere'
+- takeScreenshot: card-after

@@ -1,0 +1,28 @@
+# sc-88028: a request link opened signed out is held through Sign in with email and comes back to Ask to join. Pass LINK, EMAIL and PASSWORD of an account not in its organisation.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/join/${LINK}
+- scrollUntilVisible:
+    element:
+      id: 'requestToJoin.signIn'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'requestToJoin.signIn'
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.ask'
+    timeout: 30000
+- takeScreenshot: sc88028-join-held-back

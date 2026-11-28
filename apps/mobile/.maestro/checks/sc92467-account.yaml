@@ -1,0 +1,8 @@
+# Your account open on the tablet, nothing tapped. sc-92467.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- takeScreenshot: account

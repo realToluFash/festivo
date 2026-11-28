@@ -1,0 +1,122 @@
+/* The Reminder the day before card and the lines under Briefing (sc-4333), as the web demo draws them. */
+.sv-card {
+  gap: var(--spaceMd);
+}
+
+.sv-word {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.sv-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.sv-lines p {
+  margin: 0;
+}
+
+.sv-next {
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.sv-line {
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.sv-finished {
+  margin: 0;
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 600 15px/1.45 var(--fontFamily);
+}
+
+.sv-over {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.sv-over svg {
+  flex: none;
+  color: var(--markInfoInk);
+}
+
+/* The lines under the Briefing column's state word: each mark is a shape of its own, so none relies on colour. */
+.sv-row-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.sv-row-line {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.sv-row-line.is-under {
+  padding-left: calc(16px + var(--spaceXs));
+}
+
+.sv-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--colorInkSecondary);
+}
+
+.sv-mark.is-waiting {
+  color: var(--colorAttention);
+}
+
+.sv-mark.is-told {
+  color: var(--colorAccentText);
+}
+
+.sv-mark.is-called-off,
+.sv-mark.is-ended {
+  position: relative;
+  border: 2px solid var(--markSkippedRing);
+  border-radius: var(--radiusCheckbox);
+  background: var(--markSkippedFill);
+}
+
+.sv-mark.is-called-off .sv-mark-inner {
+  position: absolute;
+  top: 50%;
+  left: -2px;
+  width: 16px;
+  height: 2px;
+  background: var(--markSkippedInk);
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.sv-mark.is-ended .sv-mark-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--markSkippedInk);
+}

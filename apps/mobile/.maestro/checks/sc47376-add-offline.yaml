@@ -1,0 +1,26 @@
+# sc-47376: Add a guest in ${EVENT_ID}'s Guests, a name typed, the API stopped, Add guest: the form stays open with the offline refusal and its line (guest.form.offline).
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.add' }, timeout: 30000 }
+- tapOn: { id: 'guests.add' }
+- extendedWaitUntil: { visible: { id: 'guest.form.fullName' }, timeout: 15000 }
+- tapOn: { id: 'guest.form.fullName' }
+- inputText: 'Maria Offline'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn: { id: 'guest.form.save' }
+- extendedWaitUntil: { visible: { id: 'guest.form.offline' }, timeout: 30000 }
+- takeScreenshot: add-offline-keys-up
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertVisible: { id: 'guest.form.offline' }
+- takeScreenshot: add-offline-keys-down

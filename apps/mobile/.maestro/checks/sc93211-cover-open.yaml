@@ -1,0 +1,15 @@
+# sc-93211: upright, one tap on the live cover's Open the event (fr: Ouvrir l'événement) opens the event. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn: 'Ouvrir l.événement|Open the event'
+- waitForAnimationToEnd
+- takeScreenshot: opened
