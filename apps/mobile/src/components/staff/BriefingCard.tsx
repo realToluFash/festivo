@@ -1,11 +1,11 @@
 import type { StaffBriefing, StaffEntry } from '@soirely/api-client';
 import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { BRIEFING_STATES, BRIEFING_WORDS, tallyOf } from '../../kit/staffBriefing.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { SecondaryButton } from '../Buttons.tsx';
+import { QuietButton, SecondaryButton } from '../Buttons.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { ShapeMark } from '../StatusMark.tsx';
 import { Text } from '../Text.tsx';
@@ -98,46 +98,34 @@ export function BriefingCard({
         {BRIEFING_STATES.map((state) => (
           <View key={state} style={styles.tallyOne} testID={`briefing.tally.${state}`}>
             <BriefWord briefing={state} />
-            <Text size={22} weight="bold" style={styles.figure}>
+            <Text size={15} weight="bold" style={styles.figure}>
               {tally[state]}
             </Text>
           </View>
         ))}
       </View>
-      {acts && (
-        <SecondaryButton
-          ref={openCopyRef}
-          label={t('staffLink.copy')}
-          onPress={openCopy}
-          testID="briefing.copy"
-        />
-      )}
-      <View style={styles.more}>
-        <Pressable
+      <View style={styles.acts}>
+        {acts && (
+          <SecondaryButton
+            ref={openCopyRef}
+            label={t('staffLink.copy')}
+            onPress={openCopy}
+            testID="briefing.copy"
+          />
+        )}
+        <QuietButton
           ref={openRulesRef}
+          label={acts ? t('briefing.editRules') : t('briefing.rules')}
           onPress={openRules}
-          accessibilityRole="button"
-          style={styles.text}
           testID="briefing.rules"
-        >
-          <Glyph name="edit" size={16} ink={tokens.colorAccentText} weight={2.3} />
-          <Text size={16} weight="semibold" style={styles.accent}>
-            {acts ? t('briefing.editRules') : t('briefing.rules')}
-          </Text>
-        </Pressable>
+        />
         {openPreview != null && (
-          <Pressable
+          <QuietButton
             ref={openPreviewRef}
+            label={t('briefing.previewAs')}
             onPress={openPreview}
-            accessibilityRole="button"
-            style={styles.text}
             testID="briefing.preview"
-          >
-            <Glyph name="eye" size={16} ink={tokens.colorAccentText} weight={2.3} />
-            <Text size={16} weight="semibold" style={styles.accent}>
-              {t('briefing.previewAs')}
-            </Text>
-          </Pressable>
+          />
         )}
       </View>
     </View>
@@ -154,20 +142,18 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   secondary: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
   shrink: { flexShrink: 1 },
   figure: { fontVariant: ['tabular-nums'] },
   lock: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  tally: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceLg },
-  tallyOne: { gap: tokens.spaceXxs, minWidth: 120 },
-  word: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  more: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceLg },
-  text: {
-    minHeight: tokens.sizeHit,
+  tally: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
+    flexWrap: 'wrap',
+    columnGap: tokens.spaceXl,
+    rowGap: tokens.spaceSm,
   },
+  tallyOne: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  word: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  acts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
   dashed: {
     borderWidth: 2,
     borderStyle: 'dashed',

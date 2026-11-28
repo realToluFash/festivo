@@ -564,8 +564,6 @@ function Preview({
   );
 }
 
-export const PANEL_WIDTH = 400;
-
 const styles = StyleSheet.create({
   panel: {
     flex: 1,
