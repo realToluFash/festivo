@@ -31,13 +31,21 @@ export function BriefMark({ briefing, side = 14 }: { briefing: StaffBriefing; si
   );
 }
 
-export function BriefWord({ briefing, size = 14 }: { briefing: StaffBriefing; size?: number }) {
+export function BriefWord({
+  briefing,
+  size = 14,
+  weight = 'semibold',
+}: {
+  briefing: StaffBriefing;
+  size?: number;
+  weight?: 'medium' | 'semibold';
+}) {
   const { t } = useTranslation();
 
   return (
     <View style={styles.word}>
       <BriefMark briefing={briefing} side={size} />
-      <Text size={size} weight="semibold" accessible={false} style={styles.shrink}>
+      <Text size={size} weight={weight} accessible={false} style={styles.shrink}>
         {t(BRIEFING_WORDS[briefing])}
       </Text>
     </View>
@@ -97,7 +105,7 @@ export function BriefingCard({
       >
         {BRIEFING_STATES.map((state) => (
           <View key={state} style={styles.tallyOne} testID={`briefing.tally.${state}`}>
-            <BriefWord briefing={state} />
+            <BriefWord briefing={state} size={15} weight="medium" />
             <Text size={15} weight="bold" style={styles.figure}>
               {tally[state]}
             </Text>

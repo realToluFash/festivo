@@ -322,6 +322,7 @@ export function StaffRosterList({
         onEntry={took}
         onRules={(rules) => setSeen((was) => (was.kind === 'shown' ? { ...was, rules } : was))}
         onClose={closeSide}
+        docked={docked}
       />
     );
 
@@ -348,7 +349,7 @@ export function StaffRosterList({
         <View
           style={[
             styles.dialog,
-            docked ? styles.dialogDocked : { height: Math.min(640, height - 160) },
+            docked ? styles.dialogDocked : { maxHeight: Math.min(640, height - 160) },
           ]}
         >
           {panel}

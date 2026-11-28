@@ -46,6 +46,7 @@ export function BriefingPanel({
   onEntry,
   onRules,
   onClose,
+  docked,
 }: {
   eventId: string;
   side: BriefingSide;
@@ -57,6 +58,8 @@ export function BriefingPanel({
   onEntry: (entry: StaffEntry) => void;
   onRules: (rules: string | null) => void;
   onClose: () => void;
+  /** Beside the roster, the panel fills the frame; upright it sizes to its content. */
+  docked: boolean;
 }) {
   const { t } = useTranslation();
   const title =
@@ -67,7 +70,7 @@ export function BriefingPanel({
         : t('briefing.previewAs');
 
   return (
-    <View style={styles.panel} testID="briefing.panel">
+    <View style={[styles.panel, docked && styles.panelDocked]} testID="briefing.panel">
       <View style={styles.top}>
         <View style={styles.shrink}>
           <Text size={13} weight="semibold" style={styles.secondary}>
@@ -566,11 +569,12 @@ function Preview({
 
 const styles = StyleSheet.create({
   panel: {
-    flex: 1,
+    flexShrink: 1,
     minHeight: 0,
     backgroundColor: tokens.colorCard,
     gap: tokens.spaceMd,
   },
+  panelDocked: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   close: {
     width: tokens.sizeHit,
