@@ -71,6 +71,37 @@ describe('an early Back goes to the opening picker, not what is beneath (sc-4448
     expect(listeners.size).toBe(0);
   });
 
+  it('counts the drop from the early Back, however late the close renders', () => {
+    const { release } = holdBack(vi.fn());
+    press();
+    vi.advanceTimersByTime(400);
+    release();
+    vi.advanceTimersByTime(SECOND_DELIVERY_MS - 401);
+    expect(pickerTookBack()).toBe(true);
+    vi.advanceTimersByTime(1);
+
+    expect(pickerTookBack()).toBe(false);
+    expect(listeners.size).toBe(0);
+
+    const slow = holdBack(vi.fn());
+    press();
+    vi.advanceTimersByTime(SECOND_DELIVERY_MS);
+    slow.release();
+
+    expect(listeners.size).toBe(0);
+  });
+
+  it('passes on a Back that is due though the timer has not run', () => {
+    const { release } = holdBack(vi.fn());
+    press();
+    release();
+    vi.setSystemTime(Date.now() + SECOND_DELIVERY_MS);
+
+    expect(press()).toEqual([false]);
+    expect(listeners.size).toBe(0);
+    vi.runAllTimers();
+  });
+
   it('drops nothing after a close with no Back, however soon', () => {
     holdBack(vi.fn()).release();
 
@@ -154,9 +185,9 @@ describe('the hold a picker takes at its tap (sc-44486)', () => {
     const screen = source('NewEvent.tsx');
 
     expect(screen).toMatch(
-      /const openList = \(which: ListOpen\) => \{\s*takeBack\(\);\s*setList\(which\);/,
+      /const openList = \(which: ListOpen, opener: [^)]*\) => \{\s*listFocusBack\.opening\(opener\);\s*takeBack\(\);\s*setList\(which\);/,
     );
-    expect(screen.match(/openList\('(type|zone|currency)'\)/g)).toHaveLength(3);
+    expect(screen.match(/openList\('(type|zone|currency)', /g)).toHaveLength(3);
     expect(screen).not.toMatch(/setList\('/);
   });
 

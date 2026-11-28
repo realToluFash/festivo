@@ -3,9 +3,10 @@ appId: host.exp.Exponent
 env:
   SIDE: LANDSCAPE_LEFT
 ---
+- runFlow: ../open-create-organisation.yaml
 - setOrientation: ${SIDE}
 - waitForAnimationToEnd
-- runFlow: ../open-create-organisation.yaml
+- takeScreenshot: side-turned
 - tapOn: { id: 'createWalk.name' }
 - inputText: 'QA Zimbabwe Side'
 - tapOn: { id: 'createWalk.primary' }
@@ -75,3 +76,4 @@ env:
 - extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }
 - waitForAnimationToEnd
 - takeScreenshot: side-created
+- setOrientation: PORTRAIT

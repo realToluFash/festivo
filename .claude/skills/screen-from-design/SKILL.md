@@ -200,6 +200,11 @@ about before you write a screen rather than after: a hook called inside a condit
 effect that calls `setState` synchronously in its own body, are both correct TypeScript and
 both wrong. It found one of each in a skeleton of twenty-one components.
 
+A media query that script reads lives once, in `apps/web/src/phoneWidth.ts` beside
+`PHONE_WIDTH`, `WIDE_WIDTH` and `DESK_WIDTH`, documented with the width the stylesheet
+changes at. A local `const DOCKED = '(width >= 80rem)'` in a screen is a second name for a
+width that will move in one place and not the other.
+
 ## 4. A number you render is a claim you own
 
 The costliest class of bug in the previous build, and it comes in through the design.
