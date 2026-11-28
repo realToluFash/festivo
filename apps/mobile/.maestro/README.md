@@ -43,6 +43,7 @@ phone starts with it.
 
 `release-sign-in-allow-push` starts with `release-sign-in`, opens the bell by link, taps Turn on
 and then the system's Allow, and leaves the app on the bell with push allowed (sc-4333). It
+relaunches the app with notifications unset first, because Maestro's launchApp grants every permission on Android. It
 needs `EMAIL`, `PASSWORD` and a fresh install where push was never asked: `pushAskDue` asks
 only once, so on any other install the wait on Turn on fails, and so does the wait on Allow
 when the permission was already answered.
