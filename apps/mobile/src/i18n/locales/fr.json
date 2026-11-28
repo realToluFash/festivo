@@ -3171,7 +3171,8 @@
     "skippedSaid": "Sauté : « {{title}} ».",
     "doneSaid": "Terminé : « {{title}} ».",
     "doneNext": "Terminé : « {{title}} ». Ensuite : « {{next}} ».",
-    "sent": "Connexion rétablie. Actions envoyées."
+    "sent": "Connexion rétablie. Actions envoyées.",
+    "courseTag": "Service · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",

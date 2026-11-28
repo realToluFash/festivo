@@ -4669,7 +4669,25 @@
     "notSaved": "Rien n’a été enregistré. Votre saisie est toujours là. Réessayez.",
     "notDeleted": "Rien n’a été supprimé ni modifié. Réessayez.",
     "notRestored": "« {{title}} » n’a pas pu être rétabli. Ajoutez-le de nouveau avec Ajouter un élément.",
-    "gone": "Quelqu’un d’autre a supprimé cet élément pendant que vous l’aviez ouvert. Rien n’a été enregistré."
+    "gone": "Quelqu’un d’autre a supprimé cet élément pendant que vous l’aviez ouvert. Rien n’a été enregistré.",
+    "course": "Service",
+    "noCourse": "Aucun service",
+    "courseHelp": "Tant qu’il est lié, le menu affiche le début de cet élément comme l’heure du service.",
+    "courseList": "Services du menu",
+    "courseTag": "Service · {{name}}",
+    "served": "servi à {{time}}",
+    "linkedTo": "lié à {{title}}",
+    "moveAsk": "{{course}} est lié à {{other}}.",
+    "moveLine": "Le lier à cet élément à la place ? {{other}} le perd.",
+    "moveIt": "Déplacer le lien",
+    "keepOn": "Le garder sur {{other}}",
+    "moving": "{{other}} perd ce service à l’enregistrement.",
+    "noCourses": "Aucun service au menu pour l’instant",
+    "noCoursesLine": "Ajoutez les services sur la page Menu, puis liez-en un ici.",
+    "openMenu": "Ouvrir le menu",
+    "unlinked": "{{title}} n’est plus lié à un service.",
+    "unlinkedWhy": "Son service a été retiré du menu. L’élément garde son titre et son heure.",
+    "dismiss": "Ignorer"
   },
   "runView": {
     "title": "Déroulé",
@@ -5224,7 +5242,9 @@
     "picksHeadFrom": "choix clos à partir du {{date}}",
     "picksCloseFrom": "Choix clos à partir du {{date}}",
     "picksByOwn": "Selon la date limite propre au service « {{course}} ». Clôture à {{time}}, heure de {{zone}}.",
-    "picksByOwnClosed": "Selon la date limite propre au service « {{course}} ». Clos à {{time}}, heure de {{zone}}."
+    "picksByOwnClosed": "Selon la date limite propre au service « {{course}} ». Clos à {{time}}, heure de {{zone}}.",
+    "fromSchedule": "{{time}}, d’après le programme : {{title}}",
+    "fromScheduleHelp": "Elle suit le début de l’élément sur la page Programme."
   },
   "guestExport": {
     "export": "Exporter",

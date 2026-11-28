@@ -102,6 +102,8 @@ final class ScheduleTest extends ApiTestCase
             'note' => 'Cue the band.',
             'fixedTime' => true,
             'showToGuests' => true,
+            'course' => null,
+            'courseNotice' => false,
             'version' => 1,
         ], Dict\filter_keys($item, static fn (string $key): bool => 'id' !== $key));
     }

@@ -224,6 +224,8 @@
     "validation.course_served_invalid": "Enter a 24-hour time, like 20:30.",
     "menu.course_limit": "A menu can have at most {max} courses.",
     "menu.course_picked": "Guests have picked from this course.",
+    "menu.course_linked": "This course is linked to a schedule item, so its served time is the item's start. Change the item's time on the Schedule page.",
+    "validation.schedule_course_unknown": "Choose a course from this event's menu.",
     "menu.dish_on_course": "This dish is already on this course.",
     "menu.same_one_dish": "“Everyone gets the same” needs exactly one dish.",
     "validation.variant_name_required": "Enter the variant’s name.",

@@ -3035,7 +3035,8 @@
     "skippedSaid": "{{title}} skipped.",
     "doneSaid": "{{title}} done.",
     "doneNext": "{{title}} done. Next: {{next}}.",
-    "sent": "Connected. Presses sent."
+    "sent": "Connected. Presses sent.",
+    "courseTag": "Course · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",

@@ -3171,7 +3171,8 @@
     "skippedSaid": "Saltado: «{{title}}».",
     "doneSaid": "Concluído: «{{title}}».",
     "doneNext": "Concluído: «{{title}}». A seguir: «{{next}}».",
-    "sent": "Ligação restabelecida. Ações enviadas."
+    "sent": "Ligação restabelecida. Ações enviadas.",
+    "courseTag": "Serviço · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",
