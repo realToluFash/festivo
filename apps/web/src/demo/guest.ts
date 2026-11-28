@@ -172,7 +172,7 @@ export type View =
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: StepFrom }
   | { kind: 'kitchen'; busy?: boolean }
   | { kind: 'recorded'; same: boolean; downAs?: true }
-  | { kind: 'link'; picked: Answer; busy: boolean }
+  | { kind: 'link'; picked: Answer; busy: boolean; failed?: true }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
   | { kind: 'withYou'; from: StepFrom }
