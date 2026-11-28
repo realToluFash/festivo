@@ -282,6 +282,77 @@
   text-decoration: underline;
 }
 
+.rout-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: var(--typeSmallStrong);
+}
+
+.rout-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--sizePill);
+  padding: 0 var(--spaceSm);
+  border: 1px dashed var(--colorInkSecondary);
+  border-radius: var(--radiusPill);
+  color: var(--colorInkSecondary);
+  font: var(--typePill);
+  white-space: nowrap;
+}
+
+.rout-stands > .rout-pill {
+  align-self: center;
+}
+
+.rout-guest-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.rout-asking {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  box-sizing: border-box;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd) 0 0;
+  font: var(--typeSmallStrong);
+}
+
+.rout-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+}
+
+.rout-board-title {
+  margin: 0;
+  font: var(--typeSmallStrong);
+}
+
+.rout-board-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rout-board-list .button {
+  text-align: left;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rout-panel,
   .rout-scrim {

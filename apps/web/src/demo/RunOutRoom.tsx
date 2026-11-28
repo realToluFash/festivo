@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Glyph } from './HowItsGoing.tsx';
 import { type RunOut, alertOn, runOutAlert, runOutTables } from './runOut.ts';
 import './runOut.css';
+import { AskCount } from './RunOutPanel.tsx';
 import { AlertRow, List, Panel, Plan, Sections } from './ServiceRoom.tsx';
 import { BAN_GLYPH } from './serviceGlyphs.ts';
 import { type Room, alertsOf, goToTable, roomSeed, tableOf } from './serviceRoom.ts';
@@ -72,6 +73,7 @@ export function RunOutRoom({
                   <div className="hig-alert-words">
                     <strong>{runOutAlert(ro).title}</strong>
                     <span className="hig-meta">{runOutAlert(ro).sub}</span>
+                    <AskCount ro={ro} />
                     <button
                       className="button button-primary sr-go"
                       type="button"
