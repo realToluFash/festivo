@@ -1284,7 +1284,8 @@ describe('Create an organisation cannot be closed while it sends (sc-25667)', ()
     };
 
     expect(frame).toContain('const close = held ? () => undefined : onClose;');
-    expect(propValue(tag('<Modal'), 'onRequestClose')).toBe('{close}');
+    expect(frame).toContain('if (!pickerTookBack()) close();');
+    expect(propValue(tag('<Modal'), 'onRequestClose')).toBe('{back}');
     expect(propValue(tag('<Pressable'), 'onPress')).toBe('{close}');
     expect(propValue(tag('<Pressable'), 'disabled')).toBe('{held}');
     expect(propValue(tag('<Pressable'), 'accessibilityState')).toBe('{{ disabled: held }}');
