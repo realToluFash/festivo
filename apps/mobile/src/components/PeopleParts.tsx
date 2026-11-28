@@ -244,9 +244,10 @@ function PersonHead({
       <View
         nativeID={DONE_ID}
         style={under ? styles.doneUnder : big ? undefined : styles.doneBesideName}
-        onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}
       >
-        <DoneAction label={done.label} onPress={done.onPress} testID="people.role.done" />
+        <View onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}>
+          <DoneAction label={done.label} onPress={done.onPress} testID="people.role.done" />
+        </View>
       </View>
     );
 
