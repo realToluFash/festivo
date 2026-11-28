@@ -2,8 +2,9 @@ import { requireOptionalNativeModule } from 'expo';
 
 export interface PickedNumber {
   number: string;
+  kind: 'mobile' | 'home' | 'work' | 'other';
+  /** A label the person wrote themselves; empty for the phone's own labels, which Soirely words in its own language. */
   label: string;
-  mobile: boolean;
 }
 
 /** Only what Soirely may keep of a contact, and the numbers to choose one from (sc-7579). */

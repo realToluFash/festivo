@@ -224,7 +224,7 @@
     "validation.course_served_invalid": "Introduza uma hora em formato de 24 horas, por exemplo 20:30.",
     "menu.course_limit": "Um menu pode ter, no máximo, {max} serviços.",
     "menu.course_picked": "Os convidados já escolheram pratos deste serviço.",
-    "menu.course_linked": "Este serviço está ligado a um item do programa, por isso a sua hora de serviço é o início do item. Altere a hora do item na página Programa.",
+    "menu.course_linked": "Este serviço está ligado a um item do programa, por isso é servido à hora de início desse item. Altere a hora do item na página Programa.",
     "validation.schedule_course_unknown": "Escolha um serviço do menu deste evento.",
     "menu.dish_on_course": "Este prato já está neste serviço.",
     "menu.same_one_dish": "«Todos recebem o mesmo» só é possível com um único prato.",

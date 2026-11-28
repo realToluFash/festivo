@@ -23,6 +23,7 @@ import { Text } from '../../components/Text.tsx';
 import { useLineSize, WelcomeBrand } from '../../components/Welcome.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { CodeBoxes, type CodeBoxesHandle } from '../../steps/CodeBoxes.tsx';
+import { PasteCode, usePasteCode } from '../PasteCode.tsx';
 import { InsideField } from '../../steps/InsideField.tsx';
 import { Heading, Says, stepTitle, useStepTitleSize } from '../../steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../steps/rules.ts';
@@ -661,6 +662,12 @@ function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
   const spent = status === 'expired' || status === 'exhausted';
   const refusal = refusalOf(status, texted);
   const shown = `${PORTUGAL?.dial ?? ''} ${flow.number}`.trim();
+  const paste = usePasteCode((found) => {
+    setDigits(found);
+    if (status === 'wrong' || status === 'failed') setStatus('entering');
+    boxes.current?.focusChecked();
+    check(found);
+  });
 
   useEffect(() => {
     if (flow.phone === 'wrong') boxes.current?.refuse();
@@ -704,6 +711,7 @@ function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
           value={digits}
           onChange={(next) => {
             setDigits(next);
+            paste.typed();
             if (next !== '' && (status === 'wrong' || status === 'failed')) setStatus('entering');
           }}
           onFull={check}
@@ -712,6 +720,7 @@ function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
           testID="redeem.code"
         />
         {status === 'wrong' && digits === '' && <Says words={wrongCode(texted)} />}
+        {!done && !spent && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
       </View>
       {!done && (
         <View style={styles.ways}>

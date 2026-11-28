@@ -69,6 +69,7 @@ import { NEXT_TRAY_BOARDS } from '../../src/demo/nextTray/NextTrayBoards.ts';
 import { ASK_AT_TABLE_BOARDS } from '../../src/demo/askAtTable/AskAtTableBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { AUTO_BOARDS } from '../../src/demo/messages/AutomaticBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { isReasonState } from '../../src/demo/messages/TrySms.ts';
@@ -2745,6 +2746,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: MESSAGES_BOARDS.filter(({ state }) => isSmsState(state)).map(
       ({ title, what, href }) => ({ title, what, href: href as Href }),
     ),
+  },
+  {
+    page: 'Automatic messages: Reminders to answer and Before you come (sc-3974) · phone, tablet portrait and landscape',
+    boards: AUTO_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Stop writing from their page (sc-3978)',

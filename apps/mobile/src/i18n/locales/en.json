@@ -2672,6 +2672,12 @@
     "unreadable": "This number cannot be read for {{country}}.",
     "savedAs": "Saved as {{number}}",
     "numberOf": "{{label}} · {{index, number}} of {{count, number}} numbers on this contact",
+    "numberType": {
+      "mobile": "Mobile",
+      "home": "Home",
+      "work": "Work",
+      "other": "Other"
+    },
     "chooseAnother": "Choose another number",
     "clearNumber": "Clear the number",
     "clearEmail": "Clear the email",

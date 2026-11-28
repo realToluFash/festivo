@@ -224,7 +224,7 @@
     "validation.course_served_invalid": "Escriba una hora en formato de 24 horas; por ejemplo, 20:30.",
     "menu.course_limit": "Un menú puede tener como máximo {max} pases.",
     "menu.course_picked": "Los invitados ya han elegido platos de este pase.",
-    "menu.course_linked": "Este pase está vinculado a un elemento del programa, así que su hora de servicio es la hora de inicio del elemento. Cambie la hora del elemento en la página Programa.",
+    "menu.course_linked": "Este pase está vinculado a un elemento del programa, así que se sirve a la hora de inicio de ese elemento. Cambie la hora del elemento en la página Programa.",
     "validation.schedule_course_unknown": "Elija un pase del menú de este evento.",
     "menu.dish_on_course": "Este plato ya está en este pase.",
     "menu.same_one_dish": "«Todos reciben lo mismo» requiere exactamente un plato.",
