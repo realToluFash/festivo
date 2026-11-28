@@ -837,7 +837,10 @@
 }
 
 .demo-paste-nothing:empty {
-  display: none;
+  flex: 0 0 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .demo-paste-copied {
