@@ -686,16 +686,26 @@ export function ContactsReview({
                       onClose={() => setRefused(false)}
                     >
                       <Refused
-                        line={t('fromContacts.notAddedLine', {
-                          count,
-                          companions: t('fromContacts.notAddedCompanions', {
-                            count: companions,
-                          }),
-                          event: eventName,
-                          listed: t('fromContacts.notAddedListed', {
-                            count: room?.people ?? 0,
-                          }),
-                        })}
+                        line={
+                          companions === 0
+                            ? t('fromContacts.notAddedLinePeople', {
+                                count,
+                                event: eventName,
+                                listed: t('fromContacts.notAddedListed', {
+                                  count: room?.people ?? 0,
+                                }),
+                              })
+                            : t('fromContacts.notAddedLine', {
+                                count,
+                                companions: t('fromContacts.notAddedCompanions', {
+                                  count: companions,
+                                }),
+                                event: eventName,
+                                listed: t('fromContacts.notAddedListed', {
+                                  count: room?.people ?? 0,
+                                }),
+                              })
+                        }
                         figure={figure}
                         way={way}
                       />

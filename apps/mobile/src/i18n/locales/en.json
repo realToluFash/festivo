@@ -2710,6 +2710,8 @@
     "notAddedTitle": "Not added",
     "notAddedLine_one": "{{count, number}} person and {{companions}} were not added. {{event}} has {{listed}} on its list.",
     "notAddedLine_other": "{{count, number}} people and {{companions}} were not added. {{event}} has {{listed}} on its list.",
+    "notAddedLinePeople_one": "{{count, number}} person was not added. {{event}} has {{listed}} on its list.",
+    "notAddedLinePeople_other": "{{count, number}} people were not added. {{event}} has {{listed}} on its list.",
     "notAddedCompanions_one": "{{count, number}} companion",
     "notAddedCompanions_other": "{{count, number}} companions",
     "notAddedListed_one": "{{count, number}} person",
