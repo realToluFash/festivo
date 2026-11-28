@@ -7618,5 +7618,9 @@
       "invitation": "Volver a la invitación",
       "notNow": "Ahora no"
     }
+  },
+  "pasteCode": {
+    "button": "Pegar código",
+    "nothing": "Nada que pegar. Copia el código de WhatsApp o de tus mensajes e inténtalo otra vez."
   }
 }

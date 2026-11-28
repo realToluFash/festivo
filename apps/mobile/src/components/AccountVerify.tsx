@@ -13,6 +13,7 @@ import {
   focusRefused,
   keysStayDown,
 } from './Field.tsx';
+import { PasteCode, usePasteCode } from './PasteCode.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -39,6 +40,7 @@ export interface CodeSays {
 
 /** Check your email or your messages: the code, a new one after the wait, and a number on WhatsApp may take a text. */
 export function VerifyScreen({
+  pastes = false,
   open,
   title,
   lead,
@@ -56,6 +58,8 @@ export function VerifyScreen({
   onTextInstead,
   note = null,
 }: {
+  /** A code sent to a phone number: Paste code shows. It fills the field and sends nothing: Verify does (sc-99215). */
+  pastes?: boolean;
   open: boolean;
   title: string;
   lead: string;
@@ -85,6 +89,13 @@ export function VerifyScreen({
   const [verifying, setVerifying] = useState(false);
   const code = useRef(prefill);
   const field = useRef<TextInputInstance>(null);
+  const [pasted, setPasted] = useState<{ code: string; count: number } | null>(null);
+  const paste = usePasteCode((found) => {
+    code.current = found;
+    setError(null);
+    setPasted((now) => ({ code: found, count: (now?.count ?? 0) + 1 }));
+    setTimeout(() => focusChecked(field), 0);
+  });
 
   async function verify(): Promise<void> {
     if (verifying) return;
@@ -102,6 +113,7 @@ export function VerifyScreen({
     setError(null);
     if (!(await onResend())) return;
     code.current = '';
+    setPasted(null);
     setSent((count) => count + 1);
   }
 
@@ -129,9 +141,9 @@ export function VerifyScreen({
         <View style={styles.field}>
           <Field label={codeLabel} error={error && errors[error]}>
             <CodeField
-              key={sent}
+              key={`${sent}.${pasted?.count ?? 0}`}
               ref={field}
-              defaultValue={sent === 0 ? prefill : ''}
+              defaultValue={pasted?.code ?? (sent === 0 ? prefill : '')}
               wrong={error != null}
               submitting={verifying}
               autoFocus={autoFocus || sent > 0}
@@ -140,6 +152,7 @@ export function VerifyScreen({
               returnKeyType="done"
               onChangeText={(text) => {
                 code.current = text;
+                paste.typed();
                 if (error != null) setError(null);
               }}
               onSubmitEditing={() => void verify()}
@@ -148,6 +161,7 @@ export function VerifyScreen({
               testID="account.verify.code"
             />
           </Field>
+          {pastes && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
         </View>
       )}
       <TextAction

@@ -129,6 +129,7 @@ export default function VerifyPhone() {
       >
         <CodeStep
           copy="verifyPhone"
+          pastes
           title={wording.fromWhatsApp ? t('steps.whatsAppTitle') : t('verifyPhone.title')}
           intro={line}
           wrong={words.wrong}
@@ -187,6 +188,7 @@ export default function VerifyPhone() {
       ) : (
         <CodeForm
           copy="verifyPhone"
+          pastes
           status={status}
           cooldown={cooldown}
           error={fieldError}

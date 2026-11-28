@@ -4442,5 +4442,9 @@
     "told": "Aviso enviado: {{date}}, {{time}}, por push.",
     "calledOff": "Evento cancelado",
     "ended": "Evento terminado"
+  },
+  "pasteCode": {
+    "button": "Colar código",
+    "nothing": "Nada para colar. Copie o código do WhatsApp ou das suas mensagens e tente de novo."
   }
 }

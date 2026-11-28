@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { CodeField, Field } from './Field.tsx';
+import { CodeField, Field, focusChecked } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { PasteCode, usePasteCode } from './PasteCode.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -23,6 +24,7 @@ export function CodeForm({
   onResend,
   inputRef,
   codeLabel,
+  pastes = false,
   children,
 }: {
   copy: 'verifyEmail' | 'verifyPhone';
@@ -36,6 +38,8 @@ export function CodeForm({
   onVerify: (code: string) => void;
   onResend: () => void;
   inputRef?: RefObject<TextInputInstance | null> | undefined;
+  /** A code sent to a phone number: Paste code shows. It fills the field and sends nothing: the submit button does (sc-99215). */
+  pastes?: boolean;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -46,6 +50,14 @@ export function CodeForm({
   const input = inputRef ?? ownInput;
   // Send a new code in the code's place brings the field back, or a failure, in its place (sc-11173).
   const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
+  const [pasted, setPasted] = useState<{ code: string; count: number } | null>(null);
+  const paste = usePasteCode((found) => {
+    typed.current = found;
+    setResentInPlace(undefined);
+    onTyped(found);
+    setPasted((now) => ({ code: found, count: (now?.count ?? 0) + 1 }));
+    setTimeout(() => focusChecked(input), 0);
+  });
   useFocusOnAnswer<TextInputInstance>(
     status.kind === 'entering' ? resentInPlace : undefined,
     input,
@@ -101,13 +113,16 @@ export function CodeForm({
         <>
           <Field label={codeLabel ?? t(`${copy}.codeLabel`)} error={error}>
             <CodeField
+              key={pasted?.count ?? 0}
               ref={input}
+              defaultValue={pasted?.code}
               wrong={error != null}
               submitting={verifying}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
                 setResentInPlace(undefined);
+                paste.typed();
                 onTyped(text);
               }}
               onBlur={() => onLeft(typed.current)}
@@ -119,6 +134,7 @@ export function CodeForm({
               testID={`${copy}.code`}
             />
           </Field>
+          {pastes && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
 
           <PrimaryButton
             label={verifying ? t(`${copy}.submitting`) : t(`${copy}.submit`)}

@@ -599,6 +599,7 @@ function VerifyStep({
 
   return (
     <VerifyScreen
+      pastes={!email}
       open={open}
       title={words.title}
       lead={words.lead}

@@ -26,6 +26,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { refreshAccount, useSessionState } from '../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { PasteCode } from '../../components/PasteCode.tsx';
 import { focusWhereSent } from '../../offField.ts';
 import { useSignOut } from '../../signOut.ts';
 
@@ -290,6 +291,7 @@ export function VerifyPhone() {
                   />
                   {fieldError != null && <FieldError id="code-error" message={fieldError} />}
                 </div>
+                <PasteCode field="code" />
 
                 <button
                   className="button button-primary"

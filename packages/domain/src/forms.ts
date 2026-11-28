@@ -30,3 +30,29 @@ export function codeProblem(typed: string): 'blank' | 'short' | null {
 export function keyInGroups(secret: string): string {
   return secret.replace(/(.{4})(?=.)/gu, '$1 ');
 }
+
+const CODE_GROUP = /(\d{3})[ -]?(\d{3})/y;
+
+function isDigit(char: string | undefined): boolean {
+  return char !== undefined && char >= '0' && char <= '9';
+}
+
+function joinsDigit(char: string | undefined, beyond: string | undefined): boolean {
+  return isDigit(char) || ((char === ' ' || char === '-') && isDigit(beyond));
+}
+
+/** The six digits when copied text holds exactly one code, written once or repeated; null otherwise. A group that is part of a longer number is not a code. */
+export function codeInPaste(text: string): string | null {
+  const found = new Set<string>();
+
+  for (let at = 0; at < text.length; at += 1) {
+    CODE_GROUP.lastIndex = at;
+    const match = CODE_GROUP.exec(text);
+    if (match === null) continue;
+    const end = at + match[0].length;
+    if (joinsDigit(text[at - 1], text[at - 2]) || joinsDigit(text[end], text[end + 1])) continue;
+    found.add(`${match[1]}${match[2]}`);
+  }
+
+  return found.size === 1 ? ([...found][0] ?? null) : null;
+}

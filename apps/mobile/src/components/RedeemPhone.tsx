@@ -192,6 +192,7 @@ export function PhoneCodeScreen({
       status={status}
       cooldown={left}
       boxesTop={tokens.space3xl}
+      pastes
       onCode={(full) => void check(full)}
       onResend={() => void sendNew()}
       testID="redeem.code"

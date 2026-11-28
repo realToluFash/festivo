@@ -5,6 +5,7 @@ import {
   type RecoveryState,
   type TwoFactorChallenge,
 } from '@soirely/api-client';
+import { PasteCode } from '../../components/PasteCode.tsx';
 import {
   cleanCode,
   codeProblem,
@@ -945,6 +946,7 @@ function Codes({
                       {sent}
                     </span>
                   )}
+                  {field !== 'emailCode' && <PasteCode field={field} />}
                 </div>
               ))}
             </div>

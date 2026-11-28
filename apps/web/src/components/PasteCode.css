@@ -1,0 +1,27 @@
+/* sc-99215: Paste code under a phone's code field, its line beside it, under it when there is no room. */
+.paste-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.paste-code-button {
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.paste-code-nothing {
+  flex: 1 1 11rem;
+  min-width: 0;
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.paste-code-nothing:empty {
+  flex: 0 0 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}

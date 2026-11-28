@@ -28,9 +28,15 @@ export function usePasteHeight(): number {
 }
 
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
-function OwnPaste({ onText }: { onText: (text: string) => void }) {
-  const { t } = useTranslation();
-  const label = t('guestList.paste.button');
+function OwnPaste({
+  onText,
+  label,
+  testID,
+}: {
+  onText: (text: string) => void;
+  label: string;
+  testID: string;
+}) {
   const height = usePasteHeight();
   const press = () => {
     Clipboard.getStringAsync().then(onText, () => onText(''));
@@ -46,7 +52,7 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
       ]}
       accessibilityRole="button"
       accessibilityLabel={label}
-      testID="guests.paste"
+      testID={testID}
     >
       <Glyph name="clipboard" ink={tokens.colorInk} />
       <Text size={15} weight="semibold" numberOfLines={1} accessible={false}>
@@ -60,9 +66,11 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
 const ApplePaste = memo(function ApplePaste({
   onText,
   inRow,
+  testID,
 }: {
   onText: (text: string) => void;
   inRow: boolean;
+  testID: string;
 }) {
   const onPress = useCallback(
     (data: Clipboard.PasteEventPayload) => onText(data.type === 'text' ? data.text : ''),
@@ -88,23 +96,30 @@ const ApplePaste = memo(function ApplePaste({
         backgroundColor={tokens.colorCard}
         foregroundColor={tokens.colorInk}
         style={styles.apple}
-        testID="guests.paste"
+        testID={testID}
       />
     </View>
   );
 });
 
+/** Apple's control where there is one, its label Apple's own; otherwise Soirely's, named `label` (Paste a reply by default). */
 export function PasteButton({
   onText,
   inRow = false,
+  label,
+  testID = 'guests.paste',
 }: {
   onText: (text: string) => void;
   inRow?: boolean;
+  label?: string;
+  testID?: string;
 }) {
+  const { t } = useTranslation();
+
   return Platform.OS === 'ios' && Clipboard.isPasteButtonAvailable ? (
-    <ApplePaste onText={onText} inRow={inRow} />
+    <ApplePaste onText={onText} inRow={inRow} testID={testID} />
   ) : (
-    <OwnPaste onText={onText} />
+    <OwnPaste onText={onText} label={label ?? t('guestList.paste.button')} testID={testID} />
   );
 }
 

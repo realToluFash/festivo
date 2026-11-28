@@ -4,6 +4,7 @@ import {
   type Provider,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
+import { PasteCode } from './PasteCode.tsx';
 import {
   PROOF_MINUTES,
   type ZoneRow,
@@ -816,6 +817,7 @@ export function VerifyDialog({
               setError(null);
             }}
           />
+          {!email && <PasteCode field={input} />}
         </div>
       )}
       <div className="desk-red">

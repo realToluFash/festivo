@@ -1,4 +1,5 @@
 import { ApiError, type RecoveryOpening, type RecoveryState } from '@soirely/api-client';
+import { PasteCode, usePasteCode } from '../src/components/PasteCode.tsx';
 import {
   cleanCode,
   codeWording,
@@ -956,6 +957,16 @@ function Codes({
                     testID={`lostTwoFactor.${field}`}
                   />
                   {errors[field] != null && <Says words={errors[field]} />}
+                  {field === 'phoneCode' && (
+                    <PastePhoneCode
+                      typed={typed.phoneCode}
+                      onCode={(found) => {
+                        setTyped((now) => ({ ...now, phoneCode: found }));
+                        setErrors(({ phoneCode: _gone, ...rest }) => rest);
+                        boxes.phoneCode.current?.focusChecked();
+                      }}
+                    />
+                  )}
                   <SentLine
                     words={
                       field === 'emailCode'
@@ -1006,6 +1017,18 @@ function SentLine({ words, answer }: { words: string; answer: unknown }) {
       {words}
     </Text>
   );
+}
+
+/** Paste code under the phone's code boxes: it fills them and sends nothing, the screen's own button asks (sc-99215). The line goes when the boxes change. */
+function PastePhoneCode({ typed, onCode }: { typed: string; onCode: (code: string) => void }) {
+  const paste = usePasteCode(onCode);
+  const { typed: forget } = paste;
+
+  useEffect(() => {
+    forget();
+  }, [typed, forget]);
+
+  return <PasteCode nothing={paste.nothing} onText={paste.onText} />;
 }
 
 const styles = StyleSheet.create({

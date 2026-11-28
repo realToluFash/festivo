@@ -4233,5 +4233,9 @@
     "told": "Told on {{date}} at {{time}}, by push.",
     "calledOff": "Called off",
     "ended": "Event ended"
+  },
+  "pasteCode": {
+    "button": "Paste code",
+    "nothing": "Nothing to paste. Copy the code from WhatsApp or your texts, then try again."
   }
 }

@@ -4442,5 +4442,9 @@
     "told": "Notification push envoyée le {{date}} à {{time}}.",
     "calledOff": "Événement annulé",
     "ended": "Événement terminé"
+  },
+  "pasteCode": {
+    "button": "Coller le code",
+    "nothing": "Rien à coller. Copiez le code depuis WhatsApp ou vos SMS, puis réessayez."
   }
 }

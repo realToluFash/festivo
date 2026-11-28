@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { QuietButton } from '../components/Buttons.tsx';
+import { PasteCode, usePasteCode } from '../components/PasteCode.tsx';
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
 import { tokens } from '../theme/tokens.ts';
 import { CodeBoxes, type CodeBoxesHandle } from './CodeBoxes.tsx';
@@ -22,6 +23,7 @@ export function CodeStep({
   onCode,
   onResend,
   boxesTop = tokens.space4xl,
+  pastes = false,
   children,
   testID,
 }: {
@@ -36,6 +38,8 @@ export function CodeStep({
   onResend: () => void;
   /** The room between the intro and the boxes, as the screen's demo draws it. */
   boxesTop?: number;
+  /** A code sent to a phone number: Paste code shows, and a found code is sent as the sixth typed digit sends it (sc-99215). */
+  pastes?: boolean;
   /** Other quiet ways on, such as Text it to me instead. */
   children?: ReactNode;
   testID: string;
@@ -45,6 +49,12 @@ export function CodeStep({
   const boxes = useRef<CodeBoxesHandle>(null);
   const done = status.kind === 'verified';
   const spent = status.kind === 'expired' || status.kind === 'exhausted';
+
+  const paste = usePasteCode((found) => {
+    setCode(found);
+    boxes.current?.focusChecked();
+    if (status.kind !== 'verifying') onCode(found);
+  });
 
   useEffect(() => {
     if (status.kind === 'wrong') boxes.current?.refuse();
@@ -62,7 +72,10 @@ export function CodeStep({
             ref={boxes}
             label={t('steps.codeLabel')}
             value={code}
-            onChange={setCode}
+            onChange={(next) => {
+              setCode(next);
+              paste.typed();
+            }}
             onFull={(full) => {
               if (status.kind !== 'verifying') onCode(full);
             }}
@@ -72,6 +85,7 @@ export function CodeStep({
           />
           {status.kind === 'wrong' && code === '' && <Says words={wrong} />}
           {status.kind === 'failed' && <Says words={t(`${copy}.failedBody`)} />}
+          {pastes && !done && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
         </View>
       )}
       {!done && (

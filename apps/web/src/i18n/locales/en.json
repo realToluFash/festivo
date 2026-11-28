@@ -7213,5 +7213,9 @@
       "invitation": "Back to the invitation",
       "notNow": "Not now"
     }
+  },
+  "pasteCode": {
+    "button": "Paste code",
+    "nothing": "Nothing to paste. Copy the code from WhatsApp or your texts, then try again."
   }
 }

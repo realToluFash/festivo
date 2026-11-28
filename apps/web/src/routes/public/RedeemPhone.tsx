@@ -1,4 +1,5 @@
 import { ApiError } from '@soirely/api-client';
+import { PasteCode } from '../../components/PasteCode.tsx';
 import { callingCode, countryChoices, phoneLengthProblem } from '@soirely/domain';
 import {
   type FormEvent,
@@ -285,6 +286,7 @@ export function PhoneCodeStep<Signed>({
               <Says id="rd-phone-code-line" alert={status === 'wrong'}>
                 {said}
               </Says>
+              <PasteCode field="rd-phone-code" />
             </div>
             <Primary submit busy={busy}>
               {busy
