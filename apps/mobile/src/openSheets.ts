@@ -1,41 +1,73 @@
-import { whereNow } from './where.ts';
+import { wherePlaceNow } from './where.ts';
 import { leaveThen } from './leaveHeld.ts';
 import { linkedPath } from './linkedPath.ts';
 
-const open = new Set<() => void>();
+type Entry = { close: () => void; held: () => boolean };
 
-/** An open sheet lists how it closes, so a screen opened from outside the app can close it (sc-102662). */
-export function noteOpenSheet(close: () => void): () => void {
-  open.add(close);
+const open = new Set<Entry>();
+let waiting: { entries: Entry[]; proceed: () => void; stay: (() => void) | undefined } | null =
+  null;
+
+/** The wait ends once no sheet it waited for is still held: every one gone is a success, one still open is an answer that stays. */
+function settle(): void {
+  const wait = waiting;
+  if (wait == null || wait.entries.some((entry) => open.has(entry) && entry.held())) return;
+
+  waiting = null;
+  if (wait.entries.every((entry) => !open.has(entry))) wait.proceed();
+  else wait.stay?.();
+}
+
+/** An open sheet lists how it closes and whether it is held, so a screen opened from outside the app can close it (sc-102662). */
+export function noteOpenSheet(close: () => void, held: () => boolean = () => false): () => void {
+  const entry = { close, held };
+  open.add(entry);
 
   return () => {
-    open.delete(close);
+    open.delete(entry);
+    settle();
   };
 }
 
-function bare(path: string): string {
-  return (/^[^?#]*/.exec(linkedPath(path))?.[0] ?? '').replace(/\/+$/, '') || '/';
+/** A sheet whose request has been answered tells a push or link that waited for it. */
+export function noteSheetSettled(): void {
+  settle();
 }
 
-/** A place that is the screen already showing opens nothing; one carrying a query or a fragment still opens, as it asks the screen for something (an area, a filter). */
+function split(place: string): { path: string; query: string } {
+  const [path = '', query = ''] = linkedPath(place).replace(/#.*$/u, '').split('?');
+  const pairs = [...new URLSearchParams(query)].map(([key, value]) => `${key}=${value}`).sort();
+
+  return { path: path.replace(/\/+$/, '') || '/', query: pairs.join('&') };
+}
+
+/** The place already showing, query included: the same screen asked for something else is another place. */
 export function isShowing(place: string): boolean {
-  if (/[?#]/u.test(linkedPath(place))) return false;
+  const there = split(place);
+  const here = split(wherePlaceNow() ?? '/');
 
-  return bare(place) === bare(whereNow() ?? '/');
+  return there.path === here.path && there.query === here.query;
 }
 
-/** The screen a push or link opens wins: a form holding a change asks first, every other open sheet closes without asking. */
+/** The screen a push or link opens wins: a form holding a change asks first, every other open sheet closes without asking, and a sheet whose request is running answers first. */
 export function openFromOutside(
   place: string,
   go: (discarding: boolean) => void,
   stay?: () => void,
 ): void {
-  if (isShowing(place)) {
+  if (isShowing(place) || waiting != null) {
     stay?.();
     return;
   }
-  leaveThen((discarding) => {
-    if (!discarding) [...open].forEach((close) => close());
-    go(discarding);
-  }, stay);
+  const proceed = () =>
+    leaveThen((discarding) => {
+      if (!discarding) [...open].forEach((entry) => entry.close());
+      go(discarding);
+    }, stay);
+  const entries = [...open].filter((entry) => entry.held());
+  if (entries.length === 0) {
+    proceed();
+    return;
+  }
+  waiting = { entries, proceed, stay };
 }

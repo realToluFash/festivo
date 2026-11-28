@@ -43,7 +43,7 @@ import {
 } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { noteOpenSheet } from '../openSheets.ts';
+import { noteOpenSheet, noteSheetSettled } from '../openSheets.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -149,16 +149,20 @@ function SheetFrame({
     closeRef.current = onClose;
     heldRef.current = held;
   });
-  // A sheet holding a request that closing would not stop stays open, as for the scrim and the escape.
+  // A sheet holding a request that closing would not stop stays open, as for the scrim and the escape; a push or link waits for its answer.
   useEffect(
     () =>
       open
-        ? noteOpenSheet(() => {
-            if (!heldRef.current) closeRef.current();
-          })
+        ? noteOpenSheet(
+            () => closeRef.current(),
+            () => heldRef.current,
+          )
         : undefined,
     [open],
   );
+  useEffect(() => {
+    if (!held) noteSheetSettled();
+  }, [held]);
   const back = () => {
     if (!pickerTookBack()) close();
   };
