@@ -1,0 +1,7 @@
+# sc-68778: Members' Back pill.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: members

@@ -1,0 +1,40 @@
+# sc-95382: ${EVENT_ID}'s Overview, its Kitchen station row if it shows, and the station it opens with its back control. P prefixes the screenshots. LAND=1 turns the tablet to landscape first. Needs ${METRO_URL}, ${EVENT_ID}, ${P}.
+appId: host.exp.Exponent
+---
+- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 8000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${P}-overview
+- runFlow:
+    when:
+      visible:
+        id: 'events.station'
+    commands:
+      - tapOn:
+          id: 'events.station'
+      - extendedWaitUntil:
+          visible:
+            id: 'station\.(title|landing|failed|refused\..+)'
+          timeout: 15000
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: ${P}-station
+      - tapOn:
+          id: 'station.back'
+      - extendedWaitUntil:
+          visible:
+            id: 'events.station'
+          timeout: 15000
+      - takeScreenshot: ${P}-back

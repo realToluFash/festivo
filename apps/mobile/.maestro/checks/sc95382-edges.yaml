@@ -1,0 +1,93 @@
+# sc-95382: the Kitchen station row on six events' Overviews (EV_A..EV_F, prefixed A..F), then a pick of PICK on EV_A's station and the row's line after it. Needs ${METRO_URL}, ${EV_A}..${EV_F}, ${PICK}. EV_A: you have no station and none is remembered (fresh Expo Go data), so it opens on the station landing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_B}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: B-overview
+- openLink: ${METRO_URL}/--/events/${EV_C}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: C-overview
+- openLink: ${METRO_URL}/--/events/${EV_D}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: D-overview
+- openLink: ${METRO_URL}/--/events/${EV_E}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: E-overview
+- openLink: ${METRO_URL}/--/events/${EV_F}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.(yourNight|station)|outside\.overview'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: F-overview
+- openLink: ${METRO_URL}/--/events/${EV_A}
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 120000
+- tapOn:
+    id: 'events.station'
+- extendedWaitUntil:
+    visible:
+      id: 'station.pick.${PICK}'
+    timeout: 15000
+- tapOn:
+    id: 'station.pick.${PICK}'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: A-picked
+- tapOn:
+    id: 'station.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: A-after-pick

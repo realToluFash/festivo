@@ -1,0 +1,52 @@
+# sc-6476: End now with a line while the API hangs (Ending…) and then is gone (Not ended.). Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_END}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    timeout: 30000
+- tapOn:
+    id: 'events.end'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.endThankYou'
+- inputText: 'Thank you for dancing with us and for every kind word.'
+- hideKeyboard
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'events.endYes'
+- takeScreenshot: endNowEnding
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: endNowNotEnded
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'events.endNo'

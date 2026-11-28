@@ -1,0 +1,30 @@
+# sc-62023: on the iPhone on its side (LANDSCAPE_LEFT), Back from a scrolled Notifications returns to Events, and Mark all read marks every one read. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 30000 }
+- scroll
+- scroll
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: scrolled
+- tapOn: 'Back to .*'
+- extendedWaitUntil: { visible: { id: 'frame.bell' }, timeout: 10000 }
+- takeScreenshot: after-back
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 30000 }
+- scroll
+- tapOn: { id: 'notifications.markAllRead' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: after-mark-all
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

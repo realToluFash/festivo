@@ -1,0 +1,53 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/my-night
+- extendedWaitUntil:
+    visible:
+      id: myNight.clockIn
+    timeout: 30000
+- tapOn:
+    id: myNight.clockIn
+- extendedWaitUntil:
+    visible:
+      id: myNight.clockOut
+    timeout: 15000
+- tapOn:
+    id: myNight.whosHere
+- extendedWaitUntil:
+    visible:
+      id: whosHere.cover.${ABSENT}
+    timeout: 30000
+- tapOn:
+    id: whosHere.cover.${ABSENT}
+- extendedWaitUntil:
+    visible:
+      id: whosHere.cover.who.${MOVER}
+    timeout: 10000
+- tapOn:
+    id: whosHere.cover.who.${MOVER}
+- runScript:
+    file: sc3918/end-event.js
+    env:
+      API_URL: ${API_URL}
+      EV: ${EV}
+      OWNER_TOKEN: ${OWNER_TOKEN}
+      ORIGIN: ${ORIGIN}
+- assertTrue: ${output.ended == 200}
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 35000
+    optional: true
+- assertVisible:
+    id: whosHere.cover.move
+- takeScreenshot: sheet-kept-35s-after-end
+- tapOn:
+    id: whosHere.cover.move
+- extendedWaitUntil:
+    visible:
+      id: myNight.clock
+    timeout: 12000
+- waitForAnimationToEnd
+- takeScreenshot: night-after-move
+- assertNotVisible:
+    id: myNight.whosHere

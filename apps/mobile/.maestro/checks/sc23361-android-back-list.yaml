@@ -1,0 +1,31 @@
+# sc-23361 on Android: from Events > ${TAB} > ${EVENT}, Android back returns to the list with ${EVENT}'s row in view.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- takeScreenshot: list
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-android-back

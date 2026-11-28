@@ -1,0 +1,10 @@
+# sc-4002: the role sheet of someone from outside lists the three service levels. Pass EVENT_ID and PERSON_ID, the outsider whose sheet opens.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- scrollUntilVisible:
+    { element: { id: 'people.row.${PERSON_ID}' }, timeout: 60000, centerElement: true }
+- tapOn: { id: 'people.row.${PERSON_ID}' }
+- extendedWaitUntil: { visible: 'From outside .*', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: outsider-product

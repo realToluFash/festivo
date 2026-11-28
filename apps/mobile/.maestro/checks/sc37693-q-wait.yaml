@@ -1,0 +1,7 @@
+# sc-37693: a pause, while the shell changes the simulator's text size.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_W'
+    timeout: 20000
+    optional: true

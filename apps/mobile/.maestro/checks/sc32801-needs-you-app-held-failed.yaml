@@ -1,0 +1,39 @@
+# sc-32801: E2's Needs you when GET /api/events/<id>/timeline answers 503 (scripts/qa-slow-proxy.mjs --status 503, android started with QA_API_URL), beside the demo's needsYouFailed; then Try again once the proxy passes the route. Needs ${METRO_URL}, ${E2}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouFailed
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouFailed-demo
+- openLink: ${METRO_URL}/--/events/${E2}
+- extendedWaitUntil:
+    visible:
+      text: 'Details'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou.retry'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: needsYouFailed-product
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 45000, optional: true }
+- tapOn:
+    id: 'event.needsYou.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'event.needsYou.row'
+    timeout: 20000
+- takeScreenshot: retried

@@ -1,0 +1,24 @@
+# sc-68438: on the phone, a member's long More (EV) closes on a drag down from its top strip, rather than scrolling its rows.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: event.nav.more
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: strip-open
+- swipe:
+    start: '50%, 4%'
+    end: '50%, 85%'
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: strip-after-drag
+- assertNotVisible:
+    text: Your events

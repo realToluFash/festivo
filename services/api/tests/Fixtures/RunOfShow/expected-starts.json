@@ -1,0 +1,777 @@
+{
+    "nothing started yet, before the first item": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T17:30:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "arrive": "2026-11-20T18:00:00+01:00",
+            "welcome": "2026-11-20T18:30:00+01:00",
+            "dinner": "2026-11-20T18:40:00+01:00",
+            "speeches": "2026-11-20T19:55:00+01:00",
+            "dance": "2026-11-20T21:10:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "nothing started, now past the first planned start": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T18:10:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "arrive": "2026-11-20T18:10:00+01:00",
+            "welcome": "2026-11-20T18:40:00+01:00",
+            "dinner": "2026-11-20T18:50:00+01:00",
+            "speeches": "2026-11-20T20:05:00+01:00",
+            "dance": "2026-11-20T21:10:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "an item ended early moves nothing earlier": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T18:21:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:20:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "welcome": "2026-11-20T18:30:00+01:00",
+            "dinner": "2026-11-20T18:40:00+01:00",
+            "speeches": "2026-11-20T19:55:00+01:00",
+            "dance": "2026-11-20T21:10:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "an item started on time keeps the rest on time": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T19:10:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:40:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "speeches": "2026-11-20T19:55:00+01:00",
+            "dance": "2026-11-20T21:10:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "a late start pushes everything after it": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T19:20:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:58:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "speeches": "2026-11-20T20:13:00+01:00",
+            "dance": "2026-11-20T21:10:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "an item with no length runs until now": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T21:13:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:45:00+01:00",
+                "endedAt": "2026-11-20T20:02:00+01:00"
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T20:05:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "dance": "2026-11-20T21:13:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "a fixed-time item keeps its planned start when the rest run late": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T21:00:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T20:50:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "speeches": "2026-11-20T22:05:00+01:00",
+            "dance": "2026-11-20T22:05:00+01:00",
+            "cake": "2026-11-20T22:20:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "an item started out of order": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-20T21:15:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:45:00+01:00",
+                "endedAt": "2026-11-20T20:02:00+01:00"
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T21:08:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "speeches": "2026-11-20T21:15:00+01:00",
+            "cake": "2026-11-20T21:30:00+01:00",
+            "fireworks": "2026-11-20T22:00:00+01:00",
+            "dancing": "2026-11-20T22:15:00+01:00",
+            "lastSong": "2026-11-21T00:15:00+01:00"
+        }
+    },
+    "past midnight on the same event day": {
+        "zone": "Europe/Paris",
+        "now": "2026-11-21T00:20:00+01:00",
+        "items": [
+            {
+                "id": "arrive",
+                "planned": "2026-11-20T18:00:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:02:00+01:00",
+                "endedAt": "2026-11-20T18:31:00+01:00"
+            },
+            {
+                "id": "welcome",
+                "planned": "2026-11-20T18:30:00+01:00",
+                "lengthMinutes": 10,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:33:00+01:00",
+                "endedAt": "2026-11-20T18:44:00+01:00"
+            },
+            {
+                "id": "dinner",
+                "planned": "2026-11-20T18:40:00+01:00",
+                "lengthMinutes": 75,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T18:45:00+01:00",
+                "endedAt": "2026-11-20T20:02:00+01:00"
+            },
+            {
+                "id": "speeches",
+                "planned": "2026-11-20T19:55:00+01:00",
+                "lengthMinutes": null,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T20:05:00+01:00",
+                "endedAt": "2026-11-20T21:05:00+01:00"
+            },
+            {
+                "id": "dance",
+                "planned": "2026-11-20T21:10:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T21:08:00+01:00",
+                "endedAt": "2026-11-20T21:24:00+01:00"
+            },
+            {
+                "id": "cake",
+                "planned": "2026-11-20T21:30:00+01:00",
+                "lengthMinutes": 30,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T21:26:00+01:00",
+                "endedAt": "2026-11-20T21:58:00+01:00"
+            },
+            {
+                "id": "fireworks",
+                "planned": "2026-11-20T22:00:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": true,
+                "startedAt": "2026-11-20T22:00:00+01:00",
+                "endedAt": "2026-11-20T22:15:00+01:00"
+            },
+            {
+                "id": "dancing",
+                "planned": "2026-11-20T22:15:00+01:00",
+                "lengthMinutes": 120,
+                "fixedTime": false,
+                "startedAt": "2026-11-20T22:16:00+01:00",
+                "endedAt": null
+            },
+            {
+                "id": "lastSong",
+                "planned": "2026-11-21T00:15:00+01:00",
+                "lengthMinutes": 15,
+                "fixedTime": false,
+                "startedAt": null,
+                "endedAt": null
+            }
+        ],
+        "expected": {
+            "lastSong": "2026-11-21T00:20:00+01:00"
+        }
+    }
+}

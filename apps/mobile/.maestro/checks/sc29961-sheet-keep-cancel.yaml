@@ -1,0 +1,30 @@
+# sc-29961: Waiting's Cancel the request asks first; Keep waiting and a tap outside close the sheet with the request still waiting; Cancel the request in the sheet shows Request cancelled.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc29961-to-waiting.yaml
+- takeScreenshot: waiting
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- assertVisible: '{{t:lostTwoFactor.cancelBody}}'
+- assertVisible: { id: 'lostTwoFactor.cancelYes' }
+- assertVisible: { id: 'lostTwoFactor.cancelNo' }
+- takeScreenshot: sheet
+- tapOn: { id: 'lostTwoFactor.cancelNo' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- assertVisible: { id: 'lostTwoFactor.cancel' }
+- takeScreenshot: kept
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { point: '50%,12%' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- assertVisible: { id: 'lostTwoFactor.cancel' }
+- takeScreenshot: scrim-closed
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'lostTwoFactor.cancelYes' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelledTitle}}', timeout: 15000 }
+- takeScreenshot: cancelled

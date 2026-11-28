@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Enum;
+
+/** What a permission is about, in the order a client lists them. */
+enum PermissionArea: string
+{
+    case Events = 'events';
+    case Guests = 'guests';
+    case Seating = 'seating';
+    case Menu = 'menu';
+    case RunOfShow = 'run_of_show';
+    case Staff = 'staff';
+    case Messages = 'messages';
+    case Reports = 'reports';
+    case Budget = 'budget';
+    case Vendors = 'vendors';
+    case Members = 'members';
+    case Billing = 'billing';
+    case Organisation = 'organisation';
+    case People = 'people';
+    case Service = 'service';
+
+    /** What lets a member see the area's milestones on an event's timeline (sc-3624). The organisation's settings and the service have no read of their own. */
+    public function reading(): Permission
+    {
+        return match ($this) {
+            self::Organisation => Permission::OrganisationManage,
+            self::Service => Permission::ServiceWork,
+            default => Permission::from($this->value . '.read'),
+        };
+    }
+}

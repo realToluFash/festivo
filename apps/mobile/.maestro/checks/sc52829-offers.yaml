@@ -1,0 +1,31 @@
+# sc-52829: a Not yet invited guest's Invitation offers Mark as invited and Record a reply, with its line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_OPEN_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_OPEN}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_OPEN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OPEN}'
+    timeout: 30000
+- takeScreenshot: details-top
+- scrollUntilVisible:
+    element:
+      id: 'guest.recordNotYet'
+    direction: DOWN
+- assertVisible:
+    id: 'guest.mark'
+- assertVisible: '.*{{t:guestList.recordNotYetLine}}.*'
+- takeScreenshot: invitation-rows

@@ -1,0 +1,565 @@
+import {
+  type AddableMember,
+  type DoorCodeCard,
+  EVENT_LEVELS,
+  EVENT_ROLES,
+  type EventPerson,
+  type EventRole,
+  type OrganisationEvent,
+} from '@soirely/api-client';
+import { initials, numberFormat } from '@soirely/domain';
+import type { TFunction } from 'i18next';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AppState, Animated, StyleSheet, View, type ViewInstance } from 'react-native';
+
+import { api } from '../api.ts';
+import { currentLocale } from '../i18n/index.ts';
+import { atWords, inMadeOrder, shownCode } from '../kit/doorCodes.ts';
+import {
+  JOB_LABEL_MOST,
+  addRefused,
+  holderOf,
+  inListOrder,
+  joinedLine,
+  keepWord,
+  managesPeople,
+  notChangedLine,
+  nowCan,
+  offerLine,
+  offered,
+  opensRow,
+  personShown,
+  rowLine,
+  seesEveryEvent,
+} from '../kit/eventPeople.ts';
+import { toneOf } from '../kit/personFace.ts';
+import { refusalSaid } from '../kit/refusal.ts';
+import { glide } from '../motion.ts';
+import { useServerNow } from '../kit/serverNow.ts';
+import { useSignedIn } from '../signedIn.ts';
+import { tokens } from '../theme/tokens.ts';
+import { DoorCodes } from './DoorCodes.tsx';
+import { Glyph } from './Glyph.tsx';
+import {
+  AddBox,
+  AddScreen,
+  type AddWords,
+  type OutsideAdd,
+  PeopleLoading,
+  PersonFace,
+  RoleSheet,
+  type RoleSheetWords,
+  type RoleWords,
+} from './PeopleParts.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { FailedBlock, Line, Row, RowList, SectionHead } from './Summary.tsx';
+import { Text } from './Text.tsx';
+import { codeClock } from './useCodeAsk.ts';
+
+/** `addable` is null for whoever may not change People, and when its read failed: Add people stays off and the list still shows. */
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | {
+      kind: 'loaded';
+      people: EventPerson[];
+      owners: string[];
+      admins: string[];
+      addable: AddableMember[] | null;
+      /** Null for whoever may not change People, and when its read failed; in the order they were made. */
+      doorCodes: DoorCodeCard[] | null;
+    };
+
+const LIT_MS = 2000;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
+const ROW_INSET = 40 + tokens.spaceLg;
+const FIRST_ROLE: EventRole = 'can_view';
+
+function Face({ name, id, side }: { name: string; id: string; side: number }) {
+  const letters = initials(name);
+
+  return <PersonFace initials={letters} tone={toneOf(id)} side={side} />;
+}
+
+function PersonMark({ person, side }: { person: EventPerson; side: number }) {
+  const shown = personShown(person);
+  if (shown.kind === 'named') return <Face name={shown.name} id={shown.userId} side={side} />;
+
+  return (
+    <PersonFace
+      initials={null}
+      tone={toneOf(person.id)}
+      side={side}
+      mark={shown.kind === 'address' ? shown.mark : 'user'}
+    />
+  );
+}
+
+function nameOf(t: TFunction, person: EventPerson): string {
+  const shown = personShown(person);
+
+  return shown.kind === 'notJoined' ? t('eventPeople.notJoined') : shown.name;
+}
+
+function roleWords(t: TFunction, roles: readonly EventRole[] = EVENT_ROLES): RoleWords<EventRole> {
+  return {
+    roles,
+    name: (role) => t(`eventPeople.role.${role}`),
+    means: (role) => t(`eventPeople.roleMeans.${role}`),
+    saving: t('eventPeople.saving'),
+    saved: t('eventPeople.saved'),
+  };
+}
+
+function sheetWords(
+  t: TFunction,
+  person: EventPerson,
+  organisation: string,
+): RoleSheetWords<EventRole> {
+  const name = nameOf(t, person);
+
+  return {
+    ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
+    title: t('eventPeople.roleTitle'),
+    done: t('eventPeople.done'),
+    remove: t('eventPeople.remove'),
+    removeTitle: t('eventPeople.removeTitle', { name }),
+    removeLine: person.outside
+      ? t('eventPeople.removeLineOutside')
+      : t('eventPeople.removeLine', { organisation }),
+    keep: keepWord(t, person),
+    removeConfirm: t('eventPeople.removeConfirm'),
+    removing: t('eventPeople.removing'),
+    savedHeard: (role) =>
+      t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
+    notChanged: (held) => notChangedLine(t, person, name, held),
+    removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
+  };
+}
+
+function addWords(t: TFunction, organisation: string, nothingLeft: boolean): AddWords<EventRole> {
+  return {
+    ...roleWords(t),
+    title: t('eventPeople.addTitle'),
+    add: t('eventPeople.addConfirm'),
+    cancel: t('eventPeople.cancel'),
+    done: t('eventPeople.done'),
+    theirRole: t('eventPeople.theirRole'),
+    find: t('eventPeople.findAnyone'),
+    inOrganisation: t('eventPeople.inOrganisation', { organisation }),
+    noMatch: (typed) => t('eventPeople.noMatch', { organisation, typed }),
+    discardTitle: t('eventPeople.discardTitle'),
+    discardLine: t('eventPeople.discardLine'),
+    discardKeep: t('eventPeople.discardKeep'),
+    discard: t('eventPeople.discard'),
+    refusal: (error, role, went, left) => addRefused(t, error, role, went, left),
+    everyoneOn: nothingLeft ? t('eventPeople.everyoneOn', { organisation }) : undefined,
+  };
+}
+
+function outsideWords(
+  t: TFunction,
+  organisation: string,
+): OutsideAdd<EventRole, EventPerson>['words'] {
+  return {
+    find: t('eventPeople.findAnyone'),
+    findName: t('eventPeople.find'),
+    fromOutside: t('eventPeople.fromOutside', { organisation }),
+    leadOff: t('eventPeople.leadOff', { organisation }),
+    pickAnother: t('eventPeople.pickAnother'),
+    unusable: t('eventPeople.unusable'),
+    onAlready: (name) => t('eventPeople.onAlready', { name }),
+    jobLabel: t('eventPeople.jobLabel'),
+    jobHelp: (job) => t('eventPeople.jobHelp', { length: [...job].length, most: JOB_LABEL_MOST }),
+  };
+}
+
+/** People on an event, `People-OneList` (sc-29914): one list by role, each role changed in a sheet by Owners, Admins and the Lead. */
+export function EventPeople({
+  event,
+  tell,
+}: {
+  event: OrganisationEvent;
+  tell: (words: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const { account, organisation } = useSignedIn();
+  const locale = currentLocale();
+  const userId = account?.id ?? null;
+  const outsideIn = account?.outsideEvents.find((one) => one.id === event.id);
+  const organisationName = organisation?.name ?? outsideIn?.organisationName ?? '';
+  const country = organisation?.countryCode ?? '';
+  const manages = managesPeople(event);
+  const now = useServerNow();
+  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  const [opened, setOpened] = useState<{ id: string; open: boolean; visit: number } | null>(null);
+  const [adding, setAdding] = useState({ open: false, visit: 0 });
+  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(null);
+  const [litFade] = useState(() => new Animated.Value(1));
+  const addBox = useRef<ViewInstance>(null);
+  const rows = useRef(new Map<string, ViewInstance>());
+  const focusBack = useRef<ScreenReaderTarget | null>(null);
+
+  useEffect(() => {
+    let live = true;
+
+    const addableRead = manages
+      ? api.addableEventMembers(event.id).catch(() => null)
+      : Promise.resolve(null);
+    const codesRead = manages
+      ? api.doorCodes(event.id).then(inMadeOrder, () => null)
+      : Promise.resolve(null);
+
+    Promise.all([api.eventPeople(event.id), addableRead, codesRead]).then(
+      ([read, addable, doorCodes]) =>
+        live && setLoad({ kind: 'loaded', ...read, addable, doorCodes }),
+      () => live && setLoad({ kind: 'failed' }),
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [event.id, attempt, manages]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const next = () => {
+      timer = setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (AppState.currentState !== 'active') return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? inMadeOrder(await api.doorCodes(event.id)) : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!live) return;
+          // A change made on the screen while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => live && next(),
+      );
+    };
+    next();
+
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
+
+  useEffect(() => {
+    if (lit == null || lit.held) return;
+    const timer = setTimeout(() => {
+      glide(litFade, 0, tokens.motionSlow).start(({ finished }) => {
+        if (finished) setLit(null);
+      });
+    }, LIT_MS);
+
+    return () => clearTimeout(timer);
+  }, [lit, litFade]);
+
+  if (load.kind === 'loading') return <PeopleLoading words={t('eventPeople.loading')} />;
+
+  if (load.kind === 'failed')
+    return (
+      <FailedBlock
+        title={t('eventPeople.failedTitle')}
+        line={t('eventPeople.failedLine')}
+        onRetry={() => {
+          setLoad({ kind: 'loading' });
+          setAttempt((n) => n + 1);
+        }}
+        testID="people.retry"
+      />
+    );
+
+  const people = inListOrder(load.people, locale);
+  const person = opened == null ? null : (people.find((one) => one.id === opened.id) ?? null);
+  const foot = seesEveryEvent(t, load, organisationName, locale);
+  const addable = load.addable;
+
+  function openRole(one: EventPerson): void {
+    focusBack.current = rows.current.get(one.id) ?? null;
+    litFade.stopAnimation();
+    litFade.setValue(1);
+    setLit({ id: one.id, held: true });
+    tell(null);
+    setOpened((was) => ({ id: one.id, open: true, visit: (was?.visit ?? 0) + 1 }));
+  }
+
+  function closeRole(): void {
+    setOpened((was) => (was == null ? null : { ...was, open: false }));
+    setLit((was) => (was == null ? null : { ...was, held: false }));
+  }
+
+  // Answers land after other changes, so each one is applied to the list as it then is.
+  function replaced(changed: EventPerson): void {
+    setLoad((was) =>
+      was.kind !== 'loaded'
+        ? was
+        : { ...was, people: was.people.map((one) => (one.id === changed.id ? changed : one)) },
+    );
+  }
+
+  function removed(gone: EventPerson): void {
+    focusBack.current = addBox.current;
+    setLoad((was) =>
+      was.kind !== 'loaded'
+        ? was
+        : { ...was, people: was.people.filter((one) => one.id !== gone.id) },
+    );
+    setOpened((was) => (was == null ? null : { ...was, open: false }));
+    setLit(null);
+    tell(t('eventPeople.removed', { name: nameOf(t, gone) }));
+    api.addableEventMembers(event.id).then(
+      (addable) => setLoad((was) => (was.kind !== 'loaded' ? was : { ...was, addable })),
+      () => undefined,
+    );
+  }
+
+  function openAdd(): void {
+    focusBack.current = addBox.current;
+    tell(null);
+    setAdding((was) => ({ open: true, visit: was.visit + 1 }));
+  }
+
+  function joined(role: EventRole, added: readonly EventPerson[], finished: boolean): void {
+    setLoad((was) =>
+      was.kind !== 'loaded'
+        ? was
+        : {
+            ...was,
+            people: [...was.people, ...added],
+            addable:
+              was.addable?.filter(
+                (one) => !added.some((there) => there.membershipId === one.membershipId),
+              ) ?? null,
+          },
+    );
+    if (!finished) return;
+    setAdding((was) => ({ ...was, open: false }));
+    tell(
+      nowCan(
+        t,
+        role,
+        added.map((one) => nameOf(t, one)),
+      ),
+    );
+  }
+
+  return (
+    <View style={styles.blocks}>
+      {manages && addable != null && (
+        <AddBox ref={addBox} label={t('eventPeople.addPrompt')} onPress={openAdd} />
+      )}
+      {manages && load.doorCodes != null && (
+        <DoorCodes
+          event={event}
+          codes={load.doorCodes}
+          onCodes={(change) =>
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, doorCodes: change(was.doorCodes ?? []) } : was,
+            )
+          }
+          tell={tell}
+        />
+      )}
+      {people.length === 0 ? (
+        <View style={styles.nobody}>
+          <Text size={16} weight="semibold">
+            {t('eventPeople.nobody')}
+          </Text>
+          <Line text={t('eventPeople.nobodyLine')} />
+        </View>
+      ) : (
+        <View>
+          <SectionHead
+            title={t('eventPeople.onEvent')}
+            right={
+              <Text size={15} weight="medium" style={[styles.secondary, styles.count]}>
+                {numberFormat(locale).format(people.length)}
+              </Text>
+            }
+          />
+          <RowList
+            items={people.map((one) => {
+              const isLit = lit?.id === one.id;
+              const opens = opensRow(one.user?.id ?? null, manages, userId);
+              const line = rowLine(t, one, userId);
+              const name = nameOf(t, one);
+              const tag = one.outside
+                ? t('eventPeople.outsideTag', { organisation: organisationName })
+                : null;
+
+              return {
+                key: one.id,
+                inset: ROW_INSET,
+                selected: isLit,
+                row: (
+                  <View>
+                    {isLit && (
+                      <Animated.View
+                        pointerEvents="none"
+                        style={[styles.lit, { opacity: litFade }]}
+                      />
+                    )}
+                    <Row
+                      ref={(node) => {
+                        if (node == null) rows.current.delete(one.id);
+                        else rows.current.set(one.id, node);
+                      }}
+                      title={name}
+                      titleMayBeAddress
+                      line={line}
+                      lead={<PersonMark person={one} side={40} />}
+                      tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}
+                      trail={
+                        opens ? (
+                          <Glyph name="down" size={18} ink={tokens.colorInkTertiary} weight={2.3} />
+                        ) : undefined
+                      }
+                      accent={isLit}
+                      onPress={opens ? () => openRole(one) : undefined}
+                      accessibilityLabel={[name, tag, line]
+                        .filter((part) => part != null)
+                        .join('. ')}
+                      testID={`people.row.${one.id}`}
+                    />
+                  </View>
+                ),
+              };
+            })}
+          />
+        </View>
+      )}
+      <View style={styles.foot}>
+        {!manages && <Line text={t('eventPeople.readOnly')} size={14} />}
+        {foot != null && <Line text={foot} size={14} />}
+      </View>
+      {person != null && opened != null && (
+        <RoleSheet
+          key={`role-${opened.visit}`}
+          person={{
+            name: nameOf(t, person),
+            line: joinedLine([
+              person.outside
+                ? t('eventPeople.fromOutside', { organisation: organisationName })
+                : t('eventPeople.memberOf', { organisation: organisationName }),
+              person.jobLabel,
+            ]),
+            face: <PersonMark person={person} side={44} />,
+          }}
+          notes={
+            person.doorCode != null && person.joinedAt != null ? (
+              <>
+                <Line
+                  text={t('doorCodes.joinedWith', {
+                    code: shownCode(person.doorCode),
+                    time: atWords(person.joinedAt, codeClock(event, now), t),
+                  })}
+                  size={14}
+                />
+                <Line text={t('eventPeople.outsideEnds')} size={14} />
+                <Line text={t('eventPeople.serviceClosing')} size={14} />
+              </>
+            ) : (
+              person.outside && (
+                <>
+                  <Line text={t('eventPeople.outsideEnds')} size={14} />
+                  <Line text={t('eventPeople.serviceClosing')} size={14} />
+                </>
+              )
+            )
+          }
+          start={person.role}
+          off={
+            person.outside
+              ? {
+                  roles: ['lead'],
+                  line: t('eventPeople.leadOff', { organisation: organisationName }),
+                }
+              : undefined
+          }
+          words={sheetWords(t, person, organisationName)}
+          open={opened.open}
+          opener={focusBack}
+          save={async (role) => {
+            const changed = await api.changeEventPerson(event.id, person.id, role);
+            replaced(changed);
+
+            return changed.role;
+          }}
+          remove={() => api.removeEventPerson(event.id, person.id)}
+          onClose={closeRole}
+          onRemoved={() => removed(person)}
+        />
+      )}
+      {adding.visit > 0 && addable != null && (
+        <AddScreen
+          key={`add-${adding.visit}`}
+          open={adding.open}
+          first={FIRST_ROLE}
+          offered={(typed) =>
+            offered(addable, typed).map((member) => ({
+              id: member.membershipId,
+              name: member.name,
+              face: <Face name={member.name} id={member.membershipId} side={40} />,
+              line: offerLine(t, member),
+            }))
+          }
+          outside={{
+            country,
+            lead: 'lead',
+            holder: (address) => holderOf(load.people, address, t('eventPeople.notJoined')),
+            add: (role, address, job) =>
+              api.addEventPersonFromOutside(
+                event.id,
+                address.address,
+                role,
+                job === '' ? null : job,
+              ),
+            words: outsideWords(t, organisationName),
+          }}
+          words={addWords(t, organisationName, addable.length === 0)}
+          opener={focusBack}
+          onClose={() => setAdding((was) => ({ ...was, open: false }))}
+          add={(role, membershipId) => api.addEventPerson(event.id, membershipId, role)}
+          onAdded={joined}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  blocks: { gap: 18 },
+  secondary: { color: tokens.colorInkSecondary },
+  count: { fontVariant: ['tabular-nums'] },
+  nobody: { gap: tokens.spaceXs },
+  lit: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -tokens.spaceMd,
+    right: -tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+    backgroundColor: tokens.colorAccentTint,
+  },
+  foot: { gap: tokens.spaceSm },
+});

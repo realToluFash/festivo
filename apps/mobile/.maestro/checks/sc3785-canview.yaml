@@ -1,0 +1,41 @@
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: list
+- assertNotVisible:
+    id: 'guests.add'
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Dubois'
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${CHLOE_ID}'
+    timeout: 20000
+- tapOn:
+    id: 'guests.row.${CHLOE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${CHLOE_ID}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: details-top
+- assertNotVisible:
+    id: 'guest.edit'
+- scroll
+- takeScreenshot: details-mid
+- scroll
+- takeScreenshot: details-foot
+- assertNotVisible:
+    id: 'guest.language'
+- openLink: ${METRO_URL}/--/events/${EMPTY_ID}?area=guests
+- extendedWaitUntil:
+    visible: 'No guests yet'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: empty

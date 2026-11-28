@@ -1,0 +1,20 @@
+# sc-100878: leaves the walk on step 1 with Zimbabwe picked and step 3 visited, for a screen-reader pass by hand.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Reader Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whatTitle}}', timeout: 10000 }
+- assertVisible: { id: 'createWalk.name' }
+- takeScreenshot: r-step1

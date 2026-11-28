@@ -1,0 +1,54 @@
+/* sc-74933: what an event's Overview needs at 400% zoom (320 CSS px) beyond the shared one-column desk (deskReflow.css, sc-32279). */
+@media (width <= 40rem) {
+  .ev-overview .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* An open part gives its indent back to its fields: the accent rule stays, the 14 px before it goes. */
+  .ev-overview .ev-opened {
+    margin-left: 0;
+  }
+
+  /* Dates: each day sits above its time, both the part's width, so the whole date shows; the time zone's list keeps to the part too. */
+  .ev-overview .ev-when-pair {
+    flex-direction: column;
+  }
+
+  .ev-overview .ev-when-pair .ev-input {
+    flex: none;
+    width: auto;
+  }
+
+  .ev-overview .ev-select select {
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  /* Cancel and Save stay side by side, wrapping only in a language too long for one line; brought into view after a notice, Save keeps its whole 5 px focus ring inside the window. */
+  .ev-overview .ev-opened-actions {
+    flex-wrap: wrap;
+    scroll-margin-block: var(--spaceSm);
+  }
+
+  /* Show the latest version? stacks its two actions in their reading order, Keep editing above Show the latest. */
+  body:has(.ev-overview .ev-save-said) .desk-ask-pair.actions-pair {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spaceXs);
+  }
+
+  body:has(.ev-overview .ev-save-said) .desk-ask-pair .desk-text {
+    min-height: var(--sizeHit);
+    margin-inline: 0;
+  }
+
+  /* The demo's "AC, not yet built" pill wraps as a rounded box rather than running past the part. */
+  .ev-overview .ev-pill {
+    flex: 0 1 auto;
+    height: auto;
+    min-height: 26px;
+    padding-block: 6px;
+    line-height: 1.25;
+    white-space: normal;
+  }
+}

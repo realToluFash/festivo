@@ -1,0 +1,24 @@
+# sc-90463: at AX5, an event launched on its side (Expo Go closed first), then the iPad turned upright; the event's page upright, where ‹ Events must be the size it is launched upright. Vars: METRO_URL, EVENT_ID.
+appId: host.exp.Exponent
+---
+- stopApp
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: event-side-launched
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: event-up-after-turn
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: event-up-after-turn-2
