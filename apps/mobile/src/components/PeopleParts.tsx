@@ -201,7 +201,8 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
 }
 
 const WORDS_ID = 'people.role.words';
-const DONE_ID = 'people.role.done.slot';
+const DONE_BESIDE_ID = 'people.role.done.beside';
+const DONE_UNDER_ID = 'people.role.done.under';
 
 /** sc-95215: the sheet's heading and its line, each word whole. From the accessibility sizes the face is not drawn and the words take the row; Done stays beside them where the widest word, the gap and Done fit the room, else it goes under the line at the row's end. */
 function PersonHead({
@@ -242,7 +243,7 @@ function PersonHead({
   const action =
     done == null ? null : (
       <View
-        nativeID={DONE_ID}
+        nativeID={under ? DONE_UNDER_ID : DONE_BESIDE_ID}
         style={under ? styles.doneUnder : big ? undefined : styles.doneBesideName}
         onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}
       >
@@ -252,7 +253,9 @@ function PersonHead({
 
   return (
     <View
-      experimental_accessibilityOrder={done == null ? undefined : [WORDS_ID, DONE_ID]}
+      experimental_accessibilityOrder={
+        done == null ? undefined : [WORDS_ID, under ? DONE_UNDER_ID : DONE_BESIDE_ID]
+      }
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {phone && (
