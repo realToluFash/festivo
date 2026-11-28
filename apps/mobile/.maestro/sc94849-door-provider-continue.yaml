@@ -1,0 +1,31 @@
+# sc-94849: from the door code's provider-only refusal (checks/sc95675-provider-only-code.yaml, run with --cold), continue with PROVIDER_ID (signIn.google or signIn.apple) as USERNAME in the local sign-in sandbox, and land back on the door code signed in (or on the two-factor step).
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: ${PROVIDER_ID}
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*|.*Each name is its own account.*'
+    timeout: 30000
+- runFlow:
+    when:
+      visible: '.*Wants to Use.*'
+    commands:
+      - tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: '.*Each name is its own account.*'
+    timeout: 20000
+- tapOn:
+    text: '.*Each name is its own account.*'
+- inputText: ${USERNAME}
+- tapOn: 'Sign in'
+- runFlow:
+    when:
+      visible: 'Open in .*'
+    commands:
+      - tapOn: 'Open'
+- extendedWaitUntil:
+    visible:
+      id: '(redeem.joinAs|twoFactor.code)'
+    timeout: 40000
+- waitForAnimationToEnd
+- takeScreenshot: 04-back

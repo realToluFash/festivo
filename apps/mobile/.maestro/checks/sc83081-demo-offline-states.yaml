@@ -1,0 +1,15 @@
+# sc-83081: the app demo's bellOffline, bellRefreshing and bellMoreFailed (phone: its Notifications screen; tablet: its popover), at the orientation the device is in. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellOffline
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: bellOffline-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellRefreshing
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: bellRefreshing-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellMoreFailed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: bellMoreFailed-demo
+- scroll
+- takeScreenshot: bellMoreFailed-demo-2

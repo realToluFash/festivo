@@ -1,0 +1,20 @@
+# Add a phone number with a number typed and the keyboard hidden, left at rest, for timed Backs on Code. sc-44486. Needs fewer than two phones on the account.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.screen'
+    timeout: 15000
+- waitForAnimationToEnd
+- inputText: '7400123459'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: phone-add-held

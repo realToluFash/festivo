@@ -1,0 +1,16 @@
+# sc-83720: New event scrolled to Hosted by's Add a host, keyboard down, left at rest for a TalkBack pass on Add a host.
+# Needs: a signed-in host who can create events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.hosts.field.0'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.hosts.add'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: held

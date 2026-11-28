@@ -1,0 +1,19 @@
+# sc-72136: on ${EVENT}, Guests' Export sheet scrolled to Share, one tap hands the file to the iOS share sheet.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- tapOn: { id: 'guests.export', retryTapIfNoChange: true }
+- extendedWaitUntil: { visible: { id: 'guests.export.head' }, timeout: 30000 }
+- tapOn: { id: 'guests.export.who.all' }
+- tapOn: { id: 'guests.export.format.csv' }
+- scrollUntilVisible: { element: { id: 'guests.export.share' }, direction: DOWN, timeout: 30000 }
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: before
+- tapOn: { id: 'guests.export.share' }
+- takeScreenshot: after-tap
+- extendedWaitUntil:
+    { visible: { text: '.*(Copy|Save to Files|Copiar|Guardar).*' }, timeout: 30000 }
+- takeScreenshot: share-sheet

@@ -1,0 +1,9 @@
+# sc-89448: opens ${EVENT_ID}'s Menu and screenshots it with the live line, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.live'
+    timeout: 30000
+- takeScreenshot: product-live

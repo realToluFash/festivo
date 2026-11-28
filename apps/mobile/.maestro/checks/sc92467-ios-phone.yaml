@@ -1,0 +1,25 @@
+# sc-92467, iPhone and iPad: Add phone opens with the keys up and takes typing with no tap, first opening only. The iOS pass of this story; sc91027-phone-add-typed.yaml is the same opening on Android. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.screen'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: opened
+- inputText: '7700900123'
+- assertVisible: '.*7700900123.*'
+- takeScreenshot: typed

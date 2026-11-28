@@ -1,0 +1,43 @@
+# sc-51870: Record a reply for ${TWO_ID} (two named places) in ${EVENT_ID}: the empty form, Save with nothing chosen, Coming with Who's coming, and one place unticked.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${TWO_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${TWO_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.card.step'
+    timeout: 20000
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: form
+- tapOn:
+    id: 'guest.record.save'
+- takeScreenshot: choose
+- tapOn:
+    id: 'guest.record.coming'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record.companion.1'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: coming
+- tapOn:
+    id: 'guest.record.companion.1'
+- takeScreenshot: unticked
+- scroll
+- takeScreenshot: foot

@@ -1,0 +1,20 @@
+# sc-102764: upright tablet, an event's Staff area (EVENT), the rules view opens as a dialog as tall as what it holds. Needs ${METRO_URL}, ${EVENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil: { visible: { id: 'briefing.card' }, timeout: 30000 }
+- assertVisible: { id: 'staff.roster' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: upright-staff
+- tapOn: { id: 'briefing.rules' }
+- extendedWaitUntil: { visible: { id: 'briefing.rules.view' }, timeout: 15000 }
+- assertVisible: { id: 'briefing.dialog' }
+- assertVisible: { id: 'briefing.rules.text' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: upright-rules

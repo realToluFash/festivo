@@ -1,0 +1,26 @@
+# sc-91027: Add a phone number, opened from Your account with the row clear of the tab bar, takes digits with no tap on the field. Needs ${METRO_URL}; signed in, fewer than two phones.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.screen'
+    timeout: 15000
+- takeScreenshot: phone-add-opened
+- inputText: '7400123459'
+- assertVisible: '7400123459'
+- takeScreenshot: phone-add-typed
+- tapOn:
+    id: 'account.phone.add.cancel'
+- tapOn:
+    id: 'account.phone.add.discard'

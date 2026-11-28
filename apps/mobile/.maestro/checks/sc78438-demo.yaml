@@ -1,0 +1,22 @@
+# The Text size demo's phone part, in French, at the current text size: the boxes, then the refusal for Royaume-Uni and 12. sc-78438.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/text-size?part=phone&lang=fr
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-open
+- tapOn:
+    id: 'demo.textSize.phone.number'
+- inputText: '12'
+- tapOn: 'Done'
+- scrollUntilVisible:
+    element:
+      id: 'demo.textSize.phone.send'
+- tapOn:
+    id: 'demo.textSize.phone.send'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'demo.textSize.phone.country'
+    direction: UP
+- takeScreenshot: demo-refused

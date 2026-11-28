@@ -1,0 +1,21 @@
+# sc-3786: Events' guest lines and the event's Overview counts on the tablet, in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.line.${EVENT}'
+    timeout: 30000
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'overview.guests'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'overview.guests.notYetInvited'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: overview

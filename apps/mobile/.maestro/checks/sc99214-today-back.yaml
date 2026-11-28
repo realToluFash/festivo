@@ -1,0 +1,42 @@
+# sc-99214: back on Today from Settings, the bar's labels are shown at once, after animations and 8 seconds later, to tell a passing frame from a lasting one.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: first
+- tapOn:
+    id: 'home.openSettings|frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'tab-today|frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 15000
+- takeScreenshot: back-0s
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: back-settled
+- swipe:
+    direction: UP
+    duration: 400
+- swipe:
+    direction: DOWN
+    duration: 400
+- extendedWaitUntil:
+    notVisible:
+      id: 'nothing-here-sc99214'
+    timeout: 8000
+- takeScreenshot: back-8s

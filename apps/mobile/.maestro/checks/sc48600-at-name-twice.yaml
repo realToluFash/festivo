@@ -1,0 +1,30 @@
+# sc-48600: the same ?at=name link twice in a row on one event opens the Name edit both times, and each Cancel closes onto the event's page. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.save'
+    timeout: 30000
+- takeScreenshot: at-name-first
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.save'
+    timeout: 20000
+- takeScreenshot: at-name-second
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- takeScreenshot: at-name-second-closed

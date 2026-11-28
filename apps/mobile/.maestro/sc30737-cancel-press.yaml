@@ -1,0 +1,8 @@
+# In Cancel your request?: presses Cancel the request and waits WAIT_MS. SHOT names it. sc-30737.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'lostTwoFactor.cancelYes'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOT}

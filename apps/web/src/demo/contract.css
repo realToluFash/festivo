@@ -1,0 +1,253 @@
+/* sc-613: Plan and billing on a contract, the overdue banner, the staff contract form and its emails. At 320 the desk reflows. */
+
+.ct-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorAttentionTint);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.ct-banner p {
+  margin: 0;
+}
+
+.ct-banner-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--colorAttentionText);
+  color: var(--colorCard);
+  font: 800 15px/1 var(--fontFamily);
+}
+
+.ct-on {
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.ct-strong {
+  margin: 0;
+  font: var(--typeBodyStrong);
+}
+
+.ct-facts {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--spaceSm) var(--spaceXl);
+  margin: 0;
+  font: var(--typeBody);
+}
+
+.ct-fact {
+  display: contents;
+}
+
+.ct-fact dt {
+  color: var(--colorInkSecondary);
+}
+
+.ct-fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ct-talk {
+  align-self: flex-start;
+}
+
+.ct-ending {
+  align-items: flex-start;
+}
+
+.ct-invoices {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ct-invoice {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(6rem, 1fr) minmax(9rem, 1.4fr) auto;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: 44px;
+  border-top: 1px solid var(--colorBorder);
+  font: var(--typeBody);
+}
+
+.ct-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.ct-status {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--spaceXs);
+}
+
+.ct-status.is-tick {
+  color: var(--colorAccentText);
+}
+
+.ct-status.is-pill {
+  padding: 2px var(--spaceSm);
+  border-radius: 999px;
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: var(--typeBodyStrong);
+}
+
+.ct-ring {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--colorInkSecondary);
+  border-radius: 50%;
+}
+
+.ct-bang {
+  font-weight: 800;
+}
+
+@media (width <= 40rem) {
+  .ct-invoice {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--spaceSm) 0;
+  }
+
+  .ct-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ct-fact dd {
+    margin-bottom: var(--spaceXs);
+  }
+}
+
+.ct-staff-page {
+  min-height: 100vh;
+  background: var(--colorPage);
+  color: var(--colorInk);
+}
+
+.ct-staff-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spaceSm) var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXxl);
+  border-bottom: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+}
+
+.ct-staff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--spaceXxl) var(--spaceLg);
+}
+
+.ct-staff-title {
+  margin: 0;
+  font: var(--typeTitleSection);
+  letter-spacing: var(--typeTitleSectionTracking);
+}
+
+.ct-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  padding: var(--spaceXl);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.ct-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--spaceLg);
+}
+
+.ct-counter {
+  margin: var(--spaceXs) 0 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.ct-counter:empty {
+  display: none;
+}
+
+.ct-counter.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 700;
+}
+
+.ct-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ct-contact {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spaceMd);
+}
+
+.ct-contact > .desk-field {
+  flex: 1;
+}
+
+.ct-add {
+  align-self: flex-start;
+}
+
+.ct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spaceLg);
+}
+
+.ct-refused {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorBroken);
+  border-radius: var(--radiusRow);
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+  font: var(--typeBody);
+}
+
+.ct-refused p {
+  margin: 0;
+}
+
+.ct-mail-facts {
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
