@@ -55,7 +55,6 @@ export const CONTRACT: Contract = {
   contacts: ['finance@ire.events', 'folake@ire.events'],
 };
 
-/** The last term's invoice, issued the day before that term began. */
 const LAST_TERM: Invoice = {
   id: 'inv-1',
   number: 'inv_01-2025-0930',
@@ -66,7 +65,6 @@ const LAST_TERM: Invoice = {
   status: 'paid',
 };
 
-/** This term's invoice, issued the day before it began. */
 const THIS_TERM: Invoice = {
   id: 'inv-2',
   number: 'inv_01-2026-0930',
@@ -77,7 +75,6 @@ const THIS_TERM: Invoice = {
   status: 'past_due',
 };
 
-/** A change to the contract staff saved during this term, which makes its own invoice in Paddle. */
 const CHANGE: Invoice = {
   id: 'inv-3',
   number: 'inv_01-2026-1005',
@@ -219,7 +216,6 @@ export function endsIn(contract: Contract, today: string): number | null {
   return left >= 0 && left <= 30 ? left : null;
 }
 
-/** The inset's title for the days left in the term, from 30 down to 0; `[en]` owns the words. */
 export function endsTitle(left: number): string {
   if (left === 0) return CONTRACT_WORDS.endsTitleToday;
   if (left === 1) return CONTRACT_WORDS.endsTitleOne;
