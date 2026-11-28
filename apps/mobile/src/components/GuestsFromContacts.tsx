@@ -47,6 +47,7 @@ import { Pill } from './SettingsParts.tsx';
 import { type AskProps, ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -506,7 +507,11 @@ export function ContactsReview({
     setFailed(null);
   };
   const remove = (key: string) => setRows((was) => was.filter((row) => row.key !== key));
-  const leave = () => (rows.length > 0 ? setDiscarding(true) : onClose());
+  const leaves = useLeaveAsk(
+    open && rows.length > 0 && !adding,
+    () => setDiscarding(true),
+    onClose,
+  );
   const discard: AskProps | null = discarding
     ? {
         title: t('fromContacts.discardTitle', { count }),
@@ -517,8 +522,14 @@ export function ContactsReview({
           removes: true,
           testID: 'guests.review.discard',
         },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
         width: ASK_WIDTH,
       }
     : null;
@@ -590,7 +601,7 @@ export function ContactsReview({
       open={open}
       title={t('fromContacts.title')}
       opener={opener}
-      onCancel={leave}
+      onCancel={() => leaves.leave()}
       ask={discard}
       over={
         choosingRow != null
