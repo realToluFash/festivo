@@ -199,7 +199,7 @@ function WhosHere({ start }: { start: WhStateName }) {
                 testID="wh.demo.coverMe"
               />
               <SecondaryButton
-                label="The floor lead picks another lead in Stations"
+                label="The floor lead makes Joy Okoro Section A’s lead in Stations"
                 onPress={() => setS(loseLead(s, 'ended'))}
                 testID="wh.demo.unlead"
               />

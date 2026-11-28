@@ -86,6 +86,8 @@ export const COUNTRY = 'NG';
 export const LEAD = { id: 5, station: 'Section A · T1–T6' };
 export const FLOOR_LEAD = 1;
 export const DOOR_LEAD = 2;
+/** Joy Okoro, on Section A, whom the floor lead makes its lead in Stations once Grace stops leading it. */
+export const NEW_LEAD = 11;
 export const SECOND_COVER = {
   id: 16,
   name: 'Oluwaseun Adebayo-Williamson Okonkwo',
@@ -616,7 +618,8 @@ export const W = {
   stations: 'Stations tonight',
   nobodyOn: (st: string) => `Nobody on ${st}`,
   nobodyHereOn: (st: string) => `Nobody here on ${st}`,
-  coveredBy: (names: readonly string[]) => `Covered by ${andList(names)}`,
+  coveredBy: (names: readonly string[]) =>
+    `Covered by ${new Intl.ListFormat('en', { type: 'conjunction' }).format(names)}`,
   cover: (st: string) => `Cover ${st}`,
   call: 'Call',
   noNumber: 'No number',
@@ -846,7 +849,6 @@ export function moveChosen(s: WhState): WhState {
     ),
     sheet: null,
     toast: { kind: 'moved', id: mover.id, from, lead: led },
-    lostRead: led && mover.id === viewer(s) && s.role === 'station' ? 'moved' : s.lostRead,
   };
 }
 
@@ -909,7 +911,8 @@ export function firstCoverer(s: WhState): { id: number; name: string } | null {
 
 export function loseLead(s: WhState, how: 'moved' | 'ended'): WhState {
   const leads = { ...s.leads };
-  delete leads[LEAD.station];
+  if (how === 'ended') leads[LEAD.station] = NEW_LEAD;
+  else delete leads[LEAD.station];
   const list =
     how === 'moved'
       ? s.list.map((q) =>

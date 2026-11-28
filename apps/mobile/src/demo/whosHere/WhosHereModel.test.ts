@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   STATE_NAMES,
   type Staffer,
+  NEW_LEAD,
   W,
   WALK_ON,
   WALK_ON_ID,
@@ -313,6 +314,9 @@ describe('a row covered more than once (sc-102659)', () => {
     expect(W.coveredBy(row?.coveredBy ?? [])).toBe(
       'Covered by Grace Okon and Oluwaseun Adebayo-Williamson Okonkwo',
     );
+    expect(W.coveredBy(['Grace Okon', 'Samuel Okafor', 'Joy Okoro'])).toBe(
+      'Covered by Grace Okon, Samuel Okafor, and Joy Okoro',
+    );
     expect(toastWords(s)).toBe(
       'Oluwaseun Adebayo-Williamson Okonkwo is on Section B · T7–T12. Kelechi Nnamdi is on Pass.',
     );
@@ -349,6 +353,14 @@ describe('the lead who stops leading (sc-102659)', () => {
     expect(loseLead(seed('lost_lead_return'), 'moved').lostRead).toBe('moved');
     expect(returnTo('moved')).toBe('/demo/my-night?state=lead_moved');
     expect(returnTo('ended')).toBe('/demo/my-night?state=lead_ended');
+  });
+
+  it('gives Section A the lead picked in Stations, and takes nobody off it', () => {
+    const s = loseLead(seed('lost_lead_return'), 'ended');
+
+    expect(s.lostRead).toBe('ended');
+    expect(s.leads['Section A · T1–T6']).toBe(NEW_LEAD);
+    expect(s.list.find((p) => p.id === 5)?.station).toBe('Section A · T1–T6');
   });
 
   it('goes back at once when a press in the open sheet is refused', () => {

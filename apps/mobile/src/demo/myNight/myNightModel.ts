@@ -336,7 +336,7 @@ export function nightOf(state: MyNightState): Night {
         ...night,
         station: 'Section A · T1–T6',
         kind: { kind: 'section', name: 'Section A · T1–T6' },
-        lead: { name: 'Dayo Okafor', phone: '+2348035550101', floor: true },
+        lead: { name: 'Joy Okoro', phone: '+2348125550209', floor: false },
         inApp: true,
       };
     case 'section_app':
@@ -491,7 +491,7 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   ],
   lead_ended: [
     'After Who’s here, lead picked in Stations',
-    'Grace no longer leads Section A: no Who’s here button, her shift as it was',
+    'Joy Okoro now leads Section A: no Who’s here button, Grace’s shift as it was, Joy Okoro her lead',
   ],
   section_app: [
     'On a section, in the app',
