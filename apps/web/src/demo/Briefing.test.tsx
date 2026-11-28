@@ -213,6 +213,13 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.queryByText(NW.footnote)).toBeNull();
   });
 
+  it('keeps Reminder the day before between the card and the Roster with details docked (sc-102333)', async () => {
+    await open('docked');
+    const card = screen.getByRole('region', { name: NW.card });
+    const roster = screen.getByRole('table', { name: 'Roster' });
+    expect(card.compareDocumentPosition(roster) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('offers Add credits to billing.manage when the reminder’s credits fall short, opening Plan and billing (sc-4333)', async () => {
     await open('noticesCostShort');
     const card = screen.getByRole('region', { name: NW.card });
