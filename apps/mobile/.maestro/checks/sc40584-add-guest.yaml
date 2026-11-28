@@ -1,0 +1,24 @@
+# sc-40584 lead's ask: Add a guest (design demo, a Modal form with a client check) with no name; Add guest with the keys up keeps them up on Name; with the keys down opens them there.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/guests
+- extendedWaitUntil: { visible: { id: 'guests.add' }, timeout: 30000 }
+- tapOn: { id: 'guests.add' }
+- extendedWaitUntil: { visible: { id: 'guests.add.name' }, timeout: 15000 }
+- tapOn: { id: 'guests.add.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: guest-01-keys-up
+- tapOn: { id: 'guests.add.do' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: guest-02-refused-keys-up
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: guest-03-typed
+- eraseText: 10
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: guest-04-keys-down
+- tapOn: { id: 'guests.add.do' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: guest-05-refused-keys-down

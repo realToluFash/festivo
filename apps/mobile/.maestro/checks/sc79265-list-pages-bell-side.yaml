@@ -1,0 +1,18 @@
+# sc-79265: on the iPad on its side at the device's text size (set outside the flow), Events, Settings and one Settings page keep the bell where main draws it; the Calendar for comparison.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: settings-page
+- setOrientation: PORTRAIT

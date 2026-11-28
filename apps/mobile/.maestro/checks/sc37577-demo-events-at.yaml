@@ -1,0 +1,17 @@
+# sc-37577: the app's design demo, /demo/events state filterOpen, its menu open.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/events?state=filterOpen
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-events-open

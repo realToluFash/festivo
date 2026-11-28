@@ -1,0 +1,44 @@
+# sc-75689: a fresh event with a waiting guest and Reply by 5 Jun; Reply by opened, an earlier day picked, the event deleted elsewhere, Save then Close replies sooner: the event-gone notice, no Try again, the day kept; Save again, the same notice once.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: fresh
+- openLink: ${METRO_URL}/--/events/${output.eventId}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.replyBy'
+    centerElement: true
+- tapOn:
+    id: 'events.details.replyBy'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- takeScreenshot: picker
+- tapOn: '1'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: delete
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: gone
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- takeScreenshot: gone-again

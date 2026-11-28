@@ -1,0 +1,21 @@
+# sc-40661 en: cote d'ivoire finds Côte d’Ivoire; niger finds Niger and Nigeria; NG finds nothing by code.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc40661-to-country-search.yaml
+- eraseText: 80
+- inputText: "cote d'ivoire"
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-en-cote
+- assertVisible: { id: 'createWalk.country.CI' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: 'niger'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-en-niger
+- assertVisible: { id: 'createWalk.country.NE' }
+- assertVisible: { id: 'createWalk.country.NG' }
+- eraseText: 80
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-en-zzz
+- assertVisible: { id: 'createWalk.countries.noMatch' }

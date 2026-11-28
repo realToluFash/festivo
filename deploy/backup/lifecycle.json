@@ -1,0 +1,12 @@
+{
+  "Rules": [
+    {
+      "ID": "backups-35-days",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "" },
+      "Expiration": { "Days": 35 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 1 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

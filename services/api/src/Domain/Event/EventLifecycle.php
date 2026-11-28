@@ -1,0 +1,151 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Event;
+
+use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
+use App\Domain\Event\Interfaces\EventEndedInterface;
+use App\Domain\Event\Model\EventTransition;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
+use App\Domain\Messaging\Model\EventDetails;
+use App\Entity\Event;
+use App\Entity\User;
+use App\Enum\Actor;
+use App\Enum\ErrorCode;
+use App\Enum\EventAction;
+use App\Enum\EventChangeKind;
+use App\Enum\EventGuard;
+use App\Enum\EventPhase;
+use App\Http\Exception\ApiException;
+use Closure;
+use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+use Symfony\Contracts\Translation\TranslatorInterface;
+
+/** Moves an event between its stored states by /event-states.json's `transitions`, each move in the audit log (sc-3584). */
+final readonly class EventLifecycle
+{
+    public const string MADE_LIVE = 'event.made_live';
+
+    public const string ENDED = 'event.ended';
+
+    public const string PAUSED = 'event.paused';
+
+    public const string RESUMED = 'event.resumed';
+
+    /** @param iterable<EventEndedInterface> $endedListeners */
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private HardLimitsInterface $hardLimits,
+        private Auditor $auditor,
+        private ClockInterface $clock,
+        private TranslatorInterface $translator,
+        private EventChangeRecorder $eventChangeRecorder,
+        private ThankYouEditor $thankYouEditor,
+        #[AutowireIterator(EventEndedInterface::TAG)]
+        private iterable $endedListeners,
+    ) {
+    }
+
+    public function makeLive(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::MakeLive, self::MADE_LIVE, $by, static fn (Event $event, DateTimeImmutable $now) => $event->makeLive($now));
+    }
+
+    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585); a call-off takes no thank-you. Whatever listens hears once it is saved (sc-62588). */
+    public function end(Event $event, User $by, ?string $thankYou = null): Event
+    {
+        $line = $this->thankYouEditor->clean($thankYou);
+
+        $ended = $this->move($event, EventAction::End, self::ENDED, $by, function (Event $event, DateTimeImmutable $now) use ($line, $by): void {
+            if (null !== $line && EventPhase::calledOff($now, $event->getStartsAt())) {
+                throw $this->stateInvalid($event, $now);
+            }
+
+            $event->end($now);
+
+            if (null !== $line) {
+                $event->setThankYou($line);
+                $this->auditor->record(ThankYouEditor::SAVED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), []);
+            }
+        });
+        foreach ($this->endedListeners as $listener) {
+            $listener->ended($ended);
+        }
+
+        return $ended;
+    }
+
+    /** Refused while it is Finished, as Resume is: a pause stops guests and keeps everything (sc-3586). */
+    public function pause(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::Pause, self::PAUSED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->pause($now));
+    }
+
+    /** Never checks the plan's limit: a Paused event already counts toward it (sc-3586, "Decided, 21 Oct"). */
+    public function resume(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::Resume, self::RESUMED, $by, static fn (Event $event) => $event->resume());
+    }
+
+    /** @param Closure(Event, DateTimeImmutable): void $apply */
+    private function move(Event $event, EventAction $action, string $audited, User $by, Closure $apply): Event
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($event, $action, $audited, $by, $apply): Event {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            $before = $event->getStatus();
+            $now = $this->clock->now();
+            $transition = EventTransition::of($before, $action) ?? throw $this->stateInvalid($event, $now);
+
+            foreach ($transition->guards as $guard) {
+                $this->check($guard, $action, $event, $now);
+            }
+
+            $details = EventDetails::of($event);
+            $apply($event, $now);
+            $this->auditor->record($audited, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'status' => [$before->value, $transition->to->value],
+            ]);
+
+            match ($action) {
+                EventAction::End => $this->eventChangeRecorder->ended($event, $by, $details),
+                EventAction::MakeLive => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::MadeLive),
+                EventAction::Pause => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::Paused),
+                EventAction::Resume => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::Resumed),
+                default => null,
+            };
+            $this->entityManager->flush();
+
+            return $event;
+        });
+    }
+
+    private function check(EventGuard $guard, EventAction $action, Event $event, DateTimeImmutable $now): void
+    {
+        match ($guard) {
+            EventGuard::EndNotPassed => $now < $event->getEndsAt()
+                ? null
+                : throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans(EventAction::End === $action ? 'event.already_over' : 'event.concluded')),
+            EventGuard::HasHost => [] !== $event->getHosts()
+                ? null
+                : throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.host_required')),
+            EventGuard::PhaseAllows => $this->phaseOf($event, $now)->allows($action) ? null : throw $this->stateInvalid($event, $now),
+            EventGuard::PlanLimit => $this->hardLimits->requireLiveRoom($event->getOrganisation()),
+        };
+    }
+
+    private function stateInvalid(Event $event, DateTimeImmutable $now): ApiException
+    {
+        return new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $this->phaseOf($event, $now)->value]);
+    }
+
+    private function phaseOf(Event $event, DateTimeImmutable $now): EventPhase
+    {
+        return EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now);
+    }
+}

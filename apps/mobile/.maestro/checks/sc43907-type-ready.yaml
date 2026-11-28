@@ -1,0 +1,18 @@
+# sc-43907: New event with Event name typed and everything else as it opens, scrolled so Create event shows; the run then turns TalkBack on and taps Create event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'TalkBack check'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: ready

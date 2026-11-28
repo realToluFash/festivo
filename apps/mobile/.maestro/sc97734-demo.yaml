@@ -1,0 +1,14 @@
+# sc-97734: one state of the door code's demo, /demo/redeem?state=${STATE}, screenshot demo-${STATE}. Pass STATE and ORIENT, and WAIT_ID when the state has no Your name field (its own control's id).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/redeem?state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: ${WAIT_ID || 'redeem.name.field'}
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-${STATE}

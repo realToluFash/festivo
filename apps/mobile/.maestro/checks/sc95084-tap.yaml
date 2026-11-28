@@ -1,0 +1,18 @@
+# sc-95084: on the phone, a short swipe from the top rests on Open the event (fr: Ouvrir l'événement); one tap opens the event. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- swipe: { start: '50%, 30%', end: '50%, 85%', duration: 600 }
+- waitForAnimationToEnd
+- swipe: { start: '50%, 60%', end: '50%, 45%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: before
+- tapOn: 'Ouvrir l.événement.*|Open the event.*'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: opened

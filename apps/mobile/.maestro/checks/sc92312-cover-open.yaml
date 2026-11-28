@@ -1,0 +1,12 @@
+# sc-92312: on its side, one tap on the live cover's Open the event (fr: Ouvrir l'événement) opens the event. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Ouvrir l.événement|Open the event'
+- waitForAnimationToEnd
+- takeScreenshot: opened

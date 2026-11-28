@@ -1,0 +1,16 @@
+appId: host.exp.Exponent
+---
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'tab-calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 20000
+- waitForAnimationToEnd
