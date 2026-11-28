@@ -1098,10 +1098,8 @@ export function rowProblems(row: ReviewRow): {
   number: boolean;
   email: string | null;
 } {
-  const name =
-    row.name.trim() === '' ? W.reviewNameBlank : nameProblem(row.name) != null ? W.nameLong : null;
   return {
-    name,
+    name: row.name.trim() === '' ? W.reviewNameBlank : nameProblem(row.name),
     number: row.unreadable && row.number.trim() !== '',
     email: emailCheck(row.email),
   };

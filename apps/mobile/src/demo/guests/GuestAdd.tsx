@@ -782,8 +782,7 @@ export function ReviewList({
       scroll.current?.scrollTo({ y: Math.max(0, y - 12) }),
     );
     const p = rowProblems(row);
-    const which =
-      p.name != null ? 'name' : p.number ? 'phone' : p.email != null ? 'email' : 'phone';
+    const which = p.name != null ? 'name' : p.number ? 'phone' : p.email != null ? 'email' : 'name';
     const field = fields.current[`${row.key}.${which}`];
     if (field != null) focusChecked({ current: field });
   };
