@@ -1104,6 +1104,49 @@ export interface PaymentRemindersSetting {
   inForce: boolean;
 }
 
+export interface SingleSignOnProvider {
+  protocol: 'saml' | 'oidc';
+  name: string;
+  way: 'url' | 'file';
+  url: string | null;
+  file: string | null;
+  issuer: string | null;
+  clientId: string | null;
+}
+
+export interface SingleSignOnPage {
+  plan: 'enterprise' | 'free';
+  ownerChanges: boolean;
+  domains: string[];
+  provider: SingleSignOnProvider | null;
+  /** The provider people still sign in through while a new one waits for its test. */
+  staying: SingleSignOnProvider | null;
+  test: 'untested' | 'passed' | 'failed';
+  testedAt: string | null;
+  tested: string | null;
+  testedEmail: string | null;
+  testedName: string | null;
+  testFailure: string | null;
+  testFailureFromProvider: boolean;
+  on: boolean;
+  required: boolean;
+  ours: {
+    saml: { entityId: string; replyUrl: string; metadataUrl: string };
+    oidc: { redirectUrl: string };
+  };
+}
+
+export interface SingleSignOnInput {
+  protocol: 'saml' | 'oidc';
+  name: string;
+  metadataUrl?: string;
+  metadataXml?: string;
+  metadataFileName?: string;
+  issuer?: string;
+  clientId?: string;
+  clientSecret?: string;
+}
+
 export interface SingleSignOnStart {
   authorizationUrl: string;
   organisation: string;
@@ -1399,6 +1442,10 @@ export interface RequestOptions {
 
 const DISH_SHAPE =
   'The API answered the menu library in a shape this client does not know. Check DishSerialiser in services/api.';
+
+function singleSignOnPath(organisationId: string, rest = ''): string {
+  return `/api/orgs/${encodeURIComponent(organisationId)}/single-sign-on${rest}`;
+}
 
 export class ApiClient {
   /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
@@ -2289,6 +2336,45 @@ export class ApiClient {
       organisations: memberships as Membership[],
       paused: paused as PausedOrganisation[],
     };
+  }
+
+  async singleSignOn(organisationId: string): Promise<SingleSignOnPage> {
+    const page = await this.get<SingleSignOnPage>(singleSignOnPath(organisationId));
+
+    if (!Array.isArray(page?.domains)) {
+      throw new Error(
+        'The API answered single sign-on in a shape this client does not know. Check SingleSignOnController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  /** 422 on the field the provider's documents could not be read from; saving switches nothing on. */
+  async saveSingleSignOnProvider(
+    organisationId: string,
+    provider: SingleSignOnInput,
+  ): Promise<SingleSignOnPage> {
+    return this.put<SingleSignOnPage>(singleSignOnPath(organisationId, '/provider'), provider);
+  }
+
+  async removeSingleSignOnProvider(organisationId: string): Promise<SingleSignOnPage> {
+    return this.delete<SingleSignOnPage>(singleSignOnPath(organisationId, '/provider'));
+  }
+
+  async testSingleSignOn(organisationId: string): Promise<{ authorizationUrl: string }> {
+    return this.post<{ authorizationUrl: string }>(singleSignOnPath(organisationId, '/test'), {});
+  }
+
+  /** Switches single sign-on, or required sign-on, on or off. */
+  async switchSingleSignOn(
+    organisationId: string,
+    which: 'on' | 'required',
+    to: boolean,
+  ): Promise<SingleSignOnPage> {
+    const path = singleSignOnPath(organisationId, `/${which}`);
+
+    return to ? this.post<SingleSignOnPage>(path, {}) : this.delete<SingleSignOnPage>(path);
   }
 
   async signInRules(organisationId: string): Promise<SignInRulesPage> {

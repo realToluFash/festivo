@@ -38,6 +38,7 @@ import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
+import { SingleSignOn } from './app/settings/SingleSignOn.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { DueNowPage } from './app/events/DueNow.tsx';
@@ -106,6 +107,7 @@ const appPages: RouteObject[] = [
       { path: 'settings', element: <General /> },
       { path: 'settings/members', element: <Members /> },
       { path: 'settings/sign-in-rules', element: <SignInRules /> },
+      { path: 'settings/sign-in-rules/single-sign-on', element: <SingleSignOn /> },
       { path: 'settings/vendors', element: <Vendors /> },
       { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
       { path: 'settings/data-and-control', element: <DataAndControl /> },

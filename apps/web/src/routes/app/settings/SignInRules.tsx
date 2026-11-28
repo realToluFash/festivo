@@ -1,4 +1,9 @@
-import { ApiError, type Membership, type SignInRulesPage } from '@soirely/api-client';
+import {
+  ApiError,
+  type Membership,
+  type SignInRulesPage,
+  type SingleSignOnPage,
+} from '@soirely/api-client';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -54,6 +59,8 @@ import {
   stepLabel,
   whereYouStand,
 } from './signInRulesDesk.ts';
+import { liveOf } from './singleSignOn.ts';
+import { SingleSignOnRow } from './SingleSignOnRow.tsx';
 import '../../../components/SettingsParts.css';
 
 type Load =
@@ -132,6 +139,24 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
   }, [organisation]);
 
   const manages = can(session, 'organisation.manage');
+  const [sso, setSso] = useState<SingleSignOnPage | null>(null);
+
+  useEffect(() => {
+    if (!manages) return;
+    let current = true;
+
+    // The rules stand on their own: without this answer the page only lacks the single sign-on section.
+    api.singleSignOn(organisation.id).then(
+      (page) => {
+        if (current) setSso(page);
+      },
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id, manages, refresh]);
   const hold = holdOf(organisation, manages);
   const reader: Reader = {
     t,
@@ -216,6 +241,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
         )}
         {load.kind === 'loaded' && (
           <Loaded
+            sso={sso}
             page={load.page}
             hold={hold}
             reader={reader}
@@ -252,6 +278,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
 }
 
 function Loaded({
+  sso,
   page,
   hold,
   reader,
@@ -259,6 +286,7 @@ function Loaded({
   onStep,
   onOpen,
 }: {
+  sso: SingleSignOnPage | null;
   page: SignInRulesPage;
   hold: Hold;
   reader: Reader;
@@ -267,7 +295,10 @@ function Loaded({
   onOpen: (key: RuleKey) => void;
 }) {
   const { t } = reader;
-  const rows = whereYouStand(page, hold, reader);
+  const exempt = page.everyoneNeedsTwoFactor && sso != null && liveOf(sso) != null;
+  const rows = whereYouStand(page, hold, reader).map((row) =>
+    exempt && row.key === 'twoFactor' ? { ...row, lines: [...row.lines, t('sso.exempt')] } : row,
+  );
   const card = rulesCard(rows, hold, reader);
   const stand = standFoot(t, page);
   const changed = changedFoot(t, hold, reader.organisation.name);
@@ -302,6 +333,7 @@ function Loaded({
         </ul>
         {stand != null && <p className="desk-foot">{stand}</p>}
       </section>
+      {sso != null && <SingleSignOnRow page={sso} organisation={reader.organisation} />}
       <section className="desk-block">
         <Head title={t('signInRules.whatChangedTitle')} />
         <ul className="desk-rows">
