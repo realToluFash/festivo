@@ -1,0 +1,14 @@
+# sc-39471: the demo's Settings held states, each from a fresh launch so no sheet carries over.
+appId: host.exp.Exponent
+---
+- stopApp
+- openLink: ${METRO_URL}/--/demo/settings?held=${HELD}
+- waitForAnimationToEnd:
+    timeout: 15000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/demo/settings?held=${HELD}
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-${HELD}-settings

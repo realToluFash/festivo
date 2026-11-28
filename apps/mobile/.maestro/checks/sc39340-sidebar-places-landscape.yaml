@@ -1,0 +1,33 @@
+# sc-39340: on the iPad on its side, the sidebar on Today, Events, the Calendar and Settings, then the list scrolled in its own region with the foot in view. ORIENT: LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: today
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: events
+- swipe:
+    start: 10%, 75%
+    end: 10%, 45%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: events-list-scrolled
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd
+- takeScreenshot: settings

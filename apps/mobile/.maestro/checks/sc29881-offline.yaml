@@ -1,0 +1,24 @@
+# sc-29881: Today with its lines on screen, then the API stopped by hand once 'before' is taken: what the lines do, and Today opened again with no API.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- extendedWaitUntil:
+    visible: '.*coming · .*replied'
+    timeout: 20000
+- takeScreenshot: before
+- extendedWaitUntil:
+    visible: 'never-on-this-screen'
+    timeout: 40000
+    optional: true
+- takeScreenshot: api-down-40s
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: 'never-on-this-screen'
+    timeout: 15000
+    optional: true
+- takeScreenshot: reopened

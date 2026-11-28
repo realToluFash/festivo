@@ -1,0 +1,13 @@
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/night
+- extendedWaitUntil:
+    visible:
+      id: night.now
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: later

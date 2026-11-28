@@ -1,0 +1,28 @@
+# sc-95859: on an Android phone, a swipe down that starts on the strip closes the long day's sheet, fresh, and after it was scrolled and taken back to its top.
+appId: host.exp.Exponent
+env:
+  DAY: '2026-11-25'
+---
+- runFlow: sc95859/open-day.yaml
+- takeScreenshot: android-fresh
+- swipe: { start: '50%,6%', end: '50%,95%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: android-fresh-swiped
+- assertNotVisible:
+    id: 'calendar.daySheet'
+- runFlow: sc95859/open-day.yaml
+- swipe: { start: '50%,80%', end: '50%,30%', duration: 1200 }
+- waitForAnimationToEnd
+- swipe: { start: '50%,80%', end: '50%,30%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: android-scrolled
+- swipe: { start: '50%,6%', end: '50%,80%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: android-back-at-top
+- assertVisible:
+    id: 'calendar.daySheet'
+- swipe: { start: '50%,6%', end: '50%,95%', duration: 800 }
+- waitForAnimationToEnd
+- takeScreenshot: android-top-swiped
+- assertNotVisible:
+    id: 'calendar.daySheet'

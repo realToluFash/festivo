@@ -1,0 +1,147 @@
+.tc-arrived {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusField);
+  background: var(--colorAccentTint);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.tc-arrived svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.tc-label {
+  margin: 0;
+  font: var(--typeButton);
+}
+
+.tc-preview {
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: var(--typeBody);
+  user-select: text;
+}
+
+.tc-ways {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tc-way {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.tc-panel .tc-pill {
+  gap: var(--spaceSm);
+  width: 100%;
+  min-height: var(--sizeHit);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.tc-outward {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.tc-subject {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.tc-copied {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  font: var(--typeBodyStrong);
+}
+
+.tc-copied svg {
+  flex: none;
+  color: var(--markDoneFill);
+}
+
+.tc-opened code {
+  display: block;
+  overflow-wrap: anywhere;
+  font: var(--typeSmall);
+}
+
+.tc-saved {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.tc-saved-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radiusPill);
+  background: var(--markDoneFill);
+  color: var(--markDoneInk);
+}
+
+.tc-summary {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.tc-summary.is-struck {
+  text-decoration: line-through;
+}
+
+.tc-next {
+  margin: 0;
+  font: var(--typeBodyStrong);
+}
+
+.tc-offer-acts {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spaceSm);
+}
+
+.tc-panel .tc-wide {
+  width: 100%;
+  min-height: var(--sizeHit);
+}
+
+.tc-done.link-button {
+  align-self: center;
+  min-height: var(--sizeHit);
+}
+
+@media (width <= 40rem) {
+  .tc-panel .tc-pill,
+  .tc-panel .tc-wide {
+    min-height: var(--sizeHitPhonePrimary);
+  }
+}

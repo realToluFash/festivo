@@ -1,0 +1,17 @@
+# sc-101859: Copy link then Mark as sent on a Copied "Markable" person, each toast in the batch's language; needs TOKEN, API_URL, WEB_ORIGIN.
+appId: host.exp.Exponent
+---
+- runScript: { file: sc101859/remove.js, env: { STEP: pick, PREFIX: Markable } }
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${output.rid}
+- extendedWaitUntil: { visible: 'Markable.*', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.copy' }, timeout: 30000 }
+- tapOn: { id: 'staffLink.copy' }
+- extendedWaitUntil: { visible: '{{t:staffLink.copiedSaid}}', timeout: 10000 }
+- takeScreenshot: copied-said
+- tapOn: { id: 'staffLink.markSent' }
+- extendedWaitUntil:
+    {
+      visible: '(Marked as sent to|Marcado como enviado a|Marqué comme envoyé à|Marcada como enviada a) Markable.*',
+      timeout: 10000,
+    }
+- takeScreenshot: marked

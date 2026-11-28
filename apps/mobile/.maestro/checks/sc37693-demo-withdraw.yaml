@@ -1,0 +1,12 @@
+# sc-37693: demo-withdraw.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/members?state=withdraw
+- extendedWaitUntil: { visible: '.*(Members|Cancel|Settings|Remove).*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-withdraw-top
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: demo-withdraw-foot

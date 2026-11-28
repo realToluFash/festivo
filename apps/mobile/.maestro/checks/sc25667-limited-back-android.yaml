@@ -1,0 +1,55 @@
+# Android only. sc-25667: on an account at its limit, back does nothing while it sends; once Too many new organisations for now. shows, back steps the walk back to Where is it based?, and nothing named Held Back Limited is created.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Back Limited'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createWalk.primary'
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createWalk'
+- assertVisible: '{{t:createOrganisation.creating}}'
+- takeScreenshot: limited-back-held
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.whereTitle}}'
+    timeout: 10000
+- takeScreenshot: limited-back-stepped
+- tapOn:
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Held Back Limited.*'
+- takeScreenshot: limited-back-switcher

@@ -1,0 +1,13 @@
+appId: com.soirely.app
+---
+- runFlow:
+    when:
+      notVisible:
+        id: '${PWD_ID}'
+    commands:
+      - tapOn: { id: '${EMAIL_ID}' }
+- tapOn: { id: '${PWD_ID}' }
+- eraseText: 80
+- inputText: 'side-by-side-password'
+- tapOn: { id: '${PWD_ID}.reveal' }
+- waitForAnimationToEnd

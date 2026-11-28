@@ -1,0 +1,32 @@
+# sc-39340: on the iPad on its side at a large text size, from ${PLACE}, the sidebar scrolls as a whole until Settings and the person at the foot are reached. ORIENT: LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/${PLACE}
+- extendedWaitUntil:
+    visible:
+      id: 'frame.home'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe:
+    start: 8%, 45%
+    end: 8%, 15%
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: s1
+- swipe:
+    start: 8%, 45%
+    end: 8%, 15%
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: s2
+- swipe:
+    start: 8%, 45%
+    end: 8%, 15%
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: s3
+- assertVisible:
+    id: 'frame.settings'
+- assertVisible: '.*QA Tester.*'

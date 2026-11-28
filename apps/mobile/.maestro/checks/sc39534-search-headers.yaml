@@ -1,0 +1,31 @@
+# sc-39534: the 44 pt Search button in the header of Today, Events, Calendar and Settings (phone, upright tablet).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'today.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: today
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: calendar
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: settings

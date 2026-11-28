@@ -1,0 +1,34 @@
+.mg-notice-bubble.mg-sms-bubble {
+  white-space: pre-line;
+}
+
+.mg-sms-first {
+  max-width: 320px;
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-sms-wait {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-sms-wait svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorInkSecondary);
+}
+
+.mg-sms-clock {
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}

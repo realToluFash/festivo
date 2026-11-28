@@ -1,0 +1,13 @@
+/* sc-93858: the card with no step shares its cell with an unseen finished copy, so it keeps the finished height in every locale and nothing below moves when the step comes back. */
+.lod-held {
+  display: grid;
+  flex: none;
+}
+
+.lod-held > * {
+  grid-area: 1 / 1;
+}
+
+.lod-unseen {
+  visibility: hidden;
+}

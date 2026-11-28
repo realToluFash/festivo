@@ -1,0 +1,117 @@
+import { type Ref } from 'react';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  type TextInputInstance,
+  type TextInputProps,
+  View,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { passwordProps } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
+import { inputFaced } from '../theme/fonts.ts';
+import { tokens } from '../theme/tokens.ts';
+import {
+  fieldStyles,
+  focusEdge,
+  refusedField,
+  useOpenedFocus,
+  useFieldLabel,
+  useFocusEdge,
+  useHeld,
+  useRefused,
+  useRevealed,
+} from './Field.tsx';
+import { bothRefs } from './Screen.tsx';
+import { Text } from './Text.tsx';
+
+/** Room for "Show" or "Hide", so typed text never runs under the control. */
+const REVEAL_ROOM = 72;
+
+/** Hidden by default, and hidden again on submit, on leaving the screen and when the app goes to the background. */
+export function PasswordField({
+  wrong = false,
+  submitting = false,
+  value,
+  onChangeText,
+  onSubmitEditing,
+  ref,
+  testID,
+  ...rest
+}: Omit<TextInputProps, 'secureTextEntry'> & {
+  wrong?: boolean;
+  submitting?: boolean;
+  testID: string;
+  ref?: Ref<TextInputInstance> | undefined;
+}) {
+  const { t } = useTranslation();
+  const refused = useRefused(wrong);
+  const [revealed, setRevealed] = useRevealed(submitting);
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+  const labelID = useFieldLabel();
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
+  const opened = useOpenedFocus(rest.autoFocus, focused);
+
+  return (
+    <View>
+      <TextInput
+        {...rest}
+        autoFocus={opened.autoFocus}
+        onPressIn={opened.onPressIn}
+        {...refusedField(refused, rest, labelID)}
+        {...passwordProps(Platform.OS, revealed)}
+        {...holding}
+        ref={bothRefs(opened.input, ref)}
+        {...edging}
+        style={inputFaced(
+          [
+            fieldStyles.input,
+            focusEdge(focused, wrong),
+            styles.withReveal,
+            focused && styles.withRevealEdge,
+          ],
+          'sans',
+          bold,
+        )}
+        aria-invalid={wrong}
+        testID={testID}
+        onSubmitEditing={(event) => {
+          setRevealed(false);
+          onSubmitEditing?.(event);
+        }}
+      />
+      <Pressable
+        style={styles.reveal}
+        onPress={() => setRevealed((shown) => !shown)}
+        accessibilityRole="togglebutton"
+        accessibilityState={{ checked: revealed }}
+        accessibilityLabel={revealed ? t('signIn.conceal') : t('signIn.reveal')}
+        testID={`${testID}.reveal`}
+      >
+        <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
+          {revealed ? t('signIn.conceal') : t('signIn.reveal')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  withReveal: { paddingRight: REVEAL_ROOM },
+  withRevealEdge: { paddingRight: REVEAL_ROOM - 1 },
+  reveal: {
+    position: 'absolute',
+    top: 0,
+    right: tokens.spaceHair,
+    bottom: 0,
+    minWidth: tokens.sizeHit,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: tokens.spaceLg,
+  },
+  accent: { color: tokens.colorAccentText },
+});

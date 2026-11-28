@@ -1,0 +1,30 @@
+# sc-92465: Today upright, one tap on the organisation pill; the switcher at the device's text size, then scrolled a fifth of the screen at a time, then one tap on Create an organisation. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 15000 }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: today
+- tapOn: { id: 'home.switchOrganisation' }
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- swipe: { start: '50%, 70%', end: '50%, 50%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: s1
+- swipe: { start: '50%, 70%', end: '50%, 50%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: s2
+- swipe: { start: '50%, 70%', end: '50%, 50%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: s3
+- swipe: { start: '50%, 70%', end: '50%, 50%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: s4
+- swipe: { start: '50%, 70%', end: '50%, 50%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: s5
+- tapOn: { text: '(Create an organisation|Créer une organisation)' }
+- waitForAnimationToEnd
+- takeScreenshot: create

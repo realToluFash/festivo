@@ -1,0 +1,41 @@
+# sc-38666: on a phone on its side, keys up on the name step: scroll inside the strip to the step's title, then to its foot (hint, Continue); the keys' action key to the country step; Search countries holding the keys (Continue left out), the keys down (Continue pinned); ‹ Back and the name focused again.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- inputText: 'Lagos Supper Club'
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- swipe: { start: '50%, 22%', end: '50%, 34%', duration: 500 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: s01-top-keys-up
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- swipe: { start: '50%, 34%', end: '50%, 22%', duration: 500 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: s02-foot-keys-up
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'createWalk.search' }, timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Nig'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: s03-country-search-keys-up
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: s04-country-keys-down
+- tapOn: { id: 'createWalk.back' }
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 10000 }
+- tapOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s05-back-name-keys-up
+- tapOn: { id: 'createWalk.cancel', optional: true }
+- setOrientation: PORTRAIT

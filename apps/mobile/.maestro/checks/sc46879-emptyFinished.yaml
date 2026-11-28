@@ -1,0 +1,16 @@
+# sc-46879: an empty list (${EFINISHED}) beside the demo's emptyFinished.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EFINISHED}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: emptyFinished
+- openLink: ${METRO_URL}/--/demo/guests?state=emptyFinished
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-emptyFinished

@@ -1,0 +1,37 @@
+# sc-100878: Continue from step 1 (never step 3 first) keeps Zimbabwe in view and picked, three times running.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Zimbabwe Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- waitForAnimationToEnd
+- takeScreenshot: zw-picked
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: ff-forward-1
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: ff-forward-2
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: ff-forward-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }

@@ -1,0 +1,42 @@
+# sc-101592: "zzz" matches nothing; cleared by Clear search, then by the delete key: the message goes and the whole list comes back.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'createWalk.countries.noMatch' }, timeout: 5000 }
+- takeScreenshot: z-nomatch
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- takeScreenshot: z-cleared-button
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'createWalk.countries.noMatch' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- takeScreenshot: z-cleared-delete

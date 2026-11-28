@@ -1,0 +1,91 @@
+# sc-80944: Set password and sign in lands on Your organisation with its loads held back; Password changed outlasts the late autofocus of Organisation name.
+# Pass METRO_URL, TOKEN (a reset token for an account with its profile complete, in no organisation), NEW_PASSWORD,
+# and ACTION: none (wait and look), type (type into Organisation name), country (tap Country).
+# Hold /api/invitations and /api/join-offers back with a proxy in front of the API (QA_API_URL) to make the landing slow.
+appId: host.exp.Exponent
+---
+- stopApp
+# On the iPhone a cold start drops the link (sc-36253): open the app on welcome first.
+- openLink: ${METRO_URL}
+- extendedWaitUntil: { visible: { id: 'welcome.email' }, timeout: 20000, optional: true }
+# Still signed in as the run before's account, on Your organisation: sign it out.
+- runFlow:
+    when:
+      visible: { id: 'completeProfile.left' }
+    file: sign-out-from-complete-profile.yaml
+- runFlow:
+    when:
+      visible: { id: 'noOrganisation.signOut' }
+    commands:
+      - tapOn: { id: 'noOrganisation.signOut' }
+- extendedWaitUntil: { visible: { id: 'welcome.email' }, timeout: 120000 }
+- pressKey: home
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 120000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: ${NEW_PASSWORD}
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:any:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: slow-01-toast
+- runFlow:
+    when:
+      true: ${ACTION != 'invited' && ACTION != 'invited-own'}
+    commands:
+      - extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 20000 }
+      - takeScreenshot: slow-02-content
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+      - takeScreenshot: slow-03-after-focus
+      - assertVisible: '{{t:any:recovery.changed}}'
+# You're invited: the step shows its content with nothing focused.
+- runFlow:
+    when:
+      true: ${ACTION == 'invited' || ACTION == 'invited-own'}
+    commands:
+      - extendedWaitUntil: { visible: { id: 'completeProfile.join' }, timeout: 20000 }
+      - takeScreenshot: invited-02-content
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+      - takeScreenshot: invited-03-nothing-focused
+      - assertVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'type'}
+    commands:
+      - inputText: Acme Events
+      - takeScreenshot: slow-04-typed
+      - assertVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'country'}
+    commands:
+      - tapOn: { id: 'completeProfile.country' }
+      - takeScreenshot: slow-04-country
+      - assertNotVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'close'}
+    commands:
+      - tapOn: '{{t:any:toast.close}}'
+      - takeScreenshot: slow-04-closed
+      - assertNotVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'keys'}
+    commands:
+      - pressKey: Enter
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+      - takeScreenshot: slow-04-keys-down
+      - assertVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'wait'}
+    commands:
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 9000, optional: true }
+      - takeScreenshot: slow-04-ten-seconds
+      - assertNotVisible: '{{t:any:recovery.changed}}'
+- runFlow:
+    when:
+      true: ${ACTION == 'invited-own'}
+    commands:
+      - tapOn: { id: 'completeProfile.startOwn' }
+      - takeScreenshot: invited-04-start-own
+      - assertNotVisible: '{{t:any:recovery.changed}}'

@@ -1,0 +1,34 @@
+# sc-100878: the device's own country (COUNTRY, NG unless given) picked: the step opens at the top of the list with it picked, by either way back and on a fresh walk.
+#
+#   node .qa/bin/qa-env.mjs maestro checks/sc100878-device COUNTRY=US
+#
+# No `env:` block: a default there shadows the value passed with -e.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Lagos Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: n-fresh
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.${COUNTRY || "NG"}', selected: true }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- takeScreenshot: n-step3
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n-back-from-3
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.${COUNTRY || "NG"}', selected: true }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n-forward-1
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: { id: 'createWalk.country.${COUNTRY || "NG"}', selected: true }
