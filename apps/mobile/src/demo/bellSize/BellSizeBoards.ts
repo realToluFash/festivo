@@ -155,6 +155,11 @@ export const BELL_ROWS_BOARDS: readonly BellSizeBoard[] = [
     href: '/demo/bell-size?size=ax5&lang=fr&rows=steps',
   },
   {
+    title: 'A 40-letter name · AX5, French',
+    what: 'The long name breaks at 13.5; the title over it at 45',
+    href: '/demo/bell-size?size=ax5&lang=fr&rows=word40',
+  },
+  {
     title: 'Mixed rows · default size',
     what: 'As on main: every text at its default size',
     href: '/demo/bell-size?size=default&lang=en&rows=mixed',
@@ -192,5 +197,10 @@ export const PHONE_BELL_ROWS_BOARDS: readonly BellSizeBoard[] = [
     title: 'Mixed rows · default size',
     what: 'As on main',
     href: '/demo/bell-size?size=default&lang=en&rows=mixed',
+  },
+  {
+    title: 'A 40-letter name · default size',
+    what: 'As on main: the one long word breaks at the line’s end, the only word that does',
+    href: '/demo/bell-size?size=default&lang=en&rows=word40',
   },
 ];

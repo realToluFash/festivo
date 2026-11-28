@@ -33,8 +33,3 @@ export function rowTextSize(size: number, start: number, widest: number, room: n
 
   return Math.max(size, Math.floor((start * room) / widest));
 }
-
-/** A word wider than its line at the text's default size: the only word a row may break. */
-export function tooLongForAnyLine(widestAtDefault: number, room: number): boolean {
-  return widestAtDefault > room;
-}

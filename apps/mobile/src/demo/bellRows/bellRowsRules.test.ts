@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ROW_SETS, rowsUnreadAt, rowWords } from './bellRowSamples.ts';
-import {
-  ROW_LINE,
-  ROW_MARK,
-  ROW_TITLE,
-  rowTextSize,
-  rowTextStart,
-  tooLongForAnyLine,
-} from './bellRowsRules.ts';
+import { ROW_LINE, ROW_MARK, ROW_TITLE, rowTextSize, rowTextStart } from './bellRowsRules.ts';
 
 const DEFAULT = 1;
 const SEVENTH = 1.353;
@@ -53,8 +46,10 @@ describe('a bell row’s texts at the accessibility sizes (sc-102956)', () => {
   });
 
   it('breaks only a word wider than its line even at the default size', () => {
-    expect(tooLongForAnyLine(311.7, PHONE_MORE)).toBe(true);
-    expect(tooLongForAnyLine(71.9, PHONE_MORE)).toBe(false);
+    // The 40-letter event name is 311.7 wide at 13.5, so 311.7 × 3.571 at its AX5 start.
+    expect(rowTextSize(ROW_LINE, ROW_LINE * AX5, 311.7 * AX5, PHONE_MORE)).toBe(ROW_LINE);
+    // A word 200 wide at 13.5 steps down to 18 and stays whole.
+    expect(rowTextSize(ROW_LINE, ROW_LINE * AX5, 200 * AX5, PHONE_MORE)).toBe(18);
   });
 });
 
