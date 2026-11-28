@@ -104,6 +104,18 @@ describe('an early Back goes to the opening picker, not what is beneath (sc-4448
     expect(listeners.size).toBe(0);
   });
 
+  it('ends the drop NEXT_BACK_MS after the tap when the early Back arrives at once', () => {
+    const { release } = holdBack(vi.fn());
+    vi.advanceTimersByTime(150);
+    press();
+    release();
+    vi.setSystemTime(Date.now() + NEXT_BACK_MS - 150);
+
+    expect(press()).toEqual([false]);
+    expect(listeners.size).toBe(0);
+    vi.runAllTimers();
+  });
+
   it('passes on a Back that is due though the timer has not run', () => {
     const { release } = holdBack(vi.fn());
     press();
