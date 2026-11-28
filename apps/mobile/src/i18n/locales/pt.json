@@ -4312,7 +4312,7 @@
     "previewLoading": "A carregar a página…",
     "close": "Fechar"
   },
-  "staffNotices": {
+  "notices": {
     "card": "Lembrete na véspera",
     "switchLabel": "Lembrar cada pessoa do seu turno na véspera",
     "on": "Ativado",

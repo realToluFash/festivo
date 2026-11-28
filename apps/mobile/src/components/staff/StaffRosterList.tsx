@@ -8,7 +8,7 @@ import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { BRIEFING_WORDS, noteOf } from '../../kit/staffBriefing.ts';
-import { noticeClock, noticeLines } from '../../kit/staffNotices.ts';
+import { noticeClock, noticeLines } from '@soirely/domain';
 import { linkWord, rowLine } from '../../kit/staffRoster.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';

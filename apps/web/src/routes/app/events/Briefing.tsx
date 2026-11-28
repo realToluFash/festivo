@@ -20,7 +20,7 @@ import { headingOf, weekdayOf } from '../../public/myNight.ts';
 import { StationSelect } from './StationsArea.tsx';
 import { NoticeLines, ReminderCard } from './Notices.tsx';
 import { countLine, fitRules, noteOf, tallyOf } from './briefing.ts';
-import { type NoticeClock, noticeClock, noticeLines } from './notices.ts';
+import { type NoticeClock, noticeClock, noticeLines } from '@soirely/domain';
 import { type StaffTimes, clockWords, rangeWords } from './staffTimes.ts';
 import '../../public/myNight.css';
 import './briefing.css';

@@ -4312,7 +4312,7 @@
     "previewLoading": "Chargement de la page…",
     "close": "Fermer"
   },
-  "staffNotices": {
+  "notices": {
     "card": "Rappel la veille",
     "switchLabel": "Envoyer un rappel à chaque personne la veille de son service",
     "on": "Activé",

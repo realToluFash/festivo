@@ -4121,7 +4121,7 @@
     "previewLoading": "Loading their page…",
     "close": "Close"
   },
-  "staffNotices": {
+  "notices": {
     "card": "Reminder the day before",
     "switchLabel": "Remind each person the day before their shift",
     "on": "On",

@@ -3,7 +3,8 @@ import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import '../../../i18n/index.ts';
-import { noticeClock, noticeLines, reminderLines, removalLine, slotWords } from './notices.ts';
+import { noticeClock, noticeLines, reminderLines, slotWords } from '@soirely/domain';
+import { removalLine } from './notices.ts';
 
 const t = i18next.getFixedT('en');
 const EVENT = {

@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
-import { type NoticeMark, flipReminder, reminderLines } from '../../kit/staffNotices.ts';
+import { type NoticeMark, flipReminder, reminderLines } from '../../kit/notices.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { Notice } from '../Notice.tsx';
@@ -78,11 +78,11 @@ export function ReminderCard({
     setCard(result.card);
     if (result.kind === 'over') {
       setOver(true);
-      readOut(t('staffNotices.alreadyOver'));
+      readOut(t('notices.alreadyOver'));
       read();
     } else if (result.kind === 'failed') {
       setNotSaved(true);
-      readOut(card.on ? t('staffNotices.notSavedOn') : t('staffNotices.notSavedOff'));
+      readOut(card.on ? t('notices.notSavedOn') : t('notices.notSavedOff'));
     }
     setBusy(false);
   }
@@ -91,7 +91,7 @@ export function ReminderCard({
     <View style={styles.stack}>
       {over && (
         <View testID="reminder.over">
-          <Notice tone="quiet" mark="info" body={t('staffNotices.alreadyOver')} />
+          <Notice tone="quiet" mark="info" body={t('notices.alreadyOver')} />
         </View>
       )}
       <View style={styles.card} testID="reminder.card">
@@ -102,14 +102,14 @@ export function ReminderCard({
             accessibilityRole="header"
             style={styles.grow}
           >
-            {t('staffNotices.card')}
+            {t('notices.card')}
           </Text>
           {lines.kind === 'open' &&
             (manages ? (
               <OnOffSwitch
                 on={card.on}
-                words={{ on: t('staffNotices.on'), off: t('staffNotices.off') }}
-                label={t('staffNotices.switchLabel')}
+                words={{ on: t('notices.on'), off: t('notices.off') }}
+                label={t('notices.switchLabel')}
                 busy={busy}
                 onChange={(next) => void flip(next)}
                 testID="reminder.switch"
@@ -121,7 +121,7 @@ export function ReminderCard({
                 style={card.on ? styles.accent : styles.secondary}
                 testID="reminder.word"
               >
-                {card.on ? t('staffNotices.on') : t('staffNotices.off')}
+                {card.on ? t('notices.on') : t('notices.off')}
               </Text>
             ))}
         </View>
@@ -133,7 +133,7 @@ export function ReminderCard({
           <>
             {notSaved && (
               <ReadOut
-                words={card.on ? t('staffNotices.notSavedOn') : t('staffNotices.notSavedOff')}
+                words={card.on ? t('notices.notSavedOn') : t('notices.notSavedOff')}
                 interrupts
                 accessibilityRole="alert"
                 style={styles.inline}
@@ -141,12 +141,12 @@ export function ReminderCard({
               >
                 <Glyph name="alert" size={16} ink={tokens.colorBrokenText} />
                 <Text size={14} weight="semibold" style={[styles.broken, styles.shrink]}>
-                  {card.on ? t('staffNotices.notSavedOn') : t('staffNotices.notSavedOff')}
+                  {card.on ? t('notices.notSavedOn') : t('notices.notSavedOff')}
                 </Text>
               </ReadOut>
             )}
             <Text size={15} style={styles.secondary}>
-              {t('staffNotices.does', { time: card.time })}
+              {t('notices.does', { time: card.time })}
             </Text>
             {(lines.top != null || lines.left.length > 0) && (
               <View style={styles.box} testID="reminder.lines">

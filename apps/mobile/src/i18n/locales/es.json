@@ -4312,7 +4312,7 @@
     "previewLoading": "Cargando la página…",
     "close": "Cerrar"
   },
-  "staffNotices": {
+  "notices": {
     "card": "Recordatorio el día antes",
     "switchLabel": "Recordar a cada persona su turno el día antes",
     "on": "Activado",
