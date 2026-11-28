@@ -1,0 +1,25 @@
+# sc-62023: the demo of Notifications on a phone on its side (LANDSCAPE_LEFT), its four states, for the side-by-side pairs. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- openLink: ${METRO_URL}/--/demo/bell
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- takeScreenshot: top
+- openLink: ${METRO_URL}/--/demo/bell?ask=shown
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: ask
+- openLink: ${METRO_URL}/--/demo/bell?at=scrolled
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: scrolled
+- openLink: ${METRO_URL}/--/demo/bell?ask=shown&at=scrolled
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: ask-scrolled
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

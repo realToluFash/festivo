@@ -1,0 +1,75 @@
+# sc-94683: the demo's Today size boards, This week Two events starting, in ORIENT, at AX2 fr, AX5 fr, AX2 en, default fr and AX1 fr; This week's heading brought to the middle for each. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?week=starts&size=ax2&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: d-ax2-fr
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: d-ax2-fr-2
+- openLink: ${METRO_URL}/--/demo/today-size?week=starts&size=ax5&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: d-ax5-fr
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: d-ax5-fr-2
+- openLink: ${METRO_URL}/--/demo/today-size?week=starts&size=ax2&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: d-ax2-en
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: d-ax2-en-2
+- openLink: ${METRO_URL}/--/demo/today-size?week=starts&size=default&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: d-default-fr
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: d-default-fr-2
+- openLink: ${METRO_URL}/--/demo/today-size?week=starts&size=ax1&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: d-ax1-fr
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: d-ax1-fr-2

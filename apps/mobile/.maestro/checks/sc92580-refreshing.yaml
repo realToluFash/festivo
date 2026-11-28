@@ -1,0 +1,19 @@
+# sc-92580: on the iPad upright at the device's text size (AX5, set outside the flow), the bell's panel while its list refreshes with rows loaded. Run with the app's API behind a proxy that holds GET /api/notifications (scripts/qa-slow-proxy.mjs --delay 15000, under the app's 20 s no-answer limit) and drops POST /api/notifications/read-all unanswered: Mark all read then leaves the panel stale with its rows, and Try again starts the held refresh. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: '.*Today.*'
+- waitForAnimationToEnd
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: '.*Ada Obi replied yes.*', timeout: 60000 }
+- takeScreenshot: loaded
+- tapOn: { id: 'notifications.markAllRead' }
+- extendedWaitUntil: { visible: { id: 'offline.retry' }, timeout: 30000 }
+- takeScreenshot: stale
+- tapOn: { id: 'offline.retry' }
+- extendedWaitUntil: { visible: { id: 'notifications.refreshing' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: refreshing

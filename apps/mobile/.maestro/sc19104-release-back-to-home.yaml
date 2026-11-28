@@ -1,0 +1,11 @@
+# sc-19104, Android release build, a section open beside the Settings list: Back leaves Settings for Home.
+appId: com.soirely.app
+---
+- waitForAnimationToEnd
+- takeScreenshot: before-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-back

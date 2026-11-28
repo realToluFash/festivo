@@ -1,0 +1,10 @@
+# Closes the keys with the iPad keyboard's hide key, a field in the sheet focused. sc-67886.
+#
+# The hide key has no id and is tapped by its place. With the keys already down, that place is outside the sheet
+# and the tap closes it.
+appId: host.exp.Exponent
+---
+- tapOn:
+    point: '97%,97%'
+- waitForAnimationToEnd:
+    timeout: 3000

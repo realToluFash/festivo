@@ -1,0 +1,61 @@
+# sc-94081: an event's People, then one person's role sheet (Role on this event), top and foot. ${EV} is the event, ${PERSON} the person on it besides the owner.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.title}}.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'people.row.${PERSON}'
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 30
+    centerElement: true
+- swipe: { start: '50%,40%', end: '50%,75%', duration: 1500 }
+- waitForAnimationToEnd
+- tapOn:
+    id: 'people.row.${PERSON}'
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.role.can_view}}.*'
+    timeout: 10000
+    optional: true
+- extendedWaitUntil:
+    visible: '{{t:eventPeople.done}}'
+    timeout: 10000
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: sheet-1
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-2
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-3
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-4
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-5
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-6
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-7
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-8
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-9
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-10
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-11
+- swipe: { start: '50%,75%', end: '50%,35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-12

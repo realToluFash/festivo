@@ -1,0 +1,13 @@
+# New event on the tablet shows its form body under the header, opened by link. sc-48607.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- takeScreenshot: new-event-form
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+- takeScreenshot: new-event-form-foot

@@ -1,0 +1,21 @@
+# sc-95215: the iPad's role sheet for ${PERSON}, open at rest.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.title}}.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'people.row.${PERSON}'
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: 'people.row.${PERSON}'
+- extendedWaitUntil:
+    visible: '{{t:eventPeople.done}}'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: rest

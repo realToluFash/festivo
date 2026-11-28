@@ -1,0 +1,18 @@
+# sc-3784: a Can view or Can check guests in grant holder sees the Guests header with no Export. ORG is the id of the organisation that holds the event.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: grant
+- assertNotVisible:
+    id: 'guests.export'

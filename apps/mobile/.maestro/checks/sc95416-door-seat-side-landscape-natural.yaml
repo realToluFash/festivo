@@ -1,0 +1,7 @@
+# sc-95416: sc95416-door-seat with the tablet on its side, on a tablet whose natural orientation is landscape
+# (Soirely_QA4_Tablet, 2560x1600): there Maestro's PORTRAIT is rotation 0, which is landscape, and LANDSCAPE_LEFT is upright. Vars: METRO_URL, EV.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: sc95416-door-seat.yaml
+- setOrientation: LANDSCAPE_LEFT

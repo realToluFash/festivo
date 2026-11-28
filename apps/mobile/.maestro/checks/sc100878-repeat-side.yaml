@@ -1,0 +1,79 @@
+# sc-100878 (tablet on its side, SIDE: LANDSCAPE_LEFT unless the tablet's natural orientation is landscape, then PORTRAIT): Zimbabwe stays in view and picked on Continue from step 1, three times running and after step 3 in between; then Create.
+appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
+---
+- runFlow: ../open-create-organisation.yaml
+- setOrientation: ${SIDE}
+- waitForAnimationToEnd
+- takeScreenshot: side-turned
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Zimbabwe Side'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- tapOn: { id: 'createWalk.country.ZW' }
+- waitForAnimationToEnd
+- takeScreenshot: zw-picked
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- takeScreenshot: side-step3
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-back-from-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-forward-1
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-forward-2
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-forward-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- takeScreenshot: side-step3-again
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-back-from-3-again
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: side-forward-after-3
+- assertVisible: { id: 'createWalk.country.ZW', selected: true }
+- assertVisible: { text: '.*ZWG.*' }
+- tapOn: { id: 'createWalk.primary' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
+- takeScreenshot: side-ready
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: side-created
+- setOrientation: PORTRAIT

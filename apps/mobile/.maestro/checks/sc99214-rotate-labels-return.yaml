@@ -1,0 +1,50 @@
+# sc-99214: turning the phone to its side and back, on Today and on an event's Overview, brings every label of the bar back: at once, settled and 8 seconds later.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today-before
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today-landscape
+- setOrientation: PORTRAIT
+- takeScreenshot: today-back-0s
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today-back-settled
+- extendedWaitUntil:
+    visible:
+      id: 'nothing-here-sc99214'
+    timeout: 8000
+    optional: true
+- takeScreenshot: today-back-8s
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: event-before
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: event-landscape
+- setOrientation: PORTRAIT
+- takeScreenshot: event-back-0s
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: event-back-settled
+- extendedWaitUntil:
+    visible:
+      id: 'nothing-here-sc99214'
+    timeout: 8000
+    optional: true
+- takeScreenshot: event-back-8s

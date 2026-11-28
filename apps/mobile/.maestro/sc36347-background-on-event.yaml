@@ -1,0 +1,13 @@
+# sc-36347: open an event page, then send Expo Go to the background.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow: developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: event-page-violet
+- pressKey: Home
+- waitForAnimationToEnd

@@ -1,0 +1,80 @@
+# sc-3787: recording over ${G_OWN}'s own reply asks first; Keep changes nothing, Replace records it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_OWN_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_OWN}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_OWN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OWN}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.notComing'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.notComing'
+- tapOn:
+    id: 'guest.record.how.inPerson'
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.replace'
+    timeout: 10000
+- takeScreenshot: replace-ask
+- tapOn:
+    id: 'guest.record.keep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: kept
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.notComing'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.notComing'
+- tapOn:
+    id: 'guest.record.how.other'
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.replaceYes'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.replaceYes'
+- extendedWaitUntil:
+    visible: '{{t:guestList.replyRecorded}}'
+    timeout: 15000
+- takeScreenshot: replaced
+- scrollUntilVisible:
+    element: '{{t:guestList.recordedOn}}'
+    direction: DOWN
+- takeScreenshot: replaced-line

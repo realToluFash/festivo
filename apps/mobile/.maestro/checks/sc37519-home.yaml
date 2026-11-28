@@ -1,0 +1,13 @@
+# Password changed after a reset by an account that owes no step lands on Home, clear of the tab bar. sc-37519.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_HOME}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37519'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'home.openSettings' }, timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: home-01-toast

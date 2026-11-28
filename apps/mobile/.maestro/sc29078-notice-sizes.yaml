@@ -1,0 +1,48 @@
+# B Confetti's cover in LANGUAGE: the line, the signed-out notice, Google's failed notice and No connection,
+# photographed as ${TAG}-line, ${TAG}-signed-out, ${TAG}-google and ${TAG}-unreachable, to set a notice's
+# title against the line's size and to read the longest title on an iPhone SE. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-notice-sizes LANGUAGE=Español TAG=es-se --se
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- runFlow: expo-go-menu.yaml
+# Expo Go's floating gear sits over the language button's right end on an iPhone SE: tap its left end.
+- tapOn:
+    point: '72%,7%'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: '${LANGUAGE}'
+- tapOn:
+    id: 'language.done'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-line
+- openLink: ${METRO_URL}/--/welcome?signedOut=1
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-signed-out
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-unreachable
+- openLink: ${METRO_URL}/--/welcome?providerFailed=Google
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-google

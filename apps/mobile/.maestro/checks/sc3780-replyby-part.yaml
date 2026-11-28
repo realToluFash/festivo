@@ -1,0 +1,19 @@
+# sc-3780: ${EVENT_ID}'s Details row Reply by, then its part screen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- takeScreenshot: details-row
+- tapOn:
+    text: 'Reply by.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: part

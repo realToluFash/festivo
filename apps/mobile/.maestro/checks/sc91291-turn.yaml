@@ -1,0 +1,27 @@
+# sc-91291: Today upright, then turned on its side, then back; screenshots after each turn. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: up-0
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-1-top
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: side-1-mid
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- swipe: { start: '60%, 80%', end: '60%, 30%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: side-1-foot
+- swipe: { start: '60%, 30%', end: '60%, 80%', duration: 700 }
+- swipe: { start: '60%, 30%', end: '60%, 80%', duration: 700 }
+- swipe: { start: '60%, 30%', end: '60%, 80%', duration: 700 }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: up-1

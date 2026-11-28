@@ -1,0 +1,245 @@
+/* sc-4025: the guest list reads the plan. The Table cell is each row's last column, and the chooser and result follow sc-3776's bar. */
+.gst-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.gst-badge {
+  min-width: 2ch;
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInk);
+  font: 600 13px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.gst-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.gst-sort .desk-label {
+  margin: 0;
+}
+
+.gst-select {
+  min-height: var(--sizeHit);
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 500 15px/1.3 var(--fontFamily);
+}
+
+.gst-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gst-cell {
+  flex: none;
+  min-width: 7.5rem;
+  color: var(--colorInk);
+  font: 600 14px/1.3 var(--fontFamily);
+  text-align: right;
+}
+
+.gst-cell.is-none {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.gst-line-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin-left: auto;
+}
+
+.gst-dot,
+.gst-square {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  align-self: flex-start;
+}
+
+.gst-dot {
+  border-radius: 50%;
+  background: var(--deskGreen);
+}
+
+.gst-square {
+  border-radius: 2px;
+  background: var(--colorBroken);
+}
+
+.gst-h2 {
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 22px/1.25 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gst-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.gst-details-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.gst-seat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.gst-place,
+.gst-name {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 16px/1.4 var(--fontFamily);
+}
+
+.gst-seat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.gst-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) var(--spaceMd);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.gst-band p {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.gst-companions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gst-companions li {
+  display: flex;
+  flex-direction: column;
+}
+
+.gst-option {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.gst-section,
+.gst-free {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.gst-empty,
+.gst-error {
+  margin-top: var(--spaceXs);
+}
+
+.gst-moving {
+  margin-top: var(--spaceMd);
+}
+
+.gst-short {
+  display: flex;
+  gap: var(--spaceSm);
+  margin: var(--spaceMd) 0 0;
+  padding: var(--spaceSm) var(--spaceMd);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 500 15px/1.4 var(--fontFamily);
+}
+
+.gst-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceLg);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+}
+
+.gst-demo-title {
+  margin: 0;
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.gst-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.gst .gs-pill {
+  white-space: normal;
+  text-align: center;
+}
+
+/* A 1280-wide window at 400% zoom: the Table cell wraps under the name, and the details stack under the list. */
+@media (width <= 40rem) {
+  .gst .gs-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gst .gs-column {
+    position: static;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .gst-row {
+    flex-wrap: wrap;
+  }
+
+  .gst-cell {
+    flex-basis: 100%;
+    min-width: 0;
+    padding-left: calc(22px + var(--spaceMd));
+    text-align: left;
+  }
+
+  .gst-line-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}

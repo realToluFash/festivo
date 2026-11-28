@@ -1,0 +1,41 @@
+# sc-83881 helper: reloads, then shoots each tab of the paused page as ${P}-<tab>, and opens the switcher.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    when:
+      visible:
+        id: 'switcher.heading'
+    commands:
+      - tapOn:
+          point: '50%,75%'
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused\..+'
+    timeout: 40000
+- tapOn:
+    id: 'frame.home|tab-today'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-today
+- tapOn:
+    id: 'frame.events|tab-events'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-events
+- tapOn:
+    id: 'frame.calendar|tab-calendar'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-calendar
+- tapOn:
+    id: 'frame.settings|tab-settings'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-settings
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-switcher

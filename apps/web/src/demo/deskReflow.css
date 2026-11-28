@@ -1,0 +1,150 @@
+/* sc-32279: at 400% zoom (320 CSS px, WCAG 2.2 1.4.10) every desk page reflows into one column, its sidebar above the page. The one rule for every page: an area adds only what its own page needs. */
+@media (width <= 40rem) {
+  .today.desk:not(.dp-fit) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:not(.dp-fit) > .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* sc-91763: the page runs flat to the window's edges and its column keeps the product shell's 16 px phone gutter, on every page. */
+  .today.desk:not(.dp-fit) > .desk-main {
+    min-width: 0;
+    margin: 0;
+    overflow: visible;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* A line parts the stacked sidebar from the page; under Settings' bar (.dp-bar) the bar draws its own. */
+  .today.desk:not(.dp-fit, .dp-bar) > .desk-main {
+    border-top: var(--borderCard);
+  }
+
+  .today.desk:not(.dp-fit) .desk-page {
+    padding: var(--spaceXl) var(--spaceXl) var(--space3xl);
+    overflow: visible;
+  }
+
+  /* Seating has no .desk-page: the product insets the room by the gutter and its band keeps none of its own. */
+  .today.desk:not(.dp-fit) > .desk-main > .st {
+    margin-inline: var(--spaceXl);
+  }
+
+  .today.desk:not(.dp-fit) .st-top {
+    padding-inline: 0;
+  }
+
+  /* sc-91763: in a 288 px room Seating's switches wrap onto a second row, every word whole and every option still 44 px tall. */
+  .today.desk:not(.dp-fit) .st-seg {
+    flex-wrap: wrap;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .today.desk:not(.dp-fit) .st-views {
+    max-width: calc(100% - 2 * var(--spaceLg));
+  }
+
+  /* List takes the second row in every locale, so what floats under the views steps down by that one 46 px row. */
+  .today.desk:not(.dp-fit) .st-views > .st-seg-one:last-child {
+    flex-basis: 100%;
+  }
+
+  /* sc-92210: the first-table banner keeps the room's middle, so it is the one floating bar that does not step down. */
+  .today.desk:not(.dp-fit) :is(.st-float.st-bar:not(.is-floor), .st-under-views, .st-view-wrap) {
+    top: 118px;
+  }
+
+  .today.desk:not(.dp-fit) .st-print {
+    top: 116px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down .st-top-right {
+    top: 118px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down .st-print {
+    top: 176px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down :is(.st-under-views, .st-view-wrap) {
+    top: 178px;
+  }
+
+  .today.desk:not(.dp-fit) :is(.ev-crumb ol, .desk-row) {
+    flex-wrap: wrap;
+  }
+
+  /* A long one-word title (Personalisation, Personnalisation) takes the compact size and breaks only at a hyphen. */
+  .today.desk:not(.dp-fit) .desk-title {
+    font: var(--typeTitlePhone);
+    hyphens: auto;
+  }
+
+  /* sc-91971: the zoom bar wraps by rule in every locale, Fit the room across its own row, so whatever stands above it steps up by that one 46 px row. */
+  .today.desk:not(.dp-fit) .st-zoom {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    place-items: center;
+    max-width: calc(100% - 2 * var(--spaceLg));
+  }
+
+  .today.desk:not(.dp-fit) .st-zoom > .st-tool {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  /* The Floor plan's room holds the tallest stack from the top (the views, Print, the select bar on three rows) and from the floor (Add, the stepped-up zoom bar, the small map), 12 px apart, with one 46 px row to spare for a longer locale. */
+  .today.desk:not(.dp-fit) .st-main:not(.is-none) .st-canvas.is-plan {
+    height: 704px;
+  }
+
+  .today.desk:not(.dp-fit) :is(.st-minimap, .st-another) {
+    bottom: 126px;
+  }
+
+  .today.desk:not(.dp-fit) .st-keys {
+    bottom: 124px;
+  }
+
+  .today.desk:not(.dp-fit) .is-zoom-up :is(.st-minimap, .st-another) {
+    bottom: 190px;
+  }
+
+  .today.desk:not(.dp-fit) .is-zoom-up .st-keys {
+    bottom: 188px;
+  }
+
+  /* Messages: the conversations above the open one. */
+  .today.desk:not(.dp-fit) .mg {
+    flex-direction: column;
+  }
+
+  .today.desk:not(.dp-fit) .mg-list {
+    width: auto;
+    padding-inline: var(--spaceXl);
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .today.desk:not(.dp-fit) .mg-in {
+    padding-inline: var(--spaceXl);
+  }
+
+  /* The open conversation's name takes the line beside its picture, and what acts on it steps down under them. */
+  .today.desk:not(.dp-fit) .mg-head {
+    flex-wrap: wrap;
+  }
+
+  .today.desk:not(.dp-fit) .mg-head-words {
+    flex: 1 1 10rem;
+    overflow-wrap: anywhere;
+  }
+}

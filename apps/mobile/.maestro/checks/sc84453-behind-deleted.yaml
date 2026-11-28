@@ -1,0 +1,45 @@
+# sc-84453 iPad upright: D deleted while B is open over it; B's ‹ still reads Event and lands on This event is not available.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${D}
+- extendedWaitUntil:
+    visible: 'Oyo Picnic'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- runScript:
+    file: sc84453-behind-deleted.js
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+      API_URL: ${API_URL}
+      D: ${D}
+- assertVisible:
+    id: frame.back
+    text: 'Back to Event'
+- takeScreenshot: b-over-deleted-d
+- tapOn:
+    id: frame.back
+- extendedWaitUntil:
+    visible: 'This event is not available'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: d-not-available
+- tapOn: 'Back to Events'
+- waitForAnimationToEnd
+- takeScreenshot: events-after
