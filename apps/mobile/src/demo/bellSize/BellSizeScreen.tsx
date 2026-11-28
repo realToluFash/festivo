@@ -24,6 +24,9 @@ import { measuredUnder } from '../measuredUnder.ts';
 import { openOnceSettled } from '../menuSettles.ts';
 import { FitWords } from '../todaySize/FitWords.tsx';
 import { piecesOfLine } from '../todaySize/todaySizeRules.ts';
+import { unreadOf } from '../bellRows/unreadOf.ts';
+import { BELL_ROWS, type BellRows } from '../bellRows/bellRowsRules.ts';
+import { SizedBellBody } from '../bellRows/SizedBellBody.tsx';
 import {
   BELL_LANGUAGES,
   BELL_READS,
@@ -36,13 +39,14 @@ import {
   markAllStart,
   markAllUnder,
 } from './bellSizeRules.ts';
-import { BellSampleBody, unreadAt } from './BellSamples.tsx';
+import { BellSampleBody } from './BellSamples.tsx';
 import { PhoneBellScreen } from './PhoneBellScreen.tsx';
 
 export interface BellSizeStart {
   size: FilterSize;
   language: BellLanguage;
   read: BellRead;
+  rows: BellRows;
   refreshing: boolean;
 }
 
@@ -58,6 +62,8 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const [read, setRead] = useState(start.read);
+  const [rows, setRows] = useState(start.rows);
+  const [rowsAt, setRowsAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(start.refreshing);
   const [open, setOpen] = useState(true);
   const [at, setAt] = useState<Anchor | null>(null);
@@ -65,7 +71,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
   const [told, setTold] = useState<string | null>(null);
   const [drawnAt, setDrawnAt] = useState<string | null>(null);
   const [emptyAt, setEmptyAt] = useState<string | null>(null);
-  const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadAt(start.read));
+  const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadOf(start.read, start.rows));
   const bellRef = useRef<ViewInstance>(null);
   const heading = useRef<TextHandle>(null);
   const words = useMemo(
@@ -106,7 +112,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
             setOpen(true);
           }}
         />
-        <DemoOnly title="Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the panel’s top draws at the size chosen; its list is main’s at this device’s size. The heading grows as on main and, from AX1, steps down only to the largest size at which its own word fits the panel, never under 18. Mark all read grows as on main, breaks only between its words, and steps down only for its widest word, never under 15. Where the two cannot each be whole on one line side by side, Mark all read moves onto its own line under the heading, at its start. With nothing yet, the empty sentence draws at the size chosen too: it grows as on main, breaks only between its words and, from AX1, steps down only to the largest size at which its widest word fits, never under 15; where that word cannot fit beside the bell tile, the tile moves onto its own line above it. Notification settings at its foot draws at the size chosen by the same rule, stepped down from AX1 only for its widest word, never under 15. Close the panel to change these; the bell opens it again. Nothing is sent and no string is added.">
+        <DemoOnly title="Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the panel’s top draws at the size chosen; its list is main’s at this device’s size. The heading grows as on main and, from AX1, steps down only to the largest size at which its own word fits the panel, never under 18. Mark all read grows as on main, breaks only between its words, and steps down only for its widest word, never under 15. Where the two cannot each be whole on one line side by side, Mark all read moves onto its own line under the heading, at its start. With nothing yet, the empty sentence draws at the size chosen too: it grows as on main, breaks only between its words and, from AX1, steps down only to the largest size at which its widest word fits, never under 15; where that word cannot fit beside the bell tile, the tile moves onto its own line above it. Notification settings at its foot draws at the size chosen by the same rule, stepped down from AX1 only for its widest word, never under 15. Rows other than As on main draw the list at the size chosen too (sc-102956): each of a row’s texts grows as on main and steps down only to the largest size at which its own widest word fits its line, never under its default size; no text under a title draws larger than it; a word wider than its line even at the default size draws at the default size and breaks at the line’s end. Close the panel to change these; the bell opens it again. Nothing is sent and no string is added.">
           <Choices
             heading="Text size"
             options={FILTER_SIZES}
@@ -129,9 +135,21 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
             chosen={read}
             onChoose={(next) => {
               setRead(next);
-              setUnread(unreadAt(next));
+              setUnread(unreadOf(next, rows));
             }}
             id="read"
+            prefix="demo.bellSize"
+          />
+          <Choices
+            heading="Rows"
+            options={BELL_ROWS}
+            chosen={rows}
+            onChoose={(next) => {
+              setRows(next);
+              setRowsAt(null);
+              setUnread(unreadOf(read, next));
+            }}
+            id="rows"
             prefix="demo.bellSize"
           />
           <QuietButton
@@ -163,22 +181,39 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
           testID="demo.bellSize.panel"
         >
           <View style={styles.popover}>
-            <BellSampleBody
-              empty={read === 'none' ? { scale, onDrawn: setEmptyAt } : null}
-              unread={unread}
-              menu={menu}
-              onMenu={setMenu}
-              onPick={(row) => {
-                setUnread((now) => new Set([...now].filter((id) => id !== row.id)));
-                setTold(`${row.title}: opens its page, as on main.`);
-              }}
-              onSettings={() => setTold('Notification settings opens, as on main.')}
-            />
+            {rows !== 'main' && read !== 'none' ? (
+              <SizedBellBody
+                rows={rows}
+                scale={scale}
+                language={language}
+                unread={unread}
+                onPick={(id, title) => {
+                  setUnread((now) => new Set([...now].filter((one) => one !== id)));
+                  setTold(`${title}: opens its page, as on main.`);
+                }}
+                onShowMore={() => setTold('Show more loads the next page, as on main.')}
+                onSettings={() => setTold('Notification settings opens, as on main.')}
+                onReport={setRowsAt}
+              />
+            ) : (
+              <BellSampleBody
+                empty={read === 'none' ? { scale, onDrawn: setEmptyAt } : null}
+                unread={unread}
+                menu={menu}
+                onMenu={setMenu}
+                onPick={(row) => {
+                  setUnread((now) => new Set([...now].filter((id) => id !== row.id)));
+                  setTold(`${row.title}: opens its page, as on main.`);
+                }}
+                onSettings={() => setTold('Notification settings opens, as on main.')}
+              />
+            )}
             <View style={styles.told}>
               <DemoOnly
                 title={[
                   drawnAt,
                   read === 'none' ? emptyAt : null,
+                  rows !== 'main' && read !== 'none' ? rowsAt : null,
                   told == null ? null : `Said: ${told}`,
                 ]
                   .filter((line) => line != null)
