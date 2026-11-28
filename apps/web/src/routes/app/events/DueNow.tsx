@@ -16,6 +16,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Dialog, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { usePageUnder } from '../pageUnder.ts';
 import { SignedInHome } from '../Today.tsx';
 import { minorMoney } from './budgetArea.ts';
 import { dueRowState, dueSettled, monthDay } from './dueNow.ts';
@@ -37,7 +38,7 @@ interface Different {
   payment: ScheduledPayment;
 }
 
-/** A payment reminder's link (sc-1331): Due now over the page a person lands on, and Close goes back to where they were. */
+/** A payment reminder's link (sc-1331): Due now over the page that was open, or Today when the link opened the desk, and Close goes back to where they were. */
 export function DueNowPage() {
   const { reminderId = '' } = useParams();
   const navigate = useNavigate();
@@ -48,12 +49,11 @@ export function DueNowPage() {
   }, [location.key, navigate]);
 
   const { layers, covered, setHost } = useDeskLayers();
+  const under = usePageUnder();
 
   return (
     <LayersContext value={layers}>
-      <div inert={covered}>
-        <SignedInHome />
-      </div>
+      <div inert={covered}>{under ?? <SignedInHome />}</div>
       <div ref={setHost} className="desk-layers" />
       <DueNowDialog key={reminderId} reminderId={reminderId} onClose={close} />
     </LayersContext>
@@ -228,7 +228,12 @@ function DueNowDialog({ reminderId, onClose }: { reminderId: string; onClose: ()
     try {
       const quotes = await api.quotes(event.id);
       const quote = quotes.quotes.find((one) => one.payments.some((p) => p.id === payment.id));
-      if (quote != null) setDifferent({ event, quote, quotes, payment });
+      if (quote == null) {
+        const words = t('dueNow.notMarked');
+        setRefused((was) => ({ ...was, [row.paymentId]: words }));
+        setTold(words);
+        await read();
+      } else setDifferent({ event, quote, quotes, payment });
     } catch (error) {
       refuse(row, error, t('dueNow.notMarked'));
     }

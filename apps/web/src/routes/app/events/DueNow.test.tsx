@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { RouterProvider, createMemoryRouter } from 'react-router';
+import { type InitialEntry, RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { __setSessionState, type Session } from '../../../session.ts';
@@ -81,7 +81,10 @@ const problem = (status: number, type: string, detail?: string) =>
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 
-function serve(answers: Record<string, (body: unknown) => Response>) {
+function serve(
+  answers: Record<string, (body: unknown) => Response>,
+  initialEntries: InitialEntry[] = ['/app/due/r_1'],
+) {
   const sent: { line: string; body: unknown }[] = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
@@ -90,11 +93,13 @@ function serve(answers: Record<string, (body: unknown) => Response>) {
 
     return answers[line]?.(body) ?? json({});
   });
-  render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/due/r_1'] })} />,
-  );
+  const router = createMemoryRouter(routes, {
+    initialEntries,
+    initialIndex: initialEntries.length - 1,
+  });
+  const { container } = render(<RouterProvider router={router} />);
 
-  return sent;
+  return Object.assign(sent, { router, container });
 }
 
 afterEach(() => {
@@ -396,5 +401,67 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Mark paid' })).toBeTruthy();
     await waitFor(() => expect(screen.getByLabelText('Amount paid')).toBeTruthy());
+  });
+
+  it('Close goes back to the page that was open before the sheet', async () => {
+    signedIn();
+    const { router } = serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) }, [
+      '/app/calendar',
+      '/app/due/r_1',
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/calendar'));
+  });
+
+  it('Close on a sheet the link opened cold goes to Today', async () => {
+    signedIn();
+    const { router } = serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('sits over the page that was open when it is opened from inside the desk', async () => {
+    signedIn();
+    const events = { pathname: '/app/events', search: '', hash: '', state: null, key: 'k1' };
+    const { container } = serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) }, [
+      events,
+      { pathname: '/app/due/r_1', state: { under: events } },
+    ]);
+
+    expect(await screen.findByRole('button', { name: 'Close' })).toBeTruthy();
+    await waitFor(() => expect(container.querySelector('.desk.ev')).not.toBeNull());
+  });
+
+  it('a payment no quote holds any more says it was not marked, under its row', async () => {
+    signedIn();
+    serve({
+      'GET /api/payment-reminders/r_1': () =>
+        json(
+          sheet([
+            row(
+              'p6',
+              'Savour Kitchen',
+              'Deposit',
+              '840.00',
+              payment('p6', 'Deposit', '840.00', '2026-11-04'),
+            ),
+          ]),
+        ),
+      'GET /api/events/ev_1/budget/quotes': () =>
+        json({ currency: 'GBP', timeZone: 'Europe/London', entitled: true, quotes: [], due: [] }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Paid a different amount' }));
+
+    expect(
+      (await screen.findAllByText('This payment was not marked paid. Try again in a moment.'))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole('heading', { name: 'Mark paid' })).toBeNull();
   });
 });
