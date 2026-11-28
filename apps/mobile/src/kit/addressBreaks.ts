@@ -14,6 +14,14 @@ export function addressRuns(name: string): readonly [string, string] | null {
   return [breaksBeforeDots(name.slice(0, at + 1)), breaksBeforeDots(name.slice(at + 1))];
 }
 
+/** The pieces `addressRuns` lets a line break between, as they are drawn; null for anything that is not an address. */
+export function addressParts(name: string): readonly string[] | null {
+  const runs = addressRuns(name);
+  if (runs == null) return null;
+
+  return runs.flatMap((run) => run.split(BREAK)).filter((part) => part !== '');
+}
+
 /** An address, or a sentence carrying one, free to break after its @ when it is wider than its line. Its accessibility label stays as written (sc-70353). */
 export function breakableEmail(text: string): string {
   return text.replace('@', `@${BREAK}`);

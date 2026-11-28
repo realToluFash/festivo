@@ -17,7 +17,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
+import { addressParts, addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -204,19 +204,18 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
 function PersonHead({
   person,
   done,
+  phone,
 }: {
   person: { name: string; line: string; face: ReactNode };
   done: { label: string; onPress: () => void } | null;
+  phone: boolean;
 }) {
   const fontScale = useWindowDimensions().fontScale;
-  const big = atAccessibilitySizes(fontScale);
+  const big = phone && atAccessibilitySizes(fontScale);
   const [row, setRow] = useState(0);
   const [doneWidth, setDoneWidth] = useState(0);
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
-  const nameParts =
-    addressRuns(person.name) == null
-      ? wordsIn([person.name])
-      : person.name.split(/(?=\.)|(?<=@)/u).filter((part) => part !== '');
+  const nameParts = addressParts(person.name) ?? wordsIn([person.name]);
   const lineWords = wordsIn([person.line]);
   const widthOf = (kind: 'n' | 'l', word: string) => measured[`${fontScale}|${kind}|${word}`];
   const widths = [
@@ -249,9 +248,13 @@ function PersonHead({
 
   return (
     <View onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
-      <MeasuredWords words={nameParts} size={18} weight="bold" onWidth={record('n')} />
-      <MeasuredWords words={lineWords} size={14} weight="medium" onWidth={record('l')} />
-      <View style={[styles.person, under && styles.personUnder]}>
+      {phone && (
+        <>
+          <MeasuredWords words={nameParts} size={18} weight="bold" onWidth={record('n')} />
+          <MeasuredWords words={lineWords} size={14} weight="medium" onWidth={record('l')} />
+        </>
+      )}
+      <View style={[styles.person, big && styles.personBig, under && styles.personUnder]}>
         {!big && person.face}
         <View style={styles.grow}>
           <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
@@ -363,7 +366,11 @@ export function RoleSheet<R extends string>({
   };
   const parts = (
     <>
-      <PersonHead person={person} done={phone ? { label: words.done, onPress: onClose } : null} />
+      <PersonHead
+        person={person}
+        phone={phone}
+        done={phone ? { label: words.done, onPress: onClose } : null}
+      />
       {notes}
       {failed != null && <Refused failed={failed} />}
       <EventRoles
@@ -897,6 +904,7 @@ const styles = StyleSheet.create({
   // Done's word level with the name's first line, however many lines the name takes.
   doneBesideName: { marginTop: -10 },
   doneUnder: { alignSelf: 'flex-end', marginTop: tokens.spaceSm },
+  personBig: { gap: tokens.spaceMd },
   personUnder: { paddingBottom: 0 },
   done: {
     minWidth: tokens.sizeHit,
