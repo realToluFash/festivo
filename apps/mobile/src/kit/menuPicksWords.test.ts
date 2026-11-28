@@ -30,6 +30,7 @@ const menuCourse = (id: string, at: string | null, closed = false): MenuCourse =
     id,
     name: id,
     servedAt: null,
+    scheduleItem: null,
     answer: 'choose',
     skippable: true,
     dishes: [

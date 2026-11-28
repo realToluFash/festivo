@@ -118,6 +118,8 @@ export const DUE_NOW_STATES = [
   'due_refused_paid',
   'due_refused_plan',
   'due_done_several',
+  'due_done_long',
+  'due_done_one_word',
   'due_not_found',
   'due_loading',
   'due_failed',
@@ -525,6 +527,14 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('due_read_only'), name: 'Read only after a downgrade' },
       { to: at('due_several'), name: 'Across two events, each in its own currency' },
       { to: at('due_done_several'), name: 'Nothing left to pay, a link for each event' },
+      {
+        to: at('due_done_long'),
+        name: 'Nothing left to pay, one event named in 120 characters (sc-103479)',
+      },
+      {
+        to: at('due_done_one_word'),
+        name: 'Nothing left to pay, one event named in a single 60-letter word (sc-103479)',
+      },
       { to: at('due_not_found'), name: 'Not found' },
       { to: at('due_loading'), name: 'Loading the payments' },
       { to: at('due_failed'), name: 'The payments did not load, with Try again' },

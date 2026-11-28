@@ -33,10 +33,11 @@ final readonly class ScheduleSerialiser
         ];
     }
 
-    /** @return array{id: string, title: string, startsAt: string, startedAt: ?string, endedAt: ?string, skipped: bool, day: string, lengthMinutes: ?int, place: ?string, ownerName: ?string, ownerRole: ?string, note: ?string, fixedTime: bool, showToGuests: bool, version: int} */
+    /** @return array{id: string, title: string, startsAt: string, startedAt: ?string, endedAt: ?string, skipped: bool, day: string, lengthMinutes: ?int, place: ?string, ownerName: ?string, ownerRole: ?string, note: ?string, fixedTime: bool, showToGuests: bool, course: ?array{id: string, name: string}, courseNotice: bool, version: int} */
     public function item(ScheduleItem $item): array
     {
         $zone = new DateTimeZone($item->getEvent()->getTimeZone());
+        $course = $item->getCourse();
 
         return [
             'id' => $item->getId()->toRfc4122(),
@@ -53,6 +54,8 @@ final readonly class ScheduleSerialiser
             'note' => $item->getNote(),
             'fixedTime' => $item->isFixedTime(),
             'showToGuests' => $item->isShownToGuests(),
+            'course' => null === $course ? null : ['id' => $course->getId()->toRfc4122(), 'name' => $course->getName()],
+            'courseNotice' => null !== $item->getCourseRemovedAt(),
             'version' => $item->getVersion(),
         ];
     }

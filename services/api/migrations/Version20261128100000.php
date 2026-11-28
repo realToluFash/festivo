@@ -11,30 +11,28 @@ final class Version20261128100000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Single sign-on (sc-610): a Test sign-on waiting for the identity provider\'s answer.';
+        return 'A schedule item can be a course from the menu (sc-3898): one course at most, a course on one item at most, and the notice an item keeps when its course was removed from the menu.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            CREATE TABLE organisation_sso_attempts (
-                id             UUID NOT NULL,
-                provider_id    UUID NOT NULL,
-                started_by_id  UUID NOT NULL,
-                state_hash     VARCHAR(64) NOT NULL,
-                nonce          VARCHAR(64) NOT NULL,
-                code_verifier  VARCHAR(64) NOT NULL,
-                expires_at     TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                PRIMARY KEY (id)
-            )
+            ALTER TABLE schedule_items
+                ADD COLUMN course_id         UUID DEFAULT NULL,
+                ADD COLUMN course_removed_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL
             SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_sso_attempt_state ON organisation_sso_attempts (state_hash)');
-        $this->addSql('ALTER TABLE organisation_sso_attempts ADD CONSTRAINT fk_sso_attempt_provider FOREIGN KEY (provider_id) REFERENCES organisation_sso_providers (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE organisation_sso_attempts ADD CONSTRAINT fk_sso_attempt_user FOREIGN KEY (started_by_id) REFERENCES users (id) ON DELETE CASCADE NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE schedule_items ADD CONSTRAINT FK_1D472911591CC992 FOREIGN KEY (course_id) REFERENCES menu_courses (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('CREATE UNIQUE INDEX UNIQ_1D472911591CC992 ON schedule_items (course_id)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE organisation_sso_attempts');
+        $this->addSql('ALTER TABLE schedule_items DROP CONSTRAINT FK_1D472911591CC992');
+        $this->addSql('DROP INDEX UNIQ_1D472911591CC992');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE schedule_items
+                DROP COLUMN course_id,
+                DROP COLUMN course_removed_at
+            SQL);
     }
 }

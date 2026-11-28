@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest\Controller;
 
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Guest\GuestAdder;
 use App\Domain\Guest\GuestEditor;
 use App\Domain\Guest\GuestRules;
@@ -21,6 +22,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplyHow;
+use App\Enum\GuestSource;
 use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
@@ -32,6 +34,7 @@ use App\Repository\EventRepository;
 use App\Repository\GuestRepository;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -43,6 +46,8 @@ use Symfony\Component\Routing\Attribute\Route;
 /** An event's guest list and adding to it (sc-1468); one guest's details and correcting them (sc-3773). */
 final readonly class GuestsController
 {
+    public const int FROM_CONTACTS_MOST = 250;
+
     public function __construct(
         private Security $security,
         private EventRepository $eventRepository,
@@ -55,6 +60,7 @@ final readonly class GuestsController
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private GuestRepliesReopener $guestRepliesReopener,
         private GuestAnswers $guestAnswers,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -106,6 +112,63 @@ final readonly class GuestsController
         $added = Iter\search($this->guestSerialiser->list($event, contacts: true)['guests'], static fn (array $row): bool => $row['id'] === $guest->getId()->toRfc4122());
 
         return new JsonResponse(['guest' => $added], Response::HTTP_CREATED);
+    }
+
+    /** Picked from a phone's contacts and checked on the review list (sc-7579): every row or none, `validation_failed` with each row's path (`guests[2].email`), and 403 `plan_limit_reached` for the batch as a whole. A name already listed is added. */
+    #[Route('/api/events/{eventId}/guests/from-contacts', name: 'guests_add_from_contacts', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function addFromContacts(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'guests' => Type\vec(Type\shape([
+                'fullName' => Type\string(),
+                'email' => Type\optional(Type\nullable(Type\string())),
+                'mobile' => Type\optional(Type\nullable(Type\shape([
+                    'countryCode' => Type\string(),
+                    'number' => Type\string(),
+                ]))),
+                'companions' => Type\optional(Type\int()),
+            ])),
+        ]));
+        $rows = $body['guests'];
+
+        if ([] === $rows || Iter\count($rows) > self::FROM_CONTACTS_MOST) {
+            throw ApiException::validation([$this->guestRules->violation('guests', [] === $rows ? 'validation.guests_from_contacts_none' : 'validation.guests_from_contacts_too_many')]);
+        }
+
+        $news = [];
+        $violations = [];
+
+        foreach ($rows as $index => $row) {
+            try {
+                $news[] = $this->guestRules->guest($row['fullName'], $row['email'] ?? null, $row['mobile'] ?? null, Vec\fill(Type\uint()->coerce(Math\clamp($row['companions'] ?? 0, 0, Guest::COMPANIONS_MAXIMUM + 1)), null));
+            } catch (ApiException $refused) {
+                if (ErrorCode::ValidationFailed !== $refused->errorCode) {
+                    throw $refused;
+                }
+
+                foreach ($refused->violations as $violation) {
+                    $violations[] = [...$violation, 'propertyPath' => "guests[{$index}].{$violation['propertyPath']}"];
+                }
+            }
+        }
+
+        if ([] !== $violations || [] === $news) {
+            throw ApiException::validation($violations);
+        }
+
+        $added = $this->guestAdder->addAll($event, $news, $this->user(), GuestSource::Contacts);
+
+        return new JsonResponse(['added' => Iter\count($added)], Response::HTTP_CREATED);
+    }
+
+    /** The plan's people per event beside the people on the list, for the review list's room line before it adds (sc-7579). */
+    #[Route('/api/events/{eventId}/guests/room', name: 'guests_room', methods: ['GET'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function room(string $eventId): JsonResponse
+    {
+        return new JsonResponse($this->hardLimits->peopleRoom($this->event($eventId)));
     }
 
     #[Route('/api/events/{eventId}/guests/{guestId}', name: 'guests_show', methods: ['GET'])]

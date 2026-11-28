@@ -57,6 +57,7 @@ import {
   startTicks,
   replyLine,
   reviewProblems,
+  rowProblems,
   roleOf,
   rowsOf,
   sameNameAs,
@@ -91,7 +92,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(192);
+    expect(GUESTS_STATES).toHaveLength(193);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -723,6 +724,7 @@ describe('From contacts and the plan limit (sc-7579, sc-3930)', () => {
       number: '0151 23',
       saved: null,
       unreadable: true,
+      email: '',
       listed: false,
       numberAt: 0,
       places: 0,
@@ -732,6 +734,32 @@ describe('From contacts and the plan limit (sc-7579, sc-3930)', () => {
       listed: 1,
     });
     expect(reviewProblems([{ ...row, number: '' }])).toEqual({ fix: 0, listed: 0 });
+  });
+
+  it('holds a row for its name or its email, and lets either be cleared', () => {
+    const row = {
+      key: 'a',
+      name: 'Mariam Diallo',
+      country: 'FR',
+      number: '6 12 34 56 78',
+      saved: '+33 6 12 34 56 78',
+      unreadable: false,
+      email: 'mariam.diallo.orange.fr',
+      listed: false,
+      numberAt: 0,
+      places: 0,
+    };
+    expect(rowProblems(row).email).toBe(
+      'That does not look like an email address. Check it has an @ and a domain.',
+    );
+    expect(rowProblems({ ...row, email: '' }).email).toBeNull();
+    expect(rowProblems({ ...row, name: '  ' }).name).toBe('Enter a full name.');
+    expect(rowProblems({ ...row, name: 'x'.repeat(201) }).name).toBe(
+      'Shorten the name to 200 characters or fewer.',
+    );
+    expect(rowProblems({ ...row, name: 'x'.repeat(200) }).name).toBeNull();
+    expect(reviewProblems([row, { ...row, name: '', email: '' }]).fix).toBe(2);
+    expect(reviewProblems([{ ...row, email: '' }]).fix).toBe(0);
   });
 
   it('says the room left from 80%, and refuses past 100', () => {
@@ -967,5 +995,25 @@ describe("A guest form with no name to use asks with the event form's line (sc-8
   it('never reads a blank name', () => {
     expect(say.discardLine('')).toBe('What you changed here is not saved.');
     expect(say.discardLine('   ')).toBe('What you changed here is not saved.');
+  });
+});
+
+describe('the Not added line, as the screen words it (sc-7579, PR #4337)', () => {
+  it('names no companions when none were refused', () => {
+    expect(say.notAddedLine(3, 0, 98)).toBe(
+      '3 people were not added. Ireti at 40 has 98 people on its list.',
+    );
+    expect(say.notAddedLine(1, 0, 1)).toBe(
+      '1 person was not added. Ireti at 40 has 1 person on its list.',
+    );
+  });
+
+  it('names the companions when some were refused', () => {
+    expect(say.notAddedLine(3, 2, 98)).toBe(
+      '3 people and 2 companions were not added. Ireti at 40 has 98 people on its list.',
+    );
+    expect(say.notAddedLine(1, 1, 98)).toBe(
+      '1 person and 1 companion were not added. Ireti at 40 has 98 people on its list.',
+    );
   });
 });

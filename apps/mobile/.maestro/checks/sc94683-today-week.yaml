@@ -1,0 +1,25 @@
+# sc-94683: Today's This week (Cette semaine) rows at the device's text size (set outside the flow), in the orientation given by ORIENT. Vars: METRO_URL, ORIENT (PORTRAIT or LANDSCAPE_LEFT).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: '.*(Today|Aujourd.hui).*'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '(This week|Cette semaine).*'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: week-1
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: week-2
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: week-3
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: week-4

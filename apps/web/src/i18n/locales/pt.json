@@ -4669,7 +4669,25 @@
     "notSaved": "Não foi guardado. O que introduziu continua aqui. Tente novamente.",
     "notDeleted": "Não foi eliminado. Nada foi alterado. Tente novamente.",
     "notRestored": "Não foi possível recuperar «{{title}}». Adicione-o de novo com Adicionar item.",
-    "gone": "Outra pessoa eliminou este item enquanto o tinha aberto. Nada foi guardado."
+    "gone": "Outra pessoa eliminou este item enquanto o tinha aberto. Nada foi guardado.",
+    "course": "Serviço",
+    "noCourse": "Sem serviço",
+    "courseHelp": "Enquanto estiver ligado, o menu mostra o início deste item como a hora do serviço.",
+    "courseList": "Serviços do menu",
+    "courseTag": "Serviço · {{name}}",
+    "served": "servido às {{time}}",
+    "linkedTo": "ligado a {{title}}",
+    "moveAsk": "{{course}} está ligado a {{other}}.",
+    "moveLine": "Ligá-lo a este item? {{other}} perde-o.",
+    "moveIt": "Mover a ligação",
+    "keepOn": "Manter em {{other}}",
+    "moving": "{{other}} perde este serviço ao guardar.",
+    "noCourses": "Ainda não há serviços no menu",
+    "noCoursesLine": "Adicione os serviços na página Menu e ligue um aqui.",
+    "openMenu": "Abrir o menu",
+    "unlinked": "{{title}} já não está ligado a um serviço.",
+    "unlinkedWhy": "O serviço foi retirado do menu. O item mantém o título e a hora.",
+    "dismiss": "Dispensar"
   },
   "runView": {
     "title": "Alinhamento",
@@ -5224,7 +5242,9 @@
     "picksHeadFrom": "fecho da escolha a partir de {{date}}",
     "picksCloseFrom": "Fecho da escolha a partir de {{date}}",
     "picksByOwn": "Data definida pelo próprio serviço «{{course}}». Fecho: {{time}}, hora de {{zone}}.",
-    "picksByOwnClosed": "Data definida pelo próprio serviço «{{course}}». Fecho: {{time}}, hora de {{zone}}."
+    "picksByOwnClosed": "Data definida pelo próprio serviço «{{course}}». Fecho: {{time}}, hora de {{zone}}.",
+    "fromSchedule": "{{time}}, do programa: {{title}}",
+    "fromScheduleHelp": "Acompanha o início do item na página Programa."
   },
   "guestExport": {
     "export": "Exportar",

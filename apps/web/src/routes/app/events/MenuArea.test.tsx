@@ -1549,6 +1549,33 @@ describe('The event’s Menu (sc-3902)', () => {
       },
     );
 
+    it('shows a linked course’s served time as text from its schedule item, and leaves it to the schedule on save (sc-3898)', async () => {
+      const linked = {
+        ...course('c_main', 'Main', [PLAIN]),
+        servedAt: '19:50',
+        scheduleItem: { id: 'it_mains', title: 'Mains go out' },
+      };
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(linked),
+        'PUT /api/events/ev_1/menu/courses/c_main': () =>
+          json({ menu: { courses: [linked] }, courseId: 'c_main' }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Main' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit course' });
+      expect(within(panel).getByText('19:50, from the schedule: Mains go out')).toBeDefined();
+      expect(within(panel).queryByLabelText(/^Served at/)).toBeNull();
+      expect(
+        within(panel).getByText('It follows the item’s start on the Schedule page.'),
+      ).toBeDefined();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await screen.findByText('Main saved.')).toBeDefined();
+      expect(
+        (sent.find(({ line }) => line.startsWith('PUT')) as { body: object }).body,
+      ).not.toHaveProperty('servedAt');
+    });
+
     it('saves Served with this course on Edit course, and refuses a 4th beside Add', async () => {
       const sent = await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])),

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Menu;
 
 use App\Audit\Auditor;
+use App\Domain\Menu\Interfaces\SchedulePublishedInterface;
 use App\Domain\Menu\Model\ChoiceDetails;
 use App\Domain\Menu\Model\CourseDetails;
 use App\Domain\Menu\Model\DishDetails;
@@ -35,6 +36,7 @@ use App\Repository\MenuCourseRepository;
 use App\Repository\MenuDishChoiceRepository;
 use App\Repository\MenuDishRepository;
 use App\Repository\MenuDishVariantRepository;
+use App\Repository\ScheduleItemRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
@@ -96,6 +98,8 @@ final readonly class MenuEditor
         private DefaultRules $defaultRules,
         private DefaultMoves $defaultMoves,
         private ClockInterface $clock,
+        private ScheduleItemRepository $scheduleItemRepository,
+        private SchedulePublishedInterface $schedulePublished,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
     ) {
@@ -123,21 +127,29 @@ final readonly class MenuEditor
     }
 
     /**
-     * Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish.
+     * Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish. A linked course's time is its item's: a `$servedAtSent` that differs is refused 409 `menu_course_linked`, and one not sent leaves it.
      *
      * @param ?SentDefault $default null keeps the default and its date (sc-1362); a change after the date that moves anyone is refused 409 `menu_default_move` with `move` and `back` until sent with `$confirmMove`
      */
-    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, ?OwnItems $ownItems, User $by, ?array $default = null, bool $confirmMove = false): void
+    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $servedAtSent, bool $guestsChoose, bool $skippable, ?OwnItems $ownItems, User $by, ?array $default = null, bool $confirmMove = false): void
     {
-        $this->locked($event, function () use ($event, $course, $details, $guestsChoose, $skippable, $ownItems, $by, $default, $confirmMove): void {
+        $renamed = false;
+        $this->locked($event, function () use ($event, $course, $details, $servedAtSent, $guestsChoose, $skippable, $ownItems, $by, $default, $confirmMove, &$renamed): void {
             $this->entityManager->refresh($course);
 
             if (!$guestsChoose && 1 !== Iter\count($this->menuDishRepository->findOnCourse($course))) {
                 throw new ApiException(ErrorCode::MenuSameOneDish, 'menu.same_one_dish');
             }
 
+            $linked = $this->scheduleItemRepository->findOneByCourse($course);
+
+            if (null !== $linked && $servedAtSent && $details->servedAt !== $course->getServedAt()) {
+                throw new ApiException(ErrorCode::MenuCourseLinked, 'menu.course_linked');
+            }
+
             $before = self::recordedCourse($course);
-            $course->describe($details->name, $details->servedAt);
+            $course->describe($details->name, $servedAtSent && null === $linked ? $details->servedAt : $course->getServedAt());
+            $renamed = null !== $linked && $before['name'] !== $course->getName();
             $course->setGuestsChoose($guestsChoose);
             $course->setSkippable($skippable);
 
@@ -157,6 +169,10 @@ final readonly class MenuEditor
         });
 
         $this->menuPublisher->published($event);
+
+        if ($renamed) {
+            $this->schedulePublished->published($event);
+        }
     }
 
     /** @param SentDefault $sent */
@@ -242,7 +258,8 @@ final readonly class MenuEditor
     /** Refused 409 `menu_course_picked` once anyone has picked from it. Its dishes go with it. */
     public function deleteCourse(Event $event, MenuCourse $course, User $by): void
     {
-        $this->locked($event, function () use ($event, $course, $by): void {
+        $linked = false;
+        $this->locked($event, function () use ($event, $course, $by, &$linked): void {
             $dishes = $this->menuDishRepository->findOnCourse($course);
 
             if (Iter\any($dishes, fn (MenuDish $dish): bool => [] !== $this->menuReasks->naming($dish))) {
@@ -254,6 +271,9 @@ final readonly class MenuEditor
             }
 
             $this->audit(self::COURSE_DELETED, 'MenuCourse', $course->getId(), $by, Auditor::diff(self::recordedCourse($course), []));
+            $item = $this->scheduleItemRepository->findOneByCourse($course);
+            $item?->courseWasRemoved($this->clock->now());
+            $linked = null !== $item;
             $this->entityManager->remove($course);
             $this->entityManager->flush();
 
@@ -263,6 +283,10 @@ final readonly class MenuEditor
         });
 
         $this->menuPublisher->published($event);
+
+        if ($linked) {
+            $this->schedulePublished->published($event);
+        }
     }
 
     /** Marks the library dish used, so the library archives it rather than deleting it. */
