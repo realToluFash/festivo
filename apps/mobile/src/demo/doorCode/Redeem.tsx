@@ -559,15 +559,17 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
         <View ref={numberBlock}>
           {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
           <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
-            <SelectRow
-              label={W.countryCode}
-              country={country}
-              onChange={setCountry}
-              compact
-              pickerRef={picker}
-              testID="redeem.event.country"
-            />
-            <View style={over ? undefined : styles.grow}>
+            <View style={over ? undefined : styles.chip}>
+              <SelectRow
+                label={W.countryCode}
+                country={country}
+                onChange={setCountry}
+                compact
+                pickerRef={picker}
+                testID="redeem.event.country"
+              />
+            </View>
+            <View style={over ? undefined : styles.numberCol}>
               <InsideField
                 ref={numberField}
                 label={W.mobileNumber}
@@ -795,7 +797,14 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   tile: { marginTop: tokens.spaceLg },
   fields: { marginTop: tokens.space3xl, gap: tokens.spaceLg },
-  phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  phoneRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+  },
+  chip: { flexGrow: 1, flexBasis: 140 },
+  numberCol: { flexGrow: 2, flexBasis: 180, minWidth: 0 },
   phoneOver: { gap: tokens.spaceSm },
   refused: { color: tokens.colorBrokenText },
   refusal: { marginTop: tokens.space3xl },

@@ -208,9 +208,13 @@ export function PhoneCodeScreen({
 }
 
 const styles = StyleSheet.create({
-  phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  phoneRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+  },
   phoneOver: { gap: tokens.spaceSm },
-  // The chip keeps the width of its flag and dial code however the row was measured: after Sign out the remounted row drew the flag alone (sc-4235).
-  chip: { flexShrink: 0, minWidth: 112 },
-  grow: { flex: 1, minWidth: 0 },
+  chip: { flexGrow: 1, flexBasis: 140 },
+  grow: { flexGrow: 2, flexBasis: 180, minWidth: 0 },
 });
