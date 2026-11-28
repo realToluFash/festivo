@@ -9,7 +9,7 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import {
@@ -1333,7 +1333,7 @@ interface TabBarProps<T extends string> {
 /** Each tab word's width at its start, kept past the bar that measured it, so the next bar draws fitted from its first frame (sc-99214). */
 const TAB_WORDS = new Map<string, number>();
 
-/** The labels at one size, never under the default, or under 10 on the event's bar (sc-37298, sc-71148). Measured at semibold, so selecting a tab never moves it, and fitted to a tab worked out from this render's window, never one measured before a turn (sc-99214). */
+/** The labels at one size, never under the default, or under 10 on the event's bar (sc-37298, sc-71148). Measured at semibold, so selecting a tab never moves it, and fitted to a tab worked out from this render's frame, never one measured before a turn (sc-99214). */
 export function TabBar<T extends string>({
   tabs,
   bottom,
@@ -1345,7 +1345,9 @@ export function TabBar<T extends string>({
   stepsBelowDefault,
 }: TabBarProps<T>) {
   const insets = useSafeAreaInsets();
-  const { width, fontScale } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
+  // The frame arrives with the insets; the window's width can follow a turn seconds later (sc-99214).
+  const { width } = useSafeAreaFrame();
   const start = tabLabelStart(fontScale);
   const words = wordsIn(tabs.map(([label, glyph]) => say(label, glyph)));
   const { widths, measure } = useMeasuredAt(start, words, TAB_WORDS);

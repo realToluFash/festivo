@@ -9,7 +9,7 @@ interface Drawn {
   onLayout?: (event: { nativeEvent: { layout: { width: number } } }) => void;
 }
 
-const drawn = vi.hoisted(() => ({ texts: [] as Drawn[], width: 320 }));
+const drawn = vi.hoisted(() => ({ texts: [] as Drawn[], width: 320, windowWidth: 320 }));
 
 vi.mock('react-native', () => {
   const box = ({ children }: { children?: ReactNode }) => children ?? null;
@@ -19,11 +19,12 @@ vi.mock('react-native', () => {
     PixelRatio: { get: () => 2 },
     Pressable: box,
     StyleSheet: { create: <T>(styles: T) => styles, absoluteFill: {}, hairlineWidth: 1 },
-    useWindowDimensions: () => ({ width: drawn.width, height: 700, fontScale: 1 }),
+    useWindowDimensions: () => ({ width: drawn.windowWidth, height: 700, fontScale: 1 }),
     View: box,
   };
 });
 vi.mock('react-native-safe-area-context', () => ({
+  useSafeAreaFrame: () => ({ x: 0, y: 0, width: drawn.width, height: 700 }),
   useSafeAreaInsets: () => ({ left: 0, right: 0, top: 0, bottom: 0 }),
 }));
 vi.mock('react-native-svg', () => ({ default: () => null }));
@@ -57,8 +58,9 @@ const { TabBar } = await import('./TodayCover.tsx');
 const WORDS = ['Today', 'Convidados'];
 
 /** The bar's first render alone, as a new mount draws it: no layout or effect has run. */
-function firstRender(width: number) {
+function firstRender(width: number, windowWidth = width) {
   drawn.width = width;
+  drawn.windowWidth = windowWidth;
   drawn.texts = [];
   renderToStaticMarkup(
     createElement(TabBar<string>, {
@@ -91,5 +93,7 @@ describe('the phone’s tab bar from its first frame (sc-99214)', () => {
     expect(firstRender(320).labels).toEqual(WORDS.map(() => ({ size: 10, hidden: false })));
     // (700 - 2 × (18 + 1 + 5) - 2) / 2 = 325 a tab.
     expect(firstRender(700).labels).toEqual(WORDS.map(() => ({ size: 12, hidden: false })));
+    // Turned back upright: the frame is here with the insets, the window's width is still the sideways one.
+    expect(firstRender(320, 700).labels).toEqual(WORDS.map(() => ({ size: 10, hidden: false })));
   });
 });
