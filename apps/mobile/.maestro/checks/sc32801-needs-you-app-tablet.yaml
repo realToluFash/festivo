@@ -1,0 +1,42 @@
+# sc-32801: the tablet, upright: E3 beside the demo needsYou; run with the tablet set upright.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${E3}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'QA3 Later dates'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: upright-needsYou-product-top
+- scrollUntilVisible:
+    element:
+      text: '(Due |.*overdue|Overdue).*'
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: upright-needsYou-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYou
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: upright-needsYou-demo-top
+- scrollUntilVisible:
+    element:
+      text: '(Due |.*overdue|Overdue).*'
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: upright-needsYou-demo

@@ -1,0 +1,63 @@
+/* A personal staff link, signed out (sc-4235): the redeem page's column, with every word at 17 px or more, as the story asks. */
+
+.ss-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: var(--spaceLg);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusRow);
+}
+
+.ss-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.ss-card-label,
+.ss-card-job {
+  color: var(--colorInkSecondary);
+  font: 500 17px/1.35 var(--fontFamily);
+}
+
+.ss-card-event {
+  font: 600 17px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ss .ss-send {
+  margin-top: 0;
+}
+
+.ss-told {
+  color: var(--colorInk);
+  font: 400 17px/1.45 var(--fontFamily);
+}
+
+.ss-told:empty {
+  display: none;
+}
+
+/* The field's label stays above what is typed, so it never shrinks under 17 px. */
+.ss .rd-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.ss .rd-label,
+.ss .rd-field:is(:focus-within, .is-filled) .rd-label {
+  position: static;
+  padding: var(--spaceSm) 15px 0;
+  font: 500 17px/24px var(--fontFamily);
+}
+
+.ss .rd-input {
+  height: 40px;
+  padding: 0 15px var(--spaceSm);
+}
+
+.ss :is(.rd-says, .rd-problem-body) {
+  font-size: 17px;
+}

@@ -1,0 +1,31 @@
+# sc-62023 regression, tablet: the bell's popover from Events and Notifications as a framed screen (as from a push), upright and on its side. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- takeScreenshot: up-popover
+- back
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-framed
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: side-framed
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- takeScreenshot: side-popover
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

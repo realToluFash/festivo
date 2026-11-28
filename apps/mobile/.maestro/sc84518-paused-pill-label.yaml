@@ -1,0 +1,10 @@
+# sc-84518: reload onto the paused page in the orientation asked, and wait for it to settle, so the pill's (or the sidebar head's) label can be read from the hierarchy. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '.*(paused|pausa|pause)\..*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000

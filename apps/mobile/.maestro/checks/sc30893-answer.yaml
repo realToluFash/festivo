@@ -1,0 +1,50 @@
+# sc-30893: Approve Kofi, then turn Priya down; what each leaves on the page. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=recovery
+- extendedWaitUntil:
+    visible:
+      id: 'members.recovery.kofi@ire.events.approve'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.kofi@ire.events.approve'
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.kofi@ire.events.approve'
+- tapOn:
+    id: 'members.recovery.turnOff'
+- takeScreenshot: answer-sending
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.recovery.kofi@ire.events'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: answer-approved
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.priya@ire.events.turnDown'
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.priya@ire.events.turnDown'
+- tapOn:
+    id: 'members.recovery.turnDownConfirm'
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.recovery.priya@ire.events'
+    timeout: 15000
+- scrollUntilVisible:
+    element: 'Priya Shah.s request is turned down\..*'
+    direction: UP
+- waitForAnimationToEnd
+- assertNotVisible: 'Requests to get back in'
+- assertNotVisible: 'Only owners and admins see this.*'
+- takeScreenshot: answer-both
+- scrollUntilVisible:
+    element:
+      id: 'members.filter'
+- waitForAnimationToEnd
+- assertNotVisible: 'Requests to get back in'
+- assertNotVisible: 'Only owners and admins see this.*'

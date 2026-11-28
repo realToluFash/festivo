@@ -1,0 +1,17 @@
+# sc-29875: the design demo's Today, Now at now=done (up), cover then folded band. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?moment=day&now=done
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: cover
+- swipe:
+    start: 50%, 75%
+    end: 50%, 25%
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: band

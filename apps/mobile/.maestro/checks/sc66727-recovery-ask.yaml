@@ -1,0 +1,47 @@
+# sc-66727: the ${ACTION} confirm on ${REQUEST}'s request, from its title to its buttons, then ${KEEP} closes it and changes nothing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.${REQUEST}.${ACTION}'
+    direction: DOWN
+    timeout: 90000
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.${REQUEST}.${ACTION}'
+- extendedWaitUntil:
+    visible:
+      id: 'members.recovery.ask'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ask-top
+- scrollUntilVisible:
+    element:
+      id: '${KEEP}'
+    direction: DOWN
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ask-foot
+- tapOn:
+    id: '${KEEP}'
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.recovery.ask'
+    timeout: 10000
+- assertVisible:
+    id: 'members.recovery.${REQUEST}.${ACTION}'
+- takeScreenshot: ask-closed

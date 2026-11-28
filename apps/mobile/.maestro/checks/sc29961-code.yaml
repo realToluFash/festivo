@@ -1,0 +1,30 @@
+# sc-29961: on Enter your code, the right code typed after the sign-in ran out (expire.sh age) goes to Sign in, saying so, Email kept; signing in again reaches Enter your code and the right code signs in.
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- takeScreenshot: code
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 35000, optional: true }
+- runScript: { file: ../batch/helper.js, env: { ASK: /code } }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${output.helper.code}
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- assertVisible:
+    id: 'signIn.email'
+    text: '${EMAIL}'
+- takeScreenshot: timed-out
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- runFlow: ../sign-in-two-factor.yaml
+- extendedWaitUntil: { notVisible: { id: 'signIn.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'twoFactor.code' }
+- takeScreenshot: signed-in-again

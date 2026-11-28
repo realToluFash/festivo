@@ -1,0 +1,22 @@
+# New event opened from the Events screen's New event button, scrolled to its Cover photo heading in the batch language, for a translation pass on the tablet's sheet. sc-61137.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- waitForAnimationToEnd
+- takeScreenshot: newevent-opened
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 15000
+- scrollUntilVisible:
+    element: '{{t:eventForm.coverHeading}}'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: newevent-cover-heading

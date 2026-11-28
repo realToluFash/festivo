@@ -1,0 +1,12 @@
+# sc-563: a member's page in Settings > Members, as an Admin or Owner of the home organisation sees it. Pass PERSON: the member's name as the list shows it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      text: '${PERSON}.*'
+    timeout: 30000
+- tapOn: '${PERSON}.*'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc563-member-product

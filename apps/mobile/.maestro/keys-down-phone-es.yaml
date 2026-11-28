@@ -1,0 +1,15 @@
+# Closes the keys by a tap on the step's own question, then taps Continue. sc-13408.
+#
+# Run in Spanish, the language the retest ran in. The tap is on the first step's question by its
+# words: the question has no testID to tap instead.
+appId: host.exp.Exponent
+---
+- tapOn: '{{t:createOrganisation.whatTitle}}'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-before
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-after

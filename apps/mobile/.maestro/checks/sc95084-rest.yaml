@@ -1,0 +1,41 @@
+# sc-95084: on the phone, Today at the top, a short swipe that rests on Open the event (fr: Ouvrir l'événement), a longer one that folds, on to Vos événements, then back up to the button and the top. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- swipe: { start: '50%, 30%', end: '50%, 85%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 60%', end: '50%, 45%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: rest
+- swipe: { start: '50%, 60%', end: '50%, 45%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: folded
+- scrollUntilVisible:
+    {
+      element: { text: 'Vos événements|Your events' },
+      direction: DOWN,
+      timeout: 15000,
+      optional: true,
+    }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: on
+- scrollUntilVisible:
+    { element: { text: 'Cette semaine|This week' }, direction: UP, timeout: 15000, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: week
+- swipe: { start: '50%, 45%', end: '50%, 60%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: back1
+- swipe: { start: '50%, 45%', end: '50%, 60%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: back2
+- swipe: { start: '50%, 45%', end: '50%, 60%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: back3

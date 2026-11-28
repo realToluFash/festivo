@@ -1,0 +1,17 @@
+# sc-49170: Members tapped from Settings, recorded, to time the card and first rows of People against 2 s.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- scrollUntilVisible:
+    element: { id: 'settings.members' }
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- startRecording: tap-members
+- tapOn: { id: 'settings.members' }
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- stopRecording
+- takeScreenshot: members-open

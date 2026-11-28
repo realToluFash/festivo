@@ -1,0 +1,16 @@
+# sc-68022 regression: People's page on a phone (Add field, list, foot, role sheet, Add people) as before.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'tab-more' }, timeout: 30000 }
+- tapOn: { id: 'tab-more' }
+- tapOn: { id: 'event.more.people' }
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-reg-top
+- scroll
+- takeScreenshot: d-reg-foot
+- scrollUntilVisible: { element: { id: 'people.add.open' }, direction: UP, timeout: 10000 }
+- tapOn: { id: 'people.add.open' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-reg-add

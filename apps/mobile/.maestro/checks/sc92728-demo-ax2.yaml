@@ -1,0 +1,24 @@
+# sc-92728: the Top size demo, Settings upright at ax2, en and fr, one invitation and none. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/top-size?size=ax2&lang=en&screen=settings&org=qa&invite=one
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: en-one
+- openLink: ${METRO_URL}/--/demo/top-size?size=ax2&lang=en&screen=settings&org=qa&invite=none
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: en-none
+- openLink: ${METRO_URL}/--/demo/top-size?size=ax2&lang=fr&screen=settings&org=qa&invite=one
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: fr-one
+- openLink: ${METRO_URL}/--/demo/top-size?size=ax2&lang=fr&screen=settings&org=qa&invite=none
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: fr-none

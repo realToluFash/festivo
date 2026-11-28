@@ -1,0 +1,9 @@
+# sc-67665: the People demo, addPartial, on the iPad in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people?state=addPartial
+- extendedWaitUntil: { visible: '.*Add people.*', timeout: 30000 }
+- assertNotVisible: '.*is on this event already.*'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

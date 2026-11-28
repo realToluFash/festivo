@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Soirely utilise l’appareil photo pour scanner les codes que les invités présentent à l’entrée."
+  }
+}
