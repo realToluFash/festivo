@@ -227,10 +227,7 @@ export const STARTS_DAYS: readonly WeekDay[] = [
   { date: '2026-11-29', rows: [{ time: '20:00', key: 'party', note: '' }] },
 ];
 
-/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
-export function titleOnOneLine(width: number, room: number): boolean {
-  return room > 0 && width <= room;
-}
+export { titleOnOneLine } from '../../layout/textSize.ts';
 
 /** Main's strip label, `TYPE.label` in semibold capitals, tracked by a fixed 6% of it at every size. */
 export const STRIP_LABEL = 11;
