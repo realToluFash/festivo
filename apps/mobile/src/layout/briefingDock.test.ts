@@ -14,9 +14,9 @@ describe('the staff briefing on a tablet on its side', () => {
 
 describe('the staff briefing on a tablet upright', () => {
   it.each([
-    [1180, 640],
+    [1180, 1020],
     [700, 540],
-  ])('in a %i pt window the dialog is capped at %i pt', (height, cap) => {
+  ])('in a %i pt window the dialog grows to %i pt', (height, cap) => {
     expect(briefingDock('tabletPortrait', height).maxHeight).toBe(cap);
   });
 

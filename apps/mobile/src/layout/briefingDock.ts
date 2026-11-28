@@ -1,7 +1,5 @@
 import type { LayoutKind } from './classify.ts';
 
-export const BRIEFING_DIALOG_MAX_HEIGHT = 640;
-
 export const BRIEFING_DIALOG_MARGIN = 160;
 
 export interface BriefingDock {
@@ -9,7 +7,7 @@ export interface BriefingDock {
   docked: boolean;
   /** The panel fills its frame; otherwise it takes the height of what it holds. */
   fills: boolean;
-  /** The tallest an upright dialog grows; null when docked. */
+  /** How far down an upright dialog grows, from the top of the window to a margin above its foot; null when docked. */
   maxHeight: number | null;
 }
 
@@ -19,6 +17,6 @@ export function briefingDock(kind: LayoutKind, windowHeight: number): BriefingDo
   return {
     docked: false,
     fills: false,
-    maxHeight: Math.min(BRIEFING_DIALOG_MAX_HEIGHT, windowHeight - BRIEFING_DIALOG_MARGIN),
+    maxHeight: windowHeight - BRIEFING_DIALOG_MARGIN,
   };
 }

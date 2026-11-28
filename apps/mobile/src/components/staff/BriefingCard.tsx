@@ -112,15 +112,17 @@ export function BriefingCard({
           </View>
         ))}
       </View>
-      <View style={styles.acts}>
-        {acts && (
+      {acts && (
+        <View style={styles.acts}>
           <SecondaryButton
             ref={openCopyRef}
             label={t('staffLink.copy')}
             onPress={openCopy}
             testID="briefing.copy"
           />
-        )}
+        </View>
+      )}
+      <View style={styles.acts}>
         <QuietButton
           ref={openRulesRef}
           label={acts ? t('briefing.editRules') : t('briefing.rules')}
