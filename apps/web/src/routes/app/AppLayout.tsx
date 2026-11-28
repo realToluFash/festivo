@@ -51,6 +51,7 @@ import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { AloneHeader } from '../../components/NoOrganisationParts.tsx';
 import { OutsideShell } from './OutsideShell.tsx';
+import { pathShown } from './pageUnder.ts';
 import { PageUnder } from './UnderTheSheet.tsx';
 import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
@@ -171,12 +172,13 @@ function Shell({ pages }: { pages: RouteObject[] }) {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const atPhone = usePhoneWidth();
-  const fits = fitsPhone(pathname);
+  const shown = pathShown(location);
+  const fits = fitsPhone(shown);
   // Wider than a phone no page has the band (sc-39509, sc-60699): each page's own top carries the bell, as Today, Events and Calendar do in a phone's window (sc-57468).
   const bandless = !atPhone || fits;
-  const ownNotices = placesItsNotices(pathname);
+  const ownNotices = placesItsNotices(shown);
   // An event's areas at a desk say they are offline in Events' amber box, above their crumb row (sc-65646).
-  const boxed = bandless && !ownNotices && pathname.startsWith('/app/events/');
+  const boxed = bandless && !ownNotices && shown.startsWith('/app/events/');
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
