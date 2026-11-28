@@ -86,6 +86,36 @@ describe('a failed payment on the web (sc-3937)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('keeps the role a row was opened with: no billing permission is asked, never given the button', async () => {
+    await shown('readOnlyNone');
+    fireEvent.click(screen.getByRole('link', { name: /Q4 partner summit/ }));
+    await screen.findByRole('button', { name: 'Make live' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = screen.getByRole('dialog', { name: TITLE });
+    expect(within(dialog).queryByRole('button', { name: 'Update payment method' })).toBeNull();
+    expect(
+      within(dialog).getByText('Ask someone who manages billing to make the payment.'),
+    ).toBeDefined();
+  });
+
+  it('keeps billing.read’s banner without a button on a live event it opens', async () => {
+    await shown('readOnlyRead');
+    fireEvent.click(screen.getByRole('link', { name: /Ama & Kofi’s wedding/ }));
+    await screen.findByRole('button', { name: 'Send a message' });
+
+    expect(within(banner()!).queryByRole('button')).toBeNull();
+  });
+
+  it('keeps the past-due banner on the event a row opens', async () => {
+    await shown('pastDue');
+    fireEvent.click(screen.getByRole('link', { name: /Ama & Kofi’s wedding/ }));
+    await screen.findByRole('button', { name: 'Send a message' });
+
+    expect(banner()?.textContent).toContain('Your last payment failed.');
+  });
+
   it('mails the read-only words with the button, and Paid without one', async () => {
     await shown('emailReadOnly');
     expect(screen.getByRole('link', { name: 'Update payment method' })).toBeDefined();

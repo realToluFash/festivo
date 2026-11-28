@@ -24,6 +24,9 @@ import {
   type Status,
   bannerOf,
   mailOf,
+  owes,
+  pageOf,
+  type ReadOnlyStateName,
   readOnlyState,
   readOnlyStateOf,
   refuses,
@@ -47,6 +50,7 @@ export function ReadOnly() {
   const [params] = useSearchParams();
   const name = readOnlyStateOf(params.get('state'));
   const state = readOnlyState(name);
+  const page = pageOf(params.get('page')) ?? state.page;
 
   if (state.email != null)
     return (
@@ -63,9 +67,10 @@ export function ReadOnly() {
       {(tell) => (
         <ReadOnlyPage
           key={name}
+          name={name}
           start={state.status}
           role={state.role}
-          page={state.page}
+          page={page}
           offline={params.has('offline')}
           tell={tell}
         />
@@ -75,12 +80,14 @@ export function ReadOnly() {
 }
 
 function ReadOnlyPage({
+  name,
   start,
   role,
   page,
   offline: startOffline,
   tell,
 }: {
+  name: ReadOnlyStateName;
   start: Status;
   role: Role;
   page: Page;
@@ -90,15 +97,14 @@ function ReadOnlyPage({
   const [status, setStatus] = useState(start);
   const [leaving, setLeaving] = useState(false);
   const [offline, setOffline] = useState(startOffline);
-  const [open, setOpen] = useState(isRefused(page) && refuses(start));
+  const [open, setOpen] = useState<Page | null>(isRefused(page) && refuses(start) ? page : null);
   const timer = useRef<number | undefined>(undefined);
   const banner = bannerOf(status, role);
-  const owed = status === 'pastDue' || status === 'pastDueNoRetry' || status === 'readOnly';
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const pay = () => {
-    setOpen(false);
+    setOpen(null);
     setLeaving(true);
     timer.current = window.setTimeout(() => {
       setLeaving(false);
@@ -108,7 +114,7 @@ function ReadOnlyPage({
   };
 
   const work = (refused: Refused) => {
-    if (refuses(status)) setOpen(true);
+    if (refuses(status)) setOpen(refused);
     else tell(`${REFUSALS[refused].verb}: done, as today. Only read-only refuses new work.`);
   };
 
@@ -124,7 +130,14 @@ function ReadOnlyPage({
             onUpdate={() => tell(HOSTED)}
           />
         )}
-        <PageBody page={page} status={status} leaving={leaving} tell={tell} onWork={work} />
+        <PageBody
+          name={name}
+          page={page}
+          status={status}
+          leaving={leaving}
+          tell={tell}
+          onWork={work}
+        />
         <div className="lr-demo-only">
           <p>
             In the demo only. Status: <strong>{status}</strong>. Role:{' '}
@@ -138,20 +151,20 @@ function ReadOnlyPage({
             . The provider and the server are stood in for.{' '}
             <Link to="/demo#demo-page-37">All the states</Link>
           </p>
-          {owed && (
+          {owes(status) && (
             <button type="button" className="desk-text" onClick={pay}>
               The payment is made
             </button>
           )}
         </div>
       </div>
-      {open && isRefused(page) && (
+      {open === page && isRefused(page) && (
         <ReadOnlyRefusal
           refused={page}
           role={role}
           onUpdate={() => tell(HOSTED)}
           onBack={() => {
-            setOpen(false);
+            setOpen(null);
             tell(`${REFUSALS[page].back}: the work is as it was.`);
           }}
         />
@@ -208,7 +221,7 @@ const ROWS = [
     phase: 'live',
     kind: 'yes',
     word: 'Live',
-    opens: 'readOnlyEventView',
+    opens: 'eventView',
   },
   {
     name: 'Adébáyọ̀’s 60th birthday',
@@ -216,7 +229,7 @@ const ROWS = [
     phase: 'happeningNow',
     kind: 'now',
     word: 'Happening now',
-    opens: 'readOnlyEventView',
+    opens: 'eventView',
   },
   {
     name: 'Q4 partner summit',
@@ -229,12 +242,14 @@ const ROWS = [
 ] as const;
 
 function PageBody({
+  name,
   page,
   status,
   leaving,
   tell,
   onWork,
 }: {
+  name: ReadOnlyStateName;
   page: Page;
   status: Status;
   leaving: boolean;
@@ -252,7 +267,7 @@ function PageBody({
             <li key={row.name}>
               <Link
                 className="desk-row ev-row"
-                to={refuses(status) ? `/demo/read-only?state=${row.opens}` : '/demo/events'}
+                to={`/demo/read-only?state=${name}&page=${row.opens}`}
               >
                 <span className="ro-thumb" aria-hidden="true" />
                 <RowWords

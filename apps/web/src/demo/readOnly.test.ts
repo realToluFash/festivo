@@ -4,6 +4,7 @@ import {
   READ_ONLY_PAGES,
   bannerOf,
   mailOf,
+  pageOf,
   readOnlyOn,
   readOnlyStateOf,
   refuses,
@@ -70,5 +71,12 @@ describe('a failed payment, read-only and paid (sc-3937)', () => {
         expect(readOnlyStateOf(name)).toBe(name);
       }
     expect(readOnlyStateOf('nonsense')).toBe('pastDue');
+  });
+
+  it('opens only pages that exist from ?page=', () => {
+    expect(pageOf('makeLive')).toBe('makeLive');
+    expect(pageOf('eventView')).toBe('eventView');
+    expect(pageOf('settings')).toBeNull();
+    expect(pageOf(null)).toBeNull();
   });
 });

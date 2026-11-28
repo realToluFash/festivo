@@ -17,7 +17,14 @@ export const REFUSED = [
 
 export type Refused = (typeof REFUSED)[number];
 
-export type Page = 'events' | 'eventView' | 'guests' | Refused;
+export const PAGES = ['events', 'eventView', 'guests', ...REFUSED] as const;
+
+export type Page = (typeof PAGES)[number];
+
+/** The page a row opens, carried in `?page=` so the state's role and status stay as they were. */
+export function pageOf(name: string | null): Page | null {
+  return (PAGES as readonly (string | null)[]).includes(name) ? (name as Page) : null;
+}
 
 export type Email = 'pastDue' | 'pastDueNoRetry' | 'readOnly' | 'paid';
 
@@ -113,7 +120,7 @@ export const REFUSALS = {
   },
 } as const satisfies Record<Refused, { safe: string; back: string; on: string; verb: string }>;
 
-const owes = (status: Status) =>
+export const owes = (status: Status) =>
   status === 'pastDue' || status === 'pastDueNoRetry' || status === 'readOnly';
 
 /** The shell's banner on every web page: billing.read sees it, billing.manage also gets Update payment method. */
