@@ -197,7 +197,7 @@ export function StaffRoster({
   else if (phase === 'failed')
     body = (
       <View style={styles.failed} testID="staff.failed">
-        <Notice tone="broken" mark="alert" body={RW.failed} answer={answer} />
+        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={RW.failed} answer={answer} />
         <SecondaryButton
           label={RW.tryAgain}
           onPress={() => {
