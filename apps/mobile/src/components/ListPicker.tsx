@@ -34,7 +34,7 @@ import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
-import { useSystemBack } from './useSystemBack.ts';
+import { pickerTookBack, useEarlyBack } from './earlyBack.ts';
 
 export interface Choice {
   code: string;
@@ -81,7 +81,7 @@ export function ListPicker({
   const [open, setOpen] = useState(false);
   const pickerShown = useModalOpen(open);
   const reduced = useReducedMotion();
-  const { windowUp, rise, risen } = usePickerRise(pickerShown, reduced);
+  const { windowUp, rise, risen, inPlace } = usePickerRise(pickerShown, reduced);
   const windowShown = useModalOpen(open || windowUp);
   const onScreen = windowUp && pickerShown;
   const unnamed = useUnnamedWindow(
@@ -127,8 +127,7 @@ export function ListPicker({
     heldBehind.current = null;
     setOpen(false);
   };
-  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useSystemBack(open, close);
+  const takeBack = useEarlyBack(open, inPlace, close);
   useFocusOnAnswer(windowShown ? undefined : closed, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
@@ -174,6 +173,7 @@ export function ListPicker({
           if (Platform.OS === 'android' && readerOn)
             heldBehind.current = TextInput.State.currentlyFocusedInput();
           setClosed(undefined);
+          takeBack();
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -199,7 +199,10 @@ export function ListPicker({
         visible={windowShown}
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
-        onRequestClose={close}
+        onRequestClose={() => {
+          // Through the hold, which has to know of every Back.
+          if (!pickerTookBack()) close();
+        }}
         onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
@@ -296,6 +299,8 @@ function usePickerRise(shown: boolean, reduced: boolean) {
   const [windowUp, setWindowUp] = useState(false);
   const [rise] = useState(() => new Animated.Value(SLIDES_INSIDE ? 0 : 1));
   if (!SLIDES_INSIDE && !shown && windowUp) setWindowUp(false);
+  const [inPlace, setInPlace] = useState(false);
+  if (!shown && inPlace) setInPlace(false);
 
   useEffect(() => {
     if (!SLIDES_INSIDE || !windowUp) return;
@@ -306,7 +311,9 @@ function usePickerRise(shown: boolean, reduced: boolean) {
       easing: RISE_EASING,
       useNativeDriver: true,
     });
-    motion.start();
+    motion.start(({ finished }) => {
+      if (finished && shown) setInPlace(true);
+    });
     if (shown) return () => motion.stop();
     // Android can lose a native animation's end, so the window goes on a timer of its own.
     const gone = setTimeout(() => setWindowUp(false), duration);
@@ -320,6 +327,7 @@ function usePickerRise(shown: boolean, reduced: boolean) {
   return {
     windowUp,
     rise,
+    inPlace,
     // A Back taken before the window showed has closed the menu already (sc-43145).
     risen: () => {
       if (shown) setWindowUp(true);
@@ -374,7 +382,8 @@ const styles = StyleSheet.create({
   fieldWrong: { borderColor: tokens.colorBroken },
   value: { flex: 1, color: tokens.colorInk },
   // A growing value in a field with no width of its own takes the whole row on Android.
-  valueCompact: { flex: 0 },
+  // Text's base style shrinks (flexShrink: 1) and flex: 0 does not undo that: without this the dial code is cut to the flag.
+  valueCompact: { flex: 0, flexShrink: 0 },
   placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   page: { backgroundColor: tokens.colorPage },

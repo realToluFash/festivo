@@ -370,6 +370,30 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     },
   );
 
+  it(
+    'says Due now is loading, and a failed read offers Try again, then the rows (sc-1331)',
+    SLOW,
+    async () => {
+      await open(at('due_loading'));
+      let dialog = await screen.findByRole('dialog', {}, SLOW);
+
+      expect(within(dialog).getByRole('status').textContent).toBe('Loading the payments…');
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+      cleanup();
+      await open(at('due_failed'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'These payments did not load. Check your connection and try again.',
+      );
+      expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+      expect(within(dialog).getByRole('status').textContent).toBe('Loading the payments…');
+      expect(
+        await within(dialog).findByText('From the reminder sent Nov 1 · 2 payments', {}, SLOW),
+      ).toBeTruthy();
+    },
+  );
+
   it('opens Save as template over the page, from its row and from save_taken', SLOW, async () => {
     await open(at('save_taken'));
     const dialog = await screen.findByRole('dialog', {}, SLOW);

@@ -100,10 +100,10 @@ final readonly class GuestAnswers
     }
 
     /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by, and a recorded reply, which invites a guest not yet invited, `event_state_invalid` unless the phase allows `invite` (sc-52829); the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
-    public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null): void
+    public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null, GuestReplySource $source = GuestReplySource::GuestPage): void
     {
         $page ??= new PageReply([], null);
-        $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded): bool {
+        $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded, $source): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
             $this->refuseByPhase($guest);
@@ -125,7 +125,7 @@ final readonly class GuestAnswers
 
             $previous = $guest->getReply();
             $replied = null === $recorded
-                ? $guest->reply($reply, $this->clock->now(), GuestReplySource::GuestPage)
+                ? $guest->reply($reply, $this->clock->now(), $source)
                 : $guest->reply($reply, $this->clock->now(), GuestReplySource::Host, $recorded->by->getName(), $recorded->how);
             $chose = false;
 

@@ -78,6 +78,15 @@ export const SSO_WORDS = {
   failedLine: (name: string) =>
     `${name} said: This person is not assigned to the Soirely app in ${name}.`,
   failedNext: (name: string) => `Nothing was switched on. Fix it in ${name}, then test again.`,
+  checks: {
+    noCode: 'The provider sent no sign-in code back.',
+    noToken: 'The provider did not hand over a sign-in. Check the client ID and client secret.',
+    unchecked: 'The sign-in the provider sent back did not pass our checks.',
+    otherDomain: 'The provider signed in an address that is not at one of your proved domains.',
+  },
+  checksNext: (name: string) =>
+    `Nothing was switched on. Check the settings here and in ${name}, then test again.`,
+  failedChecks: 'It failed Soirely’s checks',
   switchName: 'Single sign-on',
   switchLine: 'Switches on after a test works.',
   untested: 'Test sign-on first. Single sign-on switches on only after a test works.',

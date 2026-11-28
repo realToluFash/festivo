@@ -42,10 +42,11 @@ it opens signed out (on Welcome or on Sign in), and leaves the app on Home. Ever
 phone starts with it.
 
 `release-sign-in-allow-push` starts with `release-sign-in`, opens the bell by link, taps Turn on
-and then the system's Allow, and leaves the app on the bell with push allowed (sc-4333). It
-needs `EMAIL`, `PASSWORD` and a fresh install where push was never asked: `pushAskDue` asks
-only once, so on any other install the wait on Turn on fails, and so does the wait on Allow
-when the permission was already answered.
+and then the system's Allow, and leaves the app on the bell with push allowed (sc-4333). After
+signing in, it relaunches the app with notifications unset, because Maestro's launchApp grants
+every permission on Android. It needs `EMAIL`, `PASSWORD` and a fresh install where push was
+never asked: `pushAskDue` asks only once, so on any other install the wait on Turn on fails, and
+so does the wait on Allow when the permission was already answered.
 
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.

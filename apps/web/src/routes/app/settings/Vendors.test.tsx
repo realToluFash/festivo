@@ -129,6 +129,10 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     open();
 
     expect(await screen.findByText('2 vendors')).toBeDefined();
+    expect(
+      document.querySelector('.settings-desk-page .desk > .desk-page > .vd-column'),
+    ).not.toBeNull();
+    expect(document.querySelectorAll('.vd-column .vd-tools > .desk-menu-at')).toHaveLength(2);
     expect(screen.getByText('2 in use')).toBeDefined();
     expect(screen.getByText('2 archived')).toBeDefined();
     expect(
@@ -494,6 +498,43 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect(screen.getByText('Bloom & Co')).toBeDefined();
     expect(screen.queryByText('Delta Frames')).toBeNull();
     expect((photographySignal as AbortSignal | null)?.aborted).toBe(true);
+  });
+
+  it('a refused archive links each owed event in a wrapping link, every word inside it (sc-91886)', async () => {
+    signedIn(membership());
+    const long = 'A'.repeat(60);
+    answering(
+      () => pageOf([BLOOM]),
+      () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/vendor_owed',
+            title: 'Conflict',
+            status: 409,
+            events: [
+              { id: 'e1', name: long },
+              { id: 'e2', name: 'Ireti at 40' },
+            ],
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bloom & Co/ }));
+    const form = within(await screen.findByRole('dialog'));
+    await act(async () => {
+      fireEvent.click(form.getByRole('button', { name: 'Archive this vendor' }));
+    });
+    await form.findByRole('link', { name: `Payments to Bloom & Co on ${long}` });
+    const links = form.getAllByRole('link');
+
+    expect(links.map((one) => one.textContent)).toEqual([
+      `Payments to Bloom & Co on ${long}`,
+      'Payments to Bloom & Co on Ireti at 40',
+    ]);
+    expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+    expect(links.every((one) => one.childElementCount === 0)).toBe(true);
   });
 
   it('saving a vendor archived elsewhere shows the API’s words and keeps the form', async () => {

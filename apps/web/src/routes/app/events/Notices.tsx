@@ -6,7 +6,7 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Switch } from '../../../components/GeneralParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { type NoticeMark, reminderLines } from './notices.ts';
+import { type NoticeMark, reminderLines } from '@soirely/domain';
 import './notices.css';
 
 /** The staffing page's Reminder the day before (sc-4333), push only: its cost line and shortfall warning are sc-96965's. Read again whenever the roster changes, since who it reaches does. */

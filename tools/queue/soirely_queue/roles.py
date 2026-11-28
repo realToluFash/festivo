@@ -77,12 +77,17 @@ def everything(labels, state):
 
 
 ROLES = {
+    # A Backlog story reaches the product manager once, and it is as rarely quiet as the
+    # designer: it has the designer's `sweepOverdue` (sc-102264).
     "pm": {"skill": "soirely-product-manager", "queue": ["To Do", "Backlog"],
-           "filter": not_translation, "heartbeat": 120, "sweeps": True},
+           "filter": not_translation, "heartbeat": 120, "sweeps": True, "sweepOverdue": 240},
     # A demo-only story's merged demo is its whole build, so its Failed QA is ux's rework,
     # ahead of new drawing (`work.queued` keeps any other Failed QA story from ux).
+    # The designer is rarely quiet for its heartbeat, so a story left in Needs Design after
+    # its one offer would wait for good: `sweepOverdue` minutes after its last sweep it
+    # sweeps ahead of its comments, busy or not (sc-102245).
     "ux": {"skill": "soirely-designer", "queue": ["Failed QA", "Needs Design"],
-           "filter": not_translation, "heartbeat": 120, "sweeps": True},
+           "filter": not_translation, "heartbeat": 120, "sweeps": True, "sweepOverdue": 240},
     # `background`: the worker runs as `claude --bg`, which has the Artifact tool the design
     # is read with.
     **{role: {"skill": "soirely-developer", "queue": BUILD_QUEUE,

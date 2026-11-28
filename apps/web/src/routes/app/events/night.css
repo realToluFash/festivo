@@ -345,6 +345,7 @@
 
 .nt-pair {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spaceMd);
   margin-top: var(--spaceSm);
 }
@@ -361,6 +362,7 @@
   background: var(--colorCard);
   color: var(--colorInk);
   font: 700 17px/1.2 var(--fontFamily);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -616,6 +618,41 @@ button.nt-later-row:hover {
 
 .nt-card.is-dark .nt-big:focus-visible {
   outline-color: var(--colorInkOnDark);
+}
+
+.nt {
+  container: nt-page / inline-size;
+}
+
+/* sc-102099: from 641 px up the night follows its page's width, not the window's, since the sidebar widens at 961 px. Under 58rem a chosen Later item's panel sits under the cards; under 34rem Now and Next stand above Later in one column. */
+@container nt-page (width < 58rem) {
+  .nt .nt-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nt .nt-panel {
+    width: auto;
+  }
+}
+
+@container nt-page (width < 34rem) {
+  .nt .ev-crumb-row {
+    flex-wrap: wrap;
+    row-gap: var(--spaceMd);
+  }
+
+  .nt .ev-crumb {
+    flex: 1 0 100%;
+  }
+
+  .nt .nt-switch {
+    margin-inline-start: 0;
+  }
+
+  .nt .nt-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* sc-100788: at 400% zoom (320 CSS px, WCAG 2.2 1.4.10) the night page stands in one column: the trail on its own line, the title whole above the track, the clock and the chip under them, then Now, Next and Later, and a chosen item's panel under Later. */

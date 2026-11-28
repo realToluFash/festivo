@@ -243,3 +243,95 @@ describe('/demo/how-its-going with Chicken run out (sc-59384)', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe('/demo/how-its-going with guests asked at the table (sc-59426)', () => {
+  const panel = () => screen.getByRole('dialog', { name: 'Chicken has run out' });
+
+  it('lists Ask each guest last and confirms for 9 guests, Cancel first', async () => {
+    await open('runOutAskConfirm');
+    const ask = screen.getByRole('alertdialog', { name: 'Ask 9 guests at their tables?' });
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Cancel', 'Ask each guest']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    const bulk = within(panel())
+      .getAllByRole('button')
+      .filter((b) => b.hasAttribute('data-bulk'))
+      .map((b) => b.textContent);
+    expect(bulk.at(-1)).toBe('Ask each guest');
+    expect(within(panel()).queryByText('Asking at the table')).toBeNull();
+  });
+
+  it('reads Asking at the table on each row, keeps Choose for, and counts 0 of 9', async () => {
+    await open('runOutAsking');
+    expect(within(panel()).getAllByText('Asking at the table')).toHaveLength(9);
+    expect(within(panel()).queryByRole('button', { name: /^Ask / })).toBeNull();
+    expect(within(panel()).getByRole('button', { name: 'Choose for Tunde Bakare' })).toBeTruthy();
+    const line = within(panel()).getByText('0 of 9 guests have chosen at the table');
+    expect(line.parentElement?.textContent).toContain('AC, not yet built');
+    const stands = within(panel()).getByText('Ask each guest');
+    expect(stands.closest('button')).toBeNull();
+    expect(stands.closest('.rout-stands')?.textContent).toContain('AC, not yet built');
+    expect(within(alerts()).getByText('0 of 9 guests have chosen at the table')).toBeTruthy();
+  });
+
+  it('records an answer from the board switch: 1 of 9, and the guest in Already changed', async () => {
+    await open('runOutAsking');
+    fireEvent.click(
+      within(panel()).getByRole('button', {
+        name: 'Board only: Tunde Bakare answers Beef at table 9',
+      }),
+    );
+    expect(within(panel()).getByText('1 of 9 guests have chosen at the table')).toBeTruthy();
+    const done = within(panel()).getByRole('region', { name: 'Already changed' });
+    expect(within(done).getByText('Tunde Bakare')).toBeTruthy();
+    expect(within(panel()).getAllByText('Asking at the table')).toHaveLength(8);
+  });
+
+  it('asks one guest from their row, and the row keeps Choose for', async () => {
+    await open('runOutPanel');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Ask Tunde Bakare' }));
+    expect(within(panel()).getAllByText('Asking at the table')).toHaveLength(1);
+    expect(within(panel()).getByText('0 of 1 guest has chosen at the table')).toBeTruthy();
+    expect(document.activeElement?.getAttribute('data-choose-for')).toBe('tb');
+    expect(within(panel()).queryByText('Applies to guests still to come')).toBeNull();
+  });
+
+  it('asks a late arrival at once under a standing Ask', async () => {
+    await open('runOutAskStands');
+    expect(within(panel()).getAllByText('Asking at the table')).toHaveLength(10);
+    expect(within(panel()).getByText('0 of 10 guests have chosen at the table')).toBeTruthy();
+  });
+
+  it('confirms Ask each guest for guests still to come once everyone is asked', async () => {
+    await open('runOutAskLater');
+    expect(
+      screen.getByRole('alertdialog', { name: 'Ask guests still to come at their tables?' }),
+    ).toBeTruthy();
+  });
+
+  it('leaves asked guests out of Serve Beef, and says they stay asked', async () => {
+    await open('runOutServeWhileAsked');
+    const ask = screen.getByRole('alertdialog', {
+      name: 'Serve Beef to 2 guests instead of Chicken?',
+    });
+    expect(within(ask).getByText('Guests already asked at their tables stay asked')).toBeTruthy();
+  });
+
+  it('refuses asking offline, and keeps nothing', async () => {
+    await open('runOutAskOffline');
+    expect(
+      within(panel()).getByText('Needs a connection to ask. Nothing is kept to send later.'),
+    ).toBeTruthy();
+    expect(within(panel()).queryByText('Asking at the table')).toBeNull();
+  });
+
+  it('ends every ask on Mark available again', async () => {
+    await open('runOutAskAnswered');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Mark available again' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText(/guests have chosen at the table/)).toBeNull();
+  });
+});

@@ -83,6 +83,8 @@ export interface SampleGuest {
   group?: string | null;
   /** sc-5519: their needs (sc-3777), seen only with guests.manage; none is None recorded. */
   needs?: Needs;
+  /** sc-1291: the email answer link the reply was confirmed from; none is the page itself, which shows no source. */
+  via?: 'emailLink';
 }
 
 export type AskAgain = { kind: 'will' | 'asked'; day: string } | { kind: 'wont' };
