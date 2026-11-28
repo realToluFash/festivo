@@ -75,7 +75,7 @@ import { ExportButton } from './GuestExport.tsx';
 import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventMenu } from './EventMenu.tsx';
-import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
+import { EventNotFound, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { EventStrip } from './EventStrip.tsx';
 import { StaffRosterList } from './staff/StaffRosterList.tsx';
@@ -464,16 +464,7 @@ export function EventScreen({
             ) : null
           }
         >
-          <EventTop
-            kind={kind}
-            event={event}
-            phase={phase ?? event.phase}
-            manages={manages}
-            now={now}
-            onChange={change}
-            onEdit={onEdit == null ? undefined : (part) => onEdit(part, partRef(part))}
-            onDuplicate={onDuplicate}
-          />
+          <EventStrip event={event} phase={phase ?? event.phase} now={now} />
         </PlaceholderArea>
       )
     ) : opened.kind === 'notFound' ? (
@@ -757,7 +748,7 @@ function PlaceholderArea({
     <View style={styles.stack} testID={`events.area.${area}`}>
       {children}
       <View style={cardFrame(kind)}>
-        <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+        <Text size={tokens.typeRowTitle.size} weight="semibold">
           {t(`eventNav.${area}`)}
         </Text>
         <Text size={tokens.typeBody.size} muted>

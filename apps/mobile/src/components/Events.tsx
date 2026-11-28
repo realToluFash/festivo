@@ -2,30 +2,17 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import {
   type EventPhase,
   PHASE_LOOK,
-  formatEventRange,
-  placeWords,
   shownPhase,
 } from '@soirely/domain';
-import { type RefObject, useRef } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { dateLocale } from '../i18n/index.ts';
-import type { EditPart } from '../kit/eventNav.ts';
-import { listEventOf } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt } from '../kit/serverNow.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { DraftRow } from './MakeLive.tsx';
-import { PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
-import { Placeholder } from './Placeholder.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { StatusChip } from './StatusChip.tsx';
-import { Text } from './Text.tsx';
-import { cardFrame } from './cardFrame.ts';
 import { rereadOrganisations } from '../signedIn.ts';
 
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
@@ -51,16 +38,6 @@ export function EventState({ phase }: { phase: EventPhase }) {
       word={t(PHASE_WORD[phase])}
       testID={`events.phase.${phase}`}
     />
-  );
-}
-
-function EventType({ event, size }: { event: OrganisationEvent; size: number }) {
-  const { t } = useTranslation();
-
-  return (
-    <Text size={size} muted>
-      {t(`eventTypes.${event.type}`)}
-    </Text>
   );
 }
 
@@ -91,75 +68,6 @@ export function EventsFailed({
         }}
         testID={testID}
       />
-    </View>
-  );
-}
-
-/** Above every area: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
-export function EventTop({
-  kind,
-  event,
-  phase,
-  manages,
-  now,
-  onChange,
-  onEdit,
-  onDuplicate,
-}: {
-  kind: LayoutKind;
-  event: OrganisationEvent;
-  phase: EventPhase;
-  manages: boolean;
-  now: Date;
-  onChange?: ((event: OrganisationEvent) => void) | undefined;
-  onEdit?: ((part: EditPart) => void) | undefined;
-  onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
-}) {
-  const { t } = useTranslation();
-  const row = listEventOf({ ...event, milestones: [] });
-  const duplicateOpener = useRef<ViewInstance>(null);
-  const endPassed = phase === 'draft' && now.getTime() >= Date.parse(event.endsAt);
-
-  return (
-    <View style={[cardFrame(kind), styles.top]} testID="events.top">
-      <View style={styles.pageHead}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-          {event.name}
-        </Text>
-        <EventState phase={phase} />
-      </View>
-      <EventType event={event} size={tokens.typeBody.size} />
-      <Text size={tokens.typeBody.size}>
-        {t('eventsScreen.when', {
-          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
-          timeZone: event.timeZone,
-        })}
-      </Text>
-      <Text size={tokens.typeBody.size} muted>
-        {placeWords(row.place, row.city, (key, values) => t(key, values ?? {}))}
-      </Text>
-      <Placeholder label={t('eventPage.invited')} />
-      {onChange != null && (
-        <>
-          <DraftRow event={event} manages={manages} now={now} onChange={onChange} onEdit={onEdit} />
-          {endPassed && onEdit != null && (
-            <PrimaryButton
-              label={t('eventLive.changeDates')}
-              onPress={() => onEdit('dates')}
-              testID="events.changeDates"
-            />
-          )}
-          <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
-        </>
-      )}
-      {phase === 'finished' && onDuplicate != null && (
-        <PrimaryButton
-          ref={duplicateOpener}
-          label={t('eventDuplicate.open')}
-          onPress={() => onDuplicate(duplicateOpener)}
-          testID="events.page.duplicate"
-        />
-      )}
     </View>
   );
 }
@@ -208,6 +116,4 @@ export function OutsideNotFound({ back, onBack }: { back: string | null; onBack:
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  pageHead: { gap: tokens.spaceXs },
-  top: { gap: tokens.spaceSm },
 });

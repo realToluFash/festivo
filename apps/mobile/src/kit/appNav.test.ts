@@ -184,12 +184,12 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
 describe("A phone's event page keeps its name out of the header (sc-22871)", () => {
   it('titles the header Events with an event open, and the name is the heading on the card', () => {
     const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
-    const page = source(join(SRC, 'components', 'Events.tsx'));
+    const card = source(join(SRC, 'components', 'EventCard.tsx'));
 
     expect(events).toMatch(
       /<AppFrame\s+current="events"\s+top="scrolls"\s+title=\{t\('eventsScreen\.title'\)\}/u,
     );
-    expect(page).toMatch(/accessibilityRole="header">\s*\{event\.name\}/u);
+    expect(card).toMatch(/<CardSays ref=\{nameRef\} text=\{event\.name\} heading=\{onOpen == null\} \/>/u);
   });
 });
 
