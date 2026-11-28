@@ -171,6 +171,14 @@ export function RunOutPanel({
                   <li key={x.id} className="rout-guest">
                     <GuestWords x={x} />
                     <span className="rout-guest-acts">
+                      <button
+                        className="button rout-choose-for"
+                        type="button"
+                        data-choose-for={x.id}
+                        onClick={() => act(openChoose(ro, x.id, access))}
+                      >
+                        Choose for {x.name}
+                      </button>
                       {isAsked(ro, x) ? (
                         <span className="rout-asking">
                           <Glyph paths={BUBBLE_GLYPH} size={16} />
@@ -188,14 +196,6 @@ export function RunOutPanel({
                           Ask {x.name}
                         </button>
                       )}
-                      <button
-                        className="button rout-choose-for"
-                        type="button"
-                        data-choose-for={x.id}
-                        onClick={() => act(openChoose(ro, x.id, access))}
-                      >
-                        Choose for {x.name}
-                      </button>
                     </span>
                   </li>
                 ))}
