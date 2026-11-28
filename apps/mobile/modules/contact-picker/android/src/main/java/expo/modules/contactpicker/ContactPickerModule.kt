@@ -75,6 +75,14 @@ class ContactPickerModule : Module() {
     }
   }
 
+  /** The phone's own labels are worded by Soirely in its own language; only a label the person wrote is passed on as text. */
+  private fun kindOf(type: Int): String = when (type) {
+    Phone.TYPE_MOBILE -> "mobile"
+    Phone.TYPE_HOME -> "home"
+    Phone.TYPE_WORK, Phone.TYPE_WORK_MOBILE -> "work"
+    else -> "other"
+  }
+
   /** Only the display name, the numbers and the first email: nothing else of the address book is read. */
   private fun read(uri: Uri, selection: String?, args: Array<String>?): List<Map<String, Any?>> {
     val columns = arrayOf(Data.CONTACT_ID, Data.DISPLAY_NAME_PRIMARY, Data.MIMETYPE, Data.DATA1, Data.DATA2, Data.DATA3)
@@ -88,8 +96,8 @@ class ContactPickerModule : Module() {
           Email.CONTENT_ITEM_TYPE -> if (person.email == null) person.email = value
           Phone.CONTENT_ITEM_TYPE -> {
             val type = rows.getInt(4)
-            val label = Phone.getTypeLabel(context.resources, type, rows.getString(5) ?: "").toString()
-            person.numbers.add(mapOf("number" to value, "label" to label, "mobile" to (type == Phone.TYPE_MOBILE)))
+            val label = if (type == Phone.TYPE_CUSTOM) rows.getString(5)?.trim() ?: "" else ""
+            person.numbers.add(mapOf("number" to value, "kind" to kindOf(type), "label" to label))
           }
         }
       }

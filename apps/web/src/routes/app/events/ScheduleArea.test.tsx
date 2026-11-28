@@ -1004,6 +1004,41 @@ describe('A schedule item as a course (sc-3898)', () => {
     );
   });
 
+  it("doesn't say the menu has no courses while it is still loading (sc-104509)", async () => {
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'GET /api/events/ev_1/menu': async () => {
+        await pending;
+
+        return json(MENU);
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Course/ }));
+    const list = await screen.findByRole('group', { name: 'Courses on the menu' });
+
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+    release();
+
+    expect(await within(list).findByRole('button', { name: /^Starter/ })).toBeDefined();
+    expect(within(list).getByRole('button', { name: /^Main course/ })).toBeDefined();
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+  });
+
+  it("wraps the ask's buttons and keeps them at least 48 px tall when narrow (sc-104509)", () => {
+    expect(cssRule('.ro-ask-acts', SCHEDULE_CSS)).toContain('flex-wrap: wrap;');
+    expect(
+      cssRule(
+        '.ro-ask-acts .desk-text',
+        SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)')),
+      ),
+    ).toContain('min-height: 48px;');
+  });
+
   it('asks before moving a course held by another item, and shows the other loses it', async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, MAINS]) }),
