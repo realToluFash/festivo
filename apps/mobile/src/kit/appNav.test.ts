@@ -251,10 +251,11 @@ describe('The bell in the B frame (sc-83081)', () => {
   const feed = (): string => source(join(SRC, 'components', 'NotificationsFeed.tsx'));
   const parts = (): string => source(join(SRC, 'components', 'BellParts.tsx'));
 
-  it("opens Notifications as its own screen on an upright phone, and main's frame on its side", () => {
+  it('opens Notifications as its own screen on a phone either way up, with the frame moved in past the side insets (sc-62023)', () => {
     expect(source(join(APP, 'notifications.tsx'))).toMatch(
-      /if \(kind === 'phone' && height >= width\)\s*return <NotificationsFeed where=\{\{ kind: 'screen', onBack: back \}\} \/>;/u,
+      /if \(kind === 'phone'\)\s*return <NotificationsFeed where=\{\{ kind: 'screen', onBack: back \}\} \/>;/u,
     );
+    expect(parts()).toMatch(/const sides = sidePadding\(tokens\.spaceXxl, insets\)/u);
   });
 
   it('puts Back and Mark all read on one row, the title under them, and no card', () => {
