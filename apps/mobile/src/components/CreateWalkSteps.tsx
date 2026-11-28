@@ -538,13 +538,16 @@ export function CountryStep({
         scrolledToPick.current = true;
         return;
       }
-      list.current?.scrollToOffset({ offset: target, animated: false });
+      // Rows that wrap at a larger display size are taller than the one measured, so the estimated end falls short of the real one.
+      if (target >= furthest) list.current?.scrollToEnd({ animated: false });
+      else list.current?.scrollToOffset({ offset: target, animated: false });
       passes += 1;
       if (passes < 8) wait = setTimeout(check, tokens.motionFast);
       else scrolledToPick.current = true;
     };
     const check = () => {
-      if (dragged.current || Math.abs(offset.current - target) < 2) scrolledToPick.current = true;
+      if (dragged.current || (target < furthest && Math.abs(offset.current - target) < 2))
+        scrolledToPick.current = true;
       else place();
     };
     wait = setTimeout(place, tokens.motionFast);
