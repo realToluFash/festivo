@@ -142,7 +142,7 @@ final readonly class GuestsController
 
         foreach ($rows as $index => $row) {
             try {
-                $news[] = $this->guestRules->guest($row['fullName'], $row['email'] ?? null, $row['mobile'] ?? null, Vec\fill(Math\maxva(0, $row['companions'] ?? 0), null));
+                $news[] = $this->guestRules->guest($row['fullName'], $row['email'] ?? null, $row['mobile'] ?? null, Vec\fill(Type\uint()->coerce(Math\clamp($row['companions'] ?? 0, 0, Guest::COMPANIONS_MAXIMUM + 1)), null));
             } catch (ApiException $refused) {
                 if (ErrorCode::ValidationFailed !== $refused->errorCode) {
                     throw $refused;

@@ -224,10 +224,11 @@ final class GuestsTest extends ApiTestCase
             ['fullName' => 'Kofi Mensah'],
             ['fullName' => 'Ama Owusu', 'email' => 'ama@'],
             ['fullName' => ' ', 'mobile' => ['countryCode' => 'NG', 'number' => '12']],
+            ['fullName' => 'Lucas Moreau', 'companions' => 1_000_000_000],
         ]]);
 
         self::assertSame(422, $this->statusCode());
-        self::assertSame(['guests[1].email', 'guests[2].fullName', 'guests[2].mobile'], Vec\sort(Vec\keys($this->violations())));
+        self::assertSame(['guests[1].email', 'guests[2].fullName', 'guests[2].mobile', 'guests[3].companions'], Vec\sort(Vec\keys($this->violations())));
         self::assertSame(0, $this->people());
     }
 
