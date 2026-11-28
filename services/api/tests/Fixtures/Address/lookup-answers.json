@@ -1,0 +1,21 @@
+{
+    "suggest": [
+        {
+            "id": "node:3589",
+            "text": "Ozumba Mbadiwe Avenue",
+            "secondary_text": "Victoria Island, Lagos, Nigeria"
+        }
+    ],
+    "resolve": {
+        "formatted": "Ozumba Mbadiwe Avenue, Victoria Island, Lagos, Nigeria",
+        "line1": "Ozumba Mbadiwe Avenue",
+        "line2": "Victoria Island",
+        "city": "Lagos",
+        "region": "Lagos State",
+        "postal_code": "101241",
+        "country_code": "NG",
+        "latitude": 6.4316,
+        "longitude": 3.4246,
+        "time_zone": "Africa/Lagos"
+    }
+}

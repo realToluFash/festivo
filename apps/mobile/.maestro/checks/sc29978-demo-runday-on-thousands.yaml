@@ -1,0 +1,7 @@
+# sc-29978: the Today demo's run-of-show Now at ?moment=day&now=on&arrived=thousands (dayNow is not a full moment, so it draws no run), for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc29881-demo.yaml
+    env:
+      QS: 'moment=day&now=on&arrived=thousands'

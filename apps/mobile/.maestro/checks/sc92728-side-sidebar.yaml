@@ -1,0 +1,10 @@
+# sc-92728: the iPad on its side, Settings, the pill at the head of the sidebar (sc-79559 regression). Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: side
+- setOrientation: PORTRAIT

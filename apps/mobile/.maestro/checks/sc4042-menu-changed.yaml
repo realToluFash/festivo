@@ -1,0 +1,18 @@
+# sc-4042: the event's Menu on the app reads Menu changed, true for an allergen added, in the account's language. Needs ${EVENT} with a guest whose pick a menu change asked again.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- tapOn: '(?:Menu|Menú)'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'menu.changed'
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '(?:Menu changed|Menú modificado|Menu modifié|Menu alterado).*(?:changed or been taken off|ha cambiado o se ha quitado|a changé ou a été retiré|mudou ou foi retirado).*'
+- takeScreenshot: menu-changed

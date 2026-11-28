@@ -1,0 +1,20 @@
+# sc-92315: from Today's band upright (scrolled), one tap on the control with testID TAP, or on the bell when TAP is empty. Vars: METRO_URL, TAP.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 15000 }
+- runFlow: ../developer-menu-close.yaml
+- swipe: { start: '50%, 80%', end: '50%, 35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: before
+- runFlow:
+    when: { true: '${TAP != ""}' }
+    commands:
+      - tapOn: { id: '${TAP}' }
+- runFlow:
+    when: { true: '${TAP == ""}' }
+    commands:
+      - tapOn: { point: '96%, 5%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: after

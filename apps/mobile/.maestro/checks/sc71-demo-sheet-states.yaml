@@ -1,0 +1,14 @@
+# sc-71: the app demo's door-code person sheet and its removal, each from a cold start so the state is read. Needs ${ORIENT}, ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- launchApp: { appId: host.exp.Exponent, stopApp: true }
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people?state=code-person
+- extendedWaitUntil: { visible: { id: 'people.roleSheet' }, timeout: 60000, optional: true }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: code-person
+- launchApp: { appId: host.exp.Exponent, stopApp: true }
+- openLink: ${METRO_URL}/--/demo/people?state=code-remove
+- extendedWaitUntil: { visible: 'Remove.*\\?', timeout: 60000, optional: true }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: code-remove

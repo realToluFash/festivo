@@ -1,0 +1,123 @@
+.oe-group + .oe-group {
+  margin-top: var(--spaceXs);
+  padding-top: var(--spaceXs);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.oe-heading {
+  display: block;
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceXxs);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+.oe-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--spaceSm) var(--spaceLg);
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.desk-menu-item.oe-row {
+  align-items: flex-start;
+  padding: var(--spaceSm) var(--spaceLg);
+}
+
+.oe-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.oe-tile.is-place {
+  color: var(--colorInkOnDark);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.oe-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.oe-name {
+  font: 600 15px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.oe-line {
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.oe-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceXxs);
+}
+
+.oe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--colorAccent);
+}
+
+.oe-here {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  color: var(--colorAccentText);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.oe-switch {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  margin: var(--spaceXs) 0;
+  padding-top: var(--spaceXs);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.oe-switch .oe-heading {
+  padding-inline: var(--spaceXs);
+}
+
+.oe-switch .oe-row {
+  padding-inline: var(--spaceXs);
+  border-radius: var(--spaceXl);
+}
+
+.oe-switch .oe-row:hover {
+  background: var(--colorInset);
+}
+
+.sw-menu .oe-row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.oe-gone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}

@@ -1,0 +1,252 @@
+/* Settings › Vendors at a desk in A · Summary first (Budget-A-Vendors, page e81). */
+
+/* The count's live region is unseen until a search: positioned here, so it stays inside the page.
+   A row's tint reaches spaceMd past the column; the margin keeps it inside the page, which would scroll sideways. */
+.vd-column {
+  position: relative;
+  margin-inline-end: var(--spaceMd);
+}
+
+.vd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceXl);
+}
+
+/* At a phone the column runs to the gutter, which takes its rows' tint. A menu's button may sit anywhere on its line, so its menu opens under the tools at the column's width, inside the window (sc-91831). */
+@media (width <= 40rem) {
+  .vd-column {
+    margin-inline-end: 0;
+  }
+
+  .vd-tools {
+    position: relative;
+  }
+
+  .vd-tools > .desk-menu-at {
+    position: static;
+  }
+
+  .vd-tools .desk-menu {
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+}
+
+/* Above 40rem a menu keeps its button's end edge while the whole menu fits inside the page there, and otherwise takes its start edge (sc-102661). */
+@media (width > 40rem) {
+  .vd-tools.is-start .desk-menu {
+    right: auto;
+    left: 0;
+  }
+}
+
+.vd-search {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  min-width: 0;
+  height: 48px;
+  padding: 0 var(--spaceXxs) 0 14px;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInkSecondary);
+}
+
+.vd-search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.desk .vd-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  appearance: none;
+}
+
+.desk .vd-search input:focus-visible {
+  box-shadow: none;
+}
+
+.vd-search input::placeholder {
+  color: var(--colorInkSecondary);
+  opacity: 1;
+}
+
+.vd-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.vd-clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border-radius: var(--radiusPill);
+  color: var(--colorInkSecondary);
+}
+
+/* The lit row holds the focus while it is lit, so its Tint is the mark, never a ring. */
+.vd-column .desk-row.is-on:focus-visible {
+  box-shadow: none;
+}
+
+.vd-count {
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-none {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.vd-none-line {
+  font: 700 18px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.vd-none-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space3xl);
+}
+
+.vd-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--spaceXl);
+  min-height: var(--sizeHit);
+}
+
+.vd-pager-words {
+  flex: 1;
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-pager .desk-text[aria-disabled='true'] {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+/* The vendor's form is the 700 dialog (spec §4), the product's 540 widened from the demo. */
+.desk-dialog:has(.vd-wide) {
+  width: 700px;
+  max-width: calc(100% - 2 * var(--spaceXl));
+}
+
+.vd-wide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.vd-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: 0 var(--space6xl);
+  align-items: start;
+}
+
+.vd-to-fix {
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.vd-optional {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.vd-select {
+  position: relative;
+  padding: 0;
+}
+
+.desk .vd-select select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 44px 0 var(--spaceXl);
+  border: 0;
+  border-radius: inherit;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  appearance: none;
+}
+
+.vd-select svg {
+  position: absolute;
+  right: var(--spaceLg);
+  pointer-events: none;
+  color: var(--colorInkSecondary);
+}
+
+.desk-box.vd-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .vd-area textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
+.desk .vd-area textarea:focus-visible {
+  box-shadow: none;
+}
+
+.vd-archive {
+  display: flex;
+  padding-top: var(--spaceMd);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.vd-owing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.vd-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--colorBrokenTint);
+  color: var(--colorBroken);
+  font: 600 14.5px/1.45 var(--fontFamily);
+}
+
+.vd-alert svg {
+  flex: none;
+  margin-top: 2px;
+}

@@ -1,0 +1,16 @@
+# sc-65714: the app demo's paused screen, for the side-by-side pair beside the product. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings?held=paused
+- extendedWaitUntil:
+    {
+      visible: '.*(Members|Settings|Sign-in rules|Organisation|Delete|Paused|paused).*',
+      timeout: 30000,
+    }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-paused-top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: demo-paused-foot

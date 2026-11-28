@@ -1,0 +1,33 @@
+# sc-3784: Share hands the file to Android's share intent; closing it returns to the list with nothing shown.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export'
+    timeout: 30000
+- tapOn:
+    id: 'guests.export'
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.export.share'
+- takeScreenshot: preparing
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: shareSheet
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: afterShare
+- assertVisible:
+    id: 'guests.export'
+- openLink: ${METRO_URL}/--/demo/guests?state=exportPreparing
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-exportPreparing
+- openLink: ${METRO_URL}/--/demo/guests?state=exportShare
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-exportShare

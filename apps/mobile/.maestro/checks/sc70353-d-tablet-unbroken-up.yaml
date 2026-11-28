@@ -1,0 +1,13 @@
+# sc-70353, the tablet upright: the People demo, state longAddressUnbroken.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/people?state=longAddressUnbroken
+- extendedWaitUntil: { visible: '.*soirely.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

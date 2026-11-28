@@ -1,0 +1,23 @@
+# sc-23327 control for sc23327-edge-tap: the same tap about 4pt from the left on the tab bar's first tab, from the Events list (no page in front, so no strip); then from ${EVENT}'s page a tap at 5% across (outside the 12pt strip).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    point: 1%,96%
+- waitForAnimationToEnd
+- takeScreenshot: list-edge-tap
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    point: 5%,96%
+- waitForAnimationToEnd
+- takeScreenshot: page-tap-outside-strip

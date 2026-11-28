@@ -1,0 +1,6 @@
+# sc-69989 regression: an event's tag on Events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: events

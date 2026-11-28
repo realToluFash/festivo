@@ -1,0 +1,81 @@
+# sc-84453 iPad upright: B's guests notification over A's Guests (Coming) opens B's Guests at Changed since you looked, ‹ Event, kept on Overview, back to A's Guests, Coming; and over A's Overview, back to A's Overview.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}?area=guests&filter=coming
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NG_B}
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: notifications.popover
+- takeScreenshot: b-guests-changed
+- assertVisible:
+    id: frame.back
+    text: 'Back to (Event|Evento)'
+- swipe:
+    start: 20%, 9%
+    end: 90%, 9%
+    duration: 300
+- waitForAnimationToEnd
+- tapOn:
+    id: event.nav.overview
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- assertVisible:
+    id: frame.back
+    text: 'Back to (Event|Evento)'
+- takeScreenshot: b-overview-from-strip
+- tapOn:
+    id: frame.back
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: back-on-a-guests-coming
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NG_B}
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: frame.back
+    text: 'Back to (Event|Evento)'
+- takeScreenshot: b-guests-over-a-overview
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- assertVisible: 'Lagos Night'
+- assertNotVisible:
+    id: guests.filter
+- takeScreenshot: back-on-a-overview

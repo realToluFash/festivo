@@ -1,0 +1,15 @@
+# sc-45141: the app's design demo, a called-off event's page and its Dates row. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-off
+- extendedWaitUntil:
+    visible:
+      text: '.*Called off.*'
+    timeout: 90000
+- takeScreenshot: demo-top
+- scrollUntilVisible:
+    element:
+      text: 'Dates · .*'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: demo-dates

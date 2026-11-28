@@ -1,0 +1,31 @@
+# sc-67708: on its side, from Events > the event > Seating, a swipe from the very edge (0%) opens Overview; then ${GUEST_ID} opened from Guests.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Drafts.*', timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'Drafts.*'
+- extendedWaitUntil: { visible: { id: 'events.row.${EVENT_ID}' }, timeout: 20000 }
+- tapOn: { id: 'events.row.${EVENT_ID}' }
+- extendedWaitUntil: { visible: { id: 'event.side.card' }, timeout: 20000 }
+- tapOn: { id: 'event.nav.seating' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: seating-before-swipe
+- swipe:
+    start: 0%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: after-edge-swipe
+- assertVisible: { id: 'event.side.card' }
+- tapOn: { id: 'event.nav.guests' }
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: guest-page
+- assertVisible: { id: 'guests.row.${GUEST_ID}' }
+- assertVisible: { id: 'guest.${GUEST_ID}' }
+- assertNotVisible: { id: 'guest.back' }
+- assertNotVisible: { id: 'events.back' }

@@ -1,0 +1,35 @@
+# sc-83008: on Today under A, a link to B's event moves the account; ‹ Today lands on Today under B.
+# Needs: the account in Adire Studio and in an organisation named Bayside Events; GALA, the id of Bayside Events' event Winter Gala.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- tapOn:
+    id: 'tab-today'
+- waitForAnimationToEnd
+- takeScreenshot: today-a
+- openLink: ${METRO_URL}/--/events/${GALA}
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: moved
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Today.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'today.search'
+- assertVisible: '.*Bayside Events.*'
+- takeScreenshot: back

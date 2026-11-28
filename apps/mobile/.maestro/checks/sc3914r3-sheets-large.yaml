@@ -1,0 +1,64 @@
+# sc-3914 retest: on ${EVENT_ID}'s Menu, opens Choose for them (the first guest waiting) and Choose who gets it (the first variant), each shot open, after a swipe of its list, and at the foot, to show the title stays whole and only the list scrolls.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu\.(never|wait|given|host)\..+'
+    centerElement: true
+    timeout: 120000
+- tapOn:
+    id: 'menu\.(never|wait|given|host)\..+'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: for-open
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- takeScreenshot: for-swiped
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- takeScreenshot: for-foot
+- tapOn:
+    id: 'menu.choose.cancel'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'menu\.who\.[0-9a-f-]{36}'
+    direction: UP
+    centerElement: true
+    timeout: 120000
+- tapOn:
+    id: 'menu\.who\.[0-9a-f-]{36}'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: who-open
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- takeScreenshot: who-swiped
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- swipe:
+    start: 50%, 60%
+    end: 50%, 35%
+- takeScreenshot: who-foot
+- tapOn:
+    id: 'menu.who.cancel'

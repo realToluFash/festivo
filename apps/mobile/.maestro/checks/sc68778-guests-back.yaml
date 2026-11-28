@@ -1,0 +1,10 @@
+# sc-68778: one tap on Guests' Back pill reaches the event's Overview.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- tapOn: { id: 'frame.back' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'guests.export' }
+- extendedWaitUntil: { visible: { id: 'overview.guests' }, timeout: 15000 }
+- takeScreenshot: guests-back-tapped

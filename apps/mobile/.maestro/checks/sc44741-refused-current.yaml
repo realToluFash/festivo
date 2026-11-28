@@ -1,0 +1,57 @@
+# sc-44741: Delete event's typed-name screen, the event renamed elsewhere while it is open. The old name is refused, the screen then asks for the current name (title, label, error), the old name typed again keeps Delete off, and the current name deletes. Needs ${METRO_URL}, ${EVENT_ID}, ${OLD_NAME}, ${NEW_NAME}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+    env:
+      EVENT_ID: ${EVENT_ID}
+      ELSEWHERE_NAME: ${NEW_NAME}
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Renamed elsewhere, answered ${output.changed}'
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ${OLD_NAME}
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '.*${NEW_NAME}.*'
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: old-again-pressed
+- assertVisible:
+    id: 'events.deleteName'
+- tapOn:
+    id: 'events.deleteName'
+- eraseText: 80
+- inputText: ${NEW_NAME}
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: current-typed
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
+    timeout: 15000
+- takeScreenshot: deleted

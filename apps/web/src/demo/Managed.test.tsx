@@ -1,0 +1,234 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { __setConfig, config } from '../config.ts';
+import { routes } from '../routes/index.tsx';
+import { resetSample } from './events.ts';
+import { SAMPLE } from './rules.ts';
+import { startSwitcher } from './switcher.ts';
+
+const tested = config();
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 15000 };
+const TITLE = 'Managed by Ire Events';
+const BODY = 'Your ire.events address is managed by Ire Events, so you can only be a member there.';
+
+function open(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  render(<RouterProvider router={router} />);
+
+  return router;
+}
+
+function landed(router: ReturnType<typeof open>): string {
+  return `${router.state.location.pathname}${router.state.location.search}`;
+}
+
+function banner(): HTMLElement {
+  return screen.getByRole('heading', { name: TITLE }).closest('section') as HTMLElement;
+}
+
+function saysManaged(): void {
+  const refusal = banner();
+
+  expect(within(refusal).getByText(BODY)).toBeDefined();
+  expect(within(refusal).getByText('Access to a single event still works.')).toBeDefined();
+  expect(
+    within(refusal)
+      .getByRole('link', { name: 'Change your main email address' })
+      .getAttribute('href'),
+  ).toBe('/demo/settings/account');
+}
+
+describe('an account its home organisation manages, outside Settings (sc-563)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+    startSwitcher(null);
+  });
+
+  it(
+    'refuses Create an organisation with the banner in its first step’s place, and Close',
+    SLOW,
+    async () => {
+      open('/demo/events?create=managed');
+      const walk = await screen.findByRole('dialog', { name: 'Create an organisation' }, WAIT);
+
+      saysManaged();
+      expect(within(walk).queryByLabelText('Organisation name')).toBeNull();
+      fireEvent.click(within(walk).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    },
+  );
+
+  it('refuses an invitation’s Join with the banner in place of its buttons', SLOW, async () => {
+    open('/demo/events?switcher=managed');
+    await screen.findByRole('button', { name: /^Organisation: Ire Events/u }, WAIT);
+    const panel = screen.getByRole('group', { name: 'Celebraciones Alameda' });
+
+    expect(within(panel).getByText('Invitation from Kemi Adeyemi · Member')).toBeDefined();
+    saysManaged();
+    expect(within(panel).queryByRole('button', { name: /^Accept and join/u })).toBeNull();
+  });
+
+  it('counts no invitation on the button when none can be accepted (sc-73668)', SLOW, async () => {
+    open('/demo/events?switcher=managed-closed');
+    const button = await screen.findByRole(
+      'button',
+      { name: 'Organisation: Ire Events, your role Owner. Switch organisation' },
+      WAIT,
+    );
+
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.textContent).not.toMatch(/invitation/u);
+  });
+
+  it(
+    'lists both invitations, each with the banner in place of its answers (sc-73668)',
+    SLOW,
+    async () => {
+      open('/demo/events?switcher=managed-listed');
+      const button = await screen.findByRole(
+        'button',
+        { name: /^Organisation: Ire Events/u },
+        WAIT,
+      );
+
+      expect(button.textContent).not.toMatch(/invitation/u);
+      for (const [name, role] of [
+        ['Celebraciones Alameda', 'Member'],
+        ['Bluebird Gatherings', 'Admin'],
+      ] as const) {
+        fireEvent.click(screen.getByRole('button', { name: `${name}, Invitation · ${role}` }));
+        const panel = screen.getByRole('group', { name });
+
+        saysManaged();
+        expect(within(panel).queryByRole('button', { name: /^Accept and join/u })).toBeNull();
+        expect(within(panel).queryByRole('button', { name: /^Decline/u })).toBeNull();
+      }
+    },
+  );
+
+  it('refuses a request link’s Ask to join with the banner', SLOW, async () => {
+    open('/demo/ways-in?page=ask&state=managed');
+    await screen.findByRole('heading', { level: 1, name: 'Ask to join Lumen Feiras' }, WAIT);
+
+    saysManaged();
+    expect(banner().getAttribute('role')).toBe('alert');
+    expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull();
+  });
+
+  it('puts the banner in A few details where Start my own organisation was', SLOW, async () => {
+    open('/demo/ways-in?page=details&state=managed');
+    await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+    expect(within(banner()).getByText(BODY)).toBeDefined();
+    expect(within(banner()).queryByRole('link')).toBeNull();
+    expect(screen.queryByText(/or start your own/u)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ask to join Ire Events' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
+  });
+
+  it(
+    'puts the banner in A few details where the organisation fields were, with nothing to join',
+    SLOW,
+    async () => {
+      open('/demo/ways-in?page=details&state=managedNone');
+      await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+      expect(within(banner()).getByText('Access to a single event still works.')).toBeDefined();
+      expect(within(banner()).queryByRole('link')).toBeNull();
+      expect(screen.queryByLabelText('Organisation name')).toBeNull();
+      expect(screen.queryByLabelText('Country')).toBeNull();
+      expect(screen.getByLabelText('Full name')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDefined();
+    },
+  );
+
+  it(
+    'ends a managed sign-up with nothing to join at You are not in an organisation, with no number',
+    SLOW,
+    async () => {
+      const router = open('/demo/ways-in?page=details&state=managedNone');
+      await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+      await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none&state=managed'), WAIT);
+    },
+  );
+
+  it('ends it there after the number too, verified or carried on without', SLOW, async () => {
+    const router = open('/demo/ways-in?page=details&state=managedNone');
+    await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+    fireEvent.change(screen.getByLabelText('Mobile number'), {
+      target: { value: SAMPLE.number },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await screen.findByRole('heading', { name: 'Check your messages' }, WAIT);
+
+    expect(screen.getByRole('link', { name: 'Carry on without it' }).getAttribute('href')).toBe(
+      '/demo/today?orgs=none&state=managed',
+    );
+
+    fireEvent.change(screen.getByLabelText('Code from WhatsApp'), {
+      target: { value: SAMPLE.code },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to Soirely' }, WAIT));
+
+    await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none&state=managed'), WAIT);
+  });
+
+  it(
+    'puts the banner in place of Start your own on You are not in an organisation',
+    SLOW,
+    async () => {
+      open('/demo/today?orgs=none&state=managed');
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'You are not in an organisation' },
+        WAIT,
+      );
+
+      saysManaged();
+      expect(screen.queryByRole('button', { name: 'Start organisation' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Your account' })).toBeDefined();
+    },
+  );
+
+  it(
+    'says under Priya’s card that she is also a member of 2 other organisations, no names',
+    SLOW,
+    async () => {
+      open('/demo/settings/members?state=alsoMember');
+      await screen.findByRole('heading', { name: 'Priya Shah' }, WAIT);
+
+      expect(screen.getByText('Also a member of 2 other organisations')).toBeDefined();
+    },
+  );
+
+  it('says nothing of other organisations on Priya’s page otherwise', SLOW, async () => {
+    open('/demo/settings/members?state=priya');
+    await screen.findByRole('heading', { name: 'Priya Shah' }, WAIT);
+
+    expect(screen.queryByText(/^Also a member of/u)).toBeNull();
+  });
+
+  it(
+    'tags ire.events Proved in Company domain joining when it is on both lists',
+    SLOW,
+    async () => {
+      open('/demo/settings/general?state=domainBoth');
+      await screen.findByRole('heading', { level: 1, name: 'General' }, WAIT);
+      const joining = screen
+        .getByRole('heading', { level: 2, name: 'Company domain joining' })
+        .closest('section') as HTMLElement;
+
+      expect(within(joining).getByText('Proved')).toBeDefined();
+      expect(within(joining).getByText('People at it can ask to join')).toBeDefined();
+    },
+  );
+});
