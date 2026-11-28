@@ -19,6 +19,7 @@ import {
   dayLineShares,
   drawnSize,
   fitWidest,
+  titleOnOneLine,
   wholeLineHeight,
 } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -528,6 +529,46 @@ function FittedDayLine({ day }: { day: AgendaDay }) {
   );
 }
 
+/** A row's title, hidden until it knows whether it fits one line: if it does it is held to that line, so iOS never gives it a blank second one; if not it wraps between words in exactly the width it is drawn in (sc-94683). */
+function RowTitle({ text }: { text: string }) {
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const key = `${fontScale}|${text}`;
+  const width = measured?.key === key ? measured.width : null;
+  const known = width != null && room > 0;
+  const oneLine = known && titleOnOneLine(width, room);
+
+  return (
+    <View
+      style={!known && styles.waiting}
+      onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <MeasuredWords
+        words={[text]}
+        size={15}
+        weight="semibold"
+        onWidth={(_, next) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === next ? now : { key, width: next },
+          )
+        }
+      />
+      <Text
+        // A new shape mounts a new Text, so iOS never draws one in the box laid out for the other (sc-69816).
+        key={oneLine ? 'one' : `wraps|${room}`}
+        size={15}
+        weight="semibold"
+        wholeLines
+        numberOfLines={oneLine ? 1 : undefined}
+        style={known && !oneLine ? { width: room } : undefined}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 function AgendaDays({
   days,
   nothing,
@@ -594,9 +635,7 @@ function AgendaDays({
                       {!stacked && time}
                       <View style={[styles.stripe, { backgroundColor: eventColour(item.event) }]} />
                       <View style={styles.words}>
-                        <Text size={15} weight="semibold">
-                          {item.title}
-                        </Text>
+                        <RowTitle text={item.title} />
                         <Text
                           size={13}
                           weight="medium"

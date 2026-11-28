@@ -250,7 +250,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
   });
 
-  it("sits inside the desk's button and field resets, and gives the narrow page its own padding", async () => {
+  it("sits inside the desk's button and field resets, and gives the narrow page no inset beyond the shell's gutter", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
     });
@@ -259,7 +259,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(tab.closest('.desk.ev')).not.toBeNull();
     expect(
       cssRule('.ro.desk-page', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 40rem)'))),
-    ).toContain('padding: var(--spaceLg) var(--spaceMd) var(--space3xl);');
+    ).toContain('padding: var(--spaceLg) 0 var(--space3xl);');
   });
 
   it("starts where the event's other pages do at a desk, the card's padding its only one", async () => {

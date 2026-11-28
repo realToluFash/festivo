@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Person } from '../briefing/briefingModel.ts';
+import { rowLine } from '../staffLink/StaffRosterModel.ts';
+
+import { type Person, BW, offersOf } from '../briefing/briefingModel.ts';
 import {
   type ShiftStart,
   type ShiftState,
@@ -63,6 +65,18 @@ describe('the roster’s Briefing lines', () => {
       'Unassigned Saturday 18:00–Sunday 00:00',
       'No shift left, still on the staff',
     ]);
+  });
+
+  it('reads the earliest of several shifts with +1 more on the roster, as sc-3908 does', () => {
+    const row = (id: string) => {
+      const found = shiftStart('several_shifts').people.find((one) => one.id === id);
+      if (found == null) throw new Error(id);
+
+      return rowLine(found);
+    };
+
+    expect(row('dayo')).toBe('Floor lead · Floor · Saturday 15:00 to 23:00 +1 more');
+    expect(row('yusuf')).toMatch(/Not on a shift yet$/);
   });
 
   it('reminds nobody left with no shift', () => {
@@ -277,12 +291,29 @@ describe('the reminder card', () => {
 });
 
 describe('what the page offers', () => {
-  it('hides the three sends once Finished, and only then', () => {
+  it('hides the three sends and Copy link once Finished, and only then', () => {
     for (const state of SHIFT_STATES) {
       const finished = shiftStart(state).finished;
-      expect(briefingFor(shiftStart(state)).concluded).toBe(finished != null);
+      expect(briefingFor(shiftStart(state)).finished).toBe(finished != null);
       expect(sendsOffered(finished)).toBe(finished == null);
     }
+  });
+
+  it('offers what the screen draws once Finished: House rules and Preview as, no Copy link or send', () => {
+    const ended = SHIFT_STATES.filter((state) => shiftStart(state).finished != null);
+    expect(ended).toContain('called_off');
+    for (const state of ended) {
+      expect(offersOf(briefingFor(shiftStart(state)))).toEqual({
+        acts: false,
+        sends: false,
+        rules: BW.rules,
+        preview: BW.previewAs,
+      });
+    }
+    expect(offersOf(briefingFor(shiftStart('list')))).toMatchObject({
+      acts: true,
+      rules: BW.editRules,
+    });
   });
 
   it('shows the End now notice only on the refused send', () => {

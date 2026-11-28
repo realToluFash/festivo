@@ -9,6 +9,7 @@ import {
   feedWithRead,
   feedWithReadsUndone,
   readSettled,
+  readerZoneOf,
   whenShown,
 } from '@soirely/domain';
 import { router, usePathname } from 'expo-router';
@@ -35,7 +36,7 @@ import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFo
 import type { Anchor } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { type TextHandle } from './Text.tsx';
-import { rereadOrganisations } from '../signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
 
 type Feed =
   | { status: 'loading' }
@@ -57,9 +58,10 @@ export type FeedWhere =
       onOffline: (offline: ScreenOffline) => void;
     };
 
-/** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame for a phone on its side (sc-62023). */
+/** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame on a tablet reached from a push (sc-23814). A phone, either way up, gets the screen (sc-62023). */
 export function NotificationsFeed({ where }: { where: FeedWhere }) {
   const { t } = useTranslation();
+  const zone = readerZoneOf(useSignedIn().account?.timezone);
   const pathname = usePathname();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -304,7 +306,7 @@ export function NotificationsFeed({ where }: { where: FeedWhere }) {
   }
 
   function when(createdAt: string): string {
-    const shown = whenShown(createdAt, new Date(), currentLocale());
+    const shown = whenShown(createdAt, new Date(), currentLocale(), zone);
 
     return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
   }

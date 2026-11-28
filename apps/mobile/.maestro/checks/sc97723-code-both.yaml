@@ -1,0 +1,82 @@
+# sc-97723: the door code's both-linked refusal for a Google-or-Apple-only organisation, its heading drawn whole, on Android as on iPhone: the Android keys put away when they hide the number row, and the refusal scrolled to its foot. Pass ORIENT (PORTRAIT or LANDSCAPE_LEFT), CODE, NUMBER, COUNTRY, COUNTRY_NAME, DIGITS as sc95675-provider-only-code. It signs the batch's session out: run it alone with --cold.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: 01-event
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: 'Ada Member'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'redeem.event.country'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: ${COUNTRY_NAME}
+- tapOn:
+    id: 'redeem.event.country.${COUNTRY}'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+      notVisible:
+        id: 'redeem.event.number'
+    commands:
+      - hideKeyboard
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- takeScreenshot: number
+- runFlow:
+    when:
+      platform: Android
+      notVisible:
+        id: 'redeem.event.send'
+    commands:
+      - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: 'redeem.event.send'
+          direction: DOWN
+          timeout: 10000
+- tapOn:
+    id: 'redeem.event.send'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.code'
+    timeout: 20000
+- runScript: ../scripts/latest-sms-code.js
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible: '.*{{t:signIn.providerOnlyTitle}}.*'
+    timeout: 20000
+- assertVisible: '.*(use Google or Apple\.|que usen Google o Apple\.|d’utiliser Google ou Apple\.|que utilizem Google ou Apple\.)'
+- assertNotVisible: '.*use(n)? Apple (or|o) Google.*|.*utiliser Apple ou Google.*|.*utilizem Apple ou Google.*'
+- waitForAnimationToEnd
+- takeScreenshot: code-both
+- scroll
+- takeScreenshot: code-both-foot

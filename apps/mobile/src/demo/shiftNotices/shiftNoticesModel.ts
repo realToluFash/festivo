@@ -294,7 +294,7 @@ export function cardOf(input: CardInput): CardView {
   };
 }
 
-/** Once Finished no briefing goes (Decided, 27 Oct): the three sends are not offered; Copy link and Preview as stay. */
+/** Once Finished no briefing goes (Decided, 27 Oct): no send and no Copy link, as sc-3917's finished event (pm #100278); Preview as stays. */
 export function sendsOffered(finished: Finished | null): boolean {
   return finished == null;
 }
@@ -435,7 +435,7 @@ export function shiftPeople(): Person[] {
   }));
 }
 
-type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended' | 'shift'>>;
+type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended' | 'shift' | 'more'>>;
 
 function edited(edits: Record<string, Edit>, base: Person[] = shiftPeople()): Person[] {
   return base.map((one) => ({ ...one, ...edits[one.id] }));
@@ -467,13 +467,15 @@ const waiting = (was: 'read' | 'sent', changes: readonly Change[]) => ({
 
 const SEVERAL: Record<string, Edit> = {
   dayo: {
-    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 15:00 to 23:00',
+    more: 1,
     ...waiting('read', [
       { field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' },
     ]),
   },
   grace: {
-    shift: 'Saturday 16:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 16:00 to 23:00',
+    more: 1,
     ...waiting('sent', [{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
   },
   yusuf: {
@@ -728,8 +730,7 @@ export function briefingFor(shift: ShiftStart): BriefingStart {
     side: null,
     access: shift.manage ? 'manage' : 'read',
     live: true,
-    finished: false,
-    concluded: !sendsOffered(shift.finished),
+    finished: !sendsOffered(shift.finished),
     anyLayout: true,
     rules: RULES,
     draft: null,

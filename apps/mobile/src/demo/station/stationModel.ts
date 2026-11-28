@@ -498,8 +498,21 @@ export function walkHere(s: StationState): StationState {
 }
 
 export function arrivalLine(tray: Tray): string {
-  return `${tray.label}’s tray is here · ${plural(tray.plates.length, 'plate', 'plates')}`;
+  return `The tray for ${tray.label} is here · ${plural(tray.plates.length, 'plate', 'plates')}`;
 }
+
+const seatOrder = new Intl.Collator('en', { numeric: true });
+
+/** A block of single seats, named as Floor names it (sc-4021, sc-100403): its first and last seats in label order, numbers by value. */
+export function blockName(seats: readonly string[]): string {
+  const sorted = seats.slice().sort(seatOrder.compare);
+  const first = sorted[0] ?? '';
+  const last = sorted[sorted.length - 1] ?? first;
+  return sorted.length <= 1 ? `Seat ${first}` : `Seats ${first} to ${last}`;
+}
+
+const tenSeats = Array.from({ length: 10 }, (_, i) => String(i + 1));
+export const LONG_BLOCK = ['Window by the garden door', 'At the bar, far end', 'Garden steps'];
 
 export function takeToTable(s: StationState): StationState {
   const tray = hereTrays(s)[0];
@@ -926,6 +939,66 @@ export function runOutWorld(): StationState {
   };
 }
 
+/** sc-100403: an event with a section's single seats, made into blocks of ten in label order (sc-4005). */
+export function blocksWorld(heading: boolean): StationState {
+  const s = fresh();
+  const chicken = 'Jollof rice with chicken';
+  const fish = 'Fried rice with grilled fish';
+  const before = (t: number) =>
+    heading ? {} : { 'Moin moin': on(t - 2), 'Jollof rice': on(t), Chicken: on(t + 1) };
+  const trays: Tray[] = [
+    {
+      id: 'b1',
+      label: blockName(tenSeats),
+      waiter: 'Ada Nnaji',
+      startedAt: at(19, 32),
+      paused: false,
+      taken: false,
+      plates: [
+        plate('Seat 2', chicken, before(at(19, 34))),
+        plate(
+          'Seat 7',
+          fish,
+          heading ? {} : { 'Fried rice': on(at(19, 34)), 'Grilled fish': on(at(19, 36)) },
+          { flags: ['Peanut allergy'] },
+        ),
+        plate('Seat 10', chicken, before(at(19, 34))),
+      ],
+    },
+    {
+      id: 'b2',
+      label: blockName(['11']),
+      waiter: 'Emeka Obi',
+      startedAt: at(19, 36),
+      paused: false,
+      taken: false,
+      plates: [plate('Seat 11', chicken, { 'Moin moin': on(at(19, 36)) })],
+    },
+    {
+      id: 'b3',
+      label: blockName(LONG_BLOCK),
+      waiter: 'Grace Udo',
+      startedAt: at(19, 38),
+      paused: false,
+      taken: false,
+      plates: [
+        plate('Seat At the bar, far end', fish),
+        plate('Seat Window by the garden door', chicken, {}, { flags: ['Halal'] }),
+      ],
+    },
+    {
+      id: 't9',
+      label: 'Table 9',
+      waiter: 'Chidi Okafor',
+      startedAt: at(19, 40),
+      paused: false,
+      taken: false,
+      plates: [plate('Seat 2', chicken, { 'Moin moin': on(at(19, 40)) }), plate('Seat 5', fish)],
+    },
+  ];
+  return { ...s, trays };
+}
+
 export const STATION_STATES = [
   'here',
   'twoHere',
@@ -956,6 +1029,8 @@ export const STATION_STATES = [
   'runOutFaced',
   'runOutOffline',
   'runOutEarlier',
+  'blocks',
+  'blocksHeading',
 ] as const;
 
 export type StationStateName = (typeof STATION_STATES)[number];
@@ -1019,6 +1094,14 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   runOutEarlier: [
     'Run out on an earlier course’s item',
     'The Fryer: Starter · Small chops, owed to one plate, marked run out beside Plantain',
+  ],
+  blocks: [
+    'Single seats',
+    'Seats 1 to 10 as faced; Seat 11 and a block of named seats that wraps, heading here',
+  ],
+  blocksHeading: [
+    'Single seats, heading here',
+    'Seats 1 to 10 · Ada Nnaji heading here; the next tray to walk here is announced by its block',
   ],
 };
 
@@ -1117,5 +1200,9 @@ export function seed(name: StationStateName): StationState {
       return askRunOut({ ...runOutWorld(), online: false, asOf: at(20, 5) }, RUN_OUT.item);
     case 'runOutEarlier':
       return confirmRunOut(askRunOut(fresh(), 'Small chops'));
+    case 'blocks':
+      return blocksWorld(false);
+    case 'blocksHeading':
+      return blocksWorld(true);
   }
 }

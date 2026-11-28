@@ -1,0 +1,14 @@
+# sc-101859: a can_view member's Staff list and a link screen, read-only.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- scrollUntilVisible: { element: { id: 'switcher.tile.${ORG}' }, direction: UP, timeout: 20000 }
+- tapOn: { id: 'switcher.tile.${ORG}' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil: { visible: { id: 'events.area.staff' }, timeout: 30000 }
+- scrollUntilVisible: { element: { id: 'staff.readOnly' }, direction: DOWN, timeout: 20000 }
+- takeScreenshot: roster-readonly
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_SHARED}
+- extendedWaitUntil: { visible: { id: 'staffLink.readOnly' }, timeout: 30000 }
+- takeScreenshot: link-readonly

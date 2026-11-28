@@ -32,7 +32,7 @@ final class AuditTypeTest extends TestCase
     private const array NOT_AN_ORGANISATION = ['catalogue'];
 
     /** Codes and areas the scan finds that name something other than an audited action. */
-    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'budget.payment_reminder', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'guest_replies', 'app'];
+    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'budget.payment_reminder', 'billing.usage_warning', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'guest_replies', 'app'];
 
     /** Every action whose entry shows what changed on something already there: a new action goes here or on AuditType::CREATES_OR_REMOVES (#74875). */
     private const array CHANGES_A_VALUE = [

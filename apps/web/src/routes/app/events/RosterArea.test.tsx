@@ -9,6 +9,7 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
+import { atDeskWidth } from '../../../test-widths.ts';
 
 const tablesOf = (count: number) =>
   Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
@@ -462,20 +463,39 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(ring).toContain('outline-offset: 2px;');
   });
 
-  it('keeps whole words in the Roster table below 720 px, the frame scrolling instead (sc-70540)', () => {
-    const narrow = ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'));
+  it('keeps whole words in the Roster table at every width, Link at 168 px, the frame scrolling instead (sc-70540, sc-75033)', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Amaka Eze')],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+          rules: null,
+        }),
+    });
+    const link = await screen.findByRole('columnheader', { name: 'Link' });
+    expect(link.matches('.rs-frame > .rs-table thead th.rs-link-col')).toBe(true);
+    const narrow = mediaBlock('(width <= 720px)', ROSTER_CSS);
+    const everyWidth = ROSTER_CSS.replace(narrow, '');
     expect(
-      cssRule('.rs-frame > .rs-table :is(th, td),\n  .rs-frame > .rs-table :is(th, td) *', narrow),
+      cssRule(
+        '.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *',
+        everyWidth,
+      ),
     ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th.rs-link-col', everyWidth)).toContain(
+      'min-width: 168px;',
+    );
+    expect(everyWidth).not.toContain('min-width: 128px;');
     expect(
       cssRule(
         '.rs-frame > .rs-table thead th:nth-child(2),\n  .rs-frame > .rs-table thead th:nth-child(3)',
         narrow,
       ),
     ).toContain('min-width: 128px;');
-    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', narrow)).toContain(
-      'min-width: 168px;',
-    );
+    expect(ROSTER_CSS).not.toMatch(/^\.rs-table :is\(th, td\)/m);
   });
 
   it('removes a person after asking', async () => {
@@ -789,6 +809,31 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
     expect(within(row()).queryByRole('button', { name: 'Mark as sent: Amaka Eze' })).toBeNull();
   });
 
+  it('reads Shared for a person shared in the app, with Copied’s ring, and marks it as sent (sc-77903)', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...COPIED, link: 'shared' }),
+      'POST /api/events/ev_1/staff/st_1/link/sent': () =>
+        json({ staff: entry('st_1', 'Amaka Eze', { ...SENT, linkBy: 'Folake Adeyemi' }) }),
+    });
+
+    expect(await within(row()).findByText('Shared')).toBeDefined();
+    expect(
+      within(row()).getByText('Shared by Folake Adeyemi · 19:12 · not marked as sent'),
+    ).toBeDefined();
+    expect(row().querySelector('.rs-mark.is-shared')).not.toBeNull();
+    expect(
+      screen.getByText('Next: send a link to everyone who has not been sent one yet.'),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sent: Amaka Eze' }));
+
+    expect(await within(row()).findByText('Link sent')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/staff/st_1/link/sent')).toBe(
+      true,
+    );
+  });
+
   it('leaves a row reading Link sent as it was after another copy, with no Mark as sent', async () => {
     signedIn();
     clipboard(() => Promise.resolve());
@@ -835,6 +880,64 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
         ),
     ).toBe(true);
     await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('spans a hand-held link row across the four columns in view while a panel is docked, and six when it closes (sc-102333)', async () => {
+    signedIn();
+    atDeskWidth();
+    clipboard(() => Promise.reject(new Error('NotAllowedError')));
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...AMAKA, link: 'none' }),
+      'POST /api/events/ev_1/staff/st_1/link': () =>
+        json({ url: URL_ISSUED, staff: entry('st_1', 'Amaka Eze', COPIED) }),
+    });
+    const span = () => document.querySelector('.rs-held-row td')?.getAttribute('colspan');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+    await screen.findByRole('textbox', { name: 'Link for Amaka Eze' });
+    expect(span()).toBe('6');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Amaka Eze' }));
+    await waitFor(() => expect(span()).toBe('4'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(span()).toBe('6'));
+  });
+
+  it('moves focus to the details’ Copy link after Mark as sent when the row’s column has given way (sc-102333)', async () => {
+    signedIn();
+    atDeskWidth();
+    Object.defineProperty(HTMLElement.prototype, 'checkVisibility', {
+      value(this: HTMLElement) {
+        return !this.closest('.rs-table');
+      },
+      configurable: true,
+    });
+    const copy = { by: 'Folake Adeyemi', at: '2030-11-14T19:12:00+01:00', marked: false };
+    const shift = {
+      id: 'sh_1',
+      startsAt: '2030-11-14T16:30:00+01:00',
+      endsAt: '2030-11-14T21:00:00+01:00',
+    };
+    const changed = { ...AMAKA, link: 'none', shifts: [shift], briefing: 'changed' };
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...changed, briefingCopy: copy }),
+      'POST /api/events/ev_1/staff/st_1/briefing/sent': () =>
+        json({
+          staff: entry('st_1', 'Amaka Eze', {
+            ...changed,
+            briefingCopy: { ...copy, marked: true },
+          }),
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Amaka Eze' }));
+    fireEvent.click(
+      within(row()).getByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
+    );
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('bf-fact-copy-st_1'));
+    Reflect.deleteProperty(HTMLElement.prototype, 'checkVisibility');
   });
 
   it('copies nothing and keeps the status when no link can be issued', async () => {
@@ -931,6 +1034,7 @@ describe('The briefing on the Roster (sc-3917)', () => {
     tables: null,
     checksIn: false,
     dishes: false,
+    floor: false,
     whosHere: false,
     rules: 'Black shirts. Phones away on the floor.',
   };
@@ -1186,6 +1290,8 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
                 new: null,
                 old: null,
                 count: 0,
+                on: '2026-11-07T15:00:00+01:00',
+                dated: false,
               },
             ],
           },
@@ -1205,38 +1311,50 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
     expect(screen.getByText(/^Told on .* at 11:15, by push\.$/)).toBeDefined();
   });
 
-  it('says the event is already over and reloads when Mark as sent is pressed on a page opened before it finished', async () => {
-    signedIn();
-    const copy = { by: 'Folake Adeyemi', at: '2026-11-01T10:12:00+01:00', marked: false };
-    let staffReads = 0;
-    const sent = await onRoster({
-      'GET /api/events/ev_1/staff': () => {
-        staffReads += 1;
-        return roster([
-          entry('st_1', 'Amaka Eze', {
-            mobile: '+2348031110009',
-            link: 'copied',
-            briefing: 'changed',
-            briefingCopy: copy,
-            shifts: [SHIFT],
-          }),
-        ])();
-      },
-      'POST /api/events/ev_1/staff/st_1/briefing/sent': () => problem('event_concluded', 409),
-    });
-    const readsBefore = staffReads;
+  it.each([
+    ['Mark as sent', 'Mark as sent for the briefing: Amaka Eze', 'briefing/sent'],
+    ['Copy link', 'Copy link for the briefing: Amaka Eze', 'briefing/link'],
+  ])(
+    'says the event is already over and reloads into the Finished state when %s is pressed on a page opened before it finished',
+    async (_, pressed, path) => {
+      signedIn();
+      const copy = { by: 'Folake Adeyemi', at: '2026-11-01T10:12:00+01:00', marked: false };
+      let staffReads = 0;
+      let phase = 'live';
+      const sent = await onRoster({
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase } }),
+        'GET /api/events/ev_1/staff': () => {
+          staffReads += 1;
+          return roster([
+            entry('st_1', 'Amaka Eze', {
+              mobile: '+2348031110009',
+              link: 'copied',
+              briefing: 'changed',
+              briefingCopy: copy,
+              shifts: [SHIFT],
+            }),
+          ])();
+        },
+        [`POST /api/events/ev_1/staff/st_1/${path}`]: () => {
+          phase = 'finished';
+          return problem('event_concluded', 409);
+        },
+      });
+      const readsBefore = staffReads;
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
-    );
+      fireEvent.click(await screen.findByRole('button', { name: pressed }));
 
-    await waitFor(() =>
-      expect(document.getElementById('sv-over')?.textContent).toBe('This event is already over.'),
-    );
-    expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
-    await waitFor(() => expect(staffReads).toBeGreaterThan(readsBefore));
-    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/staff/st_1/briefing/sent');
-  });
+      await waitFor(() =>
+        expect(document.getElementById('sv-over')?.textContent).toBe('This event is already over.'),
+      );
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+      await waitFor(() => expect(staffReads).toBeGreaterThan(readsBefore));
+      expect(sent.map((one) => one.line)).toContain(`POST /api/events/ev_1/staff/st_1/${path}`);
+      await waitFor(() => expect(screen.queryByRole('button', { name: pressed })).toBeNull());
+      expect(screen.queryByRole('button', { name: 'Edit the rules' })).toBeNull();
+    },
+  );
 
   it('shows the reminder card, and says the switch was not saved when it fails', async () => {
     signedIn();
@@ -1280,5 +1398,32 @@ describe('Shift notices and the reminder on the Roster (sc-4333)', () => {
       await screen.findByText('No reminder will be sent: the event has been called off.'),
     ).toBeDefined();
     expect(screen.queryByRole('switch')).toBeNull();
+  });
+
+  it("gives Station and Briefing way while a panel is docked, and shows the open person's Briefing in their details (sc-102333)", async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Sade Lawal')],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+          rules: null,
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sade Lawal' }));
+    expect(document.querySelectorAll('.rs-table th.rs-gives')).toHaveLength(2);
+    expect(document.querySelector('.rs-facts .bf-fact')).not.toBeNull();
+
+    const docked = mediaBlock('(width >= 80rem)', ROSTER_CSS);
+    expect(
+      cssRule(
+        '.rs .mn-split:has(> .mn-panel:not(.bf-panel)) .rs-frame > .rs-table .rs-gives',
+        docked,
+      ),
+    ).toContain('display: none;');
+    expect(cssRule('.rs .bf-fact .rs-link-acts', docked)).toContain('display: flex;');
   });
 });

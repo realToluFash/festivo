@@ -143,6 +143,11 @@ export function fitWidest(
   return Math.max(size, Math.floor((start * (slot - tracking)) / (widest - tracking)));
 }
 
+/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
+export function titleOnOneLine(width: number, room: number): boolean {
+  return room > 0 && width <= room;
+}
+
 /** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
 export function dayLineShares(
   name: number,
@@ -263,16 +268,6 @@ export function drawnSize(size: number, fontScale: number, multiplier?: number):
   );
 }
 
-/** A text given a `room` is not drawn until that room is reported and every word is measured, so no frame cuts a word; one given no room never waits (sc-69816). */
-export function wordsPending(
-  room: number | undefined,
-  slot: number,
-  measured: number,
-  words: number,
-): boolean {
-  return room !== undefined && (slot === 0 || measured < words);
-}
-
 /** 12 above and below a growing pill's words, or what main's height leaves around them at the default size, so a tablet on its side keeps 44 (sc-66900). */
 export function grownPad(height: number, size: number, ring: number): number {
   return Math.min(tokens.spaceLg, (height - 2 * ring - size * LABEL_LINE) / 2);
@@ -283,8 +278,8 @@ export interface WordsRoom {
   wrapped: number | null;
   /** That width, kept under its `wordsRoomKey`: the start, window and reported room it was read at. */
   kept: { key: string; width: number } | null;
-  /** A container's width, as its caller reports it, under the window it was read at. */
-  reported: { window: string; width: number } | null;
+  /** A container's width, as its caller last reported it. */
+  reported: number | null;
 }
 
 /** The window a width is read in: its width, and the frame's width the layout's kind is read from, which a turn changes at another moment, so a wrap read in the layout of one side is never kept for the other (sc-90463). */
@@ -306,8 +301,8 @@ export function wordsSlot(
 ): number {
   if (wrapped != null) return wrapped;
   if (kept?.key === wordsRoomKey(start, window, given)) return kept.width;
-  // A container's onLayout does not fire again when only the text size changes (sc-37298).
-  return reported?.window === window ? reported.width : 0;
+  // A container's onLayout fires only when its width changes, not with the text size (sc-37298) nor when a turn moves the frame after it (sc-99214), so its last report stands.
+  return reported ?? 0;
 }
 
 /** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */

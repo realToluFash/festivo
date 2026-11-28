@@ -29,12 +29,13 @@ import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
 import { useScreenReaderOn } from './screenReaderFocus.ts';
-import { LIFT, blurNatively } from './keyboardWatch.ts';
+import { LIFT } from './keyboardWatch.ts';
+import { usePickerFocusBack } from './pickerFocusBack.ts';
 import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
-import { useSystemBack } from './useSystemBack.ts';
+import { pickerTookBack, useEarlyBack } from './earlyBack.ts';
 
 export interface Choice {
   code: string;
@@ -81,7 +82,7 @@ export function ListPicker({
   const [open, setOpen] = useState(false);
   const pickerShown = useModalOpen(open);
   const reduced = useReducedMotion();
-  const { windowUp, rise, risen } = usePickerRise(pickerShown, reduced);
+  const { windowUp, rise, risen, inPlace } = usePickerRise(pickerShown, reduced);
   const windowShown = useModalOpen(open || windowUp);
   const onScreen = windowUp && pickerShown;
   const unnamed = useUnnamedWindow(
@@ -99,8 +100,7 @@ export function ListPicker({
   const heading = useRef<TextHandle>(null);
   const ownField = useRef<ViewInstance>(null);
   const field = pickerRef ?? ownField;
-  const [closed, setClosed] = useState<object>();
-  const heldBehind = useRef<ReturnType<typeof TextInput.State.currentlyFocusedInput>>(null);
+  const focusBack = usePickerFocusBack(!windowShown);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -119,17 +119,11 @@ export function ListPicker({
     0,
   );
 
-  // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
   const close = () => {
-    if (Platform.OS === 'android') setClosed({});
-    // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Not at the tap, nor as the menu's window shows: its keyboard hide there had TalkBack say "keyboard hidden" as the menu opened (qa #50794, #52739). Natively, since the menu's search, once focused, is the field JS counts as focused.
-    if (heldBehind.current != null) blurNatively(heldBehind.current);
-    heldBehind.current = null;
+    focusBack.closing();
     setOpen(false);
   };
-  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useSystemBack(open, close);
-  useFocusOnAnswer(windowShown ? undefined : closed, field);
+  const takeBack = useEarlyBack(open, inPlace, close);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -171,9 +165,8 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
-          if (Platform.OS === 'android' && readerOn)
-            heldBehind.current = TextInput.State.currentlyFocusedInput();
-          setClosed(undefined);
+          focusBack.opening(field);
+          takeBack();
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -188,7 +181,6 @@ export function ListPicker({
         <Text
           size={CONTROL_TEXT_SIZE}
           style={[blank ? styles.placeholder : styles.value, drawn != null && styles.valueCompact]}
-          numberOfLines={drawn != null ? 1 : undefined}
         >
           {blank ? placeholder : (drawn ?? chosen)}
         </Text>
@@ -200,7 +192,10 @@ export function ListPicker({
         visible={windowShown}
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
-        onRequestClose={close}
+        onRequestClose={() => {
+          // Through the hold, which has to know of every Back.
+          if (!pickerTookBack()) close();
+        }}
         onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
@@ -297,6 +292,8 @@ function usePickerRise(shown: boolean, reduced: boolean) {
   const [windowUp, setWindowUp] = useState(false);
   const [rise] = useState(() => new Animated.Value(SLIDES_INSIDE ? 0 : 1));
   if (!SLIDES_INSIDE && !shown && windowUp) setWindowUp(false);
+  const [inPlace, setInPlace] = useState(false);
+  if (!shown && inPlace) setInPlace(false);
 
   useEffect(() => {
     if (!SLIDES_INSIDE || !windowUp) return;
@@ -307,7 +304,9 @@ function usePickerRise(shown: boolean, reduced: boolean) {
       easing: RISE_EASING,
       useNativeDriver: true,
     });
-    motion.start();
+    motion.start(({ finished }) => {
+      if (finished && shown) setInPlace(true);
+    });
     if (shown) return () => motion.stop();
     // Android can lose a native animation's end, so the window goes on a timer of its own.
     const gone = setTimeout(() => setWindowUp(false), duration);
@@ -321,6 +320,7 @@ function usePickerRise(shown: boolean, reduced: boolean) {
   return {
     windowUp,
     rise,
+    inPlace,
     // A Back taken before the window showed has closed the menu already (sc-43145).
     risen: () => {
       if (shown) setWindowUp(true);
@@ -366,15 +366,16 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
     borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
   },
   fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
-  fieldCompact: { minHeight: 56, borderColor: tokens.colorFieldBorder },
+  fieldCompact: { minHeight: 56 },
   fieldWrong: { borderColor: tokens.colorBroken },
   value: { flex: 1, color: tokens.colorInk },
   // A growing value in a field with no width of its own takes the whole row on Android.
+  // Text's base style shrinks (flexShrink: 1) and flex: 0 does not undo that: without this the dial code is cut to the flag.
   valueCompact: { flex: 0, flexShrink: 0 },
   placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
     borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,

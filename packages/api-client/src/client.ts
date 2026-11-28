@@ -13,6 +13,7 @@ import {
   EVENT_STATES,
   type EventTimeline,
   type EventsSearch,
+  type FloorRead,
   isEventType,
   type Milestone,
   MEMBERS_MOST,
@@ -58,6 +59,8 @@ import {
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type ContactGuest,
+  type GuestRoom,
   type PageNeeds,
   type PlaceChoice,
   type PlaceNeeds,
@@ -97,6 +100,12 @@ import {
   asFinalNumbers,
   asKitchenSheet,
 } from './kitchenSheet.ts';
+import {
+  type MessageChannel,
+  type YourMessages,
+  type YourMessagesKey,
+  yourMessagesOf,
+} from './yourMessages.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -222,6 +231,7 @@ import {
   asEventQuotes,
   asOfferedVendors,
 } from './quotes.ts';
+import { type DueNow, asDueNow } from './dueNow.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -1948,6 +1958,22 @@ export class ApiClient {
     return body.emailOn === true;
   }
 
+  /** Your messages (sc-3969) for the guest the key names; a link that does not work is a 404. */
+  async yourMessages(key: YourMessagesKey): Promise<YourMessages> {
+    return yourMessagesOf(await this.post<unknown>('/api/your-messages', key, { anonymous: true }));
+  }
+
+  /** Turns one channel on or off for this organisation, answering the page as it now stands. */
+  async setYourMessages(
+    key: YourMessagesKey,
+    channel: MessageChannel,
+    on: boolean,
+  ): Promise<YourMessages> {
+    return yourMessagesOf(
+      await this.put<unknown>('/api/your-messages', { ...key, channel, on }, { anonymous: true }),
+    );
+  }
+
   /** The VAPID public key this browser subscribes with (sc-3980). */
   async webPushKey(): Promise<string> {
     const body = await this.get<{ webPushKey?: unknown }>('/api/auth/push-targets');
@@ -3370,7 +3396,20 @@ export class ApiClient {
     return { url: typeof body.url === 'string' ? body.url : '', staff };
   }
 
-  /** Only a Copied row moves; Link sent and Link opened stay. */
+  /** As deliverStaffLink, recorded as Shared: the app's share sheet cannot say whether it went (sc-77903). */
+  async shareStaffLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/share`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
   async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
     return this.staffAnswerOf(
       await this.post<unknown>(
@@ -4248,6 +4287,11 @@ export class ApiClient {
     );
   }
 
+  /** Floor (sc-4021): every course's read as the caller sees it; 403 `permission_required` at the pass's level alone. */
+  async serviceFloor(eventId: string): Promise<FloorRead> {
+    return this.get<FloorRead>(`${this.servicePath(eventId)}/floor`);
+  }
+
   /** A hub token for this event's schedule topic alone. */
   async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -4628,6 +4672,25 @@ export class ApiClient {
     return added;
   }
 
+  /** Every row or none (sc-7579): `validation_failed` on `guests[i].…`, and 403 `plan_limit_reached` for the whole pick. */
+  async addGuestsFromContacts(eventId: string, guests: readonly ContactGuest[]): Promise<number> {
+    const body = await this.post<{ added?: unknown }>(`${this.guestsPath(eventId)}/from-contacts`, {
+      guests,
+    });
+
+    return typeof body?.added === 'number' ? body.added : guests.length;
+  }
+
+  async guestRoom(eventId: string): Promise<GuestRoom> {
+    const body = await this.get<Partial<GuestRoom>>(`${this.guestsPath(eventId)}/room`);
+
+    return {
+      plan: typeof body?.plan === 'string' ? body.plan : '',
+      allowed: typeof body?.allowed === 'number' ? body.allowed : null,
+      people: typeof body?.people === 'number' ? body.people : 0,
+    };
+  }
+
   /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */
   async guest(eventId: string, guestId: string): Promise<TaggedGuest> {
     return this.taggedGuest(
@@ -4956,6 +5019,13 @@ export class ApiClient {
     };
   }
 
+  /** Due now (sc-1331): what a payment reminder named, as it is now; 404 alike for no such reminder and for one with nothing left the reader may see. */
+  async dueNow(reminderId: string): Promise<DueNow> {
+    return asDueNow(
+      await this.get<unknown>(`/api/payment-reminders/${encodeURIComponent(reminderId)}`),
+    );
+  }
+
   /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */
   async quotes(eventId: string): Promise<EventQuotes> {
     return asEventQuotes(await this.get<unknown>(`${this.budgetPath(eventId)}/quotes`));
@@ -5258,13 +5328,14 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and `emailLink` for one confirmed from an email answer link (sc-1291), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(
     token: string,
     answer: GuestAnswer,
     companions: readonly CompanionChoice[] = [],
     needs: PageNeeds | null = null,
     unnamed: readonly PlaceChoice[] = [],
+    emailLink = false,
   ): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>(
@@ -5275,6 +5346,7 @@ export class ApiClient {
           ...(companions.length === 0 ? {} : { companions }),
           ...(needs == null ? {} : { needs }),
           ...(unnamed.length === 0 ? {} : { unnamed }),
+          ...(emailLink ? { emailLink } : {}),
         },
         { anonymous: true },
       ),
@@ -5861,7 +5933,7 @@ export class ApiClient {
   }
 
   /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
-   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
+   * and 403 `plan_limit_reached` naming team seats while the plan's seats are taken (sc-3930). */
   async restoreMember(organisationId: string, membershipId: string): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
@@ -7368,6 +7440,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
       thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
+      organisation: typeof what.organisation === 'string' ? what.organisation : '',
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:

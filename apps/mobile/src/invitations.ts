@@ -98,15 +98,17 @@ async function answerInvitation(
     const refusal = error instanceof ApiError ? invitationRefusal((code) => error.is(code)) : null;
 
     outcome =
-      error instanceof ApiError && error.is('domain_managed')
-        ? {
-            kind: 'managed',
-            organisation: error.problem.organisation ?? '',
-            message: error.problem.detail ?? '',
-          }
-        : refusal == null
-          ? { kind: 'failed' }
-          : { kind: 'refused', refusal };
+      error instanceof ApiError && error.is('plan_limit_reached')
+        ? { kind: 'seatsFull', error }
+        : error instanceof ApiError && error.is('domain_managed')
+          ? {
+              kind: 'managed',
+              organisation: error.problem.organisation ?? '',
+              message: error.problem.detail ?? '',
+            }
+          : refusal == null
+            ? { kind: 'failed' }
+            : { kind: 'refused', refusal };
   }
 
   settle(invitation.id, outcome);

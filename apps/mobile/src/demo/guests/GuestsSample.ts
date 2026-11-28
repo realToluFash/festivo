@@ -83,6 +83,8 @@ export interface SampleGuest {
   group?: string | null;
   /** sc-5519: their needs (sc-3777), seen only with guests.manage; none is None recorded. */
   needs?: Needs;
+  /** sc-1291: the email answer link the reply was confirmed from; none is the page itself, which shows no source. */
+  via?: 'emailLink';
 }
 
 export type AskAgain = { kind: 'will' | 'asked'; day: string } | { kind: 'wont' };
@@ -331,7 +333,7 @@ export const PICKED: readonly Picked[] = [
     numbers: [],
     unreadable: false,
     listed: false,
-    email: null,
+    email: 'bimpe.adeyemi@gmail.com',
   },
   {
     key: 'kofi',
@@ -370,7 +372,33 @@ export const PICKED: readonly Picked[] = [
     listed: true,
     email: null,
   },
+  {
+    key: 'mariam',
+    name: 'Mariam Diallo',
+    country: 'FR',
+    number: '6 12 34 56 78',
+    e164: '+33 6 12 34 56 78',
+    numbers: [],
+    unreadable: false,
+    listed: false,
+    email: 'mariam.diallo.orange.fr',
+  },
+  {
+    key: 'unnamed',
+    name: '',
+    country: 'GB',
+    number: '7700 900233',
+    e164: '+44 7700 900233',
+    numbers: [],
+    unreadable: false,
+    listed: false,
+    email: null,
+  },
 ];
+
+/** reviewLongName: the nameless contact's name field holds a note, as a phone allows; 205 characters, past sc-1468's 200. */
+export const LONG_CONTACT_NAME =
+  'Chief Mrs Adaeze Okonkwo, met at the Lagos wedding fair in March, sister of the bride, asked to be seated near the family table and to be sent the order of service before the day, prefers WhatsApp to email';
 
 export const CONTACTS = [
   { name: 'Bimpe Adeyemi', number: '+44 7700 900877', ticked: true },

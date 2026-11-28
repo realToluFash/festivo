@@ -229,7 +229,7 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again, and `team_seats_in_use` while every seat is taken. */
+    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again (checked first), and `plan_limit_reached` while the plan's team seats are taken. */
     #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
     #[InOrganisation(Permission::MembersManage)]
     public function restore(string $organisationId, string $membershipId): Response

@@ -85,9 +85,9 @@ export function walkFor(state: CreateState, t: TFunction, phone: boolean): Walk 
     case 'failed':
       return at(3, { sent: 'failed' });
     case 'back-name':
-      return at(1, { cameBack: true });
+      return at(1, { toPick: true });
     case 'back-country':
-      return at(2, { country: 'BR', cameBack: true });
+      return at(2, { country: 'BR', toPick: true });
     case 'discard':
       return at(phone ? 2 : 1, { asking: true });
     case 'managed':

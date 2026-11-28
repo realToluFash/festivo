@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type PickStore, readPick, rememberPick } from './kitchenStation.ts';
 import {
+  type StationRowRead,
   afterFailedRead,
   openStationOf,
+  pollStationRow,
   readStationRow,
   stationRowLine,
   stationRowShows,
@@ -148,6 +150,65 @@ describe('offline, the row keeps its line as of its last read (sc-95382)', () =>
     expect(
       afterFailedRead(was, new ApiError({ type: 'about:blank', title: 'Forbidden', status: 403 })),
     ).toBeNull();
+  });
+});
+
+const refusal = () =>
+  Promise.reject(new ApiError({ type: 'about:blank', title: 'Forbidden', status: 403 }));
+
+describe('the row is read again every so often (sc-95382, sc-98893)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const READ = { line: 'Grill', at: '2026-11-28T19:00:00.000Z', stale: false };
+
+  function polled(read: () => Promise<NonNullable<StationRowRead>>) {
+    let seen: StationRowRead = null;
+    const stop = pollStationRow(read, 10_000, (next) => {
+      seen = next(seen);
+    });
+
+    return { stop, seen: () => seen };
+  }
+
+  it('reads at once and again at every interval, until stopped', async () => {
+    const read = vi.fn(() => Promise.resolve(READ));
+    const { stop, seen } = polled(read);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(seen()).toEqual(READ);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(read).toHaveBeenCalledTimes(3);
+
+    stop();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(read).toHaveBeenCalledTimes(3);
+  });
+
+  it('a refused read is not repeated: the row goes, and nothing asks for it again', async () => {
+    const read = vi.fn(refusal);
+    const { seen } = polled(read);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(seen()).toBeNull();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it('a read that fails any other way keeps the line as of its last read, and is asked again', async () => {
+    const answers = [
+      () => Promise.resolve(READ),
+      () => Promise.reject(new Error('offline')),
+      () => Promise.resolve(READ),
+    ];
+    const read = vi.fn(() => (answers.shift() ?? (() => Promise.resolve(READ)))());
+    const { seen } = polled(read);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(seen()).toEqual({ ...READ, stale: true });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(seen()).toEqual(READ);
+    expect(read).toHaveBeenCalledTimes(3);
   });
 });
 

@@ -76,11 +76,13 @@ export function CourseFields({
   form,
   adding,
   errors,
+  linked = null,
   onPatch,
 }: {
   form: CourseForm;
   adding: boolean;
   errors: CourseErrors | null;
+  linked?: { title: string; at: string } | null;
   onPatch: (next: Partial<CourseForm>) => void;
 }) {
   const length = lengthOf(form.name);
@@ -122,33 +124,45 @@ export function CourseFields({
           ))}
         </div>
       </div>
-      <div className="desk-field">
-        <label htmlFor="mc-served" className="desk-label gs-label">
-          {CW.servedAt}
-          <span className="gs-optional">{CW.optional}</span>
-        </label>
-        <div
-          className={errors?.servedAt == null ? 'desk-box mc-time' : 'desk-box mc-time is-wrong'}
-        >
-          <input
-            id="mc-served"
-            type="text"
-            inputMode="numeric"
-            value={form.servedAt}
-            autoComplete="off"
-            aria-invalid={errors?.servedAt != null}
-            aria-describedby={described(
-              'mc-served-help',
-              errors?.servedAt != null && 'mc-served-error',
-            )}
-            onChange={(event) => onPatch({ servedAt: event.target.value })}
-          />
+      {linked != null ? (
+        <div className="desk-field">
+          <p id="mc-served-label" className="desk-label gs-label">
+            {CW.servedAt}
+          </p>
+          <p id="mc-served" className="mc-linked-time">
+            {CW.fromSchedule(linked.at, linked.title)}
+          </p>
+          <p className="desk-help">{CW.fromScheduleHelp}</p>
         </div>
-        <p id="mc-served-help" className="desk-help">
-          {CW.servedHelp}
-        </p>
-        {errors?.servedAt != null && <Wrong id="mc-served-error" words={errors.servedAt} />}
-      </div>
+      ) : (
+        <div className="desk-field">
+          <label htmlFor="mc-served" className="desk-label gs-label">
+            {CW.servedAt}
+            <span className="gs-optional">{CW.optional}</span>
+          </label>
+          <div
+            className={errors?.servedAt == null ? 'desk-box mc-time' : 'desk-box mc-time is-wrong'}
+          >
+            <input
+              id="mc-served"
+              type="text"
+              inputMode="numeric"
+              value={form.servedAt}
+              autoComplete="off"
+              aria-invalid={errors?.servedAt != null}
+              aria-describedby={described(
+                'mc-served-help',
+                errors?.servedAt != null && 'mc-served-error',
+              )}
+              onChange={(event) => onPatch({ servedAt: event.target.value })}
+            />
+          </div>
+          <p id="mc-served-help" className="desk-help">
+            {CW.servedHelp}
+          </p>
+          {errors?.servedAt != null && <Wrong id="mc-served-error" words={errors.servedAt} />}
+        </div>
+      )}
       {adding && <p className="desk-help">{CW.goesLast}</p>}
     </>
   );

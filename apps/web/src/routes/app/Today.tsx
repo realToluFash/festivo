@@ -148,7 +148,10 @@ function Today({ organisationId }: { organisationId: string }) {
   // Where the shell keeps its band the bell is the band's, so the banner carries only New event there.
   const actions: BannerActions = {
     create: creates,
-    bell: desk.bell == null ? null : <NotificationsBell userId={session.userId} look="banner" />,
+    bell:
+      desk.bell == null ? null : (
+        <NotificationsBell userId={session.userId} accountZone={session.timezone} look="banner" />
+      ),
   };
 
   return (

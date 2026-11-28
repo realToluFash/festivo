@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Service\Controller;
 
+use App\Domain\Service\FloorRead;
 use App\Domain\Service\Model\Expected;
 use App\Domain\Service\ServiceRead;
 use App\Domain\Service\ServiceSteps;
@@ -53,6 +54,7 @@ final readonly class ServiceController
         private ServiceSteps $serviceSteps,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private ServiceTaps $serviceTaps,
+        private FloorRead $floorRead,
         private KitchenStationList $kitchenStationList,
     ) {
     }
@@ -62,6 +64,16 @@ final readonly class ServiceController
     public function read(#[InThisEvent('courseId')] MenuCourse $course): JsonResponse
     {
         return $this->answered($course);
+    }
+
+    /** Floor (sc-4021): refused to the pass's level alone. */
+    #[Route('/api/events/{eventId}/service/floor', name: 'service_floor', methods: ['GET'])]
+    #[InEvent(Permission::ServiceWork)]
+    public function floor(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+
+        return new JsonResponse($this->floorRead->of($event, $this->grants($event), $this->user()));
     }
 
     /** Kitchen stations open with the pass (sc-4002), so working only the floor is refused here (sc-4015). */

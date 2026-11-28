@@ -1,8 +1,9 @@
 import { type EventPhase, numberFormat } from '@soirely/domain';
+import type { ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, cardStep, dayTiles, shownEvent, venuePlace } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, listEventOf, shownEvent } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -17,6 +18,7 @@ const lasting = (days: number, phase: EventPhase) =>
       status: 'live',
       concludedAt: null,
       place: null,
+      city: null,
       photo: null,
       milestones: [],
     } as ListEvent,
@@ -179,11 +181,7 @@ describe('cardStep', () => {
   });
 });
 
-describe('venuePlace', () => {
-  const joining = ((key: string, values?: { venue?: string; city?: string }) =>
-    key === 'search.line.venueCity'
-      ? `${values?.venue}, ${values?.city}`
-      : key) as unknown as TFunction;
+describe('listEventOf', () => {
   const address = (city: string | null) => ({
     formatted: '12 Bode Thomas Street',
     line1: null,
@@ -195,24 +193,30 @@ describe('venuePlace', () => {
     latitude: null,
     longitude: null,
   });
+  const of = (venue: ListedEvent['venue']) =>
+    listEventOf({ venue, milestones: [] } as unknown as ListedEvent);
 
-  it('names a picked venue with its city', () => {
-    expect(venuePlace({ name: 'Harbour Hall', address: address('Lagos') }, joining)).toBe(
-      'Harbour Hall, Lagos',
-    );
+  it('pairs a picked venue with its city', () => {
+    expect(of({ name: 'Harbour Hall', address: address('Lagos') })).toMatchObject({
+      place: 'Harbour Hall',
+      city: 'Lagos',
+    });
   });
 
-  it('names a venue typed by hand alone, with no city to add', () => {
-    expect(venuePlace({ name: 'Harbour Hall', address: address(null) }, joining)).toBe(
-      'Harbour Hall',
-    );
-    expect(venuePlace({ name: 'Harbour Hall', address: null }, joining)).toBe('Harbour Hall');
+  it('adds no city to a name typed by hand, a blank city, or a venue with no address', () => {
+    expect(of({ name: 'Harbour Hall', address: address(null) }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: address('') }).city).toBeNull();
+    expect(of({ name: 'Harbour Hall', address: null })).toMatchObject({
+      place: 'Harbour Hall',
+      city: null,
+    });
   });
 
-  it('falls back to the address when the venue has no name, and to nothing without one', () => {
-    expect(venuePlace({ name: null, address: address('Lagos') }, joining)).toBe(
-      '12 Bode Thomas Street',
-    );
-    expect(venuePlace(null, joining)).toBeNull();
+  it('writes the address as saved, with no city, when the venue has no name', () => {
+    expect(of({ name: null, address: address('Lagos') })).toMatchObject({
+      place: '12 Bode Thomas Street',
+      city: null,
+    });
+    expect(of(null)).toMatchObject({ place: null, city: null });
   });
 });

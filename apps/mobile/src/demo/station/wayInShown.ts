@@ -23,6 +23,8 @@ interface Shown {
   now: Date;
   station: ServiceLink | null;
   floor: ServiceLink | null;
+  /** No connection: the Offline band above the event's card, as of the row's last read in the same zone, and the state its Try again answers with (sc-97945). */
+  offline?: { at: string; answered: string };
 }
 
 /** The one Overview both /demo/kitchen-way-in and /demo/floor-way-in draw. */

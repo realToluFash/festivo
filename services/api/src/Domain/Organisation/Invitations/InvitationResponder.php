@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Invitations;
 
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\EmailAddressNormaliser;
@@ -39,6 +40,7 @@ final readonly class InvitationResponder
         private UserRegistrar $userRegistrar,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -170,6 +172,7 @@ final readonly class InvitationResponder
     {
         $organisation = Type\instance_of(Organisation::class)->coerce($invitation->getOrganisation());
         $role = Type\instance_of(Role::class)->coerce($invitation->getRole());
+        $this->hardLimits->requireSeatToAccept($organisation);
 
         $membership = $this->membershipMachine->join($organisation, $user, $role, MembershipStatus::Active, MembershipChannel::Invitation, $user);
         $invitation->setStatus(InvitationStatus::Accepted);

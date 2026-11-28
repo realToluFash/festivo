@@ -10,6 +10,7 @@ import {
   feedWithRead,
   feedWithReadsUndone,
   readSettled,
+  readerZoneOf,
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -23,7 +24,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
@@ -31,6 +32,7 @@ import { useLiveNotifications } from '../liveNotifications.ts';
 import { type Stale, keepsWhatLoaded, useStaleWatch } from '../offline.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
+import { stateFor } from '../routes/app/pageUnder.ts';
 import { placeUnder } from './bellPlace.ts';
 import { type BellRow, BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
@@ -48,13 +50,17 @@ type Feed =
 /** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page; `banner` is Today's, glass on its banner. */
 export function NotificationsBell({
   userId,
+  accountZone = null,
   look = 'band',
 }: {
   userId: string;
+  accountZone?: string | null;
   look?: 'band' | 'desk' | 'banner';
 }) {
   const { t } = useTranslation();
+  const zone = readerZoneOf(accountZone);
   const navigate = useNavigate();
+  const location = useLocation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -300,7 +306,7 @@ export function NotificationsBell({
 
     if (item.place != null) {
       closeBell();
-      await navigate(item.place);
+      await navigate(item.place, { state: stateFor(item.place, location) });
     }
   }
 
@@ -356,8 +362,11 @@ export function NotificationsBell({
       lines: item.lines,
       where:
         item.eventName == null
-          ? when(item.createdAt, t)
-          : t('notifications.whereWhen', { event: item.eventName, when: when(item.createdAt, t) }),
+          ? when(item.createdAt, zone, t)
+          : t('notifications.whereWhen', {
+              event: item.eventName,
+              when: when(item.createdAt, zone, t),
+            }),
       unread: !item.read,
       muted: item.muted,
       more:
@@ -460,8 +469,8 @@ function FeedBand({ stale }: { stale: Stale | null }) {
   );
 }
 
-function when(createdAt: string, t: TFunction): string {
-  const shown = whenShown(createdAt, new Date(), currentLocale());
+function when(createdAt: string, zone: string, t: TFunction): string {
+  const shown = whenShown(createdAt, new Date(), currentLocale(), zone);
 
   return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
 }

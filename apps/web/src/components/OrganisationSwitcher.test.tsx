@@ -1064,6 +1064,42 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     ).toBeDefined();
   });
 
+  it('refuses a join when every team seat is in use, and keeps Accept on offer (sc-3930)', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/accept'
+        ? new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/plan_limit_reached',
+              title: 'Full.',
+              status: 403,
+              limit: 'team_seats',
+              plan: 'free',
+              used: 3,
+              allowed: 3,
+              organisation: 'Adunni Weddings',
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'Every team seat at Adunni Weddings is in use',
+    });
+    expect(within(refused).getByText('Your invitation stays open. Nothing is lost.')).toBeDefined();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Not now' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
+    ).toBeDefined();
+  });
+
   it('reads a managed refusal in the panel, and keeps it in the next menu (sc-563)', async () => {
     const message =
       'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';

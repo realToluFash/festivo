@@ -1,0 +1,40 @@
+# sc-32801: E2's Needs you after a reload that fails (API stopped, pull to refresh), then Try again with the API back. Needs ${METRO_URL}, ${E2}.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events/${E2}
+- extendedWaitUntil:
+    visible:
+      text: 'Details'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 50%, 30%
+    end: 50%, 85%
+    duration: 800
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- takeScreenshot: failed-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+    optional: true
+- takeScreenshot: failed-card
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'event.needsYou.retry'
+    optional: true
+- extendedWaitUntil: { visible: { id: 'event.needsYou.row' }, timeout: 20000, optional: true }
+- takeScreenshot: retried

@@ -118,6 +118,22 @@ describe('an answer link from the invitation, on the guest’s page (sc-1291)', 
     expect(note.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('keeps the answer chosen when Confirm was not sent, and records at Confirm again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open('/demo/guest?state=linkNotSent');
+
+    expect(
+      screen.getByText('Your answer was not sent. Everything you chose is still here. Try again.'),
+    ).toBeDefined();
+    expect(screen.getByText('From your message')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(screen.queryByText(/Your answer was not sent/u)).toBeNull();
+    await wait(SEND_MS);
+
+    expect(screen.getByRole('heading', { name: 'You’re down as not coming.' })).toBeDefined();
+  });
+
   it('opens with nothing chosen and no error for a link with no answer', async () => {
     await open('/demo/guest?state=linkNoAnswer');
 

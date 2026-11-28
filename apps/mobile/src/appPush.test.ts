@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ registerPushTarget: vi.fn(async () => {}) }));
 const device = vi.hoisted(() => ({ isDevice: true }));
-const settings = vi.hoisted(() => ({ easProjectId: 'project' as string | undefined }));
+const settings = vi.hoisted(() => ({
+  easProjectId: 'project' as string | undefined,
+  environment: 'development',
+}));
 const notifications = vi.hoisted(() => ({
   getPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
   requestPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
@@ -99,6 +102,7 @@ describe("the app's push (sc-3980)", () => {
     vi.clearAllMocks();
     device.isDevice = true;
     settings.easProjectId = 'project';
+    settings.environment = 'development';
     stored.clear();
     platform.OS = 'ios';
   });
@@ -166,6 +170,19 @@ describe("the app's push (sc-3980)", () => {
     notifications.getPermissionsAsync.mockResolvedValue({ granted: true, status: 'granted' });
   });
 
+  it('in a QA build asks on a simulator without a project id, and still registers no token', async () => {
+    settings.environment = 'qa';
+    settings.easProjectId = undefined;
+    device.isDevice = false;
+    notifications.getPermissionsAsync.mockResolvedValue({ granted: false, status: 'undetermined' });
+
+    expect(await pushAskDue()).toBe(true);
+    await registerAppPush();
+    expect(api.registerPushTarget).not.toHaveBeenCalled();
+
+    notifications.getPermissionsAsync.mockResolvedValue({ granted: true, status: 'granted' });
+  });
+
   it('offers no ask once the phone has answered, either way', async () => {
     notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
     expect(await pushAskDue()).toBe(false);
@@ -188,6 +205,22 @@ describe("the app's push (sc-3980)", () => {
     }
 
     expect(said).toEqual([true, false, false]);
+  });
+
+  it('calls push blocked on a simulator in a QA build, and not in any other build', async () => {
+    device.isDevice = false;
+    const said: boolean[] = [];
+
+    settings.environment = 'development';
+    const stopOther = followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([false]));
+    stopOther();
+
+    settings.environment = 'qa';
+    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
+    const stop = followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([false, true]));
+    stop();
   });
 
   it('reads push again on the way back to the app, and registers the token once it is allowed', async () => {

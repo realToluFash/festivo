@@ -111,7 +111,7 @@
   flex-direction: column;
 }
 
-.cw-invitations h2 {
+.cw-invitations > h2 {
   margin-bottom: var(--spaceSm);
   color: var(--colorInkSecondary);
   font: 600 14px/1.4 var(--fontFamily);

@@ -639,6 +639,7 @@ export default function MembersScreen() {
           onGoToOrganisation={() =>
             router.replace({ pathname: SECTION_HREF.organisation, params: from ? { from } : {} })
           }
+          onMembers={() => openPerson(null)}
         />
       </View>
     ) : null;

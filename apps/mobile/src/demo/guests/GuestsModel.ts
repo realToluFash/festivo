@@ -127,6 +127,7 @@ export const GUEST_STATES = [
   'optOutViewer',
   'askAgain',
   'askAgainWont',
+  'replyFromLink',
 ] as const;
 
 export const EDIT_STATES = [
@@ -208,6 +209,7 @@ export const REVIEW_STATES = [
   'contactsDiscard',
   'allRemoved',
   'over250',
+  'reviewLongName',
 ] as const;
 
 /** The plan-limit states (sc-7579, sc-3930), drawn on Ireti at 40 as if Ire Events were on Free. */
@@ -637,7 +639,9 @@ export function replyParts(
     return { word, detail: askTail(g.askAgain, locale) };
   if (g.kind === 'maybe' && replyBy != null)
     return { word, detail: say.askedBy(dayWords(replyBy, locale)) };
-  return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
+  if (g.when == null) return { word, detail: null };
+  const on = say.repliedOn(dayWords(g.when, locale));
+  return { word, detail: g.via == null ? on : joined([on, say[g.via]]) };
 }
 
 function askTail(ask: AskAgain, locale: string): string {
@@ -1082,14 +1086,33 @@ export interface ReviewRow {
   number: string;
   saved: string | null;
   unreadable: boolean;
+  email: string;
   listed: boolean;
   numberAt: number;
   places: number;
 }
 
+/** A row's problems, field by field: the name (the AC's words), a number that can't be read, an email that is not one. */
+export function rowProblems(row: ReviewRow): {
+  name: string | null;
+  number: boolean;
+  email: string | null;
+} {
+  return {
+    name: row.name.trim() === '' ? W.reviewNameBlank : nameProblem(row.name),
+    number: row.unreadable && row.number.trim() !== '',
+    email: emailCheck(row.email),
+  };
+}
+
+export function rowToFix(row: ReviewRow): boolean {
+  const p = rowProblems(row);
+  return p.name != null || p.number || p.email != null;
+}
+
 export function reviewProblems(rows: readonly ReviewRow[]): { fix: number; listed: number } {
   return {
-    fix: rows.filter((row) => row.unreadable && row.number.trim() !== '').length,
+    fix: rows.filter(rowToFix).length,
     listed: rows.filter((row) => row.listed).length,
   };
 }
@@ -1282,6 +1305,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return GUESTS.map((g) => ({ ...g, askAgain: ASKS_ON_30_OCT[g.key] ?? null }));
     case 'askAgainWont':
       return swap('lucia', (g) => ({ ...g, askAgain: { kind: 'wont' } }));
+    case 'replyFromLink':
+      return swap('sophie', (g) => ({ ...g, via: 'emailLink' }));
     case 'onTheDay':
     case 'secondDay':
       return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
@@ -1472,6 +1497,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanionArrived':
       return 'ines';
     case 'languageSet':
+    case 'replyFromLink':
       return 'sophie';
     case 'whatsAppGuestAgreed':
     case 'askAgain':

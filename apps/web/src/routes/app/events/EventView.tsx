@@ -4,8 +4,10 @@ import {
   eventMovesInto,
   formatEventRange,
   isPlaceholderEventArea,
+  placeWords,
   rememberTabHolding,
   shownPhase,
+  venueCity,
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -395,7 +397,10 @@ function EventOf({
 
   if (page === 'staff' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.staff) ? (
-      <RosterArea event={load.event} />
+      <RosterArea
+        event={load.event}
+        onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+      />
     ) : (
       <StaffRefused event={load.event} />
     );
@@ -640,10 +645,11 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
   const address = venue?.address ?? null;
   const { latitude, longitude } = address ?? { latitude: null, longitude: null };
   const place = venue?.name ?? address?.formatted ?? null;
+  const placeLine = placeWords(place, venueCity(venue), (key, values) => t(key, values ?? {}));
 
   return (
     <div className="event-top-venue" role="group" aria-label={t('eventPage.venue')}>
-      <p>{place ?? t('eventPage.venueToBeConfirmed')}</p>
+      <p>{placeLine}</p>
       {latitude != null && longitude != null && (
         <a
           className="link-button"

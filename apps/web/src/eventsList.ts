@@ -12,6 +12,8 @@ import {
   milestoneMoment,
   numberFormat,
   shownDays,
+  placeWords,
+  venueCity,
   wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -30,6 +32,8 @@ export interface ListEvent {
   status: EventState;
   concludedAt: string | null;
   place: string | null;
+  /** The venue's city, only when its name is the place: the line writes them together. */
+  city: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
 }
@@ -49,15 +53,9 @@ export function listEventOf(event: ListedEvent): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    city: venueCity(event.venue),
     photo: event.cover,
   };
-}
-
-/** A venue as an event's strip names it (sc-98187): its name with its city when the address knows one, the name alone when typed by hand, and the address when it has no name. */
-export function venuePlace(venue: ListedEvent['venue'], t: TFunction): string | null {
-  if (venue?.name == null) return venue?.address?.formatted ?? null;
-  if (venue.address?.city == null) return venue.name;
-  return t('search.line.venueCity', { venue: venue.name, city: venue.address.city });
 }
 
 /** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */
@@ -89,7 +87,7 @@ export function rowLine(
 ): string {
   return t('events.daysAndPlace', {
     dates: daysWords(event, now, locale, t, keepDays),
-    place: event.place ?? t('eventPage.venueToBeConfirmed'),
+    place: placeWords(event.place, event.city, (key, values) => t(key, values ?? {})),
   });
 }
 

@@ -57,6 +57,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
+import { pickerTookBack } from './earlyBack.ts';
 import { TextAction } from './SummaryRows.tsx';
 import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
@@ -147,7 +148,9 @@ function Window({
       supportedOrientations={TURNS_WITH_THE_APP}
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (!pickerTookBack()) onClose();
+      }}
       onShow={onShow}
       onDismiss={gone}
     >

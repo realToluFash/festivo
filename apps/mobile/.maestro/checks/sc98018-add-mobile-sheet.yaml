@@ -1,0 +1,15 @@
+# sc-98018: the Add a mobile number sheet, opened from a Not here yet row with no number, keyboard up. Vars: METRO_URL, EV, STAFF.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil: { visible: { id: 'whosHere.addMobile.${STAFF}' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: list
+- tapOn: { id: 'whosHere.addMobile.${STAFF}' }
+- extendedWaitUntil: { visible: { id: 'whosHere.mobile.number' }, timeout: 10000 }
+- assertVisible: '{{t:whosHere.addMobile}}'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: sheet-keyboard
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: sheet-no-keyboard

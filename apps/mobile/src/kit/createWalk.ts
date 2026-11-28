@@ -29,7 +29,7 @@ export interface Walk {
   sent: Sent;
   lifts: Date | null;
   asking: boolean;
-  cameBack: boolean;
+  toPick: boolean;
   device: Device;
   /** sc-563: the address is managed by its home organisation, so the first step is the refusal. */
   managed: boolean;
@@ -45,7 +45,7 @@ export function freshWalk(device: Device): Walk {
     sent: 'idle',
     lifts: null,
     asking: false,
-    cameBack: false,
+    toPick: false,
     device,
     managed: false,
   };
@@ -63,7 +63,13 @@ export function forward(walk: Walk, t: TFunction): Walk {
   if (refusal != null) return { ...walk, refusal };
   if (walk.step === 3) return walk;
 
-  return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: false };
+  return {
+    ...walk,
+    step: walk.step === 1 ? 2 : 3,
+    refusal: null,
+    query: '',
+    toPick: walk.step === 1,
+  };
 }
 
 /** The step on screen and the one leaving it; each turn has its own number, so the two never share a key. */
@@ -104,8 +110,17 @@ export function back(walk: Walk): Walk {
     refusal: null,
     query: '',
     sent: 'idle',
-    cameBack: true,
+    toPick: true,
   };
+}
+
+/** With a screen reader on the phone the question is the list's first item, so the list opens at its top (sc-100878). */
+export function scrollsToPick(
+  walkToPick: boolean,
+  openingToPick: boolean,
+  { phone, readerOn }: { phone: boolean; readerOn: boolean },
+): boolean {
+  return (walkToPick || openingToPick) && !(phone && readerOn);
 }
 
 export function typed(walk: Walk, name: string): Walk {

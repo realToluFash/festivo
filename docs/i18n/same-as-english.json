@@ -21,6 +21,7 @@
     "web:guest.calendarApple",
     "web:guest.calendarGoogle",
     "web:guestList.how.whatsapp",
+    "web:yourMessages.whatsApp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
@@ -69,9 +70,13 @@
     "mobile:station.minutes_one",
     "mobile:station.minutes_other",
     "web:briefing.card",
+    "mobile:briefing.card",
     "web:staffRates.minutes",
     "mobile:shiftClock.minutes_one",
-    "mobile:shiftClock.minutes_other"
+    "mobile:shiftClock.minutes_other",
+    "messagesCounts:usage.size.megabyte",
+    "messagesCounts:usage.size.gigabyte",
+    "messagesCounts:usage.size.terabyte"
   ],
   "fr": [
     "web:staffRates.hoursMinutes",
@@ -166,6 +171,7 @@
     "web:guestList.invitation",
     "web:guest.calendarApple",
     "web:guestList.how.whatsapp",
+    "web:yourMessages.whatsApp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.allergen.lupin",
     "web:guestNeeds.allergies",
@@ -253,6 +259,7 @@
     "mobile:station.minutes_one",
     "mobile:station.minutes_other",
     "web:briefing.card",
+    "mobile:briefing.card",
     "web:staffRates.minutes",
     "mobile:shiftClock.minutes_one",
     "mobile:shiftClock.minutes_other",
@@ -278,6 +285,7 @@
     "web:guest.calendarApple",
     "web:guest.calendarGoogle",
     "web:guestList.how.whatsapp",
+    "web:yourMessages.whatsApp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
@@ -330,8 +338,12 @@
     "mobile:station.minutes_one",
     "mobile:station.minutes_other",
     "web:briefing.card",
+    "mobile:briefing.card",
     "web:staffRates.minutes",
     "mobile:shiftClock.minutes_one",
-    "mobile:shiftClock.minutes_other"
+    "mobile:shiftClock.minutes_other",
+    "messagesCounts:usage.size.megabyte",
+    "messagesCounts:usage.size.gigabyte",
+    "messagesCounts:usage.size.terabyte"
   ]
 }

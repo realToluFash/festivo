@@ -50,11 +50,18 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function renderedBell(look: 'band' | 'desk' | 'banner' = 'band') {
+function renderedBell(
+  look: 'band' | 'desk' | 'banner' = 'band',
+  accountZone: string | null = null,
+) {
   const router = createMemoryRouter(
     [
-      { path: '/app', element: <NotificationsBell userId="u1" look={look} /> },
+      {
+        path: '/app',
+        element: <NotificationsBell userId="u1" accountZone={accountZone} look={look} />,
+      },
       { path: '/app/events/:id', element: <p>Event page</p> },
+      { path: '/app/due/:id', element: <p>Due now</p> },
     ],
     { initialEntries: ['/app'] },
   );
@@ -67,6 +74,7 @@ function bell() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -161,6 +169,20 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByText(/^Ada & Tomi · at \d\d:\d\d$/)).toBeTruthy();
   });
 
+  it("gives an item's time in the account's zone, not the browser's (sc-82298)", async () => {
+    const createdAt = '2026-11-22T05:15:00Z';
+    vi.useFakeTimers({ now: new Date('2026-11-22T12:00:00Z'), toFake: ['Date'] });
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ createdAt })], unreadCount: 1, next: null }),
+    });
+    renderedBell('band', 'Asia/Tokyo');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(await screen.findByText('Ada & Tomi · at 14:15')).toBeTruthy();
+  });
+
   it('opening an item marks it read and goes to its place', async () => {
     const sent = answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
@@ -173,6 +195,21 @@ describe('the bell (sc-3980)', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/e1'));
     expect(sent).toContain('POST /api/notifications/n1/read');
+  });
+
+  it('a payment reminder opens Due now with the page that was open under it (sc-1331)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ place: '/app/due/r1' })], unreadCount: 1, next: null }),
+      'POST /api/notifications/n1/read': () => json({ item: item({ read: true }), unreadCount: 0 }),
+    });
+    const router = bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/due/r1'));
+    expect(router.state.location.state).toMatchObject({ under: { pathname: '/app' } });
   });
 
   it('an item whose event is gone says so instead of navigating', async () => {
@@ -648,6 +685,7 @@ describe('the bell in the B frame (sc-83081)', () => {
     const pop = cssRule('.bell-pop', BELL_CSS);
     expect(pop).toMatch(/right: 0;/u);
     expect(pop).toMatch(/width: 380px;/u);
+    expect(pop).toMatch(/max-width: calc\(100vw - 48px\);/u);
     expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
   });
 
@@ -669,6 +707,19 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop.style.top).toBe('86px');
     expect(pop.style.right).toBe('40px');
     expect(pop.style.maxHeight).toBe('704px');
+  });
+
+  it("stays inside a 320 window when the bell sits left of the popover's width (sc-3931)", () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(320);
+
+    const pop = document.createElement('div');
+    vi.spyOn(pop, 'offsetWidth', 'get').mockReturnValue(272);
+
+    placeUnder(bellAt(78, 92), pop);
+    expect(pop.style.right).toBe('24px');
+    placeUnder(bellAt(78, 300), pop);
+    expect(pop.style.right).toBe('20px');
   });
 
   it('keeps its foot in the window when a band above moves the bell down (#84360)', () => {

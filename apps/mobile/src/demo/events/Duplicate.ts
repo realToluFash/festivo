@@ -16,6 +16,13 @@ export const DUPLICATE_STATES = [
   'duplicateStartsRefused',
   'duplicateNotCreated',
   'duplicateCreated',
+  'duplicateGuests',
+  'duplicateGuestsCreated',
+  'duplicateGuestsRefused',
+  'duplicateGuestsRefusedOwner',
+  'duplicateGuestsRefusedCeiling',
+  'duplicateGuestsNotCreated',
+  'duplicateGuestsHidden',
 ] as const;
 export type DuplicateState = (typeof DUPLICATE_STATES)[number];
 
@@ -40,8 +47,10 @@ export function duplicateStart(state: DuplicateState | null, starts: Starts): Du
     case 'duplicateStartsRefused':
       return { ...run, error: START_REFUSED, focus: 'date' };
     case 'duplicateNotCreated':
+    case 'duplicateGuestsNotCreated':
       return { ...run, status: 'failed' };
     case 'duplicateCreated':
+    case 'duplicateGuestsCreated':
       return { ...run, status: 'created' };
     default:
       return run;

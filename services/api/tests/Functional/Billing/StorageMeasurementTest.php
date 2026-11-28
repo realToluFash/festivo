@@ -278,10 +278,9 @@ final class StorageMeasurementTest extends ApiTestCase
         $body = $this->as('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/event-cover-uploads', ['contentType' => 'image/jpeg', 'size' => Str\Byte\length($bytes), 'filename' => 'photo.jpg']);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
         $upload = Type\shape(['url' => Type\string(), 'key' => Type\string()], true)->coerce($body['upload'] ?? null);
-        $parts = Type\shape(['path' => Type\string(), 'query' => Type\optional(Type\string())], true)->coerce(\parse_url($upload['url']));
 
-        $handle = \curl_init('http://storage:4566' . $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : ''));
-        \curl_setopt_array($handle, [\CURLOPT_CUSTOMREQUEST => 'PUT', \CURLOPT_POSTFIELDS => $bytes, \CURLOPT_HTTPHEADER => ['Content-Type: image/jpeg'], \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 30]);
+        $handle = \curl_init($upload['url']);
+        \curl_setopt_array($handle, [\CURLOPT_CONNECT_TO => ['::storage:4566'], \CURLOPT_CUSTOMREQUEST => 'PUT', \CURLOPT_POSTFIELDS => $bytes, \CURLOPT_HTTPHEADER => ['Content-Type: image/jpeg'], \CURLOPT_RETURNTRANSFER => true, \CURLOPT_TIMEOUT => 30]);
         \curl_exec($handle);
         self::assertSame(200, \curl_getinfo($handle, \CURLINFO_HTTP_CODE));
 

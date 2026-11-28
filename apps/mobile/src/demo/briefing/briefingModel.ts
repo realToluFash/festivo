@@ -160,6 +160,24 @@ export function noteOf(one: Person): string | null {
 const textable = (one: Person) =>
   one.mobile != null && one.stopped !== true && !one.heldText && !one.waitText;
 
+export interface Offers {
+  /** Copy link on the card and on each row, and the rules editable. */
+  acts: boolean;
+  sends: boolean;
+  rules: string;
+  preview: string;
+}
+
+export function offersOf(first: Pick<BriefingStart, 'access' | 'finished' | 'live'>): Offers {
+  const acts = first.access === 'manage' && !first.finished;
+  return {
+    acts,
+    sends: acts && first.live,
+    rules: acts ? BW.editRules : BW.rules,
+    preview: BW.previewAs,
+  };
+}
+
 export function dueAll(people: readonly Person[]): Person[] {
   return people.filter((one) => textable(one) && one.shift != null && one.brief === 'none');
 }
@@ -402,8 +420,6 @@ export interface BriefingStart {
   /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
   quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
-  /** sc-4333: the event is Finished, so no send is offered while Copy link stays; the phone shows it too. */
-  concluded?: boolean;
   anyLayout?: boolean;
 }
 

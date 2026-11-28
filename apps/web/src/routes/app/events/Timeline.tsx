@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { listEventOf, rowLine, shownEvent, venuePlace } from '../../../eventsList.ts';
+import { listEventOf, rowLine, shownEvent } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt } from '../../../serverNow.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
@@ -218,7 +218,7 @@ export function AllDates({
   const { load, now, retried, retry } = useTimeline(event, heading, tick, beside);
   const loadedAt = useLoadedAt(event);
   const strip = shownEvent(
-    { ...listEventOf({ ...event, milestones: [] }), place: venuePlace(event.venue, t) },
+    listEventOf({ ...event, milestones: [] }),
     shownPhase(event, loadedAt, tick),
   );
 

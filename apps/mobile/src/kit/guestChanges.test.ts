@@ -1,8 +1,8 @@
 import type { Guest } from '@soirely/api-client';
-import { changedRows } from '@soirely/domain';
+import { changedRows, readerZoneOf } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { changeLine, filterMenuWidth, readerZoneOf } from './guestChanges.ts';
+import { changeLine, filterMenuWidth } from './guestChanges.ts';
 
 function guest(id: string, fullName: string, reply: Guest['reply']): Guest {
   return { id, fullName, reply, companions: [], needs: null } as unknown as Guest;
@@ -32,11 +32,6 @@ describe('Changed since you looked on the app (sc-4331)', () => {
     expect(changeLine(t, row!.change, row!.person, readerZoneOf('Asia/Tokyo'), 'en-GB', now)).toBe(
       'guestList.changed.line(guestList.reply.coming|guestList.changed.repliedOn(31 Oct))',
     );
-  });
-
-  it('reads in the device’s zone while the account has none', () => {
-    expect(readerZoneOf(null)).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    expect(readerZoneOf('Asia/Tokyo')).toBe('Asia/Tokyo');
   });
 
   it('widens the menu while its row leads it', () => {

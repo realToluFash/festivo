@@ -271,7 +271,11 @@ function Visitor({
       return;
     }
 
-    go((was) => (was.view.kind === 'link' ? { view: { ...was.view, busy: true } } : {}));
+    go((was) =>
+      was.view.kind === 'link'
+        ? { view: { kind: 'link', picked: was.view.picked, busy: true } }
+        : {},
+    );
     later(SEND_MS, () =>
       go(
         (was) => ({

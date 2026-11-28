@@ -15,7 +15,10 @@ import {
   type NeedsTyped,
   type Problem,
   type Problems,
+  type LimitRefusal,
   firstProblem,
+  limitRefusalOf,
+  roleHolds,
   greetAsLength,
   needsFailingCount,
   needsProblemsOf,
@@ -39,6 +42,7 @@ import { phoneProblemMessage } from '../phoneProblem.ts';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { FromContactsStart } from './GuestsFromContacts.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
 import { DoneLine } from './FormLayers.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
@@ -49,6 +53,9 @@ import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
+import { LimitRefusalLayer } from './LimitRefusal.tsx';
+import { dateLocale } from '../i18n/index.ts';
+import { useSignedIn } from '../signedIn.ts';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -74,6 +81,7 @@ export function GuestForm({
   opener,
   onClose,
   onSaved,
+  fromContacts = null,
 }: {
   open: boolean;
   mode: GuestFormMode;
@@ -86,6 +94,8 @@ export function GuestForm({
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onSaved: (saved: { guest: Guest; tagged: TaggedGuest | null }) => void;
+  /** Add guest's From contacts (sc-7579); null on a build without the picker. */
+  fromContacts?: { refused: boolean; onPress: () => void } | null;
 }) {
   const { t } = useTranslation();
   const editing = mode.kind === 'edit' ? mode.tagged : null;
@@ -97,6 +107,8 @@ export function GuestForm({
   const [refusal, setRefusal] = useState<Refusal>(null);
   const [theirs, setTheirs] = useState<GuestDetails | null>(null);
   const [sending, setSending] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
+  const { organisation } = useSignedIn();
   const [choosing, setChoosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const [typedGroup, setTypedGroup] = useState('');
@@ -279,7 +291,10 @@ export function GuestForm({
         onSaved({ guest: tagged.guest, tagged });
       }
     } catch (error) {
-      if (error instanceof ApiUnreachableError) setRefusal('offline');
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiUnreachableError) setRefusal('offline');
       else if (error instanceof ApiError && error.code === 'guest_arrived')
         setRefusal(error.problem.detail == null ? 'notSaved' : { said: error.problem.detail });
       else if (error instanceof ApiError && error.code === 'guest_already_listed')
@@ -318,6 +333,10 @@ export function GuestForm({
   const madeProblem =
     groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
   const cancel = () => leaves.leave();
+  const backFromLimit = () => {
+    setLimited(null);
+    focus('fullName');
+  };
   const adding = editing == null;
   const discardName = discardNameOf(first, values);
 
@@ -377,44 +396,60 @@ export function GuestForm({
             : null
       }
       over={
-        picking
+        limited != null
           ? {
               layer: (
-                <GroupPicker
-                  guestName={values.fullName.trim() === '' ? null : values.fullName.trim()}
-                  groups={groups}
-                  pick={values.group}
-                  typed={typedGroup}
-                  problem={shownProblem(groups, typedGroup, returned)}
-                  onTyped={(text) => {
-                    setTypedGroup(text);
-                    setReturned(null);
+                <LimitRefusalLayer
+                  refusal={limited}
+                  billing={organisation != null && roleHolds(organisation, 'billing.manage')}
+                  onGuestList={() => {
+                    setLimited(null);
+                    cancel();
                   }}
-                  onReturn={(text) => {
-                    setTypedGroup(text);
-                    const result = returnPick(groups, text);
-                    if ('problem' in result) setReturned(result.problem);
-                    else pickGroup(result.pick);
-                  }}
-                  onPick={pickGroup}
-                  onClose={closePicker}
+                  onBack={backFromLimit}
+                  testID="guest.form.limit"
                 />
               ),
-              onClose: closePicker,
+              onClose: backFromLimit,
             }
-          : choosing
-            ? languageOver(
-                t('language.label'),
-                t('guestList.cancel'),
-                t('guestList.languageNotSet'),
-                values.language,
-                (code) => {
-                  set({ language: code });
-                  setChoosing(false);
-                },
-                () => setChoosing(false),
-              )
-            : null
+          : picking
+            ? {
+                layer: (
+                  <GroupPicker
+                    guestName={values.fullName.trim() === '' ? null : values.fullName.trim()}
+                    groups={groups}
+                    pick={values.group}
+                    typed={typedGroup}
+                    problem={shownProblem(groups, typedGroup, returned)}
+                    onTyped={(text) => {
+                      setTypedGroup(text);
+                      setReturned(null);
+                    }}
+                    onReturn={(text) => {
+                      setTypedGroup(text);
+                      const result = returnPick(groups, text);
+                      if ('problem' in result) setReturned(result.problem);
+                      else pickGroup(result.pick);
+                    }}
+                    onPick={pickGroup}
+                    onClose={closePicker}
+                  />
+                ),
+                onClose: closePicker,
+              }
+            : choosing
+              ? languageOver(
+                  t('language.label'),
+                  t('guestList.cancel'),
+                  t('guestList.languageNotSet'),
+                  values.language,
+                  (code) => {
+                    set({ language: code });
+                    setChoosing(false);
+                  },
+                  () => setChoosing(false),
+                )
+              : null
       }
       testID="guest.form"
     >
@@ -456,6 +491,7 @@ export function GuestForm({
           </View>
         </View>
       )}
+      {adding && fromContacts != null && <FromContactsStart {...fromContacts} />}
       <Field label={t('account.fullName')} error={words('fullName')}>
         <TextField
           ref={nameField}

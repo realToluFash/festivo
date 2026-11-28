@@ -64,6 +64,7 @@ const SHARED: readonly Family[] = [
       'guestsMany.css',
       'handover.css',
       'kitchen.css',
+      'limitReached.css',
       'makeLive.css',
       'members.css',
       'menu.css',
@@ -152,6 +153,7 @@ const SHARED: readonly Family[] = [
       'guestsMark.css',
       'menuCourses.css',
       NARROW,
+      'night.css',
       'roster.css',
       'schedule.css',
       'showOnScreen.css',
@@ -252,6 +254,11 @@ const SHARED: readonly Family[] = [
     prefix: 'sw',
     sheets: ['phone.css', 'switcher.css'],
     part: 'the organisation switcher (OrgSwitcher) on a phone',
+  },
+  {
+    prefix: 'vd-tools',
+    sheets: ['phone.css', 'vendorsMenu.css'],
+    part: 'the tools of Vendors (Vendors), whose menus open by the window’s width',
   },
   {
     prefix: 'today',

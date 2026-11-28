@@ -60,6 +60,8 @@ export function tapNow(
 export interface TapExpected {
   plates?: Record<string, PlateStage>;
   item?: ItemState;
+  /** The item an undo undoes, as its course and key, since the undo itself names only the item's id. */
+  of?: { courseId: string; item: string };
 }
 
 export type TapRefusal =

@@ -153,17 +153,29 @@ export async function readSettled<Page>(
   return arrivalsSeen() === seen ? page : readSettled(read, arrivalsSeen);
 }
 
-/** "at 14:05" today, the locale's date before today. */
+/** "at 14:05" today, the locale's date before today, both in `timeZone`, where the reader's day turns over. */
 export function whenShown(
   createdAt: string,
   now: Date,
   locale: string,
+  timeZone: string,
 ): { today: true; time: string } | { today: false; date: string } {
-  const at = new Date(createdAt);
+  const calendar = calendarIn(timeZone);
 
-  return at.toDateString() === now.toDateString()
-    ? { today: true, time: formatTimeOfDay(at, locale) }
-    : { today: false, date: formatDay(at, locale) };
+  return calendar.format(new Date(createdAt)) === calendar.format(now)
+    ? { today: true, time: formatTimeOfDay(createdAt, locale, timeZone) }
+    : { today: false, date: formatDay(createdAt, locale, timeZone) };
+}
+
+const calendars = new Map<string, Intl.DateTimeFormat>();
+
+/** Made once a zone, since the bell asks for every item on every render. */
+function calendarIn(timeZone: string): Intl.DateTimeFormat {
+  const made =
+    calendars.get(timeZone) ?? new Intl.DateTimeFormat('en-CA', { dateStyle: 'short', timeZone });
+  calendars.set(timeZone, made);
+
+  return made;
 }
 
 /** 1 to 99, then the locale's "99+", and none at 0. */
