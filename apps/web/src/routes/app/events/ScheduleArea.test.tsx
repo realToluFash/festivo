@@ -250,6 +250,12 @@ describe('The event’s Schedule (sc-3893)', () => {
     ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
   });
 
+  it("holds a long course pill inside the Item column, so the page doesn't scroll sideways at 320 px (sc-3898)", () => {
+    expect(cssRule('.ro-course', SCHEDULE_CSS)).toContain(
+      'max-width: min(18rem, var(--roWordCap, 100%));',
+    );
+  });
+
   it("sits inside the desk's button and field resets, and gives the narrow page no inset beyond the shell's gutter", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
