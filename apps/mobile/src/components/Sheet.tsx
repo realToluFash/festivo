@@ -144,7 +144,9 @@ function SheetFrame({
 }: SheetProps) {
   const close = held ? () => undefined : onClose;
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
   useEffect(() => (open ? noteOpenSheet(() => closeRef.current()) : undefined), [open]);
   const back = () => {
     if (!pickerTookBack()) close();

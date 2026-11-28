@@ -68,7 +68,7 @@ describe('each way out goes through the hold (sc-82245)', () => {
   });
 
   it('a notification tapped', () => {
-    expect(read('../appPush.ts')).toMatch(/leaveThen\(\(discarding\) =>/u);
+    expect(read('../appPush.ts')).toMatch(/openFromOutside\(String\(place\), \(discarding\) =>/u);
   });
 
   it('the header’s Back, the swipe back and Android’s back', () => {
