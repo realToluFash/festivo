@@ -1,0 +1,37 @@
+# sc-99214: Today and an event's Overview turned to the side and back upright, recorded, so the frame half a second after the turn can be read beside the settled one and 8 seconds later. Vars: METRO_URL, EV.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- startRecording: today-turn
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- stopRecording
+- takeScreenshot: today-back-settled
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- takeScreenshot: today-back-8s
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- startRecording: event-turn
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- stopRecording
+- takeScreenshot: event-back-settled
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- takeScreenshot: event-back-8s
