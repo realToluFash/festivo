@@ -320,3 +320,18 @@ describe('the name on the phone’s live cover from AX1 (sc-96733)', () => {
     );
   });
 });
+
+describe('the org pill’s ring where the invitation line wraps (sc-92912)', () => {
+  it('hands the ring the drawn line’s height, so it sits beside the first line', () => {
+    expect(pill).toMatch(
+      /ringLine=\{line == null \? undefined : Math\.ceil\(line \* WAITING_LINE\)\}/u,
+    );
+  });
+
+  it('aligns the row to its top once it has a ring line, and centres it before', () => {
+    expect(pill).toMatch(/waitingLine: \{ flexDirection: 'row', alignItems: 'center'/u);
+    expect(pill).toMatch(/waitingLineTop: \{ alignItems: 'flex-start' \}/u);
+    expect(pill).toMatch(/styles\.waitingLine, ringLine != null && styles\.waitingLineTop/u);
+    expect(pill).toMatch(/styles\.ringBox, \{ height: ringLine \}/u);
+  });
+});
