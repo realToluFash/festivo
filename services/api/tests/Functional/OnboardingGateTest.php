@@ -417,7 +417,7 @@ final class OnboardingGateTest extends ApiTestCase
         self::assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
-    /** @return list<array{to: string, body: string}> */
+    /** @return list<array{to: string, body: string, statusCallback: string|null}> */
     private function texts(): array
     {
         return self::service(RecordingTextMessageSender::class)->sent;
