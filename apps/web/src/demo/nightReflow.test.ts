@@ -75,4 +75,10 @@ describe('the live night from 641 px up, by the page’s own width (sc-102099)',
     expect(cssRule('.nt .ev-crumb', UNDER_34)).toContain('flex: 1 0 100%;');
     expect(cssRule('.nt .nt-switch', UNDER_34)).toContain('margin-inline-start: 0;');
   });
+
+  it('keeps the bell at the row’s far end, as the product’s does, when the switch drops under the trail (sc-39509)', () => {
+    expect(cssRule('.nt .ev-crumb-row > .desk-bell', SHEET)).toContain(
+      'margin-inline-start: auto;',
+    );
+  });
 });

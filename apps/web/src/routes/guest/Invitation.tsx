@@ -20,7 +20,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useOutletContext } from 'react-router';
+import { Link, useOutletContext, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -101,6 +101,7 @@ import {
   stepsOf,
 } from './meals.ts';
 import './withYou.css';
+import './answerLink.css';
 
 type Load =
   | { kind: 'loading' }
@@ -108,18 +109,22 @@ type Load =
   | { kind: 'unreachable' }
   | { kind: 'loaded'; page: GuestPage };
 
+/** Where the Yes steps were entered from, and so where Back returns: an answer link returns to its answer still chosen (sc-1291). */
+type StepFrom = 'answer' | 'changing' | 'link';
+
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
-  | { kind: 'withYou'; from: 'answer' | 'changing' }
+  | { kind: 'link'; picked: GuestAnswer; busy: boolean; failed: boolean }
+  | { kind: 'withYou'; from: StepFrom }
   | {
       kind: 'kitchen';
-      from: 'answer' | 'changing';
+      from: StepFrom;
       /** Where Next and Back return when the note was opened from a row: Check and send, or the picks saved. */
       returns?: 'check' | 'saved';
     }
   | {
       kind: 'meal';
-      from: 'answer' | 'changing';
+      from: StepFrom;
       /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, the picks saved, the copied card, or on through the courses a menu change asked again. */
       to: 'flow' | 'check' | 'saved' | 'card' | 'changed';
       eater: number;
@@ -130,7 +135,7 @@ type View =
       /** sc-3913: the rows a menu change asked again, as they stood when the visit opened, which `changed` walks. */
       route?: readonly string[];
     }
-  | { kind: 'copied'; from: 'answer' | 'changing'; eater: number }
+  | { kind: 'copied'; from: StepFrom; eater: number }
   | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
   | {
       kind: 'check';
@@ -138,9 +143,9 @@ type View =
       failed: boolean;
       refused?: boolean;
       unsaved?: boolean;
-      from: 'answer' | 'changing';
+      from: StepFrom;
     }
-  | { kind: 'recorded'; same: boolean }
+  | { kind: 'recorded'; same: boolean; downAs?: true }
   | { kind: 'changing'; busy: GuestAnswer | null; failed: boolean }
   | { kind: 'closed' };
 
@@ -197,6 +202,16 @@ const GREETING = {
   notComing: 'guest.greetNotComing',
   maybe: 'guest.greetNotSure',
 } as const;
+const DOWN_AS = {
+  coming: 'guest.downAsComing',
+  notComing: 'guest.downAsNotComing',
+  maybe: 'guest.downAsNotSure',
+} as const;
+const ALREADY = {
+  coming: 'guest.alreadyComing',
+  notComing: 'guest.alreadyNotComing',
+  maybe: 'guest.alreadyNotSure',
+} as const;
 const KEBAB = { coming: 'coming', notComing: 'not-coming', maybe: 'not-sure' } as const;
 
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
@@ -251,6 +266,10 @@ function focused(): { on: string | null; was: Element } | null {
 /** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
   const token = useOutletContext<string>();
+  const [search] = useSearchParams();
+  const [linked] = useState(
+    () => GUEST_ANSWERS.find((one) => one === search.get('answer')) ?? null,
+  );
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [retrying, setRetrying] = useState(false);
@@ -295,7 +314,7 @@ export function Invitation() {
 
   if (load.kind === 'loading') return <PageLoading />;
 
-  return <Card token={token} first={load.page} />;
+  return <Card token={token} first={load.page} linked={linked} />;
 }
 
 export function PageUnreachable({ retrying, onRetry }: { retrying: boolean; onRetry: () => void }) {
@@ -429,16 +448,23 @@ const PREVIEW_START: View = {
 export function Card({
   token,
   first,
+  linked = null,
   preview = null,
 }: {
   token: string;
   first: GuestPage;
+  /** The answer an answer link in the invitation email carries (sc-1291): chosen, and recorded only once confirmed. */
+  linked?: GuestAnswer | null;
   preview?: { onClose: () => void } | null;
 }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(first);
   const [view, setView] = useState<View>(() =>
-    preview == null ? openingOf(first, token) : PREVIEW_START,
+    preview != null
+      ? PREVIEW_START
+      : linked != null && first.answersOpen
+        ? { kind: 'link', picked: linked, busy: false, failed: false }
+        : openingOf(first, token),
   );
   const [party, setParty] = useState<Party>(() => partyOf(first));
   const [kitchen, setKitchen] = useState<Kitchen | null>(() =>
@@ -448,7 +474,11 @@ export function Card({
   const [meal, setMeal] = useState<Meal>(() => savedMeal(first));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(() =>
-    preview != null || view.kind === 'meal' ? { on: 'mealHead' } : null,
+    preview != null || view.kind === 'meal'
+      ? { on: 'mealHead' }
+      : view.kind === 'link'
+        ? { on: 'linkHead' }
+        : null,
   );
   const [gone, setGone] = useState(false);
   const columns = useColumns();
@@ -529,45 +559,49 @@ export function Card({
 
   useHubTopics(topics, () => api.guestPageSubscription(token), askAgain, askAgain);
 
-  function send(answer: GuestAnswer, onFail: (refused: boolean) => void): void {
+  function send(answer: GuestAnswer, onFail: (refused: boolean) => void, link = false): void {
     sends.current += 1;
     const coming = answer === 'coming';
     const { companions, unnamed } =
       coming && hasStep(party) ? sentParty(party, kitchen) : { companions: [], unnamed: [] };
     const me =
       coming && kitchen?.left === false ? kitchen.people.find((one) => one.key === YOU) : undefined;
-    api.sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me), unnamed).then(
-      (next) => {
-        forgetStarted(token);
-        const same =
-          page.guest.reply?.answer === answer &&
-          next.guest.reply?.at === page.guest.reply.at &&
-          sameParty(page, next);
-        setPage(next);
-        setParty(partyOf(next));
-        setKitchen(null);
-        setView({ kind: 'recorded', same });
-        focus('greeting');
-        if (coming && courses.length > 0) sendPicks(next, meal.plates, null);
-        else setMeal(savedMeal(next));
-      },
-      (error: unknown) => {
-        if (error instanceof ApiError && REFUSED.some((code) => error.is(code))) {
-          refuse();
-        } else if (
-          error instanceof ApiError &&
-          error.is('replies_closed') &&
-          view.kind === 'check'
-        ) {
-          refuse();
-        } else if (error instanceof ApiError && error.is('replies_closed')) {
-          setPage((was) => ({ ...was, answersOpen: false }));
-          setView({ kind: 'closed' });
-          focus('closedHead');
-        } else if (error instanceof ApiError && error.status === 404) setGone(true);
-        else onFail(error instanceof ApiError && error.status === 422);
-      },
-    );
+    api
+      .sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me), unnamed, link)
+      .then(
+        (next) => {
+          forgetStarted(token);
+          const same =
+            page.guest.reply?.answer === answer &&
+            next.guest.reply?.at === page.guest.reply.at &&
+            sameParty(page, next);
+          setPage(next);
+          setParty(partyOf(next));
+          setKitchen(null);
+          setView(
+            link && !coming ? { kind: 'recorded', same, downAs: true } : { kind: 'recorded', same },
+          );
+          focus('greeting');
+          if (coming && courses.length > 0) sendPicks(next, meal.plates, null);
+          else setMeal(savedMeal(next));
+        },
+        (error: unknown) => {
+          if (error instanceof ApiError && REFUSED.some((code) => error.is(code))) {
+            refuse();
+          } else if (
+            error instanceof ApiError &&
+            error.is('replies_closed') &&
+            view.kind === 'check'
+          ) {
+            refuse();
+          } else if (error instanceof ApiError && error.is('replies_closed')) {
+            setPage((was) => ({ ...was, answersOpen: false }));
+            setView({ kind: 'closed' });
+            focus('closedHead');
+          } else if (error instanceof ApiError && error.status === 404) setGone(true);
+          else onFail(error instanceof ApiError && error.status === 422);
+        },
+      );
   }
 
   /** Paused or over while sending: Check and send stays with what was chosen; a one-tap answer gives way to the page as it now stands. */
@@ -594,6 +628,10 @@ export function Card({
   }
 
   function choose(answer: GuestAnswer): void {
+    if (view.kind === 'link') {
+      confirmLink(view.picked);
+      return;
+    }
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
     if (view.busy != null) return;
     const from = view.kind;
@@ -624,6 +662,40 @@ export function Card({
     });
   }
 
+  /** An answer link's one button: Not coming and Not sure yet record at once; Coming carries on into the Yes steps, recorded at Send my answer. */
+  function confirmLink(answer: GuestAnswer): void {
+    if (view.kind !== 'link' || view.busy) return;
+    if (answer === 'coming') {
+      markStarted(token);
+      if (hasStep(party)) {
+        setView({ kind: 'withYou', from: 'link' });
+        focus('withYouHead');
+      } else toKitchen('link');
+      return;
+    }
+    setView({ ...view, busy: true, failed: false });
+    send(
+      answer,
+      () => {
+        setView({ kind: 'link', picked: answer, busy: false, failed: true });
+        focus('linkGo');
+      },
+      true,
+    );
+  }
+
+  /** Choose a different answer, under an answer link's: the three answers, or a new answer over the one recorded. */
+  function chooseOther(): void {
+    if (view.kind !== 'link' || view.busy) return;
+    if (page.guest.reply == null) {
+      setView({ kind: 'answer', busy: null, note: null });
+      focus('row-coming');
+    } else {
+      setView({ kind: 'changing', busy: null, failed: false });
+      focus('newHead');
+    }
+  }
+
   function sendComing(): void {
     if (view.kind !== 'check' || view.busy) return;
     if (preview != null) {
@@ -643,10 +715,14 @@ export function Card({
       return;
     }
     setView({ ...view, busy: true, failed: false });
-    send('coming', (refused) => {
-      setView({ ...view, busy: false, failed: !refused, unsaved: refused });
-      focus(refused ? 'kitchenRow' : 'send');
-    });
+    send(
+      'coming',
+      (refused) => {
+        setView({ ...view, busy: false, failed: !refused, unsaved: refused });
+        focus(refused ? 'kitchenRow' : 'send');
+      },
+      view.from === 'link',
+    );
   }
 
   function withYou(): void {
@@ -655,7 +731,7 @@ export function Card({
     focus('withYouHead');
   }
 
-  function toKitchen(from: 'answer' | 'changing', returns?: 'check' | 'saved'): void {
+  function toKitchen(from: StepFrom, returns?: 'check' | 'saved'): void {
     setKitchen((was) => kitchenOf(page, party, was));
     setView(returns == null ? { kind: 'kitchen', from } : { kind: 'kitchen', from, returns });
     focus('kitchenHead');
@@ -669,7 +745,7 @@ export function Card({
   }
 
   /** Back to wherever a row opened the kitchen note from, with focus on that row's Change. */
-  function kitchenReturn(returns: 'check' | 'saved', from: 'answer' | 'changing'): void {
+  function kitchenReturn(returns: 'check' | 'saved', from: StepFrom): void {
     setView(
       returns === 'check'
         ? { kind: 'check', busy: false, failed: false, from }
@@ -757,7 +833,7 @@ export function Card({
   function openMeal(
     eater: number,
     course: number,
-    from: 'answer' | 'changing',
+    from: StepFrom,
     to: 'flow' | 'check' | 'saved' | 'card' | 'changed',
     plates: Plates = meal.plates,
     mine = allergies,
@@ -784,7 +860,7 @@ export function Card({
     focus('mealHead');
   }
 
-  function toCopied(from: 'answer' | 'changing', eater: number, on = 'copiedHead'): void {
+  function toCopied(from: StepFrom, eater: number, on = 'copiedHead'): void {
     setView({ kind: 'copied', from, eater });
     focus(on);
   }
@@ -814,7 +890,7 @@ export function Card({
 
   /** Next or Nothing to add on the kitchen note: on to the first meal screen, clearing a pick an allergy given there rules out, or back to Check and send. */
   function afterKitchen(
-    from: 'answer' | 'changing',
+    from: StepFrom,
     returns: 'check' | 'saved' | undefined,
     now: Kitchen,
   ): void {
@@ -836,7 +912,7 @@ export function Card({
   function changedStep(
     route: readonly string[],
     at: number,
-    from: 'answer' | 'changing',
+    from: StepFrom,
     plates: Plates,
     out: string,
   ): void {
@@ -855,7 +931,7 @@ export function Card({
   function leaveMeal(
     to: 'check' | 'saved' | 'card',
     key: string,
-    from: 'answer' | 'changing',
+    from: StepFrom,
     eater: number,
   ): void {
     if (to === 'card') {
@@ -1039,7 +1115,7 @@ export function Card({
     toKitchen(view.from);
   }
 
-  function toCheck(from: 'answer' | 'changing'): void {
+  function toCheck(from: StepFrom): void {
     setView({ kind: 'check', busy: false, failed: false, from });
     focus('checkHead');
   }
@@ -1162,6 +1238,11 @@ export function Card({
 
   function back(): void {
     if (view.kind !== 'check' && view.kind !== 'withYou' && view.kind !== 'kitchen') return;
+    if (view.from === 'link') {
+      setView({ kind: 'link', picked: 'coming', busy: false, failed: false });
+      focus('linkHead');
+      return;
+    }
     setView(
       view.from === 'changing'
         ? { kind: 'changing', busy: null, failed: false }
@@ -1401,6 +1482,7 @@ export function Card({
               checkMeals={checkMeals}
               comingBack={comingBack}
               onChoose={choose}
+              onChooseOther={chooseOther}
               onSend={sendComing}
               onBack={back}
               onChange={() => {
@@ -1681,6 +1763,7 @@ function Shown({
   checkMeals,
   comingBack,
   onChoose,
+  onChooseOther,
   onSend,
   onBack,
   onChange,
@@ -1709,6 +1792,7 @@ function Shown({
   checkMeals: ReactNode;
   comingBack: ReactNode;
   onChoose: (answer: GuestAnswer) => void;
+  onChooseOther: () => void;
   onSend: () => void;
   onBack: () => void;
   onChange: () => void;
@@ -1740,6 +1824,16 @@ function Shown({
           {view.note === 'notSentTap' && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
           <AnswerRows busy={view.busy} onChoose={onChoose} />
         </section>
+      );
+    case 'link':
+      return (
+        <LinkAnswer
+          view={view}
+          page={page}
+          places={places}
+          onConfirm={onChoose}
+          onChooseOther={onChooseOther}
+        />
       );
     case 'withYou':
       return (
@@ -1875,9 +1969,11 @@ function Shown({
             <div className="gp-greet">
               <Mark answer={reply.answer} />
               <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-                {reply.recordedBy == null
-                  ? t(GREETING[reply.answer], { name: fullName })
-                  : t(ANSWER_IS[reply.answer])}
+                {view.downAs === true
+                  ? t(DOWN_AS[reply.answer])
+                  : reply.recordedBy == null
+                    ? t(GREETING[reply.answer], { name: fullName })
+                    : t(ANSWER_IS[reply.answer])}
               </h2>
             </div>
             <div className="gp-indent">
@@ -2022,6 +2118,79 @@ function Shown({
       );
     }
   }
+}
+
+/** sc-1291: the page as an answer link opens it, the tapped answer chosen and nothing recorded until the guest confirms. */
+function LinkAnswer({
+  view,
+  page,
+  places,
+  onConfirm,
+  onChooseOther,
+}: {
+  view: Extract<View, { kind: 'link' }>;
+  page: GuestPage;
+  places: boolean;
+  onConfirm: (answer: GuestAnswer) => void;
+  onChooseOther: () => void;
+}) {
+  const { t } = useTranslation();
+  const { picked, busy, failed } = view;
+  const { reply } = page.guest;
+  const own = reply != null && reply.recordedBy == null;
+  const same = own && reply.answer === picked;
+  const day = reply == null ? '' : dayOf(reply.at, page.event.timeZone);
+
+  return (
+    <section className="gp-link" aria-labelledby="gp-link-h">
+      {own && !same && (
+        <div className="gp-link-was">
+          <Mark answer={reply.answer} size={20} />
+          <p>{t(ANSWERED[reply.answer], { date: day })}</p>
+        </div>
+      )}
+      {same ? (
+        <>
+          <div className="gp-greet">
+            <Mark answer={picked} />
+            <h2 id="gp-link-h" className="gp-h2" tabIndex={-1} data-focus="linkHead">
+              {t(ALREADY[picked])}
+            </h2>
+          </div>
+          <p className="gp-sub gp-indent">{t('guest.linkSince', { date: day })}</p>
+        </>
+      ) : (
+        <>
+          <h2 id="gp-link-h" className="gp-h2" tabIndex={-1} data-focus="linkHead">
+            {t('guest.linkConfirmAnswer')}
+          </h2>
+          <div className="gp-answer is-lit gp-link-picked">
+            <span className="gp-lead">
+              <Mark answer={picked} />
+            </span>
+            <span className="gp-answer-words">{t(CHOICE[picked])}</span>
+            <span className="gp-now">{t('guest.linkFromMessage')}</span>
+          </div>
+          {places && picked === 'notComing' && (
+            <Notice kind="attention">{t('guest.companionsNotComing')}</Notice>
+          )}
+          {failed && <Notice kind="broken">{t('guest.notSent')}</Notice>}
+          <Filled busy={busy} focus="linkGo" onClick={() => onConfirm(picked)}>
+            {picked === 'coming' ? t('guest.linkCarryOn') : t('guest.linkConfirm')}
+          </Filled>
+        </>
+      )}
+      <button
+        className="gp-outlined"
+        type="button"
+        data-focus="linkChoose"
+        {...offButton(busy)}
+        onClick={onChooseOther}
+      >
+        {t('guest.linkChooseDifferent')}
+      </button>
+    </section>
+  );
 }
 
 /** The three answers, full-width rows of 56: Yes leads on to Check and send; the other two record in one tap. */

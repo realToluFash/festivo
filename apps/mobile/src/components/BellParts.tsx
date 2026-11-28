@@ -16,6 +16,7 @@ import {
   PHONE_TITLE_LINE,
   PHONE_TITLE_TRACKING,
 } from './bellTop.ts';
+import { sidePadding } from './bodyEdges.ts';
 import { BellEmptyLine, BellSettingsLink } from './BellEmpty.tsx';
 import { ConfettiSwitch } from './ConfettiSwitch.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -102,10 +103,11 @@ export function BellFrame({
       </AnchoredMenu>
     );
   if (!where.open) return null;
+  const sides = sidePadding(tokens.spaceXxl, insets);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]} testID={testID}>
-      <View style={styles.bellTop}>
+      <View style={[styles.bellTop, sides]}>
         <Back label={where.back} onPress={where.onBack} />
         <View style={styles.grow} />
         {markAll}
@@ -114,6 +116,7 @@ export function BellFrame({
       <ScrollView
         contentContainerStyle={[
           styles.bellPage,
+          sides,
           { paddingBottom: insets.bottom + tokens.space6xl },
         ]}
       >

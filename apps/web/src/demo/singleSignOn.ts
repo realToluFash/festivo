@@ -8,7 +8,7 @@ const NAME_MAX = 40;
 export type Protocol = 'saml' | 'oidc';
 export type MetadataWay = 'url' | 'file';
 export type Plan = 'enterprise' | 'free';
-export type Test = 'untested' | 'running' | 'passed' | 'failed';
+export type Test = 'untested' | 'running' | 'passed' | 'failed' | 'checksFailed';
 
 export interface Provider {
   protocol: Protocol;
@@ -103,6 +103,14 @@ export const SSO_WORDS = {
   demoTab: 'Demo: in the product, a new tab opens at the provider. Come back from it:',
   itWorked: 'It worked',
   itFailed: 'It did not work',
+  itFailedChecks: 'It failed Soirely’s checks',
+} as const;
+
+export const CHECK_WORDS = {
+  noCode: 'The provider sent no sign-in code back.',
+  noToken: 'The provider did not hand over a sign-in. Check the client ID and client secret.',
+  unchecked: 'The sign-in the provider sent back did not pass our checks.',
+  otherDomain: 'The provider signed in an address that is not at one of your proved domains.',
 } as const;
 
 export const FAULT_WORDS = {
@@ -325,6 +333,16 @@ export function ssoStatus(sso: Sso): Status | null {
         lines: [
           `${name} said: This person is not assigned to the Soirely app in ${name}.`,
           `Nothing was switched on. Fix it in ${name}, then test again.`,
+        ],
+        step: 'testAgain',
+      };
+    case 'checksFailed':
+      return {
+        kind: 'failed',
+        word: 'Test did not work',
+        lines: [
+          CHECK_WORDS.otherDomain,
+          `Nothing was switched on. Check the settings here and in ${name}, then test again.`,
         ],
         step: 'testAgain',
       };
@@ -632,6 +650,7 @@ export const SSO_STATES = [
   'test_running',
   'test_passed',
   'test_failed',
+  'test_failed_checks',
   'switch_untested',
   'on',
   'required_confirm',
@@ -726,6 +745,8 @@ export function ssoStart(state: string, plan: Plan, now: string): SsoStart {
       return start(passed);
     case 'test_failed':
       return start({ ...savedOkta, test: 'failed' });
+    case 'test_failed_checks':
+      return start({ ...savedOkta, test: 'checksFailed' });
     case 'switch_untested':
       return start(savedOkta, { refusal: 'untested' });
     case 'on':
@@ -764,6 +785,7 @@ const SSO_STATE_NAMES: Record<(typeof SSO_STATES)[number], string> = {
   test_running: 'Testing sign-on…',
   test_passed: 'Test worked',
   test_failed: 'Test did not work',
+  test_failed_checks: 'Test did not work, Soirely’s own checks refused it',
   switch_untested: 'Switched before a test worked',
   on: 'On',
   required_confirm: 'Require sign-on, the confirm',

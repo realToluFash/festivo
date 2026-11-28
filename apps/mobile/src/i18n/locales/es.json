@@ -2541,6 +2541,8 @@
       "walkIn": "En la puerta"
     },
     "repliedOn": "respondió el {{date}}",
+    "repliedOnFromEmailLink": "respondió el {{date}} · desde el enlace del correo",
+    "repliedFromEmailLink": "{{reply}} · respondió el {{date}} · desde el enlace del correo",
     "replyHeading": "Respuesta",
     "recordReply": "Registrar respuesta",
     "recordFor": "Para {{name}}. Cuenta como respuesta de esta persona y constará que la registró usted.",
@@ -4273,7 +4275,7 @@
     "readOnly": "Puede ver su enlace. Para compartirlo necesita permiso para gestionar el personal.",
     "removed": "{{name}} ya no forma parte del personal.",
     "removedLine": "Se le ha quitado del evento en la web y su enlace ha dejado de funcionar.",
-    "notOnStaff": "This person is not on the staff.",
+    "notOnStaff": "Esta persona no forma parte del personal.",
     "loading": "Cargando su enlace"
   },
   "briefing": {

@@ -2541,6 +2541,8 @@
       "walkIn": "Sur place"
     },
     "repliedOn": "a répondu le {{date}}",
+    "repliedOnFromEmailLink": "a répondu le {{date}} · via le lien de l’e-mail",
+    "repliedFromEmailLink": "{{reply}} · a répondu le {{date}} · via le lien de l’e-mail",
     "replyHeading": "Réponse",
     "recordReply": "Saisir la réponse",
     "recordFor": "Pour {{name}}. Cette réponse compte comme la sienne et apparaît comme saisie par vous.",
@@ -4273,7 +4275,7 @@
     "readOnly": "Vous pouvez consulter son lien. Pour le partager, il faut l’autorisation de gérer le personnel.",
     "removed": "{{name}} ne fait plus partie de l’équipe.",
     "removedLine": "Cette personne a été retirée de l’événement sur le web, et son lien a cessé de fonctionner.",
-    "notOnStaff": "This person is not on the staff.",
+    "notOnStaff": "Cette personne ne fait pas partie de l’équipe.",
     "loading": "Chargement de son lien"
   },
   "briefing": {
