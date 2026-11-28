@@ -387,7 +387,6 @@ export function SelectBox({
       accessibilityRole="button"
       {...(expanded == null ? {} : { accessibilityState: { expanded } })}
       accessibilityLabel={`${label}, ${value ?? placeholder ?? ''}`}
-      nativeID={testID}
       testID={testID}
     >
       <Text

@@ -59,7 +59,6 @@ import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { pickerTookBack } from './earlyBack.ts';
 import { TextAction } from './SummaryRows.tsx';
-import { settlingAfter } from './uncovered.ts';
 import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
@@ -99,25 +98,6 @@ function useArriving(up: boolean): boolean {
   }, [up]);
 
   return up && !arrived;
-}
-
-/** True for a moment after a cover ends on Android: the time the opener's focus takes to come back. */
-function useJustUncovered(covered: boolean): boolean {
-  const [was, setWas] = useState(covered);
-  const [settling, setSettling] = useState(false);
-  if (was !== covered) {
-    setWas(covered);
-    setSettling(settlingAfter(settling, covered, was, Platform.OS === 'android'));
-  }
-
-  useEffect(() => {
-    if (!settling) return;
-    const settled = setTimeout(() => setSettling(false), SETTLED_MS + 150);
-
-    return () => clearTimeout(settled);
-  }, [settling]);
-
-  return settling;
 }
 
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
@@ -220,7 +200,7 @@ export function FocusedScreen({
   opener,
   ask,
   over,
-  lands = null,
+  quiet = false,
   toast,
   scrollRef,
   toTop = 0,
@@ -244,8 +224,8 @@ export function FocusedScreen({
   ask?: AskProps | null;
   /** Drawn over the screen in its own window, as the Ask is, since iOS shows one window at a time. */
   over?: Layer | null;
-  /** The `nativeID` of the control a closed layer returns to: for a moment after the close it is the only thing TalkBack can reach, so its focus cannot stop anywhere before it (sc-104673). */
-  lands?: string | null;
+  /** The header is out of TalkBack's reach while the screen says so (sc-104673). */
+  quiet?: boolean;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
@@ -264,7 +244,6 @@ export function FocusedScreen({
   const asking = ask != null;
   const covered = asking || over != null;
   const { heading, shown, hidden, focus } = useTitleTakesFocus(title, onScreen, covered);
-  const uncovering = useJustUncovered(covered);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
@@ -305,7 +284,6 @@ export function FocusedScreen({
             onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered || hidden ? 'no-hide-descendants' : 'auto'}
-            {...(uncovering && lands != null ? { experimental_accessibilityOrder: [lands] } : {})}
             ref={shown}
             testID={testID}
           >
@@ -320,7 +298,7 @@ export function FocusedScreen({
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
-              quiet={uncovering}
+              quiet={quiet}
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
