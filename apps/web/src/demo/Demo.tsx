@@ -16,8 +16,12 @@ import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { ContractBilling } from './ContractBilling.tsx';
+import { ContractEmail } from './ContractEmail.tsx';
+import { CONTRACT_PAGES } from './contract.ts';
 import { AllCredits } from './Credits.tsx';
 import { CREDITS_PAGES } from './credits.ts';
+import { StaffContract } from './StaffContract.tsx';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { LimitReached } from './LimitReached.tsx';
@@ -372,6 +376,9 @@ export default function Demo() {
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
       <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
+      <Route path="settings/plan-and-billing/contract" element={<ContractBilling />} />
+      <Route path="support/contract" element={<StaffContract />} />
+      <Route path="contract-email" element={<ContractEmail />} />
       <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="limit-reached" element={<LimitReached />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
@@ -737,6 +744,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>
+          Enterprise on a contract, paid by Paddle’s invoice: the overdue banner, the staff form and
+          the emails (sc-613) · desktop, the emails at 600 px
+        </h3>
+        <BoardPages pages={CONTRACT_PAGES} />
         <h3>
           The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
           English and French
