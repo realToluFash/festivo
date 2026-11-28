@@ -182,7 +182,6 @@ function owes(guest: Guest, due: Due, key: AutoKey): boolean {
   }
 }
 
-/** One message per guest per day, listing what they owe in the order reply, places, meals (sc-104 collapsing). */
 export type Send = { day: string; guest: number; owed: Due[] };
 
 const ORDER: readonly Due[] = ['reply', 'notSure', 'names', 'meals'];
