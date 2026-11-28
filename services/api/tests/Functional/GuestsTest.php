@@ -27,6 +27,7 @@ use Lcobucci\JWT\UnencryptedToken;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -190,8 +191,68 @@ final class GuestsTest extends ApiTestCase
         self::assertContains($guest['id'], Vec\map($entries, static fn (AuditEntry $entry): string => $entry->getSubjectId()->toRfc4122()));
         foreach ($entries as $entry) {
             self::assertSame($this->owner->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
-            self::assertSame([], $entry->getChanges());
+            self::assertSame(['source' => [null, 'typed']], $entry->getChanges());
         }
+    }
+
+    #[Test]
+    public function peoplePickedFromContactsAreAddedTogetherEachAuditedAsFromContacts(): void
+    {
+        $this->add(['fullName' => 'Kemi Olatunji']);
+
+        $body = $this->as($this->owner, 'POST', $this->guests() . '/from-contacts', ['guests' => [
+            ['fullName' => '  ' . self::ADAEZE . ' ', 'email' => 'adaeze@example.com', 'mobile' => ['countryCode' => 'NG', 'number' => '+2348031234567'], 'companions' => 2],
+            ['fullName' => 'Kemi Olatunji'],
+            ['fullName' => 'Lucas Moreau', 'mobile' => ['countryCode' => 'FR', 'number' => '+33 6 12 34 56 78']],
+        ]]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(['added' => 3], $body);
+        $list = $this->as($this->owner, 'GET', $this->guests());
+        self::assertSame(['people' => 6, 'guests' => 4, 'companions' => 2], $list['counts'] ?? null);
+        $adaeze = Iter\search(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($list['guests'] ?? []), static fn (array $one): bool => self::ADAEZE === $one['fullName']) ?? self::fail('no Adaeze');
+        self::assertSame(['email' => 'adaeze@example.com', 'mobile' => '+2348031234567'], Dict\select_keys($adaeze, ['email', 'mobile']));
+
+        $sources = Vec\map(self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestAdder::ADDED]), static fn (AuditEntry $entry): mixed => $entry->getChanges()['source'][1] ?? null);
+        self::assertSame(['contacts' => 5, 'typed' => 1], Dict\sort_by_key(Dict\count_values(Vec\filter_nulls(Vec\map($sources, static fn (mixed $source): ?string => \is_string($source) ? $source : null)))));
+    }
+
+    #[Test]
+    public function aPickWithOneRowToFixAddsNobodyAndNamesTheRow(): void
+    {
+        $this->as($this->owner, 'POST', $this->guests() . '/from-contacts', ['guests' => [
+            ['fullName' => 'Kofi Mensah'],
+            ['fullName' => 'Ama Owusu', 'email' => 'ama@'],
+            ['fullName' => ' ', 'mobile' => ['countryCode' => 'NG', 'number' => '12']],
+        ]]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['guests[1].email', 'guests[2].fullName', 'guests[2].mobile'], Vec\sort(Vec\keys($this->violations())));
+        self::assertSame(0, $this->people());
+    }
+
+    #[Test]
+    public function aPickOfNobodyOrMoreThan250IsRefused(): void
+    {
+        $this->as($this->owner, 'POST', $this->guests() . '/from-contacts', ['guests' => []]);
+        self::assertSame(422, $this->statusCode());
+
+        $this->as($this->owner, 'POST', $this->guests() . '/from-contacts', ['guests' => Vec\map(Vec\range(1, 251), static fn (int $n): array => ['fullName' => 'Picked ' . $n])]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['guests' => 'Only 250 can be added at a time. Add these, then pick the rest.'], $this->violations());
+        self::assertSame(0, $this->people());
+    }
+
+    #[Test]
+    public function addingFromContactsAndReadingTheRoomNeedGuestsManage(): void
+    {
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member, EventRole::CanView);
+
+        $this->as($viewer, 'POST', $this->guests() . '/from-contacts', ['guests' => [['fullName' => 'Kofi Mensah']]]);
+        self::assertSame(403, $this->statusCode());
+        $this->as($viewer, 'GET', $this->guests() . '/room');
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(0, $this->people());
     }
 
     #[Test]

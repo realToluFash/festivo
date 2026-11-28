@@ -16,6 +16,9 @@ interface HardLimitsInterface
     /** Refused 403 `event_capacity_reached` past the ceiling, else 403 `plan_limit_reached` past the plan's people per event. */
     public function requirePeopleRoom(Event $event, int $adding): void;
 
+    /** @return array{plan: string, allowed: ?int, people: int} the people per event the plan allows (null for no limit) beside those on the list, for a client to show the room left before it asks (sc-7579) */
+    public function peopleRoom(Event $event): array;
+
     public function requireRoomForCopy(Organisation $organisation, int $people): void;
 
     /** Refused 403 `plan_limit_reached` when active members and pending invitations fill the plan's team seats. */
