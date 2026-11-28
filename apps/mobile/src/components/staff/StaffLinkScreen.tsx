@@ -39,6 +39,7 @@ const READ_AGAIN_MS = 5_000;
 type Seen =
   | { kind: 'loading' }
   | { kind: 'failed' }
+  | { kind: 'notOnStaff' }
   | { kind: 'shown'; entry: StaffEntry }
   | { kind: 'removed'; entry: StaffEntry };
 
@@ -93,6 +94,14 @@ export function StaffLinkScreen({
     announce(t('staffLink.removed', { name: entry.fullName }));
   }
 
+  /** Opened at its address for an id the roster lacks: a removed person and one never on the staff look the same, so no name and no "removed". */
+  function notOnStaff(): void {
+    if (gone.current) return;
+    gone.current = true;
+    setSeen({ kind: 'notOnStaff' });
+    announce(t('staffLink.notOnStaff'));
+  }
+
   function read(): void {
     if (gone.current) return;
     const mine = ++ticket.current;
@@ -103,7 +112,7 @@ export function StaffLinkScreen({
         if (entry == null) {
           const was = latest.current ?? openedEntry(eventId, staffId);
           if (was != null) removed(was);
-          else setSeen({ kind: 'failed' });
+          else notOnStaff();
           return;
         }
         latest.current = entry;
@@ -270,6 +279,16 @@ export function StaffLinkScreen({
       </Text>
     </Pressable>
   );
+
+  if (seen.kind === 'notOnStaff')
+    return (
+      <Page insets={insets} phone={phone} landscape={false}>
+        {back}
+        <View testID="staffLink.notOnStaff">
+          <Notice tone="attention" mark="!" title={t('staffLink.notOnStaff')} />
+        </View>
+      </Page>
+    );
 
   const failedLoad = seen.kind === 'failed' || (seen.kind === 'shown' && eventFailed);
   const loading =

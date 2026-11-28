@@ -4273,6 +4273,7 @@
     "readOnly": "Puede ver su enlace. Para compartirlo necesita permiso para gestionar el personal.",
     "removed": "{{name}} ya no forma parte del personal.",
     "removedLine": "Se le ha quitado del evento en la web y su enlace ha dejado de funcionar.",
+    "notOnStaff": "This person is not on the staff.",
     "loading": "Cargando su enlace"
   },
   "briefing": {
