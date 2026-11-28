@@ -9,10 +9,13 @@ import { formatPhone, phoneE164 } from './phone.ts';
 /** The most one pick adds, as the API's FROM_CONTACTS_MOST. */
 export const MOST_PICKED = 250;
 
+export type NumberKind = 'mobile' | 'home' | 'work' | 'other';
+
 export interface ContactNumber {
   number: string;
+  kind: NumberKind;
+  /** A label the person wrote themselves, shown as written; empty for the phone's own labels. */
   label: string;
-  mobile: boolean;
 }
 
 export interface PickedPerson {
@@ -45,7 +48,7 @@ export function reviewRowsOf(
   organisationCountry: string,
 ): { rows: ReviewRow[]; picked: number } {
   const rows = picked.slice(0, MOST_PICKED).map((person, index): ReviewRow => {
-    const mobile = person.numbers.findIndex((one) => one.mobile);
+    const mobile = person.numbers.findIndex((one) => one.kind === 'mobile');
     const numberAt = mobile === -1 ? 0 : mobile;
 
     return {

@@ -5,8 +5,10 @@ import es from '../i18n/locales/es.json';
 import fr from '../i18n/locales/fr.json';
 import pt from '../i18n/locales/pt.json';
 
+import { COURSE_NAME_MAX } from './menuCourses.ts';
 import {
   DAYS,
+  LONG_COURSE_NAMES,
   HOME_READER,
   MAIN,
   MOST_ITEMS,
@@ -168,6 +170,13 @@ describe('the schedule’s rules (sc-3893)', () => {
     const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
     expect(linked).toContain(scheduleAt('courseLongFr', 'locale=fr-FR'));
     expect(linked).toContain(scheduleAt('courseLongPt', 'locale=pt-BR'));
+  });
+
+  it('keeps each long course name within the 60 characters the API allows', () => {
+    for (const name of LONG_COURSE_NAMES) {
+      expect([...name].length).toBeLessThanOrEqual(COURSE_NAME_MAX);
+      expect([...name].length).toBeGreaterThan(50);
+    }
   });
 });
 

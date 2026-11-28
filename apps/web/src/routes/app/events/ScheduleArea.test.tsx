@@ -250,6 +250,12 @@ describe('The event’s Schedule (sc-3893)', () => {
     ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
   });
 
+  it("holds a long course pill inside the Item column, so the page doesn't scroll sideways at 320 px (sc-3898)", () => {
+    expect(cssRule('.ro-course', SCHEDULE_CSS)).toContain(
+      'max-width: min(18rem, var(--roWordCap, 100%));',
+    );
+  });
+
   it("sits inside the desk's button and field resets, and gives the narrow page no inset beyond the shell's gutter", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
@@ -996,6 +1002,41 @@ describe('A schedule item as a course (sc-3898)', () => {
         courseId: 'k_main',
       }),
     );
+  });
+
+  it("doesn't say the menu has no courses while it is still loading (sc-104509)", async () => {
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'GET /api/events/ev_1/menu': async () => {
+        await pending;
+
+        return json(MENU);
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Course/ }));
+    const list = await screen.findByRole('group', { name: 'Courses on the menu' });
+
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+    release();
+
+    expect(await within(list).findByRole('button', { name: /^Starter/ })).toBeDefined();
+    expect(within(list).getByRole('button', { name: /^Main course/ })).toBeDefined();
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+  });
+
+  it("wraps the ask's buttons and keeps them at least 48 px tall when narrow (sc-104509)", () => {
+    expect(cssRule('.ro-ask-acts', SCHEDULE_CSS)).toContain('flex-wrap: wrap;');
+    expect(
+      cssRule(
+        '.ro-ask-acts .desk-text',
+        SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)')),
+      ),
+    ).toContain('min-height: 48px;');
   });
 
   it('asks before moving a course held by another item, and shows the other loses it', async () => {

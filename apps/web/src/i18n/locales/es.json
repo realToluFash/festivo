@@ -4678,15 +4678,15 @@
     "served": "se sirve a las {{time}}",
     "linkedTo": "vinculado a {{title}}",
     "moveAsk": "{{course}} está vinculado a {{other}}.",
-    "moveLine": "¿Vincularlo a este elemento? {{other}} lo pierde.",
+    "moveLine": "¿Vincularlo a este elemento en su lugar? {{other}} lo perderá.",
     "moveIt": "Mover el vínculo",
     "keepOn": "Dejarlo en {{other}}",
-    "moving": "{{other}} pierde este pase al guardar.",
+    "moving": "{{other}} perderá este pase al guardar.",
     "noCourses": "Aún no hay pases en el menú",
     "noCoursesLine": "Añada los pases en la página Menú y vincule uno aquí.",
     "openMenu": "Abrir el menú",
     "unlinked": "{{title}} ya no está vinculado a un pase.",
-    "unlinkedWhy": "Su pase se quitó del menú. El elemento conserva su título y su hora.",
+    "unlinkedWhy": "Su pase se ha quitado del menú. El elemento conserva su título y su hora.",
     "dismiss": "Descartar"
   },
   "runView": {
@@ -5243,7 +5243,7 @@
     "picksCloseFrom": "Cierre de la elección desde el {{date}}",
     "picksByOwn": "Fecha fijada por el propio pase «{{course}}». Cierre: {{time}}, hora de {{zone}}.",
     "picksByOwnClosed": "Fecha fijada por el propio pase «{{course}}». Cierre: {{time}}, hora de {{zone}}.",
-    "fromSchedule": "{{time}}, del programa: {{title}}",
+    "fromSchedule": "{{time}}, según el programa: {{title}}",
     "fromScheduleHelp": "Sigue la hora de inicio del elemento en la página Programa."
   },
   "guestExport": {

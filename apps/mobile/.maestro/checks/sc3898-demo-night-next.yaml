@@ -1,0 +1,6 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc3898-demo-night.yaml
+    env:
+      STATE: 'course_next'
