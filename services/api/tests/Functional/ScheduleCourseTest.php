@@ -132,6 +132,17 @@ final class ScheduleCourseTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSaveThatLeavesServedAtOutKeepsAnUnlinkedCoursesTime(): void
+    {
+        $main = $this->course('Main course', '20:30', 1);
+
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $main, ['name' => 'The mains', 'answer' => 'choose', 'skippable' => false]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['The mains', '20:30'], [$this->menuCourse($main)['name'], $this->menuCourse($main)['servedAt']]);
+    }
+
+    #[Test]
     public function deletingTheItemKeepsTheCoursesTime(): void
     {
         $main = $this->course('Main course', '20:30', 1);

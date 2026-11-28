@@ -148,7 +148,7 @@ final readonly class MenuEditor
             }
 
             $before = self::recordedCourse($course);
-            $course->describe($details->name, null === $linked ? $details->servedAt : $course->getServedAt());
+            $course->describe($details->name, $servedAtSent && null === $linked ? $details->servedAt : $course->getServedAt());
             $renamed = null !== $linked && $before['name'] !== $course->getName();
             $course->setGuestsChoose($guestsChoose);
             $course->setSkippable($skippable);
