@@ -22,7 +22,7 @@ import {
 } from './bodyEdges.ts';
 import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap } from './Text.tsx';
-import { CappedWholeWords, useMeasuredAt } from './Title.tsx';
+import { CappedWholeWords, MeasuredWords, useMeasuredAt } from './Title.tsx';
 import {
   BAND_CLEAR,
   BAND_TITLE,
@@ -39,6 +39,7 @@ import {
   atAccessibilitySizes,
   capUnderTitle,
   fitWidest,
+  labelStart,
   wholeLineHeight,
   wordsIn,
 } from '../layout/textSize.ts';
@@ -46,6 +47,16 @@ import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.
 import { CAPSULE_TOP, LIVE_FOOT, liveLineHeight } from '../layout/bandLive.ts';
 import { OPEN_ABOVE_SHEET, TAB_FADE } from '../layout/todayFold.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
+import {
+  FIGURE_LABEL,
+  FIGURE_LABEL_LINE,
+  FIGURE_NUMBERS,
+  FIGURE_NUMBERS_LINE,
+  FIGURE_RING,
+  figureRing,
+  figureRoom,
+  figureStroke,
+} from '../layout/arrivedFigure.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
@@ -513,7 +524,15 @@ function Rail({ now }: { now: Now }) {
   );
 }
 
-function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; line?: number }) {
+function Ring({
+  share,
+  side = FIGURE_RING,
+  line = 4,
+}: {
+  share: number;
+  side?: number;
+  line?: number;
+}) {
   const r = (side - line) / 2;
   const round = 2 * Math.PI * r;
 
@@ -577,6 +596,94 @@ export function ArrivedFigure({ figure }: { figure: Figure }) {
   );
 }
 
+/** The arrived figure from AX1 on the iPad's live cover (sc-94022): its numbers step down as one unit only where they would not fit one line beside the ring, never under 18 and never larger than the name (`under`); arrived steps alone, never larger than the numbers; the ring is as tall as the two lines as drawn. Hidden until the numbers are measured. */
+function WholeArrivedFigure({
+  figure,
+  column,
+  under,
+}: {
+  figure: Figure;
+  column: number;
+  under: number;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const numbers = `${figure.count}${figure.of != null ? `/${figure.of}` : ''}`;
+  const start = labelStart(FIGURE_NUMBERS, fontScale, under);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const key = `${start}|${numbers}`;
+  const width = measured?.key === key ? measured.width : null;
+  const labelAt = labelStart(FIGURE_LABEL, fontScale, Math.min(under, start));
+  const ringAt = figureRing(start, labelAt);
+  const side = figure.share != null ? ringAt : 0;
+  const room = figureRoom(column, side, side > 0 ? tokens.spaceMd : 0);
+  const pending = width == null || column === 0;
+  const drawn = pending ? start : fitWidest(FIGURE_NUMBERS, start, width, Math.max(room, 1));
+  const ring = figureRing(drawn, labelStart(FIGURE_LABEL, fontScale, Math.min(under, drawn)));
+  const line = { lineHeight: Math.ceil(drawn * FIGURE_NUMBERS_LINE) };
+
+  return (
+    <>
+      <MeasuredWords
+        words={[numbers]}
+        size={start}
+        weight="bold"
+        allowFontScaling={false}
+        onWidth={(_, measuredWidth) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === measuredWidth ? now : { key, width: measuredWidth },
+          )
+        }
+      />
+      <View
+        style={[styles.arrived, pending && styles.waiting]}
+        accessible
+        accessibilityLabel={figure.spoken}
+      >
+        {figure.share != null && (
+          <Ring share={figure.share} side={ring} line={figureStroke(ring)} />
+        )}
+        <View style={styles.shrink}>
+          <View style={styles.figureLine}>
+            <Text
+              key={`count|${drawn}`}
+              size={drawn}
+              weight="bold"
+              allowFontScaling={false}
+              accessible={false}
+              style={[styles.white, styles.figures, line]}
+            >
+              {figure.count}
+            </Text>
+            {figure.of != null && (
+              <Text
+                key={`of|${drawn}`}
+                size={drawn}
+                weight="semibold"
+                allowFontScaling={false}
+                accessible={false}
+                style={[styles.white, styles.figures, styles.soft, styles.tight, line]}
+              >
+                {`/${figure.of}`}
+              </Text>
+            )}
+          </View>
+          <CoverLine
+            size={FIGURE_LABEL}
+            line={FIGURE_LABEL_LINE}
+            weight="medium"
+            room={figure.share != null ? figureRoom(column, ring, tokens.spaceMd) : column}
+            under={drawn}
+            accessible={false}
+            style={[styles.white, styles.soft]}
+          >
+            {figure.label}
+          </CoverLine>
+        </View>
+      </View>
+    </>
+  );
+}
+
 function NextAndArrived({ now }: { now: Now }) {
   const { t } = useTranslation();
 
@@ -600,7 +707,7 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright), then the arrived figure on the line under it (sc-94022), never between the end line and the button, where ux rejected it. Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
 function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -642,21 +749,16 @@ function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
       >
         {now.ends}
       </CoverLine>
-      {now.arrived == null && <View style={styles.openUnder}>{open}</View>}
+      <View style={styles.openUnder}>{open}</View>
+      {now.arrived != null && (
+        <View style={styles.arrivedUnder}>
+          <WholeArrivedFigure figure={now.arrived} column={column} under={under} />
+        </View>
+      )}
     </View>
   );
 
-  return now.arrived == null ? (
-    words
-  ) : (
-    <View style={styles.wideRow}>
-      {words}
-      <View style={styles.right}>
-        <ArrivedFigure figure={now.arrived} />
-        {open}
-      </View>
-    </View>
-  );
+  return words;
 }
 
 export function NowBlock({
@@ -1538,6 +1640,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
+  arrivedUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },
