@@ -70,7 +70,7 @@ final readonly class ScheduleController
         $event = $this->event($eventId);
         $body = Input::body($request, self::shape());
         $details = $this->scheduleRules->details($event, $body);
-        $item = $this->scheduleEditor->add($event, $details, $this->course($event, $body), $this->user());
+        $item = $this->scheduleEditor->add($event, $details, $this->courseChoice($event, $body), $this->user());
 
         return $this->schedule($event, Response::HTTP_CREATED, $item);
     }
@@ -83,7 +83,7 @@ final readonly class ScheduleController
         $event = $this->event($eventId);
         $body = Input::body($request, self::shape());
         $details = $this->scheduleRules->details($event, $body);
-        $this->scheduleEditor->change($event, $item, $request->headers->get('If-Match'), $details, $this->course($event, $body), $this->user());
+        $this->scheduleEditor->change($event, $item, $request->headers->get('If-Match'), $details, $this->courseChoice($event, $body), $this->user());
 
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
@@ -171,7 +171,7 @@ final readonly class ScheduleController
      *
      * @param array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool, courseId?: ?string} $body
      */
-    private function course(Event $event, array $body): ?CourseChoice
+    private function courseChoice(Event $event, array $body): ?CourseChoice
     {
         if (!Iter\contains_key($body, 'courseId')) {
             return null;
@@ -186,11 +186,17 @@ final readonly class ScheduleController
 
         $course = Uuid::isValid($body['courseId']) ? $this->menuCourseRepository->findOneInEvent($event->getId(), Uuid::fromString($body['courseId'])) : null;
 
-        return new CourseChoice($course ?? throw ApiException::validation([[
-            'propertyPath' => 'courseId',
-            'message' => $this->translator->trans('validation.schedule_course_unknown'),
+        return new CourseChoice($course ?? throw ApiException::validation([$this->violation('courseId', 'validation.schedule_course_unknown')]));
+    }
+
+    /** @return array{propertyPath: string, message: string, code: string} */
+    private function violation(string $path, string $key): array
+    {
+        return [
+            'propertyPath' => $path,
+            'message' => $this->translator->trans($key),
             'code' => ErrorCode::ValidationFailed->value,
-        ]]));
+        ];
     }
 
     private function schedule(Event $event, int $status = Response::HTTP_OK, ?ScheduleItem $item = null): JsonResponse
