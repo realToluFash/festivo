@@ -14,6 +14,7 @@ import {
   contractStart,
   contractStateOf,
   endsIn,
+  endsTitle,
   owedMoney,
   priceLine,
   shortDate,
@@ -189,7 +190,7 @@ function PlanCard({
         <div className="bl-inset ct-ending" role="note">
           <Glyph name="clock" size={18} weight={2.2} />
           <div className="bl-inset-words">
-            <p className="ct-strong">{W.endsTitle}</p>
+            <p className="ct-strong">{endsTitle(ending)}</p>
             <p className="bl-inset-under">
               {W.endsLine
                 .replace('{{date}}', shortDate(contract.end, locale))

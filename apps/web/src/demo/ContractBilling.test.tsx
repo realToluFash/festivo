@@ -44,6 +44,18 @@ describe('Plan and billing on a contract (sc-613)', () => {
     ).toBeDefined();
   });
 
+  it('says the term is ending only in the ending state', async () => {
+    await open('settings/plan-and-billing/contract?state=ending', 'Plan and billing');
+
+    expect(screen.getByText('Ends in 30 days')).toBeDefined();
+  });
+
+  it('says nothing of the term’s end when read-only', async () => {
+    await open('settings/plan-and-billing/contract?state=read_only', 'Plan and billing');
+
+    expect(screen.queryByText(/^Ends /u)).toBeNull();
+  });
+
   it('shows no banner to a Member', async () => {
     await open('settings/plan-and-billing/contract?state=overdue&as=ana', 'Events');
 
@@ -78,7 +90,10 @@ describe('the staff contract form (sc-613)', () => {
     expect(
       screen.getByText('Enter a discount above 0 and below 100, or leave it empty.'),
     ).toBeDefined();
-    expect(screen.getByText('104 of 100 characters · 4 too many')).toBeDefined();
+    const counter = screen.getByText('104 of 100 characters · 4 too many');
+    const po = screen.getByLabelText('Purchase order number');
+
+    expect(po.getAttribute('aria-describedby')?.split(' ')).toContain(counter.id);
   });
 });
 

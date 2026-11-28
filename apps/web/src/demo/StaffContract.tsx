@@ -47,8 +47,6 @@ function StaffForm({ state }: { state: StaffState }) {
   );
   const [focusFirst, setFocusFirst] = useState(0);
   const [sent, setSent] = useState<Sent>(state === 'refused' ? 'refused' : 'none');
-  const counterId = useId();
-  const counter = poCounter(form.purchaseOrder);
   const listPrice = money(ENTERPRISE.price * 12, ENTERPRISE.currency, 'en-GB');
 
   useEffect(() => {
@@ -184,23 +182,11 @@ function StaffForm({ state }: { state: StaffState }) {
               change({ ...form, terms: PAYMENT_TERMS.find((one) => one === terms) ?? 'net_30' })
             }
           />
-          <div>
-            <Field
-              label="Purchase order number"
-              value={form.purchaseOrder}
-              onChange={set('purchaseOrder')}
-              help="Up to 100 characters."
-              action={<span className="demo-optional">Optional</span>}
-              error={errors.purchaseOrder ?? null}
-            />
-            <p
-              id={counterId}
-              className={counter?.over === true ? 'ct-counter is-over' : 'ct-counter'}
-              aria-live="polite"
-            >
-              {counter?.words}
-            </p>
-          </div>
+          <PoField
+            value={form.purchaseOrder}
+            onChange={set('purchaseOrder')}
+            error={errors.purchaseOrder ?? null}
+          />
           <fieldset className="ct-contacts">
             <legend className="desk-legend">{W.contacts}</legend>
             {form.contacts.map((one, index) => (
@@ -265,6 +251,65 @@ function StaffForm({ state }: { state: StaffState }) {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+/** The kit's Field with the PO counter tied to the input, so it is read again on returning to the field (GOV.UK character count). */
+function PoField({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  error: string | null;
+}) {
+  const id = useId();
+  const counter = poCounter(value);
+  const told = [
+    `${id}-help`,
+    counter == null ? null : `${id}-count`,
+    error == null ? null : `${id}-error`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className="desk-field">
+      <div className="desk-label-row">
+        <label htmlFor={id} className="desk-label">
+          Purchase order number
+        </label>
+        <span className="demo-optional">Optional</span>
+      </div>
+      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
+        <input
+          id={id}
+          type="text"
+          value={value}
+          spellCheck={false}
+          aria-invalid={error != null}
+          aria-describedby={told}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+      <p id={`${id}-help`} className="desk-help">
+        Up to 100 characters.
+      </p>
+      <p
+        id={`${id}-count`}
+        className={counter?.over === true ? 'ct-counter is-over' : 'ct-counter'}
+        aria-live="polite"
+      >
+        {counter?.words}
+      </p>
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

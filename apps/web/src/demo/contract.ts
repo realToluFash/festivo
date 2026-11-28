@@ -47,25 +47,27 @@ export interface Contract {
 export const CONTRACT: Contract = {
   organisation: 'Ire Events',
   currency: 'USD',
-  start: '2025-12-01',
-  end: '2026-11-30',
+  start: '2026-10-01',
+  end: '2027-09-30',
   pricePerYear: 2490,
   terms: 'net_30',
   purchaseOrder: 'PO-2026-0412',
   contacts: ['finance@ire.events', 'folake@ire.events'],
 };
 
-const LAST_YEAR: Invoice = {
+/** The last term's invoice, issued the day before that term began. */
+const LAST_TERM: Invoice = {
   id: 'inv-1',
-  number: 'inv_01-2025-1201',
-  issued: '2025-12-01',
-  due: '2025-12-31',
+  number: 'inv_01-2025-0930',
+  issued: '2025-09-30',
+  due: '2025-10-30',
   owed: 0,
   total: 2490,
   status: 'paid',
 };
 
-const OCTOBER: Invoice = {
+/** This term's invoice, issued the day before it began. */
+const THIS_TERM: Invoice = {
   id: 'inv-2',
   number: 'inv_01-2026-0930',
   issued: '2026-09-30',
@@ -75,11 +77,12 @@ const OCTOBER: Invoice = {
   status: 'past_due',
 };
 
-const SEPTEMBER: Invoice = {
+/** A change to the contract staff saved during this term, which makes its own invoice in Paddle. */
+const CHANGE: Invoice = {
   id: 'inv-3',
-  number: 'inv_01-2026-0915',
-  issued: '2026-09-15',
-  due: '2026-10-15',
+  number: 'inv_01-2026-1005',
+  issued: '2026-10-05',
+  due: '2026-11-04',
   owed: 1200,
   total: 1200,
   status: 'past_due',
@@ -92,26 +95,26 @@ export interface ContractStart {
 }
 
 export function contractStart(state: ContractState): ContractStart {
-  const paid = { ...OCTOBER, owed: 0, status: 'paid' as const };
+  const paid = { ...THIS_TERM, owed: 0, status: 'paid' as const };
   switch (state) {
     case 'paid':
-      return { today: '2026-10-20', contract: CONTRACT, invoices: [paid, LAST_YEAR] };
+      return { today: '2026-10-20', contract: CONTRACT, invoices: [paid, LAST_TERM] };
     case 'due':
       return {
         today: '2026-10-20',
         contract: CONTRACT,
-        invoices: [{ ...OCTOBER, status: 'due' }, LAST_YEAR],
+        invoices: [{ ...THIS_TERM, status: 'due' }, LAST_TERM],
       };
     case 'overdue':
-      return { today: '2026-11-01', contract: CONTRACT, invoices: [OCTOBER, LAST_YEAR] };
+      return { today: '2026-11-01', contract: CONTRACT, invoices: [THIS_TERM, LAST_TERM] };
     case 'overdue_one':
-      return { today: '2026-10-31', contract: CONTRACT, invoices: [OCTOBER, LAST_YEAR] };
+      return { today: '2026-10-31', contract: CONTRACT, invoices: [THIS_TERM, LAST_TERM] };
     case 'two_overdue':
-      return { today: '2026-11-01', contract: CONTRACT, invoices: [OCTOBER, SEPTEMBER, LAST_YEAR] };
+      return { today: '2026-11-16', contract: CONTRACT, invoices: [CHANGE, THIS_TERM, LAST_TERM] };
     case 'read_only':
-      return { today: '2026-11-30', contract: CONTRACT, invoices: [OCTOBER, LAST_YEAR] };
+      return { today: '2026-11-30', contract: CONTRACT, invoices: [THIS_TERM, LAST_TERM] };
     case 'ending':
-      return { today: '2026-10-31', contract: CONTRACT, invoices: [paid, LAST_YEAR] };
+      return { today: '2027-08-31', contract: CONTRACT, invoices: [paid, LAST_TERM] };
   }
 }
 
@@ -216,6 +219,14 @@ export function endsIn(contract: Contract, today: string): number | null {
   return left >= 0 && left <= 30 ? left : null;
 }
 
+/** The inset's title for the days left in the term, from 30 down to 0; `[en]` owns the words. */
+export function endsTitle(left: number): string {
+  if (left === 0) return CONTRACT_WORDS.endsTitleToday;
+  if (left === 1) return CONTRACT_WORDS.endsTitleOne;
+
+  return CONTRACT_WORDS.endsTitle.replace('{{count}}', String(left));
+}
+
 export const PAYMENT_TERMS = ['net_15', 'net_30', 'net_45', 'net_60'] as const;
 
 export type PaymentTerms = (typeof PAYMENT_TERMS)[number];
@@ -275,15 +286,15 @@ export const BLANK_FORM: ContractForm = {
 };
 
 export const FILLED_FORM: ContractForm = {
-  start: '2026-12-01',
-  end: '2027-11-30',
+  start: '2027-10-01',
+  end: '2028-09-30',
   price: '2490',
   discount: '',
   discountReason: '',
   terms: 'net_30',
   purchaseOrder: 'PO-2026-0412',
   contacts: ['finance@ire.events'],
-  reason: 'Renewal signed by Folake Adeyemi on 25 November.',
+  reason: 'Renewal signed by Folake Adeyemi on 25 August 2027.',
 };
 
 export const INVALID_FORM: ContractForm = {
@@ -372,7 +383,9 @@ export const CONTRACT_WORDS = {
   invoicesLine: 'Invoices are issued by Paddle, our reseller. How to pay is on each invoice.',
   download: 'Download',
   readOnlyBanner: 'Read-only until the payment is made. Live events are running normally.',
-  endsTitle: 'Ends in 30 days',
+  endsTitle: 'Ends in {{count}} days',
+  endsTitleOne: 'Ends in 1 day',
+  endsTitleToday: 'Ends today',
   endsLine: 'On {{date}} {{organisation}} moves to Free. Nothing is deleted.',
   startBlank: 'Enter the date the term starts.',
   endBlank: 'Enter the date the term ends.',
@@ -387,7 +400,7 @@ export const CONTRACT_WORDS = {
   reasonBlank: 'Enter the reason for this change. It goes in the audit log.',
   paddleRefused:
     'Paddle refused the invoice: the billing account has no country for tax. Nothing was saved.',
-  saved: 'Ire Events is on Enterprise from 1 December 2026. Paddle has the invoice.',
+  saved: 'Ire Events is on Enterprise from 1 October 2027. Paddle has the invoice.',
 } as const;
 
 const W = CONTRACT_WORDS;
@@ -418,11 +431,11 @@ export interface ContractEmail {
 }
 
 export function contractEmail(kind: EmailKind, locale: string): ContractEmail {
-  const amount = owedMoney(OCTOBER.owed, CONTRACT.currency, locale);
+  const amount = owedMoney(THIS_TERM.owed, CONTRACT.currency, locale);
   const facts: [string, string][] = [
     ['Amount', amount],
     ['Purchase order', CONTRACT.purchaseOrder ?? ''],
-    ['Due', shortDate(OCTOBER.due, locale)],
+    ['Due', shortDate(THIS_TERM.due, locale)],
   ];
   const howToPay = 'How to pay by bank transfer is on the invoice, attached.';
   const live = 'Live events keep running, whatever happens to this invoice.';
@@ -441,7 +454,7 @@ export function contractEmail(kind: EmailKind, locale: string): ContractEmail {
         subject: `Your invoice for ${amount} is 7 days overdue`,
         lines: [
           `The invoice for ${CONTRACT.organisation}’s Enterprise contract is 7 days overdue.`,
-          `After ${longDay(readOnlyDate(OCTOBER.due), locale)}, ${CONTRACT.organisation} becomes read-only until it is paid. ${live}`,
+          `After ${longDay(readOnlyDate(THIS_TERM.due), locale)}, ${CONTRACT.organisation} becomes read-only until it is paid. ${live}`,
           howToPay,
         ],
         facts,

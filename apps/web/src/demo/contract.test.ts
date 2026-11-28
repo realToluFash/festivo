@@ -5,8 +5,11 @@ import {
   FILLED_FORM,
   bannerWords,
   checkContract,
+  CONTRACT_STATES,
   contractStart,
   daysBetween,
+  endsIn,
+  endsTitle,
   longDay,
   poCounter,
   readOnlyDate,
@@ -40,8 +43,8 @@ describe('the overdue banner (sc-613)', () => {
     const { invoices, today } = contractStart('two_overdue');
     const words = bannerWords(standingOf(invoices, today), CONTRACT, 'en-GB');
 
-    expect(words).toContain('US$1,200.00 is 17 days overdue');
-    expect(words).toContain('After Saturday 14 November');
+    expect(words).toContain('US$2,490.00 is 17 days overdue');
+    expect(words).toContain('After Sunday 29 November');
   });
 
   it('puts read-only after day 30, from day 31', () => {
@@ -55,6 +58,32 @@ describe('the overdue banner (sc-613)', () => {
 
   it('shows nothing on the due date itself', () => {
     expect(standingOf(contractStart('overdue').invoices, '2026-10-30').kind).toBe('fine');
+  });
+});
+
+describe('the end of the term', () => {
+  it('draws the inset only in the ending state', () => {
+    const shown = CONTRACT_STATES.filter((state) => {
+      const { contract, today } = contractStart(state);
+
+      return endsIn(contract, today) != null;
+    });
+
+    expect(shown).toEqual(['ending']);
+  });
+
+  it('bills each term once', () => {
+    const { invoices } = contractStart('two_overdue');
+    const terms = invoices.filter((invoice) => invoice.total === CONTRACT.pricePerYear);
+
+    expect(terms.map((invoice) => invoice.issued)).toEqual(['2026-09-30', '2025-09-30']);
+    expect(CONTRACT.start).toBe('2026-10-01');
+  });
+
+  it('counts the days left in its title', () => {
+    expect(endsTitle(30)).toBe('Ends in 30 days');
+    expect(endsTitle(1)).toBe('Ends in 1 day');
+    expect(endsTitle(0)).toBe('Ends today');
   });
 });
 
