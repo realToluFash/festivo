@@ -22,6 +22,7 @@ import { keptInbox, waitingLine } from './messages.ts';
 import {
   type LaterRow,
   type Night,
+  type NightItem,
   type NightStart,
   type TrackView,
   NIGHT_EVENT,
@@ -540,7 +541,10 @@ function NowCard({
   return (
     <section className="nt-card is-dark" aria-label={NW.now}>
       <p className="nt-label">{`${NW.now} · since ${timeIn(locale, now.started ?? now.planned)}`}</p>
-      <h2 className="nt-now-title">{now.title}</h2>
+      <div className="nt-title-line">
+        <h2 className="nt-now-title">{now.title}</h2>
+        <CourseTag item={now} />
+      </div>
       <p className="nt-on-dark-muted">{`${now.owner ?? NW.noOwner} · ${view.label}`}</p>
       {view.nowBefore != null && <p className="nt-on-dark-muted">{view.nowBefore}</p>}
       <p className={elapsed.over ? 'nt-elapsed is-over' : 'nt-elapsed'}>
@@ -601,7 +605,10 @@ function NextCard({ view, manage, acts }: { view: TrackView; manage: boolean; ac
               </span>
             )}
           </p>
-          <h2 className="nt-next-title">{next.item.title}</h2>
+          <div className="nt-title-line">
+            <h2 className="nt-next-title">{next.item.title}</h2>
+            <CourseTag item={next.item} />
+          </div>
           <p className="nt-muted">
             {`${next.item.owner ?? NW.noOwner} · ${next.item.length == null ? NW.noLength : `Lasts ${next.item.length} min`}`}
           </p>
@@ -654,8 +661,11 @@ function LaterLine({
         {row.mark === 'done' && <Glyph name="tick" size={12} weight={3} />}
       </span>
       <span className="nt-later-words">
-        <span className={row.mark === 'skipped' ? 'nt-later-title is-struck' : 'nt-later-title'}>
-          {row.item.title}
+        <span className="nt-title-line">
+          <span className={row.mark === 'skipped' ? 'nt-later-title is-struck' : 'nt-later-title'}>
+            {row.item.title}
+          </span>
+          <CourseTag item={row.item} />
         </span>
         <span className="nt-muted num">
           {[MARK_WORD[row.mark], row.time].filter(Boolean).join(' · ')}
@@ -759,5 +769,16 @@ function Chosen({
         {NW.move}
       </button>
     </>
+  );
+}
+
+/** sc-3898: a linked item's course beside its title, cut short when long; the full name stays in the text. */
+function CourseTag({ item }: { item: NightItem }) {
+  if (item.course == null) return null;
+
+  return (
+    <span className="nt-course" title={item.course}>
+      {NW.courseTag(item.course)}
+    </span>
   );
 }
