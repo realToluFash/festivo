@@ -35,6 +35,7 @@ use App\Repository\MenuCourseRepository;
 use App\Repository\MenuDishChoiceRepository;
 use App\Repository\MenuDishRepository;
 use App\Repository\MenuDishVariantRepository;
+use App\Repository\ScheduleItemRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
@@ -96,6 +97,7 @@ final readonly class MenuEditor
         private DefaultRules $defaultRules,
         private DefaultMoves $defaultMoves,
         private ClockInterface $clock,
+        private ScheduleItemRepository $scheduleItemRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
     ) {
@@ -134,6 +136,12 @@ final readonly class MenuEditor
 
             if (!$guestsChoose && 1 !== Iter\count($this->menuDishRepository->findOnCourse($course))) {
                 throw new ApiException(ErrorCode::MenuSameOneDish, 'menu.same_one_dish');
+            }
+
+            $linked = $this->scheduleItemRepository->findOneByCourse($course);
+
+            if (null !== $linked && $details->servedAt !== $course->getServedAt()) {
+                throw new ApiException(ErrorCode::MenuCourseLinked, 'menu.course_linked');
             }
 
             $before = self::recordedCourse($course);
@@ -254,6 +262,7 @@ final readonly class MenuEditor
             }
 
             $this->audit(self::COURSE_DELETED, 'MenuCourse', $course->getId(), $by, Auditor::diff(self::recordedCourse($course), []));
+            $this->scheduleItemRepository->findOneByCourse($course)?->courseWasRemoved($this->clock->now());
             $this->entityManager->remove($course);
             $this->entityManager->flush();
 

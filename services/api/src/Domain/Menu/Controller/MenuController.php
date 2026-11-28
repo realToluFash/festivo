@@ -31,6 +31,7 @@ use App\Repository\DishRepository;
 use App\Repository\EventRepository;
 use App\Repository\MenuDishChoiceRepository;
 use App\Repository\MenuDishVariantRepository;
+use App\Repository\ScheduleItemRepository;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -56,6 +57,7 @@ final readonly class MenuController
         private MenuDishVariantRepository $menuDishVariantRepository,
         private MenuDishChoiceRepository $menuDishChoiceRepository,
         private ItemRules $itemRules,
+        private ScheduleItemRepository $scheduleItemRepository,
         private MembershipDirectoryInterface $membershipDirectory,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
     ) {
@@ -98,7 +100,7 @@ final readonly class MenuController
             'default' => Type\optional(DefaultRules::sent()),
             'confirmMove' => Type\optional(Type\bool()),
         ]));
-        $details = $this->courseRules->details($body['name'], $body['servedAt'] ?? null);
+        $details = $this->courseRules->details($body['name'], !Iter\contains_key($body, 'servedAt') && null !== $this->scheduleItemRepository->findOneByCourse($course) ? $course->getServedAt() : ($body['servedAt'] ?? null));
         $own = Iter\contains_key($body, 'ownItems') ? $this->itemRules->ownItems($body['ownItems']) : null;
         $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $own, $this->user(), $body['default'] ?? null, $body['confirmMove'] ?? false);
 

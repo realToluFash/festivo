@@ -7,6 +7,7 @@ namespace App\Domain\RunOfShow;
 use App\Audit\Auditor;
 use App\Domain\RunOfShow\Card\RunOfShowCards;
 use App\Domain\RunOfShow\Http\ScheduleSerialiser;
+use App\Domain\RunOfShow\Model\CourseChoice;
 use App\Domain\RunOfShow\Model\ItemDetails;
 use App\Domain\RunOfShow\Model\PressLoss;
 use App\Domain\RunOfShow\Model\Replayed;
@@ -40,6 +41,8 @@ final readonly class ScheduleEditor
 
     public const string DELETED = 'run_of_show.item_deleted';
 
+    public const string NOTICE_DISMISSED = 'run_of_show.course_notice_dismissed';
+
     public const array PRESSED = [
         'start' => 'run_of_show.item_started',
         'done' => 'run_of_show.item_finished',
@@ -63,9 +66,9 @@ final readonly class ScheduleEditor
     }
 
     /** The limit is checked before anything is saved. */
-    public function add(Event $event, ItemDetails $details, User $by): ScheduleItem
+    public function add(Event $event, ItemDetails $details, ?CourseChoice $course, User $by): ScheduleItem
     {
-        $item = $this->locked($event, function () use ($event, $details, $by): ScheduleItem {
+        $item = $this->locked($event, function () use ($event, $details, $course, $by): ScheduleItem {
             if ($this->scheduleItemRepository->countOnEvent($event) >= ScheduleItem::PER_EVENT_MAXIMUM) {
                 throw new ApiException(ErrorCode::ScheduleItemLimit, 'run_of_show.item_limit', parameters: ['{max}' => ScheduleItem::PER_EVENT_MAXIMUM]);
             }
@@ -73,6 +76,7 @@ final readonly class ScheduleEditor
             $item = new ScheduleItem($event, $details->title, $details->startsAt, $by);
             self::describe($item, $details, $by);
             $this->entityManager->persist($item);
+            $this->linking($item, $course);
             $this->auditor->record(self::ADDED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], self::recorded($item)));
 
             return $item;
@@ -84,13 +88,13 @@ final readonly class ScheduleEditor
     }
 
     /** Needs the version it read; a colleague's change since is 412 with the item as it now stands in `current`. */
-    public function change(Event $event, ScheduleItem $item, ?string $ifMatch, ItemDetails $details, User $by): ScheduleItem
+    public function change(Event $event, ScheduleItem $item, ?string $ifMatch, ItemDetails $details, ?CourseChoice $course, User $by): ScheduleItem
     {
         if (null === $ifMatch || '*' === Str\trim($ifMatch)) {
             throw new ApiException(ErrorCode::PreconditionRequired, 'run_of_show.version_required');
         }
 
-        $this->locked($event, function () use ($item, $ifMatch, $details, $by): void {
+        $this->locked($event, function () use ($item, $ifMatch, $details, $course, $by): void {
             $this->entityManager->refresh($item);
 
             if (!EntityTag::matches($ifMatch, EntityTag::of($item->getVersion()))) {
@@ -101,6 +105,8 @@ final readonly class ScheduleEditor
 
             $before = self::recorded($item);
             self::describe($item, $details, $by);
+            $item->dismissCourseNotice();
+            $this->linking($item, $course);
             $changes = Auditor::diff($before, self::recorded($item));
 
             if ([] !== $changes) {
@@ -186,6 +192,47 @@ final readonly class ScheduleEditor
         $this->published($event);
     }
 
+    /** Dismissing is for everyone, and ends the notice the item's removed course raised. */
+    public function dismissCourseNotice(Event $event, ScheduleItem $item, User $by): void
+    {
+        $this->locked($event, function () use ($item, $by): void {
+            $this->entityManager->refresh($item);
+
+            if (null === $item->getCourseRemovedAt()) {
+                return;
+            }
+
+            $item->dismissCourseNotice();
+            $item->setChangedBy($by);
+            $this->auditor->record(self::NOTICE_DISMISSED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), []);
+        });
+
+        $this->published($event);
+    }
+
+    /**
+     * Applies what a save sent for Course, and keeps a linked course's served time at its item's start (sc-3898): a link ends with the course keeping the time it last showed. A course held by another item is taken from it, which keeps its title and time.
+     */
+    private function linking(ScheduleItem $item, ?CourseChoice $choice): void
+    {
+        $course = $choice ? $choice->course : $item->getCourse();
+
+        if (null !== $choice && $course !== $item->getCourse()) {
+            if (null !== $course) {
+                $holder = $this->scheduleItemRepository->findOneByCourse($course);
+
+                if (null !== $holder && $holder !== $item) {
+                    $holder->linkCourse(null);
+                    $this->entityManager->flush();
+                }
+            }
+
+            $item->linkCourse($course);
+        }
+
+        $course?->setServedAt($item->getStartsAt()->format('H:i'));
+    }
+
     private static function describe(ScheduleItem $item, ItemDetails $details, User $by): void
     {
         $item->describe($details->title, $details->startsAt, $details->lengthMinutes, $details->place, $details->ownerName, $details->ownerRole, $details->note, $details->fixedTime, $details->showToGuests, $by);
@@ -267,6 +314,7 @@ final readonly class ScheduleEditor
             'note' => $item->getNote(),
             'fixedTime' => $item->isFixedTime(),
             'showToGuests' => $item->isShownToGuests(),
+            'course' => $item->getCourse()?->getName(),
         ];
     }
 }

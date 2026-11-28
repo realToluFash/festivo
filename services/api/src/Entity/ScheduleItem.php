@@ -81,6 +81,15 @@ class ScheduleItem
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $skipped = false;
 
+    /** The menu course this item is (sc-3898): one at most, and a course is on one item at most. */
+    #[ORM\OneToOne(targetEntity: MenuCourse::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MenuCourse $course = null;
+
+    /** Set when its course was removed from the menu, until a planner dismisses it, saves the item or deletes it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $courseRemovedAt = null;
+
     /** Who last changed it, named in a colleague's refused save. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -198,6 +207,33 @@ class ScheduleItem
     public function getChangedBy(): ?User
     {
         return $this->changedBy;
+    }
+
+    public function getCourse(): ?MenuCourse
+    {
+        return $this->course;
+    }
+
+    public function linkCourse(?MenuCourse $course): void
+    {
+        $this->course = $course;
+        $this->courseRemovedAt = null;
+    }
+
+    public function getCourseRemovedAt(): ?DateTimeImmutable
+    {
+        return $this->courseRemovedAt;
+    }
+
+    public function courseWasRemoved(DateTimeImmutable $at): void
+    {
+        $this->course = null;
+        $this->courseRemovedAt = $at;
+    }
+
+    public function dismissCourseNotice(): void
+    {
+        $this->courseRemovedAt = null;
     }
 
     public function getVersion(): int

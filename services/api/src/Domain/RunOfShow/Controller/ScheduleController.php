@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\RunOfShow\Controller;
 
 use App\Domain\RunOfShow\Http\ScheduleSerialiser;
+use App\Domain\RunOfShow\Model\CourseChoice;
 use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\RunOfShow\ScheduleRules;
 use App\Entity\Event;
@@ -14,14 +15,18 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\PressKind;
+use App\Http\Access\Grants;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
+use App\Repository\MenuCourseRepository;
 use DateTimeImmutable;
 use Psl\Hash;
+use Psl\Iter;
 use Psl\Str;
 use Psl\Type;
 use Psr\Clock\ClockInterface;
@@ -30,6 +35,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** An event's running order, built on the Schedule page (sc-3893). Every answer carries the schedule whole. */
 final readonly class ScheduleController
@@ -39,9 +46,12 @@ final readonly class ScheduleController
         private EventRepository $eventRepository,
         private ScheduleRules $scheduleRules,
         private ScheduleEditor $scheduleEditor,
+        private MembershipDirectoryInterface $membershipDirectory,
+        private MenuCourseRepository $menuCourseRepository,
         private ScheduleSerialiser $scheduleSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private ClockInterface $clock,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -58,8 +68,9 @@ final readonly class ScheduleController
     public function add(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
-        $details = $this->scheduleRules->details($event, Input::body($request, self::shape()));
-        $item = $this->scheduleEditor->add($event, $details, $this->user());
+        $body = Input::body($request, self::shape());
+        $details = $this->scheduleRules->details($event, $body);
+        $item = $this->scheduleEditor->add($event, $details, $this->course($event, $body), $this->user());
 
         return $this->schedule($event, Response::HTTP_CREATED, $item);
     }
@@ -70,8 +81,9 @@ final readonly class ScheduleController
     public function change(Request $request, string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
     {
         $event = $this->event($eventId);
-        $details = $this->scheduleRules->details($event, Input::body($request, self::shape()));
-        $this->scheduleEditor->change($event, $item, $request->headers->get('If-Match'), $details, $this->user());
+        $body = Input::body($request, self::shape());
+        $details = $this->scheduleRules->details($event, $body);
+        $this->scheduleEditor->change($event, $item, $request->headers->get('If-Match'), $details, $this->course($event, $body), $this->user());
 
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
@@ -102,6 +114,17 @@ final readonly class ScheduleController
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
 
+    /** Ends the notice an item's removed course raised, for everyone who plans the schedule (sc-3898). */
+    #[Route('/api/events/{eventId}/schedule/items/{itemId}/course-notice', name: 'schedule_items_course_notice_dismiss', methods: ['DELETE'])]
+    #[InEvent(Permission::RunOfShowManage)]
+    public function dismissCourseNotice(string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->scheduleEditor->dismissCourseNotice($event, $item, $this->user());
+
+        return $this->schedule($event, Response::HTTP_OK, $item);
+    }
+
     /** Undo on the page adds it back. */
     #[Route('/api/events/{eventId}/schedule/items/{itemId}', name: 'schedule_items_delete', methods: ['DELETE'])]
     #[InEvent(Permission::RunOfShowManage)]
@@ -126,7 +149,7 @@ final readonly class ScheduleController
         ]);
     }
 
-    /** @return Type\TypeInterface<array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool}> */
+    /** @return Type\TypeInterface<array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool, courseId?: ?string}> */
     private static function shape(): Type\TypeInterface
     {
         return Type\shape([
@@ -139,7 +162,35 @@ final readonly class ScheduleController
             'note' => Type\optional(Type\nullable(Type\string())),
             'fixedTime' => Type\optional(Type\bool()),
             'showToGuests' => Type\optional(Type\bool()),
+            'courseId' => Type\optional(Type\nullable(Type\string())),
         ]);
+    }
+
+    /**
+     * `courseId` left out is no choice, and keeps the link for everyone; sent, it needs menu.read (403) and names a course on this event's menu (sc-3898).
+     *
+     * @param array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool, courseId?: ?string} $body
+     */
+    private function course(Event $event, array $body): ?CourseChoice
+    {
+        if (!Iter\contains_key($body, 'courseId')) {
+            return null;
+        }
+
+        $grants = $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId()) ?? Grants::only([]);
+        $grants->require(Permission::MenuRead);
+
+        if (null === $body['courseId']) {
+            return new CourseChoice(null);
+        }
+
+        $course = Uuid::isValid($body['courseId']) ? $this->menuCourseRepository->findOneInEvent($event->getId(), Uuid::fromString($body['courseId'])) : null;
+
+        return new CourseChoice($course ?? throw ApiException::validation([[
+            'propertyPath' => 'courseId',
+            'message' => $this->translator->trans('validation.schedule_course_unknown'),
+            'code' => ErrorCode::ValidationFailed->value,
+        ]]));
     }
 
     private function schedule(Event $event, int $status = Response::HTTP_OK, ?ScheduleItem $item = null): JsonResponse

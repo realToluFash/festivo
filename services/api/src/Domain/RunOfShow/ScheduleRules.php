@@ -33,7 +33,7 @@ final readonly class ScheduleRules
     ) {
     }
 
-    /** @param array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool} $body */
+    /** @param array{title: string, startsAt: ?string, lengthMinutes?: ?int, place?: ?string, ownerName?: ?string, ownerRole?: ?string, note?: ?string, fixedTime?: bool, showToGuests?: bool, courseId?: ?string} $body */
     public function details(Event $event, array $body): ItemDetails
     {
         $violations = [];
