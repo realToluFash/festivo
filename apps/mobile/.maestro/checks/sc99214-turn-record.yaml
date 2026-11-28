@@ -1,4 +1,4 @@
-# sc-99214: Today and an event's Overview turned to the side and back upright, recorded, so the frame half a second after the turn can be read beside the settled one and 8 seconds later. Vars: METRO_URL, EV.
+# sc-99214: Today and an event's Overview turned to the side and back upright, recorded, so the frame half a second after the turn can be read beside the settled one and 8 seconds later. Vars: METRO_URL, EV. Run it with `--lang <one language>` per batch: Maestro names the recordings today-turn.mp4 and event-turn.mp4, so a batch of several languages overwrites them.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -14,7 +14,7 @@ appId: host.exp.Exponent
 - setOrientation: LANDSCAPE_LEFT
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
 - setOrientation: PORTRAIT
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
 - stopRecording
 - takeScreenshot: today-back-settled
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
@@ -30,7 +30,7 @@ appId: host.exp.Exponent
 - setOrientation: LANDSCAPE_LEFT
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
 - setOrientation: PORTRAIT
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
 - stopRecording
 - takeScreenshot: event-back-settled
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
