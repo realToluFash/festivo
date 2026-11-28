@@ -3084,7 +3084,7 @@
     "doneSaid": "Terminado: «{{title}}».",
     "doneNext": "Terminado: «{{title}}». A continuación: «{{next}}».",
     "sent": "Conexión restablecida. Acciones enviadas.",
-    "courseTag": "Plato · {{name}}"
+    "courseTag": "Pase · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",

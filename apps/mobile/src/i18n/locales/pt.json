@@ -3084,7 +3084,7 @@
     "doneSaid": "Concluído: «{{title}}».",
     "doneNext": "Concluído: «{{title}}». A seguir: «{{next}}».",
     "sent": "Ligação restabelecida. Ações enviadas.",
-    "courseTag": "Prato · {{name}}"
+    "courseTag": "Serviço · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",

@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\User\UserRegistrar;
+use App\Entity\AuditEntry;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Permission;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -21,6 +24,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Type;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Uid\Uuid;
 
 final class ScheduleCourseTest extends ApiTestCase
 {
@@ -157,6 +161,53 @@ final class ScheduleCourseTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame(['The mains', '21:15'], [$this->menuCourse($main)['name'], $this->menuCourse($main)['servedAt']]);
+    }
+
+    #[Test]
+    public function movingTheItemPublishesTheMenuAndARenameAfterItStillSavesWithoutServedAt(): void
+    {
+        $main = $this->course('Main course', null, 1);
+        $item = $this->add(['title' => 'Mains go out', 'startsAt' => '2027-03-06T21:15', 'courseId' => $main]);
+
+        $this->as($this->owner, 'PUT', $this->items($item['id']), ['title' => 'Mains go out', 'startsAt' => '2027-03-06T21:45'], '"1"');
+
+        $topic = 'events/' . $this->eventId . '/menu';
+        $update = self::service(RecordingHub::class)->lastOn($topic) ?? self::fail('the menu was not published');
+        self::assertStringContainsString('21:45', $update->getData());
+
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $main, ['name' => 'The mains', 'answer' => 'choose', 'skippable' => false]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['The mains', '21:45'], [$this->menuCourse($main)['name'], $this->menuCourse($main)['servedAt']]);
+    }
+
+    #[Test]
+    public function renamingOrRemovingALinkedCoursePublishesTheSchedule(): void
+    {
+        $main = $this->course('Main course', null, 1);
+        $this->add(['title' => 'Mains go out', 'startsAt' => '2027-03-06T21:15', 'courseId' => $main]);
+        $topic = 'events/' . $this->eventId . '/schedule';
+        $hub = self::service(RecordingHub::class);
+
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $main, ['name' => 'The mains', 'answer' => 'choose', 'skippable' => false]);
+        self::assertStringContainsString('The mains', ($hub->lastOn($topic) ?? self::fail('the schedule was not published'))->getData());
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/menu/courses/' . $main);
+        self::assertStringContainsString('"courseNotice":true', ($hub->lastOn($topic) ?? self::fail('the schedule was not published'))->getData());
+    }
+
+    #[Test]
+    public function aCourseTakenFromItsHolderIsRecordedOnTheHolderToo(): void
+    {
+        $main = $this->course('Main course', null, 1);
+        $first = $this->add(['title' => 'Mains go out', 'startsAt' => '2027-03-06T21:15', 'courseId' => $main]);
+        $second = $this->add(['title' => 'Plates out', 'startsAt' => '2027-03-06T21:30']);
+
+        $this->as($this->owner, 'PUT', $this->items($second['id']), ['title' => 'Plates out', 'startsAt' => '2027-03-06T21:30', 'courseId' => $main], '"1"');
+
+        $recorded = self::em()->getRepository(AuditEntry::class)->findBy(['action' => ScheduleEditor::CHANGED, 'subjectId' => Uuid::fromString(Type\string()->coerce($first['id']))]);
+        self::assertCount(1, $recorded);
+        self::assertSame(['course' => ['Main course', null]], $recorded[0]->getChanges());
     }
 
     #[Test]

@@ -53,7 +53,7 @@
     "dish_in_use": "Un événement utilise ce plat, il ne peut donc pas être supprimé. Archivez-le plutôt.",
     "menu_course_limit": "Un menu peut compter au plus {max} services.",
     "menu_course_picked": "Des invités ont déjà choisi dans ce service.",
-    "menu_course_linked": "Ce plat est lié à un élément du programme, donc son heure de service est le début de l’élément. Modifiez l’heure de l’élément dans la page Programme.",
+    "menu_course_linked": "Ce service est lié à un élément du programme, donc son heure de service est le début de l’élément. Modifiez l’heure de l’élément dans la page Programme.",
     "menu_dish_on_course": "Ce plat figure déjà dans ce service.",
     "menu_same_one_dish": "« Le même plat pour tous » n’est possible qu’avec un seul plat.",
     "variant_limit": "Un plat peut avoir au maximum {max} variantes.",

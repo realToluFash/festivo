@@ -3784,11 +3784,12 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
+  /** The whole course; `servedAt` left out keeps the time, and a linked course's time is its item's (sc-3898): one that differs is refused 409 `menu_course_linked`. `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & {
+    details: Omit<MenuCourseDetails, 'servedAt'> & {
+      servedAt?: string | null;
       answer: MenuAnswer;
       skippable: boolean;
       ownItems?: string[];
