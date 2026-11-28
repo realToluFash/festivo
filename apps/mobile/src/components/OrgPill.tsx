@@ -98,25 +98,36 @@ export function OpenerColumn({
   name,
   waiting,
   onDark,
+  ringLine,
   style,
 }: {
   name: ReactNode;
   /** The invitation line, or null when no invitation waits. */
   waiting: ReactNode | null;
   onDark: boolean;
+  /** The invitation line's own line height once drawn: the ring is centred on the first line, beside its first word, where the line wraps (sc-92912). */
+  ringLine?: number | undefined;
   style?: StyleProp<ViewStyle>;
 }) {
+  const ring = (
+    <View
+      style={[
+        styles.waitingRing,
+        { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
+      ]}
+    />
+  );
+
   return (
     <View style={[styles.words, style]}>
       {name}
       {waiting != null && (
-        <View style={styles.waitingLine}>
-          <View
-            style={[
-              styles.waitingRing,
-              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
-            ]}
-          />
+        <View style={[styles.waitingLine, ringLine != null && styles.waitingLineTop]}>
+          {ringLine == null ? (
+            ring
+          ) : (
+            <View style={[styles.ringBox, { height: ringLine }]}>{ring}</View>
+          )}
           {waiting}
         </View>
       )}
@@ -146,6 +157,7 @@ export function WholeOpenerWords({
   return (
     <OpenerColumn
       onDark={onDark}
+      ringLine={line == null ? undefined : Math.ceil(line * WAITING_LINE)}
       style={hidden && styles.hidden}
       name={
         <CappedWholeWords
@@ -355,6 +367,8 @@ const styles = StyleSheet.create({
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   name: { lineHeight: 15 * NAME_LINE },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingLineTop: { alignItems: 'flex-start' },
+  ringBox: { justifyContent: 'center' },
   waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
   tileRingHalo: {
     position: 'absolute',
