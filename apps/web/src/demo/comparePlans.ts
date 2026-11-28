@@ -432,6 +432,8 @@ export const COMPARE_WORDS = {
     yearlyLine: (price: string, due: string, date: string) =>
       `${price} a year, billed from today: ${due} due today, the year less what is left of this month. A new year starts today, with nothing used. Next payment ${date}.`,
     keepMonthly: 'Keep monthly',
+    yearlyRefused: `The payment provider refused the charge. Nothing was charged, and ${ORG} stays on Enterprise, monthly. Update the payment method, then switch again.`,
+    updateMethod: 'Update payment method',
     moving: (plan: string, date: string) => `Moving to ${plan} on ${date}.`,
     kept: (plan: string) => `Staying on ${plan}.`,
     downgraded: 'Nothing was deleted. Everything over Free’s limits is kept and reads as it did.',
@@ -536,6 +538,8 @@ export const COMPARE_WORDS = {
     yearlyLine: (price: string, due: string, date: string) =>
       `${price} par an, facturé à partir d’aujourd’hui : ${due} à payer aujourd’hui, l’année moins ce qui reste de ce mois. Une nouvelle année commence aujourd’hui, sans rien d’utilisé. Prochain paiement ${date}.`,
     keepMonthly: 'Garder le mensuel',
+    yearlyRefused: `Le prestataire de paiement a refusé le prélèvement. Rien n’a été débité, et ${ORG} reste sur Enterprise, au mois. Mettez à jour le moyen de paiement, puis réessayez.`,
+    updateMethod: 'Mettre à jour le moyen de paiement',
     moving: (plan: string, date: string) => `Passage à ${plan} le ${date}.`,
     kept: (plan: string) => `Vous restez sur ${plan}.`,
     downgraded:

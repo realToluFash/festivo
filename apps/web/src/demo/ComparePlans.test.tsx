@@ -144,6 +144,24 @@ describe('Plan and billing › Compare plans (sc-3935)', () => {
     expect(within(ask).getByText(/\$2,456\.80 due today/u)).toBeDefined();
     fireEvent.click(within(ask).getByRole('button', { name: 'Switch to yearly' }));
 
-    expect(within(card('Your plan')).getByText(/^\$2,490 a year, renews .*2027$/u)).toBeDefined();
+    const plan = card('Your plan');
+    expect(within(plan).getByText('Confirming your payment…')).toBeDefined();
+    expect(within(plan).queryByRole('button', { name: 'Cancel plan…' })).toBeNull();
+    fireEvent.click(within(plan).getByRole('button', { name: 'Webhook: the year is paid' }));
+
+    expect(within(plan).getByText(/^\$2,490 a year, renews .*2027$/u)).toBeDefined();
+  });
+
+  it('keeps the plan monthly when the provider refuses the yearly charge', async () => {
+    await billing('?state=yearly_refused');
+    const ask = await screen.findByRole('alertdialog', { name: 'Switch to yearly?' });
+    expect(within(ask).getByRole('alert').textContent).toMatch(/^The payment provider refused/u);
+    expect(within(ask).queryByRole('button', { name: 'Switch to yearly' })).toBeNull();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Update payment method' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Paddle’s hosted page, not ours' }),
+    ).toBeDefined();
+    expect(within(card('Your plan')).getByText(/^\$249 a month, renews /u)).toBeDefined();
   });
 });

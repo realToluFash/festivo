@@ -99,6 +99,7 @@ interface Start {
   talk: Talk;
   method: Method;
   refused: boolean;
+  declined: boolean;
   offline: boolean;
 }
 
@@ -153,6 +154,7 @@ function startOf(state: BillingState, now: number): Start {
     talk: { lastAt: null, say: null },
     method: methodFor(state),
     refused: false,
+    declined: false,
     offline: false,
   };
 
@@ -189,6 +191,8 @@ function startOf(state: BillingState, now: number): Start {
       return { ...onEnterprise, ask: 'cancel' };
     case 'yearly_ask':
       return { ...onEnterprise, ask: 'yearly', previewed: true };
+    case 'yearly_refused':
+      return { ...onEnterprise, ask: 'yearly', previewed: true, declined: true };
     case 'yearly':
       return { ...onEnterprise, period: 'year', renews: NEXT_YEAR };
     case 'scheduled':
@@ -301,6 +305,9 @@ function BillingPage({
   const [notAdded, setNotAdded] = useState(start.notAdded);
   const [plan, setPlan] = useState(start.plan);
   const [planPaidAt, setPlanPaidAt] = useState(start.planPaidAt);
+  const [yearPaidAt, setYearPaidAt] = useState<number | null>(null);
+  const [declined, setDeclined] = useState(start.declined);
+  const planTitle = useRef<HTMLSpanElement>(null);
   const [period, setPeriod] = useState(start.period);
   const [renews, setRenews] = useState(start.renews);
   const [scheduled, setScheduled] = useState(start.scheduled);
@@ -338,17 +345,19 @@ function BillingPage({
   const packsId = useId();
   const can = manages && !refused;
   const planWaiting = plan === 'confirming' && planPaidAt != null;
+  const pending = scheduled || yearPaidAt != null;
 
   useEffect(() => {
     const times = [
       ...waits.map((wait) => slowIn(wait.paidAt, Date.now())),
       ...(planWaiting && planPaidAt != null ? [slowIn(planPaidAt, Date.now())] : []),
+      ...(yearPaidAt == null ? [] : [slowIn(yearPaidAt, Date.now())]),
     ].filter((ms) => ms > 0);
     if (times.length === 0) return;
     const timer = setTimeout(() => setNow(Date.now()), Math.min(...times) + 50);
 
     return () => clearTimeout(timer);
-  }, [waits, planWaiting, planPaidAt, now]);
+  }, [waits, planWaiting, planPaidAt, yearPaidAt, now]);
 
   useEffect(() => {
     live.current = { waits, balance };
@@ -445,7 +454,23 @@ function BillingPage({
 
   const keepAsk = () => {
     setAsk(null);
+    setDeclined(false);
     focusLater(() => opener.current);
+  };
+
+  const updateForYearly = () => {
+    setAsk(null);
+    setDeclined(false);
+    setHosted({ kind: 'update' });
+  };
+
+  const yearLands = () => {
+    setYearPaidAt(null);
+    setPeriod('year');
+    setRenews(NEXT_YEAR);
+    setRefreshing(true);
+    setSaid(`${cw.yourPlan}: ${W.enterprise}. ${planLine('year', NEXT_YEAR)}.`);
+    focusLater(() => changePlan.current);
   };
 
   const goAsk = () => {
@@ -455,11 +480,9 @@ function BillingPage({
     if (kind === 'upgrade') {
       setHosted({ kind: 'plan' });
     } else if (kind === 'yearly') {
-      setPeriod('year');
-      setRenews(NEXT_YEAR);
-      setRefreshing(true);
-      setSaid(`${cw.yourPlan}: ${W.enterprise}. ${planLine('year', NEXT_YEAR)}.`);
-      focusLater(() => changePlan.current);
+      setYearPaidAt(Date.now());
+      setSaid(W.confirming);
+      focusLater(() => planTitle.current);
     } else {
       setScheduled(true);
       setSaid(pw.moving(pw.names.free, houseDate(renews, locale)));
@@ -505,6 +528,7 @@ function BillingPage({
   const twoMinutes = () => {
     setWaits((all) => all.map((wait) => ({ ...wait, paidAt: wait.paidAt - WAIT_MS })));
     setPlanPaidAt((at) => (at == null ? at : at - WAIT_MS));
+    setYearPaidAt((at) => (at == null ? at : at - WAIT_MS));
     setNow(Date.now());
   };
 
@@ -559,8 +583,14 @@ function BillingPage({
         {page === 'loaded' && (
           <>
             <section className="desk-block bl-card" aria-labelledby="bl-plan">
-              <Head title={<span id="bl-plan">{cw.yourPlan}</span>}>
-                {can && plan !== 'confirming' && !scheduled && (
+              <Head
+                title={
+                  <span id="bl-plan" ref={planTitle} tabIndex={-1}>
+                    {cw.yourPlan}
+                  </span>
+                }
+              >
+                {can && plan !== 'confirming' && !pending && (
                   <button
                     ref={changePlan}
                     type="button"
@@ -594,7 +624,7 @@ function BillingPage({
               )}
               {can &&
                 plan === 'enterprise' &&
-                !scheduled &&
+                !pending &&
                 catalogue.enterprise.sales === 'self_serve' && (
                   <div className="bl-plan-steps">
                     {period === 'month' && (
@@ -613,6 +643,14 @@ function BillingPage({
                   words={W.confirming}
                   onLand={offline ? undefined : planLands}
                   landLabel="Webhook: the plan is paid"
+                />
+              )}
+              {yearPaidAt != null && (
+                <WaitInset
+                  look={waitLook(yearPaidAt, time)}
+                  words={W.confirming}
+                  onLand={offline ? undefined : yearLands}
+                  landLabel="Webhook: the year is paid"
                 />
               )}
               {plan !== 'free' && <p className="bl-caption">{W.sandbox}</p>}
@@ -740,7 +778,7 @@ function BillingPage({
           </div>
         )}
 
-        {(waits.length > 0 || planWaiting) && (
+        {(waits.length > 0 || planWaiting || yearPaidAt != null) && (
           <div className="bl-demo-only">
             <p>Stand-in for time passing, in the demo only.</p>
             <button type="button" className="desk-text" onClick={twoMinutes}>
@@ -777,8 +815,10 @@ function BillingPage({
           locale={locale}
           ends={renews}
           previewed={start.previewed}
+          declined={declined}
           onKeep={keepAsk}
           onGo={goAsk}
+          onUpdate={updateForYearly}
         />
       )}
 

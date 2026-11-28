@@ -323,15 +323,20 @@ export function PlanAsk({
   locale,
   ends,
   previewed,
+  declined,
   onKeep,
   onGo,
+  onUpdate,
 }: Shared & {
   kind: PlanAskKind;
   /** The day the period ends: when a downgrade takes effect, and what a switch to yearly credits back. */
   ends: string;
   previewed: boolean;
+  /** The provider refused the yearly charge on the saved payment method (pm, 28 Nov). */
+  declined: boolean;
   onKeep: () => void;
   onGo: () => void;
+  onUpdate: () => void;
 }) {
   const w = COMPARE_WORDS[lang];
   const [ready, setReady] = useState(previewed || kind === 'downgrade' || kind === 'cancel');
@@ -383,6 +388,21 @@ export function PlanAsk({
           />
         </div>
       </Ask>
+    );
+  }
+
+  if (kind === 'yearly' && declined) {
+    return (
+      <Ask
+        title={w.askYearly}
+        line={w.yearlyRefused}
+        told
+        keep={w.keepMonthly}
+        go={w.updateMethod}
+        red={false}
+        onKeep={onKeep}
+        onGo={onUpdate}
+      />
     );
   }
 

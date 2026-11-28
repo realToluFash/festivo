@@ -51,6 +51,7 @@ const SHARED: readonly Family[] = [
       'briefing.css',
       'budget.css',
       'budgetHome.css',
+      'comparePlans.css',
       'dataControl.css',
       'dataSettings.css',
       'decide.css',
