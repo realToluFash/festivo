@@ -14,6 +14,7 @@ import { clockWords } from './tabKept.ts';
 import { EventsShell, NotBuilt } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
+import { LAYOUT_MEDIA } from './guest.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import { firstName } from './members.ts';
@@ -83,9 +84,6 @@ import './guests.css';
 import './menu.css';
 import './stations.css';
 import './roster.css';
-
-/** roster.css's docking width: from 1280 px Station and Briefing give way, so a full-width row spans four columns. */
-const DOCKS = '(width >= 80rem)';
 
 const FIELD_IDS = { name: 'rs-f-name', number: 'rs-f-number', email: 'rs-f-email' } as const;
 
@@ -199,7 +197,9 @@ function RosterView({
       setFailed(null);
     },
   });
-  const docked = useMatches(DOCKS) && panel != null && (manage || panel.kind === 'details');
+  // roster.css docks at the same width: from 1280 px Station and Briefing give way, so a full-width row spans four columns.
+  const docked =
+    useMatches(LAYOUT_MEDIA.desk) && panel != null && (manage || panel.kind === 'details');
   const span = docked ? 4 : bf.on ? 6 : 5;
 
   useEffect(() => {
