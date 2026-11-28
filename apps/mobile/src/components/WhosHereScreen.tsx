@@ -105,7 +105,16 @@ const countryName = (code: string): string =>
   countryChoices(currentLocale()).find((one) => one.code === code)?.name ?? code;
 
 /** An event's Who's here (sc-3918), as /demo/whos-here draws it: who has not clocked in yet, who is here, and the floor lead's ways to cover a station and add someone at the door. */
-export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: () => void }) {
+export function WhosHereScreen({
+  eventId,
+  eventName: named = '',
+  onBack,
+}: {
+  eventId: string;
+  /** The name the screen that opened this one holds, shown until the event's own read answers. */
+  eventName?: string;
+  onBack: () => void;
+}) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { kind } = useLayout();
@@ -113,7 +122,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
   const phone = kind === 'phone';
   const wide = kind === 'tabletLandscape';
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
-  const [eventName, setEventName] = useState('');
+  const [eventName, setEventName] = useState(named);
   const [readsStaff, setReadsStaff] = useState(false);
   const [stale, setStale] = useState(false);
   const [lastAt, setLastAt] = useState<string | null>(null);
