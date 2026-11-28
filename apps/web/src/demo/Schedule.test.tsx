@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { cssRule, stylesheet } from '../test-styles.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -338,5 +339,11 @@ describe('Course on the item form (sc-3898)', () => {
     fireEvent.click(button('Delete item…') as HTMLElement);
     fireEvent.click(button('Delete item') as HTMLElement);
     expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull();
+  });
+
+  it("holds a long course pill inside the Item column, as the desk's schedule does (sc-3898)", () => {
+    expect(cssRule('.ro-course', stylesheet(import.meta.dirname, 'schedule.css'))).toContain(
+      'max-width: min(18rem, var(--roWordCap, 100%));',
+    );
   });
 });
