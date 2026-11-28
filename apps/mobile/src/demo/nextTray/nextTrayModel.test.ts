@@ -20,6 +20,7 @@ import {
   nextTray,
   pause,
   plateOf,
+  reasonFor,
   reconnect,
   route,
   seed,
@@ -239,6 +240,21 @@ describe('undo', () => {
     expect(s.requests.find((r) => r.id === 'water')?.mine).toBe(true);
   });
 
+  it('leaves a decline reason typed after the step as it is', () => {
+    let s = startDecline(seed('route'), 'water');
+    s = mark(s, 'ao', 'Plantain', 'on');
+    s = reasonFor(s, 'water', 'Out of still water');
+    s = undo(s);
+    expect(s.undo).toBeNull();
+    expect(
+      s.plates.find((p) => p.id === 'ao')?.items.find((i) => i.name === 'Plantain')?.mark,
+    ).toBe('none');
+    expect(s.requests.find((r) => r.id === 'water')).toMatchObject({
+      declining: true,
+      reason: 'Out of still water',
+    });
+  });
+
   it('ends the step’s Undo at Next tray', () => {
     expect(goNext(startTray(seed('nextTray'))).undo).toBeNull();
   });
@@ -253,6 +269,10 @@ describe('undo', () => {
 });
 
 describe('no connection', () => {
+  it('reads the AC’s line while connected', () => {
+    expect(stripLine(seed('route'))).toBe('Connected · up to date 20:24');
+  });
+
   it('keeps plates per trip, with the count in the strip', () => {
     const s = seed('offline');
     expect(s.perTrip).toBe(4);

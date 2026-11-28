@@ -240,7 +240,7 @@ export function countWords(n: number, one: string, many: string): string {
 }
 
 export function stripLine(s: NextState): string {
-  if (s.online) return `Connected · up to date at ${NOW}`;
+  if (s.online) return `Connected · up to date ${NOW}`;
   const n = s.kept.length;
   return n === 0
     ? `No connection · as of ${AS_OF}`
@@ -817,7 +817,7 @@ export function sendDecline(s: NextState, id: string): NextState {
 export function undo(s: NextState): NextState {
   const u = s.undo;
   if (u == null) return s;
-  const back = { ...u.before, say: `Undone: ${u.what}.`, undo: null };
+  const back = { ...u.before, requests: s.requests, say: `Undone: ${u.what}.`, undo: null };
   return s.online
     ? { ...back, online: true }
     : {
