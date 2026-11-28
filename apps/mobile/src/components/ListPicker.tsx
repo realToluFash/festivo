@@ -181,6 +181,7 @@ export function ListPicker({
       >
         <Text
           size={CONTROL_TEXT_SIZE}
+          weight={drawn != null && !blank ? 'semibold' : undefined}
           style={[blank ? styles.placeholder : styles.value, drawn != null && styles.valueCompact]}
         >
           {blank ? placeholder : (drawn ?? chosen)}
