@@ -103,6 +103,8 @@ import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { ServiceFirePage } from './ServiceFire.tsx';
+import { AutomaticMessagesPage } from './AutomaticMessages.tsx';
+import { AUTO_STATES, AUTO_STATE_WHAT } from './automaticMessages.ts';
 import { FIRE_STATES, FIRE_STATE_WHAT } from './serviceFire.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { JobsShiftsPage } from './JobsShifts.tsx';
@@ -394,6 +396,7 @@ export default function Demo() {
       <Route path="team" element={<TeamPage />} />
       <Route path="how-its-going" element={<HowItsGoingPage />} />
       <Route path="service-fire" element={<ServiceFirePage />} />
+      <Route path="automatic-messages" element={<AutomaticMessagesPage />} />
       <Route path="service-room" element={<ServiceRoomPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -674,6 +677,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+        <h3>Automatic messages: Reminders to answer and Before you come (sc-3974) · desktop</h3>
+        <BoardPages pages={AUTO_PAGES} />
         <h3>The unsubscribe page, signed out · phone, tablet and desk</h3>
         <BoardPages pages={UNSUBSCRIBE_PAGES} />
       </section>
@@ -862,6 +867,16 @@ const HOW_ITS_GOING_PAGES = [
     states: SERVICE_STATES.map((state) => ({
       to: `/demo/how-its-going?state=${state}`,
       name: SERVICE_STATE_WHAT[state],
+    })),
+  },
+];
+
+const AUTO_PAGES = [
+  {
+    name: 'The host switches automatic messages on and off',
+    states: AUTO_STATES.map((state) => ({
+      to: `/demo/automatic-messages?state=${state}`,
+      name: AUTO_STATE_WHAT[state],
     })),
   },
 ];
