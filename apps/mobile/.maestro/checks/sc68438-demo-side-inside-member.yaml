@@ -1,0 +1,23 @@
+# sc-68438: a state of the story's app demo, at /demo/outside-events?state=inside-member, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/outside-events?state=inside-member
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: demo-side-inside-member
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

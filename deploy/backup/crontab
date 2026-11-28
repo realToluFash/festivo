@@ -1,0 +1,4 @@
+# Read by supercronic in the backup container (deploy/compose.yaml). Times are UTC.
+# 04:00 is after the last nightly prune in services/api/config/crontab.
+0 4 * * * /backup/backup.sh
+0 6 * * * /backup/check.sh

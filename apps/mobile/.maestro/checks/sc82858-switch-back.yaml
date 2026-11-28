@@ -1,0 +1,55 @@
+# sc-82858: from the paused screen, Switch organisation to the other organisation brings Search back, and it opens Search. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    when:
+      notVisible:
+        id: 'accessPaused.switch'
+    commands:
+      - runFlow:
+          file: ../switch-organisation.yaml
+          env:
+            ORG: ${PAUSED}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused.switch'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-before-switch
+- tapOn:
+    id: 'accessPaused.switch'
+- runFlow:
+    when:
+      visible:
+        id: 'switcher\..+'
+    commands:
+      - tapOn:
+          id: switcher.tile.${OTHER}
+- extendedWaitUntil:
+    notVisible:
+      id: 'accessPaused.switch'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switched-settings
+- runFlow:
+    when:
+      visible:
+        id: 'frame.search'
+    commands:
+      - tapOn:
+          id: 'frame.search'
+- runFlow:
+    when:
+      notVisible:
+        id: 'search.field'
+    commands:
+      - tapOn: 'Search|Buscar'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- takeScreenshot: switched-search-open

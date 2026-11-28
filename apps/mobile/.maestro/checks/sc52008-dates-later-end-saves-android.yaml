@@ -1,0 +1,33 @@
+# sc-52008: ${EVENT_ID}'s Dates (14:00 to 18:00) with Ends set to 13:00, then to 20:00: the line goes, Save saves and closes onto the event's page, which shows the new end. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc52008-dates-end-before-start-android.yaml
+    env:
+      HOUR: '13'
+- tapOn:
+    id: 'event.edit.dates.endTime'
+- extendedWaitUntil:
+    visible:
+      text: 'OK'
+    timeout: 10000
+- tapOn:
+    text: '20'
+- tapOn:
+    text: 'OK'
+- waitForAnimationToEnd
+- assertNotVisible: 'The end is before the start. Choose a later end.'
+- takeScreenshot: later-end
+- tapOn:
+    id: 'event.edit.dates.save'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: saved-toast
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: page-new-end

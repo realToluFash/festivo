@@ -1,0 +1,12 @@
+# sc-101859: the Staff list's count at 0 (empty state), 1 and 2 people, events E0, E1, E2.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${E0}?area=staff
+- extendedWaitUntil: { visible: { id: 'staff.empty' }, timeout: 30000 }
+- takeScreenshot: count-0
+- openLink: ${METRO_URL}/--/events/${E1}?area=staff
+- extendedWaitUntil: { visible: 'Person 1.*', timeout: 30000 }
+- takeScreenshot: count-1
+- openLink: ${METRO_URL}/--/events/${E2}?area=staff
+- extendedWaitUntil: { visible: 'Person 2.*', timeout: 30000 }
+- takeScreenshot: count-2

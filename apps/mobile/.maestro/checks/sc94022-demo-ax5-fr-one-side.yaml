@@ -1,0 +1,10 @@
+# sc-94022: Today's size demo, size=ax5&lang=fr&live=dinner&arrived=one, LANDSCAPE_LEFT. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?size=ax5&lang=fr&live=dinner&arrived=one
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top

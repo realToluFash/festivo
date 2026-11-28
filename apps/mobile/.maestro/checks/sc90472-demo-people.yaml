@@ -1,0 +1,15 @@
+# sc-90472: the Design demo's People in the long-organisation states at the device's text size, shot at each third of a screen down.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people?state=longOrganisation
+- waitForAnimationToEnd: { timeout: 15000 }
+- takeScreenshot: long-s0
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: long-s1
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: long-s2
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: long-s3

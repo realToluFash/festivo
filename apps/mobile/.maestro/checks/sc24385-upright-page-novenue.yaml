@@ -1,0 +1,21 @@
+# sc-24385, the tablet upright (the harness turns it; no setOrientation, whose PORTRAIT lays this landscape-native tablet on its side): a note with no venue name or address: Venue to be confirmed, the note, then Add the venue. Needs ${METRO_URL}, ${NOVENUE}.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait # the batch's reset sets Maestro's PORTRAIT, rotation 0, which lays this landscape-native tablet on its side
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${NOVENUE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.addVenue'
+    centerElement: true
+    timeout: 20000
+- assertVisible:
+    id: 'events.arrivalNote'
+- takeScreenshot: venue

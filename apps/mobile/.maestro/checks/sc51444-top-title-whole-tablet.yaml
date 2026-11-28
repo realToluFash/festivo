@@ -1,0 +1,22 @@
+# sc-51444: on a tablet at ${ORIENT}, Events and an event's Guests keep their title whole on one line; the primary beside it is labelled or the round +.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.add'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: guests

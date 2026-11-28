@@ -1,0 +1,28 @@
+# The invitation ${INVITE} opened in Where are you working?, its answers at rest. sc-38149.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.${INVITE}'
+    timeout: 15000
+- tapOn:
+    id: 'switcher.tile.${INVITE}'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.invitation.${INVITE}.decline'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: invite-open

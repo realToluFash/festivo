@@ -1,0 +1,10 @@
+# sc-92465: a title outside the switcher (Settings, then Settings › Organisation) at the device's text size. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 15000 }
+- runFlow: ../developer-menu-close.yaml
+- runFlow: ../open-settings.yaml
+- waitForAnimationToEnd
+- takeScreenshot: settings

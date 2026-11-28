@@ -1,0 +1,9 @@
+# sc-82892: open ${EV}'s Hosted by screen (Edit details) and leave it at rest.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd

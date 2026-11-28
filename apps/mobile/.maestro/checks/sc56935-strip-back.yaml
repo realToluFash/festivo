@@ -1,0 +1,17 @@
+# sc-56935, iPad upright: from Reports, the tab strip swiped back to its start, and Overview tapped opens Overview. Pass EVENT_ID, an event the signed-in host owns; run on an iPad simulator.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=reports
+- extendedWaitUntil: { visible: { id: 'event.nav.reports', selected: true }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: at-reports
+- swipe: { start: '15%,9%', end: '95%,9%', duration: 600 }
+- swipe: { start: '15%,9%', end: '95%,9%', duration: 600 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: swiped-back
+- tapOn: { id: 'event.nav.overview' }
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-overview

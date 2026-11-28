@@ -1,0 +1,14 @@
+# sc-29089: signed out, the start screen's build check lines and the onboarding step marks, drawn in Instrument Sans. Needs ${METRO_URL}. Signs out.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /reload
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: start-screen

@@ -1,0 +1,28 @@
+# sc-38816: the app's design demo, Calendar page, Month (populated and busyDay), for its '+N' chip beside the product's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/calendar?state=populated
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- scroll
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: demo-populated
+- openLink: ${METRO_URL}/--/demo/calendar?state=busyDay
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-busyDay
+- scroll
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: demo-busyDay-2

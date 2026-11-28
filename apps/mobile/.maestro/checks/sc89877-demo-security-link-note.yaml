@@ -1,0 +1,22 @@
+# sc-89877: the app design demo, Settings › Security, Google not linked: the line under Link Google takes ’.
+# Known to fail its text match in the demo though the line shows (likely nested Text); judge it from the screenshot (sc-90172).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/security?state=linkPick
+- extendedWaitUntil:
+    visible:
+      text: 'Ways to sign in'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'security.google'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'security.google'
+- scrollUntilVisible:
+    element:
+      text: 'Next, Google opens so you can choose the account to link\. Its address doesn’t have to match .*'
+    timeout: 10000
+    centerElement: true
+- takeScreenshot: demo-security-link-note

@@ -1,0 +1,68 @@
+# Handoff — epic 27 · Accounts and sign-in
+
+**If you have not already read `README.md` and `SHARED.md`, read them now, before this
+file.** Both are in this folder. `README.md` says what this work is and where the design
+lives; `SHARED.md` carries the house style, the mechanics that fail silently, the forbidden
+list, how to link an artifact to a story, and how to report back.
+
+If they were pasted in along with this file, you already have them — do not read them
+again. Either way, **this file carries only what is specific to this epic, and is not
+enough on its own.**
+
+- **Epic:** https://app.shortcut.com/soirely/epic/27
+- **Page to use:** `27 · Accounts and sign-in` in Soirely — Redesign
+
+## What this area is
+
+Somebody signs up, proves who they are, and gets back in when they have lost access.
+Email and password, or Google or Apple. A code to verify an email address and a phone
+number. Optionally a second factor, after which that becomes the thing they might lose.
+
+## Candidate artboards
+
+- **Accounts and Access** — the likely home for sign-up, sign-in and verification
+- **Roles and Sign-in Rules** — partly: it is mostly organisation policy (epic 28), but
+  provider-only sign-in and session timeout are felt here
+
+## Layouts, and why
+
+**All four**: the desktop web and the app's three.
+
+**Signing in, creating an account and getting back in keep the phone browser layout they
+have**, as does the rest of the signed-out frame, Join and Request to join included (epic
+22091, "Decided, 2 Nov (pm, on ux's #28794)"). The reset-password email links to the web,
+and the app opens none of our links itself, so someone who taps **Forgot your password?**
+in the app finishes in their phone's browser. The owner chose this look on 1 Nov, phone
+layout included, and sc-26511 and sc-26512 built it. Nothing new is drawn for that layout:
+it comes from the frame as built. A tablet's browser shows the desktop card.
+
+**Settings and your account are the signed-in web**, which has no layout for a phone's or a
+tablet's browser (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a
+page is the desktop page reflowed (WCAG 2.2 §1.4.10), and a 320 frame on a board is that
+check. sc-13348's Settings > General, built for a phone's browser, stays until the owner
+says otherwise.
+
+These are the same design at four sizes rather than four different designs.
+
+## What these screens must honour
+
+- **Every refusal says what to do next**, not only what went wrong.
+- **Nothing dead-ends.** Somebody who has forgotten everything gets back in without
+  emailing support.
+- A code field takes a paste of the whole code, advances by itself, and submits on
+  completion.
+- A phone field is international by default: a country selector, a dial code, formatting as
+  typed.
+- Backup codes are shown once, with **Copy all** (no download: sc-60), and a confirmation
+  step that proves the second factor works.
+
+## Traps specific to this epic
+
+- **The return paths carry the weight.** Most people sign up once and then not for months,
+  so a forgotten password, a new phone and a lost authenticator are the screens that
+  matter most. If the design draws the happy path and not these, that is the first thing
+  to build.
+- Google and Apple buttons are brand-governed: correct marks and wording, and a
+  platform-native variant on iOS.
+- An organisation can require provider-only sign-in or time sessions out. Somebody meeting
+  either needs to understand why rather than think it is broken.

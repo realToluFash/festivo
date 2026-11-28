@@ -1,0 +1,7 @@
+# sc-67471: the signed-out screen at the largest text size. Signs out: run last.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../sign-out.yaml
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: signed-out

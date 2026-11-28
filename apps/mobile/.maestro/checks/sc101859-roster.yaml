@@ -1,0 +1,18 @@
+# sc-101859: the app's Staff list for a seeded event (EVENT), top and foot, in the batch's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil: { visible: { id: 'events.area.staff' }, timeout: 30000 }
+- scrollUntilVisible: { element: { id: 'staff.heading' }, direction: DOWN, timeout: 60000 }
+- extendedWaitUntil: { visible: 'Adéwálé.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: roster-top
+- scroll
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: roster-mid
+- scroll
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: roster-foot
+- scroll
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: roster-end

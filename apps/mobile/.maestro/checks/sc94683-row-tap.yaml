@@ -1,0 +1,23 @@
+# sc-94683: a tap on a This week row (by point, as the hidden measuring copy shares its text) opens nothing; Today and This week stay. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: '.*(Today|Aujourd.hui).*'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '(This week|Cette semaine).*'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: week-1
+- swipe: { start: '50%,75%', end: '50%,45%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: before
+- tapOn: { point: '50%,63%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: after
+- assertVisible: '(This week|Cette semaine)'

@@ -1,0 +1,8 @@
+# sc-78219: the Calendar's Show menu left open, for reading its rows from the hierarchy.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil: { visible: { id: 'calendar.show' }, timeout: 30000 }
+- tapOn: { id: 'calendar.show' }
+- extendedWaitUntil: { visible: { id: 'calendar.showMenu' }, timeout: 10000 }
+- waitForAnimationToEnd

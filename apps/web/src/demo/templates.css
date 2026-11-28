@@ -1,0 +1,67 @@
+/* Templates and Calibration (Budget-A-Templates): groups under caps heads, the preview's one filled button, Save as template. */
+.tpl-intro {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.tpl-group,
+.tpl-currency {
+  display: flex;
+  flex-direction: column;
+}
+
+.tpl-caps {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding-top: 6px;
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tpl-lead {
+  color: var(--colorInkSecondary);
+}
+
+.tpl-preview-title {
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.tpl-preview-line,
+.tpl-save-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.tpl-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--spaceXl);
+  border-radius: 24px;
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font: 600 16px/1.2 var(--fontFamily);
+}
+
+.tpl-primary:hover {
+  background: var(--colorPrimaryHover);
+}
+
+.tpl-empty {
+  color: var(--colorInkSecondary);
+  font: 500 16px/1.5 var(--fontFamily);
+}
+
+.tpl-save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}

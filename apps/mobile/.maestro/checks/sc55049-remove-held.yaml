@@ -1,0 +1,36 @@
+# sc-55049: Remove photo while the upload is still in flight. Pause storage (docker compose pause storage) right after the photo tap and unpause after the Remove; a batch cannot do that on its own. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc52652/open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.upload'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.upload'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '16%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- takeScreenshot: uploading
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 2000
+    optional: true
+- takeScreenshot: after-remove
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 60000
+    optional: true
+- takeScreenshot: after-60s

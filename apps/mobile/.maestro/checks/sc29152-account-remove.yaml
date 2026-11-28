@@ -1,0 +1,16 @@
+# sc-29152: the design demo's Settings in B Confetti, /account?state=remove. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account?state=remove
+- scrollUntilVisible:
+    element:
+      text: 'Remove this address\?'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: account-remove
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: account-remove-scrolled

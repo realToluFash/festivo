@@ -1,0 +1,22 @@
+# sc-80438: the Guests card's arrived count, the Walk-in reply, and Edit guest under an arrived companion.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: card-open
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: list-walkin
+- scrollUntilVisible: { element: { id: 'guests.search' }, direction: UP, timeout: 20000 }
+- tapOn: { id: 'guests.search' }
+- inputText: 'Nwosu'
+- hideKeyboard
+- tapOn: { id: 'guests.row.${EMEKA}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 30000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form' }, timeout: 15000 }
+- scrollUntilVisible:
+    { element: { text: '.*Ifeoma Nwosu.*' }, direction: DOWN, timeout: 20000, centerElement: true }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: edit-companion-stays

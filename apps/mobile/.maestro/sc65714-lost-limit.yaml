@@ -1,0 +1,12 @@
+# sc-65714: signed out, opens Lost your authenticator and your recovery codes? for a two-factor account that has asked 3 times today, presses Send and shoots the limit notice. EMAIL, PASSWORD, SHOT.
+appId: host.exp.Exponent
+---
+- runFlow: sc30737-lost-open.yaml
+- tapOn:
+    id: 'lostTwoFactor.send'
+- extendedWaitUntil:
+    visible: '.*3 times a day.*|.*3 fois par jour.*|.*3 veces al día.*|.*3 vezes por dia.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOT}-limit

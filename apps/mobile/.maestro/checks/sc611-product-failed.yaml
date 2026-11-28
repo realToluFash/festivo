@@ -1,0 +1,17 @@
+# sc-611: the audit log opened while the API does not answer: loading, then failed with Try again. The API is stopped by hand during the first wait.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 45000
+    optional: true
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- takeScreenshot: audit-loading-product
+- extendedWaitUntil:
+    visible:
+      id: audit.retry
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: audit-failed-product
