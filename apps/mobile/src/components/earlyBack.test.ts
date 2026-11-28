@@ -154,9 +154,9 @@ describe('the hold a picker takes at its tap (sc-44486)', () => {
     const screen = source('NewEvent.tsx');
 
     expect(screen).toMatch(
-      /const openList = \(which: ListOpen\) => \{\s*takeBack\(\);\s*setList\(which\);/,
+      /const openList = \(which: ListOpen, opener: [^)]*\) => \{\s*listFocusBack\.opening\(opener\);\s*takeBack\(\);\s*setList\(which\);/,
     );
-    expect(screen.match(/openList\('(type|zone|currency)'\)/g)).toHaveLength(3);
+    expect(screen.match(/openList\('(type|zone|currency)', /g)).toHaveLength(3);
     expect(screen).not.toMatch(/setList\('/);
   });
 

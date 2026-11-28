@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PickerFocusBack } from './pickerFocusBack.ts';
@@ -125,5 +128,30 @@ describe('a picker hands TalkBack back to whatever opened it (sc-43908, sc-10332
 
     expect(render(true).asked.answer).toBeUndefined();
     expect(device.blurred).toEqual([]);
+  });
+});
+
+describe('New event’s Type, Time zone and Currency sheet (sc-103322)', () => {
+  const screen = readFileSync(join(import.meta.dirname, 'NewEvent.tsx'), 'utf8');
+
+  it('hands TalkBack back to the picker once the sheet is gone, through every close', () => {
+    expect(screen).toContain('const listFocusBack = usePickerFocusBack(list == null);');
+    expect(screen).toMatch(
+      /const closeList = \(\) => \{\s*listFocusBack\.closing\(\);\s*setList\(null\);\s*\};/,
+    );
+    expect(screen.match(/setList\(null\)/g)).toHaveLength(1);
+    expect(screen).toMatch(
+      /const openList = \([^)]*\) => \{\s*listFocusBack\.opening\(opener\);\s*takeBack\(\);\s*setList\(which\);/,
+    );
+  });
+
+  it.each([
+    ['type', 'pickers.type'],
+    ['zone', 'pickers.timeZone'],
+    ['currency', 'pickers.currency'],
+  ])('opens %s from the picker TalkBack goes back to', (which, ref) => {
+    const box = screen.slice(screen.indexOf(`ref={${ref}}`));
+
+    expect(box.slice(0, box.indexOf('/>'))).toContain(`openList('${which}', ${ref})`);
   });
 });

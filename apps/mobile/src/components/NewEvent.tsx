@@ -86,6 +86,7 @@ import { BoxField, type Picking, pick } from './MomentPick.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { type ScreenReaderTarget, useScreenReaderOn } from './screenReaderFocus.ts';
+import { usePickerFocusBack } from './pickerFocusBack.ts';
 import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen } from './Summary.tsx';
 
@@ -135,11 +136,16 @@ export function NewEventScreen({
   const [picking, setPicking] = useState<Picking | null>(null);
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
-  const closeList = () => setList(null);
+  const listFocusBack = usePickerFocusBack(list == null);
+  const closeList = () => {
+    listFocusBack.closing();
+    setList(null);
+  };
   const [listDrawn, setListDrawn] = useState(false);
   if (list == null && listDrawn) setListDrawn(false);
   const takeBack = useEarlyBack(list != null, listDrawn, closeList);
-  const openList = (which: ListOpen) => {
+  const openList = (which: ListOpen, opener: RefObject<ViewInstance | null>) => {
+    listFocusBack.opening(opener);
     takeBack();
     setList(which);
   };
@@ -653,7 +659,7 @@ export function NewEventScreen({
                 value={draft.type === '' ? null : t(`eventTypes.${draft.type}`)}
                 placeholder={t('eventForm.typePlaceholder')}
                 wrong={errors.type != null}
-                onPress={() => !busy && openList('type')}
+                onPress={() => !busy && openList('type', pickers.type)}
                 testID="eventForm.type"
               />
             </EventField>
@@ -799,7 +805,7 @@ export function NewEventScreen({
                 label={t('eventForm.timeZone')}
                 value={timezoneLabel(timeZone)}
                 wrong={errors.timeZone != null}
-                onPress={() => !busy && openList('zone')}
+                onPress={() => !busy && openList('zone', pickers.timeZone)}
                 testID="eventForm.timeZone"
               />
             </EventField>
@@ -820,7 +826,7 @@ export function NewEventScreen({
                 value={currencyWords(currencies, currency)}
                 placeholder={t('orgGeneral.currencyPlaceholder')}
                 wrong={errors.currency != null}
-                onPress={() => !busy && openList('currency')}
+                onPress={() => !busy && openList('currency', pickers.currency)}
                 testID="eventForm.currency"
               />
             </EventField>
