@@ -3,6 +3,10 @@ appId: com.soirely.app
 ---
 - runFlow: release-sign-in.yaml
 - takeScreenshot: rel-signed-in
+- launchApp:
+    appId: com.soirely.app
+    permissions:
+      notifications: unset
 - openLink: soirely://notifications
 - extendedWaitUntil:
     visible:

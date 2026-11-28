@@ -5,6 +5,7 @@ import { useDialogKeys } from '../dialogFocus.ts';
 
 import { Glyph } from './HowItsGoing.tsx';
 import {
+  ASKING,
   type Access,
   type Bulk,
   type Flag,
@@ -12,7 +13,11 @@ import {
   ITEM,
   MARKED,
   type RunOut,
+  answer,
+  answerOf,
   askBulk,
+  askOne,
+  askedNow,
   bulkKey,
   bulkLabel,
   bulkRows,
@@ -21,7 +26,10 @@ import {
   changed,
   chooseFor,
   confirmBulk,
+  confirmNote,
   confirmTitle,
+  countLine,
+  isAsked,
   markAvailable,
   nowLine,
   openChoose,
@@ -33,6 +41,7 @@ import './runOut.css';
 import {
   ARROW_GLYPH,
   BAN_GLYPH,
+  BUBBLE_GLYPH,
   CHECK_GLYPH,
   CLOSE_GLYPH,
   FLAG_GLYPH,
@@ -76,6 +85,7 @@ export function RunOutPanel({
   const rows = waiting(ro);
   const done = changed(ro);
   const choosing = ro.guests.find((x) => x.id === ro.choosing);
+  const askedRows = askedNow(ro);
 
   return (
     <>
@@ -116,6 +126,8 @@ export function RunOutPanel({
             </div>
           )}
 
+          <AskCount ro={ro} />
+
           <section className="rout-part" aria-labelledby="rout-bulk">
             <h3 id="rout-bulk" className="rout-part-title">
               Everyone at once
@@ -130,6 +142,7 @@ export function RunOutPanel({
                         <strong>{b.label}</strong>
                         <span>Applies to guests still to come</span>
                       </span>
+                      {b.bulk.kind === 'ask' && <NotBuilt />}
                     </div>
                   ) : (
                     <button
@@ -157,14 +170,33 @@ export function RunOutPanel({
                 {rows.map((x) => (
                   <li key={x.id} className="rout-guest">
                     <GuestWords x={x} />
-                    <button
-                      className="button rout-choose-for"
-                      type="button"
-                      data-choose-for={x.id}
-                      onClick={() => act(openChoose(ro, x.id, access))}
-                    >
-                      Choose for {x.name}
-                    </button>
+                    <span className="rout-guest-acts">
+                      <button
+                        className="button rout-choose-for"
+                        type="button"
+                        data-choose-for={x.id}
+                        onClick={() => act(openChoose(ro, x.id, access))}
+                      >
+                        Choose for {x.name}
+                      </button>
+                      {isAsked(ro, x) ? (
+                        <span className="rout-asking">
+                          <Glyph paths={BUBBLE_GLYPH} size={16} />
+                          {ASKING}
+                        </span>
+                      ) : (
+                        <button
+                          className="button"
+                          type="button"
+                          data-ask={x.id}
+                          onClick={() =>
+                            then(askOne(ro, x.id, access), `[data-choose-for="${x.id}"]`)
+                          }
+                        >
+                          Ask {x.name}
+                        </button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -208,6 +240,33 @@ export function RunOutPanel({
               Mark available again
             </button>
           </div>
+
+          {askedRows.length > 0 && (
+            <section className="rout-board" aria-labelledby="rout-board-title">
+              <h3 id="rout-board-title" className="rout-board-title">
+                Board only · a waiter records a guest’s answer at the table
+              </h3>
+              <ul className="rout-board-list">
+                {askedRows.map((x) => {
+                  const o = answerOf(ro, x);
+                  if (o == null) return null;
+                  const what = o.to == null ? `without ${ITEM}` : o.to;
+                  return (
+                    <li key={x.id}>
+                      <button
+                        className="button demo-dense"
+                        type="button"
+                        data-answer={x.id}
+                        onClick={() => then(answer(ro, x.id, o.to, access), '[data-answer]')}
+                      >
+                        Board only: {x.name} answers {what} at table {x.table}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
         </div>
       </div>
 
@@ -248,6 +307,22 @@ function GuestWords({ x }: { x: Guest }) {
   );
 }
 
+export function AskCount({ ro }: { ro: RunOut }) {
+  const count = countLine(ro);
+  if (count === '') return null;
+  return (
+    <span className="rout-count">
+      <Glyph paths={BUBBLE_GLYPH} size={16} />
+      <span>{count}</span>
+      <NotBuilt />
+    </span>
+  );
+}
+
+function NotBuilt() {
+  return <span className="rout-pill">AC, not yet built</span>;
+}
+
 function FlagTag({ f }: { f: Flag }) {
   return (
     <span className="rout-flag" data-kind={f.kind === 'diet' ? 'diet' : 'allergy'}>
@@ -272,6 +347,7 @@ function ConfirmDialog({
   useEffect(() => box.current?.focus(), []);
 
   if (ro.confirm == null) return null;
+  const note = confirmNote(ro, ro.confirm);
 
   return (
     <>
@@ -282,11 +358,17 @@ function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="rout-confirm-title"
+        aria-describedby={note !== '' ? 'rout-confirm-note' : undefined}
         tabIndex={-1}
       >
         <h2 id="rout-confirm-title" className="hig-dialog-title">
           {confirmTitle(ro, ro.confirm)}
         </h2>
+        {note !== '' && (
+          <p id="rout-confirm-note" className="hig-meta">
+            {note}
+          </p>
+        )}
         <ActionPair
           className="dialog-actions"
           dismiss={

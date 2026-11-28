@@ -400,6 +400,15 @@ export const ENQUIRY_STATES = [
   'refreshing',
   'mine',
   'memberList',
+  'lost-with-erased',
+  'erased-row-no-type',
+  'erased-row-no-date',
+  'erased-row-bare',
+  'warning-row',
+  'open-consultation-ahead',
+  'deleted',
+  'deleted-assigned-to-me',
+  'deleted-from-link',
 ] as const;
 export type EnquiryState = (typeof ENQUIRY_STATES)[number];
 
@@ -418,6 +427,7 @@ export interface Start {
   loading: boolean;
   refreshing: boolean;
   enquiries: readonly Enquiry[];
+  told: string | null;
 }
 
 export function startOf(state: EnquiryState): Start {
@@ -432,6 +442,7 @@ export function startOf(state: EnquiryState): Start {
     loading: false,
     refreshing: false,
     enquiries: ENQUIRIES,
+    told: null,
   };
 
   switch (state) {

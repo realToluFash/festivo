@@ -2,18 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import {
   HELD_LINE,
-  OFFLINE_BRING_AFTER,
-  OFFLINE_HELD,
   OFFLINE_LEAD,
-  OFFLINE_TAKE_OFF,
   RUN_OUT_STATES,
   type RunOutState,
   bringAfter,
   chooseHeld,
   currentStop,
+  dismissNotSent,
   floorSeats,
   heldRows,
+  isKept,
   isWaiting,
+  keptLine,
   landedLine,
   leadChooses,
   markNotOn,
@@ -21,6 +21,7 @@ import {
   orderOf,
   plateEmptyLine,
   plural,
+  reconnect,
   runOutStateOf,
   seed,
   stopLines,
@@ -74,11 +75,13 @@ describe('who is held on Next', () => {
     expect(orderOf(s, 'ya')?.follow).toEqual([]);
   });
 
-  it('refuses a held choice with no connection and keeps nothing', () => {
-    const s0 = { ...seed('runOutHeld'), online: false };
-    const s = chooseHeld(s0, 'ya', 'now');
-    expect(s.refused).toBe(OFFLINE_HELD);
-    expect(s.orders).toBe(s0.orders);
+  it('keeps a held choice made with no connection, marked Waiting to send', () => {
+    const s = chooseHeld({ ...seed('runOutHeld'), online: false }, 'ya', 'now');
+    expect(s.refused).toBe('');
+    expect(orderOf(s, 'ya')?.follow).toEqual(['Chicken']);
+    expect(isKept(s, 'ya', ['held'])).toBe(true);
+    expect(reconnect(s).kept).toEqual([]);
+    expect(reconnect(s).notSent).toEqual([]);
   });
 });
 
@@ -150,13 +153,38 @@ describe('a plate on a started tray', () => {
     expect(trayCheck(moveOn(s)).passes).toBe(true);
   });
 
-  it('refuses Bring after and Take off with no connection, keeping nothing', () => {
-    const s0 = { ...markNotOn(seed('runOutAtStop'), 'tb'), online: false };
-    expect(bringAfter(s0, 'tb').refused).toBe(OFFLINE_BRING_AFTER);
-    expect(bringAfter(s0, 'tb').orders).toBe(s0.orders);
-    expect(takeOff(s0, 'tb').refused).toBe(OFFLINE_TAKE_OFF);
-    expect(takeOff(s0, 'tb').orders).toBe(s0.orders);
-    expect(seed('runOutOffline').refused).toBe(OFFLINE_BRING_AFTER);
+  it('keeps Not on, Bring after and Take off with no connection, each Waiting to send', () => {
+    const off = { ...seed('runOutAtStop'), online: false };
+    const notOn = markNotOn(off, 'tb');
+    expect(notOn.kept).toEqual([{ guest: 'tb', step: 'notOn' }]);
+    const after = bringAfter(notOn, 'tb');
+    expect(after.refused).toBe('');
+    expect(orderOf(after, 'tb')?.lines.find((l) => l.item === 'Chicken')?.mark).toBe('bringAfter');
+    expect(after.kept).toEqual([{ guest: 'tb', step: 'bringAfter' }]);
+    const off2 = takeOff(after, 'fa');
+    expect(orderOf(off2, 'fa')?.where).toBe('toServe');
+    expect(isKept(off2, 'fa', ['takeOff'])).toBe(true);
+    expect(keptLine(off2.kept.length)).toBe(
+      '2 steps waiting to send. They send when the connection is back.',
+    );
+    expect(seed('runOutOffline').kept).toEqual([{ guest: 'tb', step: 'bringAfter' }]);
+  });
+
+  it('lets the kept Bring after pass the check, and sends every kept step on reconnecting', () => {
+    let s = seed('runOutOffline');
+    for (const g of ['fa', 'hs']) s = bringAfter(markNotOn(s, g), g);
+    expect(trayCheck(moveOn(s)).passes).toBe(true);
+    const back = reconnect(s);
+    expect(back.online).toBe(true);
+    expect(back.kept).toEqual([]);
+    expect(back.notSent).toEqual([]);
+    expect(orderOf(back, 'tb')?.lines.find((l) => l.item === 'Chicken')?.mark).toBe('bringAfter');
+  });
+
+  it('still refuses Bring after on a plate’s last item with no connection', () => {
+    const s = { ...seed('runOutPlateEmpty'), refused: '', online: false };
+    expect(bringAfter(s, 'bo').refused).toBe(plateEmptyLine(4));
+    expect(bringAfter(s, 'bo').kept).toEqual([]);
   });
 });
 
@@ -224,6 +252,31 @@ describe('what a replacement does', () => {
     const s = leadChooses(seed('runOutOffline'), 'tb', 'Beef');
     expect(s.note).toBe(OFFLINE_LEAD);
     expect(orderOf(s, 'tb')?.lines.map((l) => l.item)).toEqual(['Jollof rice', 'Chicken']);
+  });
+
+  it('refuses the kept Bring after once Beef has taken Chicken’s place, and shows Beef unmarked at its stop', () => {
+    const s = seed('runOutNotSent');
+    expect(s.online).toBe(true);
+    expect(s.kept).toEqual([]);
+    expect(s.notSent).toEqual([
+      'Bring after Chicken, Seat 4 · Tunde Bakare: the floor lead served Beef instead, so it wasn’t sent.',
+    ]);
+    expect(orderOf(s, 'tb')?.lines).toEqual([
+      { item: 'Jollof rice', mark: 'on', instead: null },
+      { item: 'Beef', mark: 'unmarked', instead: 'Chicken' },
+    ]);
+    expect(currentStop(s)?.name).toBe('Grill');
+    expect(stopLines(s).find((l) => l.guest.id === 'tb')?.instead).toBe('Chicken');
+    expect(s.landed).toEqual([landedLine(4, 'Beef')]);
+    expect(dismissNotSent(s).notSent).toEqual([]);
+  });
+
+  it('names Serve without in the Not sent line', () => {
+    const s = reconnect(leadChooses(seed('runOutOffline'), 'tb', null));
+    expect(s.notSent[0]).toBe(
+      'Bring after Chicken, Seat 4 · Tunde Bakare: the floor lead served it without Chicken, so it wasn’t sent.',
+    );
+    expect(orderOf(s, 'tb')?.lines.map((l) => l.item)).toEqual(['Jollof rice']);
   });
 });
 

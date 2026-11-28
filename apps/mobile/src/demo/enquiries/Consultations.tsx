@@ -45,6 +45,7 @@ import {
   timesWords,
 } from './ConsultationsModel.ts';
 import { NOW, PEOPLE } from './EnquiriesModel.ts';
+import { ERASE_WORDS as E } from './EraseModel.ts';
 
 const SAVE_MS = 700;
 const ZONES = [READER_ZONE, 'Europe/Madrid', 'Europe/Paris', 'Africa/Lagos', 'America/New_York'];
@@ -667,6 +668,12 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
       (show === 'all' || line.kind === 'event') &&
       !(start.calendar.free && line.kind === 'consultation'),
   );
+  const emptied = start.calendar.deleted
+    ? lines.filter((line) => line.kind === 'consultation').map((line) => line.day)
+    : [];
+  const shown = start.calendar.deleted
+    ? lines.filter((line) => line.kind !== 'consultation')
+    : lines;
 
   return (
     <Page title="Calendar">
@@ -689,7 +696,7 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
         testID="consultations.calendar.show"
       />
       <Card gap={0}>
-        {lines.map((line, index) => (
+        {shown.map((line, index) => (
           <Pressable
             key={line.title + line.day}
             onPress={() =>
@@ -723,6 +730,22 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
               </Text>
             </View>
           </Pressable>
+        ))}
+        {emptied.map((day) => (
+          <View
+            key={day}
+            style={[styles.calRow, styles.rule]}
+            testID={`consultations.calendar.empty.${day}`}
+          >
+            <View style={styles.grow}>
+              <Text size={13} weight="semibold" style={styles.secondary}>
+                {day}
+              </Text>
+              <Text size={16} weight="medium" style={styles.secondary}>
+                {E.nothingOnDay}
+              </Text>
+            </View>
+          </View>
         ))}
       </Card>
       <DemoOnly

@@ -238,7 +238,10 @@ function Night({
     },
     whosHere: {
       label: t('whosHere.open'),
-      href: { pathname: '/events/[id]/whos-here', params: { id: night.event.id } },
+      href: {
+        pathname: '/events/[id]/whos-here',
+        params: { id: night.event.id, name: night.event.name },
+      },
       testID: 'myNight.whosHere',
     },
   };
