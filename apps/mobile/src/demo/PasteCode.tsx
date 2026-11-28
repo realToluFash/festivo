@@ -10,18 +10,19 @@ import { Text } from '../components/Text.tsx';
 import { DemoOnly } from '../steps/Lines.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { NOTHING_TO_PASTE, PASTE_CODE, codeInPaste } from './pasteCode.ts';
+import { SAMPLE } from './samples.ts';
 
 const RING = 1.5;
 
 /** The demo's stand-ins for what was copied, so every path opens on a simulator with nothing copied. */
 const COPIED = [
-  { label: 'Copied: Copy code in WhatsApp', text: '482193' },
+  { label: 'Copied: Copy code in WhatsApp', text: SAMPLE.code },
   {
     label: 'Copied: the whole WhatsApp message',
-    text: '*482193* is your verification code. For your security, do not share this code.',
+    text: `*${SAMPLE.code}* is your verification code. For your security, do not share this code.`,
   },
   { label: 'Copied: a phone number', text: '+234 801 234 5678' },
-  { label: 'Copied: two different codes', text: '482193, then 771204' },
+  { label: 'Copied: two different codes', text: `${SAMPLE.code}, then 771204` },
   { label: 'Copied: nothing', text: '' },
 ] as const;
 
