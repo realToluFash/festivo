@@ -23,6 +23,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Mercure\Update;
@@ -244,9 +245,10 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         self::assertSame(['Table 1'], $this->names());
     }
 
+    /** The plan's own message: the room's numbers (sc-103) ride the same topic and are counted in SeatingNumbersTest. */
     private function seatingPublished(): int
     {
-        return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/seating']));
+        return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/seating'] && !Str\contains($update->getData(), '"people"')));
     }
 
     /**

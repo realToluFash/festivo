@@ -559,7 +559,8 @@ final class GuestsTest extends ApiTestCase
         $this->as($this->owner, 'PUT', $this->guest($guest), ['fullName' => 'Bisi Adewale', 'email' => 'bisi@example.com'], '"1"');
 
         $hub = self::service(RecordingHub::class);
-        self::assertCount($published + 2, $hub->published);
+        self::assertCount($published + 3, $hub->published);
+        self::assertNotNull($hub->lastOn('events/' . $this->eventId . '/seating'), 'the room\'s numbers move with the list (sc-103)');
         $update = $hub->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertStringNotContainsString('bisi@example.com', $update->getData());
         self::assertStringContainsString('Bisi Adewale', $update->getData());

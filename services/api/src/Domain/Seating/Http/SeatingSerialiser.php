@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Seating\Http;
 
 use App\Domain\Seating\GuestSeater;
+use App\Domain\Seating\Numbers\SeatingTally;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\SeatAssignment;
@@ -25,10 +26,13 @@ use App\Repository\TableSharingRepository;
 use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Math;
 use Psl\Vec;
 
-/** The plan and who sits where (sc-4013): each place's `seated` by seat number, and every guest who may be seated, with their chair or none. */
+/**
+ * The plan and who sits where (sc-4013): each place's `seated` by seat number, and every guest who may be seated, with their chair or none. Its counts are the room in numbers (sc-103).
+ *
+ * @phpstan-import-type Breakdown from SeatingTally
+ */
 final readonly class SeatingSerialiser
 {
     public function __construct(
@@ -63,6 +67,7 @@ final readonly class SeatingSerialiser
             Vec\filter($assignments, static fn (SeatAssignment $at): bool => $at->getPlaceId()->equals($place->getId())),
             static fn (SeatAssignment $at): array => ['seat' => $at->getSeat(), 'guestId' => $at->getGuest()->getId()->toRfc4122()],
         );
+        $tally = SeatingTally::of($sections, $tables, $rows, $singleSeats, $assignments);
         $chairs = Dict\from_entries(Vec\map($assignments, static fn (SeatAssignment $at): array => [
             $at->getGuest()->getId()->toRfc4122(),
             ['kind' => GuestSeater::kindOf($at->getPlace()), 'id' => $at->getPlaceId()->toRfc4122(), 'seat' => $at->getSeat()],
@@ -76,7 +81,7 @@ final readonly class SeatingSerialiser
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
             'sharing' => $this->sharing($event, $plan),
-            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => [...self::section($section), ...self::contents($section, $tables, $rows, $singleSeats)]),
+            'sections' => Vec\map_with_key($sections, static fn (int $at, SeatingSection $section): array => [...self::section($section), ...self::contents($tally['sections'][$at]['counts'])]),
             'tables' => Vec\map($tables, static fn (SeatingTable $table): array => [...self::table($table), 'seated' => $seated($table)]),
             'rows' => Vec\map($rows, static fn (SeatingRow $row): array => [...self::row($row), 'seated' => $seated($row)]),
             'singleSeats' => Vec\map($singleSeats, static fn (SeatingSeat $seat): array => [...self::singleSeat($seat), 'seated' => $seated($seat)]),
@@ -84,13 +89,13 @@ final readonly class SeatingSerialiser
                 Vec\filter($this->guestRepository->findOnList($event), GuestSeater::mayBeSeated(...)),
                 static fn (Guest $guest): array => self::guest($guest, $chairs[$guest->getId()->toRfc4122()] ?? null),
             ),
-            'withoutSection' => self::contents(null, $tables, $rows, $singleSeats),
+            'withoutSection' => self::contents($tally['noSection']),
             'counts' => [
                 'sections' => Iter\count($sections),
-                'tables' => Iter\count($tables),
-                'rows' => Iter\count($rows),
-                'singleSeats' => Iter\count($singleSeats),
-                'seatedGuests' => Iter\count($assignments),
+                'tables' => $tally['plan']['tables'],
+                'rows' => $tally['plan']['rows'],
+                'singleSeats' => $tally['plan']['singleSeats'],
+                'seatedGuests' => $tally['plan']['taken'] + $tally['plan']['heldForCompanion'],
             ],
         ];
     }
@@ -141,29 +146,13 @@ final readonly class SeatingSerialiser
     }
 
     /**
-     * @param list<SeatingTable> $tables      the plan's
-     * @param list<SeatingRow>   $rows        the plan's
-     * @param list<SeatingSeat>  $singleSeats the plan's
+     * @param Breakdown $counts a section's, or no section's (sc-103)
      *
-     * @return array{tables: int, rows: int, singleSeats: int, seats: int} for `$section`, or for no section when it is null
+     * @return array{tables: int, rows: int, singleSeats: int, seats: int}
      */
-    private static function contents(?SeatingSection $section, array $tables, array $rows, array $singleSeats): array
+    private static function contents(array $counts): array
     {
-        $in = static fn (?SeatingSection $of): bool => null === $section ? null === $of : true === $of?->getId()->equals($section->getId());
-        $tables = Vec\filter($tables, static fn (SeatingTable $table): bool => $in($table->getSection()));
-        $rows = Vec\filter($rows, static fn (SeatingRow $row): bool => $in($row->getSection()));
-        $singleSeats = Vec\filter($singleSeats, static fn (SeatingSeat $seat): bool => $in($seat->getSection()));
-        $chairs = Vec\concat(
-            Vec\map($tables, static fn (SeatingTable $table): int => $table->getSeats()),
-            Vec\map($rows, static fn (SeatingRow $row): int => $row->getSeats()),
-        );
-
-        return [
-            'tables' => Iter\count($tables),
-            'rows' => Iter\count($rows),
-            'singleSeats' => Iter\count($singleSeats),
-            'seats' => Math\sum($chairs) + Iter\count($singleSeats),
-        ];
+        return ['tables' => $counts['tables'], 'rows' => $counts['rows'], 'singleSeats' => $counts['singleSeats'], 'seats' => $counts['seats']];
     }
 
     /**

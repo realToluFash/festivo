@@ -370,7 +370,8 @@ permit = [
 # Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
 # change goes to the audit trail and out on the plan's topic. A duplicated event
 # copies its plan through this scope (EventDuplicator). Share by adds its milestone to
-# the event's timeline (sc-4022).
+# the event's timeline (sc-4022). It reads the headcount's Coming for the room in
+# numbers (sc-103); Budget reads those numbers.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Seating\\"
 permit = [
@@ -379,6 +380,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_seating",
     "@layer:domain_event",
+    "@layer:domain_guest",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
@@ -502,6 +504,7 @@ permit = [
     "@layer:domain_billing",
     "@layer:domain_event",
     "@layer:domain_guest",
+    "@layer:domain_seating",
     "@layer:domain_messaging",
     "@layer:domain_staff",
     "@layer:domain_user",

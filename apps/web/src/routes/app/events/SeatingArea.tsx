@@ -18,6 +18,7 @@ import {
   type SectionContents,
   type SingleSeat,
   asColleagueChoice,
+  isSeatingNumbers,
   asPlanBeat,
   asPlanSubscriber,
   asPlanSubscribers,
@@ -310,6 +311,7 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
         if (here != null) return latest.current.onBeat(here);
         const choice = asColleagueChoice(data);
         if (choice != null) return latest.current.onChoice(choice);
+        if (isSeatingNumbers(data)) return;
         const seating = asSeating(data);
         if (seating == null) latest.current.onGap();
         else latest.current.onSeating(seating);

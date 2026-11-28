@@ -63,6 +63,18 @@ export function asColleagueChoice(raw: unknown): ColleagueChoice | null {
   return { userId, chosen: { kind, id, chair: typeof chair === 'number' ? chair : null } };
 }
 
+/** True for the room's numbers as the API publishes them on the seating topic (sc-103): a nudge for consumers of the numbers, not a plan, so the plan's readers ignore it. */
+export function isSeatingNumbers(raw: unknown): boolean {
+  return (
+    isRecord(raw) &&
+    isRecord(raw['people']) &&
+    isRecord(raw['plan']) &&
+    isRecord(raw['noSection']) &&
+    Array.isArray(raw['sections']) &&
+    !('measurementSystem' in raw)
+  );
+}
+
 /** The userId of someone saying they still have the plan open, or null for anything else. */
 export function asPlanBeat(raw: unknown): string | null {
   if (!isRecord(raw) || raw['here'] !== true || typeof raw['userId'] !== 'string') return null;

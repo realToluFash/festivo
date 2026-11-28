@@ -4,6 +4,7 @@ import { realtimeTopic } from './topics.ts';
 
 import {
   asColleagueChoice,
+  isSeatingNumbers,
   asPlanBeat,
   asPlanSubscriber,
   asPlanSubscribers,
@@ -109,5 +110,23 @@ describe('asPlanBeat', () => {
 
   it('is never read as a choice', () => {
     expect(asColleagueChoice({ userId: 'u1', here: true })).toBeNull();
+  });
+});
+
+describe('isSeatingNumbers', () => {
+  const numbers = {
+    reason: null,
+    plan: { tables: 1 },
+    sections: [],
+    noSection: { tables: 0 },
+    people: { coming: 2, comingAndSeated: 1, withoutSeat: 1 },
+  };
+
+  it('knows the room in numbers, and not a plan, a choice or a beat', () => {
+    expect(isSeatingNumbers(numbers)).toBe(true);
+    expect(isSeatingNumbers({ measurementSystem: 'metric', plan: null })).toBe(false);
+    expect(isSeatingNumbers({ userId: 'u1', chosen: null })).toBe(false);
+    expect(isSeatingNumbers({ userId: 'u1', here: true })).toBe(false);
+    expect(isSeatingNumbers(null)).toBe(false);
   });
 });
