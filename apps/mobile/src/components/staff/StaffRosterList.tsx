@@ -10,6 +10,7 @@ import { dateLocale } from '../../i18n/index.ts';
 import { BRIEFING_WORDS, noteOf } from '../../kit/staffBriefing.ts';
 import { noticeClock, noticeLines } from '@soirely/domain';
 import { linkWord, rowLine } from '../../kit/staffRoster.ts';
+import { briefingDock } from '../../layout/briefingDock.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SecondaryButton } from '../Buttons.tsx';
@@ -63,7 +64,7 @@ export function StaffRosterList({
   const { kind, height } = useLayout();
   /** The briefing is the tablet's (sc-95654); the phone's Staff shows the roster alone. */
   const briefs = kind !== 'phone';
-  const docked = kind === 'tabletLandscape';
+  const dock = briefingDock(kind, height);
   const clock = noticeClock(when, locale);
   const acts = manages && !finished;
   const [side, setSide] = useState<BriefingSide | null>(null);
@@ -322,7 +323,7 @@ export function StaffRosterList({
         onEntry={took}
         onRules={(rules) => setSeen((was) => (was.kind === 'shown' ? { ...was, rules } : was))}
         onClose={closeSide}
-        docked={docked}
+        docked={dock.fills}
       />
     );
 
@@ -343,13 +344,13 @@ export function StaffRosterList({
               ? previewOpener
               : rulesOpener
         }
-        docked
+        docked={dock.docked}
         testID="briefing.dialog"
       >
         <View
           style={[
             styles.dialog,
-            docked ? styles.dialogDocked : { maxHeight: Math.min(640, height - 160) },
+            dock.fills ? styles.dialogDocked : { maxHeight: dock.maxHeight ?? undefined },
           ]}
         >
           {panel}
