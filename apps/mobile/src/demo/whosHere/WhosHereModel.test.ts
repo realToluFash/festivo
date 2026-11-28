@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
   STATE_NAMES,
+  type Staffer,
   W,
   WALK_ON,
   WALK_ON_ID,
   at,
   canAddMobile,
+  choiceLabel,
   choose,
   closeSheet,
   coverCandidates,
+  coverWarnings,
   didntClockIn,
   doorAnswer,
   doorLabel,
@@ -18,13 +21,17 @@ import {
   here,
   jobEnd,
   jobLine,
+  leadsOf,
+  loseLead,
   mobileAnswer,
   moveChosen,
+  moveInStations,
   notHere,
   numberProblem,
   openCover,
   openDoor,
   openMobile,
+  returnTo,
   seed,
   setDoor,
   setMobile,
@@ -245,10 +252,114 @@ describe('Cover', () => {
   it('moves the chosen person, marks the row covered and says who is where', () => {
     const s = moveChosen(choose(openCover(seed('populated'), 4), 5));
 
-    expect(notHere(s).find((r) => r.p.id === 4)?.coveredBy).toBe('Grace Okon');
-    expect(toastWords(s)).toBe('Grace Okon is on Section B · T7–T12. Nobody on Section A · T1–T6.');
+    expect(notHere(s).find((r) => r.p.id === 4)?.coveredBy).toEqual(['Grace Okon']);
+    expect(toastWords(s)).toBe(
+      'Grace Okon is on Section B · T7–T12. Nobody on Section A · T1–T6. Grace Okon left Section A · T1–T6, so it has no lead now.',
+    );
   });
 
+  it('says nothing of a lead when the person moved leads nothing', () => {
+    const s = seed('covered');
+
+    expect(notHere(s).find((r) => r.p.id === 4)?.coveredBy).toEqual(['Samuel Okafor']);
+    expect(W.coveredBy(['Samuel Okafor'])).toBe('Covered by Samuel Okafor');
+    expect(toastWords(s)).toBe('Samuel Okafor is on Section B · T7–T12. Bisi Adeyemi is on Door.');
+  });
+});
+
+describe('Cover and a station’s lead (sc-102659)', () => {
+  const warns = (id: number) => {
+    const s = seed('cover_lead');
+    return coverWarnings(s, s.list.find((p) => p.id === id) as Staffer);
+  };
+
+  it('reads the lead line, then Leaves, on a lead who is alone on their station', () => {
+    expect(warns(5)).toEqual([
+      'Leads Section A · T1–T6. If they move, it has no lead.',
+      'Leaves Section A · T1–T6 with nobody here',
+    ]);
+  });
+
+  it('reads the lead line alone on a lead with others on their station', () => {
+    expect(warns(2)).toEqual(['Leads Door. If they move, it has no lead.']);
+  });
+
+  it('gives the floor lead and someone who leads nothing no lead line', () => {
+    expect(warns(1)).toEqual(['Leaves Floor lead with nobody here']);
+    expect(warns(12)).toEqual([]);
+  });
+
+  it('reads the two warnings as two sentences, each with its own full stop', () => {
+    expect(choiceLabel('Grace Okon', 'On Section A · T1–T6', warns(5))).toBe(
+      'Grace Okon, On Section A · T1–T6. Leads Section A · T1–T6. If they move, it has no lead. Leaves Section A · T1–T6 with nobody here.',
+    );
+  });
+
+  it('ends the lead and makes nobody else lead the old station', () => {
+    const s = moveChosen(choose(openCover(seed('populated'), 4), 5));
+
+    expect(leadsOf(s, 5)).toBeNull();
+    expect(s.leads['Section A · T1–T6']).toBeUndefined();
+    expect(s.leads.Door).toBe(2);
+  });
+});
+
+describe('a row covered more than once (sc-102659)', () => {
+  it('names everyone covering it, in move order', () => {
+    const s = seed('covered_twice');
+    const row = notHere(s).find((r) => r.p.id === 4);
+
+    expect(row?.coveredBy).toEqual(['Grace Okon', 'Oluwaseun Adebayo-Williamson Okonkwo']);
+    expect(W.coveredBy(row?.coveredBy ?? [])).toBe(
+      'Covered by Grace Okon and Oluwaseun Adebayo-Williamson Okonkwo',
+    );
+    expect(toastWords(s)).toBe(
+      'Oluwaseun Adebayo-Williamson Okonkwo is on Section B · T7–T12. Kelechi Nnamdi is on Pass.',
+    );
+  });
+
+  it('appends a second Cover after the first', () => {
+    const once = moveChosen(choose(openCover(seed('populated'), 4), 5));
+    const twice = moveChosen(choose(openCover(once, 4), 12));
+
+    expect(notHere(twice).find((r) => r.p.id === 4)?.coveredBy).toEqual([
+      'Grace Okon',
+      'Samuel Okafor',
+    ]);
+    expect(toastWords(twice)).toBe(
+      'Samuel Okafor is on Section B · T7–T12. Bisi Adeyemi is on Door.',
+    );
+  });
+
+  it('drops a coverer moved off the station, and reads as before any cover with nobody left', () => {
+    const s = seed('covered_dropped');
+
+    expect(notHere(s).find((r) => r.p.id === 4)?.coveredBy).toEqual([
+      'Oluwaseun Adebayo-Williamson Okonkwo',
+    ]);
+    const none = moveInStations(s, 16, 'Bar');
+    const row = notHere(none).find((r) => r.p.id === 4);
+    expect(row?.coveredBy).toEqual([]);
+    expect(row?.nobody).toBe(true);
+  });
+});
+
+describe('the lead who stops leading (sc-102659)', () => {
+  it('goes back to Your night with no Who’s here, by a Cover or in Stations', () => {
+    expect(loseLead(seed('lost_lead_return'), 'moved').lostRead).toBe('moved');
+    expect(returnTo('moved')).toBe('/demo/my-night?state=lead_moved');
+    expect(returnTo('ended')).toBe('/demo/my-night?state=lead_ended');
+  });
+
+  it('goes back at once when a press in the open sheet is refused', () => {
+    const s = seed('lost_lead_sheet_open');
+
+    expect(s.sheet?.kind).toBe('door');
+    expect(doorAnswer(s, '+234').away).toBe(true);
+  });
+});
+
+describe('a Cover that fails', () => {
   it('keeps the sheet and the choice when the move fails, then moves', () => {
     const chosen = choose(openCover(seed('populated'), 4), 5);
     const failed = moveChosen({ ...chosen, failNext: true });

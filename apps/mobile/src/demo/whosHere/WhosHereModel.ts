@@ -19,7 +19,8 @@ export interface Staffer {
   walkOn?: boolean;
   addedBy?: number;
   movedFrom?: { station: string; at: number };
-  coveredBy?: number;
+  /** Who Cover moved onto this person's station for them, in move order. */
+  coveredBy?: number[];
 }
 
 export interface DoorForm {
@@ -49,11 +50,17 @@ export type Sheet =
   | { kind: 'hasLink'; id: number; via: Via; again: boolean }
   | { kind: 'mobile'; id: number; form: MobileForm };
 
-export type Toast = { kind: 'moved'; id: number; from: string } | { kind: 'in'; id: number };
+export type Toast =
+  { kind: 'moved'; id: number; from: string; lead?: boolean } | { kind: 'in'; id: number };
 
 export interface WhState {
   list: Staffer[];
   role: Role;
+  leads: Record<string, number>;
+  /** The viewer stopped leading and may no longer read Who's here: back to Your night once no sheet is open. */
+  lostRead: 'moved' | 'ended' | null;
+  /** A press the API refused with 403 once the lead was gone: back to Your night at once. */
+  away: boolean;
   clock: number;
   eventEnd: number;
   ended: boolean;
@@ -78,6 +85,12 @@ export const EVENT = 'Adébáyọ̀ at 60';
 export const COUNTRY = 'NG';
 export const LEAD = { id: 5, station: 'Section A · T1–T6' };
 export const FLOOR_LEAD = 1;
+export const DOOR_LEAD = 2;
+export const SECOND_COVER = {
+  id: 16,
+  name: 'Oluwaseun Adebayo-Williamson Okonkwo',
+  from: 'Pass',
+};
 export const WALK_ON = 'Oluwafunmilayo Adébáyọ̀-Bankole';
 export const WALK_ON_ID = 90;
 export const WALK_ON_PHONE = '+234 803 555 0144';
@@ -162,6 +175,12 @@ export const STATE_NAMES = [
   'populated',
   'clocked_in',
   'covered',
+  'cover_lead',
+  'cover_lead_moved',
+  'covered_twice',
+  'covered_dropped',
+  'lost_lead_return',
+  'lost_lead_sheet_open',
   'cover',
   'cover_selected',
   'cover_none_selected',
@@ -240,6 +259,8 @@ const SYSTEM: Partial<Record<WhStateName, System>> = {
 
 const ROLE: Partial<Record<WhStateName, Role>> = {
   station_lead: 'station',
+  lost_lead_return: 'station',
+  lost_lead_sheet_open: 'station',
   door_station_lead: 'station',
   door_station_lead_no_link: 'station',
   row_add_mobile_station_lead: 'station',
@@ -253,6 +274,9 @@ export function seed(k: WhStateName): WhState {
   const s: WhState = {
     list,
     role,
+    leads: { [LEAD.station]: LEAD.id, Door: DOOR_LEAD },
+    lostRead: k === 'lost_lead_sheet_open' ? 'moved' : null,
+    away: false,
     clock: at(18, 5),
     eventEnd: at(26),
     ended: false,
@@ -280,10 +304,44 @@ export function seed(k: WhStateName): WhState {
 
   switch (k) {
     case 'covered':
+      person(12).station = 'Section B · T7–T12';
+      person(12).movedFrom = { station: 'Door', at: at(18, 4) };
+      person(4).coveredBy = [12];
+      s.toast = { kind: 'moved', id: 12, from: 'Door' };
+      break;
+    case 'cover_lead':
+      s.sheet = { kind: 'cover', target: 4, chosen: null, tried: false, failed: false };
+      s.opener = 'cover|4';
+      break;
+    case 'cover_lead_moved':
+    case 'covered_twice':
+    case 'covered_dropped':
       person(5).station = 'Section B · T7–T12';
       person(5).movedFrom = { station: LEAD.station, at: at(18, 4) };
-      person(4).coveredBy = 5;
-      s.toast = { kind: 'moved', id: 5, from: LEAD.station };
+      person(4).coveredBy = [5];
+      delete s.leads[LEAD.station];
+      s.toast = { kind: 'moved', id: 5, from: LEAD.station, lead: true };
+      if (k === 'cover_lead_moved') break;
+      list.push({
+        id: SECOND_COVER.id,
+        name: SECOND_COVER.name,
+        phone: '+234 816 555 0213',
+        job: 'Runner',
+        station: 'Section B · T7–T12',
+        start: at(17, 30),
+        end: at(25),
+        here: true,
+        inAt: at(17, 25),
+        movedFrom: { station: SECOND_COVER.from, at: at(18, 5) },
+      });
+      person(4).coveredBy = [5, SECOND_COVER.id];
+      s.toast = { kind: 'moved', id: SECOND_COVER.id, from: SECOND_COVER.from };
+      if (k === 'covered_twice') break;
+      person(5).station = 'Pass';
+      s.toast = null;
+      break;
+    case 'lost_lead_sheet_open':
+      s.sheet = door({ name: WALK_ON, job: 'Waiter' });
       break;
     case 'clocked_in':
       person(7).here = true;
@@ -456,7 +514,7 @@ const viewer = (s: WhState): number =>
 
 export interface NotHereRow {
   p: Staffer;
-  coveredBy: string | null;
+  coveredBy: string[];
   nobody: boolean;
   canCover: boolean;
   canAddMobile: boolean;
@@ -467,18 +525,27 @@ export function notHere(s: WhState): NotHereRow[] {
     .filter((p) => !p.here && p.start <= s.clock + 15 && p.end > s.clock)
     .sort((a, b) => a.start - b.start || a.name.localeCompare(b.name))
     .map((p) => {
-      const cover =
-        p.coveredBy == null
-          ? undefined
-          : allHere(s).find((q) => q.id === p.coveredBy && q.station === p.station);
+      const covering = coveredBy(s, p);
       return {
         p,
-        coveredBy: cover?.name ?? null,
-        nobody: cover == null && onStation(s, p.station).length === 0,
+        coveredBy: covering,
+        nobody: covering.length === 0 && onStation(s, p.station).length === 0,
         canCover: s.role !== 'station',
         canAddMobile: canAddMobile(s, p),
       };
     });
+}
+
+/** Everyone Cover moved onto their station for them who is still here on it, in move order (pm, 28 Nov). */
+export function coveredBy(s: WhState, p: Staffer): string[] {
+  return (p.coveredBy ?? []).flatMap((id) => {
+    const q = allHere(s).find((x) => x.id === id && x.station === p.station);
+    return q == null ? [] : [q.name];
+  });
+}
+
+export function leadsOf(s: WhState, id: number): string | null {
+  return Object.keys(s.leads).find((st) => s.leads[st] === id) ?? null;
 }
 
 /** staff.manage on any row; the lead who added a walk-on on that walk-on's row only (pm, 31 Oct). */
@@ -549,7 +616,7 @@ export const W = {
   stations: 'Stations tonight',
   nobodyOn: (st: string) => `Nobody on ${st}`,
   nobodyHereOn: (st: string) => `Nobody here on ${st}`,
-  coveredBy: (n: string) => `Covered by ${n}`,
+  coveredBy: (names: readonly string[]) => `Covered by ${andList(names)}`,
   cover: (st: string) => `Cover ${st}`,
   call: 'Call',
   noNumber: 'No number',
@@ -592,7 +659,9 @@ export const W = {
   mobileBlank: 'Enter their mobile number.',
   coverLine: (p: Staffer) => `${p.name} · ${p.job} · ${W.shift(p)}`,
   onStation: (st: string) => `On ${st}`,
+  leads: (st: string) => `Leads ${st}. If they move, it has no lead.`,
   leaves: (st: string) => `Leaves ${st} with nobody here`,
+  leftLead: (n: string, st: string) => `${n} left ${st}, so it has no lead now.`,
   choose: (st: string) => `Choose who covers ${st}.`,
   moveTo: (st: string, n: string | null) => (n == null ? `Move to ${st}` : `Move ${n} to ${st}`),
   nobodyClockedIn: 'Nobody has clocked in yet.',
@@ -700,6 +769,7 @@ export function setMobile(s: WhState, patch: Partial<MobileForm>): WhState {
 export function doorAnswer(s: WhState, dial: string): WhState {
   if (s.sheet?.kind !== 'door') return s;
   const f = s.sheet.form;
+  if (s.lostRead != null) return { ...s, away: true };
   if (s.ended) return setDoor(s, { busy: false, failed: false, refused: true });
   if (s.failNext) return { ...setDoor(s, { busy: false, failed: true }), failNext: false };
   const id = Math.max(...s.list.map((p) => p.id)) + 1;
@@ -731,6 +801,7 @@ export function doorAnswer(s: WhState, dial: string): WhState {
 export function mobileAnswer(s: WhState, dial: string): WhState {
   if (s.sheet?.kind !== 'mobile') return s;
   const { id, form } = s.sheet;
+  if (s.lostRead != null) return { ...s, away: true };
   if (s.failNext) return { ...setMobile(s, { busy: false, failed: true }), failNext: false };
   const phone = shown(dial, form.number);
   return {
@@ -760,17 +831,22 @@ export function moveChosen(s: WhState): WhState {
   if (mover == null) return { ...s, sheet: { ...s.sheet, tried: true } };
   if (s.failNext) return { ...s, sheet: { ...s.sheet, failed: true }, failNext: false };
   const from = mover.station;
+  const led = s.leads[from] === mover.id;
+  const leads = { ...s.leads };
+  if (led) delete leads[from];
   return {
     ...s,
+    leads,
     list: s.list.map((q) =>
       q.id === mover.id
         ? { ...q, station: t.station, movedFrom: { station: from, at: s.clock } }
         : q.id === t.id
-          ? { ...q, coveredBy: mover.id }
+          ? { ...q, coveredBy: [...(q.coveredBy ?? []).filter((x) => x !== mover.id), mover.id] }
           : q,
     ),
     sheet: null,
-    toast: { kind: 'moved', id: mover.id, from },
+    toast: { kind: 'moved', id: mover.id, from, lead: led },
+    lostRead: led && mover.id === viewer(s) && s.role === 'station' ? 'moved' : s.lostRead,
   };
 }
 
@@ -785,8 +861,72 @@ export function toastWords(s: WhState): string {
     left.length === 0
       ? `${W.nobodyOn(o.from)}.`
       : `${andList(left)} ${left.length > 1 ? 'are' : 'is'} on ${o.from}.`;
-  return `${p.name} is on ${p.station}. ${rest}`;
+  const lead = o.lead === true ? ` ${W.leftLead(p.name, o.from)}` : '';
+  return `${p.name} is on ${p.station}. ${rest}${lead}`;
 }
+
+/** The screen-reader label of a Cover row: each warning its own sentence (WCAG 2.2 SC 1.3.1). */
+export function choiceLabel(name: string, line: string, warns: readonly string[]): string {
+  return [`${name}, ${line}.`, ...warns.map((w) => (w.endsWith('.') ? w : `${w}.`))].join(' ');
+}
+
+export function coverWarnings(s: WhState, p: Staffer): string[] {
+  const leads = leadsOf(s, p.id);
+  const alone = onStation(s, p.station).length === 1;
+  return [
+    ...(leads === p.station ? [W.leads(p.station)] : []),
+    ...(alone ? [W.leaves(p.station)] : []),
+  ];
+}
+
+export function moveInStations(s: WhState, id: number, station: string): WhState {
+  const p = byId(s, id);
+  if (p == null) return s;
+  const leads = { ...s.leads };
+  if (leads[p.station] === id) delete leads[p.station];
+  return {
+    ...s,
+    leads,
+    list: s.list.map((q) =>
+      q.id === id
+        ? { ...q, station }
+        : q.coveredBy == null
+          ? q
+          : { ...q, coveredBy: q.coveredBy.filter((x) => x !== id) },
+    ),
+    toast: null,
+  };
+}
+
+export function firstCoverer(s: WhState): { id: number; name: string } | null {
+  for (const r of notHere(s)) {
+    const name = r.coveredBy[0];
+    const q = name == null ? undefined : s.list.find((x) => x.name === name);
+    if (q != null) return { id: q.id, name: q.name };
+  }
+  return null;
+}
+
+export function loseLead(s: WhState, how: 'moved' | 'ended'): WhState {
+  const leads = { ...s.leads };
+  delete leads[LEAD.station];
+  const list =
+    how === 'moved'
+      ? s.list.map((q) =>
+          q.id === LEAD.id
+            ? {
+                ...q,
+                station: 'Section B · T7–T12',
+                movedFrom: { station: LEAD.station, at: s.clock },
+              }
+            : q,
+        )
+      : s.list;
+  return { ...s, leads, list, lostRead: how };
+}
+
+export const returnTo = (how: 'moved' | 'ended'): string =>
+  `/demo/my-night?state=${how === 'moved' ? 'lead_moved' : 'lead_ended'}`;
 
 /** Someone's at the door is left out once the event has ended, but stays beside the refused sheet until Close. */
 export function showsDoor(s: WhState): boolean {
