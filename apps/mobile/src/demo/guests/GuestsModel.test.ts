@@ -997,3 +997,23 @@ describe("A guest form with no name to use asks with the event form's line (sc-8
     expect(say.discardLine('   ')).toBe('What you changed here is not saved.');
   });
 });
+
+describe('the Not added line, as the screen words it (sc-7579, PR #4337)', () => {
+  it('names no companions when none were refused', () => {
+    expect(say.notAddedLine(3, 0, 98)).toBe(
+      '3 people were not added. Ireti at 40 has 98 people on its list.',
+    );
+    expect(say.notAddedLine(1, 0, 1)).toBe(
+      '1 person was not added. Ireti at 40 has 1 person on its list.',
+    );
+  });
+
+  it('names the companions when some were refused', () => {
+    expect(say.notAddedLine(3, 2, 98)).toBe(
+      '3 people and 2 companions were not added. Ireti at 40 has 98 people on its list.',
+    );
+    expect(say.notAddedLine(1, 1, 98)).toBe(
+      '1 person and 1 companion were not added. Ireti at 40 has 98 people on its list.',
+    );
+  });
+});
