@@ -1,0 +1,309 @@
+.desk-dialog:has(.cp) {
+  --deskDialog: 760px;
+}
+
+.cp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.cp-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cp-test {
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceLg);
+  border: 1px dashed var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionWash);
+  color: var(--colorInk);
+  font: var(--typeSmall);
+}
+
+.cp-table-wrap {
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  overflow: hidden;
+}
+
+.cp-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--typeBody);
+}
+
+.cp-table th,
+.cp-table td {
+  padding: var(--spaceSm) var(--spaceLg);
+  border-top: var(--borderDivider);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.cp-table thead th,
+.cp-table thead td {
+  border-top: 0;
+  background: var(--colorHeader);
+}
+
+.cp-table tbody th {
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+}
+
+.cp-corner {
+  width: 38%;
+}
+
+.cp-head {
+  display: table-cell;
+}
+
+.cp-head > span {
+  display: block;
+}
+
+.cp-head-name {
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+}
+
+.cp-head-price {
+  margin-top: var(--spaceXxs);
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.cp-head-under {
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cp-now {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  margin-block: var(--spaceXxs);
+  margin-inline-start: var(--spaceSm);
+  padding: 0 var(--spaceSm);
+  border: 1px solid var(--colorAccentTintBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: var(--typeSmallStrong);
+}
+
+.cp-head > .cp-now {
+  margin-inline-start: 0;
+}
+
+.cp-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.cp-mark.is-in {
+  color: var(--colorInk);
+}
+
+.cp-tick {
+  flex: none;
+  color: var(--colorAccent);
+}
+
+.cp-mark.is-out {
+  color: var(--colorInkSecondary);
+}
+
+.cp-empty {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--colorInkSecondary);
+  border-radius: 50%;
+}
+
+.cp-tax {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cp-changes-title {
+  margin: var(--spaceSm) 0 0;
+  font: var(--typeTitleStep);
+  letter-spacing: var(--typeTitleStepTracking);
+}
+
+.cp-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--spaceMd);
+}
+
+.cp-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.cp-box.is-current {
+  background: var(--colorInset);
+  border: var(--borderInset);
+}
+
+.cp-box-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  font: var(--typeRowTitle);
+}
+
+.cp-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding-inline-start: var(--spaceLg);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.cp-talk-line {
+  margin: var(--spaceXs) 0 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cp-go {
+  align-self: flex-start;
+  margin-top: auto;
+  gap: var(--spaceSm);
+}
+
+.cp-go.is-busy {
+  cursor: progress;
+}
+
+.cp-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceMd);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.cp-said-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorAccent);
+}
+
+.cp-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.cp-ask p {
+  margin: 0;
+}
+
+.cp-ask-title {
+  margin-top: var(--spaceSm);
+  font: var(--typeBodyStrong);
+}
+
+.cp-due {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) var(--spaceMd);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeBodyStrong);
+}
+
+.cp-due-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-plan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  margin-top: var(--spaceXs);
+}
+
+.bl-plan-steps > .desk-text {
+  margin-inline: 0;
+}
+
+/* The page reflowed to 320 CSS px (WCAG 1.4.10): each row's name sits over the two plans, and nothing scrolls sideways. */
+@media (width <= 40rem) {
+  .cp-table thead tr,
+  .cp-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-table thead,
+  .cp-table tbody {
+    display: block;
+  }
+
+  .cp-table {
+    display: block;
+  }
+
+  .cp-corner {
+    display: none;
+  }
+
+  .cp-table th,
+  .cp-table td {
+    padding-inline: var(--spaceMd);
+  }
+
+  .cp-table tbody th {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+
+  .cp-table tbody td {
+    border-top: 0;
+  }
+
+  .cp-go {
+    align-self: stretch;
+  }
+}

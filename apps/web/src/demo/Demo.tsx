@@ -15,7 +15,7 @@ import { offField } from '../offField.ts';
 import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
-import { BILLING_PAGES } from './billing.ts';
+import { BILLING_PAGES, COMPARE_PAGES } from './billing.ts';
 import { AllCredits } from './Credits.tsx';
 import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
@@ -737,6 +737,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>Compare plans: change plan after seeing what changes (sc-3935) · desktop</h3>
+        <BoardPages pages={COMPARE_PAGES} />
         <h3>
           The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
           English and French
