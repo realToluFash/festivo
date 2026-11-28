@@ -2017,6 +2017,13 @@ function Courses({
                   adding={open.kind === 'addCourse'}
                   problems={open.pressed ? courseProblems(open.form) : null}
                   zone={zoneCity(event.timeZone)}
+                  linked={
+                    open.kind === 'editCourse' &&
+                    openCourse?.scheduleItem != null &&
+                    openCourse.servedAt != null
+                      ? { time: openCourse.servedAt, title: openCourse.scheduleItem.title }
+                      : null
+                  }
                   own={open.own}
                   ownProblems={open.pressed ? ownItemProblems(open.own) : null}
                   onOwn={(own) => setOpen({ ...open, own })}

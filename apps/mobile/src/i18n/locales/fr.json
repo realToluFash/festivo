@@ -3083,7 +3083,8 @@
     "skippedSaid": "Sauté : « {{title}} ».",
     "doneSaid": "Terminé : « {{title}} ».",
     "doneNext": "Terminé : « {{title}} ». Ensuite : « {{next}} ».",
-    "sent": "Connexion rétablie. Actions envoyées."
+    "sent": "Connexion rétablie. Actions envoyées.",
+    "courseTag": "Plat · {{name}}"
   },
   "runOfShowCard": {
     "title": "{{event}} · {{place}}",

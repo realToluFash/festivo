@@ -19,6 +19,10 @@ export interface ScheduleItem {
   note: string | null;
   fixedTime: boolean;
   showToGuests: boolean;
+  /** The menu course this item is (sc-3898), named for everyone who reads the schedule; null when none. */
+  course: { id: string; name: string } | null;
+  /** Its course was removed from the menu and nobody has dealt with it yet; shown to those who plan the schedule. */
+  courseNotice: boolean;
   version: number;
 }
 
@@ -43,6 +47,8 @@ export interface ScheduleItemDetails {
   note: string | null;
   fixedTime: boolean;
   showToGuests: boolean;
+  /** A course on the event's menu to link, or null to clear it (needs menu.read); left out, the item keeps its link (sc-3898). */
+  courseId?: string | null;
 }
 
 /** Done, Start now or Skip on the night screen (sc-3895). */
@@ -99,6 +105,9 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     showToGuests,
     version,
   } = raw;
+  // A copy kept before sc-3898 has neither: no course, no notice.
+  const course = raw.course ?? null;
+  const courseNotice = raw.courseNotice ?? false;
 
   if (
     typeof id !== 'string' ||
@@ -115,6 +124,11 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     !text(note) ||
     typeof fixedTime !== 'boolean' ||
     typeof showToGuests !== 'boolean' ||
+    !(
+      course === null ||
+      (isRecord(course) && typeof course.id === 'string' && typeof course.name === 'string')
+    ) ||
+    typeof courseNotice !== 'boolean' ||
     typeof version !== 'number'
   )
     return null;
@@ -134,6 +148,8 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     note,
     fixedTime,
     showToGuests,
+    course: course === null ? null : { id: String(course.id), name: String(course.name) },
+    courseNotice,
     version,
   };
 }

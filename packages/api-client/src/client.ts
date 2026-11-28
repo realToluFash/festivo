@@ -4205,6 +4205,15 @@ export class ApiClient {
     );
   }
 
+  /** Ends the notice an item keeps when its course was removed from the menu, for everyone who plans the schedule (sc-3898). */
+  async dismissCourseNotice(eventId: string, itemId: string): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/course-notice`,
+      ),
+    );
+  }
+
   async deleteScheduleItem(eventId: string, itemId: string): Promise<Schedule> {
     return this.scheduleOf(
       await this.delete<unknown>(

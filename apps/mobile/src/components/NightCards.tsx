@@ -444,9 +444,12 @@ function NowCard({
       <Text size={13} weight="semibold" style={[styles.onDarkSecondary, styles.num]}>
         {t('night.since', { now: upperNow, ...timeSlot(now.startedAt ?? now.planned, locale) })}
       </Text>
-      <Text size={24} weight="bold" style={styles.onDark}>
-        {now.title}
-      </Text>
+      <View style={styles.titleLine}>
+        <Text size={24} weight="bold" style={[styles.onDark, styles.shrink]}>
+          {now.title}
+        </Text>
+        <CourseTag item={now} />
+      </View>
       <Text size={15} style={styles.onDarkSecondary}>
         {t('night.ownerPlace', { owner: ownerWords(now, t), place: label })}
       </Text>
@@ -575,9 +578,12 @@ function NextBody({
           </>
         )}
       </View>
-      <Text size={20} weight="bold">
-        {next.item.title}
-      </Text>
+      <View style={styles.titleLine}>
+        <Text size={20} weight="bold" style={styles.shrink}>
+          {next.item.title}
+        </Text>
+        <CourseTag item={next.item} />
+      </View>
       <Text size={14} style={styles.secondary}>
         {t('night.ownerLasts', {
           owner: ownerWords(next.item, t),
@@ -695,13 +701,20 @@ function LaterLine({
         )}
       </View>
       <View style={styles.grow}>
-        <Text
-          size={16}
-          weight="semibold"
-          style={row.mark === 'skipped' ? [styles.secondary, styles.struck] : undefined}
-        >
-          {row.item.title}
-        </Text>
+        <View style={styles.titleLine}>
+          <Text
+            size={16}
+            weight="semibold"
+            style={
+              row.mark === 'skipped'
+                ? [styles.secondary, styles.struck, styles.shrink]
+                : styles.shrink
+            }
+          >
+            {row.item.title}
+          </Text>
+          <CourseTag item={row.item} />
+        </View>
         <Text size={13} style={[styles.secondary, styles.num]}>
           {rowWords(row, locale, t)}
         </Text>
@@ -927,7 +940,32 @@ export const nightStyles = StyleSheet.create({
   },
 });
 
+/** sc-3898: a linked item's course beside its title, cut short to one line when long. */
+function CourseTag({ item }: { item: { course: { name: string } | null } }) {
+  const { t } = useTranslation();
+  if (item.course == null) return null;
+
+  return (
+    <View style={styles.course}>
+      <Text size={12} weight="semibold" numberOfLines={1}>
+        {t('night.courseTag', { name: item.course.name })}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  titleLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+  course: {
+    maxWidth: '100%',
+    flexShrink: 1,
+    paddingHorizontal: tokens.spaceSm,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: tokens.colorAccentTintBorder,
+    borderRadius: tokens.radiusPill,
+    backgroundColor: tokens.colorAccentTint,
+  },
   accentText: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },

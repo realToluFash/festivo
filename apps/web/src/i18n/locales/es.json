@@ -4669,7 +4669,25 @@
     "notSaved": "No se ha guardado. Lo que ha escrito sigue aquí. Vuelva a intentarlo.",
     "notDeleted": "No se ha eliminado. No ha cambiado nada. Vuelva a intentarlo.",
     "notRestored": "No se ha podido recuperar «{{title}}». Vuelva a añadirlo con Añadir elemento.",
-    "gone": "Otra persona ha eliminado este elemento mientras usted lo tenía abierto. No se ha guardado nada."
+    "gone": "Otra persona ha eliminado este elemento mientras usted lo tenía abierto. No se ha guardado nada.",
+    "course": "Plato",
+    "noCourse": "Sin plato",
+    "courseHelp": "Mientras esté vinculado, el menú muestra la hora de inicio de este elemento como la hora de servicio del plato.",
+    "courseList": "Platos del menú",
+    "courseTag": "Plato · {{name}}",
+    "served": "se sirve a las {{time}}",
+    "linkedTo": "vinculado a {{title}}",
+    "moveAsk": "{{course}} está vinculado a {{other}}.",
+    "moveLine": "¿Vincularlo a este elemento? {{other}} lo pierde.",
+    "moveIt": "Mover el vínculo",
+    "keepOn": "Dejarlo en {{other}}",
+    "moving": "{{other}} pierde este plato al guardar.",
+    "noCourses": "Aún no hay platos en el menú",
+    "noCoursesLine": "Añada los platos en la página Menú y vincule uno aquí.",
+    "openMenu": "Abrir el menú",
+    "unlinked": "{{title}} ya no está vinculado a un plato.",
+    "unlinkedWhy": "Su plato se quitó del menú. El elemento conserva su título y su hora.",
+    "dismiss": "Descartar"
   },
   "runView": {
     "title": "Escaleta",
@@ -5224,7 +5242,9 @@
     "picksHeadFrom": "cierre de la elección desde el {{date}}",
     "picksCloseFrom": "Cierre de la elección desde el {{date}}",
     "picksByOwn": "Fecha fijada por el propio pase «{{course}}». Cierre: {{time}}, hora de {{zone}}.",
-    "picksByOwnClosed": "Fecha fijada por el propio pase «{{course}}». Cierre: {{time}}, hora de {{zone}}."
+    "picksByOwnClosed": "Fecha fijada por el propio pase «{{course}}». Cierre: {{time}}, hora de {{zone}}.",
+    "fromSchedule": "{{time}}, del programa: {{title}}",
+    "fromScheduleHelp": "Sigue la hora de inicio del elemento en la página Programa."
   },
   "guestExport": {
     "export": "Exportar",
