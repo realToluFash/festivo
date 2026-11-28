@@ -9,6 +9,7 @@ import {
   contractStart,
   daysBetween,
   endsIn,
+  endsLine,
   endsTitle,
   longDay,
   poCounter,
@@ -82,8 +83,14 @@ describe('the end of the term', () => {
 
   it('counts the days left in its title', () => {
     expect(endsTitle(30)).toBe('Ends in 30 days');
-    expect(endsTitle(1)).toBe('Ends in 1 day');
+    expect(endsTitle(1)).toBe('Ends tomorrow');
     expect(endsTitle(0)).toBe('Ends today');
+  });
+
+  it('dates the line with the first day on the free plan', () => {
+    expect(endsLine(CONTRACT, 'en-GB')).toBe(
+      'On 1 Oct 2027, Ire Events moves to the free plan. Nothing is deleted.',
+    );
   });
 });
 
