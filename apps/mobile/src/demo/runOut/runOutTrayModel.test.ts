@@ -5,7 +5,6 @@ import {
   OFFLINE_BRING_AFTER,
   OFFLINE_HELD,
   OFFLINE_LEAD,
-  OFFLINE_TAKE_OFF,
   RUN_OUT_STATES,
   type RunOutState,
   bringAfter,
@@ -150,12 +149,12 @@ describe('a plate on a started tray', () => {
     expect(trayCheck(moveOn(s)).passes).toBe(true);
   });
 
-  it('refuses Bring after and Take off with no connection, keeping nothing', () => {
+  it('refuses Bring after with no connection, keeping nothing, and still takes a plate off (sc-4028)', () => {
     const s0 = { ...markNotOn(seed('runOutAtStop'), 'tb'), online: false };
     expect(bringAfter(s0, 'tb').refused).toBe(OFFLINE_BRING_AFTER);
     expect(bringAfter(s0, 'tb').orders).toBe(s0.orders);
-    expect(takeOff(s0, 'tb').refused).toBe(OFFLINE_TAKE_OFF);
-    expect(takeOff(s0, 'tb').orders).toBe(s0.orders);
+    expect(takeOff(s0, 'tb').refused).toBe('');
+    expect(orderOf(takeOff(s0, 'tb'), 'tb')?.where).toBe('toServe');
     expect(seed('runOutOffline').refused).toBe(OFFLINE_BRING_AFTER);
   });
 });

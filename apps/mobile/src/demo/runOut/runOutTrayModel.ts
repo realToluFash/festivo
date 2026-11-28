@@ -190,8 +190,6 @@ export function landedLine(seat: number, to: string | null): string {
 }
 
 export const OFFLINE_BRING_AFTER = `Needs a connection to bring ${RUN_OUT} after. Nothing is kept to send later.`;
-export const OFFLINE_TAKE_OFF =
-  'Needs a connection to take a plate off the tray. Nothing is kept to send later.';
 export const OFFLINE_HELD =
   'Needs a connection to record a held guest’s choice. Nothing is kept to send later.';
 export const OFFLINE_LEAD =
@@ -440,7 +438,6 @@ export function bringAfter(s: RunOutState, guest: string): RunOutState {
 export function takeOff(s: RunOutState, guest: string): RunOutState {
   const o = orderOf(s, guest);
   if (o == null || o.where !== 'tray') return s;
-  if (!s.online) return { ...s, refused: OFFLINE_TAKE_OFF };
   const g = guestOf(guest);
   return {
     ...s,
