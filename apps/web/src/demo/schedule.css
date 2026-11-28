@@ -425,8 +425,22 @@
 
 .ro-ask-acts {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: var(--spaceMd);
+}
+
+.ro-ask-acts .desk-text,
+.ro-ask-acts .gs-pill {
+  text-align: center;
+}
+
+.ro-ask-acts .gs-pill {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ro-title-line {
@@ -764,7 +778,8 @@
   .ro-ask-acts .desk-text {
     align-self: stretch;
     justify-content: center;
-    height: 48px;
+    height: auto;
+    min-height: 48px;
   }
 
   .ro-acts .ro-delete {
@@ -781,7 +796,8 @@
   .ro-move .ro-ask-acts .desk-text {
     align-self: stretch;
     justify-content: center;
-    height: 48px;
+    height: auto;
+    min-height: 48px;
   }
 
   .ro-sheet-scrim {
