@@ -100,6 +100,26 @@ function useArriving(up: boolean): boolean {
   return up && !arrived;
 }
 
+/** True while `covered`, and for SETTLED_MS after it ends on Android, the time the opener's focus takes to come back. */
+function useJustUncovered(covered: boolean): boolean {
+  const [was, setWas] = useState(covered);
+  const [settling, setSettling] = useState(false);
+  if (was !== covered) {
+    setWas(covered);
+    if (!covered && Platform.OS === 'android') setSettling(true);
+    if (covered) setSettling(false);
+  }
+
+  useEffect(() => {
+    if (!settling) return;
+    const settled = setTimeout(() => setSettling(false), SETTLED_MS + 150);
+
+    return () => clearTimeout(settled);
+  }, [settling]);
+
+  return settling;
+}
+
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
@@ -241,6 +261,7 @@ export function FocusedScreen({
   const asking = ask != null;
   const covered = asking || over != null;
   const { heading, shown, hidden, focus } = useTitleTakesFocus(title, onScreen, covered);
+  const uncovering = useJustUncovered(covered);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
@@ -295,6 +316,7 @@ export function FocusedScreen({
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
+              quiet={uncovering}
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
