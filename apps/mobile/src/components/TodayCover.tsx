@@ -707,7 +707,7 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright), then the arrived figure on the line under it (sc-94022), never between the end line and the button, where ux rejected it. Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
 function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
