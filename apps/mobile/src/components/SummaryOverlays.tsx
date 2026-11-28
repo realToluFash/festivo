@@ -59,6 +59,7 @@ import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { pickerTookBack } from './earlyBack.ts';
 import { TextAction } from './SummaryRows.tsx';
+import { settlingAfter } from './uncovered.ts';
 import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
@@ -100,14 +101,13 @@ function useArriving(up: boolean): boolean {
   return up && !arrived;
 }
 
-/** True while `covered`, and for SETTLED_MS after it ends on Android, the time the opener's focus takes to come back. */
+/** True for a moment after a cover ends on Android: the time the opener's focus takes to come back. */
 function useJustUncovered(covered: boolean): boolean {
   const [was, setWas] = useState(covered);
   const [settling, setSettling] = useState(false);
   if (was !== covered) {
     setWas(covered);
-    if (!covered && Platform.OS === 'android') setSettling(true);
-    if (covered) setSettling(false);
+    setSettling(settlingAfter(settling, covered, was, Platform.OS === 'android'));
   }
 
   useEffect(() => {
