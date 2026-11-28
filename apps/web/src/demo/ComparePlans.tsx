@@ -395,7 +395,7 @@ export function PlanAsk({
     return (
       <Ask
         title={w.askYearly}
-        line={w.yearlyRefused}
+        line={w.yearlyRefused(now)}
         told
         keep={w.keepMonthly}
         go={w.updateMethod}

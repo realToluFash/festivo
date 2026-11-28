@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CATALOGUE,
+  COMPARE_WORDS,
   ENTERPRISE_METER,
   FREE_METER,
   TALK_WINDOW_MS,
@@ -81,6 +82,11 @@ describe('Compare plans › the catalogue and what changes (sc-3935)', () => {
   it('prices a switch to yearly as the year less what is left of the month', () => {
     expect(yearlyDue(CATALOGUE.enterprise, 'USD', '2026-12-02')).toBe(2456.8);
     expect(yearlyDue(CATALOGUE.enterprise, 'USD', '2026-12-28')).toBe(2241);
+  });
+
+  it('names the plan the organisation is on when the yearly charge is refused (pm #104937)', () => {
+    expect(COMPARE_WORDS.en.yearlyRefused('Studio')).toContain('stays on Studio, monthly.');
+    expect(COMPARE_WORDS.fr.yearlyRefused('Studio')).toContain('reste sur Studio, au mois.');
   });
 
   it('gives See plans to billing.manage alone', () => {
