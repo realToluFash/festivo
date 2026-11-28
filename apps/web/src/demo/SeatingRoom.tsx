@@ -802,7 +802,7 @@ function NoteTag({ x, y, words }: { x: number; y: number; words: string }) {
   const w = wordsWide(words) + 26;
 
   return (
-    <g className="sn-tag" aria-hidden="true">
+    <g className="snote-tag" aria-hidden="true">
       <path
         d={`M${f(x)} ${f(y)} l9 -11 h${f(w - 9)} v22 h${f(-(w - 9))} z`}
         strokeLinejoin="round"

@@ -1497,7 +1497,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
           ) : (
             <ul className="st-rows" aria-labelledby="st-without">
               {shown.map((party) => (
-                <li key={party.id} className="st-party-line sn-with">
+                <li key={party.id} className="st-party-line snote-with">
                   <button
                     type="button"
                     className={ui.picked === party.id ? 'st-party is-on' : 'st-party'}
@@ -1563,7 +1563,7 @@ function TableGuests({ item }: { item: Item }) {
               const on = ui.moving?.table === item.id && ui.moving.chair === index;
 
               return (
-                <li key={index} className="st-row is-dense sn-with">
+                <li key={index} className="st-row is-dense snote-with">
                   {chair.state === 'taken' && !ui.readOnly ? (
                     <button
                       type="button"

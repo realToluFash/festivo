@@ -263,7 +263,7 @@ export function TablesView() {
                   'st-card',
                   lit && 'is-lit',
                   marks.length > 0 && 'is-marked',
-                  broken.has(item.id) && 'is-broken',
+                  broken.has(item.id) && 'snote-card-broken',
                 ]
                   .filter(Boolean)
                   .join(' ')}
