@@ -18,6 +18,7 @@ import {
   categoryState,
   ceilingState,
   canMarkDue,
+  dueNowLocked,
   ceilingsAfter,
   checkAmount,
   coverAmount,
@@ -412,7 +413,9 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(startOf('due_refused', REMOVED_PAYER).dueNow?.refused).toEqual({
       'savour-deposit': 'cancelled',
     });
-    expect(startOf('due_read_only', REMOVED_PAYER).dueNow?.readOnly).toBe(true);
+    const readOnly = startOf('due_read_only', REMOVED_PAYER);
+    expect(readOnly.dueNow?.readOnly).toBe(true);
+    expect(readOnly.dueNow != null && dueNowLocked(readOnly.dueNow, readOnly.link)).toBe(true);
   });
 
   it('names a reminder across two events, each row in its event’s currency, and no total', () => {
@@ -502,7 +505,13 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(reduce(offline, { type: 'openMark', id: 'savour-deposit', from: 'dueNow' })).toBe(
       offline,
     );
-    const back = reduce(startOf('due_reconnecting', REMOVED_PAYER), { type: 'reconnected' });
+    expect(offline.dueNow != null && dueNowLocked(offline.dueNow, offline.link)).toBe(true);
+    const reconnecting = startOf('due_reconnecting', REMOVED_PAYER);
+    expect(
+      reconnecting.dueNow != null && dueNowLocked(reconnecting.dueNow, reconnecting.link),
+    ).toBe(true);
+    const back = reduce(reconnecting, { type: 'reconnected' });
+    expect(back.dueNow != null && dueNowLocked(back.dueNow, back.link)).toBe(false);
     expect(canMarkDue(back)).toBe(true);
     expect(back.dueNow?.marked).toEqual(['bloom-balance']);
   });

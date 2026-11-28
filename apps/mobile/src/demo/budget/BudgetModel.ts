@@ -1047,8 +1047,12 @@ export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
 }
 
 /** Due now's Paid, Paid a different amount and Undo: only with a connection and the rows current, as sc-93's Mark paid. */
+export function dueNowLocked(sheet: DueNowSheet, link: BudgetModel['link']): boolean {
+  return link !== 'live' || sheet.load != null || sheet.readOnly;
+}
+
 export function canMarkDue(m: BudgetModel): boolean {
-  return m.link === 'live' && m.dueNow != null && m.dueNow.load == null && !m.dueNow.readOnly;
+  return m.dueNow != null && !dueNowLocked(m.dueNow, m.link);
 }
 
 /** Mark paid shows only with a connection, the figures current and `vendors` on (sc-93). */

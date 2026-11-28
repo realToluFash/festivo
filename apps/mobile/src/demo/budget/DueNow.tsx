@@ -26,6 +26,7 @@ import {
   type Refusal,
   days,
   dueItemOf,
+  dueNowLocked,
   dueNowSettled,
   eventsOf,
   isOwed,
@@ -189,7 +190,7 @@ function DueList({
     return (
       <View style={styles.list}>
         <Line text={W.loadingPayments} />
-        <RowShapes count={4} words={W.loadingPayments} />
+        <RowShapes count={4} />
       </View>
     );
 
@@ -231,8 +232,8 @@ function DueList({
         </Text>
       )}
       {link !== 'live' && <Strip words={say.paymentsAsOf(AS_OF.time, AS_OF.minutes)} />}
-      {link === 'offline' && <InfoLine text={W.paidNeedsConnection} />}
-      {link === 'reconnecting' && <InfoLine text={W.reconnectingPayments} glyph="refresh" />}
+      {link === 'offline' && <InfoLine text={W.paidNeedsConnection} status />}
+      {link === 'reconnecting' && <InfoLine text={W.reconnectingPayments} glyph="refresh" status />}
       {sheet.readOnly && <PlanLine text={W.readOnly} />}
       <RowList
         items={sheet.ids.map((id) => ({
@@ -243,7 +244,7 @@ function DueList({
               id={id}
               sheet={sheet}
               ledger={ledger}
-              locked={sheet.readOnly || link !== 'live'}
+              locked={dueNowLocked(sheet, link)}
               locale={locale}
               on={on}
             />
