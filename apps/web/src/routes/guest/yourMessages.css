@@ -1,0 +1,315 @@
+/* sc-3969's Your messages, from an email's link or the guest's page: one column, no cover, 560 at the wide widths */
+:where(.guest-page) .gp-main .gp-alone-wrap.gp-yours-wrap {
+  padding-top: 0;
+}
+
+:where(.guest-page) .gp-yours {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-yours-title {
+  margin-top: 4px;
+  color: var(--colorInk);
+  font: 700 24px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+:where(.guest-page) .gp-yours > .gp-yours-title + .gp-sub {
+  margin-top: 8px;
+}
+
+:where(.guest-page) .gp-yours-rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
+}
+
+:where(.guest-page) .gp-yours-row {
+  display: flex;
+  box-sizing: border-box;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 64px;
+  padding: 14px 16px;
+}
+
+:where(.guest-page) .gp-yours-row + .gp-yours-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+:where(.guest-page) .gp-yours-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 10px;
+}
+
+:where(.guest-page) .gp-yours-name {
+  color: var(--colorInk);
+  font: 600 16px/24px var(--fontFamily);
+}
+
+:where(.guest-page) .gp-yours-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-yours-line.is-saved svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorAccent);
+}
+
+:where(.guest-page) .gp-yours-none {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-yours-none::after {
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  width: 6px;
+  height: 1.5px;
+  background: var(--colorInkSecondary);
+  content: '';
+}
+
+:where(.guest-page) .gp-yours-rows + .gp-small {
+  margin-top: 20px;
+}
+
+:where(.guest-page) .gp-switch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-width: var(--sizeHit);
+  min-height: var(--sizeHit);
+  cursor: pointer;
+}
+
+:where(.guest-page) .gp-switch-track {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+:where(.guest-page) .gp-switch .gp-switch-input {
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  margin: 0;
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+  cursor: pointer;
+  appearance: none;
+}
+
+:where(.guest-page) .gp-switch .gp-switch-input:checked {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+:where(.guest-page) .gp-switch .gp-switch-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+:where(.guest-page) .gp-switch .gp-switch-input:checked:focus-visible {
+  box-shadow: var(--deskRing);
+}
+
+:where(.guest-page) .gp-switch-knob {
+  position: absolute;
+  top: calc((var(--sizeToggleH) - 16px) / 2);
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--colorFieldBorder);
+  pointer-events: none;
+  transition: transform 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-switch-input:checked + .gp-switch-knob {
+  background: var(--colorCard);
+  transform: translateX(calc(var(--sizeToggleW) - 24px));
+}
+
+:where(.guest-page) .gp-switch-word {
+  display: grid;
+  justify-items: end;
+  min-width: 26px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+}
+
+/* sc-3969: from an email's link, the button or the words in its place, between the intro and the rows */
+:where(.guest-page) .gp-yours-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+:where(.guest-page) .gp-filled.is-wraps {
+  max-width: 440px;
+  height: auto;
+  min-height: 48px;
+  padding: 10px 22px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+:where(.guest-page) .gp-yours-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: guest-page-fade 200ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-yours-done-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+:where(.guest-page) .gp-yours-done-words p {
+  color: var(--colorInk);
+  font: 600 17px/1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-notice.gp-yours-alert {
+  max-width: 440px;
+  padding-bottom: 4px;
+}
+
+:where(.guest-page) .gp-yours .gp-yours-alert .gp-text,
+:where(.guest-page) .gp-yours .gp-yours-words > .gp-text {
+  font-size: 15px;
+}
+
+:where(.guest-page) .gp-yours-line.is-saved,
+:where(.guest-page) .gp-yours-line.is-failed {
+  color: var(--colorInk);
+  animation: guest-page-drop 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-yours-line.is-failed svg {
+  margin-top: 2px;
+  color: var(--colorBroken);
+}
+
+/* The word's slot holds On, Off and Saving… at once, so the track never moves while a change is recorded */
+:where(.guest-page) .gp-switch-say {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+:where(.guest-page) .gp-switch-say.is-shown {
+  visibility: visible;
+}
+
+:where(.guest-page) .gp-switch-track > .gp-switch-knob.is-saving,
+:where(.guest-page) .gp-switch-input:checked + .gp-switch-knob.is-saving {
+  background: none;
+}
+
+:where(.guest-page) .gp-switch-knob > .gp-spin:not(.is-fill) {
+  border-color: var(--colorControlBorder);
+  border-top-color: var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-yours-skel.is-intro {
+  width: 100%;
+  height: 16px;
+  margin-top: 8px;
+}
+
+:where(.guest-page) .gp-yours-skel.is-intro-end {
+  width: 70%;
+  height: 16px;
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-yours-row.is-waiting {
+  align-items: center;
+}
+
+:where(.guest-page) .gp-yours-skel.is-name {
+  width: 72px;
+  height: 18px;
+}
+
+:where(.guest-page) .gp-yours-row:nth-child(2) > .is-name {
+  width: 128px;
+}
+
+:where(.guest-page) .gp-yours-row:nth-child(3) > .is-name {
+  width: 96px;
+}
+
+:where(.guest-page) .gp-yours-skel.is-switch {
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  margin-left: auto;
+  border-radius: var(--radiusPill);
+}
+
+:where(.guest-page) .gp-yours-skel.is-foot {
+  width: 100%;
+  height: 14px;
+  margin-top: 20px;
+}
+
+:where(.guest-page) .gp-yours-skel.is-foot-end {
+  width: 46%;
+  height: 14px;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.guest-page) .gp-yours-line.is-saved,
+  :where(.guest-page) .gp-yours-line.is-failed {
+    animation-name: guest-page-fade;
+  }
+}
+
+:where(.guest-page) .gp-text > .gp-spinner.is-small {
+  width: 13px;
+  height: 13px;
+}
+
+:where(.guest-page) .gp-switch-knob > .gp-spinner {
+  color: var(--colorInkSecondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.guest-page) .gp-switch-knob {
+    transition: none;
+  }
+
+  :where(.guest-page) .gp-switch-knob > .gp-spinner {
+    display: none;
+  }
+}

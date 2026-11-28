@@ -1,0 +1,18 @@
+# sc-39471: a person's page under Members on an iPad on its side, product beside demo (no title in the pane; first block 26 from its top).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'QA Tester.*'
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- takeScreenshot: members-person-ipadside-product
+- openLink: ${METRO_URL}/--/demo/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'Folake Adeyemi.*'
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- takeScreenshot: members-person-ipadside-demo

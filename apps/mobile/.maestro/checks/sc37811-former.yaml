@@ -1,0 +1,23 @@
+# sc-37811: Former in Members' Show menu, and a former person's page. Needs ${METRO_URL}; Adébáyọ̀ turned down and Julien removed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.filter'
+- tapOn:
+    id: 'members.filter'
+- waitForAnimationToEnd
+- takeScreenshot: menu
+- tapOn:
+    id: 'members.filter.former'
+- waitForAnimationToEnd
+- takeScreenshot: former
+- tapOn:
+    id: 'members.row.c4e8b79a-2e6c-4879-84f2-1a94951a2f73'
+- waitForAnimationToEnd
+- takeScreenshot: removed-person

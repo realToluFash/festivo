@@ -1,0 +1,15 @@
+# sc-92959: on the phone, the bell's own Notifications screen from Today, on its side: the title. Needs: at least one notification. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'Notifica.*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: top
+- swipe: { direction: UP, duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: scrolled
+- setOrientation: PORTRAIT

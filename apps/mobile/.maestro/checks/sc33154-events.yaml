@@ -1,0 +1,7 @@
+# sc-33154: the Your events card on the day, with the arrived figure.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: events-top

@@ -1,0 +1,15 @@
+# sc-30322: picking another organisation closes the drop-down, says so, and the opener shows it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events?switcher=populated
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: 'Casa Lumen.*'
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertNotVisible:
+    id: 'switcher.heading'
+- assertVisible: '.*Casa Lumen Eventos\.'
+- takeScreenshot: picked

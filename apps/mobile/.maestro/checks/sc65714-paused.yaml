@@ -1,0 +1,14 @@
+# sc-65714: the paused screen a suspended member sees in the organisation they were working in (sc65714-switch-to first, then the suspension).
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: paused
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- takeScreenshot: paused-scrolled

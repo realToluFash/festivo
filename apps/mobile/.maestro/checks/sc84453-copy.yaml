@@ -1,0 +1,23 @@
+# sc-84453 regression, iPad upright: a copy opened over its original reads ‹ Event and goes back to the original.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${COPY}
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*Feb 11, 2027.*'
+    timeout: 20000
+- takeScreenshot: copy-overview
+- assertVisible:
+    id: frame.back
+    text: 'Back to Event'
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- assertVisible: '.*Jan 11, 2027.*'
+- takeScreenshot: back-on-original

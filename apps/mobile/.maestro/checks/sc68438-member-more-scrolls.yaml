@@ -1,0 +1,46 @@
+# sc-68438: a member inside an outside event (EV), with many areas, two organisations and three outside events: More scrolls to the last event, You're here, Your account and Sign out.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: event.nav.more
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: more-top
+- scrollUntilVisible:
+    element:
+      id: event.nav.more.signOut
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: more-foot
+- assertVisible:
+    id: event.nav.more.account
+- assertVisible:
+    id: event.nav.more.signOut
+- scrollUntilVisible:
+    element:
+      id: event.nav.more.events.${LAST}
+    direction: UP
+    timeout: 20000
+- takeScreenshot: more-events
+- scrollUntilVisible:
+    element:
+      id: outside.here
+    direction: UP
+    timeout: 20000
+- takeScreenshot: more-here
+- tapOn:
+    id: outside.here
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: here-closed
+- assertNotVisible:
+    id: event.nav.more.signOut

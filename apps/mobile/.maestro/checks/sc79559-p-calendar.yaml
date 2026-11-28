@@ -1,0 +1,9 @@
+# sc-79559: the iPad sidebar on its side, calendar, for the pill's invitations line.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil: { visible: 'QA Organisation|Ire Events.*', timeout: 30000, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 2500, optional: true }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-calendar

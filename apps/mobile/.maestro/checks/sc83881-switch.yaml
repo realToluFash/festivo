@@ -1,0 +1,48 @@
+# sc-83881: from the paused page the pill opens the switcher, which lists OTHER and not PAUSED; choosing OTHER leaves the paused page, the pill names OTHER and the titles are back. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    when:
+      visible:
+        id: 'switcher.heading'
+    commands:
+      - tapOn:
+          point: '50%,75%'
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused\..+'
+    timeout: 30000
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: switcher.heading
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switcher-open
+- assertNotVisible:
+    id: switcher.tile.${PAUSED}
+- tapOn:
+    id: switcher.tile.${OTHER}
+- extendedWaitUntil:
+    notVisible:
+      id: 'accessPaused\..+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switched-settings
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switched-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switched-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: switched-calendar

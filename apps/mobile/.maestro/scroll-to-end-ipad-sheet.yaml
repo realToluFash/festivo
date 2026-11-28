@@ -1,0 +1,15 @@
+# Swipes Sign in's sheet to the end of its scroll, keys down, in landscape. sc-67886.
+#
+# The swipes start at a point, not on a field: once a refusal has scrolled Email under the sheet's bar, a swipe from
+# its id starts on the bar and moves nothing. 45% down the screen is inside the scroll whether the sheet is centred or
+# still lifted over the keyboard's bar; lower, a swipe can start on the docked Sign in.
+appId: host.exp.Exponent
+---
+- swipe:
+    start: '50%,45%'
+    end: '50%,15%'
+- swipe:
+    start: '50%,45%'
+    end: '50%,15%'
+- waitForAnimationToEnd:
+    timeout: 3000

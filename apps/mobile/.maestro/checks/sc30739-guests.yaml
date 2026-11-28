@@ -1,0 +1,54 @@
+# sc-30739: a guest's details after Reply by in the shown language — ${CHIDI} closed, ${YEMI} reopened on ${CL}; ${TUNDE} asked to decide on ${AK}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${CL}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${CHIDI}'
+    centerElement: true
+- takeScreenshot: list-closed
+- tapOn:
+    id: 'guests.row.${CHIDI}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${CHIDI}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: closed
+- back
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${YEMI}'
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: 'guests.row.${YEMI}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${YEMI}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: reopened
+- back
+- openLink: ${METRO_URL}/--/events/${AK}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${TUNDE}'
+    centerElement: true
+- takeScreenshot: list-asked
+- tapOn:
+    id: 'guests.row.${TUNDE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${TUNDE}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: asked

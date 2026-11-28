@@ -1,0 +1,8 @@
+# sc-70416: an account in no organisation holding an event from outside opens inside the event; the batch settles there.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'event\.nav\..*'
+    timeout: 30000
+- takeScreenshot: sc70416-outside-event

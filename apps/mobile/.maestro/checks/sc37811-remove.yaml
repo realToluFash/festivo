@@ -1,0 +1,30 @@
+# sc-37811: removing Julien: the Ask, then the card. Needs ${METRO_URL}; Julien must be an active Admin.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.c4e8b79a-2e6c-4879-84f2-1a94951a2f73'
+- tapOn:
+    id: 'members.row.c4e8b79a-2e6c-4879-84f2-1a94951a2f73'
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: julien
+- tapOn:
+    id: 'members.remove'
+- waitForAnimationToEnd
+- takeScreenshot: remove-ask
+- tapOn:
+    id: 'members.remove.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: removed

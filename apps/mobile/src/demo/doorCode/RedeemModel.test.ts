@@ -1,0 +1,373 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+import {
+  BAR,
+  eventLine,
+  joinCodeProblem,
+  nameProblem,
+  numberProblem,
+  plainCode,
+  redeemed,
+} from './DoorCodeModel.ts';
+import {
+  joinAs,
+  memberTitle,
+  providerOnlyLine,
+  providerOnlyTitle,
+  tryAgainAt,
+  W,
+  wrongCode,
+  youreIn,
+} from './DoorCodeWords.ts';
+import {
+  afterPhoneCode,
+  flowAt,
+  freshFlow,
+  signedOut,
+  JOAO,
+  phoneTitle,
+  REDEEM_STATES,
+  type RedeemStep,
+  redeemStateOf,
+  refusalOf,
+  areasFor,
+  isServiceLevel,
+  moreAreas,
+  SERVICE_LEVELS,
+} from './RedeemModel.ts';
+
+const LOCALE = 'en-US';
+
+describe('joining, every state (spec §5)', () => {
+  it('opens each state on its step', () => {
+    const steps = Object.fromEntries(REDEEM_STATES.map((state) => [state, flowAt(state).step]));
+
+    expect(steps).toEqual({
+      welcome: 'welcome',
+      camera: 'camera',
+      enter: 'enter',
+      'signed-out': 'enter',
+      'enter-blank': 'enter',
+      'enter-short': 'enter',
+      checking: 'enter',
+      refused: 'enter',
+      'too-many': 'tooMany',
+      name: 'named',
+      'name-blank': 'named',
+      joining: 'named',
+      'name-used-up': 'named',
+      event: 'event',
+      'event-blank': 'event',
+      'event-short': 'event',
+      sending: 'event',
+      'join-as': 'joinAs',
+      member: 'member',
+      code: 'code',
+      'code-texted': 'code',
+      'code-wrong': 'code',
+      'code-expired': 'code',
+      'code-exhausted': 'code',
+      'code-failed': 'code',
+      'used-up': 'event',
+      'event-keys': 'event',
+      'event-keys-number': 'event',
+      'event-keys-refused': 'event',
+      'event-keys-failed': 'event',
+      'code-second-number': 'code',
+      'second-number': 'event',
+      'code-provider-only': 'code',
+      'code-provider-only-apple': 'code',
+      'code-provider-only-both': 'code',
+      'provider-only': 'providerOnly',
+      'provider-only-apple': 'providerOnly',
+      'provider-only-both': 'providerOnly',
+      in: 'in',
+      'event-in': 'inside',
+      'event-in-view': 'inside',
+      'people-in': 'peopleIn',
+      'more-in': 'inside',
+    } satisfies Record<string, RedeemStep>);
+  });
+
+  it('opens the keys-up states on the field and the refusal each names (sc-97734)', () => {
+    expect(flowAt('event-keys')).toMatchObject({ name: '', keys: 'name', usedUp: false });
+    expect(flowAt('event-keys-number')).toMatchObject({
+      name: JOAO.name,
+      number: '',
+      keys: 'number',
+    });
+    expect(flowAt('event-keys-refused')).toMatchObject({
+      usedUp: true,
+      failed: false,
+      keys: 'name',
+    });
+    expect(flowAt('event-keys-failed')).toMatchObject({
+      usedUp: false,
+      failed: true,
+      keys: 'name',
+    });
+    expect(freshFlow()).toMatchObject({ failed: false, keys: null });
+  });
+
+  it('opens on the welcome for anything else', () => {
+    expect(redeemStateOf(undefined)).toBe('welcome');
+    expect(redeemStateOf('browser-in')).toBe('welcome');
+  });
+
+  it('holds checking and sending for a link to show them', () => {
+    expect(flowAt('checking').held).toBe(true);
+    expect(flowAt('sending').held).toBe(true);
+    expect(flowAt('joining').held).toBe(true);
+    expect(flowAt('enter').held).toBe(false);
+  });
+
+  it('carries each refusal in the board’s words', () => {
+    expect(flowAt('enter-blank').said).toBe('Enter the door code.');
+    expect(flowAt('enter-short').said).toBe('A door code is 8 letters and numbers.');
+    expect(flowAt('refused').said).toBe(
+      'That code does not work. Check it with whoever gave it to you.',
+    );
+    expect(flowAt('event-blank')).toMatchObject({
+      nameSaid: 'Enter your full name.',
+      numberSaid: 'Enter your mobile number.',
+    });
+    expect(flowAt('event-short').numberSaid).toBe(
+      'That number looks too short for Portugal. Check it and try again.',
+    );
+    expect(flowAt('used-up')).toMatchObject({ usedUp: true, full: true, name: 'Hugo Faria' });
+  });
+
+  it('asks a name only while the device holds the grant (sc-72, until sc-4235)', () => {
+    expect(flowAt('name')).toMatchObject({ name: 'João Pereira', nameSaid: null, usedUp: false });
+    expect(flowAt('name-blank')).toMatchObject({ name: '', nameSaid: 'Enter your full name.' });
+    expect(flowAt('name-used-up')).toMatchObject({ name: 'Hugo Faria', usedUp: true, full: false });
+    expect(W.join).toBe('Join');
+    expect(W.joining).toBe('Joining…');
+  });
+
+  it('opens More inside the event only for more-in', () => {
+    expect(flowAt('more-in').more).toBe(true);
+    expect(REDEEM_STATES.filter((state) => flowAt(state).more)).toEqual(['more-in']);
+  });
+
+  it('opens inside the event at the code’s role', () => {
+    expect(flowAt('event-in').role).toBe('Can check guests in');
+    expect(flowAt('event-in-view').role).toBe('Can view');
+  });
+});
+
+describe('the door code, typed', () => {
+  it('ignores case, spaces and hyphens', () => {
+    expect(plainCode(' q7km-4xp2 ')).toBe('Q7KM4XP2');
+    expect(redeemed('q7km-4xp2')).toEqual(BAR);
+    expect(redeemed('M4TB7KQ8')?.job).toBe('Cloakroom');
+  });
+
+  it('checks blank and length before anything is sent', () => {
+    expect(joinCodeProblem('')).toBe(W.codeBlank);
+    expect(joinCodeProblem(' - ')).toBe(W.codeBlank);
+    expect(joinCodeProblem('Q7KM 4X')).toBe(W.codeShort);
+    expect(joinCodeProblem('Q7KM 4XP2 9')).toBe(W.codeShort);
+    expect(joinCodeProblem('Q7KM 4XP3')).toBeNull();
+  });
+
+  it('gives one answer for a wrong, expired or stopped code', () => {
+    expect(redeemed('Q7KM 4XP3')).toBeNull();
+    expect(redeemed('H3WD 9RN6')).toBeNull();
+  });
+
+  it('shows the event first: its day, the organisation, the role and the job', () => {
+    expect(eventLine(BAR, LOCALE)).toBe(
+      'Sat, Nov 14 · Lumen Feiras · Can check guests in · Bar and drinks',
+    );
+  });
+});
+
+describe('a name and a number, then the phone code (sc-4235)', () => {
+  it('needs a name and a Portuguese number of the right length', () => {
+    expect(nameProblem(' ')).toBe(W.nameBlank);
+    expect(nameProblem('João Pereira')).toBeNull();
+    expect(numberProblem('')).toBe(W.numberBlank);
+    expect(numberProblem('912 345')).toBe(
+      'That number looks too short for Portugal. Check it and try again.',
+    );
+    expect(numberProblem('912 345 412')).toBeNull();
+  });
+
+  it('says the app’s phone-step words', () => {
+    expect(phoneTitle(false)).toBe('Check WhatsApp');
+    expect(phoneTitle(true)).toBe('Check your messages');
+    expect(wrongCode(false)).toBe(
+      'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
+    );
+    expect(refusalOf('expired', true)?.title).toBe('That code has expired');
+    expect(refusalOf('expired', true)?.body).toBe(
+      'Codes only work for a while. Send a new one and use the code in the newest text.',
+    );
+    expect(refusalOf('expired', false)?.body).toBe(
+      'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
+    );
+    expect(refusalOf('exhausted', false)?.body).toBe(
+      'That code no longer works. Send a new one to carry on.',
+    );
+    expect(refusalOf('failed', false)?.title).toBe('That did not work');
+    expect(refusalOf('wrong', false)).toBeNull();
+    expect(W.memberLine).toBe(
+      'Members open an event from its People page. Ask its lead or an admin to add you.',
+    );
+    expect(W.enterCode).toBe('Enter a door code');
+  });
+
+  it('lands in, as the name given; a code that filled meanwhile meets the one refusal', () => {
+    expect(afterPhoneCode({ ...flowAt('code'), name: ' Ana Lima ' })).toMatchObject({
+      step: 'in',
+      who: 'Ana Lima',
+    });
+    expect(afterPhoneCode({ ...flowAt('used-up'), step: 'code' })).toMatchObject({
+      step: 'event',
+      usedUp: true,
+    });
+  });
+
+  it('returns a second number on an account to the name and number, both kept (sc-4235)', () => {
+    expect(afterPhoneCode(flowAt('code-second-number'))).toMatchObject({
+      step: 'event',
+      name: 'Rita Sousa',
+      number: '916 480 233',
+      numberSaid: W.secondNumber,
+      usedUp: false,
+    });
+    expect(flowAt('second-number')).toMatchObject({ step: 'event', numberSaid: W.secondNumber });
+    expect(W.secondNumber).toBe(
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
+    );
+  });
+
+  it('refuses a member of a Google-or-Apple-only organisation after the right code, nothing typed kept (sc-94849)', () => {
+    expect(afterPhoneCode(flowAt('code-provider-only'))).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+      name: '',
+      number: '',
+    });
+    expect(afterPhoneCode(flowAt('code-provider-only-apple')).providers).toEqual(['apple']);
+    expect(afterPhoneCode(flowAt('code-provider-only-both')).providers).toEqual([
+      'apple',
+      'google',
+    ]);
+    expect(afterPhoneCode({ ...flowAt('code'), name: 'Bisi', number: '915604117' })).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+    });
+    expect(flowAt('code-provider-only').name).toBe('Bisi');
+  });
+
+  it('signs in any other number typed after a provider-only state, its providers left behind (sc-94849)', () => {
+    const joao = { ...flowAt('code-provider-only-apple'), ...JOAO, step: 'code' as const };
+    expect(afterPhoneCode(joao)).toMatchObject({ step: 'in', who: JOAO.name });
+    expect(afterPhoneCode({ ...flowAt('code-provider-only-both'), ...JOAO }).step).toBe('in');
+  });
+
+  it('names the member’s organisation and the linked providers, and no password', () => {
+    expect(providerOnlyTitle('Ìrè Events')).toBe('Ìrè Events signs in with Google or Apple only');
+    expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
+    );
+    expect(providerOnlyLine('Ìrè Events', ['apple'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple.',
+    );
+    for (const both of [
+      ['apple', 'google'],
+      ['google', 'apple'],
+    ] as const)
+      expect(providerOnlyLine('Ìrè Events', both)).toBe(
+        'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
+      );
+  });
+
+  it('starts again signed out with nothing kept', () => {
+    expect(freshFlow()).toMatchObject({ step: 'welcome', name: '', number: '', typed: '' });
+  });
+
+  it('signs out to an empty Enter a door code that says Signed out. (sc-4235)', () => {
+    expect(signedOut()).toMatchObject({
+      step: 'enter',
+      signedOut: true,
+      typed: '',
+      name: '',
+      number: '',
+    });
+    expect(flowAt('signed-out')).toEqual(signedOut());
+    expect(flowAt('enter').signedOut).toBe(false);
+  });
+});
+
+describe('the words around it', () => {
+  it('follows sc-72, sc-4235 and pm', () => {
+    expect(youreIn('Joana & Rui’s wedding', 'Bar and drinks')).toBe(
+      'You’re in for Joana & Rui’s wedding · Bar and drinks',
+    );
+    expect(memberTitle('Lumen Feiras')).toBe('You’re already a member of Lumen Feiras');
+    expect(joinAs('Kemi Okafor')).toBe('Join as Kemi Okafor');
+    expect(tryAgainAt('13:32')).toBe('Try again at 13:32');
+    expect(W.endsLine).toBe('Access ends when the event concludes.');
+  });
+});
+
+describe('inside the event, by role (pm, 7 Nov, sc-72)', () => {
+  it('reaches Overview, Guests, Schedule, Seating and People at Can view', () => {
+    expect(areasFor('Can view')).toEqual(['overview', 'guests', 'schedule', 'seating', 'people']);
+  });
+
+  it('puts Check guests in first at Can check guests in', () => {
+    expect(areasFor('Can check guests in')).toEqual([
+      'checkIn',
+      'overview',
+      'guests',
+      'schedule',
+      'seating',
+      'people',
+    ]);
+  });
+
+  it('keeps on the phone’s More what its tabs do not hold, and on the iPad only the account', () => {
+    expect(moreAreas('Can check guests in', true)).toEqual([
+      'checkIn',
+      'schedule',
+      'seating',
+      'people',
+    ]);
+    expect(moreAreas('Can view', true)).toEqual(['schedule', 'seating', 'people']);
+    expect(moreAreas('Can view', false)).toEqual([]);
+  });
+
+  it('opens Overview alone at every service level, however it is carried (sc-96279)', () => {
+    for (const level of SERVICE_LEVELS) {
+      expect(areasFor(level)).toEqual(['overview']);
+      expect(moreAreas(level, true)).toEqual([]);
+      expect(isServiceLevel(level)).toBe(true);
+    }
+    expect(isServiceLevel('Can check guests in')).toBe(false);
+  });
+});
+
+describe('the button turns while the code is checked or sent (sc-31774)', () => {
+  const redeem = readFileSync(join('src', 'demo', 'doorCode', 'Redeem.tsx'), 'utf8');
+  const turning = readFileSync(join('src', 'demo', 'doorCode', 'TurningButton.tsx'), 'utf8');
+
+  it('draws Continue, Send code and Join as the turning primary', () => {
+    for (const id of ['redeem.enter.continue', 'redeem.event.send', 'redeem.name.join'])
+      expect(redeem).toMatch(
+        new RegExp(`<TurningButton[^>]*testID="${id.replace(/\./gu, '\\.')}"`, 'u'),
+      );
+    expect(redeem).not.toMatch(/<PrimaryButton[^>]*busy=/u);
+  });
+
+  it('turns only while busy, hidden from the screen reader, which hears busy on the button', () => {
+    expect(turning).toMatch(/props\.busy === true && \(/u);
+    expect(turning).toMatch(/accessibilityElementsHidden\s+importantForAccessibility="no"/u);
+  });
+});

@@ -1,0 +1,12 @@
+# sc-90463: at AX5, after a turn from upright on Events, the organisation pill opens the switcher. Vars: METRO_URL. Needs the seeded 'QA Organisation'.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- tapOn: { text: '.*QA Organisation.*', index: 0 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: pill-switcher

@@ -1,0 +1,11 @@
+# sc-29875: Open run of show on Today's Now opens that event's run of show on the followed track. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.openRunOfShow}}'
+    timeout: 45000
+- tapOn: '{{t:todayScreen.openRunOfShow}}'
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: run-view

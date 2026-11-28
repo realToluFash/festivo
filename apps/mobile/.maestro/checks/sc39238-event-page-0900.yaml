@@ -1,0 +1,11 @@
+# sc-39238: the page of an event ${EVENT} that starts at 09:00 in its own zone reads 09:00, with its leading zero, in its title.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '.*09:00.*'
+- takeScreenshot: event-page-0900

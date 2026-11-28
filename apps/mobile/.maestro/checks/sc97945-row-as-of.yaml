@@ -1,0 +1,64 @@
+# sc-97945: ${EVENT_ID}'s Overview, then the stack stopped within seconds (HOLD=1: after about three minutes), until the Kitchen station row adds "as of" beside the Offline band; the stack starts again when it ends, passed or failed. LAND=1 turns an Android tablet to landscape first, ORIENT=1 an iPad. P prefixes the screenshots.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+  - runFlow:
+      when:
+        true: ${typeof ORIENT !== 'undefined' && ORIENT}
+      commands:
+        - setOrientation: PORTRAIT
+---
+- runFlow:
+    when:
+      true: ${typeof LAND !== 'undefined' && LAND}
+    commands:
+      - runScript:
+          file: ../batch/helper.js
+          env:
+            ASK: /landscape
+- runFlow:
+    when:
+      true: ${typeof ORIENT !== 'undefined' && ORIENT}
+    commands:
+      - setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: ${P}-online
+- runFlow:
+    when:
+      true: ${typeof HOLD !== 'undefined' && HOLD}
+    commands:
+      - extendedWaitUntil:
+          visible: 'QA_NEVER_THERE'
+          timeout: 175000
+          optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- extendedWaitUntil:
+    visible:
+      id: 'events.station'
+      text: '.* · .*[0-9]:[0-9][0-9].*'
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.station'
+    direction: DOWN
+    centerElement: true
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: ${P}-stale

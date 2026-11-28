@@ -1,0 +1,31 @@
+# sc-101859: each seeded person's link screen (P_SHARED, P_NONE, P_NOMOBILE, P_COPIED, P_SENT, P_OPENED, P_ERASED).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_SHARED}
+- extendedWaitUntil: { visible: 'Adéwálé.*', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-shared
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_NONE}
+- extendedWaitUntil: { visible: 'Bisi Ade', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-none
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_NOMOBILE}
+- extendedWaitUntil: { visible: 'Chidi Okafor', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-nomobile
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_COPIED}
+- extendedWaitUntil: { visible: 'Dara Ojo', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-copied
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_SENT}
+- extendedWaitUntil: { visible: 'Ena Bello', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-sent
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_OPENED}
+- extendedWaitUntil: { visible: 'Funmi Lawal', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-opened
+- openLink: ${METRO_URL}/--/events/${EVENT}/staff-link?person=${P_ERASED}
+- extendedWaitUntil: { visible: 'Hauwa Erased', timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'staffLink.status' }, timeout: 30000 }
+- takeScreenshot: link-erased

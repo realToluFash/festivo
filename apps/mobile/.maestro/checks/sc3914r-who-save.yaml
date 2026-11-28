@@ -1,0 +1,46 @@
+# sc-3914 retest: Choose who gets it for ${VARIANT}: tick ${P1} (answers the override with Give it anyway), tick ${P2}, Save, and shoot the Confirmed line straight after.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- tapOn:
+    id: 'menu.who.${VARIANT}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- tapOn:
+    id: 'menu.who.tick.${P1}'
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+- tapOn:
+    id: 'menu.who.tick.${P2}'
+- takeScreenshot: ticked
+- tapOn:
+    id: 'menu.who.save'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.override.anyway'
+    timeout: 5000
+- takeScreenshot: override-on-save
+- tapOn:
+    id: 'menu.override.anyway'
+- takeScreenshot: saved-0s
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: saved-2s
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- takeScreenshot: saved-row

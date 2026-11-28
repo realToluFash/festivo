@@ -1,0 +1,11 @@
+# sc-29072: closes Lost the authenticator's number pad on the codes step: a tap on the step's title on iOS, where hideKeyboard cannot close the iPhone's pad (sc-19584), and hideKeyboard on Android.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - tapOn: '{{t:lostTwoFactor.codesTitle}}|{{t:lostTwoFactor.codesTitleEmailOnly}}'
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - hideKeyboard

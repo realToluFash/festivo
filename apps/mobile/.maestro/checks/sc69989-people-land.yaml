@@ -1,0 +1,9 @@
+# sc-69989: an event's People on the tablet in landscape, with the Outside tag.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people-land
+- setOrientation: PORTRAIT

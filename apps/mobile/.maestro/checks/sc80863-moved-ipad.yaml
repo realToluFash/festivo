@@ -1,0 +1,47 @@
+# sc-80863 on the iPad: from A, B's event link moves to B with the notice; then a pick of A from the pill (sidebar on its side) stays in A; a missing event's Guests. Pass EVENT, C_EV.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: moved
+- runFlow:
+    when:
+      visible:
+        id: 'home.switchOrganisation'
+    commands:
+      - tapOn:
+          id: 'home.switchOrganisation'
+      - tapOn:
+          text: '.*Adire Studio.*'
+          index: 0
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: 'sc80863.never'
+          timeout: 6000
+          optional: true
+      - takeScreenshot: pill-pick-a
+- openLink: ${METRO_URL}/--/events/${C_EV}?area=guests
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 4000
+    optional: true
+- takeScreenshot: guests-missing

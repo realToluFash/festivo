@@ -1,0 +1,18 @@
+# Settings at the current text size: its top, then Sign out at its foot. sc-84920.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- takeScreenshot: sc84920-settings-top
+- repeat:
+    times: 20
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: 'settings.signOut'
+          commands:
+            - scroll
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-settings-sign-out

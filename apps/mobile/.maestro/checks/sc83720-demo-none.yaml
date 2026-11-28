@@ -1,0 +1,13 @@
+# sc-83720: the design demo's Hosted by, no hosts yet, then Add a host (Android phone), for the side-by-side pair: Host 1 with the cursor and the keys up.
+# Needs: nothing signed in; the demo's own data.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-draft-4?state=hosts
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '(?s).*(Hosted by|Hôtes|Anfitriones|Anfitriões).*'
+    timeout: 30000
+- takeScreenshot: none
+- tapOn: '.*(Add a host|Añadir|Agregar|Ajouter un hôte|Adicionar).*'
+- waitForAnimationToEnd
+- takeScreenshot: added

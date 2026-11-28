@@ -1,0 +1,5 @@
+# sc-95215: the role sheet open at rest, for the accessibility tree.
+appId: host.exp.Exponent
+---
+- runFlow: sc95217-open.yaml
+- takeScreenshot: rest

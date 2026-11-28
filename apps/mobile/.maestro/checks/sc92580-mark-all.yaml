@@ -1,0 +1,18 @@
+# sc-92580: on the iPad upright at the device's text size (AX5, set outside the flow), one tap on Mark all read in the bell's panel marks all read and the panel says so; a second tap on the greyed link does nothing. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: before
+- tapOn: { id: 'notifications.markAllRead' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: after
+- tapOn: { id: 'notifications.markAllRead' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: again

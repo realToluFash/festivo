@@ -1,0 +1,21 @@
+# sc-37693: the filter's empty Suspended and Former, as nobodySuspended and nobodyLeft draw them.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'members.filter' }
+- waitForAnimationToEnd
+- takeScreenshot: q-filter-menu
+- tapOn: 'Suspended.*'
+- waitForAnimationToEnd
+- takeScreenshot: q-filter-suspended
+- tapOn: { id: 'members.filter' }
+- waitForAnimationToEnd
+- tapOn: 'Former.*'
+- waitForAnimationToEnd
+- takeScreenshot: q-filter-former
+- tapOn: { id: 'members.showEveryone' }
+- waitForAnimationToEnd
+- takeScreenshot: q-filter-everyone

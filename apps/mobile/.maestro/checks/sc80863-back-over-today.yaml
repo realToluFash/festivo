@@ -1,0 +1,25 @@
+# sc-80863: pick A on Today, open B's event link, ‹ Events: Today under B with no stale A notice. Pass A_ID, EVENT.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: picked-a
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: moved
+- tapOn:
+    point: '17%,10%'
+- waitForAnimationToEnd
+- takeScreenshot: back
