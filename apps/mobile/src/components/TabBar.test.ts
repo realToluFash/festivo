@@ -40,7 +40,6 @@ vi.mock('./Text.tsx', async () => {
     TitleCap: react.createContext(null),
   };
 });
-vi.mock('../layout/useLayout.ts', () => ({}));
 vi.mock('./BandLiveLine.tsx', () => ({}));
 vi.mock('./CapsuleLabels.tsx', () => ({}));
 vi.mock('./Cover.tsx', () => ({}));

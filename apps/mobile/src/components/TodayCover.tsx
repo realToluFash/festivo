@@ -9,7 +9,7 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
-import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import {
@@ -64,7 +64,12 @@ import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Box } from '../kit/confettiClearance.ts';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
-import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
+import {
+  useAccessibilitySizes,
+  useLayout,
+  useNameLines,
+  useWindowFrame,
+} from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import {
   Chips,
@@ -1345,9 +1350,8 @@ export function TabBar<T extends string>({
   stepsBelowDefault,
 }: TabBarProps<T>) {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
   // The frame arrives with the insets; the window's width can follow a turn seconds later (sc-99214).
-  const { width } = useSafeAreaFrame();
+  const { width, fontScale } = useWindowFrame();
   const start = tabLabelStart(fontScale);
   const words = wordsIn(tabs.map(([label, glyph]) => say(label, glyph)));
   const { widths, measure } = useMeasuredAt(start, words, TAB_WORDS);
