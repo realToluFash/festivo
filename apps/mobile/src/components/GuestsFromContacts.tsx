@@ -2,7 +2,6 @@ import { ApiError, ApiUnreachableError, type GuestRoom } from '@soirely/api-clie
 import {
   type ContactNumber,
   GUEST_NAME_MAXIMUM,
-  type NumberKind,
   type PickedPerson,
   type ReviewRow,
   countryChoices,
@@ -33,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 
 import { contactPicker } from '../../modules/contact-picker/index.ts';
 import { api } from '../api.ts';
+import { contactNumberLabel } from '../contactNumberLabel.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
@@ -225,13 +225,6 @@ function CheckRow({
     </Pressable>
   );
 }
-
-const NUMBER_KIND_WORDS = {
-  mobile: 'fromContacts.numberType.mobile',
-  home: 'fromContacts.numberType.home',
-  work: 'fromContacts.numberType.work',
-  other: 'fromContacts.numberType.other',
-} as const satisfies Record<NumberKind, string>;
 
 function shownNumber(person: PickedPerson): string | null {
   const mobile = person.numbers.find((one) => one.kind === 'mobile') ?? person.numbers[0];
@@ -465,8 +458,7 @@ export function ContactsReview({
   const plan = room == null ? null : planRoom(room, peopleIn(rows));
   const countryName = (code: string) =>
     countryChoices(currentLocale()).find((one) => one.code === code)?.name ?? code;
-  const numberLabel = (one: ContactNumber) =>
-    one.label !== '' ? one.label : t(NUMBER_KIND_WORDS[one.kind]);
+  const numberLabel = (one: ContactNumber) => contactNumberLabel(one, t);
 
   useEffect(() => {
     let live = true;
