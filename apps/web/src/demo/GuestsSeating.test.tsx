@@ -143,6 +143,27 @@ describe('the guest list reads the plan (sc-4025)', () => {
     expect(within(dialog).getAllByText('Every table is full.').length).toBeGreaterThan(0);
   });
 
+  it('keeps the highlighted option on the list when a table leaves the plan', SLOW, async () => {
+    await open('chooser');
+    const dialog = await screen.findByRole('dialog', { name: 'Assign a table' }, WAIT);
+    const field = within(dialog).getByRole<HTMLInputElement>('combobox', { name: 'Table' });
+
+    fireEvent.click(field);
+    const before = within(dialog).getAllByRole('option').length;
+    for (let step = 0; step < before; step += 1) fireEvent.keyDown(field, { key: 'ArrowDown' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Take Table 4 off the plan' }));
+    fireEvent.click(field);
+
+    const options = within(dialog).getAllByRole('option');
+    const last = options[options.length - 1];
+    expect(options).toHaveLength(before - 1);
+    expect(field.getAttribute('aria-activedescendant')).toBe(last?.id);
+    expect(last?.getAttribute('aria-selected')).toBe('true');
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(field.value).not.toBe('');
+    expect(field.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('keeps the chooser open when the chosen table leaves the plan', SLOW, async () => {
     await open('chooserChosen');
     const dialog = await screen.findByRole('dialog', { name: 'Assign a table' }, WAIT);

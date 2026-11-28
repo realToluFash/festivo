@@ -366,8 +366,7 @@ export type Result =
   | { kind: 'undone'; back: number; stays: { at: string; from: string; names: string[] }[] };
 
 export type Assigned =
-  | { kind: 'gone'; table: string }
-  | { kind: 'done'; seats: Seats; result: Result; changes: Change[] };
+  { kind: 'gone' } | { kind: 'done'; seats: Seats; result: Result; changes: Change[] };
 
 export function assignTable(
   list: readonly Guest[],
@@ -378,9 +377,8 @@ export function assignTable(
   freeWhenChosen: number | null = null,
 ): Assigned {
   const table = tableOf(plan, tableId);
-  const removedName = tableOf(SAMPLE_PLAN, tableId)?.name ?? tableId;
 
-  if (table == null) return { kind: 'gone', table: removedName };
+  if (table == null) return { kind: 'gone' };
   const next: Record<string, SeatAt> = { ...seats };
   const changes: Change[] = [];
   const noRoom: string[] = [];

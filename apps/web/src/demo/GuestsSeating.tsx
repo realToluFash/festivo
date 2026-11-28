@@ -778,6 +778,7 @@ function SeatChooser({
   const [error, setError] = useState(start.error);
   const going = goingOf(list, order);
   const options = optionsOf(plan, seats, chosen == null ? typed : '');
+  const at = Math.min(active, Math.max(0, options.length - 1));
   const full = !anyFree(plan, seats);
   const showList = open;
   const table = chosen == null ? null : tableOf(plan, chosen);
@@ -818,10 +819,10 @@ function SeatChooser({
       setOpen(true);
       const step = event.key === 'ArrowDown' ? 1 : -1;
 
-      setActive((now) => Math.min(Math.max(0, now + step), Math.max(0, options.length - 1)));
+      setActive(Math.min(Math.max(0, at + step), Math.max(0, options.length - 1)));
     } else if (event.key === 'Enter' && showList) {
       event.preventDefault();
-      choose(options[active]);
+      choose(options[at]);
     } else if (event.key === 'Escape' && showList) {
       event.preventDefault();
       event.stopPropagation();
@@ -866,7 +867,7 @@ function SeatChooser({
             aria-expanded={showList}
             aria-controls={`${id}-list`}
             aria-activedescendant={
-              showList && options.length > 0 ? `${id}-option-${active}` : undefined
+              showList && options.length > 0 ? `${id}-option-${at}` : undefined
             }
             aria-invalid={wrong != null}
             aria-describedby={wrong == null ? undefined : `${id}-error`}
@@ -891,10 +892,8 @@ function SeatChooser({
                 key={one.id}
                 id={`${id}-option-${index}`}
                 role="option"
-                aria-selected={index === active}
-                className={
-                  index === active ? 'gg-option gst-option is-active' : 'gg-option gst-option'
-                }
+                aria-selected={index === at}
+                className={index === at ? 'gg-option gst-option is-active' : 'gg-option gst-option'}
                 onPointerDown={(pointer) => pointer.preventDefault()}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => choose(one)}

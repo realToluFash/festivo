@@ -147,7 +147,6 @@ describe('Assign table', () => {
 
     expect(assignTable(list, gone.plan, gone.seats, PICKED, 't-4', 6)).toEqual({
       kind: 'gone',
-      table: 'Table 4',
     });
   });
 
