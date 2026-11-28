@@ -17,8 +17,7 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
-import { COUNTRY_BASIS, NUMBER_BASIS } from '../phoneCountryFit.ts';
-import { usePhoneCountryFits } from '../phoneCountryFits.tsx';
+import { PhoneCountryRow } from '../phoneCountryFits.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
@@ -151,17 +150,14 @@ export function PhoneField({
   fieldRef?: RefObject<TextInputInstance | null>;
   testID: string;
 }) {
-  const { over, onRowLayout, measure } = usePhoneCountryFits(country, useAccessibilitySizes());
+  const atAccessibilitySizes = useAccessibilitySizes();
 
   return (
     <Field label={W.mobileNumber} pill={W.optional} error={error} help={help}>
-      <View
-        key={over ? 'over' : 'beside'}
-        style={over ? styles.phoneOver : styles.phone}
-        onLayout={onRowLayout}
-      >
-        {measure}
-        <View style={over ? styles.whole : styles.country}>
+      <PhoneCountryRow
+        country={country}
+        atAccessibilitySizes={atAccessibilitySizes}
+        picker={
           <CountryPicker
             label={`${W.mobileNumber}, country`}
             value={country}
@@ -169,8 +165,8 @@ export function PhoneField({
             withCallingCode
             testID={`${testID}.country`}
           />
-        </View>
-        <View style={over ? styles.whole : styles.number}>
+        }
+        field={
           <BoxField
             ref={fieldRef}
             value={number}
@@ -182,8 +178,8 @@ export function PhoneField({
             accessibilityLabel={W.mobileNumber}
             testID={`${testID}.number`}
           />
-        </View>
-      </View>
+        }
+      />
     </Field>
   );
 }
@@ -1043,11 +1039,6 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.45 },
   tight: { gap: 6 },
-  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  phoneOver: { gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: COUNTRY_BASIS },
-  number: { flexGrow: 2, flexBasis: NUMBER_BASIS },
-  whole: { alignSelf: 'stretch' },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   companionBlock: { gap: 4 },

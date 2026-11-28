@@ -26,8 +26,7 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
-import { COUNTRY_BASIS, NUMBER_BASIS } from '../phoneCountryFit.ts';
-import { usePhoneCountryFits } from '../phoneCountryFits.tsx';
+import { PhoneCountryRow } from '../phoneCountryFits.tsx';
 import { Choices, CurrencySearch, useEditGap } from '../events/EventEdits.tsx';
 import { currencyRows } from '../events/EventsSample.ts';
 import {
@@ -118,7 +117,7 @@ export function EnquiryForm({
   const amountRef = useRef<TextInputInstance>(null);
   const dateRef = useRef<ViewInstance>(null);
   const scroll = useRef<ScrollViewInstance>(null);
-  const phoneRow = usePhoneCountryFits(typed.country, useAccessibilitySizes());
+  const atAccessibilitySizes = useAccessibilitySizes();
   const offset = useRef(0);
   useFocusedFieldInSight(scroll, offset);
   const saved = useRef(onSaved);
@@ -296,13 +295,10 @@ export function EnquiryForm({
           />
         </Field>
         <Field label={W.phone} error={shown.phone}>
-          <View
-            key={phoneRow.over ? 'over' : 'beside'}
-            style={phoneRow.over ? styles.phoneOver : styles.phone}
-            onLayout={phoneRow.onRowLayout}
-          >
-            {phoneRow.measure}
-            <View style={phoneRow.over ? styles.whole : styles.country}>
+          <PhoneCountryRow
+            country={typed.country}
+            atAccessibilitySizes={atAccessibilitySizes}
+            picker={
               <CountryPicker
                 label={t('verifyPhone.countryLabel')}
                 value={typed.country}
@@ -311,28 +307,29 @@ export function EnquiryForm({
                 withCallingCode
                 testID="enquiry.form.phone.country"
               />
-            </View>
-            <TextField
-              ref={numberRef}
-              style={phoneRow.over ? styles.whole : styles.number}
-              accessibilityLabel={W.phone}
-              {...(shown.contact == null || shown.phone != null
-                ? {}
-                : { accessibilityHint: shown.contact })}
-              value={typed.number}
-              onChangeText={(number) => change({ number })}
-              onBlur={() => {
-                setLeft((was) => ({ ...was, phone: true }));
-                leave('phone', 'contact');
-              }}
-              wrong={shown.phone != null || shown.contact != null}
-              submitting={busy}
-              keyboardType="phone-pad"
-              textContentType="telephoneNumber"
-              autoComplete="tel"
-              testID="enquiry.form.phone.number"
-            />
-          </View>
+            }
+            field={
+              <TextField
+                ref={numberRef}
+                accessibilityLabel={W.phone}
+                {...(shown.contact == null || shown.phone != null
+                  ? {}
+                  : { accessibilityHint: shown.contact })}
+                value={typed.number}
+                onChangeText={(number) => change({ number })}
+                onBlur={() => {
+                  setLeft((was) => ({ ...was, phone: true }));
+                  leave('phone', 'contact');
+                }}
+                wrong={shown.phone != null || shown.contact != null}
+                submitting={busy}
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                autoComplete="tel"
+                testID="enquiry.form.phone.number"
+              />
+            }
+          />
         </Field>
         <Same same={same('phone')} onOpen={onOpenSame} />
         <Field label={W.email} error={shown.email ?? shown.contact} help={W.contactHint}>
@@ -546,11 +543,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space5xl,
   },
-  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  phoneOver: { gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: COUNTRY_BASIS },
-  number: { flexGrow: 2, flexBasis: NUMBER_BASIS },
-  whole: { alignSelf: 'stretch' },
   divider: {
     paddingTop: tokens.spaceXl,
     borderTopWidth: 1,

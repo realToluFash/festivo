@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { COUNTRY_CHROME, countryBoxBeside, countryOverNumber } from './phoneCountryFit.ts';
+import { tokens } from '../theme/tokens.ts';
+import {
+  COUNTRY_CHROME,
+  COUNTRY_FIELD,
+  countryBoxBeside,
+  countryOverNumber,
+} from './phoneCountryFit.ts';
 
 describe('the country over the number once its name does not fit beside it (sc-7579, #104845)', () => {
   it('gives the country its basis and a third of the room left beside the number', () => {
@@ -23,5 +32,31 @@ describe('the country over the number once its name does not fit beside it (sc-7
     expect(countryOverNumber(false, null, 328)).toBe(false);
     expect(countryOverNumber(false, 200, null)).toBe(false);
     expect(countryOverNumber(true, 10, 600)).toBe(true);
+  });
+});
+
+describe("the rule's chrome is ListPicker's field, so a change there turns this red (PR #4367)", () => {
+  const text = readFileSync(join('src', 'components', 'ListPicker.tsx'), 'utf8');
+  const field = /\n {2}field: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+  const chevron = /function Chevron\(\) \{[\s\S]*?<Svg width=\{(\d+)\}/u.exec(text)?.[1];
+  const spaced = (name: string) => {
+    const value = new RegExp(`\\b${name}: (?:tokens\\.(\\w+)|(\\d+))`, 'u').exec(field);
+    if (value?.[1] != null) return tokens[value[1] as keyof typeof tokens];
+
+    return value?.[2] == null ? undefined : Number(value[2]);
+  };
+
+  it("matches the field's border, padding and gap", () => {
+    expect(spaced('borderWidth')).toBe(COUNTRY_FIELD.borderWidth);
+    expect(spaced('paddingHorizontal')).toBe(COUNTRY_FIELD.paddingHorizontal);
+    expect(spaced('gap')).toBe(COUNTRY_FIELD.gap);
+  });
+
+  it("matches the chevron's width", () => {
+    expect(Number(chevron)).toBe(COUNTRY_FIELD.chevron);
+  });
+
+  it('adds them up around the name', () => {
+    expect(COUNTRY_CHROME).toBe(2 + tokens.spaceLg * 2 + tokens.spaceSm + 14);
   });
 });
