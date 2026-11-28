@@ -192,7 +192,7 @@ function asCancelled(value: unknown): PaymentCancelled | null {
   return { at: text(row.at), by: asPerson(row.by), reason: maybe(row.reason) };
 }
 
-function asPayment(value: unknown): ScheduledPayment {
+export function asPayment(value: unknown): ScheduledPayment {
   const row = record(value);
 
   return {

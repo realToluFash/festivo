@@ -176,7 +176,7 @@ export function OverdueTag() {
   );
 }
 
-function TickMark({ large = false }: { large?: boolean }) {
+export function TickMark({ large = false }: { large?: boolean }) {
   return (
     <span className={large ? 'qt-tick is-large' : 'qt-tick'} aria-hidden="true">
       <Glyph name="tick" size={large ? 13 : 9} weight={3.4} />
