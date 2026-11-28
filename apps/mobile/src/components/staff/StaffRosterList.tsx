@@ -210,6 +210,17 @@ export function StaffRosterList({
                   line={line}
                   below={
                     <>
+                      <View style={styles.status}>
+                        <LinkMark link={entry.link} side={14} />
+                        <Text
+                          size={14}
+                          weight="semibold"
+                          accessible={false}
+                          style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
+                        >
+                          {word}
+                        </Text>
+                      </View>
                       {briefs && (
                         <View style={styles.status} testID={`staff.briefing.${entry.id}`}>
                           <BriefWord briefing={entry.briefing} />
@@ -226,17 +237,6 @@ export function StaffRosterList({
                           lines={noticeLines(entry, finished, clock, t)}
                         />
                       )}
-                      <View style={styles.status}>
-                        <LinkMark link={entry.link} side={14} />
-                        <Text
-                          size={14}
-                          weight="semibold"
-                          accessible={false}
-                          style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
-                        >
-                          {word}
-                        </Text>
-                      </View>
                     </>
                   }
                   opens
@@ -246,9 +246,9 @@ export function StaffRosterList({
                     line,
                     status: briefs
                       ? [
+                          word,
                           t(BRIEFING_WORDS[entry.briefing]),
                           ...noticeLines(entry, finished, clock, t).map((one) => one.words),
-                          word,
                         ].join('. ')
                       : word,
                   })}
