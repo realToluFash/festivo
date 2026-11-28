@@ -239,6 +239,26 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(screen.getByText('Live · updated just now')).toBeDefined();
   });
 
+  it('names a linked item’s course beside its title on Now, Next and Later (sc-3898)', async () => {
+    const course = (name: string) => ({ course: { id: `k_${name}`, name } });
+    await onNight([
+      ARRIVE,
+      DINNER,
+      { ...SPEECHES, ...course('Toasts') },
+      { ...DANCE, ...course('Main course') },
+      { ...CAKE, ...course('Dessert') },
+    ]);
+
+    const now = await screen.findByRole('region', { name: 'Now' });
+    expect(within(now).getByText('Course · Toasts')).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Next' })).getByText('Course · Main course'),
+    ).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Later' })).getByText('Course · Dessert'),
+    ).toBeDefined();
+  });
+
   it('says how far over the item that is on runs, in words', async () => {
     await onNight(NIGHT, { now: '20:34' });
 
