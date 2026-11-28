@@ -555,3 +555,32 @@ describe('the Roster from 961 to 1279 px, in English and French (sc-73291)', () 
     expect(document.activeElement).toBe(button('Ajouter une personne'));
   });
 });
+
+describe('a person open beside the Roster from 1280 px (sc-102333)', () => {
+  const held = () =>
+    (screen.getByLabelText('Link for Tolu Bello') as HTMLElement).closest(
+      'td',
+    ) as HTMLTableCellElement;
+
+  it('spans the held link across the four columns left in view while docked', async () => {
+    const was = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query === '(width >= 80rem)',
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as never;
+    try {
+      await open('dockedRefused');
+      expect(held().colSpan).toBe(4);
+    } finally {
+      window.matchMedia = was;
+    }
+  });
+
+  it('spans all five columns below 1280, where nothing gives way', async () => {
+    await open('dockedRefused');
+    expect(held().colSpan).toBe(5);
+  });
+});

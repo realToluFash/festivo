@@ -4,6 +4,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
+import { useMatches } from '../phoneWidth.ts';
 import { Dialog, type Tell } from '../components/SettingsParts.tsx';
 import { BriefingRefused, useBriefing } from './Briefing.tsx';
 import { BW, briefingRosterStart } from './briefing.ts';
@@ -82,6 +83,9 @@ import './guests.css';
 import './menu.css';
 import './stations.css';
 import './roster.css';
+
+/** roster.css's docking width: from 1280 px Station and Briefing give way, so a full-width row spans four columns. */
+const DOCKS = '(width >= 80rem)';
 
 const FIELD_IDS = { name: 'rs-f-name', number: 'rs-f-number', email: 'rs-f-email' } as const;
 
@@ -195,6 +199,8 @@ function RosterView({
       setFailed(null);
     },
   });
+  const docked = useMatches(DOCKS) && panel != null && (manage || panel.kind === 'details');
+  const span = docked ? 4 : bf.on ? 6 : 5;
 
   useEffect(() => {
     if (first.held != null) {
@@ -626,12 +632,12 @@ function RosterView({
                           </tr>
                           {held?.id === one.id && (
                             <tr className="rs-held-row">
-                              <td colSpan={bf.on ? 6 : 5}>
+                              <td colSpan={span}>
                                 <HeldLink entry={one} url={held.url} />
                               </td>
                             </tr>
                           )}
-                          {bf.held(one, bf.on ? 6 : 5)}
+                          {bf.held(one, span)}
                         </Fragment>
                       ))}
                     </tbody>

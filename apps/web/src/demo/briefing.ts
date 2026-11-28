@@ -1,4 +1,4 @@
-import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
+import { type Entry, type RosterStart, emekaShared, rosterWith, sample } from './roster.ts';
 import { type Change, type Concluded, type Notice, NO_CREDITS, NW } from './notices.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
@@ -670,11 +670,7 @@ const STATES = {
     start({
       name: 'Docked, the Briefing column with a Copied and a Shared row',
       note: 'Open it at 1280 and 1440 × 800: Sade’s details docked, Station and Briefing give way, her Briefing in the details with Send again and Copy, Amina Copied and Emeka Shared whole in Link. Close the details and both columns are back.',
-      people: people().map((one) =>
-        one.id === 'emeka'
-          ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }
-          : one,
-      ),
+      people: people().map(emekaShared),
       open: 'sade',
     }),
   notLive: () =>
