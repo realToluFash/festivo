@@ -78,6 +78,16 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   ],
   due_done_several: ['Due now, done, two events', 'Nothing left to pay, a link for each event'],
   due_not_found: ['Due now, not found', 'We cannot find these payments.'],
+  due_loading: ['Due now, loading', 'Loading the payments…, four rows as shapes'],
+  due_failed: ['Due now, not loaded', 'These payments did not load, Try again, then the rows'],
+  due_offline: [
+    'Due now, no connection',
+    'Payments as of 09:32; no Paid, no Paid a different amount, no Undo',
+  ],
+  due_reconnecting: [
+    'Due now, reconnecting',
+    'Getting the latest payments…, then Paid and Undo come back',
+  ],
 };
 
 /** The spec's viewer and language for the two states that name one; the state alone opens it. */

@@ -188,6 +188,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
   describe('a list picker’s menu', () => {
     const picker = read('ListPicker.tsx');
+    const focusBack = read('pickerFocusBack.ts');
 
     it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
       expect(picker).toContain('onShow={risen}');
@@ -218,33 +219,28 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
     it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
       expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*setOpen\(false\);\s*\};/,
+        /const close = \(\) => \{\s*focusBack\.closing\(\);\s*setOpen\(false\);\s*\};/,
       );
       expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
-      expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
-      expect(picker).toContain('onRequestClose={close}');
+      expect(picker).toMatch(/onRequestClose=\{[^}]*if \(!pickerTookBack\(\)\) close\(\);/);
       expect(picker).toContain('onAccessibilityEscape={close}');
       expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
       expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
-      expect(picker).toContain('useSystemBack(open, close);');
-      expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
-    });
-
-    it('leaves no field holding input focus for Android to hand TalkBack to as it closes, under TalkBack only (sc-44356)', () => {
+      expect(picker).toContain('const takeBack = useEarlyBack(open, inPlace, close);');
+      expect(picker).toContain('const focusBack = usePickerFocusBack(!windowShown);');
       expect(picker).toMatch(
-        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
-      );
-      expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
+        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*focusBack\.opening\(field\);\s*takeBack\(\);\s*setOpen\(true\);/,
       );
     });
 
     it('blurs nothing as the menu’s window shows, where the keyboard hide had TalkBack say "keyboard hidden" at the open (qa #52739)', () => {
-      expect(picker.match(/blurNatively\(/g)).toHaveLength(1);
+      expect(picker).not.toContain('blurNatively(');
+      expect(focusBack.match(/blurNatively\(/g)).toHaveLength(1);
     });
 
     it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
       expect(picker).not.toMatch(/\.blur\(\)/);
+      expect(focusBack).not.toMatch(/\.blur\(\)/);
       const watch = readFileSync(join(import.meta.dirname, 'keyboardWatch.ts'), 'utf8');
       expect(watch).toMatch(
         /export function blurNatively\(field: HostInstance\): void \{\s*textInput\.blur\(field\);\s*\}/,

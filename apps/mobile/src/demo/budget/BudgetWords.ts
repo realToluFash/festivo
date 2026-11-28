@@ -61,6 +61,12 @@ export const W = {
   nothingLeftHead: 'Nothing left to pay from this reminder',
   noLongerOnSchedule: 'No longer on the schedule',
   notFound: 'We cannot find these payments.',
+  loadingPayments: 'Loading the payments…',
+  paymentsNotLoaded: 'These payments did not load. Check your connection and try again.',
+  tryAgain: 'Try again',
+  paidNeedsConnection:
+    'Marking paid needs a connection. It comes back once these payments are up to date.',
+  reconnectingPayments: 'Getting the latest payments…',
   goToEvents: 'Go to your events',
   hasAPayer: 'Has a payer',
   noPayerYet: 'No payer yet',
@@ -117,6 +123,8 @@ export const say = {
   dueLine: (what: string, date: string) => `${what} · Due ${date}`,
   markedPaid: (amount: string, date: string) => `Marked paid: ${amount} on ${date}.`,
   unmarked: (vendor: string) => `Unmarked. ${vendor} is due again.`,
+  paymentsAsOf: (time: string, minutes: number) =>
+    `No connection. Payments as of ${time}, ${minutes === 1 ? '1 minute' : `${minutes} minutes`} ago.`,
   asOf: (time: string, minutes: number) =>
     `No connection. Figures as of ${time}, ${minutes === 1 ? '1 minute' : `${minutes} minutes`} ago.`,
   ceilingRow: (amount: string) => `${W.wholeEvent} · ${amount}`,

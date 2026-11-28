@@ -809,7 +809,10 @@ function NowCard({
       <p className="nt-label">
         {t('night.nowSince', timeSlot(now.startedAt ?? now.planned, locale))}
       </p>
-      <h2 className="nt-now-title">{now.title}</h2>
+      <div className="nt-title-line">
+        <h2 className="nt-now-title">{now.title}</h2>
+        <CourseTag item={now} />
+      </div>
       <p className="nt-on-dark-muted">
         {t('night.ownerPlace', { owner: now.ownerName ?? t('schedule.noOwner'), place: label })}
       </p>
@@ -907,7 +910,10 @@ function NextCard({
               </span>
             )}
           </p>
-          <h2 className="nt-next-title">{next.item.title}</h2>
+          <div className="nt-title-line">
+            <h2 className="nt-next-title">{next.item.title}</h2>
+            <CourseTag item={next.item} />
+          </div>
           <p className="nt-muted">{ownerAndLength(t, next.item)}</p>
           {manage &&
             (view.now == null ? (
@@ -967,8 +973,11 @@ function LaterLine({
         {row.mark === 'done' && <Glyph name="tick" size={12} weight={3} />}
       </span>
       <span className="nt-later-words">
-        <span className={row.mark === 'skipped' ? 'nt-later-title is-struck' : 'nt-later-title'}>
-          {row.item.title}
+        <span className="nt-title-line">
+          <span className={row.mark === 'skipped' ? 'nt-later-title is-struck' : 'nt-later-title'}>
+            {row.item.title}
+          </span>
+          <CourseTag item={row.item} />
         </span>
         <span className="nt-muted num">{words}</span>
       </span>
@@ -1072,5 +1081,17 @@ function Chosen({
         {t('night.move')}
       </button>
     </>
+  );
+}
+
+/** sc-3898: a linked item's course beside its title, cut short when long; the full name stays in the text. */
+function CourseTag({ item }: { item: RunItem }) {
+  const { t } = useTranslation();
+  if (item.course == null) return null;
+
+  return (
+    <span className="nt-course" title={item.course.name}>
+      {t('schedule.courseTag', { name: item.course.name })}
+    </span>
   );
 }

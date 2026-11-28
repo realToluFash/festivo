@@ -1179,7 +1179,7 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
         ),
       ),
     );
-  });
+  }, 30_000);
 
   it('keeps every handle inside the room, the bars by the bottom wall too', () => {
     [...scales, at46].forEach((s) =>

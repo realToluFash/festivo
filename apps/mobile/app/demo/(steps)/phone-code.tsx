@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { QuietButton } from '../../../src/components/Buttons.tsx';
 import { CodeBoxes, type CodeBoxesHandle } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { PasteCode, usePasteCode } from '../../../src/demo/PasteCode.tsx';
 import { signUpEndOf, signUpLanding } from '../../../src/demo/signUpEnd.ts';
 import { Confirmed, Heading, Says } from '../../../src/steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
@@ -24,6 +25,12 @@ export default function PhoneCode() {
   const [done, setDone] = useState(false);
   const boxes = useRef<CodeBoxesHandle>(null);
   const { left, restart } = useCountdown(RESEND_SECONDS);
+  const paste = usePasteCode((found) => {
+    setCode(found);
+    setWrong(false);
+    boxes.current?.focusChecked();
+    check(found);
+  });
 
   function check(full: string): void {
     if (full !== SAMPLE.code) {
@@ -57,6 +64,7 @@ export default function PhoneCode() {
           value={code}
           onChange={(next) => {
             setCode(next);
+            paste.typed();
             if (next !== '') setWrong(false);
           }}
           onFull={check}
@@ -69,6 +77,7 @@ export default function PhoneCode() {
           />
         )}
         {done && <Confirmed words="Number confirmed" />}
+        {!done && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
       </View>
       {!done && (
         <View style={styles.ways}>

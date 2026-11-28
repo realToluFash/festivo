@@ -568,7 +568,7 @@ permit = [
 # starts are wall-clock times read with the event's zone (LocalTimeResolver), and it
 # adds each day's first item and its fixed-time items to the event's timeline. Each
 # change is audited and published, and a press sends its track's card through
-# messaging (sc-66580).
+# messaging (sc-66580). It answers Menu's port for the item a course is linked to (sc-3898).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\RunOfShow\\"
 permit = [
@@ -576,6 +576,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_run_of_show",
+    "@layer:domain_menu",
     "@layer:domain_event",
     "@layer:domain_messaging",
     "@layer:repository",

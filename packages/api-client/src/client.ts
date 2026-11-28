@@ -59,6 +59,8 @@ import {
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type ContactGuest,
+  type GuestRoom,
   type PageNeeds,
   type PlaceChoice,
   type PlaceNeeds,
@@ -3784,11 +3786,12 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
+  /** The whole course; `servedAt` left out keeps the time, and a linked course's time is its item's (sc-3898): one that differs is refused 409 `menu_course_linked`. `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & {
+    details: Omit<MenuCourseDetails, 'servedAt'> & {
+      servedAt?: string | null;
       answer: MenuAnswer;
       skippable: boolean;
       ownItems?: string[];
@@ -4201,6 +4204,15 @@ export class ApiClient {
         `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
         details,
         { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** Ends the notice an item keeps when its course was removed from the menu, for everyone who plans the schedule (sc-3898). */
+  async dismissCourseNotice(eventId: string, itemId: string): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/course-notice`,
       ),
     );
   }
@@ -4668,6 +4680,25 @@ export class ApiClient {
     }
 
     return added;
+  }
+
+  /** Every row or none (sc-7579): `validation_failed` on `guests[i].…`, and 403 `plan_limit_reached` for the whole pick. */
+  async addGuestsFromContacts(eventId: string, guests: readonly ContactGuest[]): Promise<number> {
+    const body = await this.post<{ added?: unknown }>(`${this.guestsPath(eventId)}/from-contacts`, {
+      guests,
+    });
+
+    return typeof body?.added === 'number' ? body.added : guests.length;
+  }
+
+  async guestRoom(eventId: string): Promise<GuestRoom> {
+    const body = await this.get<Partial<GuestRoom>>(`${this.guestsPath(eventId)}/room`);
+
+    return {
+      plan: typeof body?.plan === 'string' ? body.plan : '',
+      allowed: typeof body?.allowed === 'number' ? body.allowed : null,
+      people: typeof body?.people === 'number' ? body.people : 0,
+    };
   }
 
   /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */

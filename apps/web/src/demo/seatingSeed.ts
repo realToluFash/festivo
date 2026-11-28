@@ -49,6 +49,17 @@ import {
   seatedWords as autoSeatedWords,
   stampOf,
 } from './autoSeat.ts';
+import {
+  EMPTY_DRAFT,
+  NO_NOTES,
+  type NoteDraft,
+  type NoteStateKey,
+  type Notes,
+  NW,
+  isNoteState,
+  sampleNotes,
+  say as noteSay,
+} from './seatingNotes.ts';
 import { NOT_SHARED, SHARE_STATES, type Share, isShareState, shareOf } from './shareTables.ts';
 import {
   type Fold,
@@ -183,6 +194,8 @@ export interface Ui {
   share: Share;
   /** sc-4019: Auto-seat by group's one proposal for the event; its chairs are marked on the plan. */
   auto: AutoSeat;
+  /** sc-1364: the host's notes on who sits together and who not at the same table. */
+  notes: Notes;
 }
 
 const NO_DOCS: Record<Doc, DocState> = {
@@ -255,6 +268,7 @@ export function freshUi(): Ui {
     sectionPick: '',
     share: NOT_SHARED,
     auto: NO_PROPOSAL,
+    notes: NO_NOTES,
   };
 }
 
@@ -384,6 +398,7 @@ export function seedOf(state: SeatingState | null): Ui {
   const at = (s: number, cx: number, cy: number) => ({ s, cx, cy });
 
   if (isAutoState(state)) return autoSeedOf(ui, state);
+  if (isNoteState(state)) return notesSeedOf(ui, state);
   if (isShareState(state)) {
     const start = SHARE_STATES[state];
 
@@ -1602,5 +1617,63 @@ function autoSeedOf(start: Ui, state: AutoState): Ui {
       return { ...proposedUi(ui, YOU, PROPOSED_AT), view: 'list', listOpen: 't8', spoken: '' };
     case 'autoReadOnly':
       return { ...proposedUi(ui, PRIYA, EARLIER_AT), readOnly: true, people: [YOU], spoken: '' };
+  }
+}
+
+/** sc-1364: each state opens on the sample's four notes, two of them broken at Table 6 and one of those reaching Table 8. */
+function notesSeedOf(start: Ui, state: NoteStateKey): Ui {
+  const notes: Notes = { ...NO_NOTES, list: sampleNotes() };
+  const ui: Ui = { ...start, tab: 'seat', notes };
+  const lina = (draft: Partial<NoteDraft>): Ui => ({
+    ...ui,
+    notes: { ...notes, guest: 'Lina Haddad', draft: { ...EMPTY_DRAFT, ...draft } },
+  });
+
+  switch (state) {
+    case 'notesSeat':
+      return ui;
+    case 'notesList':
+      return { ...ui, notes: { ...notes, shown: 'notes' } };
+    case 'notesNone':
+      return {
+        ...ui,
+        notes: { ...notes, shown: 'notes', list: notes.list.filter((one) => one.id > 'n2') },
+      };
+    case 'notesEmpty':
+      return { ...ui, notes: { ...NO_NOTES, shown: 'notes' } };
+    case 'notesShown':
+      return { ...ui, chosen: ['t6'], notes: { ...notes, shown: 'notes' } };
+    case 'notesTables':
+      return { ...ui, view: 'tables', notes: { ...notes, shown: 'notes' } };
+    case 'notesGuest':
+      return { ...ui, notes: { ...notes, guest: 'Inês Duarte' } };
+    case 'notesChair':
+      return { ...ui, tab: 'arrange', chair: { id: 't6', i: 4 } };
+    case 'notesTableGuests':
+      return { ...ui, view: 'tables', chosen: ['t6'] };
+    case 'notesFromList':
+      return { ...ui, view: 'list', listTab: 'all', listOpen: 't6' };
+    case 'notesAdd':
+      return lina({ kind: 'together', search: 'Ross' });
+    case 'notesBlank':
+      return lina({ errors: { kind: NW.chooseKind, guest: NW.chooseGuest } });
+    case 'notesSame':
+      return lina({
+        kind: 'apart',
+        search: 'Imran',
+        guest: 'Imran Khan',
+        errors: { guest: noteSay(NW.same, { name: 'Lina Haddad', other: 'Imran Khan' }) },
+      });
+    case 'notesReplace': {
+      const old = notes.list[0]!;
+
+      return lina({ kind: 'together', search: 'Imran', guest: 'Imran Khan', asking: old });
+    }
+    case 'notesNoMatch':
+      return lina({ kind: 'together', search: 'Femi Adebayo' });
+    case 'notesLive':
+      return { ...ui, notes: { ...notes, shown: 'notes', live: true }, people: [PRIYA] };
+    case 'notesReadOnly':
+      return { ...ui, readOnly: true, people: [YOU, PRIYA] };
   }
 }

@@ -16,7 +16,6 @@ import { ConfirmScreen } from '../../components/AccountConfirm.tsx';
 import { ContactsSection } from '../../components/AccountContacts.tsx';
 import { UndeliverableLines } from '../../components/AccountUndeliverable.tsx';
 import { NameScreen } from '../../components/AccountName.tsx';
-import { VerifyScreen } from '../../components/AccountVerify.tsx';
 import { ZoneScreen } from '../../components/AccountZone.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
@@ -53,6 +52,7 @@ import {
   WRONG_CODE,
 } from './AccountModel.ts';
 import { useCountdown, useZoneHeld } from './AccountParts.tsx';
+import { VerifyPasteScreen } from './AccountVerifyPaste.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
 import { saveName, useSavedName, useStarts } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
@@ -443,7 +443,8 @@ function SampleVerify({
   const words = verifyWords(CHANNEL_LINE[channel], row?.shown ?? '', t);
 
   return (
-    <VerifyScreen
+    <VerifyPasteScreen
+      pastes={verifying.kind === 'phone'}
       open={open && row != null}
       title={words.title}
       lead={words.lead}

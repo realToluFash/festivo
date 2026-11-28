@@ -68,7 +68,7 @@ export function endWords(
   return { date, time };
 }
 
-function planNameOf(key: string | undefined): string {
+export function planNameOf(key: string | undefined): string {
   const plan = key ?? '';
 
   return plan.charAt(0).toUpperCase() + plan.slice(1);

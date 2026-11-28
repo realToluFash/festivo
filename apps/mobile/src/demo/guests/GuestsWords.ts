@@ -149,6 +149,8 @@ export const W = {
   onlyChosen: 'Only the number you choose is kept.',
   useThisNumber: 'Use this number',
   clearNumber: 'Clear the number',
+  clearEmail: 'Clear the email',
+  reviewNameBlank: 'Enter a full name.',
   toFix: 'To fix',
   onList: 'Already on the list',
   places: 'Places for companions',
@@ -366,8 +368,13 @@ export const say = {
     `${count} of 100 people · a companion counts as one person · Free plan`,
   makeRoom: (listed: number, more: number) =>
     `Ireti at 40 has ${listed} on its list. Make room for ${more} more to add these:`,
-  notAddedLine: (people: number, companions: number, listed: number) =>
-    `${people} people and ${companions} companions were not added. Ireti at 40 has ${listed} people on its list.`,
+  notAddedLine: (people: number, companions: number, listed: number) => {
+    const who = people === 1 ? '1 person' : `${people} people`;
+    const on = `Ireti at 40 has ${listed === 1 ? '1 person' : `${listed} people`} on its list.`;
+    if (companions === 0) return `${who} ${people === 1 ? 'was' : 'were'} not added. ${on}`;
+    const along = companions === 1 ? '1 companion' : `${companions} companions`;
+    return `${who} and ${along} were not added. ${on}`;
+  },
   discardPicked: (count: number) => `Discard ${count} picked people?`,
   firstOf: (picked: number) => `${picked} were picked; the first 250 are here.`,
   matches: (count: number) => `${count} match`,

@@ -1,0 +1,18 @@
+# sc-102764: tablet on its side, an event's Staff area (EVENT), the rules view docks at the right edge with the roster beside it. Needs ${METRO_URL}, ${EVENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil: { visible: { id: 'briefing.card' }, timeout: 30000 }
+- assertVisible: { id: 'staff.roster' }
+- takeScreenshot: side-staff
+- tapOn: { id: 'briefing.rules' }
+- extendedWaitUntil: { visible: { id: 'briefing.rules.view' }, timeout: 15000 }
+- assertVisible: { id: 'briefing.panel' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: side-rules

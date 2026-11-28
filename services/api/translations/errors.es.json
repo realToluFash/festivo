@@ -53,6 +53,7 @@
     "dish_in_use": "Un evento usa este plato, así que no se puede eliminar. Archívelo en su lugar.",
     "menu_course_limit": "Un menú puede tener como máximo {max} pases.",
     "menu_course_picked": "Los invitados ya han elegido platos de este pase.",
+    "menu_course_linked": "Este pase está vinculado a un elemento del programa, así que su hora de servicio es la hora de inicio del elemento. Cambie la hora del elemento en la página Programa.",
     "menu_dish_on_course": "Este plato ya está en este pase.",
     "menu_same_one_dish": "«Todos reciben lo mismo» requiere exactamente un plato.",
     "variant_limit": "Un plato puede tener como máximo {max} variantes.",

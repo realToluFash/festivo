@@ -256,6 +256,11 @@ const SHARED: readonly Family[] = [
     part: 'the organisation switcher (OrgSwitcher) on a phone',
   },
   {
+    prefix: 'vd-tools',
+    sheets: ['phone.css', 'vendorsMenu.css'],
+    part: 'the tools of Vendors (Vendors), whose menus open by the window’s width',
+  },
+  {
     prefix: 'today',
     sheets: [
       REFLOW,

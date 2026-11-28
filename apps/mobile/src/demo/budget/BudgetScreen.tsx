@@ -49,6 +49,7 @@ const SEND_MS = 700;
 const LINK_MS = 900;
 const RECONNECT_MS = 2500;
 const LIVE_MS = 1200;
+const LOAD_MS = 900;
 
 /** Budget A in the event's frame, on sample data: nothing reaches the API, and each wait is a timer. */
 export function BudgetScreen({
@@ -125,6 +126,13 @@ export function BudgetScreen({
     const timer = setTimeout(() => go({ type: 'payersChanged', words }), LIVE_MS);
     return () => clearTimeout(timer);
   }, [payersLive]);
+
+  const dueLoading = m.dueNow?.load === 'loading' && state !== 'due_loading';
+  useEffect(() => {
+    if (!dueLoading) return undefined;
+    const timer = setTimeout(() => go({ type: 'dueLoaded' }), LOAD_MS);
+    return () => clearTimeout(timer);
+  }, [dueLoading]);
 
   useEffect(() => {
     if (m.link !== 'reconnecting') return undefined;
@@ -259,9 +267,11 @@ export function BudgetScreen({
             sheet={m.dueNow}
             form={m.form}
             ledger={m.ledger}
+            link={m.link}
             locale={locale}
             opener={opener}
             onClose={() => go({ type: 'closeDueNow' })}
+            onRetry={() => go({ type: 'dueRetry' })}
             onPaid={(id) =>
               go({
                 type: 'duePaid',

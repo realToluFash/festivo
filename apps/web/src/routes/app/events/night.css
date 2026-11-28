@@ -8,6 +8,11 @@
   font: var(--typeSmallStrong);
 }
 
+/* The bell ends the row, as the product's does (sc-39509), so it keeps the far end when the switch drops under the trail. */
+.nt .ev-crumb-row > .desk-bell {
+  margin-inline-start: auto;
+}
+
 .nt-switch a,
 .nt-switch span {
   display: inline-flex;
@@ -605,6 +610,10 @@ button.nt-later-row:hover {
   min-height: 280px;
 }
 
+.nt-demo-only {
+  flex-wrap: wrap;
+}
+
 .nt-big:focus-visible,
 .nt-picker:focus-visible,
 .nt-menu-row:focus-visible,
@@ -733,4 +742,31 @@ button.nt-later-row:hover {
   .nt .nt-big {
     padding-inline: var(--spaceLg);
   }
+
+  .nt .nt-demo-only {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.nt-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceSm);
+  min-width: 0;
+}
+
+.nt-course {
+  display: inline-block;
+  max-width: min(100%, 18rem);
+  overflow: hidden;
+  padding: 2px var(--spaceSm);
+  border: 1px solid var(--colorAccentTintBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorInk);
+  font: 600 12px/1.4 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

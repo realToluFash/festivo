@@ -91,6 +91,8 @@ export interface MenuCourse {
   name: string;
   /** "20:30" in the event's zone, or null. */
   servedAt: string | null;
+  /** The schedule item this course is served from while it is linked (sc-3898): its served time is that item's start. Null when no item is linked. */
+  scheduleItem: { id: string; title: string } | null;
   answer: MenuAnswer;
   skippable: boolean;
   dishes: MenuDish[];
@@ -336,6 +338,11 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
   const ownItems = names(raw.ownItems);
   const items = names(raw.items);
   const picksClose = asPicksClose(raw.picksClose);
+  const linked = raw.scheduleItem;
+  const scheduleItem =
+    isRecord(linked) && typeof linked.id === 'string' && typeof linked.title === 'string'
+      ? { id: linked.id, title: linked.title }
+      : null;
   const given = asCourseDefault(raw.default);
 
   return read.every((dish) => dish != null) &&
@@ -347,6 +354,7 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
         id,
         name,
         servedAt,
+        scheduleItem,
         answer,
         skippable,
         dishes: read as MenuDish[],

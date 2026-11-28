@@ -353,6 +353,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         opening={state}
         label="Code from WhatsApp"
         submit="Verify number"
+        pastes
         from="WhatsApp"
         wrong="That code does not match. Check the newest WhatsApp message from Soirely and try again."
         expired="Codes only work for a while. Send a new one and use the code in the newest message."

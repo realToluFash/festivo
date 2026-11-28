@@ -120,6 +120,8 @@ describe('presses laid over the server’s night (sc-3895)', () => {
     note: null,
     fixedTime: false,
     showToGuests: false,
+    course: null,
+    courseNotice: false,
     version: 1,
     ...marks,
   });

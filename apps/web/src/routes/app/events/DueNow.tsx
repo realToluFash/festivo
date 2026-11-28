@@ -16,7 +16,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Dialog, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
-import { usePageUnder } from '../pageUnder.ts';
+import { underOf, usePageUnder } from '../pageUnder.ts';
 import { SignedInHome } from '../Today.tsx';
 import { Loading } from './BudgetArea.tsx';
 import { minorMoney } from './budgetArea.ts';
@@ -39,15 +39,15 @@ interface Different {
   payment: ScheduledPayment;
 }
 
-/** A payment reminder's link (sc-1331): Due now over the page that was open, or Today when the link opened the desk, and Close goes back to where they were. */
+/** A payment reminder's link (sc-1331): Due now over the page that was open, or Today when the link opened the desk, and Close goes back to that page. */
 export function DueNowPage() {
   const { reminderId = '' } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const close = useCallback(() => {
-    if (location.key === 'default') void navigate('/app', { replace: true });
+    if (underOf(location) == null) void navigate('/app', { replace: true });
     else void navigate(-1);
-  }, [location.key, navigate]);
+  }, [location, navigate]);
 
   const { layers, covered, setHost } = useDeskLayers();
   const under = usePageUnder();
@@ -55,7 +55,7 @@ export function DueNowPage() {
   return (
     <LayersContext value={layers}>
       <div inert={covered}>{under ?? <SignedInHome />}</div>
-      <div ref={setHost} className="desk-layers" />
+      <div ref={setHost} className="desk ev bt desk-layers" />
       <DueNowDialog key={reminderId} reminderId={reminderId} onClose={close} />
     </LayersContext>
   );
@@ -337,7 +337,11 @@ function DueNowDialog({ reminderId, onClose }: { reminderId: string; onClose: ()
       </Rows>
       {settled &&
         sheet.events.map((event) => (
-          <Link key={event.id} className="desk-text" to={`/app/events/${event.id}/budget/due`}>
+          <Link
+            key={event.id}
+            className="desk-text is-wraps"
+            to={`/app/events/${event.id}/budget/due`}
+          >
             {t('dueNow.everythingDue', { event: event.name })}
           </Link>
         ))}

@@ -39,14 +39,16 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 `release-sign-in` is the one for a release build (`com.soirely.app`), where there is no
 Expo Go and no `return-home`: it launches the app, signs in as `EMAIL` with `PASSWORD` only if
 it opens signed out (on Welcome or on Sign in), and leaves the app on Home. Every `*-release-*` flow that needs a signed-in
-phone starts with it.
+phone starts with it. On Android it gives Enter time to reach Home before tapping Sign in, and
+never hides the keyboard there: Android's Back, with the keyboard already down, leaves Sign in.
 
 `release-sign-in-allow-push` starts with `release-sign-in`, opens the bell by link, taps Turn on
-and then the system's Allow, and leaves the app on the bell with push allowed (sc-4333). It
-relaunches the app with notifications unset first, because Maestro's launchApp grants every permission on Android. It
-needs `EMAIL`, `PASSWORD` and a fresh install where push was never asked: `pushAskDue` asks
-only once, so on any other install the wait on Turn on fails, and so does the wait on Allow
-when the permission was already answered.
+and then the system's Allow, and leaves the app on the bell with push allowed (sc-4333). After
+signing in, it relaunches the app with notifications unset, because Maestro's launchApp grants
+every permission on Android, and opens the link only once Home shows, since a link sent while
+the app is still starting is lost. It needs `EMAIL`, `PASSWORD` and a fresh install where push was
+never asked: `pushAskDue` asks only once, so on any other install the wait on Turn on fails, and
+so does the wait on Allow when the permission was already answered.
 
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.

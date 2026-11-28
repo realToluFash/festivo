@@ -4,6 +4,7 @@ import {
   SCHEDULE_OWNER_MAXIMUM,
   SCHEDULE_ROLE_MAXIMUM,
   SCHEDULE_TITLE_MAXIMUM,
+  type MenuCourse,
   type Schedule,
   type ScheduleItem,
   type ScheduleItemDetails,
@@ -29,6 +30,8 @@ export interface Form {
   note: string;
   fixed: boolean;
   guests: boolean;
+  /** The menu course this item is (sc-3898), by its id; null when none. */
+  course: string | null;
 }
 
 export type Field = 'title' | 'date' | 'time' | 'lasts' | 'owner' | 'role' | 'note';
@@ -222,6 +225,7 @@ export function blankForm(day: string): Form {
     note: '',
     fixed: false,
     guests: false,
+    course: null,
   };
 }
 
@@ -239,12 +243,19 @@ export function formOf(one: ScheduleItem): Form {
     note: one.note ?? '',
     fixed: one.fixedTime,
     guests: one.showToGuests,
+    course: one.course?.id ?? null,
   };
 }
 
 const blankToNull = (typed: string): string | null => (typed.trim() === '' ? null : typed.trim());
 
-export function detailsOf(form: Form, known: readonly string[], main: string): ScheduleItemDetails {
+/** `withCourse` is whether this reader can see the menu: only then is Course sent, so a save without it keeps the item's link (sc-3898). */
+export function detailsOf(
+  form: Form,
+  known: readonly string[],
+  main: string,
+  withCourse = false,
+): ScheduleItemDetails {
   return {
     title: form.title.trim(),
     startsAt: `${form.date}T${form.time}`,
@@ -255,6 +266,7 @@ export function detailsOf(form: Form, known: readonly string[], main: string): S
     note: blankToNull(form.note),
     fixedTime: form.fixed,
     showToGuests: form.guests,
+    ...(withCourse ? { courseId: form.course } : {}),
   };
 }
 
@@ -392,4 +404,40 @@ export function differences(
   return rows
     .filter(([, a, b]) => a !== b)
     .map(([field, a, b]) => ({ field, theirs: a, yours: b }));
+}
+
+/** The item holding a course, other than the one being edited. */
+export function holderOf(
+  courseId: string,
+  items: readonly ScheduleItem[],
+  editingId: string | null,
+): ScheduleItem | null {
+  return items.find((one) => one.course?.id === courseId && one.id !== editingId) ?? null;
+}
+
+/** A course's secondary line in the list: "served 20:30", and " · linked to {item}" while another item holds it (sc-3898). A linked course is served at its item's start, and for the item being edited at the start on its form, as the Menu page writes times. */
+export function courseLine(
+  course: MenuCourse,
+  items: readonly ScheduleItem[],
+  editingId: string | null,
+  formTime: string,
+  t: TFunction,
+): string | null {
+  const holder = holderOf(course.id, items, editingId);
+  const linked = items.find((one) => one.course?.id === course.id);
+  const served =
+    linked == null
+      ? course.servedAt
+      : linked.id === editingId && formTime !== ''
+        ? formTime
+        : startOf(linked).slice(11, 16);
+
+  return (
+    [
+      served == null ? null : t('schedule.served', { time: served }),
+      holder == null ? null : t('schedule.linkedTo', { title: holder.title }),
+    ]
+      .filter((part): part is string => part != null)
+      .join(' · ') || null
+  );
 }

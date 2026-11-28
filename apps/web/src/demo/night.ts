@@ -16,6 +16,8 @@ export interface NightItem {
   phase: Phase;
   started?: number;
   ended?: number;
+  /** sc-3898: the name of the menu course this item is linked to. */
+  course?: string;
 }
 
 export interface NightTrack {
@@ -46,6 +48,7 @@ export interface Night {
 
 export const NW = {
   title: 'Run of show',
+  courseTag: (name: string) => `Course · ${name}`,
   now: 'Now',
   next: 'Next',
   later: 'Later',
@@ -462,10 +465,25 @@ const BRUNCH: readonly Plan[] = [
 const GARDEN: readonly Plan[] = [['croquet', '11:00', 'Croquet on the lawn', 60, 'Sade Lawal']];
 
 type Marks = Readonly<Record<string, readonly [started: string, ended?: string] | 'skipped'>>;
+type Courses = Readonly<Record<string, string>>;
 
-function planned(plans: readonly Plan[], marks: Marks, day = 0): NightItem[] {
+function planned(
+  plans: readonly Plan[],
+  marks: Marks,
+  day = 0,
+  courses: Courses = {},
+): NightItem[] {
   return plans.map(([id, time, title, length, owner]) => {
-    const item: NightItem = { id, planned: at(time, day), title, length, owner, phase: 'waiting' };
+    const course = courses[id];
+    const item: NightItem = {
+      id,
+      planned: at(time, day),
+      title,
+      length,
+      owner,
+      phase: 'waiting',
+      ...(course == null ? {} : { course }),
+    };
     const mark = marks[id];
 
     if (mark == null) return item;
@@ -507,7 +525,10 @@ interface Scene {
   manage?: boolean;
   chosen?: string;
   said?: string;
+  courses?: Courses;
 }
+
+const LINKED: Courses = { dinner: 'Starter', cake: 'Dessert' };
 
 const SPEAKING: Marks = { ...DINED, speeches: ['19:50'] };
 const GAP: Marks = { ...DINED, speeches: ['19:50', '20:28'] };
@@ -609,6 +630,33 @@ export const NIGHT_STATES = {
     hall: { ...DANCED, lastSong: ['00:27', '00:42'] },
     foyer: { ...FOYER_RUN, carriages: ['00:31'] },
   },
+  course_now: {
+    name: 'Course: Dinner is served is Now, linked to Starter',
+    clock: '18:44',
+    hall: { arrive: ['18:02', '18:31'], dinner: ['18:33'] },
+    courses: LINKED,
+  },
+  course_later: {
+    name: 'Course: Cake cutting in Later, linked to Dessert',
+    clock: '20:02',
+    hall: SPEAKING,
+    courses: LINKED,
+  },
+  course_next: {
+    name: 'Course: Cake cutting Next, linked to Dessert',
+    clock: '20:44',
+    hall: { ...GAP, dance: ['20:31', '20:44'] },
+    courses: LINKED,
+  },
+  course_long: {
+    name: 'Course: a long course name cut short beside the title',
+    clock: '18:44',
+    hall: { arrive: ['18:02', '18:31'], dinner: ['18:33'] },
+    courses: {
+      dinner: 'Plat principal : filet de bœuf, purée de patates douces et sauce au poivre',
+      cake: 'Sobremesa: bolo de casamento com doce de leite e frutas vermelhas da estação',
+    },
+  },
   picker_earlier_day: {
     name: 'Saturday 09:10: Friday’s Foyer still Now, “Foyer · Friday” in the picker',
     clock: '09:10',
@@ -657,7 +705,12 @@ export function nightAt(
             { id: 'foyer', place: 'Foyer', day: 0, items: planned(FOYER, scene.foyer ?? {}) },
           ]
         : [
-            { id: 'hall', place: 'Ballroom', day: 0, items: planned(BALLROOM, scene.hall) },
+            {
+              id: 'hall',
+              place: 'Ballroom',
+              day: 0,
+              items: planned(BALLROOM, scene.hall, 0, scene.courses),
+            },
             ...(oneTrack
               ? []
               : [
@@ -728,6 +781,14 @@ export const NIGHT_PAGES: readonly { name: string; states: readonly DemoLink[] }
         name: 'fr-FR: “Foyer · vendredi”, times on the 24-hour clock',
       },
       { to: nightAtUrl('populated', 'as=reader'), name: 'Read only (run_of_show.read)' },
+      {
+        to: nightAtUrl('course_long', 'locale=fr-FR'),
+        name: 'sc-3898: a long course name in fr-FR, cut short beside the title',
+      },
+      {
+        to: nightAtUrl('course_long', 'locale=pt-BR'),
+        name: 'sc-3898: a long course name in pt-BR, cut short beside the title',
+      },
       {
         to: nightAtUrl('end_behind', 'as=no-events-manage'),
         name: 'end_behind without events.manage: no End now',
