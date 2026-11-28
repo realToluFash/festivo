@@ -31,6 +31,7 @@ import { Skeleton } from '../Skeleton.tsx';
 import { PageToast } from '../Summary.tsx';
 import { Text } from '../Text.tsx';
 import { LinkMark } from './StaffParts.tsx';
+import { openedEntry } from './openedEntry.ts';
 
 /** Under the AC's ten seconds from a change made anywhere else, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
@@ -38,6 +39,7 @@ const READ_AGAIN_MS = 5_000;
 type Seen =
   | { kind: 'loading' }
   | { kind: 'failed' }
+  | { kind: 'notOnStaff' }
   | { kind: 'shown'; entry: StaffEntry }
   | { kind: 'removed'; entry: StaffEntry };
 
@@ -92,6 +94,14 @@ export function StaffLinkScreen({
     announce(t('staffLink.removed', { name: entry.fullName }));
   }
 
+  /** Opened at its address for an id the roster lacks: a removed person and one never on the staff look the same, so no name and no "removed". */
+  function notOnStaff(): void {
+    if (gone.current) return;
+    gone.current = true;
+    setSeen({ kind: 'notOnStaff' });
+    announce(t('staffLink.notOnStaff'));
+  }
+
   function read(): void {
     if (gone.current) return;
     const mine = ++ticket.current;
@@ -100,8 +110,9 @@ export function StaffLinkScreen({
         if (mine !== ticket.current || gone.current) return;
         const entry = staff.find((one) => one.id === staffId);
         if (entry == null) {
-          if (latest.current != null) removed(latest.current);
-          else setSeen({ kind: 'failed' });
+          const was = latest.current ?? openedEntry(eventId, staffId);
+          if (was != null) removed(was);
+          else notOnStaff();
           return;
         }
         latest.current = entry;
@@ -269,6 +280,16 @@ export function StaffLinkScreen({
     </Pressable>
   );
 
+  if (seen.kind === 'notOnStaff')
+    return (
+      <Page insets={insets} phone={phone} landscape={false}>
+        {back}
+        <View testID="staffLink.notOnStaff">
+          <Notice tone="attention" mark="!" title={t('staffLink.notOnStaff')} />
+        </View>
+      </Page>
+    );
+
   const failedLoad = seen.kind === 'failed' || (seen.kind === 'shown' && eventFailed);
   const loading =
     seen.kind === 'loading' || (seen.kind === 'shown' && manages == null && !failedLoad);
@@ -280,7 +301,7 @@ export function StaffLinkScreen({
           <Skeleton shape="rows" rowHeight={64} rows={3} words={t('staffLink.loading')} />
         ) : (
           <View style={styles.failedBlock} testID="staffLink.loadFailed">
-            <Notice tone="broken" mark="alert" body={t('staffRoster.failed')} />
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('staffRoster.failed')} />
             <SecondaryButton
               label={t('staffRoster.tryAgain')}
               onPress={() => {
@@ -317,7 +338,7 @@ export function StaffLinkScreen({
     <View testID="staffLink.removed">
       <Notice
         tone="attention"
-        mark="alert"
+        mark="!"
         title={t('staffLink.removed', { name: entry.fullName })}
         body={t('staffLink.removedLine')}
       />
