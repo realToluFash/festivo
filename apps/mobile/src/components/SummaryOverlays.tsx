@@ -220,6 +220,7 @@ export function FocusedScreen({
   opener,
   ask,
   over,
+  lands = null,
   toast,
   scrollRef,
   toTop = 0,
@@ -243,6 +244,8 @@ export function FocusedScreen({
   ask?: AskProps | null;
   /** Drawn over the screen in its own window, as the Ask is, since iOS shows one window at a time. */
   over?: Layer | null;
+  /** The `nativeID` of the control a closed layer returns to: for a moment after the close it is the only thing TalkBack can reach, so its focus cannot stop anywhere before it (sc-104673). */
+  lands?: string | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
@@ -302,6 +305,7 @@ export function FocusedScreen({
             onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered || hidden ? 'no-hide-descendants' : 'auto'}
+            {...(uncovering && lands != null ? { experimental_accessibilityOrder: [lands] } : {})}
             ref={shown}
             testID={testID}
           >

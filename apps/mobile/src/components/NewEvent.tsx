@@ -144,6 +144,8 @@ export function NewEventScreen({
   const [listDrawn, setListDrawn] = useState(false);
   if (list == null && listDrawn) setListDrawn(false);
   const takeBack = useEarlyBack(list != null, listDrawn, closeList);
+  const [lastList, setLastList] = useState<ListOpen | null>(null);
+  if (list != null && list !== lastList) setLastList(list);
   const openList = (which: ListOpen, opener: RefObject<ViewInstance | null>) => {
     listFocusBack.opening(opener);
     takeBack();
@@ -618,6 +620,7 @@ export function NewEventScreen({
       opener={opener}
       ask={leave}
       over={over}
+      lands={lastList == null ? null : `eventForm.${lastList === 'zone' ? 'timeZone' : lastList}`}
       fills
       testID="eventForm"
     >
