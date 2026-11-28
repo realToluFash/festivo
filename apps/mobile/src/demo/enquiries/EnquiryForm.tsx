@@ -25,6 +25,9 @@ import {
 import { Pill } from '../../components/SettingsParts.tsx';
 import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
+import { COUNTRY_BASIS, NUMBER_BASIS } from '../phoneCountryFit.ts';
+import { usePhoneCountryFits } from '../phoneCountryFits.tsx';
 import { Choices, CurrencySearch, useEditGap } from '../events/EventEdits.tsx';
 import { currencyRows } from '../events/EventsSample.ts';
 import {
@@ -115,6 +118,7 @@ export function EnquiryForm({
   const amountRef = useRef<TextInputInstance>(null);
   const dateRef = useRef<ViewInstance>(null);
   const scroll = useRef<ScrollViewInstance>(null);
+  const phoneRow = usePhoneCountryFits(typed.country, useAccessibilitySizes());
   const offset = useRef(0);
   useFocusedFieldInSight(scroll, offset);
   const saved = useRef(onSaved);
@@ -292,8 +296,13 @@ export function EnquiryForm({
           />
         </Field>
         <Field label={W.phone} error={shown.phone}>
-          <View style={styles.phone}>
-            <View style={styles.country}>
+          <View
+            key={phoneRow.over ? 'over' : 'beside'}
+            style={phoneRow.over ? styles.phoneOver : styles.phone}
+            onLayout={phoneRow.onRowLayout}
+          >
+            {phoneRow.measure}
+            <View style={phoneRow.over ? styles.whole : styles.country}>
               <CountryPicker
                 label={t('verifyPhone.countryLabel')}
                 value={typed.country}
@@ -305,7 +314,7 @@ export function EnquiryForm({
             </View>
             <TextField
               ref={numberRef}
-              style={styles.number}
+              style={phoneRow.over ? styles.whole : styles.number}
               accessibilityLabel={W.phone}
               {...(shown.contact == null || shown.phone != null
                 ? {}
@@ -538,8 +547,10 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space5xl,
   },
   phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: 140 },
-  number: { flexGrow: 2, flexBasis: 180 },
+  phoneOver: { gap: tokens.spaceSm },
+  country: { flexGrow: 1, flexBasis: COUNTRY_BASIS },
+  number: { flexGrow: 2, flexBasis: NUMBER_BASIS },
+  whole: { alignSelf: 'stretch' },
   divider: {
     paddingTop: tokens.spaceXl,
     borderTopWidth: 1,
