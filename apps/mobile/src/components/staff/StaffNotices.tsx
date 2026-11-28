@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
-import { type NoticeMark, flipReminder, reminderLines } from '../../kit/notices.ts';
+import { type NoticeMark, flipReminder, reminderLines } from '../../kit/staffNotices.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { Notice } from '../Notice.tsx';
