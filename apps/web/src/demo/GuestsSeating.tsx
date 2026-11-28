@@ -165,6 +165,14 @@ function SeatingPage({
           .filter((party) => party.some((row) => without.has(row.person.id)))
           .flat()
       : [...rows];
+  const tableOrder = byTable(plan, seats);
+
+  function compareParties(a: readonly ListRow[], b: readonly ListRow[]): number {
+    const one = a[0]?.person.guest;
+    const two = b[0]?.person.guest;
+
+    return one == null || two == null ? 0 : tableOrder(one, two);
+  }
   const sortedRows =
     reads && sort === 'table'
       ? flat(
@@ -179,14 +187,6 @@ function SeatingPage({
   const everyone = ids.length > 0 && ids.every((id) => chosen.has(id));
   const companions = companionsWith(list, chosen);
   const bar = selected.length > 0;
-  const tableOrder = byTable(plan, seats);
-
-  function compareParties(a: readonly ListRow[], b: readonly ListRow[]): number {
-    const one = a[0]?.person.guest;
-    const two = b[0]?.person.guest;
-
-    return one == null || two == null ? 0 : tableOrder(one, two);
-  }
   const shownDetails = list.find((one) => one.id === details) ?? null;
 
   function focus(...keys: string[]): void {
