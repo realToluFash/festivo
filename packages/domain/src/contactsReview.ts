@@ -3,12 +3,11 @@ import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/
 import { emailProblem } from './forms.ts';
 import { GUEST_NAME_MAXIMUM, MOST_COMPANIONS, nameLength } from './guestForm.ts';
 import { nameKey } from './nameKey.ts';
+import { USAGE_THRESHOLDS } from './notificationSettings.ts';
 import { formatPhone, phoneE164 } from './phone.ts';
 
 /** The most one pick adds, as the API's FROM_CONTACTS_MOST. */
 export const MOST_PICKED = 250;
-
-export const ROOM_SHOWN_FROM = 0.8;
 
 export interface ContactNumber {
   number: string;
@@ -29,13 +28,14 @@ export interface ReviewRow {
   numberAt: number;
   country: string;
   number: string;
-  email: string | null;
+  email: string;
   places: number;
 }
 
 export interface RowProblems {
   name: 'blank' | 'tooLong' | null;
   number: boolean;
+  email: boolean;
   listed: boolean;
 }
 
@@ -54,7 +54,7 @@ export function reviewRowsOf(
       numbers: person.numbers,
       numberAt,
       ...numberFields(person.numbers[numberAt]?.number ?? '', organisationCountry),
-      email: person.email?.trim() === '' ? null : (person.email?.trim() ?? null),
+      email: person.email?.trim() ?? '',
       places: 0,
     };
   });
@@ -104,6 +104,7 @@ export function rowProblems(
   return {
     name: trimmed === '' ? 'blank' : nameLength(trimmed) > GUEST_NAME_MAXIMUM ? 'tooLong' : null,
     number: !readable(row),
+    email: emailProblem(row.email) === 'shape',
     listed:
       key !== '' &&
       (listedNames.some((name) => nameKey(name) === key) ||
@@ -112,7 +113,7 @@ export function rowProblems(
 }
 
 export function toFix(problems: RowProblems): boolean {
-  return problems.name != null || problems.number;
+  return problems.name != null || problems.number || problems.email;
 }
 
 export function reviewCounts(
@@ -135,7 +136,7 @@ export function planRoom(
 ): { after: number; room: number; over: boolean; allowed: number } | null {
   if (room.allowed == null) return null;
   const after = room.people + adding;
-  if (after < room.allowed * ROOM_SHOWN_FROM) return null;
+  if (after < room.allowed * USAGE_THRESHOLDS.low) return null;
 
   return { after, room: room.allowed - after, over: after > room.allowed, allowed: room.allowed };
 }
@@ -144,7 +145,6 @@ export function stepPlaces(places: number, by: 1 | -1): number {
   return Math.min(MOST_COMPANIONS, Math.max(0, places + by));
 }
 
-/** What the API is sent for each row. An email that is not one is left out: the card has no field to fix it in yet. */
 export function contactsBody(rows: readonly ReviewRow[]): {
   fullName: string;
   email: string | null;
@@ -153,7 +153,7 @@ export function contactsBody(rows: readonly ReviewRow[]): {
 }[] {
   return rows.map((row) => ({
     fullName: row.name.trim(),
-    email: row.email != null && emailProblem(row.email) == null ? row.email : null,
+    email: row.email.trim() === '' ? null : row.email.trim(),
     mobile: row.number.trim() === '' ? null : { countryCode: row.country, number: row.number },
     companions: row.places,
   }));

@@ -7,6 +7,7 @@ import {
   contactsBody,
   numberFields,
   peopleIn,
+  planNameOf,
   planRoom,
   reviewCounts,
   reviewRowsOf,
@@ -447,6 +448,7 @@ export function ContactsReview({
   const [discarding, setDiscarding] = useState(false);
   const names = useRef(new Map<string, TextInputInstance>());
   const numbers = useRef(new Map<string, TextInputInstance>());
+  const emails = useRef(new Map<string, TextInputInstance>());
   const scroll = useRef<ScrollViewInstance>(null);
   const count = rows.length;
   const problems = reviewCounts(rows, listedNames);
@@ -475,7 +477,13 @@ export function ContactsReview({
     if (row == null) return;
     const own = rowProblems(row, rows, listedNames);
     const field =
-      own.number && own.name == null ? numbers.current.get(row.key) : names.current.get(row.key);
+      own.name != null
+        ? names.current.get(row.key)
+        : own.number
+          ? numbers.current.get(row.key)
+          : own.email
+            ? emails.current.get(row.key)
+            : names.current.get(row.key);
     if (field != null) focusChecked({ current: field });
   };
 
@@ -535,14 +543,13 @@ export function ContactsReview({
     : null;
   const choosingRow = rows.find((row) => row.key === choosing) ?? null;
   const way = billing ? <AmberLine ink text={t('limitReached.inApp')} /> : null;
-  const planName = room == null ? '' : room.plan.charAt(0).toUpperCase() + room.plan.slice(1);
   const figure =
     plan == null
       ? ''
       : t('limitReached.figure.people', {
           count: plan.after,
           allowed: plan.allowed,
-          plan: planName,
+          plan: planNameOf(room?.plan),
         });
 
   const foot =
@@ -764,6 +771,7 @@ export function ContactsReview({
             const own = rowProblems(row, rows, listedNames);
             const fix = toFix(own);
             const saved = savedAs(row);
+            const named = row.name.trim() === '' ? t('account.fullName') : row.name.trim();
             return (
               <View
                 key={row.key}
@@ -780,7 +788,7 @@ export function ContactsReview({
                     label={t('guestList.remove')}
                     plain
                     onPress={() => remove(row.key)}
-                    accessibilityLabel={t('fromContacts.removeRow', { name: row.name })}
+                    accessibilityLabel={t('fromContacts.removeRow', { name: named })}
                     testID={`guests.review.${index}.remove`}
                   />
                 </View>
@@ -854,15 +862,43 @@ export function ContactsReview({
                     testID={`guests.review.${index}.clear`}
                   />
                 )}
+                <Field
+                  label={t('guestList.emailAddress')}
+                  pill={t('eventForm.optional')}
+                  error={own.email ? t('forms.emailShape') : undefined}
+                >
+                  <TextField
+                    ref={(node) => {
+                      if (node == null) emails.current.delete(row.key);
+                      else emails.current.set(row.key, node);
+                    }}
+                    accessibilityLabel={t('guestList.emailAddress')}
+                    value={row.email}
+                    onChangeText={(email) => change(row.key, { email })}
+                    wrong={own.email}
+                    submitting={adding}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    testID={`guests.review.${index}.email`}
+                  />
+                </Field>
+                {own.email && (
+                  <TextAction
+                    label={t('fromContacts.clearEmail')}
+                    onPress={() => change(row.key, { email: '' })}
+                    testID={`guests.review.${index}.clearEmail`}
+                  />
+                )}
                 {own.listed && (
                   <Text size={13.5} weight="medium" style={[styles.attention, styles.small]}>
-                    {t('fromContacts.stillAdded', { name: row.name.trim() })}
+                    {t('fromContacts.stillAdded', { name: named })}
                   </Text>
                 )}
                 <Stepper
                   count={row.places}
                   onChange={(places) => change(row.key, { places })}
-                  name={row.name}
+                  name={named}
                 />
               </View>
             );

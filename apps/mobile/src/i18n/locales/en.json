@@ -2674,6 +2674,7 @@
     "numberOf": "{{label}} · {{index, number}} of {{count, number}} numbers on this contact",
     "chooseAnother": "Choose another number",
     "clearNumber": "Clear the number",
+    "clearEmail": "Clear the email",
     "stillAdded": "{{name}} is already on the list. It is still added unless you remove this row.",
     "places": "Places for companions",
     "placesNow": "Places for companions, {{count, number}}",

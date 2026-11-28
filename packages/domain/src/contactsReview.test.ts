@@ -66,17 +66,21 @@ describe('the review list from a pick', () => {
           email: null,
         },
         { name: 'Ama Owusu', numbers: [], email: null },
+        { name: 'Mariam Diallo', numbers: [], email: 'mariam.diallo.orange.fr' },
       ],
       'NG',
     );
 
     expect(rows.map((row) => rowProblems(row, rows, []))).toEqual([
-      { name: 'blank', number: false, listed: false },
-      { name: 'tooLong', number: false, listed: false },
-      { name: null, number: true, listed: false },
-      { name: null, number: false, listed: false },
+      { name: 'blank', number: false, email: false, listed: false },
+      { name: 'tooLong', number: false, email: false, listed: false },
+      { name: null, number: true, email: false, listed: false },
+      { name: null, number: false, email: false, listed: false },
+      { name: null, number: false, email: true, listed: false },
     ]);
-    expect(reviewCounts(rows, []).fix).toBe(3);
+    expect(reviewCounts(rows, []).fix).toBe(4);
+    const cleared = rows.map((row) => ({ ...row, email: '' }));
+    expect(reviewCounts(cleared, []).fix).toBe(3);
   });
 
   it('warns on a name already on the list or twice in the pick, whatever its case or accents', () => {
@@ -92,11 +96,8 @@ describe('the review list from a pick', () => {
     expect(reviewCounts(rows, ['MARTA SILVA'])).toEqual({ fix: 0, listed: 3 });
   });
 
-  it('sends each row with its companions, and no email that is not one', () => {
-    const { rows } = reviewRowsOf(
-      [ADAEZE, { name: 'Ama Owusu', numbers: [], email: 'ama@' }],
-      'NG',
-    );
+  it('sends each row with its companions, and no email for a cleared one', () => {
+    const { rows } = reviewRowsOf([ADAEZE, { name: 'Ama Owusu', numbers: [], email: '  ' }], 'NG');
     const placed = rows.map((row, at) => ({ ...row, places: at === 0 ? 2 : 0 }));
 
     expect(contactsBody(placed)).toEqual([
