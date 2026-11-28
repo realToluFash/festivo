@@ -1,0 +1,32 @@
+# sc-39534: a guest match opens that guest on that event, and Back returns to Search with the term kept; a member match opens Members.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- inputText: 'okafor'
+- extendedWaitUntil:
+    visible: 'Annual Gala.*'
+    timeout: 15000
+- tapOn: 'Annual Gala.*'
+- waitForAnimationToEnd
+- takeScreenshot: guest
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back
+- eraseText: 10
+- inputText: 'suspended'
+- extendedWaitUntil:
+    visible: 'Inês Suspended'
+    timeout: 15000
+- tapOn: 'Inês Suspended'
+- waitForAnimationToEnd
+- takeScreenshot: member

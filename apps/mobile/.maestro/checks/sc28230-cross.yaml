@@ -1,0 +1,17 @@
+# sc-28230: an arrival made in the browser shows on the app's Check-in within 10 s, then one tapped in the app shows as arrived.
+# Vars: METRO_URL, API_URL, EV, TOK (a door holder's access token), GUEST (arrived from the browser), APPGUEST (tapped in the app).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: app-check-in-before
+- runScript:
+    file: sc28230-arrive-browser.js
+    env: { API_URL: '${API_URL}', EV: '${EV}', TOK: '${TOK}', GUEST: '${GUEST}' }
+- extendedWaitUntil: { visible: { id: 'checkIn.undo.${GUEST}' }, timeout: 10000 }
+- takeScreenshot: app-check-in-browser-arrival
+- scrollUntilVisible: { element: { id: 'checkIn.arrive.${APPGUEST}' }, timeout: 15000 }
+- tapOn: { id: 'checkIn.arrive.${APPGUEST}' }
+- extendedWaitUntil: { visible: { id: 'checkIn.undo.${APPGUEST}' }, timeout: 10000 }
+- takeScreenshot: app-check-in-app-arrival

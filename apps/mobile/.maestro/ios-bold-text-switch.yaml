@@ -1,0 +1,20 @@
+appId: com.apple.Preferences
+---
+- launchApp:
+    appId: com.apple.Preferences
+    stopApp: true
+- scrollUntilVisible:
+    element: 'Accessibility'
+    direction: DOWN
+- tapOn: 'Accessibility'
+- tapOn: 'Display & Text Size'
+- assertVisible: 'Bold Text'
+- tapOn:
+    point: '84%,18%'
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-switch
+- launchApp:
+    appId: com.soirely.app
+    stopApp: false
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

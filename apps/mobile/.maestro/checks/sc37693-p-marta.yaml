@@ -1,0 +1,16 @@
+# sc-37693: p-marta.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'members.row.${MARTA}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${MARTA}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-marta-top
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: p-marta-foot

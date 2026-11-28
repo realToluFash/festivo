@@ -1,0 +1,11 @@
+# sc-29914: People on ${EV}, its top and its foot.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.onEvent}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: top
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- swipe: { start: '50%, 75%', end: '50%, 25%' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: foot

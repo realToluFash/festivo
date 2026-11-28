@@ -1,0 +1,39 @@
+# sc-70353, the tablet: the unbroken address's role sheet upright, on its side, and upright again with the sheet still open, so the @ is read after each turn. Needs ${EVENT_ID}, ${P_MEMBER}, ${P_UNBROKEN}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_MEMBER}' }, timeout: 30000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_UNBROKEN}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_UNBROKEN}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: up-first
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: side
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: up-again

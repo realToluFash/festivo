@@ -1,0 +1,52 @@
+# sc-36468: own screen, blank error, then Text it to me instead fails; scrolls up to the error, which the keyboard pushes off screen on Android.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc36468-fresh-phone.js
+    env:
+      MODE: alt
+      FAIL: '1'
+- openLink: ${METRO_URL}/--/verify-phone?phone=${output.phoneId}
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'verifyPhone.code'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.submit'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.submit'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.codeBlankWhatsApp}}'
+    timeout: 10000
+- takeScreenshot: before
+- swipe:
+    start: 50%, 45%
+    end: 50%, 15%
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.textInstead'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.textInstead'
+- scrollUntilVisible:
+    element:
+      text: '{{t:verifyPhone.textInsteadFailed}}'
+    timeout: 15000
+- takeScreenshot: after-notice
+- scrollUntilVisible:
+    element:
+      text: '{{t:verifyPhone.codeBlankWhatsApp}}'
+    direction: UP
+    timeout: 15000
+- assertNotVisible: '{{t:verifyPhone.codeBlank}}'
+- takeScreenshot: after-error
+- scrollUntilVisible:
+    element:
+      text: '{{t:verifyPhone.introWhatsApp}}'
+    direction: UP
+    timeout: 15000
+- takeScreenshot: after-line

@@ -1,0 +1,8 @@
+# sc-67708: on its side, an event that does not exist keeps the app's top with its way back (events.back).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/01a1efc1-0000-7000-8000-000000000000?area=guests
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil: { visible: { id: 'events.back' }, timeout: 30000 }
+- takeScreenshot: missing-side

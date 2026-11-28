@@ -1,0 +1,84 @@
+# Android phone. sc-91027 control: Name takes typing with a tap on the field before each input: on the first opening, after a clean Cancel, and after Discard. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'account.name.field'
+- inputText: 'Zq'
+- takeScreenshot: open1-typed
+- assertVisible:
+    id: 'account.name.field'
+    text: '.*Zq.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open1
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: open2-untyped
+- tapOn:
+    id: '.*\.cancel'
+- waitForAnimationToEnd:
+    timeout: 4000
+- assertNotVisible:
+    id: 'account.name.field'
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'account.name.field'
+- inputText: 'Zq'
+- takeScreenshot: open3-typed
+- assertVisible:
+    id: 'account.name.field'
+    text: '.*Zq.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open3
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'account.name.field'
+- inputText: 'Zq'
+- takeScreenshot: open4-after-discard-typed
+- assertVisible:
+    id: 'account.name.field'
+    text: '.*Zq.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open4

@@ -1,0 +1,7 @@
+# sc-31310, phone: the app demo state leave, for the side-by-side pair beside board e28.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/organisation?state=leave&as=member
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: leave

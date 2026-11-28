@@ -1,0 +1,7 @@
+# sc-80438: Check-in, the empty state, alone so the screen mounts for this event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_EMPTY}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.empty' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: empty

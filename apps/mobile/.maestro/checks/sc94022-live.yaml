@@ -1,0 +1,22 @@
+# sc-94022: Today open upright with nobody arrived; the first arrival comes from another device and goes again, no reload; then one tap on Open the event. Vars: METRO_URL, API_URL, ORIGIN, EV, TOK, GUEST, OPEN (the button's words, as a regex).
+appId: host.exp.Exponent
+---
+- runScript: { file: sc94022-arrive.js, env: { METHOD: DELETE } }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: none
+- runScript: { file: sc94022-arrive.js, env: { METHOD: POST } }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- takeScreenshot: arrived-10s
+- runScript: { file: sc94022-arrive.js, env: { METHOD: DELETE } }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- takeScreenshot: undone-10s
+- runScript: { file: sc94022-arrive.js, env: { METHOD: POST } }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- tapOn: { text: '${OPEN}' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: opened

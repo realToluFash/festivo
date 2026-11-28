@@ -1,0 +1,218 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  CHANNELS,
+  MESSAGE_KINDS,
+  MY_SHIFT,
+  SHIFT_MESSAGE_BOARDS,
+  canBeTimeSensitive,
+  channelOf,
+  OVERFLOW_SAMPLE,
+  messageKindOf,
+  messageOf,
+  shiftLinesOf,
+  urgentOf,
+} from './shiftMessagesModel.ts';
+import { SAMPLE } from '../samples.ts';
+
+const LINK = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
+
+describe('a change to the shift (S2)', () => {
+  it('pushes one line, expanded to one line per change', () => {
+    expect(messageOf('start_time', 'push')).toMatchObject({
+      title: 'Your shift has changed · Adaeze & Tunde’s wedding',
+      lines: ['Your start time is now 15:00 (was 17:00).'],
+      link: null,
+      button: null,
+    });
+  });
+
+  it('texts from the organisation, then the change lines, then the shift page link', () => {
+    expect(messageOf('start_time', 'sms').text).toBe(
+      `Ire Events: your shift at Adaeze & Tunde’s wedding on Saturday, Oct 17 has changed. Your start time is now 15:00 (was 17:00). Your shift page: ${LINK}`,
+    );
+  });
+
+  it('names the new date when the date changed', () => {
+    expect(messageOf('date', 'sms').text).toContain('on Sunday, Oct 18 has changed.');
+    expect(messageOf('date', 'sms').text).toContain(
+      'The date is now Sunday, Oct 18 (was Saturday, Oct 17).',
+    );
+  });
+
+  it('puts several changes in the copy’s order, in one message', () => {
+    expect(messageOf('several', 'push').lines).toEqual([
+      'Your start time is now 15:00 (was 17:00).',
+      'Your job is now Runner (was Waiter).',
+      'The venue is now The Landmark (was Eko Hotel).',
+    ]);
+  });
+
+  it('gives WhatsApp the same words with My shift in place of the link', () => {
+    const wa = messageOf('job', 'whatsApp');
+
+    expect(wa.button).toBe(MY_SHIFT);
+    expect(wa.link).toBeNull();
+    expect(wa.text).not.toContain('http');
+    expect(messageOf('job', 'sms').text.startsWith(wa.text)).toBe(true);
+  });
+});
+
+describe('a change to one of several shifts (S2)', () => {
+  it('says a line per shift, each start with its weekday, in place of the start and end lines', () => {
+    expect(messageOf('shift_added', 'push').lines).toEqual([
+      'You now have a shift from Sunday 12:00 to 18:00.',
+    ]);
+    expect(messageOf('shift_removed', 'push').lines).toEqual([
+      'You no longer have the shift from Sunday 12:00 to 18:00.',
+    ]);
+    expect(messageOf('shift_retimed', 'push').lines).toEqual([
+      'Your shift is now Sunday 12:00 to 17:00 (was 12:00 to 18:00).',
+    ]);
+  });
+
+  it('heads them Your shifts have changed, with no date in the SMS and WhatsApp lead', () => {
+    expect(messageOf('shift_added', 'push').title).toBe(
+      'Your shifts have changed · Adaeze & Tunde’s wedding',
+    );
+    expect(messageOf('shift_retimed', 'whatsApp').text).toBe(
+      `${SAMPLE.organisation}: your shifts at Adaeze & Tunde’s wedding have changed. Your shift is now Sunday 12:00 to 17:00 (was 12:00 to 18:00).`,
+    );
+  });
+
+  it('keeps the link when the last shift goes, and never reads as a removal', () => {
+    const last = messageOf('no_shift_left', 'sms');
+
+    expect(last.link).toBe(LINK);
+    expect(messageOf('no_shift_left', 'push').lines).toEqual([
+      'You no longer have the shift from Saturday 17:00 to 23:00.',
+      'You have no shift at Adaeze & Tunde’s wedding for now. You are still on the staff.',
+    ]);
+    expect(last.text).not.toContain('no longer on the staff');
+    expect(messageOf('no_shift_left', 'whatsApp').button).toBe(MY_SHIFT);
+  });
+});
+
+describe('at most three shift lines (S2)', () => {
+  it('names the removal ahead of an earlier addition, prints the three in start order, and counts the rest', () => {
+    expect(messageOf('shift_overflow', 'push').lines).toEqual([
+      'You now have a shift from Friday 18:00 to 23:00.',
+      'Your shift is now Saturday 15:00 to 23:00 (was 17:00 to 23:00).',
+      'You no longer have the shift from Sunday 16:00 to 22:00.',
+      '1 more change is on your shift page.',
+    ]);
+  });
+
+  it('puts the overflow line before the link', () => {
+    expect(messageOf('shift_overflow', 'sms').text).toBe(
+      `${SAMPLE.organisation}: your shifts at Adaeze & Tunde’s wedding have changed. You now have a shift from Friday 18:00 to 23:00. Your shift is now Saturday 15:00 to 23:00 (was 17:00 to 23:00). You no longer have the shift from Sunday 16:00 to 22:00. 1 more change is on your shift page. Your shift page: ${LINK}`,
+    );
+  });
+
+  it('says how many more in the plural', () => {
+    const fifth = { removal: false, startsAt: 3000, line: 'fifth' };
+
+    expect(shiftLinesOf([...OVERFLOW_SAMPLE, fifth]).at(-1)).toBe(
+      '2 more changes are on your shift page.',
+    );
+  });
+
+  it('leaves three lines or fewer as they are', () => {
+    expect(shiftLinesOf(OVERFLOW_SAMPLE.slice(0, 3))).toHaveLength(3);
+  });
+
+  it('sends no overflow line with no shift left, naming the three soonest removals', () => {
+    const removals = [400, 100, 300, 200].map((startsAt) => ({
+      removal: true,
+      startsAt,
+      line: String(startsAt),
+    }));
+
+    expect(shiftLinesOf(removals, true)).toEqual([
+      '100',
+      '200',
+      '300',
+      'You have no shift at Adaeze & Tunde’s wedding for now. You are still on the staff.',
+    ]);
+  });
+});
+
+describe('the last message', () => {
+  it('carries no link and no button on removal, call-off and End now', () => {
+    for (const kind of ['removed', 'called_off', 'event_ended'] as const)
+      for (const channel of CHANNELS) {
+        const message = messageOf(kind, channel);
+        expect(message.link).toBeNull();
+        expect(message.button).toBeNull();
+        expect(message.text).not.toContain('http');
+      }
+  });
+
+  it('reads the copy’s words', () => {
+    expect(messageOf('removed', 'sms').text).toBe(
+      'Ire Events: you are no longer on the staff for Adaeze & Tunde’s wedding on Saturday, Oct 17.',
+    );
+    expect(messageOf('called_off', 'push')).toMatchObject({
+      title: 'Your shift is called off · Adaeze & Tunde’s wedding',
+      lines: ['The event on Saturday, Oct 17 will not go ahead. You do not need to come.'],
+    });
+    expect(messageOf('event_ended', 'sms').text).toBe(
+      'Ire Events: Adaeze & Tunde’s wedding has ended, so your shift on Sunday, Oct 18 will not take place. You do not need to come.',
+    );
+  });
+});
+
+describe('the reminder the day before (S3)', () => {
+  it('states its date, never tomorrow', () => {
+    expect(messageOf('reminder', 'push')).toMatchObject({
+      title: 'Your shift starts Saturday, Oct 17 at 17:00 · Adaeze & Tunde’s wedding',
+      lines: ['Waiter at The Landmark.'],
+    });
+    expect(messageOf('reminder', 'sms').text).toBe(
+      `Ire Events: your shift at Adaeze & Tunde’s wedding starts on Saturday, Oct 17 at 17:00, at The Landmark. Job: Waiter. Your shift page: ${LINK}`,
+    );
+    expect(messageOf('reminder', 'whatsApp').button).toBe(MY_SHIFT);
+    for (const channel of CHANNELS)
+      expect(JSON.stringify(messageOf('reminder', channel))).not.toMatch(/tomorrow/iu);
+  });
+});
+
+describe('time-sensitive push inside 24 hours (pm #101995)', () => {
+  it('never makes the reminder time-sensitive, even from an old urgent link', () => {
+    expect(canBeTimeSensitive('reminder')).toBe(false);
+    expect(urgentOf('reminder', '1')).toBe(false);
+  });
+
+  it('makes a change or a removal time-sensitive only when the link asks', () => {
+    for (const kind of MESSAGE_KINDS.filter((one) => one !== 'reminder')) {
+      expect(canBeTimeSensitive(kind)).toBe(true);
+      expect(urgentOf(kind, '1')).toBe(true);
+      expect(urgentOf(kind, '0')).toBe(false);
+      expect(urgentOf(kind, undefined)).toBe(false);
+    }
+    expect(urgentOf('removed', '1')).toBe(true);
+  });
+});
+
+describe('the boards', () => {
+  it('links every kind on every channel, and push inside 24 hours but for the reminder', () => {
+    expect(SHIFT_MESSAGE_BOARDS).toHaveLength(MESSAGE_KINDS.length * 4 - 1);
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).not.toContain(
+      '/demo/shift-messages?kind=reminder&channel=push&urgent=1',
+    );
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).toContain(
+      '/demo/shift-messages?kind=removed&channel=push&urgent=1',
+    );
+    for (const board of SHIFT_MESSAGE_BOARDS) {
+      const params = new URLSearchParams(board.href.split('?')[1]);
+      expect(messageKindOf(params.get('kind'))).toBe(params.get('kind'));
+      expect(channelOf(params.get('channel'))).toBe(params.get('channel'));
+    }
+  });
+
+  it('keeps English texts free of arrows and dashes', () => {
+    for (const kind of MESSAGE_KINDS)
+      for (const channel of CHANNELS)
+        expect(JSON.stringify(messageOf(kind, channel))).not.toMatch(/[—–→]/u);
+  });
+});

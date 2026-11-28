@@ -1,0 +1,18 @@
+# New event, Create event with nothing filled: Event name refused with its line. Leaves the refused form on screen at the top, for a screen-reader pass. sc-31323.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+- tapOn:
+    id: 'eventForm.send'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '{{t:eventForm.nameBlank}}'
+    direction: UP
+- takeScreenshot: event-name-refused

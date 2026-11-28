@@ -1,0 +1,23 @@
+# sc-83081 on a phone: Notifications opened by the bell on Events and on Today, shot at 1, 5 and 15 seconds, to see what fills the body while it loads. Pass METRO_URL.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: events-1s
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: events-5s
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- takeScreenshot: events-15s
+- back
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: today-1s
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 14000, optional: true }
+- takeScreenshot: today-15s
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: link-5s

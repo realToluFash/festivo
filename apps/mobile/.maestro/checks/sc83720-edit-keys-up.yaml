@@ -1,0 +1,25 @@
+# sc-83720 on ${EV}'s Edit details Hosted by (Android phone): with the keyboard already up in Host 1's name, Add a host keeps it up and moves the cursor to Host 3's name, above the keys.
+# Needs: EV, an event of the signed-in host's with two hosts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.edit.hosts.field.0'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up-host-1
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.add'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
+- inputText: 'Kemi'
+- waitForAnimationToEnd
+- takeScreenshot: typed-no-tap

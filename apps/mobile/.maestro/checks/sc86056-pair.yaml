@@ -1,0 +1,28 @@
+# sc-86056: the paused page in the product (Today, Settings, Settings > Organisation) beside the demo's ?held=paused routes, in ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation|accessPaused\..+'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: today-product
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: settings-product
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: organisation-product
+- openLink: ${METRO_URL}/--/demo/settings?held=paused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: settings-demo
+- openLink: ${METRO_URL}/--/demo/settings/organisation?held=paused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: organisation-demo
