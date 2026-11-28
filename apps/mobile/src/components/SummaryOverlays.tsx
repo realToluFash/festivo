@@ -200,6 +200,7 @@ export function FocusedScreen({
   opener,
   ask,
   over,
+  quiet = false,
   toast,
   scrollRef,
   toTop = 0,
@@ -223,6 +224,8 @@ export function FocusedScreen({
   ask?: AskProps | null;
   /** Drawn over the screen in its own window, as the Ask is, since iOS shows one window at a time. */
   over?: Layer | null;
+  /** The header is out of TalkBack's reach while the screen says so (sc-104673). */
+  quiet?: boolean;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
@@ -295,6 +298,7 @@ export function FocusedScreen({
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
+              quiet={quiet}
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>

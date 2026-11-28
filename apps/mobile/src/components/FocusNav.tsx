@@ -44,6 +44,7 @@ export function FocusNav({
   waits,
   onCancel,
   cancelTestID,
+  quiet = false,
 }: {
   title: string;
   titleRef: RefObject<TextHandle | null>;
@@ -54,6 +55,8 @@ export function FocusNav({
   waits: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
+  /** Hidden from TalkBack, so a sheet that has just closed does not leave its focus on Cancel before it reaches the opener (sc-104673). */
+  quiet?: boolean;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
@@ -219,6 +222,8 @@ export function FocusNav({
   return (
     <View
       style={styles.nav}
+      accessibilityElementsHidden={quiet}
+      importantForAccessibility={quiet ? 'no-hide-descendants' : 'auto'}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       testID={`focus.header.${form}`}
     >
