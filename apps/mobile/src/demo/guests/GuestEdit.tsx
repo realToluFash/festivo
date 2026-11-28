@@ -16,6 +16,8 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
+import { PhoneCountryRow } from '../phoneCountryFits.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
@@ -126,7 +128,7 @@ export function GuestField({
   );
 }
 
-/** The mobile number as the account's field: the country button, then the number. */
+/** The mobile number as the account's field: the country button, then the number, beside it while the country's name fits there on one line and over it otherwise (sc-7579, #104845). */
 export function PhoneField({
   country,
   number,
@@ -148,10 +150,14 @@ export function PhoneField({
   fieldRef?: RefObject<TextInputInstance | null>;
   testID: string;
 }) {
+  const atAccessibilitySizes = useAccessibilitySizes();
+
   return (
     <Field label={W.mobileNumber} pill={W.optional} error={error} help={help}>
-      <View style={styles.phone}>
-        <View style={styles.country}>
+      <PhoneCountryRow
+        country={country}
+        atAccessibilitySizes={atAccessibilitySizes}
+        picker={
           <CountryPicker
             label={`${W.mobileNumber}, country`}
             value={country}
@@ -159,8 +165,8 @@ export function PhoneField({
             withCallingCode
             testID={`${testID}.country`}
           />
-        </View>
-        <View style={styles.number}>
+        }
+        field={
           <BoxField
             ref={fieldRef}
             value={number}
@@ -172,8 +178,8 @@ export function PhoneField({
             accessibilityLabel={W.mobileNumber}
             testID={`${testID}.number`}
           />
-        </View>
-      </View>
+        }
+      />
     </Field>
   );
 }
@@ -1033,9 +1039,6 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.45 },
   tight: { gap: 6 },
-  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: 140 },
-  number: { flexGrow: 2, flexBasis: 180 },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   companionBlock: { gap: 4 },
