@@ -459,6 +459,7 @@ export function EventScreen({
             key={event.id}
             eventId={event.id}
             manages={event.permissions.includes('staff.manage')}
+            finished={(phase ?? event.phase) === 'finished'}
           />
         </View>
       ) : (
