@@ -148,6 +148,7 @@ final readonly class SingleSignOnController
             'testedEmail' => $current?->getTestedEmail(),
             'testedName' => $current?->getTestedName(),
             'testFailure' => $current?->getTestFailure(),
+            'testFailureFromProvider' => true === $current?->isTestFailureFromProvider(),
             'on' => true === $current?->isOn(),
             'required' => null !== $organisation->getSsoRequiredSince(),
             'ours' => [

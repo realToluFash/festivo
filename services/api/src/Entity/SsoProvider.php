@@ -91,6 +91,10 @@ class SsoProvider
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
     private ?string $testFailure = null;
 
+    /** False when the failure is a sentence of ours, from a check the provider's answer did not pass. */
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $testFailureFromProvider = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $switchedOnAt = null;
 
@@ -289,6 +293,16 @@ class SsoProvider
     public function setTestFailure(?string $testFailure): void
     {
         $this->testFailure = $testFailure;
+    }
+
+    public function isTestFailureFromProvider(): bool
+    {
+        return $this->testFailureFromProvider;
+    }
+
+    public function setTestFailureFromProvider(bool $testFailureFromProvider): void
+    {
+        $this->testFailureFromProvider = $testFailureFromProvider;
     }
 
     public function getSwitchedOnAt(): ?DateTimeImmutable

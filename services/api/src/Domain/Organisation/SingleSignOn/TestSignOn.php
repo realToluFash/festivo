@@ -94,7 +94,7 @@ final readonly class TestSignOn
         $provider = $attempt->getProvider();
 
         if (null !== $providerSaid || null === $code) {
-            $this->settings->testFailed($provider, $owner, $providerSaid ?? $this->ours('sso.test_no_code', $owner));
+            $this->settings->testFailed($provider, $owner, $providerSaid ?? $this->ours('sso.test_no_code', $owner), null !== $providerSaid);
 
             return;
         }
@@ -121,7 +121,8 @@ final readonly class TestSignOn
         $idToken = $reply['id_token'] ?? null;
 
         if (null === $idToken) {
-            $this->settings->testFailed($provider, $owner, $reply['error_description'] ?? $reply['error'] ?? $this->ours('sso.test_no_token', $owner));
+            $said = $reply['error_description'] ?? $reply['error'] ?? null;
+            $this->settings->testFailed($provider, $owner, $said ?? $this->ours('sso.test_no_token', $owner), null !== $said);
 
             return;
         }
@@ -129,7 +130,7 @@ final readonly class TestSignOn
         $answer = $this->organisationIdToken->read($provider, $idToken, $attempt->getNonce());
 
         if (null === $answer) {
-            $this->settings->testFailed($provider, $owner, $this->ours('sso.test_unchecked', $owner));
+            $this->settings->testFailed($provider, $owner, $this->ours('sso.test_unchecked', $owner), false);
 
             return;
         }
@@ -137,7 +138,7 @@ final readonly class TestSignOn
         $email = Str\lowercase($answer->email ?? '');
 
         if (!Iter\contains($this->settings->domains($organisation), Str\after_last($email, '@') ?? '')) {
-            $this->settings->testFailed($provider, $owner, $this->ours('sso.test_other_domain', $owner));
+            $this->settings->testFailed($provider, $owner, $this->ours('sso.test_other_domain', $owner), false);
 
             return;
         }

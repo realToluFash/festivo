@@ -222,14 +222,16 @@ final readonly class SingleSignOnSettings
         $provider->setTestedEmail($email);
         $provider->setTestedName($name);
         $provider->setTestFailure(null);
+        $provider->setTestFailureFromProvider(false);
         $this->record(self::TESTED, $provider->getOrganisation(), $owner, ['test' => [null, 'worked'], 'email' => [null, $email]]);
         $this->entityManager->flush();
     }
 
-    public function testFailed(SsoProvider $provider, User $owner, string $said): void
+    public function testFailed(SsoProvider $provider, User $owner, string $said, bool $fromProvider): void
     {
         $provider->setTestedAt($this->clock->now());
         $provider->setTestFailure(Str\truncate($said, 0, 500));
+        $provider->setTestFailureFromProvider($fromProvider);
         $this->record(self::TEST_FAILED, $provider->getOrganisation(), $owner, ['test' => [null, 'failed'], 'said' => [null, $provider->getTestFailure()]]);
         $this->entityManager->flush();
     }

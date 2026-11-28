@@ -39,6 +39,7 @@ final class Version20261127170000 extends AbstractMigration
                 tested_email                 VARCHAR(254) DEFAULT NULL,
                 tested_name                  VARCHAR(255) DEFAULT NULL,
                 test_failure                 VARCHAR(500) DEFAULT NULL,
+                test_failure_from_provider   BOOLEAN NOT NULL,
                 switched_on_at               TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
                 PRIMARY KEY (id)
             )

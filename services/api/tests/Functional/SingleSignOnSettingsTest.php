@@ -311,26 +311,26 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         ] as $case => $claims) {
             $this->signIn($owner);
             $this->answerTest($organisation, $this->startTest($organisation), [...$claims, 'email' => 'folake@ire.events']);
-            self::assertSame(['failed', 'The sign-in the provider sent back did not pass our checks.'], $this->testResult($owner, $organisation), $case);
+            self::assertSame(['failed', 'The sign-in the provider sent back did not pass our checks.', false], $this->testResult($owner, $organisation), $case);
         }
 
         $this->signIn($owner);
         $this->answerTest($organisation, $this->startTest($organisation), ['email' => 'folake@elsewhere.example']);
-        self::assertSame(['failed', 'The provider signed in an address that is not at one of your proved domains.'], $this->testResult($owner, $organisation));
+        self::assertSame(['failed', 'The provider signed in an address that is not at one of your proved domains.', false], $this->testResult($owner, $organisation));
 
         $this->signIn($owner);
         $sent = $this->startTest($organisation);
         $this->come($organisation, ['state' => $sent['state'], 'error' => 'access_denied', 'error_description' => 'This person is not assigned to the app.']);
-        self::assertSame(['failed', 'This person is not assigned to the app.'], $this->testResult($owner, $organisation));
+        self::assertSame(['failed', 'This person is not assigned to the app.', true], $this->testResult($owner, $organisation));
 
         $this->signIn($owner);
         $sent = $this->startTest($organisation);
         ScriptedProviderDocuments::$tokenReply = Json\encode(['error' => 'invalid_client']);
         $this->come($organisation, ['state' => $sent['state'], 'code' => 'a-code']);
-        self::assertSame(['failed', 'invalid_client'], $this->testResult($owner, $organisation));
+        self::assertSame(['failed', 'invalid_client', true], $this->testResult($owner, $organisation));
 
         $this->come($organisation, ['state' => 'never-issued', 'error' => 'forged']);
-        self::assertSame(['failed', 'invalid_client'], $this->testResult($owner, $organisation), 'a state we never issued records nothing');
+        self::assertSame(['failed', 'invalid_client', true], $this->testResult($owner, $organisation), 'a state we never issued records nothing');
         self::assertFalse($this->send('GET', $this->path($organisation))['on']);
     }
 
@@ -372,13 +372,13 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         self::assertStringEndsWith('/app/settings/sign-in-rules/single-sign-on', (string) $this->client->getResponse()->headers->get('Location'));
     }
 
-    /** @return array{mixed, mixed} */
+    /** @return array{mixed, mixed, mixed} */
     private function testResult(User $owner, Organisation $organisation): array
     {
         $this->signIn($owner);
         $page = $this->send('GET', $this->path($organisation));
 
-        return [$page['test'], $page['testFailure']];
+        return [$page['test'], $page['testFailure'], $page['testFailureFromProvider']];
     }
 
     private function publishGoogleKeys(): void
@@ -484,7 +484,7 @@ final class SingleSignOnSettingsTest extends ApiTestCase
     private function testFailed(Organisation $organisation, User $owner, string $said): void
     {
         $settings = self::service(SingleSignOnSettings::class);
-        $settings->testFailed($settings->current($this->fresh($organisation)) ?? static::fail('nothing saved'), $this->freshUser($owner), $said);
+        $settings->testFailed($settings->current($this->fresh($organisation)) ?? static::fail('nothing saved'), $this->freshUser($owner), $said, true);
         $this->signIn($owner);
     }
 
