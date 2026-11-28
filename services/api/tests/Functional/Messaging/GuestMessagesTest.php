@@ -574,6 +574,57 @@ final class GuestMessagesTest extends ApiTestCase
         self::assertSame(1, (int) self::service(Connection::class)->fetchOne("SELECT COUNT(*) FROM audit_entries WHERE action = 'guest_message.sent'"));
     }
 
+    #[Test]
+    public function aRetryWithTheSameKeyAnswersAsTheFirstSendAndSendsNothingTwice(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $this->add('Kemi Bello', null);
+        $first = $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Dinner starts at seven.'], 'try-7f3a');
+        $this->add('Tolu Ade', 'tolu@example.test');
+
+        $again = $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Dinner starts at seven.'], 'try-7f3a');
+
+        self::assertSame(202, $this->statusCode(), Json\encode($again));
+        self::assertSame($first, $again);
+        self::assertSame(1, $this->messageCount());
+        self::assertSame([['Emeka Nwosu', 'queued', null], ['Kemi Bello', 'not_sent', 'no_address']], $this->states(Type\string()->coerce($first['id'])));
+    }
+
+    #[Test]
+    public function anotherKeySendsAgain(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+
+        $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Hello'], 'one');
+        $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Hello'], 'two');
+
+        self::assertSame(2, $this->messageCount());
+    }
+
+    #[Test]
+    public function aKeyIsTheSendersOwn(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $planner = $this->member('planner@ire.events', EventRole::CanEdit);
+
+        $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Hello'], 'same');
+        $this->as($planner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Hello'], 'same');
+
+        self::assertSame(202, $this->statusCode());
+        self::assertSame(2, $this->messageCount());
+    }
+
+    #[Test]
+    public function aKeyOver100CharactersIsRefusedAndNothingIsSent(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+
+        $this->as($this->owner, 'POST', $this->messages(), ['audience' => 'all', 'message' => 'Hello'], Str\repeat('k', 101));
+
+        self::assertSame(400, $this->statusCode());
+        self::assertSame(0, $this->messageCount());
+    }
+
     /**
      * @param array<string, mixed> $body
      *
@@ -708,14 +759,14 @@ final class GuestMessagesTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $key = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ], content: match ($body) {
+        ] + (null === $key ? [] : ['HTTP_IDEMPOTENCY_KEY' => $key]), content: match ($body) {
             null => null,
             [] => '{}',
             default => Json\encode($body),

@@ -28,6 +28,7 @@ use App\Repository\GuestMessageRepository;
 use App\Repository\GuestRepository;
 use Collator;
 use Psl\Iter;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -171,11 +172,18 @@ final readonly class GuestMessagesController
         ]);
     }
 
-    /** 202 with how many email deliveries were queued and how many can't be told, even when none can: the message is on their pages all the same. `follows` names a message of this event whose conversation it continues. */
+    /** 202 with how many email deliveries were queued and how many can't be told, even when none can: the message is on their pages all the same. `follows` names a message of this event whose conversation it continues. An `Idempotency-Key` the sender already sent on this event answers as that send, so a retry after a lost answer sends nothing twice. */
     #[Route('/api/events/{eventId}/messages', name: 'guest_messages_send', methods: ['POST'])]
     #[InEvent(Permission::MessagesManage)]
     public function send(Request $request, string $eventId): JsonResponse
     {
+        $key = $request->headers->get('Idempotency-Key');
+        $key = null === $key ? null : Str\trim($key);
+
+        if ('' === $key || (null !== $key && Str\length($key) > GuestMessage::REQUEST_KEY_MAXIMUM)) {
+            throw new ApiException(ErrorCode::BadRequest, 'guest_message.idempotency_key_invalid');
+        }
+
         $body = Input::body($request, Type\shape([
             'audience' => self::audienceType(),
             'guestIds' => Type\optional(Type\vec(Type\string())),
@@ -185,14 +193,13 @@ final readonly class GuestMessagesController
             'follows' => Type\optional(Type\nullable(Type\string())),
         ]));
         $event = $this->event($eventId);
-        $sent = $this->guestMessageSender->send($event, $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message'], $body['follows'] ?? null, $this->guestConditions->read($event, $body['conditions'] ?? []));
-        $queued = $sent->plan->toldByEmail();
+        $sent = $this->guestMessageSender->send($event, $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message'], $body['follows'] ?? null, $this->guestConditions->read($event, $body['conditions'] ?? []), $key);
         $this->guestMessagesChanged->onEvent($eventId);
 
         return new JsonResponse([
             'id' => $sent->id->toRfc4122(),
-            'queued' => ['email' => $queued],
-            'notSent' => ['email' => Iter\count($sent->plan->deliveries) - $queued],
+            'queued' => ['email' => $sent->queued],
+            'notSent' => ['email' => $sent->notSent],
         ], Response::HTTP_ACCEPTED);
     }
 

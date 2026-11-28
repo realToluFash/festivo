@@ -71,6 +71,7 @@ export * from './eventSearch.ts';
 export * from './orgSearch.ts';
 export * from './picksShown.ts';
 export * from './menuPicks.ts';
+export * from './guestMessages.ts';
 export * from './messageTokens.ts';
 export * from './today.ts';
 export * from './todayView.ts';

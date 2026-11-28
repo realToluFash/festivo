@@ -15,11 +15,13 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
 use App\Enum\NotificationAudienceKind;
+use App\Enum\NotificationChannel;
 use App\Http\Exception\ApiException;
 use App\Locale\VisibleText;
 use App\Repository\GuestMessageRepository;
 use DateInterval;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -67,9 +69,16 @@ final readonly class GuestMessageSender
     /**
      * @param list<string>                                 $guestIds
      * @param list<array{type: string, groupId?: ?string}> $conditions its own copy, kept on the message and resolved again by nothing after it goes
+     * @param ?string                                      $requestKey the sender's Idempotency-Key: a send that already reached Soirely with it answers as that send, and nothing goes twice
      */
-    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null, array $conditions = []): GuestMessageSent
+    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null, array $conditions = [], ?string $requestKey = null): GuestMessageSent
     {
+        $sent = null === $requestKey ? null : $this->sentWith($event, $by, $requestKey);
+
+        if (null !== $sent) {
+            return $sent;
+        }
+
         $this->assertCanSend($event);
         [$choice, $guestIds, $conversation, $violations] = $this->audience($event, $choice, $guestIds, $follows, $conditions);
         $subject = null === $subject ? null : Str\trim($subject);
@@ -94,7 +103,20 @@ final readonly class GuestMessageSender
 
         $id = Uuid::v7();
 
-        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $conditions, $subject, $message, $id, $conversation): GuestMessageSent {
+        try {
+            return $this->insert($event, $by, $choice, $guestIds, $conditions, $subject, $message, $id, $conversation, $requestKey);
+        } catch (UniqueConstraintViolationException $exception) {
+            return (null === $requestKey ? null : $this->sentWith($event, $by, $requestKey)) ?? throw $exception;
+        }
+    }
+
+    /**
+     * @param list<string>                                 $guestIds
+     * @param list<array{type: string, groupId?: ?string}> $conditions
+     */
+    private function insert(Event $event, User $by, string $choice, array $guestIds, array $conditions, ?string $subject, string $message, Uuid $id, ?GuestMessage $conversation, ?string $requestKey): GuestMessageSent
+    {
+        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $conditions, $subject, $message, $id, $conversation, $requestKey): GuestMessageSent {
             $plan = $this->plan($event, $choice, $guestIds, $conditions);
             $audience = GuestAudienceResolver::audience($event->getId(), $choice, $guestIds, $conditions);
             $scheduled = $this->notificationScheduler->scheduleFannedOut(GuestMessageNotice::NAME, $id->toRfc4122(), $audience, ['message' => $id->toRfc4122()], $event, $plan->deliveries);
@@ -112,6 +134,7 @@ final readonly class GuestMessageSender
                 'scheduled_notification_id' => $scheduled->toRfc4122(),
                 'created_at' => $this->clock->now(),
                 'follows_id' => $conversation?->getId()->toRfc4122(),
+                'request_key' => $requestKey,
             ], ['created_at' => Types::DATETIME_IMMUTABLE]);
 
             $this->auditor->record(self::SENT, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
@@ -121,8 +144,33 @@ final readonly class GuestMessageSender
             ]);
             $this->entityManager->flush();
 
-            return new GuestMessageSent($id, $plan);
+            return new GuestMessageSent($id, $plan->toldByEmail(), Iter\count($plan->deliveries) - $plan->toldByEmail());
         });
+    }
+
+    /** The send this member already made on this event with this key, counted from its deliveries. */
+    private function sentWith(Event $event, User $by, string $requestKey): ?GuestMessageSent
+    {
+        $id = $this->connection->fetchOne(
+            'SELECT id FROM guest_messages WHERE event_id = :event AND created_by_id = :by AND request_key = :key',
+            ['event' => $event->getId()->toRfc4122(), 'by' => $by->getId()->toRfc4122(), 'key' => $requestKey],
+        );
+
+        if (false === $id) {
+            return null;
+        }
+
+        $counts = $this->connection->fetchAssociative(
+            <<<'SQL'
+                SELECT COUNT(*) FILTER (WHERE not_sent_reason IS NULL) AS queued,
+                       COUNT(*) FILTER (WHERE not_sent_reason IS NOT NULL) AS not_sent
+                FROM notification_deliveries
+                WHERE type = :type AND source_id = :message AND channel = :email
+                SQL,
+            ['type' => GuestMessageNotice::NAME, 'message' => Type\string()->coerce($id), 'email' => NotificationChannel::Email->value],
+        ) ?: [];
+
+        return new GuestMessageSent(Uuid::fromString(Type\string()->coerce($id)), Type\int()->coerce($counts['queued'] ?? 0), Type\int()->coerce($counts['not_sent'] ?? 0));
     }
 
     /**
