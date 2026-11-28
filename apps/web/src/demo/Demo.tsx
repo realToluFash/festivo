@@ -21,7 +21,9 @@ import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { LimitReached } from './LimitReached.tsx';
+import { ReadOnly } from './ReadOnly.tsx';
 import { LIMIT_PAGES } from './limitReached.ts';
+import { READ_ONLY_PAGES } from './readOnly.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -374,6 +376,7 @@ export default function Demo() {
       <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
       <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="limit-reached" element={<LimitReached />} />
+      <Route path="read-only" element={<ReadOnly />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -749,6 +752,11 @@ function DemoHome({ from }: { from: string }) {
           320
         </h3>
         <BoardPages pages={LIMIT_PAGES} />
+        <h3>
+          A failed payment makes new work wait, never a live event (sc-3937) · desktop, and the desk
+          reflowed at 320
+        </h3>
+        <BoardPages pages={READ_ONLY_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
