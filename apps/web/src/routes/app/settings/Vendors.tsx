@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -51,6 +52,7 @@ import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { BudgetRow, Rows as RowList } from '../events/QuoteParts.tsx';
 import { vendorPagePath } from '../events/quotesArea.ts';
+import { type MenuEdge, menuEdge } from './menuEdge.ts';
 import {
   BLANK,
   type Draft,
@@ -391,6 +393,27 @@ function Loaded({
   const pages = Math.max(1, Math.ceil(page.total / PAGE_SIZE));
   const from = page.vendors.length === 0 ? 0 : (page.page - 1) * PAGE_SIZE + 1;
   const categoryWord = (key: VendorCategory) => t(`vendors.categories.${key}`);
+  const tools = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState<MenuEdge>('end');
+
+  useLayoutEffect(() => {
+    if (menu == null) return;
+    const place = () => {
+      const list = tools.current?.querySelector<HTMLElement>('.desk-menu');
+      const button = list?.parentElement?.querySelector<HTMLElement>('.desk-filter');
+      const pane = tools.current?.closest<HTMLElement>('.desk-page');
+      if (list == null || button == null || pane == null) return;
+      setEdge(
+        menuEdge(button.getBoundingClientRect(), list.offsetWidth, pane.getBoundingClientRect()),
+      );
+    };
+
+    place();
+    window.addEventListener('resize', place);
+
+    return () => window.removeEventListener('resize', place);
+  }, [menu]);
+
   const card =
     page.inUse === 0
       ? {
@@ -442,7 +465,7 @@ function Loaded({
       )}
       {page.inUse + page.archived > 0 && (
         <>
-          <div className="vd-tools">
+          <div ref={tools} className={edge === 'start' ? 'vd-tools is-start' : 'vd-tools'}>
             <div className="vd-search" role="search">
               <Glyph name="search" size={18} weight={2.2} />
               <input

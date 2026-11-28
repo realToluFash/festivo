@@ -23,6 +23,7 @@ import { PW } from './paymentsWords.ts';
 import { owedBy, usedOn } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
+import { type MenuEdge, menuEdge } from '../routes/app/settings/menuEdge.ts';
 import {
   Ask,
   Card,
@@ -45,7 +46,6 @@ import {
   type DraftField,
   type Load,
   type Looking,
-  type MenuEdge,
   type Problems,
   type Vendor,
   type VendorsDialog,
@@ -57,7 +57,6 @@ import {
   fieldsToFix,
   inView,
   isLooking,
-  menuEdge,
   noMatchLine,
   paged,
   refusedPhone,
