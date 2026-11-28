@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -44,6 +45,7 @@ import {
   type DraftField,
   type Load,
   type Looking,
+  type MenuEdge,
   type Problems,
   type Vendor,
   type VendorsDialog,
@@ -55,6 +57,7 @@ import {
   fieldsToFix,
   inView,
   isLooking,
+  menuEdge,
   noMatchLine,
   paged,
   refusedPhone,
@@ -68,6 +71,7 @@ import {
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
 import '../components/AccountParts.css';
 import '../routes/app/settings/vendors.css';
+import './vendorsMenu.css';
 
 const BUSY_MS = 900;
 const RETRY_MS = 1200;
@@ -112,6 +116,26 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
   const [unreachable, setUnreachable] = useState(start.unreachable);
   const [rereading, setRereading] = useState(false);
   const search = useRef<HTMLInputElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState<MenuEdge>('end');
+
+  useLayoutEffect(() => {
+    if (menu == null) return;
+    const place = () => {
+      const list = tools.current?.querySelector<HTMLElement>('.desk-menu');
+      const button = list?.parentElement?.querySelector<HTMLElement>('.desk-filter');
+      const pane = tools.current?.closest<HTMLElement>('.desk-page');
+      if (list == null || button == null || pane == null) return;
+      setEdge(
+        menuEdge(button.getBoundingClientRect(), list.offsetWidth, pane.getBoundingClientRect()),
+      );
+    };
+
+    place();
+    window.addEventListener('resize', place);
+
+    return () => window.removeEventListener('resize', place);
+  }, [menu]);
 
   useEffect(() => {
     if (load !== 'retrying') return;
@@ -198,7 +222,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
       <RemindersRow />
       {vendors.length > 0 && (
         <>
-          <div className="vd-tools">
+          <div ref={tools} className={edge === 'start' ? 'vd-tools is-start' : 'vd-tools'}>
             <div className="vd-search" role="search">
               <Glyph name="search" size={18} weight={2.2} />
               <input
