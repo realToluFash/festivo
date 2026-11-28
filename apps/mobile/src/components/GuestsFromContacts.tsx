@@ -846,7 +846,7 @@ export function ContactsReview({
                   }}
                   onCountry={(country) => change(row.key, { country })}
                   onNumber={(number) => change(row.key, { number })}
-                  onSubmit={() => undefined}
+                  onSubmit={() => numbers.current.get(row.key)?.blur()}
                   testID={`guests.review.${index}.phone`}
                 />
                 {row.numbers.length > 1 && (
