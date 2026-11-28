@@ -27,6 +27,7 @@ export const BUDGET_WORDS = {
   tryNow: 'Try now',
   readOnlyLine:
     'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.',
+  seePlans: 'See plans',
   loading: 'Loading the budget…',
   oneFieldWrong: 'One field needs fixing, so nothing was sent.',
   fieldsWrong: (n: number) => `${n} fields need fixing, so nothing was sent.`,
