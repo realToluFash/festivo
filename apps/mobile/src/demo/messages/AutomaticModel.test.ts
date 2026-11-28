@@ -14,6 +14,7 @@ import {
   publish,
   rowOf,
   seed,
+  unavailable,
   waiting,
 } from './AutomaticModel.ts';
 
@@ -83,18 +84,38 @@ describe('Automatic messages (sc-3974)', () => {
     expect(waiting(plan, 'reminders')).toHaveLength(4);
   });
 
-  it('asks Not sure yet guests 14 days before the event when only picks close', () => {
-    const plan: Plan = { ...live.plan, replyBy: null, picksClose: '2026-12-15' };
-    expect(planned(plan).find((p) => p.due === 'notSure')?.day).toBe('2026-12-05');
-    expect(rowOf({ ...live, plan }, 'reminders').unavailable).toBeNull();
+  it('asks Not sure yet guests 14 days before the event without a reply-by date, picks close or not', () => {
+    for (const picksClose of [null, '2026-12-15']) {
+      const plan: Plan = { ...live.plan, replyBy: null, picksClose };
+      expect(planned(plan).find((p) => p.due === 'notSure')?.day).toBe('2026-12-05');
+      expect(rowOf({ ...live, plan }, 'reminders').unavailable).toBeNull();
+    }
+    expect(rowOf(seed('noReplyBy'), 'reminders').next).toBe(
+      'Next on Saturday, Dec 5, to 3 guests as things stand.',
+    );
   });
 
-  it('is unavailable without a reply-by date and nothing else that closes', () => {
+  it('stays available from the dates alone, with nobody Not sure yet', () => {
+    const plan = withGuests({ ...live.plan, replyBy: null }, [
+      { id: 1, answer: 'coming', namesOwed: false, mealsOwed: false },
+    ]);
+    const row = rowOf({ ...live, plan }, 'reminders');
+    expect(row.unavailable).toBeNull();
+    expect(row.next).toBe('Next on Saturday, Dec 5, to nobody as things stand.');
+  });
+
+  it('is unavailable only once the 14-days date has passed with neither date set', () => {
     const row = rowOf(seed('unavailable'), 'reminders');
     expect(row.unavailable).toBe('Set a reply-by date to use this.');
     expect(row.live).toBe(false);
     expect(row.next).toBeNull();
     expect(row.when).toContain('14 days before the event.');
+    const onTheDay: Plan = { ...seed('unavailable').plan, today: '2026-12-05', pastTen: false };
+    expect(unavailable(onTheDay, 'reminders')).toBe(false);
+    expect(unavailable({ ...onTheDay, pastTen: true }, 'reminders')).toBe(true);
+    expect(unavailable({ ...onTheDay, pastTen: true, picksClose: '2026-12-15' }, 'reminders')).toBe(
+      false,
+    );
   });
 
   it('keeps both off while a draft, with one line for both, and switches both on at publish', () => {

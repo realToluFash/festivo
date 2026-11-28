@@ -275,7 +275,11 @@ function TurnOff({ s, act }: { s: AutoState; act: (next: AutoState, focus?: stri
             </button>
           }
           confirm={
-            <button type="button" className="button" onClick={() => act(confirmOff(s), opener)}>
+            <button
+              type="button"
+              className="button button-danger"
+              onClick={() => act(confirmOff(s), opener)}
+            >
               {AW.turnOff}
             </button>
           }

@@ -81,7 +81,13 @@ describe('/demo/automatic-messages (sc-3974)', () => {
     expect(screen.getByText('Next on Tuesday, Dec 8, to 3 guests as things stand.')).toBeTruthy();
   });
 
-  it('shows Reminders to answer unavailable without a reply-by date, with the way to set one', async () => {
+  it('keeps Reminders to answer on without a reply-by date while the Not sure yet ask is ahead', async () => {
+    await open('noReplyBy');
+    expect(toggle('Reminders to answer').getAttribute('aria-disabled')).not.toBe('true');
+    expect(screen.getByText('Next on Saturday, Dec 5, to 3 guests as things stand.')).toBeTruthy();
+  });
+
+  it('shows Reminders to answer unavailable once neither date is set and the 14-days ask has passed, with the way to set one', async () => {
     await open('unavailable');
     expect(toggle('Reminders to answer').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Set a reply-by date to use this.' })).toBeTruthy();

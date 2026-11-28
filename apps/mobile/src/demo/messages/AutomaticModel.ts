@@ -5,6 +5,7 @@ export const AUTO_STATES = [
   'draft',
   'publishLate',
   'oneOff',
+  'noReplyBy',
   'unavailable',
   'nextNone',
   'nextOne',
@@ -22,7 +23,8 @@ export const AUTO_STATE_WHAT: Record<AutoStateName, string> = {
   draft: 'A draft: both off, one line says why, and publishing switches them on',
   publishLate: 'Published 4 days before replies close: the 7-day reminder is skipped',
   oneOff: 'Reminders to answer switched off',
-  unavailable: 'No reply-by date: Reminders to answer is unavailable',
+  noReplyBy: 'No reply-by date: Not sure yet guests are asked 14 days before the event',
+  unavailable: 'No reply-by or picks-close date, 9 days to go: Reminders to answer is unavailable',
   nextNone: 'Everyone has replied: the next one goes to nobody',
   nextOne: 'One guest still owes a reply',
   loading: 'Loading',
@@ -138,11 +140,14 @@ export type Due = 'reply' | 'notSure' | 'names' | 'meals';
 
 type Planned = { day: string; due: Due; key: AutoKey };
 
+const ahead = (plan: Plan, day: string): boolean =>
+  day > plan.today || (day === plan.today && !plan.pastTen);
+
 /** The dates each message is planned for, from the event's own dates. A date already passed when it is scheduled is not planned at all (pm, 28 Nov). */
 export function planned(plan: Plan): Planned[] {
   const out: Planned[] = [];
   const add = (key: AutoKey, due: Due, day: string): void => {
-    if (day > plan.today || (day === plan.today && !plan.pastTen)) out.push({ day, due, key });
+    if (ahead(plan, day)) out.push({ day, due, key });
   };
 
   if (plan.replyBy != null) {
@@ -151,7 +156,7 @@ export function planned(plan: Plan): Planned[] {
       add('reminders', 'names', shifted(plan.replyBy, -by));
     }
     add('reminders', 'notSure', shifted(plan.replyBy, -3));
-  } else if (plan.picksClose != null) {
+  } else {
     add('reminders', 'notSure', shifted(plan.eventDay, -14));
   }
   if (plan.picksClose != null) {
@@ -228,8 +233,14 @@ export function nextLine(plan: Plan, key: AutoKey): string | null {
   return fill(next.count === 1 ? AW.next_one : AW.next_other, { date, count: next.count });
 }
 
+/** From the event's dates alone, never from guests' answers (pm, 28 Nov): only with no reply-by date, no picks close, and the Not sure yet ask's date passed. */
 export function unavailable(plan: Plan, key: AutoKey): boolean {
-  return key === 'reminders' && plan.replyBy == null && plan.picksClose == null;
+  return (
+    key === 'reminders' &&
+    plan.replyBy == null &&
+    plan.picksClose == null &&
+    !ahead(plan, shifted(plan.eventDay, -14))
+  );
 }
 
 export type RowView = {
@@ -372,8 +383,10 @@ export function seed(name: AutoStateName): AutoState {
       };
     case 'oneOff':
       return { ...base, on: { reminders: false, before: true } };
-    case 'unavailable':
+    case 'noReplyBy':
       return { ...base, plan: { ...PLAN, replyBy: null } };
+    case 'unavailable':
+      return { ...base, plan: { ...PLAN, replyBy: null, today: '2026-12-10' } };
     case 'nextNone':
       return {
         ...base,
