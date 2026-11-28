@@ -532,13 +532,14 @@ export function CountryStep({
     );
     const target = Math.min(furthest, Math.max(0, middle - listHeight / 2));
     let passes = 0;
+    let previous = -1;
     let wait: ReturnType<typeof setTimeout>;
     const place = () => {
       if (dragged.current) {
         scrolledToPick.current = true;
         return;
       }
-      // Rows that wrap at a larger display size are taller than the one measured, so the estimated end falls short of the real one.
+      // getItemLayout assumes every row is the first row's height, so at a larger display size each offset after a wrapped name falls short, most at the end; revisit the fixed height if a larger size cuts a row again.
       if (target >= furthest) list.current?.scrollToEnd({ animated: false });
       else list.current?.scrollToOffset({ offset: target, animated: false });
       passes += 1;
@@ -546,8 +547,12 @@ export function CountryStep({
       else scrolledToPick.current = true;
     };
     const check = () => {
-      if (dragged.current || (target < furthest && Math.abs(offset.current - target) < 2))
-        scrolledToPick.current = true;
+      const settled =
+        target < furthest
+          ? Math.abs(offset.current - target) < 2
+          : Math.abs(offset.current - previous) < 2;
+      previous = offset.current;
+      if (dragged.current || settled) scrolledToPick.current = true;
       else place();
     };
     wait = setTimeout(place, tokens.motionFast);
