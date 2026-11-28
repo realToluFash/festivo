@@ -1,0 +1,7 @@
+# sc-101592, tablet (its device group is absent at rest, so not asserted): sc101592-clear-button.yaml with TABLET set.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc101592-clear-button.yaml
+    env:
+      TABLET: 'true'
