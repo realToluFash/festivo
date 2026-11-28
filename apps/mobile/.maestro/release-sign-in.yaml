@@ -42,15 +42,20 @@ appId: com.soirely.app
           id: 'signIn.password'
       - inputText: ${PASSWORD}
       - pressKey: Enter
+      - extendedWaitUntil:
+          visible:
+            id: 'home.openSettings'
+          timeout: 20000
+          optional: true
       - runFlow:
           when:
             visible:
               id: 'signIn.submit'
             platform: Android
           commands:
-            - hideKeyboard
             - tapOn:
                 id: 'signIn.submit'
+                optional: true
 - extendedWaitUntil:
     visible:
       id: 'home.openSettings'

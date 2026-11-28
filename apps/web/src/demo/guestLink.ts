@@ -40,6 +40,14 @@ export const GUEST_LINK_STATES = {
     name: 'Not coming, with companions: they won’t be coming either, before Confirm',
     starts: picked('notComing'),
   },
+  linkNotSent: {
+    name: 'A Confirm that was not sent: the answer still chosen, Confirm again',
+    starts: {
+      ...ALONE,
+      view: { kind: 'link', picked: 'notComing', busy: false, failed: true },
+      want: 'linkGo',
+    },
+  },
   linkConfirmed: {
     name: 'Confirmed: You’re down as not coming',
     starts: {

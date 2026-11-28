@@ -976,9 +976,9 @@ function Courses({
   /** Saves Edit course's fields; moving, the people given the old default keep the new one only if it meets their diet. */
   function commitCourse(now: Extract<Open, { kind: 'addCourse' | 'editCourse' }>, moving: boolean) {
     const name = now.form.name.trim();
-    const servedAt = servedTime(now.form.servedAt);
     const course = courses.find((one) => one.id === now.courseId);
     if (course == null) return;
+    const servedAt = course.linked != null ? course.servedAt : servedTime(now.form.servedAt);
     const pick = now.pair == null ? (course.pick ?? null) : savedDefault(now.pair, course);
     const given = course.given ?? [];
     const kept = pick == null ? [] : moving ? stillGiven(given, suitableFor(course, pick)) : given;
@@ -1733,6 +1733,7 @@ function Courses({
                   form={open.form}
                   adding={open.kind === 'addCourse'}
                   errors={open.pressed ? checkCourse(open.form) : null}
+                  linked={open.kind === 'editCourse' ? (openCourse?.linked ?? null) : null}
                   onPatch={(next) =>
                     setOpen({ ...open, form: { ...open.form, ...next }, full: false })
                   }
@@ -2160,7 +2161,9 @@ function CourseCard({
           </span>
         )}
         <div className="mn-course-names">
-          <p className="mn-eyebrow">{courseLine(index, all, course.servedAt)}</p>
+          <p className="mn-eyebrow">
+            {courseLine(index, all, course.linked?.at ?? course.servedAt)}
+          </p>
           <h2 id={`mc-c-${course.id}`} tabIndex={-1}>
             {course.name}
           </h2>

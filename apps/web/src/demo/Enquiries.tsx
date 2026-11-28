@@ -1,4 +1,4 @@
-import { searching } from '@soirely/domain';
+import { type EventType, searching } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router';
@@ -18,6 +18,7 @@ import {
   ENQUIRY_TABS,
   ENQUIRY_WORDS as W,
   type Enquiry,
+  type EnquiryState,
   type EnquiryTab,
   NOW,
   type Person,
@@ -32,11 +33,19 @@ import {
   visibleTo,
   whatLine,
 } from './enquiries.ts';
+import {
+  ERASE_WORDS as E,
+  erasedTitle,
+  eraseListStart,
+  shortDay,
+  warnsOn,
+} from './enquiryErase.ts';
 import { formStart, formStateOf } from './enquiryForm.ts';
 import { LIST, NEW, pageStart, pageStateOf } from './enquiryPage.ts';
 import { useStore } from './enquiryStore.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './enquiries.css';
+import './enquiryErase.css';
 
 const TYPING_PAUSE = 300;
 const PAUSE_SHOWN = 2500;
@@ -46,6 +55,7 @@ export interface Store {
   start: Start;
   enquiries: readonly Enquiry[];
   put: (enquiry: Enquiry) => void;
+  remove: (id: string) => void;
   tab: EnquiryTab;
   setTab: (tab: EnquiryTab) => void;
   typed: string;
@@ -72,7 +82,11 @@ function viewerAt(path: string, state: string | null): Person {
     if (page != null) return page;
   }
 
-  return startOf(enquiryStateOf(state)).viewer.person;
+  return listStartOf(enquiryStateOf(state)).viewer.person;
+}
+
+function listStartOf(state: EnquiryState): Start {
+  return eraseListStart(state, startOf(state));
 }
 
 /** /demo/enquiries and everything under it: the search and the sample's changes live here, outside the address, for as long as the person stays in Enquiries. */
@@ -100,7 +114,7 @@ export function EnquiriesArea() {
         />
       )}
     >
-      {(tell) => <EnquiriesStore key={listState} start={startOf(listState)} tell={tell} />}
+      {(tell) => <EnquiriesStore key={listState} start={listStartOf(listState)} tell={tell} />}
     </EventsShell>
   );
 }
@@ -115,6 +129,10 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
   const [searchFailed, setSearchFailed] = useState(start.searchFailed);
   const [enquiries, setEnquiries] = useState(start.enquiries);
   const firstPause = useRef(start.pausing);
+
+  useEffect(() => {
+    if (start.told != null) tell(start.told);
+  }, [start, tell]);
 
   useEffect(() => {
     if (typed === searched || typed.trim() === '') return undefined;
@@ -138,6 +156,7 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
           ? was.map((one) => (one.id === enquiry.id ? enquiry : one))
           : [enquiry, ...was],
       ),
+    remove: (id) => setEnquiries((was) => was.filter((one) => one.id !== id)),
     tab,
     setTab,
     typed,
@@ -172,39 +191,84 @@ function EnquiryRow({ enquiry }: { enquiry: Enquiry }) {
   const { t } = useTranslation();
   const location = useLocation();
   const locale = dateLocale();
-  const what = whatLine(enquiry, (type) => t(`eventTypes.${type}`), W.noDate, NOW, locale);
+  const typeWord = (type: EventType) => t(`eventTypes.${type}`);
+  const erased = enquiry.erased != null;
+  const what = whatLine(enquiry, typeWord, W.noDate, NOW, locale);
   const who = assignedWords(enquiry, W.notAssigned);
   const when = changedWords(enquiry.changedAt, NOW, locale);
   const next = enquiry.tab === 'open' ? nextFor(enquiry) : null;
+  const warns = warnsOn(enquiry, next);
+  const whoLine = (
+    <span key="who">
+      {who}
+      <span className="enq-when-inline"> · {when}</span>
+    </span>
+  );
 
   return (
     <li>
       <Link
         className="desk-row ev-row enq-row"
         to={`/demo/enquiries/${enquiry.id}${location.search}`}
+        state={{ from: 'list' }}
       >
         <RowWords
-          title={enquiry.client}
-          lines={[
-            what,
-            <span key="who">
-              {who}
-              <span className="enq-when-inline"> · {when}</span>
-            </span>,
-            ...(next == null
-              ? []
+          title={erased ? erasedTitle(enquiry, typeWord, locale) : enquiry.client}
+          lines={
+            erased
+              ? [<ErasedChip key="erased" />, whoLine]
               : [
-                  <span key="next" className="enq-next">
-                    <Glyph name="users" size={15} weight={2.4} />
-                    {relativeWords(next, locale)}
-                  </span>,
-                ]),
-          ]}
+                  what,
+                  whoLine,
+                  ...(next == null
+                    ? []
+                    : [
+                        <span key="next" className="enq-next">
+                          <Glyph name="users" size={15} weight={2.4} />
+                          {relativeWords(next, locale)}
+                        </span>,
+                      ]),
+                  ...(warns == null
+                    ? []
+                    : [
+                        <span key="warns" className="enq-warns">
+                          <Hourglass />
+                          {E.warning(shortDay(warns, locale))}
+                        </span>,
+                      ]),
+                ]
+          }
         />
         <span className="ev-soon enq-when">{when}</span>
         <Chevron />
       </Link>
     </li>
+  );
+}
+
+export function Hourglass() {
+  return (
+    <svg
+      className="enq-hourglass"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 3h12M6 21h12M7 3v3a5 5 0 0 0 10 0V3M7 21v-3a5 5 0 0 1 10 0v3" />
+    </svg>
+  );
+}
+
+export function ErasedChip() {
+  return (
+    <span className="enq-erased-chip">
+      <span className="enq-erased-ring" aria-hidden="true" />
+      {E.erased}
+    </span>
   );
 }
 

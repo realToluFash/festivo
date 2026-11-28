@@ -7,6 +7,7 @@ import { Notice } from '../../../src/components/Notice.tsx';
 import { Text } from '../../../src/components/Text.tsx';
 import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { PasteCode, usePasteCode } from '../../../src/demo/PasteCode.tsx';
 import {
   CODE_SHORT,
   type CodeBox,
@@ -43,6 +44,11 @@ export default function LostCodes() {
   const boxes = { email: useRef<CodeBoxesHandle>(null), text: useRef<CodeBoxesHandle>(null) };
   const { left, restart } = useCountdown(RESEND_SECONDS);
   const needed: readonly CodeBox[] = emailOnly ? ['email'] : ['email', 'text'];
+  const paste = usePasteCode((found) => {
+    setCodes((now) => ({ ...now, text: found }));
+    if (said?.which === 'text') setSaid(null);
+    boxes.text.current?.focusChecked();
+  });
   const wordsFor = (which: CodeBox) =>
     boxWords(which, texted, which === 'email' ? email : SAMPLE.phoneShown);
 
@@ -97,6 +103,7 @@ export default function LostCodes() {
           value={codes[which]}
           onChange={(next) => {
             setCodes((now) => ({ ...now, [which]: next }));
+            if (which === 'text') paste.typed();
             if (next !== '' && said?.which === which) setSaid(null);
           }}
           onFull={() => {
@@ -109,6 +116,7 @@ export default function LostCodes() {
         <Text size={tokens.typeSmall.size} style={styles.small}>
           {sent}
         </Text>
+        {which === 'text' && <PasteCode nothing={paste.nothing} onText={paste.onText} />}
       </View>
     );
   };

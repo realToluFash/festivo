@@ -215,12 +215,14 @@ export function QuietButton({
   onPress,
   off = false,
   inset = false,
+  accessibilityLabel,
   ref,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  accessibilityLabel?: string;
   /** Beside a pill, in a row: clear of it by its own padding, as a text action inside a notice is. */
   inset?: boolean;
   ref?: Ref<ViewInstance> | undefined;
@@ -233,6 +235,7 @@ export function QuietButton({
       onPress={onPress}
       disabled={off}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: off }}
       onFocus={controlTaken}
       testID={testID}

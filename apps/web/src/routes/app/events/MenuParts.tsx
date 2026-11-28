@@ -766,6 +766,7 @@ export function CourseFields({
   adding,
   problems,
   zone,
+  linked,
   own,
   ownProblems,
   onOwn,
@@ -775,6 +776,8 @@ export function CourseFields({
   adding: boolean;
   problems: CourseProblems | null;
   zone: string;
+  /** The schedule item this course is served from (sc-3898): while it is linked, its time is the item's start and is not a field. */
+  linked: { time: string; title: string } | null;
   own: FixedRow[];
   ownProblems: ItemProblems | null;
   onOwn: (rows: FixedRow[]) => void;
@@ -829,35 +832,49 @@ export function CourseFields({
           ))}
         </div>
       </div>
-      <div className="desk-field">
-        <label htmlFor="mc-served" className="desk-label gs-label">
-          {t('eventMenu.servedAt')}
-          <span className="gs-optional">{t('menuLibrary.optional')}</span>
-        </label>
-        <div
-          className={problems?.servedAt == null ? 'desk-box mc-time' : 'desk-box mc-time is-wrong'}
-        >
-          <input
-            id="mc-served"
-            type="text"
-            inputMode="numeric"
-            value={form.servedAt}
-            autoComplete="off"
-            aria-invalid={problems?.servedAt != null}
-            aria-describedby={describedBy(
-              'mc-served-help',
-              problems?.servedAt == null ? null : 'mc-served-error',
-            )}
-            onChange={(event) => onPatch({ servedAt: event.target.value })}
-          />
+      {linked != null ? (
+        <div className="desk-field">
+          <p id="mc-served-label" className="desk-label gs-label">
+            {t('eventMenu.servedAt')}
+          </p>
+          <p id="mc-served" className="mc-linked-time">
+            {t('eventMenu.fromSchedule', { time: linked.time, title: linked.title })}
+          </p>
+          <p className="desk-help">{t('eventMenu.fromScheduleHelp')}</p>
         </div>
-        <p id="mc-served-help" className="desk-help">
-          {t('eventMenu.servedHelp', { zone })}
-        </p>
-        {problems?.servedAt != null && (
-          <Wrong id="mc-served-error">{t('eventMenu.timeWrong')}</Wrong>
-        )}
-      </div>
+      ) : (
+        <div className="desk-field">
+          <label htmlFor="mc-served" className="desk-label gs-label">
+            {t('eventMenu.servedAt')}
+            <span className="gs-optional">{t('menuLibrary.optional')}</span>
+          </label>
+          <div
+            className={
+              problems?.servedAt == null ? 'desk-box mc-time' : 'desk-box mc-time is-wrong'
+            }
+          >
+            <input
+              id="mc-served"
+              type="text"
+              inputMode="numeric"
+              value={form.servedAt}
+              autoComplete="off"
+              aria-invalid={problems?.servedAt != null}
+              aria-describedby={describedBy(
+                'mc-served-help',
+                problems?.servedAt == null ? null : 'mc-served-error',
+              )}
+              onChange={(event) => onPatch({ servedAt: event.target.value })}
+            />
+          </div>
+          <p id="mc-served-help" className="desk-help">
+            {t('eventMenu.servedHelp', { zone })}
+          </p>
+          {problems?.servedAt != null && (
+            <Wrong id="mc-served-error">{t('eventMenu.timeWrong')}</Wrong>
+          )}
+        </div>
+      )}
       {!adding && <OwnItemsField rows={own} problems={ownProblems} onRows={onOwn} />}
       {adding && <p className="desk-help">{t('eventMenu.goesLast')}</p>}
     </>

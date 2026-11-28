@@ -2,6 +2,7 @@ import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
+import { NOTE_GROUP, NOTE_KEYS, NOTE_STATES } from './seatingNotes.ts';
 import { SHARE_STATES } from './shareTables.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
@@ -1779,6 +1780,7 @@ export const SEATING_STATES = [
   { key: 'autoTables', name: 'Proposed, in the Tables view', group: AUTO_GROUP },
   { key: 'autoList', name: 'Proposed, in the List view', group: AUTO_GROUP },
   { key: 'autoReadOnly', name: 'Without seating.manage: no button', group: AUTO_GROUP },
+  ...NOTE_KEYS.map((key) => ({ key, name: NOTE_STATES[key], group: NOTE_GROUP })),
   { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
   { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
   { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },

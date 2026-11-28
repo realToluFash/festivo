@@ -76,6 +76,15 @@ import {
   usable,
 } from './seating.ts';
 import { tidied } from './autoSeat.ts';
+import {
+  LIVE_MOVE,
+  NW,
+  brokenNotes,
+  many as noteMany,
+  movedInto,
+  noteTags,
+  say as noteSay,
+} from './seatingNotes.ts';
 import { SeatingContext, type SeatingApi, useSeating } from './seatingContext.ts';
 import {
   MOVING,
@@ -573,6 +582,38 @@ function Seating({
 
     return () => window.clearTimeout(arrive);
   }, [ui.colleague, set]);
+
+  useEffect(() => {
+    if (!ui.notes.live) return;
+    const arrive = window.setTimeout(
+      () =>
+        set((now) => {
+          const plan = movedInto(now.plan, LIVE_MOVE.name, LIVE_MOVE.to);
+          const mended =
+            brokenNotes(now.plan, now.notes.list).length - brokenNotes(plan, now.notes.list).length;
+          const table = plan.items.find((item) => item.id === LIVE_MOVE.to)?.name ?? '';
+
+          return {
+            ...now,
+            plan,
+            notes: { ...now.notes, live: false },
+            rings: { ...now.rings, [LIVE_MOVE.to]: [{ who: PRIYA }] },
+            bar: {
+              kind: 'tint',
+              words: [
+                noteSay(NW.movedBy, { who: PRIYA.name, name: LIVE_MOVE.name, table }),
+                mended > 0 ? noteMany('mended', mended) : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
+            },
+          };
+        }),
+      ARRIVES_MS,
+    );
+
+    return () => window.clearTimeout(arrive);
+  }, [ui.notes.live, set]);
 
   useEffect(() => {
     const target = first.focus;
@@ -1870,6 +1911,7 @@ function Seating({
     chair: ui.chair,
     picking: ui.picked != null,
     label: ui.picked != null ? ui.chairLabel : null,
+    notes: ui.readOnly ? undefined : noteTags(ui.plan, ui.notes.list),
     chairsFor:
       detail === 'out'
         ? null

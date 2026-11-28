@@ -6,6 +6,7 @@ namespace App\Domain\Menu\Http;
 
 use App\Domain\Menu\ChoiceRules;
 use App\Domain\Menu\CourseItemLister;
+use App\Domain\Menu\Interfaces\CourseItemsInterface;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\PicksClose;
 use App\Entity\Event;
@@ -37,6 +38,7 @@ final readonly class MenuSerialiser
         private MenuDishChoiceRepository $menuDishChoiceRepository,
         private MenuChoiceOptionRepository $menuChoiceOptionRepository,
         private MenuPicksInterface $menuPicks,
+        private CourseItemsInterface $courseItems,
         private ClockInterface $clock,
     ) {
     }
@@ -49,12 +51,14 @@ final readonly class MenuSerialiser
         $choices = Dict\group_by($this->menuDishChoiceRepository->findOnEvent($event), static fn (MenuDishChoice $choice): string => $choice->getDish()->getId()->toRfc4122());
         $options = Dict\group_by($this->menuChoiceOptionRepository->findOnEvent($event), static fn (MenuChoiceOption $option): string => $option->getChoice()->getId()->toRfc4122());
         $currency = $event->getCurrency();
+        $linked = $this->courseItems->linkedTo($event);
 
         return [
             'courses' => Vec\map($this->menuCourseRepository->findOnEvent($event), fn (MenuCourse $course): array => self::withClose([
                 'id' => $course->getId()->toRfc4122(),
                 'name' => $course->getName(),
                 'servedAt' => $course->getServedAt(),
+                'scheduleItem' => $linked[$course->getId()->toRfc4122()] ?? null,
                 'answer' => $course->guestsChoose() ? 'choose' : 'same',
                 'skippable' => $course->isSkippable(),
                 'ownItems' => $course->getOwnItems(),

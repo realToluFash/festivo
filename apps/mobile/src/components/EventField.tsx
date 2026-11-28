@@ -13,6 +13,7 @@ export function EventField({
   error = null,
   help,
   linesQuiet = false,
+  held = false,
   children,
 }: {
   label: string;
@@ -22,6 +23,8 @@ export function EventField({
   help?: string | undefined;
   /** The error and help lines are out of TalkBack's reach while focus moves to the field (sc-43907). */
   linesQuiet?: boolean;
+  /** Hidden from TalkBack while the picker below is the only thing it may reach (sc-104673). */
+  held?: boolean;
   children: ReactNode;
 }) {
   const field = useRef<ViewInstance>(null);
@@ -45,6 +48,7 @@ export function EventField({
       <View
         style={styles.fieldHead}
         accessible
+        importantForAccessibility={held ? 'no-hide-descendants' : 'auto'}
         accessibilityLabel={optional == null ? label : `${label}, ${optional}`}
       >
         <Text size={14} weight="semibold" style={styles.label}>
@@ -57,7 +61,7 @@ export function EventField({
         )}
       </View>
       {children}
-      <View importantForAccessibility={linesQuiet ? 'no-hide-descendants' : 'auto'}>
+      <View importantForAccessibility={linesQuiet || held ? 'no-hide-descendants' : 'auto'}>
         {error != null ? (
           <FieldError message={error} />
         ) : (

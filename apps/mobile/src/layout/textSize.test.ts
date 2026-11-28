@@ -29,6 +29,7 @@ import {
   windowAt,
   wordsRoomKey,
   wordsSlot,
+  titleOnOneLine,
   wholeLineHeight,
 } from './textSize.ts';
 
@@ -546,5 +547,14 @@ describe('dayLineShares, a This week day line (sc-92250)', () => {
 
   it('sends the date to the line under once one pixel short', () => {
     expect(dayLineShares(120, 110, 4, 233)).toBe(false);
+  });
+});
+
+describe('titleOnOneLine', () => {
+  it('holds a title to one line when it is no wider than its room', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+    expect(titleOnOneLine(10, 0)).toBe(false);
   });
 });

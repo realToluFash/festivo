@@ -8,6 +8,9 @@ export const STANDS_LINE = 'Applies to guests still to come';
 export const NO_MANAGE_LINE =
   'Only the floor lead chooses what guests get instead. Nothing changed.';
 export const NOBODY_WAITING = 'Nobody is waiting for a choice now.';
+export const ASKING = 'Asking at the table';
+export const STAY_ASKED = 'Guests already asked at their tables stay asked';
+export const NOT_BUILT = 'AC, not yet built';
 
 export const COURSE_ITEMS: readonly string[] = ['Jollof rice', 'Chicken', 'Beef', 'Grilled fish'];
 
@@ -47,9 +50,12 @@ export interface Guest {
   state: GuestState;
   to: string | null;
   late: boolean;
+  asked: boolean;
+  everAsked: boolean;
+  by: 'guest' | 'lead' | null;
 }
 
-export type Bulk = { kind: 'serve'; item: string } | { kind: 'without' };
+export type Bulk = { kind: 'serve'; item: string } | { kind: 'without' } | { kind: 'ask' };
 
 export interface RunOut {
   runOut: boolean;
@@ -104,6 +110,9 @@ function guest(
     state: 'waiting',
     to: null,
     late: false,
+    asked: false,
+    everAsked: false,
+    by: null,
     ...more,
   };
 }
@@ -182,8 +191,10 @@ function others(g: Guest): string[] {
   return g.plate.filter((i) => i !== ITEM);
 }
 
+/** Ask each guest asks every guest not asked yet, flagged guests included; no Serve choice covers a flagged guest or one being asked at the table. */
 export function covers(c: Bulk, g: Guest): boolean {
-  if (flagged(g)) return false;
+  if (c.kind === 'ask') return !g.asked;
+  if (flagged(g) || g.asked) return false;
   if (c.kind === 'serve') return !g.plate.includes(c.item);
   return others(g).length > 0;
 }
@@ -194,13 +205,14 @@ export function covered(r: RunOut, c: Bulk): Guest[] {
 }
 
 export function bulkLabel(c: Bulk): string {
+  if (c.kind === 'ask') return 'Ask each guest';
   return c.kind === 'serve' ? `Serve ${c.item}` : `Serve without ${ITEM}`;
 }
 
 export function sameBulk(a: Bulk | null, b: Bulk | null): boolean {
   if (a == null || b == null) return false;
-  if (a.kind === 'without' || b.kind === 'without') return a.kind === b.kind;
-  return a.item === b.item;
+  if (a.kind === 'serve' && b.kind === 'serve') return a.item === b.item;
+  return a.kind === b.kind;
 }
 
 export interface BulkRow {
@@ -214,7 +226,8 @@ export function bulkRows(r: RunOut): BulkRow[] {
     kind: 'serve',
     item,
   }));
-  return [...serve, { kind: 'without' } as const].map((bulk) => ({
+  const rest: Bulk[] = [{ kind: 'without' }, { kind: 'ask' }];
+  return [...serve, ...rest].map((bulk) => ({
     bulk,
     label: bulkLabel(bulk),
     stands: sameBulk(r.stands, bulk),
@@ -223,6 +236,10 @@ export function bulkRows(r: RunOut): BulkRow[] {
 
 export function confirmTitle(r: RunOut, c: Bulk): string {
   const n = covered(r, c).length;
+  if (c.kind === 'ask')
+    return n > 0
+      ? `Ask ${n} ${guests(n, 'guest at their table', 'guests at their tables')}?`
+      : 'Ask guests still to come at their tables?';
   if (c.kind === 'serve')
     return n > 0
       ? `Serve ${c.item} to ${n} ${guests(n, 'guest', 'guests')} instead of ${ITEM}?`
@@ -230,6 +247,24 @@ export function confirmTitle(r: RunOut, c: Bulk): string {
   return n > 0
     ? `Serve without ${ITEM} for ${n} ${guests(n, 'guest', 'guests')}?`
     : `Serve without ${ITEM} for guests still to come?`;
+}
+
+export function askedNow(r: RunOut): Guest[] {
+  return waiting(r).filter((g) => g.asked);
+}
+
+/** A Serve choice leaves asked guests as they are, and says so while anyone is asked. */
+export function confirmNote(r: RunOut, c: Bulk): string {
+  return c.kind !== 'ask' && askedNow(r).length > 0 ? STAY_ASKED : '';
+}
+
+/** Counted only while someone is asked: everyone asked since the item ran out, less those the floor lead then chose for. */
+export function countLine(r: RunOut): string {
+  if (!r.runOut || askedNow(r).length === 0) return '';
+  const asked = r.guests.filter((g) => g.everAsked && g.by !== 'lead');
+  const chosen = asked.filter((g) => g.by === 'guest').length;
+  const n = asked.length;
+  return `${chosen} of ${n} ${guests(n, 'guest has', 'guests have')} chosen at the table`;
 }
 
 export interface Conflict {
@@ -276,10 +311,10 @@ export function nowLine(g: Guest): string {
   return g.to == null || g.to === '' ? `Without ${ITEM}` : `Now ${g.to}`;
 }
 
-export function offlineLine(what: 'choose' | 'available' | 'runOut'): string {
+export function offlineLine(what: 'choose' | 'ask' | 'available' | 'runOut'): string {
   const doing =
-    what === 'choose'
-      ? 'choose'
+    what === 'choose' || what === 'ask'
+      ? what
       : what === 'available'
         ? `mark ${ITEM} available again`
         : `mark ${ITEM} run out`;
@@ -298,7 +333,7 @@ function refused(r: RunOut, line: string): RunOut {
   return { ...copy(r), refused: line, say: line };
 }
 
-function gate(r: RunOut, can: Can, what: 'choose' | 'available'): RunOut | null {
+function gate(r: RunOut, can: Can, what: 'choose' | 'ask' | 'available'): RunOut | null {
   if (!can.online) return refused(r, offlineLine(what));
   if (!can.manage) return refused(r, NO_MANAGE_LINE);
   return null;
@@ -315,7 +350,7 @@ export function closePanel(r: RunOut): RunOut {
 }
 
 export function pressBulk(r: RunOut, can: Can, c: Bulk): RunOut {
-  const no = gate(r, can, 'choose');
+  const no = gate(r, can, c.kind === 'ask' ? 'ask' : 'choose');
   if (no != null) return no;
   if (sameBulk(r.stands, c)) return r;
   return { ...copy(r), confirm: c, refused: '', say: '' };
@@ -328,17 +363,47 @@ export function cancel(r: RunOut): RunOut {
 export function confirmBulk(r0: RunOut, can: Can): RunOut {
   const c = r0.confirm;
   if (c == null) return r0;
-  const no = gate(r0, can, 'choose');
+  const no = gate(r0, can, c.kind === 'ask' ? 'ask' : 'choose');
   if (no != null) return { ...no, confirm: null };
   const r = copy(r0);
   const ids = new Set(covered(r, c).map((g) => g.id));
-  r.guests = r.guests.map((g) =>
-    ids.has(g.id) ? { ...g, state: 'changed', to: c.kind === 'serve' ? c.item : '' } : g,
-  );
+  r.guests = r.guests.map((g) => (ids.has(g.id) ? applyBulk(g, c) : g));
   r.stands = c;
   r.confirm = null;
   r.refused = '';
   r.say = STANDS_LINE;
+  return r;
+}
+
+function applyBulk(g: Guest, c: Bulk): Guest {
+  if (c.kind === 'ask') return { ...g, asked: true, everAsked: true };
+  return { ...g, state: 'changed', to: c.kind === 'serve' ? c.item : '', by: 'lead' };
+}
+
+/** Ask {name}: one guest, no confirmation, nothing left standing. */
+export function askOne(r0: RunOut, can: Can, id: string): RunOut {
+  const no = gate(r0, can, 'ask');
+  if (no != null) return no;
+  const g0 = r0.guests.find((x) => x.id === id);
+  if (g0 == null || g0.state !== 'waiting' || g0.asked) return r0;
+  const r = copy(r0);
+  r.guests = r.guests.map((g) => (g.id === id ? { ...g, asked: true, everAsked: true } : g));
+  r.refused = '';
+  r.say = `${g0.name}: ${ASKING.toLowerCase()}.`;
+  return r;
+}
+
+/** The guest's own answer, recorded by their waiter at the table: it applies as Choose for {name} does, and ends their ask. */
+export function answer(r0: RunOut, id: string, item: string): RunOut {
+  const g0 = r0.guests.find((x) => x.id === id);
+  if (!r0.runOut || g0 == null || !g0.asked || g0.stage !== 'To serve') return r0;
+  const offered = options(g0).find((o) => o.item === item);
+  if (offered == null || offered.no != null) return r0;
+  const r = copy(r0);
+  r.guests = r.guests.map((g) =>
+    g.id === id ? { ...g, state: 'changed', to: item, asked: false, by: 'guest' } : g,
+  );
+  r.say = countLine(r);
   return r;
 }
 
@@ -362,7 +427,9 @@ export function pick(r0: RunOut, can: Can, item: string): RunOut {
   const offered = options(g0).find((o) => o.item === item);
   if (offered == null || offered.no != null) return r0;
   const r = copy(r0);
-  r.guests = r.guests.map((g) => (g.id === id ? { ...g, state: 'changed', to: item } : g));
+  r.guests = r.guests.map((g) =>
+    g.id === id ? { ...g, state: 'changed', to: item, asked: false, by: 'lead' } : g,
+  );
   r.choosing = null;
   r.refused = '';
   r.say = `${g0.name}: ${item === '' ? `without ${ITEM}` : `now ${item}`}.`;
@@ -374,7 +441,9 @@ export function markAvailable(r0: RunOut, can: Can): RunOut {
   const no = gate(r0, can, 'available');
   if (no != null) return no;
   const r = copy(r0);
-  r.guests = r.guests.map((g) => (g.state === 'waiting' ? { ...g, state: 'back' } : g));
+  r.guests = r.guests.map((g) =>
+    g.state === 'waiting' ? { ...g, state: 'back', asked: false } : g,
+  );
   r.runOut = false;
   r.stands = null;
   r.panel = false;
@@ -390,8 +459,13 @@ export function lateArrival(r0: RunOut): RunOut {
   if (!r0.runOut || r0.guests.some((g) => g.id === LATE_GUEST.id)) return r0;
   const r = copy(r0);
   const s = r.stands;
+  if (s?.kind === 'ask') {
+    r.guests.push({ ...LATE_GUEST, asked: true, everAsked: true });
+    r.say = `${LATE_GUEST.name} arrived late: ${ASKING.toLowerCase()}.`;
+    return r;
+  }
   if (s != null && covers(s, LATE_GUEST)) {
-    r.guests.push({ ...LATE_GUEST, state: 'changed', to: s.kind === 'serve' ? s.item : '' });
+    r.guests.push(applyBulk(LATE_GUEST, s));
     r.say = `${LATE_GUEST.name} arrived late: ${s.kind === 'serve' ? `now ${s.item}` : `without ${ITEM}`}.`;
     return r;
   }
@@ -416,12 +490,13 @@ export function heldTables(r: RunOut): number[] {
 export interface RunOutAlert {
   title: string;
   sub: string;
+  count: string;
 }
 
 export function alertOf(r: RunOut): RunOutAlert | null {
   const n = waiting(r).length;
   if (!r.runOut || n === 0) return null;
-  return { title: TITLE, sub: `${STATION} · ${waitingWords(n)}` };
+  return { title: TITLE, sub: `${STATION} · ${waitingWords(n)}`, count: countLine(r) };
 }
 
 export interface Counts {
@@ -489,6 +564,14 @@ export const RUN_OUT_STATES = [
   'runOutNoManage',
   'runOutOffline',
   'runOutEarlier',
+  'runOutAskConfirm',
+  'runOutAskOne',
+  'runOutAsking',
+  'runOutAskAnswered',
+  'runOutAskLeadChose',
+  'runOutAskLater',
+  'runOutServeWhileAsked',
+  'runOutAskOffline',
 ] as const;
 
 export type RunOutStateName = (typeof RUN_OUT_STATES)[number];
@@ -510,10 +593,26 @@ export const RUN_OUT_WHAT: Record<RunOutStateName, string> = {
   runOutOffline: 'No connection: Choose pressed and refused, nothing kept',
   runOutEarlier:
     'Starter · Small chops run out at the Fryer too, owed to a guest already waiting on Chicken: its line follows the Fryer’s Plantain',
+  runOutAskConfirm:
+    'Ask each guest pressed: “Ask 9 guests at their tables?”, the four flagged guests included',
+  runOutAskOne:
+    'Ask Tunde Bakare and Ask Yemi Alabi: their rows read Asking at the table; 0 of 2 have chosen',
+  runOutAsking:
+    'Ask each guest stands: a line, “Applies to guests still to come”; 0 of 9 have chosen at the table',
+  runOutAskAnswered:
+    'Tunde Bakare chose Beef and Emeka Obi Grilled fish at their tables: 2 of 9, both in Already changed',
+  runOutAskLeadChose:
+    'The floor lead chose for Funke Adeyemi while she was asked: she leaves the count, 0 of 8',
+  runOutAskLater:
+    'Every waiting guest asked one by one: Ask each guest confirms for guests still to come',
+  runOutServeWhileAsked:
+    'Two guests asked: Serve Beef counts 2 guests and says those asked stay asked',
+  runOutAskOffline: 'No connection: Ask Tunde Bakare pressed and refused, nothing kept',
 };
 
 const LEAD_CAN: Can = { online: true, manage: true };
 const BEEF: Bulk = { kind: 'serve', item: 'Beef' };
+const ASK: Bulk = { kind: 'ask' };
 
 function choose(r: RunOut, id: string, item: string): RunOut {
   return pick(openChoose(r, LEAD_CAN, id), LEAD_CAN, item);
@@ -527,6 +626,8 @@ export function runOutSeed(name: RunOutStateName): RunOut {
   const r = fresh();
   const panel = { ...r, panel: true };
   const beef = confirmBulk(pressBulk(panel, LEAD_CAN, BEEF), LEAD_CAN);
+  const asking = settle(confirmBulk(pressBulk(panel, LEAD_CAN, ASK), LEAD_CAN));
+  const two = askOne(askOne(panel, LEAD_CAN, 'tb'), LEAD_CAN, 'ya');
   switch (name) {
     case 'runOutAlert':
       return r;
@@ -552,5 +653,23 @@ export function runOutSeed(name: RunOutStateName): RunOut {
       return settle(openPanel(r, { online: false, manage: true }));
     case 'runOutEarlier':
       return { ...r, earlier: SMALL_CHOPS };
+    case 'runOutAskConfirm':
+      return pressBulk(panel, LEAD_CAN, ASK);
+    case 'runOutAskOne':
+      return settle(two);
+    case 'runOutAsking':
+      return asking;
+    case 'runOutAskAnswered':
+      return settle(answer(answer(asking, 'tb', 'Beef'), 'eo', 'Grilled fish'));
+    case 'runOutAskLeadChose':
+      return settle(choose(asking, 'fa', ''));
+    case 'runOutAskLater': {
+      const all = waiting(panel).reduce((x, g) => askOne(x, LEAD_CAN, g.id), panel);
+      return pressBulk(settle(all), LEAD_CAN, ASK);
+    }
+    case 'runOutServeWhileAsked':
+      return pressBulk(settle(two), LEAD_CAN, BEEF);
+    case 'runOutAskOffline':
+      return { ...settle(two), refused: offlineLine('ask') };
   }
 }

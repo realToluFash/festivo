@@ -4,8 +4,8 @@ import { WhosHereScreen } from '../../../src/components/WhosHereScreen.tsx';
 
 /** /events/<id>/whos-here (sc-3918): who has clocked in tonight, for the staff's readers and the event's leads. */
 export default function EventWhosHere() {
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const { id = '', name = '' } = useLocalSearchParams<{ id?: string; name?: string }>();
   const back = () => (router.canGoBack() ? router.back() : router.replace(`/events/${id}`));
 
-  return <WhosHereScreen eventId={id} onBack={back} />;
+  return <WhosHereScreen eventId={id} eventName={name} onBack={back} />;
 }

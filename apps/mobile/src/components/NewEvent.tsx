@@ -57,6 +57,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { discardCoverUpload } from './CoverField.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { useEarlyBack } from './earlyBack.ts';
 import { EventCover } from './EventCover.tsx';
 import {
   ArrivalNoteField,
@@ -83,8 +84,10 @@ import { focusChecked } from './Field.tsx';
 import { DoneLine, Legend, SheetBody, SheetLayer } from './FormLayers.tsx';
 import { BoxField, type Picking, pick } from './MomentPick.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
+import { endLandingSoon, landingAfter } from './landing.ts';
 import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { type ScreenReaderTarget, useScreenReaderOn } from './screenReaderFocus.ts';
+import { usePickerFocusBack } from './pickerFocusBack.ts';
 import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen } from './Summary.tsx';
 
@@ -134,6 +137,20 @@ export function NewEventScreen({
   const [picking, setPicking] = useState<Picking | null>(null);
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const listFocusBack = usePickerFocusBack(list == null);
+  const closeList = () => {
+    listFocusBack.closing();
+    setList(null);
+  };
+  const [listDrawn, setListDrawn] = useState(false);
+  if (list == null && listDrawn) setListDrawn(false);
+  const takeBack = useEarlyBack(list != null, listDrawn, closeList);
+  const landing = useLanding(list);
+  const openList = (which: ListOpen, opener: RefObject<ViewInstance | null>) => {
+    listFocusBack.opening(opener);
+    takeBack();
+    setList(which);
+  };
   const [said, setSaid] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo>({ kind: 'none' });
   const [coverRefused, setCoverRefused] = useState<string | null>(null);
@@ -485,7 +502,6 @@ export function NewEventScreen({
       }
     : null;
 
-  const closeList = () => setList(null);
   const listed: { title: string; body: ReactNode } | null =
     list === 'type'
       ? {
@@ -538,7 +554,11 @@ export function NewEventScreen({
       ? null
       : {
           layer: (
-            <SheetLayer onClose={closeList} label={t('eventEdit.cancel')}>
+            <SheetLayer
+              onClose={closeList}
+              label={t('eventEdit.cancel')}
+              onDrawn={() => setListDrawn(true)}
+            >
               <SheetBody
                 title={listed.title}
                 close={t('eventEdit.cancel')}
@@ -600,6 +620,7 @@ export function NewEventScreen({
       opener={opener}
       ask={leave}
       over={over}
+      quiet={landing != null}
       fills
       testID="eventForm"
     >
@@ -609,46 +630,54 @@ export function NewEventScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Part head={t('eventForm.aboutHeading')}>
-          <EventField
-            label={t('eventForm.name')}
-            error={errors.name ?? null}
-            help={t('eventForm.nameCount', {
-              count: eventNameLength(draft.name),
-              most: EVENT_NAME_MAXIMUM,
-            })}
-          >
-            <BoxField
-              ref={nameInput}
-              value={draft.name}
-              wrong={errors.name != null}
-              editable={!busy}
-              onChangeText={(name) => change('name', { draft: { ...draft, name } })}
-              autoCorrect={false}
-              accessibilityLabel={t('eventForm.name')}
-              testID="eventForm.name"
-            />
-          </EventField>
+        <Part
+          head={t('eventForm.aboutHeading')}
+          quiet={landing != null && landing !== 'type'}
+          legendQuiet={landing === 'type'}
+        >
+          <View importantForAccessibility={landing === 'type' ? 'no-hide-descendants' : 'auto'}>
+            <EventField
+              label={t('eventForm.name')}
+              error={errors.name ?? null}
+              help={t('eventForm.nameCount', {
+                count: eventNameLength(draft.name),
+                most: EVENT_NAME_MAXIMUM,
+              })}
+            >
+              <BoxField
+                ref={nameInput}
+                value={draft.name}
+                wrong={errors.name != null}
+                editable={!busy}
+                onChangeText={(name) => change('name', { draft: { ...draft, name } })}
+                autoCorrect={false}
+                accessibilityLabel={t('eventForm.name')}
+                testID="eventForm.name"
+              />
+            </EventField>
+          </View>
           <View ref={fields.type}>
             <EventField
               label={t('eventForm.type')}
               error={errors.type ?? null}
               linesQuiet={quietAfter === 'type'}
+              held={landing === 'type'}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.type}
                 label={t('eventForm.type')}
                 value={draft.type === '' ? null : t(`eventTypes.${draft.type}`)}
                 placeholder={t('eventForm.typePlaceholder')}
                 wrong={errors.type != null}
-                onPress={() => !busy && setList('type')}
+                onPress={() => !busy && openList('type', pickers.type)}
                 testID="eventForm.type"
               />
             </EventField>
           </View>
         </Part>
 
-        <Part head={t('eventHosts.heading')} quiet={quiet('hosts')}>
+        <Part head={t('eventHosts.heading')} quiet={quiet('hosts') || landing != null}>
           <HostRows
             hosts={hosts}
             onHosts={editHosts}
@@ -661,7 +690,7 @@ export function NewEventScreen({
           />
         </Part>
 
-        <Part head={t('eventForm.coverHeading')} quiet={quiet('cover')}>
+        <Part head={t('eventForm.coverHeading')} quiet={quiet('cover') || landing != null}>
           <CoverPreview
             photo={
               shownCover == null ? null : (
@@ -699,7 +728,7 @@ export function NewEventScreen({
           )}
         </Part>
 
-        <Part head={t('eventForm.whenHeading')} quiet={quiet('startsAt')}>
+        <Part head={t('eventForm.whenHeading')} quiet={quiet('startsAt') || landing != null}>
           <View ref={fields.startsAt}>
             <DatePair
               label={t('eventForm.starts')}
@@ -741,7 +770,7 @@ export function NewEventScreen({
           </View>
         </Part>
 
-        <Part head={t('eventForm.venueHeading')} quiet={quiet('venueName')}>
+        <Part head={t('eventForm.venueHeading')} quiet={quiet('venueName') || landing != null}>
           <VenueFieldsView
             name={venue.name}
             address={venue.address}
@@ -774,41 +803,54 @@ export function NewEventScreen({
           />
         </Part>
 
-        <Part head={t('eventForm.zoneHeading')} quiet={quiet('timeZone')}>
-          <View ref={fields.timeZone}>
+        <Part
+          head={t('eventForm.zoneHeading')}
+          quiet={quiet('timeZone') || landing === 'type'}
+          legendQuiet={landing === 'zone' || landing === 'currency'}
+        >
+          <View
+            ref={fields.timeZone}
+            importantForAccessibility={landing === 'currency' ? 'no-hide-descendants' : 'auto'}
+          >
             <EventField
               label={t('eventForm.timeZone')}
               error={errors.timeZone ?? null}
               linesQuiet={quietAfter === 'timeZone'}
+              held={landing === 'zone'}
               help={t('eventForm.timesIn', { zone: timeZone })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.timeZone}
                 label={t('eventForm.timeZone')}
                 value={timezoneLabel(timeZone)}
                 wrong={errors.timeZone != null}
-                onPress={() => !busy && setList('zone')}
+                onPress={() => !busy && openList('zone', pickers.timeZone)}
                 testID="eventForm.timeZone"
               />
             </EventField>
           </View>
           <View
             ref={fields.currency}
-            importantForAccessibility={quiet('currency') ? 'no-hide-descendants' : 'auto'}
+            importantForAccessibility={
+              quiet('currency') || landing === 'zone' ? 'no-hide-descendants' : 'auto'
+            }
           >
             <EventField
               label={t('eventForm.currency')}
               error={errors.currency ?? null}
               linesQuiet={quietAfter === 'currency'}
+              held={landing === 'currency'}
               help={t('eventForm.defaultsHint', { name: organisation.name })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.currency}
                 label={t('eventForm.currency')}
                 value={currencyWords(currencies, currency)}
                 placeholder={t('orgGeneral.currencyPlaceholder')}
                 wrong={errors.currency != null}
-                onPress={() => !busy && setList('currency')}
+                onPress={() => !busy && openList('currency', pickers.currency)}
                 testID="eventForm.currency"
               />
             </EventField>
@@ -834,19 +876,40 @@ export function NewEventScreen({
   );
 }
 
+/** The picker a list has just closed on, for the moment TalkBack takes to reach it: everything else in the form is out of reach, so its first stop cannot be Cancel, About the event or Event name (sc-104673). */
+function useLanding(list: ListOpen | null): ListOpen | null {
+  const [was, setWas] = useState(list);
+  const [landing, setLanding] = useState<ListOpen | null>(null);
+  if (was !== list) {
+    setWas(list);
+    setLanding(landingAfter(landing, list, was, Platform.OS === 'android'));
+  }
+  useEffect(
+    () => (landing == null ? undefined : endLandingSoon(() => setLanding(null))),
+    [landing],
+  );
+
+  return landing;
+}
+
 function Part({
   head,
   quiet = false,
+  legendQuiet = false,
   children,
 }: {
   head: string;
+  /** Out of TalkBack's reach while the picker a list closed on is the only thing it may reach (sc-104673). */
+  legendQuiet?: boolean;
   /** Under TalkBack, a section after the refused picker is out of its reach while focus moves there (sc-43907). */
   quiet?: boolean;
   children: ReactNode;
 }) {
   return (
     <View style={styles.part} importantForAccessibility={quiet ? 'no-hide-descendants' : 'auto'}>
-      <Legend text={head} />
+      <View importantForAccessibility={legendQuiet ? 'no-hide-descendants' : 'auto'}>
+        <Legend text={head} />
+      </View>
       {children}
     </View>
   );

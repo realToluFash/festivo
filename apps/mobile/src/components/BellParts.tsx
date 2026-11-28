@@ -16,6 +16,8 @@ import {
   PHONE_TITLE_LINE,
   PHONE_TITLE_TRACKING,
 } from './bellTop.ts';
+import { sidePadding } from './bodyEdges.ts';
+import { BellEmptyLine, BellSettingsLink } from './BellEmpty.tsx';
 import { ConfettiSwitch } from './ConfettiSwitch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { markOf } from './notificationMarks.ts';
@@ -101,10 +103,11 @@ export function BellFrame({
       </AnchoredMenu>
     );
   if (!where.open) return null;
+  const sides = sidePadding(tokens.spaceXxl, insets);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]} testID={testID}>
-      <View style={styles.bellTop}>
+      <View style={[styles.bellTop, sides]}>
         <Back label={where.back} onPress={where.onBack} />
         <View style={styles.grow} />
         {markAll}
@@ -113,6 +116,7 @@ export function BellFrame({
       <ScrollView
         contentContainerStyle={[
           styles.bellPage,
+          sides,
           { paddingBottom: insets.bottom + tokens.space6xl },
         ]}
       >
@@ -325,20 +329,7 @@ export function BellBody({
           />
         </View>
       )}
-      {feed === 'loaded' && rows.length === 0 && (
-        <View style={styles.empty}>
-          <View
-            style={styles.tile}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Glyph name="bell" size={20} ink={tokens.colorInkSecondary} />
-          </View>
-          <Text size={15} style={[styles.grow, styles.secondary]}>
-            {t('notifications.empty')}
-          </Text>
-        </View>
-      )}
+      {feed === 'loaded' && rows.length === 0 && <BellEmptyLine />}
       {feed === 'loaded' && rows.length > 0 && (
         <RowList
           items={rows.map((row) => ({
@@ -368,11 +359,7 @@ export function BellBody({
           {more.failed && <BellAttention words={t('notifications.moreFailed')} />}
         </View>
       )}
-      <TextAction
-        label={t('notifications.settings')}
-        onPress={onSettings}
-        testID={`${testID}.settings`}
-      />
+      <BellSettingsLink onPress={onSettings} testID={`${testID}.settings`} />
     </View>
   );
 }
@@ -600,12 +587,6 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceXs,
   },
   failed: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingVertical: tokens.spaceLg },
-  empty: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-  },
   more: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingBottom: tokens.spaceXs },
   attention: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
   attentionInk: { color: tokens.colorAttentionText },

@@ -68,6 +68,13 @@ describe('single sign-on in the web demo (sc-610)', () => {
     expect(screen.getByText('Testing sign-on…')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'It did not work' }));
     expect(screen.getByText('Test did not work')).toBeDefined();
+    expect(screen.getByText(/Okta said:/u)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'It failed Soirely’s checks' }));
+    expect(screen.getByText('Test did not work')).toBeDefined();
+    expect(screen.getByText(/not at one of your proved domains/u)).toBeDefined();
+    expect(screen.queryByText(/said:/u)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Test again' }));
     fireEvent.click(screen.getByRole('button', { name: 'It worked' }));

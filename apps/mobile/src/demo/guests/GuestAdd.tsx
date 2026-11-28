@@ -54,6 +54,8 @@ import {
   phoneCheck,
   planRoom,
   reviewProblems,
+  rowProblems,
+  rowToFix,
   sameNameAs,
 } from './GuestsModel.ts';
 import { Amber, AmberChoices, AmberLine } from '../../components/Amber.tsx';
@@ -63,6 +65,7 @@ import { LanguageField } from './GuestLanguage.tsx';
 import {
   CONTACTS,
   type GuestLanguage,
+  LONG_CONTACT_NAME,
   PICKED,
   PICKED_COUNT,
   PLAN_SAMPLES,
@@ -175,7 +178,7 @@ function OrType() {
 const BIMPE = { name: 'Bimpe Adeyemi', email: 'bimpe.adeyemi@gmail.com', number: '7700 900877' };
 const LUCAS = { name: 'Lucas Moreau', email: 'lucas.moreau@orange.fr', language: 'fr' } as const;
 
-/** Add guest (sc-1468): From contacts first, then the four fields, Add guest pinned at the foot. */
+/** Add guest (sc-1468, sc-3785): From contacts first, then the fields, Add guest at the top right as the app has it. */
 export function AddGuest({
   open,
   start,
@@ -352,11 +355,13 @@ export function AddGuest({
     : null;
 
   return (
-    <PinnedScreen
+    <FocusedScreen
       open={open}
       title={W.addGuest}
-      opener={opener}
+      verb={{ label: W.addGuest, on: true, onPress: () => add(), testID: 'guests.add.do' }}
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      cancelTestID="guests.add.cancel"
+      opener={opener}
       ask={discard}
       over={
         picking
@@ -372,7 +377,6 @@ export function AddGuest({
               )
             : group.over
       }
-      foot={<Pill label={W.addGuest} onPress={() => add()} testID="guests.add.do" />}
       testID="guests.add"
     >
       {added != null && <DoneLine text={say.added(added)} />}
@@ -508,7 +512,7 @@ export function AddGuest({
           />
         </Amber>
       )}
-    </PinnedScreen>
+    </FocusedScreen>
   );
 }
 
@@ -611,14 +615,15 @@ export function ChoosePeople({
   );
 }
 
-function startRows(): ReviewRow[] {
+function startRows(start: ReviewState | null): ReviewRow[] {
   return PICKED.map((p) => ({
     key: p.key,
-    name: p.name,
+    name: start === 'reviewLongName' && p.name === '' ? LONG_CONTACT_NAME : p.name,
     country: p.country,
     number: p.number,
     saved: p.e164,
     unreadable: p.unreadable,
+    email: p.email ?? '',
     listed: p.listed,
     numberAt: 0,
     places: 0,
@@ -737,7 +742,9 @@ export function ReviewList({
   onAdded: (count: number) => void;
   onPickAgain: () => void;
 }) {
-  const [rows, setRows] = useState<ReviewRow[]>(() => (start === 'allRemoved' ? [] : startRows()));
+  const [rows, setRows] = useState<ReviewRow[]>(() =>
+    start === 'allRemoved' ? [] : startRows(start),
+  );
   const [count, setCount] = useState(() => (start === 'allRemoved' ? 0 : pickedCount(start)));
   const [pressed, setPressed] = useState(start === 'reviewPressed');
   const [adding, setAdding] = useState(start === 'adding');
@@ -769,17 +776,25 @@ export function ReviewList({
   }, [adding, count, onAdded]);
 
   const firstProblem = () => {
-    const row =
-      rows.find((one) => one.unreadable && one.number.trim() !== '') ??
-      rows.find((one) => one.listed);
+    const row = rows.find(rowToFix) ?? rows.find((one) => one.listed);
     if (row == null) return;
     const card = cards.current[row.key];
     card?.measureLayout(scroll.current as never, (_x, y) =>
       scroll.current?.scrollTo({ y: Math.max(0, y - 12) }),
     );
-    const field = fields.current[row.key];
+    const p = rowProblems(row);
+    const which = p.name != null ? 'name' : p.number ? 'phone' : p.email != null ? 'email' : 'name';
+    const field = fields.current[`${row.key}.${which}`];
     if (field != null) focusChecked({ current: field });
   };
+  const fieldRef = (key: string): RefObject<TextInputInstance | null> => ({
+    get current() {
+      return fields.current[key] ?? null;
+    },
+    set current(node) {
+      fields.current[key] = node;
+    },
+  });
   const add = () => {
     if (problems.fix > 0) {
       setPressed(true);
@@ -1005,7 +1020,9 @@ export function ReviewList({
           )}
           {rows.map((row, index) => {
             const p = PICKED.find((one) => one.key === row.key);
-            const fix = row.unreadable && row.number.trim() !== '';
+            const problem = rowProblems(row);
+            const fix = rowToFix(row);
+            const named = row.name.trim() === '' ? W.fullName : row.name;
             const numbers = p?.numbers ?? [];
             return (
               <View
@@ -1026,7 +1043,7 @@ export function ReviewList({
                     label={W.remove}
                     plain
                     onPress={() => remove(row.key)}
-                    accessibilityLabel={`${W.remove} ${row.name}`}
+                    accessibilityLabel={`${W.remove} ${named}`}
                     testID={`guests.review.${row.key}.remove`}
                   />
                 </View>
@@ -1034,7 +1051,8 @@ export function ReviewList({
                   label={W.fullName}
                   value={row.name}
                   onChange={(name) => change(row.key, { name })}
-                  error={null}
+                  error={problem.name}
+                  fieldRef={fieldRef(`${row.key}.name`)}
                   testID={`guests.review.${row.key}.name`}
                 />
                 <PhoneField
@@ -1047,16 +1065,11 @@ export function ReviewList({
                       unreadable: row.unreadable && phoneCheck(number, row.country) != null,
                     })
                   }
-                  error={fix ? say.unreadable(countryName(row.country)) : null}
-                  {...(row.saved != null && !fix ? { help: say.savedAs(row.saved) } : {})}
-                  fieldRef={{
-                    get current() {
-                      return fields.current[row.key] ?? null;
-                    },
-                    set current(node) {
-                      fields.current[row.key] = node;
-                    },
-                  }}
+                  error={problem.number ? say.unreadable(countryName(row.country)) : null}
+                  {...(row.saved != null && !problem.number
+                    ? { help: say.savedAs(row.saved) }
+                    : {})}
+                  fieldRef={fieldRef(`${row.key}.phone`)}
                   testID={`guests.review.${row.key}.phone`}
                 />
                 {numbers.length > 1 && (
@@ -1075,22 +1088,39 @@ export function ReviewList({
                     />
                   </View>
                 )}
-                {fix && (
+                {problem.number && (
                   <TextAction
                     label={W.clearNumber}
                     onPress={() => change(row.key, { number: '', saved: null })}
                     testID={`guests.review.${row.key}.clear`}
                   />
                 )}
+                <GuestField
+                  label={W.emailAddress}
+                  value={row.email}
+                  onChange={(email) => change(row.key, { email })}
+                  error={problem.email}
+                  optional
+                  keyboard="email-address"
+                  fieldRef={fieldRef(`${row.key}.email`)}
+                  testID={`guests.review.${row.key}.email`}
+                />
+                {problem.email != null && (
+                  <TextAction
+                    label={W.clearEmail}
+                    onPress={() => change(row.key, { email: '' })}
+                    testID={`guests.review.${row.key}.clearEmail`}
+                  />
+                )}
                 {row.listed && (
                   <Text size={13.5} weight="medium" style={[styles.attention, styles.small]}>
-                    {say.stillAdded(row.name)}
+                    {say.stillAdded(named)}
                   </Text>
                 )}
                 <Stepper
                   count={row.places}
                   onChange={(places) => change(row.key, { places })}
-                  name={row.name}
+                  name={named}
                 />
               </View>
             );

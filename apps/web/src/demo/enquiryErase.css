@@ -1,0 +1,108 @@
+.enq-erased-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  width: fit-content;
+  padding: var(--spaceHair) var(--spaceMd);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: 999px;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+}
+
+.enq-erased-ring {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 1.5px dashed currentcolor;
+  border-radius: 50%;
+}
+
+.enq-erased-banner {
+  background: var(--colorCard);
+}
+
+.enq-hourglass {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.enq-warns {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.enq-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.enq-warning .enq-hourglass {
+  margin-top: 2px;
+}
+
+.enq-delete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceXl);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.enq-delete .desk-note {
+  margin: 0;
+}
+
+button.enq-delete-open {
+  border-color: transparent;
+  background: none;
+  color: var(--colorBrokenText);
+}
+
+button.enq-delete-open:hover {
+  background: var(--colorBrokenTint);
+}
+
+.enq-won-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorNeutralFill);
+  color: var(--colorInk);
+}
+
+.enq-won-note p {
+  margin: 0;
+}
+
+.enq-won-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.enq-deleting {
+  display: inline-flex;
+  margin-inline-start: var(--spaceSm);
+  vertical-align: middle;
+}
+
+.enq-erased-who {
+  margin: 0;
+  color: var(--colorInk);
+}

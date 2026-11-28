@@ -56,6 +56,7 @@ export function LinkAnswer({
           {warnsCompanions(visit, picked) && (
             <Notice kind="attention">{words.companionsNotComing}</Notice>
           )}
+          {view.failed === true && <Notice kind="broken">{words.notSent}</Notice>}
           <Filled busy={busy} focus="linkGo" onClick={() => onAnswer(picked)}>
             {carriesOn(visit, picked) ? words.carryOn : words.confirm}
           </Filled>

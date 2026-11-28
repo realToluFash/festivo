@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { forgetBudget } from './quotes.ts';
+import { LONGEST_EVENT_NAME, ONE_WORD_EVENT_NAME } from './vendors.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -342,6 +343,27 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     },
   );
 
+  it.each([
+    ['due_done_several', 'Adaeze & Tunde’s wedding'],
+    ['due_done_long', LONGEST_EVENT_NAME],
+    ['due_done_one_word', ONE_WORD_EVENT_NAME],
+  ])(
+    'settles %s with each event’s link wrapping whole, every word in the link (sc-103479)',
+    SLOW,
+    async (state, name) => {
+      await open(at(state));
+      const dialog = await screen.findByRole('dialog', {}, SLOW);
+      const links = within(dialog).getAllByRole('link');
+
+      expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+        [`Everything due on ${name}`, '/demo/events/evt-wed-4?area=budget&view=due'],
+        ['Everything due on Gala Fundación Lucía', '/demo/events/evt-gala-4'],
+      ]);
+      expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+      expect(links.every((one) => one.childElementCount === 0)).toBe(true);
+    },
+  );
+
   it(
     'shows a refused tap in sc-88’s words under its row, and not found alone (sc-1331)',
     SLOW,
@@ -367,6 +389,30 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       expect(within(dialog).getByText('We cannot find these payments.')).toBeTruthy();
       expect(within(dialog).getByRole('link', { name: 'Go to your events' })).toBeTruthy();
       expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+    },
+  );
+
+  it(
+    'says Due now is loading, and a failed read offers Try again, then the rows (sc-1331)',
+    SLOW,
+    async () => {
+      await open(at('due_loading'));
+      let dialog = await screen.findByRole('dialog', {}, SLOW);
+
+      expect(within(dialog).getByRole('status').textContent).toBe('Loading the payments…');
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+      cleanup();
+      await open(at('due_failed'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'These payments did not load. Check your connection and try again.',
+      );
+      expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+      expect(within(dialog).getByRole('status').textContent).toBe('Loading the payments…');
+      expect(
+        await within(dialog).findByText('From the reminder sent Nov 1 · 2 payments', {}, SLOW),
+      ).toBeTruthy();
     },
   );
 

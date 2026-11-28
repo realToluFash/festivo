@@ -43,6 +43,8 @@ function item(
     note: null,
     fixedTime: false,
     showToGuests: false,
+    course: null,
+    courseNotice: false,
     version: 1,
   };
 }

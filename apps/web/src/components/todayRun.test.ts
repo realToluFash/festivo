@@ -19,6 +19,8 @@ function item(
     startedAt: null,
     endedAt: null,
     skipped: false,
+    course: null,
+    courseNotice: false,
     day: '2030-11-15',
     lengthMinutes: null,
     place: null,

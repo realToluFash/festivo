@@ -57,6 +57,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
+import { pickerTookBack } from './earlyBack.ts';
 import { TextAction } from './SummaryRows.tsx';
 import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
@@ -147,7 +148,9 @@ function Window({
       supportedOrientations={TURNS_WITH_THE_APP}
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (!pickerTookBack()) onClose();
+      }}
       onShow={onShow}
       onDismiss={gone}
     >
@@ -197,6 +200,7 @@ export function FocusedScreen({
   opener,
   ask,
   over,
+  quiet = false,
   toast,
   scrollRef,
   toTop = 0,
@@ -220,6 +224,8 @@ export function FocusedScreen({
   ask?: AskProps | null;
   /** Drawn over the screen in its own window, as the Ask is, since iOS shows one window at a time. */
   over?: Layer | null;
+  /** The header is out of TalkBack's reach while the screen says so (sc-104673). */
+  quiet?: boolean;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
@@ -292,6 +298,7 @@ export function FocusedScreen({
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
+              quiet={quiet}
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>

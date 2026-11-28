@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { addressRuns, atWithItsLastCharacter, breakableEmail, isLoneAt } from './addressBreaks.ts';
+import {
+  addressParts,
+  addressRuns,
+  atWithItsLastCharacter,
+  breakableEmail,
+  isLoneAt,
+} from './addressBreaks.ts';
 
 const BREAK = '\u200B';
 const JOIN = '\u2060';
@@ -61,5 +67,20 @@ describe('a lone @', () => {
     expect(isLoneAt('@ ')).toBe(true);
     expect(isLoneAt(`${BREAK}@`)).toBe(true);
     expect(isLoneAt('s@')).toBe(false);
+  });
+});
+
+describe('addressParts', () => {
+  it('splits an address where a line may break, keeping the characters as drawn', () => {
+    expect(addressParts('amaka.outside@soirely.test')).toEqual([
+      'amaka',
+      '.outside@',
+      'soirely',
+      '.test',
+    ]);
+  });
+
+  it('is null for anything that is not an address', () => {
+    expect(addressParts('Ada Obi')).toBeNull();
   });
 });
