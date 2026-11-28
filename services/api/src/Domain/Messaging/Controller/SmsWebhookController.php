@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\Interfaces\SmsRequestSignatureInterface;
 use App\Domain\Messaging\Sms\SmsKeywordAnswerer;
+use App\Domain\Messaging\Webhook\SmsStatusWebhook;
 use App\Http\Access\Policy\PublicAccess;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,22 @@ final readonly class SmsWebhookController
     public function __construct(
         private SmsRequestSignatureInterface $smsRequestSignature,
         private SmsKeywordAnswerer $smsKeywordAnswerer,
+        private SmsStatusWebhook $smsStatusWebhook,
     ) {
+    }
+
+    /** Twilio's status callback for a text Soirely sent; it wants a 2xx whatever the report changed. */
+    #[Route('/api/webhooks/sms/status', name: 'webhook_sms_status', methods: ['POST'])]
+    public function status(Request $request): Response
+    {
+        if (!$this->smsRequestSignature->signs($request)) {
+            return new Response(null, Response::HTTP_FORBIDDEN);
+        }
+
+        $code = $request->request->getString('ErrorCode');
+        $this->smsStatusWebhook->receive($request->request->getString('MessageSid'), $request->request->getString('MessageStatus'), '' === $code ? null : $code);
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
     /** The reply goes back as TwiML, so one text in is answered at most once. */
