@@ -19,7 +19,11 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
 - assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
 - assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
 - assertVisible: '{{t:createOrganisation.allCountries}}'
 - assertVisible: { id: 'createWalk.country.AF' }
 - takeScreenshot: d-cleared

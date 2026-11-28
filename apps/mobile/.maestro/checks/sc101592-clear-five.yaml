@@ -7,51 +7,47 @@ appId: host.exp.Exponent
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
 - tapOn: { id: 'createWalk.search' }
+- repeat:
+    times: 2
+    commands:
+      - inputText: 'Ni'
+      - extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+      - tapOn: { id: 'createWalk.search.clear' }
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+      - assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+      - assertVisible: { id: 'createWalk.countries' }
+      - runFlow:
+          when:
+            true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+          commands:
+            - assertVisible: '{{t:createOrganisation.fromDevice}}'
+      - assertVisible: '{{t:createOrganisation.allCountries}}'
+      - assertVisible: { id: 'createWalk.country.AF' }
+      - inputText: 'Ni'
+      - extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+      - eraseText: 1
+      - eraseText: 1
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+      - assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+      - assertVisible: { id: 'createWalk.countries' }
+      - runFlow:
+          when:
+            true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+          commands:
+            - assertVisible: '{{t:createOrganisation.fromDevice}}'
+      - assertVisible: '{{t:createOrganisation.allCountries}}'
+      - assertVisible: { id: 'createWalk.country.AF' }
 - inputText: 'Ni'
 - extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
 - tapOn: { id: 'createWalk.search.clear' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
 - assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
 - assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
-- assertVisible: '{{t:createOrganisation.allCountries}}'
-- assertVisible: { id: 'createWalk.country.AF' }
-- inputText: 'Ni'
-- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
-- eraseText: 1
-- eraseText: 1
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
-- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
-- assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
-- assertVisible: '{{t:createOrganisation.allCountries}}'
-- assertVisible: { id: 'createWalk.country.AF' }
-- inputText: 'Ni'
-- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
-- tapOn: { id: 'createWalk.search.clear' }
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
-- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
-- assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
-- assertVisible: '{{t:createOrganisation.allCountries}}'
-- assertVisible: { id: 'createWalk.country.AF' }
-- inputText: 'Ni'
-- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
-- eraseText: 1
-- eraseText: 1
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
-- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
-- assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
-- assertVisible: '{{t:createOrganisation.allCountries}}'
-- assertVisible: { id: 'createWalk.country.AF' }
-- inputText: 'Ni'
-- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
-- tapOn: { id: 'createWalk.search.clear' }
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
-- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
-- assertVisible: { id: 'createWalk.countries' }
-- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- runFlow:
+    when:
+      true: ${typeof TABLET === 'undefined' || TABLET != 'true'}
+    commands:
+      - assertVisible: '{{t:createOrganisation.fromDevice}}'
 - assertVisible: '{{t:createOrganisation.allCountries}}'
 - assertVisible: { id: 'createWalk.country.AF' }
 - takeScreenshot: f-after-five
