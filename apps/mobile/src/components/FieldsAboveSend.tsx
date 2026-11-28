@@ -14,7 +14,13 @@ import { fieldUnderToast, landingToastTop, watchLandingToastTop } from './landin
 import { ScreenScroll, type ScreenScrollView } from './Screen.tsx';
 import { type LiftFromTop, shownEnd } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
-import { type EventField, offsetAboveSend, type Placed } from '../kit/fieldsAboveSend.ts';
+import {
+  type EventField,
+  dockedHeight,
+  fieldInFocus,
+  offsetAboveSend,
+  type Placed,
+} from '../kit/fieldsAboveSend.ts';
 
 export interface EventFieldRefs {
   refusal: RefObject<ViewInstance | null>;
@@ -52,8 +58,7 @@ async function measure(
   const view = scroll.ref.current;
   const content = view?.getInnerViewRef();
   const host = view?.getNativeScrollRef();
-  const keys = keyboardTopNow(scroll.origin.current);
-  if (content == null || host == null || keys == null || scroll.answeringNow()) return null;
+  if (content == null || host == null) return null;
 
   const [refusal, name, number, focus, frame] = await Promise.all([
     placed(refs.refusal.current, content),
@@ -64,28 +69,27 @@ async function measure(
   ]);
   if (name == null || number == null) return null;
   // The Country code list takes no input focus: coming back from it, the row it sits in keeps it.
-  if (focus != null) last.current = focus.contentY >= number.contentY ? 'number' : 'name';
+  const dockHeight = dockedHeight({ refusal, name, number }, focus, last.current);
+  last.current = fieldInFocus({ name, number }, focus, last.current);
   fieldUnderToast(focus == null ? null : { top: frame.top, height: focus.height });
+  const fields = { refusal, name, number, focus: last.current };
+  // The dock rule is given the focused field's block, label and line included, never the kept tier: the tier is chosen in the frame this measure ran in, which an undocked Send code stretches to the keys, so reporting it would keep Send code undocked where the field alone fits above a docked one (AC bullet 3). It is reported before any bail-out below and whether or not a field holds the focus right now (the field kept from the last measure stands in), so the dock hears what the field needs however the keys or the focus arrived (sc-97734).
+  scroll.focusedGroup.forEach((needs) => needs(dockHeight));
+  const keys = keyboardTopNow(scroll.origin.current);
+  if (keys == null || scroll.answeringNow()) return null;
+
   // The landing toast over a step covers what is under it as the keys do (sc-37983).
   const shown = Math.min(
     shownEnd(keys, { y: frame.top, height: frame.height }),
     landingToastTop() ?? Infinity,
   );
   const room = shown - frame.top;
-  const y = offsetAboveSend({
-    refusal,
-    name,
-    number,
-    focus: last.current,
-    room,
-    offset: from,
-    margin: tokens.spaceLg,
-  });
+  const y = offsetAboveSend({ ...fields, room, offset: from, margin: tokens.spaceLg });
 
   return y ?? 'stays';
 }
 
-/** `useAboveKeyboard` (`Screen.tsx`) with a different kept rule, for the door code's event step: with the keys up, Your name and the number row both above Send code whenever they fit, a showing refusal with them, else the focused field (sc-97734). Send code stays docked: the group never tells the step it needs more room than the focused field, so sc-7099's fallback is untouched. */
+/** `useAboveKeyboard` (`Screen.tsx`) with a different kept rule, for the door code's event step: with the keys up, Your name and the number row both above Send code whenever they fit, a showing refusal with them, else the focused field (sc-97734). The focused field's block, label and line included, goes to the step's dock rule through `focusedGroup`, so Send code stays docked wherever that field fits above it and follows the fields in the scroll where it does not, as sc-7099 has every step do; the two fields are kept together only inside the room the dock leaves. */
 function useFieldsAboveSend(refs: EventFieldRefs): () => void {
   const scroll = useContext(ScreenScroll);
   const last = useRef<EventField>('name');

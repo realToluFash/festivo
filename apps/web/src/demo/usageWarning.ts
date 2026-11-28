@@ -1,4 +1,4 @@
-import { whenShown } from '@soirely/domain';
+import { readerZoneOf, whenShown } from '@soirely/domain';
 
 export type Kind = 'drafts' | 'storage';
 export type Threshold = 80 | 100;
@@ -230,7 +230,7 @@ const FRIDAY = new Date(2026, 10, 20, 17, 40).toISOString();
 
 /** "at 14:05" today and the locale's date before today, as the built bell shows it (whenShown), in the shown language. */
 export function whenOf(createdAt: string, lang: Lang, atTime: (time: string) => string): string {
-  const shown = whenShown(createdAt, DEMO_NOW, localeOf(lang));
+  const shown = whenShown(createdAt, DEMO_NOW, localeOf(lang), readerZoneOf(null));
 
   return shown.today ? atTime(shown.time) : shown.date;
 }

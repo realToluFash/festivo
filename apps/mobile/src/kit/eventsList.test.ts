@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { numberFormat } from '@soirely/domain';
+import { numberFormat, placeWords } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -8,12 +8,18 @@ import {
   dayTiles,
   daysWords,
   listEventOf,
+  rowLine,
   rowTag,
   shownEvent,
   tabsFit,
 } from './eventsList.ts';
 
-const t = ((key: string) => key) as unknown as TFunction;
+const t = ((key: string, o?: Record<string, string>) =>
+  key === 'search.line.venueCity'
+    ? `${o?.venue}, ${o?.city}`
+    : key === 'todayScreen.dayAndPlace'
+      ? `${o?.day} · ${o?.place}`
+      : key) as unknown as TFunction;
 
 const EVENT = {
   id: 'ev-1',
@@ -29,6 +35,36 @@ const EVENT = {
   milestones: [],
 } as unknown as ListedEvent;
 
+describe('placeWords', () => {
+  it('writes the venue, a comma and its city, as Search does', () => {
+    const lineOf = (e: { place: string | null; city: string | null }) =>
+      placeWords(e.place, e.city, (key, values) => t(key, values ?? {}));
+    const of = (name: string | null, city: string | null) =>
+      lineOf(
+        listEventOf({
+          ...EVENT,
+          venue: { name, address: { formatted: 'Calle 1', city } },
+        } as unknown as ListedEvent),
+      );
+
+    expect(of('Finca Pilar', 'Toledo')).toBe('Finca Pilar, Toledo');
+    expect(of('Finca Pilar', null)).toBe('Finca Pilar');
+    expect(of(null, 'Toledo')).toBe('Calle 1');
+    expect(lineOf(listEventOf(EVENT))).toBe('search.line.venueToBeConfirmed');
+  });
+
+  it("is the place in the row's line", () => {
+    const event = listEventOf({
+      ...EVENT,
+      venue: { name: 'Finca Pilar', address: { formatted: 'Calle 1', city: 'Toledo' } },
+    } as unknown as ListedEvent);
+
+    expect(rowLine(shownEvent(event, 'live' as never), new Date('2026-11-01'), 'en', t)).toContain(
+      'Finca Pilar, Toledo',
+    );
+  });
+});
+
 describe('listEventOf', () => {
   it('has no place and no photo until the event has a venue and a cover', () => {
     expect(listEventOf(EVENT)).toMatchObject({ place: null, photo: null });
@@ -40,6 +76,19 @@ describe('listEventOf', () => {
 
     expect(listEventOf(named as unknown as ListedEvent).place).toBe('Finca Pilar');
     expect(listEventOf(unnamed as unknown as ListedEvent).place).toBe('Calle 1');
+  });
+
+  it("pairs the venue's name with its city only when the name is the place", () => {
+    const venue = (name: string | null, city: string | null) =>
+      listEventOf({
+        ...EVENT,
+        venue: { name, address: { formatted: 'Calle 1', city } },
+      } as unknown as ListedEvent).city;
+
+    expect(venue('Finca Pilar', 'Toledo')).toBe('Toledo');
+    expect(venue('Finca Pilar', null)).toBeNull();
+    expect(venue('Finca Pilar', '')).toBeNull();
+    expect(venue(null, 'Toledo')).toBeNull();
   });
 
   it('carries the cover with the event type it is drawn for', () => {

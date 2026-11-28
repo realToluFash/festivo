@@ -7,6 +7,7 @@ namespace App\Enum;
 /** One line of a change notice to a person on the staff (sc-4333), in the order the message gives them. */
 enum ShiftChangeKind: string
 {
+    case Date = 'date';
     case StartTime = 'start_time';
     case EndTime = 'end_time';
     case ShiftAdded = 'shift_added';
@@ -15,7 +16,6 @@ enum ShiftChangeKind: string
     case MoreChanges = 'more_changes';
     case NoShiftLeft = 'no_shift_left';
     case Job = 'job';
-    case Date = 'date';
     case Venue = 'venue';
 
     public function isShiftLine(): bool

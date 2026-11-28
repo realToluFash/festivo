@@ -599,6 +599,62 @@ describe('Guests (sc-1468)', () => {
     expect(within(form()).queryByRole('heading', { name: /is already on the list$/u })).toBeNull();
   });
 
+  it('refuses a guest over the plan’s people per event and keeps the form (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'guests_per_event',
+          plan: 'free',
+          used: 100,
+          allowed: 100,
+          adding: 1,
+        }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'Your plan allows 100 people per event',
+    });
+    expect(within(refused).getByText('This event already has 100 people.')).toBeDefined();
+    expect(
+      within(refused).getByText('100 of 100 people · companions count as people · Free plan'),
+    ).toBeDefined();
+    expect(within(refused).getByText('The form is kept as you left it.')).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('link', { name: 'Go to the guest list' })).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(within(refused).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Back to the form' }));
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Your plan allows 100 people per event' }),
+    ).toBeNull();
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /^Full name/u }).value).toBe(
+      'Kwame Mensah',
+    );
+  });
+
+  it('refuses a guest past the ceiling with no plan named (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('event_capacity_reached', 403, { ceiling: 10000, onEvent: 10000, adding: 1 }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'An event can have up to 10,000 people',
+    });
+    expect(
+      within(refused).getByText('10,000 of 10,000 people · companions count as people'),
+    ).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('button', { name: 'Back to the form' })).toBeDefined();
+  });
+
   it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
     await opened({
       'POST /api/events/ev_1/guests': () =>
@@ -2128,6 +2184,78 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     });
 
     expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest' })).toBeDefined();
+  });
+});
+
+describe('A guest’s opt-outs in their details (sc-3969)', () => {
+  const ON = '2026-11-01T10:00:00+00:00';
+
+  function lines(): string[] {
+    return [...column().querySelectorAll('.desk-row')].map((row) => row.textContent ?? '');
+  }
+
+  it('says email under Email address with its closing sentence, and nothing else', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: ON, texts: null, whatsApp: null } }, '"1"'),
+    });
+
+    const shown = lines();
+    const email = shown.findIndex((one) => one.startsWith('ngozi@example.com'));
+    expect(shown[email + 1]).toBe(
+      'Unsubscribed from email on Nov 1Only the guest can change this.',
+    );
+    expect(shown.filter((one) => one.includes('Only the guest'))).toHaveLength(1);
+    expect(shown.some((one) => one.includes('WhatsApp'))).toBe(false);
+  });
+
+  it('says texts under Mobile number, then the WhatsApp row closing the row once, when both are stopped', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: null, texts: ON, whatsApp: ON } }, '"1"'),
+    });
+
+    const shown = lines();
+    const mobile = shown.findIndex((one) => one.endsWith('Mobile number'));
+    expect(shown.slice(mobile + 1, mobile + 3)).toEqual([
+      'Unsubscribed from texts on Nov 1',
+      'Unsubscribed from WhatsApp on Nov 1Only the guest can change this.',
+    ]);
+    expect(shown.filter((one) => one.includes('Only the guest'))).toHaveLength(1);
+  });
+
+  it('closes the texts line itself while WhatsApp is not stopped, with no WhatsApp row', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: null, texts: ON, whatsApp: null } }, '"1"'),
+    });
+
+    expect(lines()).toContain('Unsubscribed from texts on Nov 1Only the guest can change this.');
+    expect(lines().some((one) => one.includes('WhatsApp'))).toBe(false);
+  });
+
+  it('has no line under a row that reads None', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          { ...DETAILS, mobile: null, optOuts: { email: null, texts: ON, whatsApp: ON } },
+          '"1"',
+        ),
+    });
+
+    expect(lines().some((one) => one.startsWith('Unsubscribed'))).toBe(false);
+  });
+
+  it('offers no control to reverse an opt-out', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, optOuts: { email: ON, texts: ON, whatsApp: ON } }, '"1"'),
+    });
+
+    for (const row of column().querySelectorAll('.desk-row')) {
+      if (!(row.textContent ?? '').startsWith('Unsubscribed')) continue;
+      expect(row.querySelector('button, a')).toBeNull();
+    }
   });
 });
 

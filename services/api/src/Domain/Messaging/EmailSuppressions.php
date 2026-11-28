@@ -17,6 +17,8 @@ use Psr\Clock\ClockInterface;
 /** The addresses that take security mail only, after a hard bounce or a complaint, kept as their keyed hash alone (sc-93044). */
 final readonly class EmailSuppressions
 {
+    public const int SOFT_BOUNCES = 3;
+
     public function __construct(
         private Connection $connection,
         private ClockInterface $clock,
@@ -54,6 +56,27 @@ final readonly class EmailSuppressions
     public function lift(string $address): void
     {
         $this->connection->executeStatement('DELETE FROM email_suppressions WHERE address_hash = :hash', ['hash' => $this->hash->of($address)]);
+    }
+
+    /** @return bool whether this soft bounce is the third in a row to the address, which then counts as a hard bounce (sc-3969) */
+    public function softBounced(string $address): bool
+    {
+        $inARow = $this->connection->fetchOne(
+            <<<'SQL'
+                INSERT INTO email_soft_bounces (address_hash, in_a_row) VALUES (:hash, 1)
+                ON CONFLICT (address_hash) DO UPDATE SET in_a_row = email_soft_bounces.in_a_row + 1
+                RETURNING in_a_row
+                SQL,
+            ['hash' => $this->hash->of($address)],
+        );
+
+        return Type\int()->coerce($inARow) >= self::SOFT_BOUNCES;
+    }
+
+    /** A delivery ends a run of soft bounces. */
+    public function delivered(string $address): void
+    {
+        $this->connection->executeStatement('DELETE FROM email_soft_bounces WHERE address_hash = :hash', ['hash' => $this->hash->of($address)]);
     }
 
     /** A complaint after a bounce is kept as the complaint. */

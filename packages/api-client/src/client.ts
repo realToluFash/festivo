@@ -13,6 +13,7 @@ import {
   EVENT_STATES,
   type EventTimeline,
   type EventsSearch,
+  type FloorRead,
   isEventType,
   type Milestone,
   MEMBERS_MOST,
@@ -97,6 +98,12 @@ import {
   asFinalNumbers,
   asKitchenSheet,
 } from './kitchenSheet.ts';
+import {
+  type MessageChannel,
+  type YourMessages,
+  type YourMessagesKey,
+  yourMessagesOf,
+} from './yourMessages.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -1948,6 +1955,22 @@ export class ApiClient {
     return body.emailOn === true;
   }
 
+  /** Your messages (sc-3969) for the guest the key names; a link that does not work is a 404. */
+  async yourMessages(key: YourMessagesKey): Promise<YourMessages> {
+    return yourMessagesOf(await this.post<unknown>('/api/your-messages', key, { anonymous: true }));
+  }
+
+  /** Turns one channel on or off for this organisation, answering the page as it now stands. */
+  async setYourMessages(
+    key: YourMessagesKey,
+    channel: MessageChannel,
+    on: boolean,
+  ): Promise<YourMessages> {
+    return yourMessagesOf(
+      await this.put<unknown>('/api/your-messages', { ...key, channel, on }, { anonymous: true }),
+    );
+  }
+
   /** The VAPID public key this browser subscribes with (sc-3980). */
   async webPushKey(): Promise<string> {
     const body = await this.get<{ webPushKey?: unknown }>('/api/auth/push-targets');
@@ -3370,7 +3393,20 @@ export class ApiClient {
     return { url: typeof body.url === 'string' ? body.url : '', staff };
   }
 
-  /** Only a Copied row moves; Link sent and Link opened stay. */
+  /** As deliverStaffLink, recorded as Shared: the app's share sheet cannot say whether it went (sc-77903). */
+  async shareStaffLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/share`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
   async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
     return this.staffAnswerOf(
       await this.post<unknown>(
@@ -4246,6 +4282,11 @@ export class ApiClient {
         headers: { 'Idempotency-Key': tap.key },
       },
     );
+  }
+
+  /** Floor (sc-4021): every course's read as the caller sees it; 403 `permission_required` at the pass's level alone. */
+  async serviceFloor(eventId: string): Promise<FloorRead> {
+    return this.get<FloorRead>(`${this.servicePath(eventId)}/floor`);
   }
 
   /** A hub token for this event's schedule topic alone. */
@@ -5861,7 +5902,7 @@ export class ApiClient {
   }
 
   /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
-   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
+   * and 403 `plan_limit_reached` naming team seats while the plan's seats are taken (sc-3930). */
   async restoreMember(organisationId: string, membershipId: string): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
@@ -7368,6 +7409,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
       thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
+      organisation: typeof what.organisation === 'string' ? what.organisation : '',
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:

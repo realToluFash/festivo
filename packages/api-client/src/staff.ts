@@ -2,8 +2,8 @@ import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-/** How far a person's own link got (sc-3912), or why none can be given. */
-export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given; Copied and Shared (the app's share sheet, sc-77903) are both handed out and not yet marked as sent. */
+export type StaffLink = 'none' | 'copied' | 'shared' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 /** Where a person's briefing stands (sc-3917): Changed since sent is a briefed person whose station, shift or lead moved since. */
 export type StaffBriefing = 'none' | 'sent' | 'read' | 'changed';
@@ -47,8 +47,10 @@ export interface StaffChange {
   end: string | null;
   oldStart: string | null;
   oldEnd: string | null;
-  /** The start of the shift a start or end time line belongs to, which a time on another day names. */
+  /** On a start or end time line, a time on another day than this one names its day; every time does when null. */
   on: string | null;
+  /** The shift moved a week or more, so each weekday on the line carries its date. */
+  dated: boolean;
   new: string | null;
   old: string | null;
   count: number;
@@ -206,7 +208,15 @@ export const STAFF_RULES_MAXIMUM = 2000;
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
+const LINKS: readonly StaffLink[] = [
+  'none',
+  'copied',
+  'shared',
+  'sent',
+  'opened',
+  'no_mobile',
+  'erased',
+];
 
 const KINDS: readonly StationKind[] = ['place', 'section'];
 
@@ -226,6 +236,7 @@ function asChange(raw: unknown): StaffChange | null {
   if (!isRecord(raw)) return null;
   const { kind, start, end, oldStart, oldEnd, count } = raw;
   const on = raw.on ?? null;
+  const dated = raw.dated ?? false;
 
   return CHANGE_KINDS.includes(kind as StaffChangeKind) &&
     text(start) &&
@@ -235,7 +246,8 @@ function asChange(raw: unknown): StaffChange | null {
     text(raw.new) &&
     text(raw.old) &&
     text(on) &&
-    typeof count === 'number'
+    typeof count === 'number' &&
+    typeof dated === 'boolean'
     ? {
         kind: kind as StaffChangeKind,
         start,
@@ -246,6 +258,7 @@ function asChange(raw: unknown): StaffChange | null {
         old: raw.old,
         count,
         on,
+        dated,
       }
     : null;
 }

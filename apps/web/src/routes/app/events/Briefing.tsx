@@ -37,7 +37,12 @@ const TALLY_KEYS: Record<StaffBriefing, string> = {
 type Side =
   { kind: 'copy' } | { kind: 'rules'; editing: boolean } | { kind: 'preview'; id: string };
 
+function isConcluded(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'event_concluded';
+}
+
 /** The briefing's parts on the Roster (sc-3917): the card above it, the Briefing column, the held link under a row, and its panel. */
+
 export interface BriefingParts {
   side: boolean;
   card: ReactNode;
@@ -114,23 +119,41 @@ export function useBriefing({
     focus(back);
   }
 
+  function alreadyOver() {
+    setOver(true);
+    announce(t('notices.alreadyOver'));
+    reload();
+    focus('sv-over');
+  }
+
   async function copy(entry: StaffEntry) {
     if (busy != null) return;
     setBusy(entry.id);
     setMissed(null);
     if (handHeld?.id === entry.id) setHandHeld(null);
     let answered: StaffEntry | null = null;
+    let concluded = false;
     const issue = () =>
-      api.copyBriefingLink(event.id, entry.id).then((answer) => {
-        answered = answer.staff;
-        return answer.url;
-      });
+      api.copyBriefingLink(event.id, entry.id).then(
+        (answer) => {
+          answered = answer.staff;
+          return answer.url;
+        },
+        (error: unknown) => {
+          concluded = isConcluded(error);
+          throw error;
+        },
+      );
     const outcome: CopyOutcome = await copyIssued(
       issue,
       navigator.clipboard ?? null,
       typeof ClipboardItem === 'undefined' ? null : plainItem,
     );
     setBusy(null);
+    if (concluded) {
+      alreadyOver();
+      return;
+    }
     if (outcome.kind === 'notIssued' || answered == null) {
       setMissed(entry.id);
       announce(t('roster.linkNotIssued'));
@@ -154,11 +177,8 @@ export function useBriefing({
       announce(t('roster.markedSent', { name: entry.fullName }));
       focus(side?.kind === 'copy' ? `bf-copy-${entry.id}` : `bf-row-copy-${entry.id}`);
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'event_concluded') {
-        setOver(true);
-        announce(t('notices.alreadyOver'));
-        reload();
-        focus('sv-over');
+      if (isConcluded(error)) {
+        alreadyOver();
         return;
       }
       setMissed(entry.id);
@@ -276,7 +296,10 @@ export function useBriefing({
         event={event}
         manage={acts}
         roster={people}
-        onOver={() => setOver(true)}
+        onOver={() => {
+          setOver(true);
+          reload();
+        }}
         announce={announce}
       />
     </>

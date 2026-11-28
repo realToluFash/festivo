@@ -146,6 +146,73 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
+    public function shareLinkIssuesALinkOfItsOwnAndRecordsSharedByWhom(): void
+    {
+        $copied = self::token($this->deliver($this->ada));
+        $this->at('2027-03-01T12:00:00Z');
+
+        $shared = self::token($this->deliver($this->ada, '/share'));
+
+        self::assertNotSame($copied, $shared);
+        self::assertSame(['link' => 'shared', 'linkBy' => 'Ifeoma Nduka', 'linkAt' => '2027-03-01T13:00:00+01:00'], $this->row($this->ada));
+        $this->at('2027-03-06T17:00:00Z');
+        self::assertSame('open', $this->open('look', $shared)['state']);
+    }
+
+    #[Test]
+    public function markAsSentFollowsAShareAndNotYetLeavesItShared(): void
+    {
+        $this->deliver($this->ada, '/share');
+        self::assertSame('shared', $this->row($this->ada)['link']);
+
+        $this->as($this->owner, 'POST', $this->linkPath($this->ada) . '/sent');
+
+        self::assertSame('sent', $this->row($this->ada)['link']);
+    }
+
+    #[Test]
+    public function aShareOnALinkSentOrLinkOpenedRowLeavesItAsItWas(): void
+    {
+        $this->deliver($this->ada);
+        $this->as($this->owner, 'POST', $this->linkPath($this->ada) . '/sent');
+        $sent = $this->row($this->ada);
+        $this->at('2027-03-01T12:00:00Z');
+        $this->deliver($this->ada, '/share');
+        self::assertSame($sent, $this->row($this->ada));
+
+        $this->at('2027-03-06T17:00:00Z');
+        $this->open('opened', self::token($this->deliver($this->ada, '/share')));
+        $opened = $this->row($this->ada);
+        self::assertSame('opened', $opened['link']);
+        $this->deliver($this->ada, '/share');
+        self::assertSame($opened, $this->row($this->ada));
+    }
+
+    #[Test]
+    public function aShareForSomeoneWithoutAMobileNumberIssuesAndRecordsNothing(): void
+    {
+        $kemi = $this->person('Kemi Ade', null);
+
+        $this->as($this->owner, 'POST', $this->linkPath($kemi) . '/share');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([], self::em()->getRepository(StaffLinkToken::class)->findAll());
+        self::assertSame('no_mobile', $this->row($kemi)['link']);
+    }
+
+    #[Test]
+    public function replaceLinkEndsASharedLinkToo(): void
+    {
+        $shared = self::token($this->deliver($this->ada, '/share'));
+
+        $this->as($this->owner, 'POST', $this->linkPath($this->ada) . '/replace');
+
+        self::assertSame('none', $this->row($this->ada)['link']);
+        $this->at('2027-03-06T17:00:00Z');
+        self::assertSame($this->unknown(), $this->gone('look', $shared));
+    }
+
+    #[Test]
     public function aPersonWithoutAMobileNumberIsGivenNoLink(): void
     {
         $kemi = $this->person('Kemi Ade', null);
@@ -159,11 +226,16 @@ final class StaffLinkTest extends ApiTestCase
     #[Test]
     public function onlySomeoneWhoManagesTheStaffGivesMarksOrReplacesALink(): void
     {
-        $viewer = $this->member('viewer@ire.events', 'Bisi Ola', EventRole::CanView);
+        $members = [
+            'can_view' => $this->member('viewer@ire.events', 'Bisi Ola', EventRole::CanView),
+            'can_check_in' => $this->member('door@ire.events', 'Tayo Bello', EventRole::CanCheckIn),
+        ];
 
-        foreach (['', '/sent', '/replace'] as $what) {
-            $this->as($viewer, 'POST', $this->linkPath($this->ada) . $what);
-            self::assertSame(403, $this->statusCode(), $what);
+        foreach ($members as $role => $member) {
+            foreach (['', '/share', '/sent', '/replace'] as $what) {
+                $this->as($member, 'POST', $this->linkPath($this->ada) . $what);
+                self::assertSame(403, $this->statusCode(), $role . $what);
+            }
         }
 
         self::assertSame([], self::em()->getRepository(StaffLinkToken::class)->findAll());
@@ -408,9 +480,9 @@ final class StaffLinkTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable($instant));
     }
 
-    private function deliver(string $staffId): string
+    private function deliver(string $staffId, string $how = ''): string
     {
-        $answer = $this->as($this->owner, 'POST', $this->linkPath($staffId));
+        $answer = $this->as($this->owner, 'POST', $this->linkPath($staffId) . $how);
         self::assertSame(200, $this->statusCode(), Json\encode($answer));
 
         return Type\string()->coerce($answer['url'] ?? null);

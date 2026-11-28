@@ -2273,6 +2273,15 @@ describe("An event's venue (sc-3589)", () => {
     expect(screen.queryByText('Venue to be confirmed')).toBeNull();
   });
 
+  it("writes the venue with its city at the top of an event's area, as the card does (sc-98651)", async () => {
+    signedIn();
+    serving({}, event({ venue: { name: 'Finca Pilar', address: { ...TYPED, city: 'Toledo' } } }));
+    at('/app/events/ev_1/reports');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const venue = screen.getByRole('group', { name: 'Venue' });
+    expect(within(venue).getByText('Finca Pilar, Toledo')).toBeDefined();
+  });
+
   it('shows a typed address with no maps link', async () => {
     signedIn();
     serving(
@@ -3101,25 +3110,45 @@ describe('Make live (sc-3584)', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it("names the plan and its limit when the plan's limit is reached, and it stays a Draft", async () => {
+  it("refuses over the plan's live events with the event that ends first, and it stays a Draft", async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
     signedIn();
     const { dialog } = await confirming({
       'POST /api/events/ev_1/make-live': () =>
-        problem(403, 'plan_limit', { plan: 'Free', limit: 3 }),
+        problem(403, 'plan_limit_reached', {
+          limit: 'live_events',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+          event: {
+            id: 'ev_9',
+            name: 'Summer gala',
+            endsAt: '2026-11-07T23:00:00+00:00',
+            timeZone: 'Europe/London',
+          },
+        }),
     });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
 
-    const refused = await screen.findByRole('alertdialog', {
-      name: 'Not made live. Your Free plan allows 3 events to be live or paused at a time.',
+    const refused = await screen.findByRole('dialog', {
+      name: 'Your plan allows 3 live events at once',
     });
+    expect(within(refused).getByText('3 of 3 live events · Free plan')).toBeDefined();
+    expect(
+      within(refused).getByText('Kept as a draft, with everything you entered.'),
+    ).toBeDefined();
     expect(
       within(refused).getByText(
-        'This event stays a draft. Finish or call off another event, or change plan.',
+        'Another event can go live when Summer gala ends, on Saturday 7 November at 23:00.',
       ),
     ).toBeDefined();
-    expect(within(refused).queryByRole('button', { name: 'Change dates' })).toBeNull();
-    fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+    expect(within(refused).queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(within(refused).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Back to the draft' }));
+    expect(
+      screen.queryByRole('dialog', { name: 'Your plan allows 3 live events at once' }),
+    ).toBeNull();
     expect(screen.getByText('Draft')).toBeDefined();
   });
 
@@ -5233,16 +5262,22 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     signedIn();
     const { sent, dialog, host } = await asking({
       [SAVE]: () => tagged({ event: event({ ...AHEAD, hosts: ['Funmi'] }) }, '"2"'),
-      [LIVE]: () => problem(403, 'plan_limit', { plan: 'Free', limit: 3 }),
+      [LIVE]: () =>
+        problem(403, 'plan_limit_reached', {
+          limit: 'live_events',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
     });
 
     fireEvent.change(host, { target: { value: 'Funmi' } });
     press(dialog);
 
-    const refused = await screen.findByRole('alertdialog', {
-      name: 'Not made live. Your Free plan allows 3 events to be live or paused at a time.',
+    const refused = await screen.findByRole('dialog', {
+      name: 'Your plan allows 3 live events at once',
     });
-    fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Back to the draft' }));
     expect(linesOf(sent)).toEqual([SAVE, LIVE]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));

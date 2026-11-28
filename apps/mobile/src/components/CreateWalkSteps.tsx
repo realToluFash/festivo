@@ -309,6 +309,9 @@ type Item = { kind: 'heading' } | { kind: 'country'; country: Country };
 
 const HEADING: Item = { kind: 'heading' };
 
+/** The same sticky index whether searching or not: changing it while the list is laid out threw addViewAt on Android (sc-101592). */
+const STICKY = [1];
+
 function GroupHeading({
   words,
   ruled = false,
@@ -482,7 +485,7 @@ export function CountryStep({
   field: RefObject<TextInputInstance | null>;
   /** The search, hidden from the screen reader, so taking input focus says nothing. */
   quiet?: boolean;
-  /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
+  /** Reached from step 1 or by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
   onPick: (code: string) => void;
@@ -496,10 +499,12 @@ export function CountryStep({
   const scrolledToPick = useRef(false);
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
-  const items: readonly Item[] = searching
-    ? countrySearch(all, walk.query, naming.locale).map((country) => ({ kind: 'country', country }))
-    : [HEADING, ...all.map((country): Item => ({ kind: 'country', country }))];
-  const noMatch = countryNoMatch(walk.query, items.length, t);
+  const shown = searching ? countrySearch(all, walk.query, naming.locale) : all;
+  const items: readonly Item[] = [
+    HEADING,
+    ...shown.map((country): Item => ({ kind: 'country', country })),
+  ];
+  const noMatch = countryNoMatch(walk.query, shown.length, t);
   const device = all.find((country) => country.code === walk.device.country) ?? null;
   useReadOut(noMatch, { afterTyping: walk.query, quietAtMount: true });
   const pick = (code: string) => {
@@ -566,7 +571,11 @@ export function CountryStep({
         keyExtractor={(item) => (item.kind === 'heading' ? 'all' : item.country.code)}
         renderItem={({ item, index }) =>
           item.kind === 'heading' ? (
-            <GroupHeading words={t('createOrganisation.allCountries')} ruled={pinned} />
+            searching ? (
+              <View />
+            ) : (
+              <GroupHeading words={t('createOrganisation.allCountries')} ruled={pinned} />
+            )
           ) : (
             <CountryRow
               country={item.country}
@@ -578,7 +587,7 @@ export function CountryStep({
           )
         }
         ListHeaderComponent={header}
-        ListEmptyComponent={
+        ListFooterComponent={
           noMatch == null ? undefined : (
             <View style={styles.noMatch}>
               <Text
@@ -592,7 +601,7 @@ export function CountryStep({
             </View>
           )
         }
-        stickyHeaderIndices={searching ? undefined : [1]}
+        stickyHeaderIndices={STICKY}
         style={look.phone ? styles.fill : styles.wideList}
         contentContainerStyle={look.phone && styles.phoneList}
         keyboardShouldPersistTaps="handled"

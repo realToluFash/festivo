@@ -39,6 +39,7 @@ import {
   memberOf,
   nextLine,
   problemsOf,
+  rosterIn,
   rosterStart,
   sharesNumber,
   shiftLines,
@@ -75,6 +76,7 @@ import {
   textable,
 } from './staffText.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
+import { staffLangOf } from './staffTabs.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -88,14 +90,27 @@ export function RosterPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const locale = params.get('locale');
   useSwitcherStart();
 
-  return <RosterAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+  return (
+    <RosterAt key={`${id ?? ''}|${raw ?? ''}|${locale ?? ''}`} id={id} raw={raw} locale={locale} />
+  );
 }
 
-function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
+function RosterAt({
+  id,
+  raw,
+  locale,
+}: {
+  id: string | undefined;
+  raw: string | null;
+  locale: string | null;
+}) {
   const [event] = useState(() => sampleEvent(id));
-  const [first] = useState(() => briefingRosterStart(raw) ?? rosterStart(raw));
+  const [first] = useState(() =>
+    rosterIn(briefingRosterStart(raw) ?? rosterStart(raw), staffLangOf(locale)),
+  );
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== STATIONS_EVENT)
@@ -142,7 +157,7 @@ function RosterView({
   event: SampleEvent;
   tell: Tell;
 }) {
-  const { rw: RW, lw: LW, tabs, events, crumb, lang } = useRosterWords();
+  const { rw: RW, lw: LW, events, crumb, lang } = useRosterWords();
   const TW = TEXT_WORDS[lang];
   const [entries, setEntries] = useState<Entry[]>(first.entries);
   const [panel, setPanel] = useState<Panel>(first.panel);
@@ -430,7 +445,7 @@ function RosterView({
     }, ISSUE_MS);
   }
 
-  const acts = manage && !finished && !erased;
+  const acts = manage && !finished && !erased && !bf.concluded;
   const texts = sms != null && acts;
   const bulk = sms == null ? null : bulkCheck(entries, sms);
   const check =
@@ -474,7 +489,7 @@ function RosterView({
             <p className="mn-sub">{RW.sub}</p>
           </div>
         </header>
-        <StaffTabs on="Roster" eventId={event.id} tell={tell} words={tabs} />
+        <StaffTabs on="Roster" eventId={event.id} tell={tell} lang={lang} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />

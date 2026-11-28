@@ -33,6 +33,7 @@ use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Changes since the latest copy, its milestone and the changes page (sc-30692). */
 final class KitchenChangesTest extends ApiTestCase
@@ -176,6 +177,14 @@ final class KitchenChangesTest extends ApiTestCase
         self::assertStringContainsString('<li>New allergy: Sesame (1 guest)</li>', $html);
         self::assertStringNotContainsString('Chidi', Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT sheet::text FROM kitchen_copies WHERE id = :id', ['id' => $copy])));
         self::assertContains('allergyGone::1', $this->lines(), 'erased since the copy: a count');
+    }
+
+    #[Test]
+    public function theCountLineOnThePdfPutsAColonAfterTheDishAsTheWebDoes(): void
+    {
+        $line = self::service(TranslatorInterface::class)->trans('kitchen_sheet.changes.count', ['dish' => 'Pepper soup', 'old' => 50, 'new' => 52], 'messages', 'en');
+
+        self::assertSame('Pepper soup: 50 to 52', $line);
     }
 
     #[Test]

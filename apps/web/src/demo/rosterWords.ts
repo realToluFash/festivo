@@ -14,7 +14,6 @@ export interface RosterWords {
   rw: typeof RW;
   lw: typeof LW;
   links: Record<LinkState, string>;
-  tabs: readonly string[];
   events: string;
   crumb: string;
   close: string;
@@ -27,7 +26,6 @@ const EN: RosterWords = {
   rw: RW,
   lw: LW,
   links: LINK_WORDS,
-  tabs: SW.tabs,
   events: 'Events',
   crumb: 'Breadcrumb',
   close: SW.close,
@@ -38,12 +36,11 @@ const EN: RosterWords = {
 type Locale = typeof fr;
 
 /** The Roster's words the product already has in a locale; what l10n has not written stays [bracketed]. */
-function productWords(L: Locale, hours: string) {
+function productWords(L: Locale) {
   const R = L.roster;
   const more = /<more>(.*)<\/more>/u.exec(R.moreShifts)?.[1] ?? R.moreShifts;
 
   return {
-    tabs: [R.roster, L.jobs.tab, L.stations.tab, hours],
     title: R.title,
     sub: R.sub,
     roster: R.roster,
@@ -97,7 +94,7 @@ const R = fr.roster;
 
 const RW_FR: typeof RW = {
   ...RW,
-  ...productWords(fr, '[Heures travaillées]'),
+  ...productWords(fr),
   emailShape:
     '[Cette adresse e-mail ne semble pas valide. Vérifiez qu’elle contient un @ et un domaine.]',
   phoneLength: (problem, country) =>
@@ -140,7 +137,6 @@ const FR: RosterWords = {
     noMobile: R.linkNoMobile,
     erased: R.linkErased,
   },
-  tabs: RW_FR.tabs,
   events: R.events,
   crumb: R.crumb,
   close: R.close,
@@ -172,7 +168,6 @@ interface Samples {
     | 'stationChange'
     | 'sectionGone'
   >;
-  hours: string;
   lw: Omit<typeof LW, 'copy' | 'replace' | 'replaceOpen' | 'copied' | 'notIssued'>;
   opened: string;
   sent: string;
@@ -201,7 +196,6 @@ const SAMPLES_ES: Samples = {
     stationChange: '[Cambiar de zona]',
     sectionGone: (section) => `[Se ha quitado ${section} del plano de mesas.]`,
   },
-  hours: '[Horas trabajadas]',
   lw: {
     markSent: '[Marcar como enviado]',
     refused: '[No se ha podido copiar el enlace. Cópielo desde el campo del enlace.]',
@@ -238,7 +232,6 @@ const SAMPLES_PT: Samples = {
     stationChange: '[Mudar de posto]',
     sectionGone: (section) => `[${section} foi removida da planta de mesas.]`,
   },
-  hours: '[Horas trabalhadas]',
   lw: {
     markSent: '[Marcar como enviada]',
     refused: '[Não foi possível copiar a ligação. Copie-a a partir do campo da ligação.]',
@@ -263,7 +256,7 @@ const SAMPLES_PT: Samples = {
 
 /** Spanish and Portuguese: the card, its table and the details in the product's words, [bracketed] samples elsewhere, so QA can measure the Roster in all four locales (sc-75033). */
 function productRoster(L: Locale, lang: 'es' | 'pt', s: Samples): RosterWords {
-  const rw: typeof RW = { ...RW, ...productWords(L, s.hours), ...s.rw };
+  const rw: typeof RW = { ...RW, ...productWords(L), ...s.rw };
 
   return {
     lang,
@@ -285,7 +278,6 @@ function productRoster(L: Locale, lang: 'es' | 'pt', s: Samples): RosterWords {
       noMobile: L.roster.linkNoMobile,
       erased: L.roster.linkErased,
     },
-    tabs: rw.tabs,
     events: L.roster.events,
     crumb: L.roster.crumb,
     close: L.roster.close,

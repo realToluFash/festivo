@@ -483,7 +483,7 @@ export function CreateWalkWindow<Made>({
         <CountryStep
           {...shared}
           field={live ? search : spare}
-          toPick={shownWalk.cameBack || opening.toPick}
+          toPick={shownWalk.toPick || opening.toPick}
           quiet={live && quiet && opening.focus === 'search'}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}

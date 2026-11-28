@@ -830,7 +830,8 @@ def review(c, a):
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        post(c, story, ["ux" if design else R.builder_of(story["labels"])],
+        post(c, story, [W.builder(story, pr) if design or W.ops_pr(story, pr)
+                        else R.builder_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
                 if follow_up or keeps else
@@ -1046,9 +1047,10 @@ def merge(c, a):
     if story["state"] not in R.MERGING and not side and not follow_up and not design:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")
-    if not design and R.builder_of(story["labels"]) != c.role and not (
-            c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
-        raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
+    whose = "ops" if W.ops_pr(story, pr) else R.builder_of(story["labels"])
+    if not design and whose != c.role and not (c.role in R.DEVS and whose in R.DEVS):
+        raise Refused(f"PR #{a.pr} is {whose}'s to merge" if W.ops_pr(story, pr)
+                      else f"sc-{story['id']} is {whose}'s to merge")
     verdict = W.latest_verdict(pr)
     carried = pr.get("carried") if head == pr["head_sha"] else None
     if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
@@ -1063,6 +1065,8 @@ def merge(c, a):
     if design:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, and "
                 f"no tester is told{resync(c)}")
+    if W.ops_pr(story, pr):
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     if side:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
                 f"the linguist's to move, and the linguist is woken{resync(c)}")
@@ -1119,16 +1123,44 @@ def pr_edit(c, a):
         raise Refused(f"PR #{a.pr} is closed unmerged")
     owns(c, live["story_id"], live.get("branch"), f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
     found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
-    if len(found) != 1:
-        headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
-        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
-                      f"{a.section}; the body has: {headings or 'no headings'}")
     text, count = github.unlink_others(a.text, live["story_id"])
-    body = T.swap(live["body"], found[0], text)
+    if found:
+        verb = "replaced"
+        heading = found[0]
+        if len(found) != 1:
+            raise Refused(f"{len(found)} headings match {a.section}; the body has: "
+                          f"{existing_headings(live['body'])}")
+        body = T.swap(live["body"], heading, text)
+    else:
+        heading = house_heading(live["body"], a.section)
+        verb = "added"
+        body = T.add_section(live["body"], heading, text, PR_SECTIONS)
     github.edit_body(a.pr, body)
     if known := store.pr(c.db, a.pr):
         store.put_pr(c.db, dict(known, body=body))
-    return f"PR #{a.pr}: replaced {found[0]}{unlinked(count)}"
+    return f"PR #{a.pr}: {verb} {heading}{unlinked(count)}"
+
+
+def existing_headings(body):
+    return "; ".join(h for h, _, _ in T.sections(body) if h != T.TOP) or "no headings"
+
+
+def house_heading(body, name):
+    """The one house heading the name asks for, matched as `pr --section` matches: exactly in
+    any case, else by prefix. Refused when it is none, several, or already there too deep."""
+    wanted = name.strip().lower()
+    exact = [h for h in PR_SECTIONS if h.lower() == wanted]
+    named = exact or [h for h in PR_SECTIONS if wanted and h.lower().startswith(wanted)]
+    if not named:
+        raise Refused(f"no heading matches {name}; the body has: {existing_headings(body)}; "
+                      f"pr-edit can add {', '.join(PR_SECTIONS[:-1])} or {PR_SECTIONS[-1]}")
+    if len(named) > 1:
+        raise Refused(f"{name} matches {' and '.join(named)}; name one of them in full")
+    deeper = {h.lower(): level for h, level, _ in T.sections(body, T.DEEPER) if level}
+    if named[0].lower() in deeper:
+        raise Refused(f"{named[0]} is at level {deeper[named[0].lower()]}; the body would carry "
+                      "it twice: replace the text there, or move the heading to levels 1-3")
+    return named[0]
 
 
 def to_qa(c, a):

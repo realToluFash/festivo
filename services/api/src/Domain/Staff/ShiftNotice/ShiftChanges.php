@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\ShiftNotice;
 
+use App\Domain\Event\WallDays;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Enum\ShiftChangeKind;
+use DateTimeImmutable;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Vec;
 
 /** Above three shift lines, removals are chosen first, then the soonest (sc-4333, "Decided, 26 Nov (pm): several shifts"). */
 final readonly class ShiftChanges
 {
     public const int SHIFT_LINES_SHOWN = 3;
+
+    private const int DATED_MOVE_DAYS = 7;
 
     /**
      * @param ?non-negative-int $shown the shift lines named, every one when null, as the roster's Waiting lines have them
@@ -31,15 +36,11 @@ final readonly class ShiftChanges
             $lines[] = ShiftChange::value(ShiftChangeKind::Job, $now->job[1], $told->job[1]);
         }
 
-        if ($now->date !== $told->date) {
-            $lines[] = ShiftChange::value(ShiftChangeKind::Date, $now->date, $told->date);
-        }
-
         if ($now->venue !== $told->venue && null !== $now->venue && null !== $told->venue) {
             $lines[] = ShiftChange::value(ShiftChangeKind::Venue, $now->venue, $told->venue);
         }
 
-        return $lines;
+        return $now->date === $told->date ? $lines : [ShiftChange::value(ShiftChangeKind::Date, $now->date, $told->date), ...$lines];
     }
 
     /** @return list<ShiftChange> */
@@ -47,15 +48,18 @@ final readonly class ShiftChanges
     {
         $told = Vec\values($toldOf->shifts)[0];
         $now = Vec\values($nowOf->shifts)[0];
-        $on = ShiftTold::wall($now[0]);
+        $toldStart = ShiftTold::wall($told[0]);
+        $nowStart = ShiftTold::wall($now[0]);
+        $on = 0 === WallDays::between($toldStart, $nowStart) ? $nowStart : null;
+        $dated = self::isDatedMove($toldStart, $nowStart);
         $lines = [];
 
         if ($now[0] !== $told[0]) {
-            $lines[] = ShiftChange::time(ShiftChangeKind::StartTime, $on, ShiftTold::wall($told[0]), $on);
+            $lines[] = ShiftChange::time(ShiftChangeKind::StartTime, $nowStart, $toldStart, $on, $dated);
         }
 
         if ($now[1] !== $told[1]) {
-            $lines[] = ShiftChange::time(ShiftChangeKind::EndTime, ShiftTold::wall($now[1]), ShiftTold::wall($told[1]), $on);
+            $lines[] = ShiftChange::time(ShiftChangeKind::EndTime, ShiftTold::wall($now[1]), ShiftTold::wall($told[1]), $on, $dated);
         }
 
         return $lines;
@@ -70,19 +74,21 @@ final readonly class ShiftChanges
     {
         $told = $toldOf->shifts;
         $now = $nowOf->shifts;
+        [$off, $on] = self::unpaired(Vec\values(Dict\diff_by_key($told, $now)), Vec\values(Dict\diff_by_key($now, $told)));
         $removed = Vec\map(
-            Dict\diff_by_key($told, $now),
+            $off,
             static fn (array $times): ShiftChange => ShiftChange::shift(ShiftChangeKind::ShiftRemoved, ShiftTold::wall($times[0]), ShiftTold::wall($times[1])),
         );
-        $others = [];
+        $others = Vec\map(
+            $on,
+            static fn (array $times): ShiftChange => ShiftChange::shift(ShiftChangeKind::ShiftAdded, ShiftTold::wall($times[0]), ShiftTold::wall($times[1])),
+        );
 
         foreach ($now as $id => $times) {
             $before = $told[$id] ?? null;
 
-            if (null === $before) {
-                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftAdded, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]));
-            } elseif ($before !== $times) {
-                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftRetimed, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]), ShiftTold::wall($before[0]), ShiftTold::wall($before[1]));
+            if (null !== $before && $before !== $times) {
+                $others[] = ShiftChange::shift(ShiftChangeKind::ShiftRetimed, ShiftTold::wall($times[0]), ShiftTold::wall($times[1]), ShiftTold::wall($before[0]), ShiftTold::wall($before[1]), self::isDatedMove(ShiftTold::wall($before[0]), ShiftTold::wall($times[0])));
             }
         }
 
@@ -101,5 +107,36 @@ final readonly class ShiftChanges
         }
 
         return $lines;
+    }
+
+    /**
+     * Pairs off, one for one, a shift they came off with one they went onto at the same start and end.
+     *
+     * @param list<array{0: string, 1: string}> $off
+     * @param list<array{0: string, 1: string}> $on
+     *
+     * @return array{list<array{0: string, 1: string}>, list<array{0: string, 1: string}>} those left of each
+     */
+    private static function unpaired(array $off, array $on): array
+    {
+        $left = [];
+
+        foreach ($off as $times) {
+            $partner = Iter\search(Vec\keys($on), static fn (int $key): bool => $on[$key] === $times);
+
+            if (null === $partner) {
+                $left[] = $times;
+            } else {
+                $on = Dict\filter_keys($on, static fn (int $key): bool => $key !== $partner);
+            }
+        }
+
+        return [$left, Vec\values($on)];
+    }
+
+    /** A week or more on, a weekday alone could read as the day it left. */
+    private static function isDatedMove(DateTimeImmutable $from, DateTimeImmutable $to): bool
+    {
+        return self::DATED_MOVE_DAYS <= Math\abs(WallDays::between($from, $to));
     }
 }

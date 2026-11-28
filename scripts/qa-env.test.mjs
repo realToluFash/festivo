@@ -24,6 +24,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   allowCleartext,
+  apnsPayload,
+  expoPushes,
+  pushPick,
   aloneFlows,
   answers,
   emulatorJournalArgs,
@@ -436,6 +439,7 @@ describe('the stack a person tests on', () => {
       expect(urls.api).toBe(address('API_PORT'));
       expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(address('STORAGE_PORT'));
       expect(overrides.OAUTH_APPLE_RETURN_URI).toMatch(new RegExp(`^${address('API_PORT')}/`));
+      expect(overrides.DEFAULT_URI).toBe(address('API_PORT'));
       expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(address('METRO_PORT'));
       for (const value of Object.values(app)) expect(value).not.toContain(host);
       expect(app).toEqual(qaConfig(tester).app);
@@ -2963,6 +2967,17 @@ describe('a batch flow', () => {
     expect(flow).toContain('stopApp: true');
     expect(flow.indexOf('sign-out.yaml')).toBeLessThan(flow.indexOf('session.yaml'));
   });
+
+  it('puts a tablet left on its side upright before a cold sign-out', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
+    expect(flow).toMatch(/setOrientation: PORTRAIT[\s\S]*ASK: '\/portrait'[\s\S]*sign-out\.yaml/);
+  });
+
+  it('turns nothing on a warm batch, whose reset turns it', () => {
+    expect(batchFlow({ checks: ['home'], languages: ['en'], cold: false })).not.toContain(
+      '/portrait',
+    );
+  });
 });
 
 describe('the batch command', () => {
@@ -3599,7 +3614,7 @@ describe('the flows a batch runs', () => {
         rmSync(target, { recursive: true, force: true });
       }
     }
-  });
+  }, 30_000);
 
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
@@ -3841,7 +3856,7 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
 
 describe('a check that runs a sibling check', () => {
@@ -4997,5 +5012,68 @@ describe('a batch folder', () => {
     freshBatchDir(root, 'shots');
 
     expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['second.png']);
+  });
+});
+
+describe('push', () => {
+  const sent = (messages, path = '/expo/--/api/v2/push/send') => ({
+    request: { method: 'POST', path, body: JSON.stringify(messages) },
+  });
+
+  it('reads the product messages from Smocker newest first, skipping other mocks', () => {
+    const history = [
+      sent([{ title: 'first' }]),
+      { request: { method: 'GET', path: '/nominatim/search', body: '' } },
+      sent([{ title: 'second' }, { title: 'third' }]),
+    ];
+    expect(expoPushes(history).map(({ title }) => title)).toEqual(['third', 'second', 'first']);
+  });
+
+  it('finds no push in a history of other mocks', () => {
+    const history = [
+      { request: { method: 'GET', path: '/nominatim/search', body: '' } },
+      { request: { method: 'POST', path: '/twilio/messages', body: '{}' } },
+    ];
+    expect(expoPushes(history)).toEqual([]);
+  });
+
+  it('takes a body Smocker already parsed', () => {
+    const history = [
+      { request: { method: 'POST', path: '/expo/--/api/v2/push/send', body: [{ title: 'a' }] } },
+    ];
+    expect(expoPushes(history)).toEqual([{ title: 'a' }]);
+  });
+
+  it('builds the APNs payload Expo would, with the data where expo-notifications reads it', () => {
+    expect(
+      apnsPayload({
+        to: 'ExponentPushToken[x]',
+        title: 'Your shift changed',
+        body: 'Now 18:00',
+        data: { place: '/shifts', recipient: 'u1' },
+        threadId: 'shift-1',
+        interruptionLevel: 'time-sensitive',
+      }),
+    ).toEqual({
+      aps: {
+        alert: { title: 'Your shift changed', body: 'Now 18:00' },
+        'thread-id': 'shift-1',
+        'interruption-level': 'time-sensitive',
+      },
+      body: { place: '/shifts', recipient: 'u1' },
+    });
+  });
+
+  it('leaves out what the product did not set', () => {
+    expect(apnsPayload({ title: 't', body: 'b' })).toEqual({
+      aps: { alert: { title: 't', body: 'b' } },
+      body: {},
+    });
+  });
+
+  it('sends the newest unless a number picks another', () => {
+    expect(pushPick(['--ipad'])).toBe(1);
+    expect(pushPick(['3', '--se'])).toBe(3);
+    expect(pushPick(['0'])).toBe(1);
   });
 });

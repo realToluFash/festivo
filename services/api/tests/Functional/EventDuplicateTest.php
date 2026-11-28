@@ -22,7 +22,7 @@ use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedActiveEventsLimit;
+use App\Tests\Double\ScriptedHardLimits;
 use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -319,7 +319,8 @@ final class EventDuplicateTest extends ApiTestCase
     public function aCopyIsMadeAtThePlansLimitSinceADraftCountsTowardNothing(): void
     {
         $id = $this->live($this->original());
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', 1);
+        $this->live($this->original());
+        self::service(ScriptedHardLimits::class)->enforce();
 
         $copy = $this->duplicate($id, '2027-05-15T16:00');
 

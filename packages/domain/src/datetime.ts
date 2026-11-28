@@ -1,33 +1,65 @@
 import { numberFormat } from './locales.ts';
 
 /** The day and the time are separate because the word between them belongs to the catalogue. */
-export function formatDay(moment: string | Date, locale: string): string {
+export function formatDay(moment: string | Date, locale: string, timeZone?: string): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
-  return formatsFor(locale).day.format(date);
+  return formatsFor(locale, timeZone).day.format(date);
 }
 
-export function formatTimeOfDay(moment: string | Date, locale: string): string {
+export function formatTimeOfDay(moment: string | Date, locale: string, timeZone?: string): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
-  return clockText(formatsFor(locale).time, date);
+  return clockText(formatsFor(locale, timeZone).time, date);
 }
 
 const formats = new Map<string, { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat }>();
 
-/** Made once a locale, since a list asks for every row on every render. */
-function formatsFor(locale: string): { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } {
-  const made = formats.get(locale) ?? {
-    day: new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'short', day: 'numeric' }),
-    time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }),
+/** Made once a locale and zone, since a list asks for every row on every render. */
+function formatsFor(
+  locale: string,
+  timeZone?: string,
+): { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } {
+  const key = `${locale} ${timeZone ?? ''}`;
+  const made = formats.get(key) ?? {
+    day: new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    }),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone,
+    }),
   };
-  formats.set(locale, made);
+  formats.set(key, made);
 
   return made;
+}
+
+/** The zone as the device's time-zone data names it, or null when that data lacks it. */
+export function zoneDeviceCanFormat(zone: string): string | null {
+  try {
+    return new Intl.DateTimeFormat('en', { timeZone: zone }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
+}
+
+/** The zone a member reads the bell and Changed since you looked in: their account's (sc-868), else the device's, which also stands in for an account zone the device's time-zone data lacks (sc-82298). */
+export function readerZoneOf(accountZone: string | null | undefined): string {
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  if (accountZone == null || zoneDeviceCanFormat(accountZone) == null) return device;
+
+  return accountZone;
 }
 
 /** In the reader's own zone, where their calendar turns over. */

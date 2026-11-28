@@ -362,10 +362,6 @@
     "nowState_finished": "Il est désormais terminé. La page affiche son état actuel.",
     "nowState_calledOff": "Il est désormais annulé. La page affiche son état actuel.",
     "notMadeLive": "Non publié.",
-    "planLimit_one": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événement publié ou en pause à la fois.",
-    "planLimit_other": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événements publiés ou en pause à la fois.",
-    "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} d’événements publiés ou en pause à la fois.",
-    "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
     "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
     "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
@@ -1784,12 +1780,6 @@
     "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
     "ownerNoSuspend": "Une personne ayant le rôle Propriétaire ne peut pas être suspendue. Pour suspendre {{name}}, changez d’abord son rôle.",
     "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
-    "seatsInUse_one": "La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.",
-    "seatsInUse_other": "Les {{count, number}} places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
-    "seatsWayOwner": "Pour que {{name}} retrouve l’accès, libérez une place en suspendant ou en retirant une personne qui n’en a plus besoin, ou changez de forfait.",
-    "seatsWayAdmin": "Pour que {{name}} retrouve l’accès, libérez une place en suspendant ou en retirant une personne qui n’en a plus besoin. Seule une personne ayant le rôle Propriétaire peut changer de forfait.",
-    "seatsOpenMembers": "Ouvrir Membres ›",
-    "seatsSuspendedFree": "Un accès suspendu n’occupe pas de place.",
     "removeTitle": "Retirer {{name}}",
     "removeNameOpen": "Retirer {{name}}…",
     "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à l’organisation {{organisation}}.",
@@ -1836,7 +1826,6 @@
       "turnedDownNext": "Voir Anciens"
     },
     "proveOwner_many": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} de minutes.",
-    "seatsInUse_many": "Les {{count, number}} de places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
     "failedTitle": "Impossible de charger les membres.",
     "failedLine": "Vérifiez votre connexion et réessayez.",
     "card": {
@@ -2495,7 +2484,9 @@
       "tryAgain": "Réessayer",
       "loading": "Chargement de votre soirée…",
       "alone": "Ce lien n’est destiné qu’à vous. Fin de la session : {{time}}. Rien n’est conservé sur cet appareil.",
-      "beforeYouStart": "Avant de commencer"
+      "beforeYouStart": "Avant de commencer",
+      "title": "Votre soirée",
+      "openFloor": "Ouvrir la salle"
     },
     "clock": {
       "clockIn": "Pointer l’arrivée",
@@ -3913,7 +3904,11 @@
     "greetAsCounter": "{{count, number}} sur {{max, number}}",
     "greetAsTooLong": "Raccourcissez l’appellation à {{count, number}} caractères maximum.",
     "greetsThemAs": "Les messages l’appellent « {{greetAs}} ».",
-    "greetsByFullName": "Les messages l’appellent par son nom complet."
+    "greetsByFullName": "Les messages l’appellent par son nom complet.",
+    "optedOutEmail": "Désabonnement des e-mails le {{date}}",
+    "optedOutTexts": "Désabonnement des SMS le {{date}}",
+    "optedOutWhatsApp": "Désabonnement de WhatsApp le {{date}}",
+    "onlyTheGuest": "Seule la personne invitée peut le modifier."
   },
   "guestNumbers": {
     "title": "Invités",
@@ -4467,9 +4462,11 @@
     "onShiftsHint": "Sa fonction pourra changer quand aucun service ne sera plus à son nom.",
     "moreShifts": "{{first}} <more>et {{count, number}} de plus</more>",
     "linkCopied": "Copié",
+    "linkShared": "Partagé",
     "linkSent": "Lien envoyé",
     "linkOpened": "Lien ouvert",
     "trailCopied": "Copié par {{name}} · {{time}} · pas marqué comme envoyé",
+    "trailShared": "Partagé par {{name}} · {{time}} · pas marqué comme envoyé",
     "trailSent": "Marqué comme envoyé par {{name}} · {{time}}",
     "trailOpened": "Ouvert à {{time}}",
     "copyLink": "Copier le lien",
@@ -4482,6 +4479,7 @@
     "linkFor": "Lien pour {{name}}",
     "markedSent": "Marqué comme envoyé à {{name}}.",
     "nextCopied": "Étape suivante : une fois le lien copié envoyé à cette personne, marquez-le comme envoyé.",
+    "nextShared": "Étape suivante : une fois le lien partagé depuis l’app envoyé à cette personne, marquez-le comme envoyé.",
     "replaceOpen": "Remplacer le lien…",
     "replace": "Remplacer le lien",
     "replaceTitle": "Remplacer le lien destiné à {{name}} ?",
@@ -7183,7 +7181,8 @@
     "nothingToFill": "Rien à compléter : chaque invité reçoit exactement ce texte.",
     "nobodyToPreview": "Aucun invité choisi pour l’instant : il n’y a personne pour la prévisualisation.",
     "whatSoirelySends": "Ce qu’envoie Soirely",
-    "emailFrom": "E-mail · envoyé par {{organisation}} via Soirely"
+    "emailFrom": "E-mail · envoyé par {{organisation}} via Soirely",
+    "unsubscribed": "Désabonnement"
   },
   "service": {
     "stage": {
@@ -7287,6 +7286,73 @@
     "needsConnection": {
       "startTray": "Connexion requise pour commencer un plateau.",
       "flaggedTick": "Connexion requise : vérifiez directement à table avec {{name}}."
+    },
+    "floor": {
+      "title": "Salle",
+      "back": "Salle",
+      "word": {
+        "toServe": "À servir",
+        "onATray": "Sur un plateau",
+        "waitingOnTheKitchen": "En attente de la cuisine",
+        "notHereYet": "Pas encore là",
+        "notFiredYet": "Pas encore envoyé",
+        "served": "Servie"
+      },
+      "earlier": "{{course}} · {{word}}",
+      "servedCount_one": "{{n, number}} sur {{count, number}} servi",
+      "servedCount_other": "{{n, number}} sur {{count, number}} servis",
+      "servedCount_many": "{{n, number}} sur {{count, number}} servis",
+      "covers_one": "{{count, number}} couvert",
+      "covers_other": "{{count, number}} couverts",
+      "covers_many": "{{count, number}} de couverts",
+      "flagged_one": "{{count, number}} signalé",
+      "flagged_other": "{{count, number}} signalés",
+      "flagged_many": "{{count, number}} signalés",
+      "flaggedSaid_one": "{{count, number}} invité signalé encore à servir",
+      "flaggedSaid_other": "{{count, number}} invités signalés encore à servir",
+      "flaggedSaid_many": "{{count, number}} d’invités signalés encore à servir",
+      "plates_one": "{{count, number}} assiette",
+      "plates_other": "{{count, number}} assiettes",
+      "plates_many": "{{count, number}} d’assiettes",
+      "yours": "Vos tables · {{section}}",
+      "other": "Autres tables",
+      "noSection": "Pas encore de tables. {{lead}} vous attribuera une zone.",
+      "seatRange": "Places {{first}} à {{last}}",
+      "noSectionNoLead": "Pas encore de tables. Le maître d’hôtel vous attribuera une zone.",
+      "moved": "Vous servez désormais {{section}}.",
+      "header": "{{covers}} · {{section}}",
+      "flaggedGuests": "Invités signalés",
+      "trays": "Plateaux",
+      "tray": "{{waiter}} · {{plates}} · {{stage}}",
+      "seats": "Places",
+      "seat": "Place {{seat}}",
+      "onIt": "Équipe de la table · {{section}} · {{people}}",
+      "onItNobody": "Équipe de la table · {{section}} · Personne pour l’instant",
+      "owedEarlier": "{{course}} · {{why}}",
+      "sendBack": "Renvoyer",
+      "sendBackTitle": "Renvoyer {{items}} ?",
+      "sendBackWho": "{{guest}} · {{table}}",
+      "alertsLead": "Prévient aussi le maître d’hôtel, {{lead}}.",
+      "alertsTheLead": "Prévient aussi le maître d’hôtel.",
+      "cancel": "Annuler",
+      "dismiss": "Fermer",
+      "undo": "Annuler",
+      "undoUntil": "Annulable jusqu’à {{time}}",
+      "undone": "Annulé.",
+      "step": {
+        "sentBack": "Renvoi pour {{guest}} : {{items}} · {{reason}}",
+        "choice": "{{guest}} : {{choice}}"
+      },
+      "loadFailed": "La salle n’a pas pu être chargée. Réessayez.",
+      "tryAgain": "Réessayer",
+      "listBack": "Retour",
+      "chefsChoice": "Au choix du chef",
+      "chefsChoiceInSentence": "l’assiette au choix du chef",
+      "listLine": "{{event}} · {{course}}",
+      "refused": {
+        "title": "La salle s’ouvre avec « Peut servir en salle »",
+        "line": "Votre accès à cet événement ne comprend pas la salle."
+      }
     }
   },
   "checkIn": {
@@ -7332,7 +7398,7 @@
     "yourShift": "Votre service",
     "notSignedIn": {
       "title": "Connectez-vous avec votre lien ou votre code",
-      "body": "Pour accueillir les invités, ouvrez le lien que nous vous avons envoyé ou saisissez de nouveau votre code d’accès.",
+      "body": "Ouvrez le lien que nous vous avons envoyé ou saisissez de nouveau votre code d’accès.",
       "cta": "Saisir un code d’accès"
     }
   },
@@ -7393,5 +7459,103 @@
     "empty": "Personne n’est encore affecté à un service",
     "emptyLine": "Les heures s’afficheront ici dès que des personnes seront affectées à des services.",
     "openJobs": "Ouvrir Fonctions et services"
+  },
+  "yourMessages": {
+    "title": "Vos messages",
+    "intro": "Choisissez comment {{organisation}} peut vous joindre. Cela ne change rien pour les autres personnes qui utilisent Soirely.",
+    "email": "E-mail",
+    "texts": "SMS",
+    "whatsApp": "WhatsApp",
+    "on": "Activé",
+    "off": "Désactivé",
+    "noEmail": "{{organisation}} n’a pas votre adresse e-mail.",
+    "noPhone": "{{organisation}} n’a pas votre numéro de téléphone.",
+    "emailOn": "{{organisation}} peut de nouveau vous écrire par e-mail.",
+    "emailOff": "{{organisation}} ne vous écrira plus par e-mail.",
+    "textsOn": "{{organisation}} peut de nouveau vous envoyer des SMS.",
+    "textsOff": "{{organisation}} ne vous enverra plus de SMS.",
+    "whatsAppOn": "{{organisation}} peut vous écrire sur WhatsApp.",
+    "whatsAppOff": "{{organisation}} ne vous écrira plus sur WhatsApp.",
+    "foot": "Personne d’autre que vous ne peut les réactiver. {{organisation}} peut voir ce que vous avez désactivé, et quand.",
+    "stopEmails": "Ne plus recevoir les e-mails envoyés par {{organisation}}",
+    "stopped": "Vous ne recevrez plus d’e-mails envoyés par {{organisation}}.",
+    "undo": "Annuler",
+    "saving": "Enregistrement…",
+    "loading": "Chargement…",
+    "failed": "L’enregistrement n’a pas abouti. Rien n’a changé.",
+    "tryAgain": "Réessayer",
+    "back": "Retour",
+    "brokenTitle": "Ce lien ne fonctionne pas",
+    "brokenBody": "Rien n’a changé. Rouvrez le lien depuis le dernier e-mail que vous avez reçu.",
+    "wayIn": "Choisissez comment {{organisation}} peut vous joindre"
+  },
+  "limitReached": {
+    "title": {
+      "live_one": "Votre forfait permet {{count, number}} événement publié à la fois",
+      "live_other": "Votre forfait permet {{count, number}} événements publiés à la fois",
+      "live_many": "Votre forfait permet {{count, number}} d’événements publiés à la fois",
+      "people_one": "Votre forfait permet {{count, number}} personne par événement",
+      "people_other": "Votre forfait permet {{count, number}} personnes par événement",
+      "people_many": "Votre forfait permet {{count, number}} de personnes par événement",
+      "seats_one": "Votre forfait permet {{count, number}} place d’équipe",
+      "seats_other": "Votre forfait permet {{count, number}} places d’équipe",
+      "seats_many": "Votre forfait permet {{count, number}} de places d’équipe",
+      "accept": "Toutes les places d’équipe sont occupées chez {{organisation}}",
+      "ceiling": "Un événement peut compter jusqu’à {{ceiling, number}} personnes"
+    },
+    "figure": {
+      "live_one": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "live_other": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "live_many": "Événements publiés : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "people_one": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "people_other": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "people_many": "Personnes : {{count, number}} sur {{allowed, number}} · accompagnants compris · forfait {{plan}}",
+      "seats_one": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "seats_other": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "seats_many": "Places d’équipe : {{count, number}} sur {{allowed, number}} · forfait {{plan}}",
+      "ceiling_one": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris",
+      "ceiling_other": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris",
+      "ceiling_many": "Personnes : {{count, number}} sur {{ceiling, number}} · accompagnants compris"
+    },
+    "guestFull_one": "Cet événement compte déjà {{count, number}} personne.",
+    "guestFull_other": "Cet événement compte déjà {{count, number}} personnes.",
+    "guestFull_many": "Cet événement compte déjà {{count, number}} de personnes.",
+    "safe": {
+      "draft": "L’événement est conservé en brouillon, avec tout ce que vous avez saisi.",
+      "form": "Le formulaire est conservé tel que vous l’avez laissé.",
+      "invitation": "L’invitation est conservée telle que vous l’avez rédigée.",
+      "accept": "Votre invitation reste valable. Rien n’est perdu.",
+      "request": "La demande envoyée par {{name}} reste en attente. Rien n’est perdu.",
+      "restore": "L’accès reste suspendu pour {{name}}. Rien n’est perdu."
+    },
+    "goLive": "Vous pourrez publier un autre événement dès que {{event}} prendra fin, le {{date}} à {{time}}.",
+    "removeGuest": "Retirer un invité",
+    "removeGuestLine": "Retirer un invité libère sa place et celles de ses accompagnants.",
+    "toGuestList": "Aller à la liste des invités",
+    "withdraw": "Retirer une invitation",
+    "withdrawLine": "Une invitation pas encore acceptée occupe une place.",
+    "removeMember": "Retirer un membre",
+    "removeMemberLine": "Retirer un membre libère sa place.",
+    "copy": {
+      "overPlan_one": "Non créé. La liste des invités compte {{count, number}} personne, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overPlan_other": "Non créé. La liste des invités compte {{count, number}} personnes, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overPlan_many": "Non créé. La liste des invités compte {{count, number}} de personnes, alors que votre forfait en permet {{limit, number}} dans un nouvel événement.",
+      "overCeiling_one": "Non créé. La liste des invités compte {{count, number}} personne, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "overCeiling_other": "Non créé. La liste des invités compte {{count, number}} personnes, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "overCeiling_many": "Non créé. La liste des invités compte {{count, number}} de personnes, soit plus que les {{ceiling, number}} qu’un événement peut accueillir.",
+      "figurePlan_one": "{{count, number}} personne · accompagnants compris · forfait {{plan}}",
+      "figurePlan_other": "{{count, number}} personnes · accompagnants compris · forfait {{plan}}",
+      "figurePlan_many": "{{count, number}} de personnes · accompagnants compris · forfait {{plan}}",
+      "figureCeiling_one": "{{count, number}} personne · accompagnants compris",
+      "figureCeiling_other": "{{count, number}} personnes · accompagnants compris",
+      "figureCeiling_many": "{{count, number}} de personnes · accompagnants compris",
+      "untick": "Pour dupliquer sans les invités, décochez Copier aussi la liste des invités."
+    },
+    "back": {
+      "draft": "Retour au brouillon",
+      "form": "Retour au formulaire",
+      "invitation": "Retour à l’invitation",
+      "notNow": "Pas maintenant"
+    }
   }
 }

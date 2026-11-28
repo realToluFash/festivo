@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Event\Cover\EventCoverEditor;
 use App\Domain\Event\Model\Duplicate;
 use App\Domain\Guest\GuestListCopier;
@@ -14,6 +15,7 @@ use App\Domain\Staff\Station\StationPlan;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Repository\GuestRepository;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,37 +33,47 @@ final readonly class EventDuplicator
         private Auditor $auditor,
         private StaffPlan $staffPlan,
         private StationPlan $stationPlan,
+        private HardLimitsInterface $hardLimits,
+        private GuestRepository $guestRepository,
     ) {
     }
 
     /** `$startsAt` is local to the original's zone. The length is read on the clock, not in elapsed time, so a change of clocks on either night moves neither end. */
     public function duplicate(Event $original, User $by, ?string $startsAt, bool $copyGuests = false): Duplicate
     {
+        if ($copyGuests) {
+            $this->hardLimits->requireRoomForCopy($original->getOrganisation(), $this->guestRepository->countPeople($original));
+        }
+
         $zone = new DateTimeZone($original->getTimeZone());
         $start = $this->eventRules->startsAt($startsAt, $original->getTimeZone());
         $length = self::wallClock($original->getEndsAt())->getTimestamp() - self::wallClock($original->getStartsAt())->getTimestamp();
         $end = self::wallClock($start);
 
-        $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
-        EventVenue::write($copy, EventVenue::of($original));
-        $copy->setArrivalNote($original->getArrivalNote());
-        $this->entityManager->persist($copy);
-        $this->staffPlan->suggest($copy);
-        $this->stationPlan->suggest($copy);
-        $cover = $this->eventCoverEditor->copy($original, $copy);
-        $this->seatingPlanCopier->copy($original, $copy, $by);
-        $groups = $this->guestListCopier->copyGroups($original, $copy);
-        $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by, $groups) : null;
-
-        $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
-            ...EventCreator::recorded($copy),
-            ...Auditor::diff([], null === $cover ? [] : EventCoverEditor::recorded($cover)),
-            'duplicatedFrom' => [null, $original->getId()->toRfc4122()],
-            ...(null === $guestsCopied ? [] : ['guestsCopied' => [null, $guestsCopied]]),
-        ]);
+        $cover = null;
 
         try {
-            $this->entityManager->flush();
+            [$copy, $guestsCopied] = $this->entityManager->wrapInTransaction(function () use ($original, $by, $start, $end, $length, $zone, $copyGuests, &$cover): array {
+                $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
+                EventVenue::write($copy, EventVenue::of($original));
+                $copy->setArrivalNote($original->getArrivalNote());
+                $this->entityManager->persist($copy);
+                $this->staffPlan->suggest($copy);
+                $this->stationPlan->suggest($copy);
+                $cover = $this->eventCoverEditor->copy($original, $copy);
+                $this->seatingPlanCopier->copy($original, $copy, $by);
+                $groups = $this->guestListCopier->copyGroups($original, $copy);
+                $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by, $groups) : null;
+
+                $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
+                    ...EventCreator::recorded($copy),
+                    ...Auditor::diff([], null === $cover ? [] : EventCoverEditor::recorded($cover)),
+                    'duplicatedFrom' => [null, $original->getId()->toRfc4122()],
+                    ...(null === $guestsCopied ? [] : ['guestsCopied' => [null, $guestsCopied]]),
+                ]);
+
+                return [$copy, $guestsCopied];
+            });
         } catch (Throwable $failed) {
             if (null !== $cover) {
                 $this->eventCoverEditor->unpublish($cover->getPhotoKey());

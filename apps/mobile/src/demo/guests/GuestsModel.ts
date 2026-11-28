@@ -127,6 +127,7 @@ export const GUEST_STATES = [
   'optOutViewer',
   'askAgain',
   'askAgainWont',
+  'replyFromLink',
 ] as const;
 
 export const EDIT_STATES = [
@@ -637,7 +638,9 @@ export function replyParts(
     return { word, detail: askTail(g.askAgain, locale) };
   if (g.kind === 'maybe' && replyBy != null)
     return { word, detail: say.askedBy(dayWords(replyBy, locale)) };
-  return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
+  if (g.when == null) return { word, detail: null };
+  const on = say.repliedOn(dayWords(g.when, locale));
+  return { word, detail: g.via == null ? on : joined([on, say[g.via]]) };
 }
 
 function askTail(ask: AskAgain, locale: string): string {
@@ -1282,6 +1285,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return GUESTS.map((g) => ({ ...g, askAgain: ASKS_ON_30_OCT[g.key] ?? null }));
     case 'askAgainWont':
       return swap('lucia', (g) => ({ ...g, askAgain: { kind: 'wont' } }));
+    case 'replyFromLink':
+      return swap('sophie', (g) => ({ ...g, via: 'emailLink' }));
     case 'onTheDay':
     case 'secondDay':
       return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
@@ -1472,6 +1477,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanionArrived':
       return 'ines';
     case 'languageSet':
+    case 'replyFromLink':
       return 'sophie';
     case 'whatsAppGuestAgreed':
     case 'askAgain':

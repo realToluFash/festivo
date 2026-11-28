@@ -330,9 +330,11 @@ permit = [
 # nothing is paid for by any more. The meter's usage reaches an open billing page
 # through the one realtime publisher (sc-3929). Storage is measured from the
 # sizes the object store reports for an organisation's kept files (sc-90252).
+# A use past 80% or 100% of an included amount is a Money notice scheduled and sent
+# through messaging, its sizes and percent written in the reader's locale (sc-3931).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:domain_messaging", "@layer:locale", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -342,9 +344,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_bi
 # through the guests' scope when asked (sc-3656). Search folds a member's name by the
 # shared rule (NameNormaliser) to match and rank it (sc-39534). A new event, and a
 # duplicate, starts with the suggested jobs through the staff scope (sc-3908).
+# Making one live, and a copy's guest list, are held to the plan's hard limits (sc-3930).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
+    "App\\Domain\\Billing\\Interfaces\\HardLimitsInterface",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -387,10 +391,12 @@ permit = [
 # and the items the hosts show to guests as the running order works them out (sc-3899),
 # and their table once the hosts share the tables (sc-4022), and the meal picks for
 # each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
-# event's members through messaging's Guest replies (sc-4331).
+# event's members through messaging's Guest replies (sc-4331). A guest added, or a
+# companion place given, is held to the plan's people per event and the ceiling (sc-3930).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
+    "App\\Domain\\Billing\\Interfaces\\HardLimitsInterface",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

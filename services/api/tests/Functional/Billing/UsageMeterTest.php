@@ -17,6 +17,7 @@ use App\Domain\Billing\Meter\UnitPricer;
 use App\Domain\Billing\Meter\UsageMeter;
 use App\Domain\Billing\Meter\UsagePublisher;
 use App\Domain\Billing\Meter\UsageReader;
+use App\Domain\Billing\Meter\UsageWarnings;
 use App\Domain\Billing\Model\ChangedBy;
 use App\Domain\Billing\Model\SubscriptionState;
 use App\Domain\Billing\SubscriptionChanger;
@@ -782,6 +783,7 @@ final class UsageMeterTest extends FunctionalTestCase
             $this->catalogue(),
             self::service(UnitPricer::class),
             self::service(UsagePublisher::class),
+            self::service(UsageWarnings::class),
             $clock,
             $this->logger,
         );

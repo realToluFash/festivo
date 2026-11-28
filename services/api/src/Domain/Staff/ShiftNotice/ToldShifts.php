@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\ShiftNotice;
 
+use App\Domain\Staff\Briefing\BriefingPrinter;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Entity\StaffMember;
@@ -14,6 +15,7 @@ final readonly class ToldShifts
 {
     public function __construct(
         private ShiftSnapshots $shiftSnapshots,
+        private BriefingPrinter $briefingPrinter,
     ) {
     }
 
@@ -36,5 +38,22 @@ final readonly class ToldShifts
     public function toldNow(StaffMember $entry): void
     {
         $entry->told($this->shiftSnapshots->of($entry)->toArray());
+    }
+
+    /** For when nothing differs: what they were told then names the shifts they are on now, so a later change to one reads as that shift's. The caller flushes. */
+    public function sameHoursNow(StaffMember $entry): void
+    {
+        $told = $entry->getTold();
+
+        if (null !== $told) {
+            $entry->told([...$told, 'shifts' => $this->shiftSnapshots->of($entry)->shifts]);
+        }
+    }
+
+    /** A delivered S2 is what the person was last told: the snapshot and the briefing's print both settle, so the roster's Changed since sent clears. The caller flushes. */
+    public function settled(StaffMember $entry): void
+    {
+        $this->toldNow($entry);
+        $entry->setBrief($entry->getBriefStatus(), $this->briefingPrinter->printOf($entry));
     }
 }

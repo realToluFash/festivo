@@ -38,9 +38,10 @@ final readonly class Briefings
     ) {
     }
 
-    /** A new link, as the Link column's copy gives one (a token per delivery, Copied unless it already went), recorded as the briefing's copy. */
+    /** A new link, as the Link column's copy gives one (a token per delivery, Copied unless it already went), recorded as the briefing's copy. Refused 409 `event_concluded` as Mark as sent is, with no link issued. */
     public function copy(StaffMember $entry, User $by): string
     {
+        $this->refuseOnceFinished($entry);
         $url = $this->staffLinks->deliver($entry, $by);
 
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
@@ -59,11 +60,7 @@ final readonly class Briefings
     {
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
-            $event = $entry->getEvent();
-
-            if (EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now())) {
-                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('staff.briefing_concluded'));
-            }
+            $this->refuseOnceFinished($entry);
 
             if (null === $entry->getBriefCopyAt()) {
                 throw new ApiException(ErrorCode::Conflict, $this->translator->trans('staff.briefing_not_copied'));
@@ -89,5 +86,14 @@ final readonly class Briefings
         });
 
         $this->staffRosterPublisher->publish($entry->getEvent());
+    }
+
+    private function refuseOnceFinished(StaffMember $entry): void
+    {
+        $event = $entry->getEvent();
+
+        if (EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now())) {
+            throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('staff.briefing_concluded'));
+        }
     }
 }

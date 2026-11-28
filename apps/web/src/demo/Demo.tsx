@@ -16,8 +16,12 @@ import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { AllCredits } from './Credits.tsx';
+import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
+import { LimitReached } from './LimitReached.tsx';
+import { LIMIT_PAGES } from './limitReached.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -85,7 +89,7 @@ import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
-import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES, SHEET_A_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -114,6 +118,7 @@ import { RUN_PAGES } from './runView.ts';
 import { NightPage } from './Night.tsx';
 import { NIGHT_KEPT_PAGES, NIGHT_PAGES } from './night.ts';
 import { StationsPage } from './Stations.tsx';
+import { STAFF_TAB_PAGES } from './staffTabs.ts';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
 import { TEAM_STATES, type TeamStateName } from './team.ts';
@@ -126,7 +131,7 @@ import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
 import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
 import { CHECK_IN_PAGES } from './doorCheckIn.ts';
-import { MyNight } from './MyNight.tsx';
+import { MyNight, MyNightFloor } from './MyNight.tsx';
 import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { StaffSignIn } from './StaffSignIn.tsx';
@@ -359,7 +364,9 @@ export default function Demo() {
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
+      <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
       <Route path="usage-warning" element={<UsageWarning />} />
+      <Route path="limit-reached" element={<LimitReached />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -368,6 +375,7 @@ export default function Demo() {
       <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="staff-sign-in" element={<StaffSignIn />} />
       <Route path="my-night" element={<MyNight />} />
+      <Route path="my-night/floor" element={<MyNightFloor />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -511,6 +519,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
         <BoardPages pages={CHANGES_PAGES} />
+        <h3>
+          The sheet’s own states, in Guests A · sc-3911 and sc-34244 · desktop, and a web window
+          down to 320 px
+        </h3>
+        <BoardPages pages={SHEET_A_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-32">
@@ -593,6 +606,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={STATIONS_PAGES} />
         <h3>Hours worked: actual times, the two marks and Correct times (sc-234) · desktop</h3>
         <BoardPages pages={HOURS_PAGES} />
+        <h3>The Staff tabs keep their words whole, wrapping to another row (sc-99786) · desktop</h3>
+        <BoardPages pages={STAFF_TAB_PAGES} />
         <h3>The clock card on a person’s own shift, in a browser (sc-234) · phone</h3>
         <BoardPages pages={SHIFT_CLOCK_PAGES} />
         <h3>
@@ -701,8 +716,18 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>
+          The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
+          English and French
+        </h3>
+        <BoardPages pages={CREDITS_PAGES} />
         <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
         <BoardPages pages={USAGE_WARNING_PAGES} />
+        <h3>
+          A plan’s hard limit, or the ceiling, refused (sc-3930) · desktop, and the desk reflowed at
+          320
+        </h3>
+        <BoardPages pages={LIMIT_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
