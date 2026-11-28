@@ -1,0 +1,21 @@
+# sc-85893 regression: arrive a guest found inside a word, then undo (GUEST: the id of the guest 'eun' finds)
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'eun'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.arrive.${GUEST}' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: inside-arrived
+- tapOn: { id: 'checkIn.undo.${GUEST}' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: inside-undone
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'Femi Lawal'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walkin-found

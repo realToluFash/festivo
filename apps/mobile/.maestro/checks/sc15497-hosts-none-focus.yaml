@@ -1,0 +1,45 @@
+# sc-15497 on sc-48600's Hosted by screen: ${EV_NONE}, a draft with no hosts (ORIENT names the orientation): the no-hosts line above Add a host; Add a host hides it and puts the cursor in Host 1, so text typed with no tap lands there; a 66-character name wraps and shows whole, and is refused on save; removing the row brings the line back.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_NONE}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'event.edit.hosts.none'
+- takeScreenshot: none
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'event.edit.hosts.none'
+- takeScreenshot: host-1-focused
+- inputText: 'Funmi Adeyemi Oluwaseun Babatunde Olorunfemi Akinwande-Okonkwo XYZ'
+- waitForAnimationToEnd
+- takeScreenshot: typed-no-tap
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: long-name-whole
+- tapOn:
+    id: 'event.edit.hosts.save'
+- waitForAnimationToEnd
+- takeScreenshot: after-save
+- hideKeyboard
+- tapOn:
+    id: 'event.edit.hosts.remove.0'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'event.edit.hosts.none'
+- takeScreenshot: removed-none-back
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- runFlow:
+    when:
+      visible:
+        id: 'event.edit.hosts.discard'
+    commands:
+      - tapOn:
+          id: 'event.edit.hosts.discard'

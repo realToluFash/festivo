@@ -1,0 +1,16 @@
+# sc-95084: the app's Today fold demo, /demo/today-fold?Q: at the top, a short swipe that rests on Open the event, a second that folds. Vars: METRO_URL, Q.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-fold?${Q}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe: { start: '50%, 60%', end: '50%, 45%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: rest
+- swipe: { start: '50%, 60%', end: '50%, 45%', duration: 150 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: folded

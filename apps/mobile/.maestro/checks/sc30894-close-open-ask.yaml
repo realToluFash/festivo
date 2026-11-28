@@ -1,0 +1,10 @@
+# sc-30894: closes a recovery confirm left open, scrolling to its way back. Needs a recovery confirm open.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.cancel'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'members.recovery.cancel'

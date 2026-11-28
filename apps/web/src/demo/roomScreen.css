@@ -1,0 +1,236 @@
+/* sc-3897's room screen: Soirely's neutral dark (Decided, 21 Oct), three sizes at 1080p, 64 · 30 · 20, scaling with the screen's width. */
+.rs-room {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
+  font-family: var(--fontFamily);
+}
+
+.rs-stage {
+  width: 100%;
+  height: 100%;
+  container-type: size;
+}
+
+.rs-fill {
+  --rsBig: max(12px, calc(64cqw / 19.2));
+  --rsMid: max(12px, calc(30cqw / 19.2));
+  --rsLabel: max(12px, calc(20cqw / 19.2));
+  --rsEdge: calc(96cqw / 19.2);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: var(--rsEdge);
+}
+
+.rs-room.is-projector .rs-stage {
+  width: min(100vw, calc(100vh * 4 / 3));
+  height: min(100vh, calc(100vw * 3 / 4));
+  outline: 1px solid var(--colorDarkBorder);
+}
+
+.rs-fill > * {
+  font-size: var(--rsMid);
+}
+
+.rs-event {
+  margin: 0;
+}
+
+.rs-event-name {
+  margin: 0;
+  color: var(--colorInkOnDarkSecondary);
+  font-size: var(--rsMid);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rs-label {
+  margin: 0 0 calc(var(--rsLabel) * 0.8);
+  color: var(--colorInkOnDarkSecondary);
+  font-size: var(--rsLabel);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.rs-big {
+  margin: 0;
+  color: var(--colorInkOnDark);
+  font-size: var(--rsBig);
+  font-weight: 700;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.rs-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--rsEdge);
+  align-content: center;
+  align-items: start;
+}
+
+.rs-body.is-between {
+  grid-template-columns: 1fr;
+}
+
+@container (max-aspect-ratio: 3 / 2) {
+  .rs-body {
+    grid-template-columns: 1fr;
+    align-content: center;
+  }
+}
+
+.rs-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--rsMid) * 0.9);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-item {
+  display: grid;
+  grid-template-columns: 4.2em 1fr;
+  gap: calc(var(--rsMid) * 0.8);
+  align-items: baseline;
+  font-size: var(--rsMid);
+  line-height: 1.2;
+}
+
+.rs-time {
+  color: var(--colorInkOnDarkSecondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-title {
+  color: var(--colorInkOnDark);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.rs-centre {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--rsMid);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.rs-said {
+  margin: 0;
+  color: var(--colorInkOnDarkSecondary);
+  font-size: var(--rsMid);
+  font-weight: 600;
+}
+
+.rs-asof {
+  position: absolute;
+  right: var(--rsEdge);
+  bottom: calc(var(--rsEdge) / 2);
+  display: flex;
+  gap: calc(var(--rsLabel) * 0.5);
+  align-items: center;
+  margin: 0;
+  color: var(--colorInkOnDarkSecondary);
+  font-size: var(--rsLabel);
+}
+
+.rs-dot {
+  width: calc(var(--rsLabel) * 0.6);
+  height: calc(var(--rsLabel) * 0.6);
+  border-radius: 50%;
+  background: var(--colorAttentionOnDark);
+}
+
+.rs-full {
+  position: absolute;
+  top: calc(var(--rsEdge) / 2);
+  right: calc(var(--rsEdge) / 2);
+  display: inline-flex;
+  gap: var(--spaceSm);
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 var(--spaceXxl);
+  border: 1px solid var(--colorDarkBorder);
+  border-radius: 999px;
+  background: var(--colorDarkInset);
+  color: var(--colorInkOnDark);
+  font: 600 16px/1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.rs-full:focus-visible {
+  outline: 2px solid var(--colorInkOnDark);
+  outline-offset: 2px;
+}
+
+.rs-full-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.rs-change {
+  animation: rs-arrive 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes rs-arrive {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-change {
+    animation: none;
+  }
+}
+
+.rs-demo {
+  position: fixed;
+  bottom: var(--spaceXl);
+  left: var(--spaceXl);
+  display: block;
+  max-width: 560px;
+  background: var(--colorCard);
+}
+
+.rs-demo summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.rs-demo p {
+  margin: var(--spaceSm) 0;
+}
+
+.rs-demo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}

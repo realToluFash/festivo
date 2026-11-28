@@ -1,0 +1,12 @@
+# sc-85022: scroll the held card to its buttons, as it stands. PAGE (accessPaused or twoFactorOverdue).
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: '${PAGE}\..+'
+    centerElement: true
+    timeout: 15000
+- swipe:
+    start: 50%,70%
+    end: 50%,40%
+- takeScreenshot: buttons

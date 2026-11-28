@@ -1,0 +1,22 @@
+# sc-72136: Guests' Export sheet on ${EVENT}, after a search for ${SEARCH}, its head, then scrolled to Share, for a text size set before the batch.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${SEARCH}
+- pressKey: Enter
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'guests.export', retryTapIfNoChange: true }
+- extendedWaitUntil: { visible: { id: 'guests.export.head' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: head
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-1
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-2
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-3
+- scrollUntilVisible: { element: { id: 'guests.export.share' }, direction: DOWN, timeout: 20000 }
+- takeScreenshot: share

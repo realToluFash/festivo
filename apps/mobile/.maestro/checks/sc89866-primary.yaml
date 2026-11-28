@@ -1,0 +1,23 @@
+# sc-89866: Make primary on a verified address opens Confirm it’s you with its lead.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: 'qa-second-.*'
+    direction: DOWN
+- tapOn: 'qa-second-.*'
+- waitForAnimationToEnd
+- takeScreenshot: primary-row
+- tapOn: 'Make primary.*'
+- waitForAnimationToEnd
+- takeScreenshot: primary-ask
+- runFlow:
+    when:
+      visible: 'Make it primary'
+    commands:
+      - tapOn: 'Make it primary'
+      - waitForAnimationToEnd
+- takeScreenshot: primary-prove
+- assertVisible: 'Confirm it’s you'
+- assertVisible: 'Confirm it’s you before changing the address you sign in with\.'

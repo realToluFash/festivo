@@ -1,0 +1,13 @@
+# sc-75689: the app's Design demo, Event name with the event no longer available: Save, then the notice.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=nameGone
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: opened
+- tapOn:
+    id: 'event.edit.name.save'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: gone

@@ -1,0 +1,98 @@
+# sc-88756 iPad upright: a strip dragged by hand stays where it was left until another area is chosen; turning upright from on its side places it by the rule.
+# Run with --ipad, passing B (the event whose Guests strip is dragged); it waits only on ids, not on event names.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${B}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: hand-before
+- swipe:
+    from:
+      id: event.nav.messages
+    direction: LEFT
+    duration: 600
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: hand-dragged
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 8000
+    optional: true
+- takeScreenshot: hand-dragged-later
+- tapOn:
+    id: event.nav.seating
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: hand-then-seating
+- openLink: ${METRO_URL}/--/events/${B}?area=budget
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: side-budget
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: upright-budget
+- openLink: ${METRO_URL}/--/events/${B}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: upright-guests

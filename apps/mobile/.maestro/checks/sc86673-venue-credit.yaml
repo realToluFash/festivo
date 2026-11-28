@@ -1,0 +1,38 @@
+# sc-86673: ${EVENT_ID}'s Venue opened, an address typed that matches: the map credit under the suggestions, keyboard up.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.address'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.venue.address'
+- inputText: 'Praca do Comercio'
+- extendedWaitUntil:
+    visible: '.*Comércio.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.venue.credit'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: credit-keyboard
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.venue.credit'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: credit

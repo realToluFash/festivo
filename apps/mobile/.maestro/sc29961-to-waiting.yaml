@@ -1,0 +1,21 @@
+# sc-29961: from signed out, EMAIL and PASSWORD through Lost your authenticator, Send the code and its emailed code, to Waiting for your organisation.
+appId: host.exp.Exponent
+---
+- runFlow: sc33828-to-code-signed-out.yaml
+- runFlow: sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 30000 }
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 4000, optional: true }
+- runScript: { file: sc29961-mail-code.js }
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.mail.code}
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.ask' } }
+    commands:
+      - tapOn: '{{t:lostTwoFactor.codesTitleEmailOnly}}'
+      - tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd

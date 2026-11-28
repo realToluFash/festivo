@@ -1,0 +1,15 @@
+# sc-563: a managed account with nothing to join presses Continue on Your organisation and goes on to Your mobile number; sc563-details-skip-product covers the landing.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      text: 'Managed by.*'
+    timeout: 30000
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible:
+      text: 'Your mobile number'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-details-save-product

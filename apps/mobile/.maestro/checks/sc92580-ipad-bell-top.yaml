@@ -1,0 +1,23 @@
+# sc-92580: on the iPad at the device's text size (set outside the flow), the bell's panel opened from Today, upright then on its side. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side
+- setOrientation: PORTRAIT

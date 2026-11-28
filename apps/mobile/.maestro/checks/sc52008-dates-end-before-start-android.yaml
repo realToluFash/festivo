@@ -1,0 +1,33 @@
+# sc-52008: ${EVENT_ID}'s Dates (starts 14:00, ends 18:00 the same day), with the Time under Ends set to ${HOUR}:00 on Android's clock dialog, so the end-before-start line shows; left at rest for a TalkBack pass on Save. Needs ${METRO_URL}, ${EVENT_ID}, ${HOUR}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.dates'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.endTime'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.dates.endTime'
+- extendedWaitUntil:
+    visible:
+      text: 'OK'
+    timeout: 10000
+- tapOn:
+    text: '${HOUR}'
+- takeScreenshot: clock
+- tapOn:
+    text: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: end-before-start

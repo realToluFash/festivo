@@ -1,0 +1,20 @@
+# sc-44949: Your account's "We couldn't deliver email to …" lines, then Change email on the first.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.undeliverable'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: lines
+- tapOn:
+    id: 'account\..*\.change'
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: change
