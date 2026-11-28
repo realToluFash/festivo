@@ -1,15 +1,15 @@
 import { type Ref, type RefObject, useContext, useEffect, useRef } from 'react';
-import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
+import { type TextInputInstance, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
-import { tokens } from '../theme/tokens.ts';
 import { CountryPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, TextField } from './Field.tsx';
+import { PhoneCountryRow } from './PhoneCountryRow.tsx';
 import { settledFocus, WindowArriving } from './openedFocus.ts';
 import { bothRefs, SETTLED_MS } from './Screen.tsx';
 
-/** The code and the number side by side, as Verify phone draws them; from the accessibility sizes on, the code over the number, each the field's full width (sc-78438). */
+/** The code and the number side by side, as Verify phone draws them; the code over the number, each the field's full width, once its name no longer fits beside it on one line and always from the accessibility sizes on (sc-78438, sc-7579). */
 export function PhoneEntry({
   label,
   pill,
@@ -47,7 +47,7 @@ export function PhoneEntry({
   testID: string;
 }) {
   const { t } = useTranslation();
-  const over = useAccessibilitySizes();
+  const atAccessibilitySizes = useAccessibilitySizes();
   const input = useRef<TextInputInstance>(null);
   const focus = settledFocus(opensFocused, useContext(WindowArriving));
 
@@ -60,9 +60,11 @@ export function PhoneEntry({
 
   return (
     <Field label={label} pill={pill} error={error} help={help}>
-      {/* A live text-size change keeps the old row's text widths; a fresh row measures as a launch does (sc-78438). */}
-      <View key={over ? 'over' : 'beside'} style={over ? styles.over : styles.beside}>
-        <View style={over ? styles.whole : styles.country}>
+      <PhoneCountryRow
+        country={country}
+        atAccessibilitySizes={atAccessibilitySizes}
+        testID={testID}
+        picker={
           <CountryPicker
             label={t('verifyPhone.countryLabel')}
             value={country}
@@ -73,33 +75,26 @@ export function PhoneEntry({
             pickerRef={pickerRef}
             testID={`${testID}.country`}
           />
-        </View>
-        <TextField
-          ref={bothRefs(input, ref)}
-          style={over ? styles.whole : styles.number}
-          value={number}
-          wrong={error != null && errorOn === 'number'}
-          submitting={submitting}
-          autoFocus={focus === 'arrival'}
-          keyboardType="phone-pad"
-          textContentType="telephoneNumber"
-          autoComplete="tel"
-          returnKeyType="done"
-          onChangeText={onNumber}
-          onSubmitEditing={onSubmit}
-          submitBehavior="submit"
-          accessibilityLabel={label}
-          testID={`${testID}.number`}
-        />
-      </View>
+        }
+        field={
+          <TextField
+            ref={bothRefs(input, ref)}
+            value={number}
+            wrong={error != null && errorOn === 'number'}
+            submitting={submitting}
+            autoFocus={focus === 'arrival'}
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            autoComplete="tel"
+            returnKeyType="done"
+            onChangeText={onNumber}
+            onSubmitEditing={onSubmit}
+            submitBehavior="submit"
+            accessibilityLabel={label}
+            testID={`${testID}.number`}
+          />
+        }
+      />
     </Field>
   );
 }
-
-const styles = StyleSheet.create({
-  beside: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  over: { gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: 140 },
-  number: { flexGrow: 2, flexBasis: 180 },
-  whole: { alignSelf: 'stretch' },
-});
