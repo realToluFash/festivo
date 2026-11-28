@@ -487,6 +487,14 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
     await waitFor(() => expect(container.querySelector('.desk.ev')).not.toBeNull());
   });
 
+  it('opens inside the desk dialog host, so the desk, event and button styles reach it', async () => {
+    signedIn();
+    serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) });
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.closest('.desk.ev.bt')).not.toBeNull();
+  });
+
   it('a payment no quote holds any more says it was not marked, under its row', async () => {
     signedIn();
     serve({
