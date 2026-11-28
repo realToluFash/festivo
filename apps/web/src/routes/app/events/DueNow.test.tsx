@@ -212,6 +212,11 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
         .getByRole('link', { name: 'Everything due on Gala Fundación Lucía' })
         .getAttribute('href'),
     ).toBe('/app/events/ev_2/budget/due');
+    for (const name of ['Adaeze & Tunde', 'Gala Fundación Lucía']) {
+      expect(screen.getByRole('link', { name: `Everything due on ${name}` }).className).toBe(
+        'desk-text is-wraps',
+      );
+    }
   });
 
   it('marking the last row settles the sheet, and its Undo takes the line and the link away again', async () => {
