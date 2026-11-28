@@ -2541,8 +2541,8 @@
       "walkIn": "En la puerta"
     },
     "repliedOn": "respondió el {{date}}",
-    "repliedOnFromEmailLink": "replied {{date}} · from the email link",
-    "repliedFromEmailLink": "{{reply}} · replied {{date}} · from the email link",
+    "repliedOnFromEmailLink": "respondió el {{date}} · desde el enlace del correo",
+    "repliedFromEmailLink": "{{reply}} · respondió el {{date}} · desde el enlace del correo",
     "replyHeading": "Respuesta",
     "recordReply": "Registrar respuesta",
     "recordFor": "Para {{name}}. Cuenta como respuesta de esta persona y constará que la registró usted.",
