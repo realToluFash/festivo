@@ -149,6 +149,7 @@ import {
   asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
+import { type LedEvent, asLedEvents } from './handover.ts';
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import { type MyNight, asMyNight } from './myNight.ts';
 import {
@@ -5862,10 +5863,39 @@ export class ApiClient {
     );
   }
 
-  async removeMember(organisationId: string, membershipId: string): Promise<void> {
+  /** `handTo` is the membership that takes the events they lead, required while there are any: refused 422 on `handTo` without it (sc-614). */
+  async removeMember(
+    organisationId: string,
+    membershipId: string,
+    handTo: string | null = null,
+  ): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
-      { method: 'DELETE' },
+      { method: 'DELETE', body: { handTo } },
+    );
+  }
+
+  /** What the member leads, soonest first: what Remove and Hand over now move (sc-614). */
+  async memberWork(organisationId: string, membershipId: string): Promise<LedEvent[]> {
+    return asLedEvents(
+      await this.get<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/work`,
+      ),
+    );
+  }
+
+  /** What the caller leads here, soonest first: what Leave moves (sc-614). */
+  async myWork(organisationId: string): Promise<LedEvent[]> {
+    return asLedEvents(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/work`),
+    );
+  }
+
+  /** A suspended member's events go to `handTo` for good; refused 409 unless they are suspended (sc-614). */
+  async handOverWork(organisationId: string, membershipId: string, handTo: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/handover`,
+      { handTo },
     );
   }
 
@@ -5967,9 +5997,9 @@ export class ApiClient {
     );
   }
 
-  /** Refused `last_owner` while the caller is the only owner. */
-  async leaveOrganisation(organisationId: string): Promise<void> {
-    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, {});
+  /** Refused `last_owner` while the caller is the only owner. With no `handTo`, the events they lead go to every other owner (sc-614). */
+  async leaveOrganisation(organisationId: string, handTo: string | null = null): Promise<void> {
+    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, { handTo });
   }
 
   /** With the proof from `prove()`. The caller becomes an Administrator. */
