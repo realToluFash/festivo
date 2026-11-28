@@ -8,6 +8,7 @@ use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\Organisation\SingleSignOn\ServiceUrls;
 use App\Domain\Organisation\SingleSignOn\SingleSignOnSettings;
+use App\Domain\Organisation\SingleSignOn\TestSignOn;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\SsoProvider;
@@ -38,6 +39,7 @@ final readonly class SingleSignOnController
         private OwnerCheck $ownerCheck,
         private Entitlements $entitlements,
         private UserMailer $userMailer,
+        private TestSignOn $testSignOn,
     ) {
     }
 
@@ -74,6 +76,13 @@ final readonly class SingleSignOnController
         $this->settings->remove($organisation, $this->user());
 
         return new JsonResponse($this->page($organisation));
+    }
+
+    /** The address at the provider for the Owner's browser to open; the result shows on this page's next read. */
+    #[Route('/api/orgs/{organisationId}/single-sign-on/test', name: 'orgs_sso_test', methods: ['POST'])]
+    public function test(string $organisationId): JsonResponse
+    {
+        return new JsonResponse(['authorizationUrl' => $this->testSignOn->start($this->organisation($organisationId), $this->user())]);
     }
 
     /** 409 `sso_untested` until a test has worked. */

@@ -7,6 +7,7 @@ namespace App\Integrations\SingleSignOn;
 use App\Domain\Organisation\Interfaces\ProviderDocumentsInterface;
 use Psl\Str\Byte;
 use Psr\Log\LoggerInterface;
+use SensitiveParameter;
 use Symfony\Component\HttpClient\NoPrivateNetworkHttpClient;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -37,6 +38,24 @@ final readonly class HttpProviderDocuments implements ProviderDocumentsInterface
             $body = $response->getContent();
         } catch (ExceptionInterface $exception) {
             $this->logger->info('An identity provider document could not be read.', ['url' => $url, 'exception' => $exception]);
+
+            return null;
+        }
+
+        return Byte\length($body) > self::MAX_BYTES ? null : $body;
+    }
+
+    public function redeem(string $endpoint, string $clientId, #[SensitiveParameter] string $clientSecret, #[SensitiveParameter] array $fields): ?string
+    {
+        try {
+            $body = $this->http->request('POST', $endpoint, [
+                'timeout' => 10,
+                'max_redirects' => 0,
+                'auth_basic' => [\urlencode($clientId), \urlencode($clientSecret)],
+                'body' => $fields,
+            ])->getContent(false);
+        } catch (ExceptionInterface $exception) {
+            $this->logger->info('An identity provider token endpoint did not answer.', ['url' => $endpoint, 'exception' => $exception::class]);
 
             return null;
         }

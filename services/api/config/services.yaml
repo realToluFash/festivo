@@ -89,6 +89,7 @@ services:
         arguments:
             $endpoint: '%env(DNS_TXT_ENDPOINT)%'
     App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
+    App\Domain\Organisation\Interfaces\OrganisationIdTokenInterface: '@App\Integrations\SingleSignOn\OidcIdToken'
     App\Domain\Organisation\Interfaces\ProviderDocumentsInterface: '@App\Integrations\SingleSignOn\HttpProviderDocuments'
     App\Domain\Organisation\SingleSignOn\ServiceUrls:
         arguments:
@@ -175,6 +176,9 @@ services:
             $appleWebClientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
     App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
     App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
+    App\Domain\Organisation\Controller\SingleSignOnCallbackController:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Controller\AppleReturnController:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

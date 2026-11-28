@@ -19,6 +19,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
@@ -33,6 +34,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\SecureRandom;
 use Psl\Str;
@@ -266,6 +268,125 @@ final class SingleSignOnSettingsTest extends ApiTestCase
             self::assertResponseStatusCodeSame(403);
             self::assertSame(ErrorCode::SsoSignInRequired->type(), $this->problem()['type'], 'no password sign-up at the domain, taken or not');
         }
+    }
+
+    #[Test]
+    public function aTestSignOnGoesToTheProviderWithPkceAndRecordsWhoCameBack(): void
+    {
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->saveGoogle($owner, $organisation);
+        $sent = $this->startTest($organisation);
+
+        self::assertSame(['code', '48120-ire.apps.googleusercontent.com', 'openid email profile', 'S256'], [$sent['response_type'], $sent['client_id'], $sent['scope'], $sent['code_challenge_method']]);
+
+        $this->answerTest($organisation, $sent, ['email' => 'Folake@ire.events', 'name' => 'Folake Adeyemi']);
+        $redeemed = ScriptedProviderDocuments::$redeemed[0];
+
+        self::assertSame(['https://oauth2.googleapis.com/token', 'gw-7Hq2xL9vR4mK8pT1', $sent['redirect_uri']], [$redeemed['endpoint'], $redeemed['clientSecret'], $redeemed['fields']['redirect_uri']]);
+        self::assertSame($sent['code_challenge'], Str\trim_right(Str\replace_every(\base64_encode(\hash('sha256', $redeemed['fields']['code_verifier'], true)), ['+' => '-', '/' => '_']), '='));
+
+        $this->signIn($owner);
+        $page = $this->send('GET', $this->path($organisation));
+        self::assertSame(['passed', 'folake@ire.events', 'Folake Adeyemi', false], [$page['test'], $page['testedEmail'], $page['testedName'], $page['on']]);
+
+        $this->come($organisation, ['state' => $sent['state'], 'error' => 'access_denied']);
+        $this->signIn($owner);
+        self::assertSame('passed', $this->send('GET', $this->path($organisation))['test'], 'a state answers once');
+    }
+
+    #[Test]
+    public function aTestSignOnThatFailsSaysWhyAndSwitchesNothingOn(): void
+    {
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->saveGoogle($owner, $organisation);
+
+        foreach ([
+            'wrong nonce' => ['nonce' => 'somebody-else'],
+            'no nonce' => ['nonce' => null],
+            'wrong audience' => ['aud' => 'another-client'],
+            'wrong issuer' => ['iss' => 'https://evil.example'],
+            'expired' => ['exp' => new Clock()->now()->modify('-5 minutes')],
+        ] as $case => $claims) {
+            $this->signIn($owner);
+            $this->answerTest($organisation, $this->startTest($organisation), [...$claims, 'email' => 'folake@ire.events']);
+            self::assertSame(['failed', 'The sign-in the provider sent back did not pass our checks.'], $this->testResult($owner, $organisation), $case);
+        }
+
+        $this->signIn($owner);
+        $this->answerTest($organisation, $this->startTest($organisation), ['email' => 'folake@elsewhere.example']);
+        self::assertSame(['failed', 'The provider signed in an address that is not at one of your proved domains.'], $this->testResult($owner, $organisation));
+
+        $this->signIn($owner);
+        $sent = $this->startTest($organisation);
+        $this->come($organisation, ['state' => $sent['state'], 'error' => 'access_denied', 'error_description' => 'This person is not assigned to the app.']);
+        self::assertSame(['failed', 'This person is not assigned to the app.'], $this->testResult($owner, $organisation));
+
+        $this->signIn($owner);
+        $sent = $this->startTest($organisation);
+        ScriptedProviderDocuments::$tokenReply = Json\encode(['error' => 'invalid_client']);
+        $this->come($organisation, ['state' => $sent['state'], 'code' => 'a-code']);
+        self::assertSame(['failed', 'invalid_client'], $this->testResult($owner, $organisation));
+
+        $this->come($organisation, ['state' => 'never-issued', 'error' => 'forged']);
+        self::assertSame(['failed', 'invalid_client'], $this->testResult($owner, $organisation), 'a state we never issued records nothing');
+        self::assertFalse($this->send('GET', $this->path($organisation))['on']);
+    }
+
+    /** @return array<string, string> what the browser was sent to the provider with */
+    private function startTest(Organisation $organisation): array
+    {
+        $url = Type\string()->coerce($this->send('POST', $this->path($organisation, 'test'))['authorizationUrl'] ?? null);
+        self::assertStringStartsWith('https://accounts.google.com/o/oauth2/v2/auth?', $url);
+        \parse_str(Type\string()->coerce(\parse_url($url, \PHP_URL_QUERY)), $query);
+
+        return Type\dict(Type\string(), Type\string())->coerce($query);
+    }
+
+    /**
+     * @param array<string, string> $sent
+     * @param array<string, mixed>  $claims over a token that would pass; a null one is left out
+     */
+    private function answerTest(Organisation $organisation, array $sent, array $claims): void
+    {
+        $this->publishGoogleKeys();
+        ScriptedProviderDocuments::$tokenReply = Json\encode(['id_token' => self::service(TestSigningKeys::class)->sign(Dict\filter([
+            'iss' => self::GOOGLE,
+            'aud' => $sent['client_id'],
+            'sub' => 'subject-folake',
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'nonce' => $sent['nonce'],
+            ...$claims,
+        ], static fn (mixed $value): bool => null !== $value))]);
+        $this->come($organisation, ['state' => $sent['state'], 'code' => 'a-code']);
+    }
+
+    /** @param array<string, string> $query */
+    private function come(Organisation $organisation, array $query): void
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $this->client->request('GET', Str\format('/api/sso/oidc/%s/callback?%s', $organisation->getId()->toRfc4122(), \http_build_query($query)));
+        self::assertResponseStatusCodeSame(303);
+        self::assertStringEndsWith('/app/settings/sign-in-rules/single-sign-on', (string) $this->client->getResponse()->headers->get('Location'));
+    }
+
+    /** @return array{mixed, mixed} */
+    private function testResult(User $owner, Organisation $organisation): array
+    {
+        $this->signIn($owner);
+        $page = $this->send('GET', $this->path($organisation));
+
+        return [$page['test'], $page['testFailure']];
+    }
+
+    private function publishGoogleKeys(): void
+    {
+        $pem = self::service(TestSigningKeys::class)->publicKey(IdentityProvider::Google, TestSigningKeys::KEY_ID, true) ?? static::fail('no key');
+        $rsa = \openssl_pkey_get_details(\openssl_pkey_get_public($pem) ?: static::fail('unreadable key'))['rsa'] ?? static::fail('not RSA');
+        $encoded = static fn (string $bytes): string => Str\trim_right(Str\replace_every(\base64_encode($bytes), ['+' => '-', '/' => '_']), '=');
+        ScriptedProviderDocuments::publish('https://www.googleapis.com/oauth2/v3/certs', Json\encode(['keys' => [['kty' => 'RSA', 'kid' => TestSigningKeys::KEY_ID, 'n' => $encoded($rsa['n']), 'e' => $encoded($rsa['e'])]]]));
     }
 
     private function passwordSignIn(string $email): int

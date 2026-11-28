@@ -653,10 +653,10 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_bi
 namespace = "App\\Integrations\\Dns\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_organisation"]
 
-# Fetching an identity provider's metadata or discovery document (sc-610). It sees the port it implements and nothing else of ours.
+# Talking to an organisation's identity provider (sc-610). It sees the ports it implements and the OpenID adapters' key reading, nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\SingleSignOn\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_organisation"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_organisation", "@layer:oidc"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Nominatim\\"
