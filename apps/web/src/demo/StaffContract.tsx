@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Choices, Field } from '../components/SettingsParts.tsx';
-import { ENTERPRISE, money } from './billing.ts';
+import { money } from './billing.ts';
+import { CATALOGUE } from './comparePlans.ts';
 import {
   BLANK_FORM,
   CONTRACT_WORDS as W,
@@ -47,7 +48,7 @@ function StaffForm({ state }: { state: StaffState }) {
   );
   const [focusFirst, setFocusFirst] = useState(0);
   const [sent, setSent] = useState<Sent>(state === 'refused' ? 'refused' : 'none');
-  const listPrice = money(ENTERPRISE.price * 12, ENTERPRISE.currency, 'en-GB');
+  const listPrice = money(CATALOGUE.enterprise.prices.USD.month * 12, 'USD', 'en-GB');
 
   useEffect(() => {
     if (focusFirst === 0) return;
