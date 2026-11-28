@@ -728,7 +728,7 @@
 /* The course name is cut short with an ellipsis on the row; the full name is in the form and its list (sc-3898). */
 .ro-course {
   display: inline-block;
-  max-width: min(100%, 18rem);
+  max-width: min(18rem, var(--roWordCap, 100%));
   overflow: hidden;
   padding: 2px var(--spaceSm);
   border: 1px solid var(--colorAccentTintBorder);
