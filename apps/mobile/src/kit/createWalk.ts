@@ -114,6 +114,15 @@ export function back(walk: Walk): Walk {
   };
 }
 
+/** With a screen reader on the phone the question is the list's first item, so the list opens at its top (sc-100878). */
+export function scrollsToPick(
+  walkToPick: boolean,
+  openingToPick: boolean,
+  { phone, readerOn }: { phone: boolean; readerOn: boolean },
+): boolean {
+  return (walkToPick || openingToPick) && !(phone && readerOn);
+}
+
 export function typed(walk: Walk, name: string): Walk {
   return { ...walk, name, refusal: null };
 }

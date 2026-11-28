@@ -76,11 +76,12 @@ export function MeasuredWords({
   );
 }
 
-/** Each of `words` measured hidden in SemiBold at exactly `start`, unscaled: its width, or undefined until it has been laid out. Widths filed in `kept` outlive the caller, and stand until it measures its own. */
+/** Each of `words` measured hidden in `weight` (SemiBold unless said) at exactly `start`, unscaled: its width, or undefined until it has been laid out. Widths filed in `kept` outlive the caller, and stand until it measures its own. */
 export function useMeasuredAt(
   start: number,
   words: readonly string[],
   kept?: Map<string, number>,
+  weight: 'regular' | 'semibold' = 'semibold',
 ): { widths: (number | undefined)[]; measure: ReactNode } {
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
 
@@ -90,7 +91,7 @@ export function useMeasuredAt(
       <MeasuredWords
         words={words}
         size={start}
-        weight="semibold"
+        weight={weight}
         allowFontScaling={false}
         onWidth={(word, width) => {
           const key = `${start}|${word}`;

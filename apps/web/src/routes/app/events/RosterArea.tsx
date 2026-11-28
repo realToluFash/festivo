@@ -17,7 +17,7 @@ import {
   phoneFields,
   phoneLengthProblem,
 } from '@soirely/domain';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -43,6 +43,7 @@ import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
+import { DESK_WIDTH, useMatches } from '../../../phoneWidth.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -84,6 +85,7 @@ type Field = keyof Problems;
 const LINK_KEYS: Record<StaffLink, string> = {
   none: 'roster.linkNone',
   copied: 'roster.linkCopied',
+  shared: 'roster.linkShared',
   sent: 'roster.linkSent',
   opened: 'roster.linkOpened',
   no_mobile: 'roster.linkNoMobile',
@@ -93,15 +95,16 @@ const LINK_KEYS: Record<StaffLink, string> = {
 const LINK_MARKS: Record<StaffLink, string> = {
   none: 'is-none',
   copied: 'is-copied',
+  shared: 'is-shared',
   sent: 'is-sent',
   opened: 'is-opened',
   no_mobile: 'is-no-mobile',
   erased: 'is-erased',
 };
 
-/** Copied: given out, and not yet marked as sent. */
+/** Copied or Shared: given out, and not yet marked as sent. */
 function unmarked(link: StaffLink): boolean {
-  return link === 'copied';
+  return link === 'copied' || link === 'shared';
 }
 
 function draftOf(entry: StaffEntry | null, country: string): Draft {
@@ -297,7 +300,12 @@ function Roster({
 
   useEffect(() => {
     if (focusAfter.current == null) return;
-    document.getElementById(focusAfter.current)?.focus();
+    const there = document.getElementById(focusAfter.current);
+    // A Briefing action whose column has given way is focused where it went: in the open person's details.
+    (there?.checkVisibility?.() === false
+      ? document.getElementById(focusAfter.current.replace(/^bf-(row-)?/, 'bf-fact-'))
+      : there
+    )?.focus();
     focusAfter.current = null;
   });
 
@@ -327,6 +335,14 @@ function Roster({
 
   const shown = (id: string) => staff.find((one) => one.id === id) ?? null;
   const opened = panel != null && panel.kind !== 'add' ? shown(panel.id) : null;
+
+  // roster.css docks at the same width: from 1280 px Station and Briefing give way, so a full-width row spans four columns.
+  const docked =
+    useMatches(DESK_WIDTH) &&
+    panel != null &&
+    (manage || panel.kind === 'details') &&
+    (panel.kind === 'add' || opened != null);
+  const span = docked ? 4 : 6;
 
   const editing = panel?.kind === 'edit' ? opened : null;
   const contact = editing == null || !editing.contactsErased;
@@ -645,9 +661,13 @@ function Roster({
                       <tr>
                         <th scope="col">{t('roster.name')}</th>
                         <th scope="col">{t('roster.job')}</th>
-                        <th scope="col">{t('roster.station')}</th>
+                        <th scope="col" className="rs-gives">
+                          {t('roster.station')}
+                        </th>
                         <th scope="col">{t('roster.shift')}</th>
-                        <th scope="col">{t('briefing.card')}</th>
+                        <th scope="col" className="rs-gives">
+                          {t('briefing.card')}
+                        </th>
                         <th scope="col" className="rs-link-col">
                           {t('roster.link')}
                         </th>
@@ -671,7 +691,7 @@ function Roster({
                             <td className={one.job == null ? 'rs-quiet' : undefined}>
                               {one.job?.name ?? t('roster.noJob')}
                             </td>
-                            <td className={one.station == null ? 'rs-quiet' : undefined}>
+                            <td className={one.station == null ? 'rs-gives rs-quiet' : 'rs-gives'}>
                               <StationWords entry={one} />
                             </td>
                             <td
@@ -681,7 +701,7 @@ function Roster({
                             >
                               <ShiftCell entry={one} times={times} />
                             </td>
-                            <td>{briefing.cell(one)}</td>
+                            <td className="rs-gives">{briefing.cell(one)}</td>
                             <td>
                               <LinkCell
                                 entry={one}
@@ -696,12 +716,12 @@ function Roster({
                           </tr>
                           {held?.id === one.id && (
                             <tr className="rs-held-row">
-                              <td colSpan={6}>
+                              <td colSpan={span}>
                                 <HeldLink entry={one} url={held.url} />
                               </td>
                             </tr>
                           )}
-                          {briefing.held(one, 6)}
+                          {briefing.held(one, span)}
                         </Fragment>
                       ))}
                     </tbody>
@@ -727,6 +747,7 @@ function Roster({
                     onEdit={() => open({ kind: 'edit', id: opened.id })}
                     onRemove={() => open({ kind: 'remove', id: opened.id })}
                     onReplace={acts ? () => setReplacing(opened.id) : null}
+                    brief={briefing.fact(opened)}
                   />
                 )}
                 {panel.kind === 'remove' && opened != null && (
@@ -886,6 +907,8 @@ function trailLine(entry: StaffEntry, times: StaffTimes, t: TFunction): string |
   switch (entry.link) {
     case 'copied':
       return t('roster.trailCopied', { name, time });
+    case 'shared':
+      return t('roster.trailShared', { name, time });
     case 'sent':
       return t('roster.trailSent', { name, time });
     case 'opened':
@@ -1058,6 +1081,7 @@ function Details({
   onEdit,
   onRemove,
   onReplace,
+  brief,
 }: {
   entry: StaffEntry;
   plan: StaffPlan;
@@ -1070,15 +1094,18 @@ function Details({
   onEdit: () => void;
   onRemove: () => void;
   onReplace: (() => void) | null;
+  brief: ReactNode;
 }) {
   const { t } = useTranslation();
   const next = entry.contactsErased
     ? null
     : finished
       ? t('roster.nextErasing')
-      : unmarked(entry.link)
+      : entry.link === 'copied'
         ? t('roster.nextCopied')
-        : null;
+        : entry.link === 'shared'
+          ? t('roster.nextShared')
+          : null;
   const trail = trailLine(entry, times, t);
 
   return (
@@ -1137,6 +1164,10 @@ function Details({
                 <GoneWhy section={entry.stationRemoved} id="rs-gone" />
               )}
             </dd>
+          </div>
+          <div>
+            <dt>{t('briefing.card')}</dt>
+            <dd>{brief}</dd>
           </div>
           {entry.mobile != null && (
             <div>

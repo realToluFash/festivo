@@ -237,6 +237,8 @@ export interface InsideEvent {
   up?: { label: string; onPress: () => void } | undefined;
   /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and in More the account's other events, a member's organisations (sc-68438), Your account and Sign out. */
   outside?: { id: string; role: OutsideEvent['role'] } | undefined;
+  /** Areas the person's role on the event does not open: without staff.read, no Staff (sc-77903). */
+  hidden?: readonly EventPlace[] | undefined;
   /** Nothing above the body: held from outside at a reading level, Overview's card heads the page, as the demo's `more-in` draws it (sc-71). */
   bare?: boolean | undefined;
 }
@@ -429,9 +431,9 @@ export function AppFrame({
                   testID: 'event.nav.checkIn',
                 },
               ]),
-          ...(inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map(
-            (area) => areaEntry(t, inEvent, area),
-          ),
+          ...(inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role))
+            .filter((area) => !(inEvent.hidden ?? []).includes(area))
+            .map((area) => areaEntry(t, inEvent, area)),
           ...(uprightMore
             ? [
                 {
@@ -1648,7 +1650,9 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const moreTab = useRef<ViewInstance>(null);
   const { outside } = inEvent;
   const tabs = outside == null ? PHONE_EVENT_BAR : outsideBar(outside.role);
-  const inMore = outside == null ? MORE_PLACES : outsideMore(outside.role);
+  const inMore = (outside == null ? MORE_PLACES : outsideMore(outside.role)).filter(
+    (place) => !(inEvent.hidden ?? []).includes(place),
+  );
   const at: PhoneEventTab = tabs.some(([tab]) => tab === inEvent.area)
     ? (inEvent.area as PhoneEventTab)
     : 'more';

@@ -151,6 +151,8 @@ final class OrganisationExportTest extends ApiTestCase
         'owner_claims' => 'change history',
         'password_reset_tokens' => "sign-in credentials (sc-611's rule)",
         'password_set_codes' => "sign-in credentials (sc-611's rule)",
+        'payment_reminder_send_rows' => "notifications: one person's, or deliveries",
+        'payment_reminder_sends' => "notifications: one person's, or deliveries",
         'pending_registrations' => "a person's own account (sc-611's rule)",
         'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
         'phone_numbers' => "a person's own account (sc-611's rule)",

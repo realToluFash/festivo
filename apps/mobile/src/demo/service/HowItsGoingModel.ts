@@ -587,7 +587,7 @@ function runOutState(name: RunOutStateName): ServiceState {
   const r = runOutSeed(name);
   const s = { ...fresh(), runOut: r };
   if (name === 'runOutNoManage') return { ...s, manage: false };
-  if (name === 'runOutOffline') return { ...s, online: false };
+  if (name === 'runOutOffline' || name === 'runOutAskOffline') return { ...s, online: false };
   return s;
 }
 

@@ -28,6 +28,7 @@ import {
 import {
   type LaterRow,
   type Night,
+  type NightItem,
   type NightStart,
   type TrackView,
   NIGHT_EVENT_NAME,
@@ -606,9 +607,12 @@ function NowCard({
       <Text size={13} weight="semibold" style={styles.onDarkSecondary}>
         {`${NW.now.toUpperCase()} · since ${timeIn(locale, now.started ?? now.planned)}`}
       </Text>
-      <Text size={24} weight="bold" style={styles.onDark}>
-        {now.title}
-      </Text>
+      <View style={styles.titleLine}>
+        <Text size={24} weight="bold" style={[styles.onDark, styles.shrink]}>
+          {now.title}
+        </Text>
+        <CourseTag item={now} />
+      </View>
       <Text size={15} style={styles.onDarkSecondary}>
         {`${now.owner ?? NW.noOwner} · ${view.label}`}
       </Text>
@@ -697,9 +701,12 @@ function NextCard({ view, manage, acts }: { view: TrackView; manage: boolean; ac
               </>
             )}
           </View>
-          <Text size={20} weight="bold">
-            {next.item.title}
-          </Text>
+          <View style={styles.titleLine}>
+            <Text size={20} weight="bold" style={styles.shrink}>
+              {next.item.title}
+            </Text>
+            <CourseTag item={next.item} />
+          </View>
           <Text size={14} style={styles.secondary}>
             {`${next.item.owner ?? NW.noOwner} · ${next.item.length == null ? NW.noLength : `Lasts ${next.item.length} min`}`}
           </Text>
@@ -804,13 +811,20 @@ function LaterLine({
         )}
       </View>
       <View style={styles.grow}>
-        <Text
-          size={16}
-          weight="semibold"
-          style={row.mark === 'skipped' ? [styles.secondary, styles.struck] : undefined}
-        >
-          {row.item.title}
-        </Text>
+        <View style={styles.titleLine}>
+          <Text
+            size={16}
+            weight="semibold"
+            style={
+              row.mark === 'skipped'
+                ? [styles.secondary, styles.struck, styles.shrink]
+                : styles.shrink
+            }
+          >
+            {row.item.title}
+          </Text>
+          <CourseTag item={row.item} />
+        </View>
         <Text size={13} style={[styles.secondary, styles.num]}>
           {[MARK_WORD[row.mark], row.time].filter(Boolean).join(' · ')}
         </Text>
@@ -996,8 +1010,37 @@ function Skeleton({ layout }: { layout: Layout }) {
   );
 }
 
+/** sc-3898: a linked item's course beside its title, cut short to one line when long. */
+function CourseTag({ item }: { item: NightItem }) {
+  if (item.course == null) return null;
+
+  return (
+    <View style={styles.course}>
+      <Text size={12} weight="semibold" numberOfLines={1}>
+        {NW.courseTag(item.course)}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
+  titleLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
+  course: {
+    maxWidth: '100%',
+    flexShrink: 1,
+    paddingHorizontal: tokens.spaceSm,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: tokens.colorAccentTintBorder,
+    borderRadius: tokens.radiusPill,
+    backgroundColor: tokens.colorAccentTint,
+  },
   split: { flex: 1, flexDirection: 'row' },
   body: { gap: tokens.spaceLg },
   bodyPhone: { paddingHorizontal: tokens.spaceLg },

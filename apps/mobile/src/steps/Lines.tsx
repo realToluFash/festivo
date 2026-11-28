@@ -11,6 +11,9 @@ import { useFocusOnAnswer } from '../components/Screen.tsx';
 import type { TextHandle } from '../components/Text.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { stepTitle } from './stepTitle.ts';
+
+export { stepTitle };
 
 /** A step's title and the one line under it that says what to do. */
 export function Heading({
@@ -52,11 +55,6 @@ const CONTROL = 16;
 /** A sign-in step's title, a size larger in a tablet's sheet. */
 export function useStepTitleSize() {
   return useLayout().kind === 'phone' ? tokens.typeTitleStep.size : tokens.typeTitleFrame.size;
-}
-
-/** Tracked in by 2% of its size. */
-export function stepTitle(size: number) {
-  return { letterSpacing: size * -0.02 };
 }
 
 export function Plain({

@@ -830,7 +830,8 @@ def review(c, a):
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        post(c, story, ["ux" if design else R.builder_of(story["labels"])],
+        post(c, story, [W.builder(story, pr) if design or W.ops_pr(story, pr)
+                        else R.builder_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
                 if follow_up or keeps else
@@ -1046,9 +1047,10 @@ def merge(c, a):
     if story["state"] not in R.MERGING and not side and not follow_up and not design:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")
-    if not design and R.builder_of(story["labels"]) != c.role and not (
-            c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
-        raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
+    whose = "ops" if W.ops_pr(story, pr) else R.builder_of(story["labels"])
+    if not design and whose != c.role and not (c.role in R.DEVS and whose in R.DEVS):
+        raise Refused(f"PR #{a.pr} is {whose}'s to merge" if W.ops_pr(story, pr)
+                      else f"sc-{story['id']} is {whose}'s to merge")
     verdict = W.latest_verdict(pr)
     carried = pr.get("carried") if head == pr["head_sha"] else None
     if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
@@ -1063,6 +1065,8 @@ def merge(c, a):
     if design:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, and "
                 f"no tester is told{resync(c)}")
+    if W.ops_pr(story, pr):
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     if side:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
                 f"the linguist's to move, and the linguist is woken{resync(c)}")

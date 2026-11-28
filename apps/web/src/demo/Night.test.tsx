@@ -27,4 +27,16 @@ describe('the night at a desk (sc-3895)', () => {
     expect(document.querySelector('.nt-head-end')).toBeNull();
     expect(document.querySelector('.nt-strip')).toBeNull();
   });
+
+  it('shows a linked item’s course beside its title, and none on the others', SLOW, async () => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/demo/events/evt-wed-4/night?state=course_now'],
+    });
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole('heading', { level: 2, name: 'Dinner is served' }, SLOW);
+    expect(screen.getByText('Course · Starter')).toBeDefined();
+    expect(screen.getByText('Course · Dessert')).toBeDefined();
+    expect(document.querySelectorAll('.nt-course')).toHaveLength(2);
+  });
 });

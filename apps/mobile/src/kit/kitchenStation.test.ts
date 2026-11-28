@@ -12,6 +12,8 @@ import { readFileSync } from 'node:fs';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
+import { formatTimeOfDay } from '@soirely/domain';
+
 import en from '../i18n/locales/en.json';
 import {
   NO_FLAGS,
@@ -22,6 +24,7 @@ import {
   pickedKey,
   refusedAccess,
   rememberPick,
+  stationAsOf,
   stationTime,
   stationView,
   topicMessage,
@@ -719,6 +722,36 @@ describe('the station’s times (sc-4015)', () => {
   it('are 24-hour, whatever the device’s own setting', () => {
     expect(stationTime(new Date(2027, 2, 6, 19, 42), 'en-US')).toBe('19:42');
   });
+
+  it('keep the unpadded hour before ten that the strip has always shown', () => {
+    expect(stationTime(new Date(2027, 2, 6, 9, 5), 'es')).toBe('9:05');
+  });
+});
+
+describe('the Kitchen station row’s as of (sc-97945)', () => {
+  const read = new Date('2027-03-06T08:05:00Z');
+
+  it('is 24-hour, whatever the device’s own setting', () => {
+    expect(stationAsOf(new Date(2027, 2, 6, 19, 42), 'en-US')).toBe('19:42');
+  });
+
+  it('reads the device’s zone, not the event’s, for the same last read', () => {
+    const ahead = stationAsOf(read, 'en', 'Africa/Lagos');
+    const behind = stationAsOf(read, 'en', 'America/New_York');
+
+    expect(ahead).toBe(formatTimeOfDay(read, 'en', 'Africa/Lagos'));
+    expect(behind).toBe(formatTimeOfDay(read, 'en', 'America/New_York'));
+    expect([ahead, behind]).toEqual(['09:05', '03:05']);
+  });
+
+  it('is the Offline band’s form, zero-padded before ten in every locale', () => {
+    for (const locale of ['en', 'es', 'fr', 'pt', 'pt-BR']) {
+      expect(stationAsOf(read, locale, 'Africa/Lagos')).toBe(
+        formatTimeOfDay(read, locale, 'Africa/Lagos'),
+      );
+      expect(stationAsOf(read, locale, 'Africa/Lagos')).toBe('09:05');
+    }
+  });
 });
 
 describe('picking a station from the list (sc-4015)', () => {
@@ -780,5 +813,14 @@ describe('the view’s wiring QA failed (sc-4015)', () => {
 
   it('tells the freshness line how many marks are kept on the device', () => {
     expect(view()).toMatch(/\.waiting\(kept\.length\)/u);
+  });
+});
+
+describe('the row’s as of reads the device’s time (sc-97945)', () => {
+  const row = readFileSync(new URL('../components/StationWayIn.tsx', import.meta.url), 'utf8');
+
+  it('passes no zone to stationAsOf and no longer imports formatEventClock', () => {
+    expect(row).toMatch(/asOf: \(at\) => stationAsOf\(at, dateLocale\(\)\)/u);
+    expect(row).not.toMatch(/formatEventClock/u);
   });
 });

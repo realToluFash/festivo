@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\Guest;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\GuestReply;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
@@ -128,6 +131,37 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame([$companion], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($row['companions']), static fn (array $one): mixed => $one['state']));
         $counts = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/headcount')['headcount']['counts'] ?? null);
         self::assertSame($headcount, Dict\select_keys($counts, Vec\keys($headcount)));
+    }
+
+    #[Test]
+    public function aReplyFromAnEmailAnswerLinkSaysSoUntilTheNextReplyOnThePage(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+
+        $this->anonymous('/api/guest-links/reply', ['token' => $token, 'answer' => 'notComing', 'emailLink' => true]);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['notComing', 'emailLink'], [$this->row($guest)['reply'], $this->row($guest)['replySource']]);
+
+        $this->reply($token, 'maybe');
+
+        self::assertSame(['maybe', 'guestPage'], [$this->row($guest)['reply'], $this->row($guest)['replySource']]);
+    }
+
+    #[Test]
+    public function anAnswerLinkIsTheGuestsOwnLinkWithTheAnswerInIt(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $entity = self::em()->find(Guest::class, $guest) ?? self::fail('no guest');
+
+        $links = Vec\map(
+            [GuestReply::Coming, GuestReply::NotComing, GuestReply::Maybe],
+            static fn (GuestReply $answer): string => Str\after(self::service(InvitationLinks::class)->answerLink($entity, $answer), '/i/') ?? '',
+        );
+
+        self::assertSame(["{$token}?answer=coming", "{$token}?answer=notComing", "{$token}?answer=maybe"], $links);
     }
 
     #[Test]

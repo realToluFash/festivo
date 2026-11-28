@@ -10,6 +10,7 @@ import {
   countries,
   factsOf,
   forward,
+  scrollsToPick,
   firstTurn,
   freshWalk,
   nameInSight,
@@ -223,6 +224,14 @@ describe('the walk turning between steps (qa3, #39178)', () => {
     expect(forward(name, t).toPick).toBe(true);
     expect(forward({ ...name, country: null, step: 1 }, t).refusal).toBeNull();
     expect(forward({ ...country, country: 'ZW' }, t).toPick).toBe(false);
+  });
+
+  it('never scrolls to the pick on the phone with a screen reader on (sc-100878)', () => {
+    expect(scrollsToPick(true, false, { phone: true, readerOn: true })).toBe(false);
+    expect(scrollsToPick(false, true, { phone: true, readerOn: true })).toBe(false);
+    expect(scrollsToPick(true, false, { phone: true, readerOn: false })).toBe(true);
+    expect(scrollsToPick(false, true, { phone: false, readerOn: true })).toBe(true);
+    expect(scrollsToPick(false, false, { phone: true, readerOn: false })).toBe(false);
   });
 
   it('lets the leaving step go only at the end of the turn on screen', () => {

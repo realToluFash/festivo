@@ -444,7 +444,6 @@
     "payment_reminder.overdue_row": "{row} · Atrasado · último recordatorio",
     "payment_reminder.last_about": "Este es el último recordatorio sobre {vendor}: {what}.",
     "payment_reminder.email.open_payments": "{count, plural, one {Abrir el pago} many {Abrir los pagos} other {Abrir los pagos}}",
-    "payment_reminder.email.open_budget": "Abrir el presupuesto",
     "payment_reminder.email.link": "{label}: {url}",
     "payment_reminder.email.settings": "Configuración de notificaciones",
     "payment_reminder.email.footer": "Recibe este correo porque puede registrar pagos en {organisation}. Para dejar de recibirlos, desactive el correo de Facturación en Configuración de notificaciones.",

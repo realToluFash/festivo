@@ -1,4 +1,4 @@
-import { Navigate, createBrowserRouter } from 'react-router';
+import { Navigate, type RouteObject, createBrowserRouter } from 'react-router';
 
 import { PageArrival } from '../components/PageArrival.tsx';
 import { DemoRoute } from '../demo/DemoEntry.tsx';
@@ -40,6 +40,7 @@ import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
+import { DueNowPage } from './app/events/DueNow.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
@@ -69,6 +70,50 @@ import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
 import { GuestReplyEmails } from './public/GuestReplyEmails.tsx';
 import { Status } from './public/Status.tsx';
+
+const appPages: RouteObject[] = [
+  { index: true, element: <SignedInHome /> },
+  { path: 'events', element: <Events /> },
+  { path: 'events/new', element: <NewEvent /> },
+  { path: 'events/:eventId', element: <EventView /> },
+  { path: 'events/:eventId/edit', element: <EditRedirect /> },
+  { path: 'events/:eventId/guests', element: <EventGuests /> },
+  { path: 'events/:eventId/dates', element: <EventDates /> },
+  { path: 'events/:eventId/people', element: <EventPeoplePage /> },
+  { path: 'events/:eventId/staff', element: <EventStaff /> },
+  { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
+  { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
+  { path: 'events/:eventId/staff/stations', element: <EventStations /> },
+  { path: 'events/:eventId/staff/hours', element: <EventHoursWorked /> },
+  { path: 'events/:eventId/run', element: <EventRun /> },
+  { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
+  { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
+  { path: 'events/:eventId/messages', element: <EventMessages /> },
+  { path: 'events/:eventId/budget/*', element: <EventBudget /> },
+  { path: 'events/:eventId/:area', element: <EventAreaPage /> },
+  { path: 'due/:reminderId', element: <DueNowPage /> },
+  { path: 'calendar', element: <Calendar /> },
+  { path: 'menu-library', element: <MenuLibrary /> },
+  { path: 'guests', element: <Navigate to="/app" replace /> },
+  {
+    element: <SettingsDesk />,
+    children: [
+      { path: 'account', element: <Account /> },
+      { path: 'account/security', element: <Security /> },
+      { path: 'account/notifications', element: <NotificationSettings /> },
+      { path: 'account/personalisation', element: <Personalisation /> },
+      { path: 'settings', element: <General /> },
+      { path: 'settings/members', element: <Members /> },
+      { path: 'settings/sign-in-rules', element: <SignInRules /> },
+      { path: 'settings/vendors', element: <Vendors /> },
+      { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
+      { path: 'settings/data-and-control', element: <DataAndControl /> },
+      { path: 'settings/data-and-control/export', element: <ExportAllData /> },
+      { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },
+      { path: 'settings/data-and-control/audit-log', element: <AuditLog /> },
+    ],
+  },
+];
 
 /**
  * Three audiences, separated in the tree rather than by a flag.
@@ -112,49 +157,8 @@ export const routes = [
       { path: '/your-messages', element: <YourMessagesFromEmail /> },
       {
         path: '/app',
-        element: <AppLayout />,
-        children: [
-          { index: true, element: <SignedInHome /> },
-          { path: 'events', element: <Events /> },
-          { path: 'events/new', element: <NewEvent /> },
-          { path: 'events/:eventId', element: <EventView /> },
-          { path: 'events/:eventId/edit', element: <EditRedirect /> },
-          { path: 'events/:eventId/guests', element: <EventGuests /> },
-          { path: 'events/:eventId/dates', element: <EventDates /> },
-          { path: 'events/:eventId/people', element: <EventPeoplePage /> },
-          { path: 'events/:eventId/staff', element: <EventStaff /> },
-          { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
-          { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
-          { path: 'events/:eventId/staff/stations', element: <EventStations /> },
-          { path: 'events/:eventId/staff/hours', element: <EventHoursWorked /> },
-          { path: 'events/:eventId/run', element: <EventRun /> },
-          { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
-          { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
-          { path: 'events/:eventId/messages', element: <EventMessages /> },
-          { path: 'events/:eventId/budget/*', element: <EventBudget /> },
-          { path: 'events/:eventId/:area', element: <EventAreaPage /> },
-          { path: 'calendar', element: <Calendar /> },
-          { path: 'menu-library', element: <MenuLibrary /> },
-          { path: 'guests', element: <Navigate to="/app" replace /> },
-          {
-            element: <SettingsDesk />,
-            children: [
-              { path: 'account', element: <Account /> },
-              { path: 'account/security', element: <Security /> },
-              { path: 'account/notifications', element: <NotificationSettings /> },
-              { path: 'account/personalisation', element: <Personalisation /> },
-              { path: 'settings', element: <General /> },
-              { path: 'settings/members', element: <Members /> },
-              { path: 'settings/sign-in-rules', element: <SignInRules /> },
-              { path: 'settings/vendors', element: <Vendors /> },
-              { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
-              { path: 'settings/data-and-control', element: <DataAndControl /> },
-              { path: 'settings/data-and-control/export', element: <ExportAllData /> },
-              { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },
-              { path: 'settings/data-and-control/audit-log', element: <AuditLog /> },
-            ],
-          },
-        ],
+        element: <AppLayout pages={appPages} />,
+        children: appPages,
       },
       {
         path: '/preview',

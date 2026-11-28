@@ -61,6 +61,7 @@ function renderedBell(
         element: <NotificationsBell userId="u1" accountZone={accountZone} look={look} />,
       },
       { path: '/app/events/:id', element: <p>Event page</p> },
+      { path: '/app/due/:id', element: <p>Due now</p> },
     ],
     { initialEntries: ['/app'] },
   );
@@ -194,6 +195,21 @@ describe('the bell (sc-3980)', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/e1'));
     expect(sent).toContain('POST /api/notifications/n1/read');
+  });
+
+  it('a payment reminder opens Due now with the page that was open under it (sc-1331)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ place: '/app/due/r1' })], unreadCount: 1, next: null }),
+      'POST /api/notifications/n1/read': () => json({ item: item({ read: true }), unreadCount: 0 }),
+    });
+    const router = bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/due/r1'));
+    expect(router.state.location.state).toMatchObject({ under: { pathname: '/app' } });
   });
 
   it('an item whose event is gone says so instead of navigating', async () => {

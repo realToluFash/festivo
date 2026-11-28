@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import type { Membership, Vendor, VendorsPage } from '@soirely/api-client';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
 const MEMBER = { id: 'role_4', seededAs: 'member', name: null };
@@ -129,6 +130,10 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     open();
 
     expect(await screen.findByText('2 vendors')).toBeDefined();
+    expect(
+      document.querySelector('.settings-desk-page .desk > .desk-page > .vd-column'),
+    ).not.toBeNull();
+    expect(document.querySelectorAll('.vd-column .vd-tools > .desk-menu-at')).toHaveLength(2);
     expect(screen.getByText('2 in use')).toBeDefined();
     expect(screen.getByText('2 archived')).toBeDefined();
     expect(
@@ -496,6 +501,43 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect((photographySignal as AbortSignal | null)?.aborted).toBe(true);
   });
 
+  it('a refused archive links each owed event in a wrapping link, every word inside it (sc-91886)', async () => {
+    signedIn(membership());
+    const long = 'A'.repeat(60);
+    answering(
+      () => pageOf([BLOOM]),
+      () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/vendor_owed',
+            title: 'Conflict',
+            status: 409,
+            events: [
+              { id: 'e1', name: long },
+              { id: 'e2', name: 'Ireti at 40' },
+            ],
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bloom & Co/ }));
+    const form = within(await screen.findByRole('dialog'));
+    await act(async () => {
+      fireEvent.click(form.getByRole('button', { name: 'Archive this vendor' }));
+    });
+    await form.findByRole('link', { name: `Payments to Bloom & Co on ${long}` });
+    const links = form.getAllByRole('link');
+
+    expect(links.map((one) => one.textContent)).toEqual([
+      `Payments to Bloom & Co on ${long}`,
+      'Payments to Bloom & Co on Ireti at 40',
+    ]);
+    expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+    expect(links.every((one) => one.childElementCount === 0)).toBe(true);
+  });
+
   it('saving a vendor archived elsewhere shows the API’s words and keeps the form', async () => {
     signedIn(membership());
     const words =
@@ -610,5 +652,85 @@ describe('the way into Payment reminders, on Settings › Vendors (sc-95)', () =
     await screen.findByText('Bloom & Co');
     expect(screen.queryByRole('link', { name: /^Payment reminders/ })).toBeNull();
     expect(sent.some((one) => one.path.endsWith('/payment-reminders'))).toBe(false);
+  });
+});
+
+const PANE = { left: 100, right: 700 };
+
+function lay(button: { left: number; right: number }) {
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(220);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const box = this.classList.contains('desk-filter') ? button : PANE;
+
+    return {
+      ...box,
+      top: 0,
+      bottom: 48,
+      x: box.left,
+      y: 0,
+      width: box.right - box.left,
+      height: 48,
+      toJSON: () => box,
+    };
+  });
+}
+
+describe('Vendors’ menus open wholly inside the Settings pane above 40rem (sc-102661)', () => {
+  it('opens from the start edge only above 40rem, leaving the column-wide menu of 40rem and under', () => {
+    const wide = mediaBlock('(width > 40rem)', stylesheet(import.meta.dirname, 'vendors.css'));
+
+    expect(cssRule('.vd-tools.is-start .desk-menu', wide)).toMatch(
+      /^\s*right: auto;\s+left: 0;\s*$/u,
+    );
+  });
+
+  it('keeps the end edge where the whole menu fits there, and takes the start edge where it does not', async () => {
+    signedIn(membership());
+    answering(() => pageOf([BLOOM, DELTA]));
+    open();
+    const category = await screen.findByRole('button', { name: /All categories/ });
+    const tools = category.closest('.vd-tools');
+
+    lay({ left: 480, right: 640 });
+    fireEvent.click(category);
+    await screen.findByRole('menu');
+    expect(tools?.classList.contains('is-start')).toBe(false);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    expect(document.activeElement).toBe(category);
+
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockRestore();
+    lay({ left: 100, right: 260 });
+    fireEvent.click(screen.getByRole('button', { name: /In use/ }));
+    await screen.findByRole('menu');
+    expect(tools?.classList.contains('is-start')).toBe(true);
+  });
+
+  it('places an open menu again when the window resizes, and only then', async () => {
+    signedIn(membership());
+    answering(() => pageOf([BLOOM, DELTA]));
+    open();
+    const category = await screen.findByRole('button', { name: /All categories/ });
+    const tools = category.closest('.vd-tools');
+
+    lay({ left: 480, right: 640 });
+    fireEvent.click(category);
+    await screen.findByRole('menu');
+    expect(tools?.classList.contains('is-start')).toBe(false);
+
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockRestore();
+    lay({ left: 100, right: 260 });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'B' },
+    });
+    expect(tools?.classList.contains('is-start')).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(tools?.classList.contains('is-start')).toBe(true);
   });
 });

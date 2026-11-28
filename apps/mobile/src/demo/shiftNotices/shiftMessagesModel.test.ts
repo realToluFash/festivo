@@ -5,11 +5,13 @@ import {
   MESSAGE_KINDS,
   MY_SHIFT,
   SHIFT_MESSAGE_BOARDS,
+  canBeTimeSensitive,
   channelOf,
   OVERFLOW_SAMPLE,
   messageKindOf,
   messageOf,
   shiftLinesOf,
+  urgentOf,
 } from './shiftMessagesModel.ts';
 import { SAMPLE } from '../samples.ts';
 
@@ -175,9 +177,32 @@ describe('the reminder the day before (S3)', () => {
   });
 });
 
+describe('time-sensitive push inside 24 hours (pm #101995)', () => {
+  it('never makes the reminder time-sensitive, even from an old urgent link', () => {
+    expect(canBeTimeSensitive('reminder')).toBe(false);
+    expect(urgentOf('reminder', '1')).toBe(false);
+  });
+
+  it('makes a change or a removal time-sensitive only when the link asks', () => {
+    for (const kind of MESSAGE_KINDS.filter((one) => one !== 'reminder')) {
+      expect(canBeTimeSensitive(kind)).toBe(true);
+      expect(urgentOf(kind, '1')).toBe(true);
+      expect(urgentOf(kind, '0')).toBe(false);
+      expect(urgentOf(kind, undefined)).toBe(false);
+    }
+    expect(urgentOf('removed', '1')).toBe(true);
+  });
+});
+
 describe('the boards', () => {
-  it('links every kind on every channel, and push inside 24 hours', () => {
-    expect(SHIFT_MESSAGE_BOARDS).toHaveLength(MESSAGE_KINDS.length * 4);
+  it('links every kind on every channel, and push inside 24 hours but for the reminder', () => {
+    expect(SHIFT_MESSAGE_BOARDS).toHaveLength(MESSAGE_KINDS.length * 4 - 1);
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).not.toContain(
+      '/demo/shift-messages?kind=reminder&channel=push&urgent=1',
+    );
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).toContain(
+      '/demo/shift-messages?kind=removed&channel=push&urgent=1',
+    );
     for (const board of SHIFT_MESSAGE_BOARDS) {
       const params = new URLSearchParams(board.href.split('?')[1]);
       expect(messageKindOf(params.get('kind'))).toBe(params.get('kind'));

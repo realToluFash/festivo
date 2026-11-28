@@ -184,7 +184,7 @@ final readonly class QuoteSerialiser
     }
 
     /** @return Payment */
-    private static function payment(ScheduledPayment $payment, string $currency, string $today): array
+    public static function payment(ScheduledPayment $payment, string $currency, string $today): array
     {
         $paidMinor = $payment->getPaidAmountMinor();
         $paidOn = $payment->getPaidOn();
