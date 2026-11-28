@@ -1,0 +1,28 @@
+# sc-104480: Who's here door sheet, keyboard up in Name: one press on empty space (the sheet's heading area) closes the keyboard, the sheet stays open and the typed name is kept. Needs ${METRO_URL}, ${EV} (event id), ${JOB} (a job chip id) and ${EMPTYPT}, a screen point such as 'x%,y%' that differs by device: it must land on the heading area, not a control, or the check passes without checking anything. qa3's own point and device were not recorded with the flow; pick one from the phone-empty-space-before.png screenshot on sc-104480 and note it here.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door
+    timeout: 30000
+- tapOn:
+    id: whosHere.door
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door.name
+    timeout: 10000
+- tapOn:
+    id: whosHere.door.job.${JOB}
+- tapOn:
+    id: whosHere.door.name
+- inputText: 'Bisi'
+- waitForAnimationToEnd
+- takeScreenshot: name-keys-up-before-press
+- tapOn:
+    point: ${EMPTYPT}
+    retryTapIfNoChange: false
+- waitForAnimationToEnd
+- assertVisible:
+    id: whosHere.door.name
+- takeScreenshot: after-one-press

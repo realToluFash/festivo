@@ -1,0 +1,32 @@
+# sc-104480: Who's here add-mobile sheet, keyboard up in Mobile: one press on Send adds the walk-on and shows the copy-again sheet; screenshots before and after. Needs ${METRO_URL}, ${EV} (event id), ${PERSON} (the person's id in whosHere.addMobile.<id>), ${NUMBER} (mobile number).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: whosHere.addMobile.${PERSON}
+    timeout: 20000
+- tapOn:
+    id: whosHere.addMobile.${PERSON}
+- extendedWaitUntil:
+    visible:
+      id: whosHere.mobile.number
+    timeout: 10000
+- tapOn:
+    id: whosHere.mobile.number
+- inputText: '${NUMBER}'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up-before-press
+- tapOn:
+    id: whosHere.mobile.send
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: whosHere.copyAgain
+    timeout: 6000
+- waitForAnimationToEnd
+- takeScreenshot: after-one-press

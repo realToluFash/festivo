@@ -1,0 +1,60 @@
+# sc-104480: Who's here door sheet, keyboard up in Name: one press on a Job chip and one on a Station chip select it and leave the keyboard up, then one press on Add acts; screenshots each step. Needs ${METRO_URL}, ${EV} (event id), ${NAME}, ${JOB} and ${STATION} (chip ids), ${NUMBER} (mobile number). Scroll swipes assume a phone-height sheet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}/whos-here
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door
+    timeout: 30000
+- tapOn:
+    id: whosHere.door
+- extendedWaitUntil:
+    visible:
+      id: whosHere.door.name
+    timeout: 10000
+- tapOn:
+    id: whosHere.door.name
+- inputText: '${NAME}'
+- waitForAnimationToEnd
+- takeScreenshot: name-keys-up
+- tapOn:
+    id: whosHere.door.job.${JOB}
+    retryTapIfNoChange: false
+- waitForAnimationToEnd
+- takeScreenshot: job-chip-one-press
+- swipe:
+    start: 50%, 58%
+    end: 50%, 15%
+    duration: 600
+- waitForAnimationToEnd
+- swipe:
+    start: 50%, 58%
+    end: 50%, 15%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: scrolled-to-stations-keys-up
+- tapOn:
+    id: whosHere.door.station.${STATION}
+    retryTapIfNoChange: false
+- waitForAnimationToEnd
+- takeScreenshot: station-chip-one-press
+- inputText: ' Jr'
+- tapOn:
+    id: whosHere.door.number
+- inputText: '${NUMBER}'
+- waitForAnimationToEnd
+- swipe:
+    start: 50%, 58%
+    end: 50%, 15%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: scrolled-keys-up-before-press
+- tapOn:
+    id: whosHere.door.add
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: whosHere.copyAgain
+    timeout: 6000
+- waitForAnimationToEnd
+- takeScreenshot: after-one-press
