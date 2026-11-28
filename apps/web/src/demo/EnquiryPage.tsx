@@ -13,6 +13,7 @@ import {
   NOW,
   PEOPLE,
   type Person,
+  assignedWords,
   canSee,
 } from './enquiries.ts';
 import { PlainSelect } from './EnquiryForm.tsx';
@@ -36,6 +37,22 @@ import {
   PAGE_WORDS as P,
 } from './enquiryWords.ts';
 import { useStore } from './enquiryStore.ts';
+import { ConsultationRow } from './Consultations.tsx';
+import { CW, type Consultation, nextFor } from './consultations.ts';
+import { DeleteFoot, WarningNote } from './EnquiryDelete.tsx';
+import { useDelete } from './useEnquiryDelete.tsx';
+import {
+  ERASE_WORDS as E,
+  type ErasePageStart,
+  erasePageStart,
+  erasePageStateOf,
+  extraOf,
+  monthWords,
+  shortDay,
+  warnsOn,
+} from './enquiryErase.ts';
+import { ErasedChip } from './Enquiries.tsx';
+import { Mark } from '../components/SettingsParts.tsx';
 import { EnquiryEvent } from './EnquiryEvent.tsx';
 import { enquiryEventStateOf, isSource } from './enquiryToEvent.ts';
 import { TYPE_WORDS } from './events.ts';
@@ -46,18 +63,35 @@ export function EnquiryPage() {
   const [params] = useSearchParams();
   const state = pageStateOf(params.get('state'));
   const made = enquiryEventStateOf(params.get('state'));
+  const erasing = erasePageStateOf(params.get('state'));
 
   if (made != null && isSource(id)) return <EnquiryEvent key={made} state={made} />;
 
-  return <EnquiryView key={`${id}-${state ?? ''}`} id={id} start={pageStart(state)} />;
+  return (
+    <EnquiryView
+      key={`${id}-${params.get('state') ?? ''}`}
+      id={id}
+      start={pageStart(state)}
+      erase={erasing == null ? null : erasePageStart(erasing)}
+    />
+  );
 }
 
-function EnquiryView({ id, start }: { id: string; start: PageStart }) {
+function EnquiryView({
+  id,
+  start,
+  erase,
+}: {
+  id: string;
+  start: PageStart;
+  erase: ErasePageStart | null;
+}) {
   const store = useStore();
   const location = useLocation();
-  const viewer = start.viewer ?? store.start.viewer.person;
+  const viewer = erase?.viewer ?? start.viewer ?? store.start.viewer.person;
   const [failed, setFailed] = useState(start.failed);
-  const stored = store.enquiries.find((one) => one.id === id) ?? null;
+  const found = store.enquiries.find((one) => one.id === id) ?? extraOf(id);
+  const stored = found == null ? null : { ...found, ...erase?.patch };
   const enquiry = stored != null && start.date != null ? { ...stored, date: start.date } : stored;
   const shown = enquiry != null && canSee(enquiry, viewer) ? enquiry : null;
   const back = listPath(location.search);
@@ -65,7 +99,13 @@ function EnquiryView({ id, start }: { id: string; start: PageStart }) {
   return (
     <div className="desk-page ev-page">
       <div className="ev-wide enq-page">
-        <Crumb to={back} back={W.enquiries} name={failed ? null : (shown?.client ?? null)}>
+        <Crumb
+          to={back}
+          back={W.enquiries}
+          name={
+            failed || shown == null ? null : shown.erased == null ? shown.client : E.erasedEnquiry
+          }
+        >
           <DemoBell tell={store.tell} />
         </Crumb>
         {failed ? (
@@ -85,7 +125,7 @@ function EnquiryView({ id, start }: { id: string; start: PageStart }) {
         ) : shown == null ? (
           <NotHere back={back} />
         ) : (
-          <Loaded enquiry={shown} viewer={viewer} start={start} />
+          <Loaded enquiry={shown} viewer={viewer} start={start} erase={erase} />
         )}
       </div>
     </div>
@@ -155,14 +195,57 @@ function Loaded({
   enquiry,
   viewer,
   start,
+  erase,
 }: {
   enquiry: Enquiry;
   viewer: Person;
   start: PageStart;
+  erase: ErasePageStart | null;
+}) {
+  const narrow = useNarrow();
+  const deleting = useDelete(enquiry, erase, narrow);
+
+  if (enquiry.erased != null)
+    return (
+      <ErasedLoaded
+        enquiry={enquiry}
+        viewer={viewer}
+        consultations={erase?.consultations ?? []}
+        deleting={deleting}
+      />
+    );
+
+  return (
+    <LiveLoaded
+      enquiry={enquiry}
+      viewer={viewer}
+      start={start}
+      narrow={narrow}
+      deleting={deleting}
+    />
+  );
+}
+
+type Deleting = ReturnType<typeof useDelete>;
+
+function LiveLoaded({
+  enquiry,
+  viewer,
+  start,
+  narrow,
+  deleting,
+}: {
+  enquiry: Enquiry;
+  viewer: Person;
+  start: PageStart;
+  narrow: boolean;
+  deleting: Deleting;
 }) {
   const store = useStore();
   const location = useLocation();
-  const narrow = useNarrow();
+  const locale = dateLocale();
+  const won = enquiry.tab === 'won';
+  const warns = warnsOn(enquiry, nextFor(enquiry));
   const [closing, setClosing] = useState(start.closing);
   const title = useRef<HTMLHeadingElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -206,11 +289,19 @@ function Loaded({
         <h1 ref={title} className="desk-title" tabIndex={-1}>
           {enquiry.client}
         </h1>
-        <p className={lost == null ? 'enq-page-status' : 'enq-page-status is-lost'}>
-          <StatusMark lost={lost != null} />
-          {lost == null ? P.open : `${P.lost} · ${LOST_WORDS[lost.reason]}`}
-        </p>
+        {won ? (
+          <p className="enq-page-status">
+            <Mark kind="yes" />
+            {W.tabs.won}
+          </p>
+        ) : (
+          <p className={lost == null ? 'enq-page-status' : 'enq-page-status is-lost'}>
+            <StatusMark lost={lost != null} />
+            {lost == null ? P.open : `${P.lost} · ${LOST_WORDS[lost.reason]}`}
+          </p>
+        )}
       </header>
+      {warns != null && <WarningNote>{E.warning(shortDay(warns, locale))}</WarningNote>}
       {lost != null && (
         <div className="enq-banner" role="note">
           <StatusMark lost />
@@ -242,7 +333,7 @@ function Loaded({
             headingRef={notesHead}
             onNotes={(notesList) => put({ notesList })}
           />
-          {lost == null && (
+          {lost == null && !won && (
             <div className="enq-foot">
               <button
                 ref={closeButton}
@@ -255,9 +346,114 @@ function Loaded({
               </button>
             </div>
           )}
+          <DeleteFoot enquiry={enquiry} viewer={viewer} onOpen={deleting.open} />
         </div>
         {panel}
       </div>
+      {deleting.dialog}
+    </>
+  );
+}
+
+function ErasedLoaded({
+  enquiry,
+  viewer,
+  consultations,
+  deleting,
+}: {
+  enquiry: Enquiry;
+  viewer: Person;
+  consultations: readonly Consultation[];
+  deleting: Deleting;
+}) {
+  const locale = dateLocale();
+  const title = useRef<HTMLHeadingElement>(null);
+  const erased = enquiry.erased!;
+  const reason = erased.reason;
+  const facts: [string, string | null, boolean?][] = [
+    [F.type, enquiry.type == null ? null : TYPE_WORDS[enquiry.type]],
+    [F.date, erased.month == null ? null : monthWords(erased.month, locale)],
+    [F.guests, enquiry.guests == null ? null : enquiry.guests.toLocaleString(locale)],
+    [F.budget, enquiry.budget == null ? null : moneyWords(enquiry.budget, locale), true],
+    [F.foundVia, enquiry.foundVia == null ? null : FOUND_VIA_WORDS[enquiry.foundVia]],
+  ];
+  const ordered = [...consultations].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+  useEffect(() => title.current?.focus(), []);
+
+  return (
+    <>
+      <header className="enq-head">
+        <h1 ref={title} className="desk-title" tabIndex={-1}>
+          {E.erasedEnquiry}
+        </h1>
+        <p className="enq-page-status is-lost">
+          <StatusMark lost />
+          {reason == null ? P.lost : `${P.lost} · ${LOST_WORDS[reason]}`}
+        </p>
+      </header>
+      <div className="enq-banner enq-erased-banner" role="note">
+        <div className="enq-banner-words">
+          <p className="enq-banner-title">
+            <ErasedChip />
+          </p>
+          <p className="desk-line">{E.erasedLine(shortDay(erased.on, locale))}</p>
+        </div>
+      </div>
+      <div className="enq-split">
+        <div className="enq-sections">
+          <Card title={P.about}>
+            <dl className="enq-facts">
+              {facts.map(([label, value, money]) => (
+                <div key={label} className="enq-fact">
+                  <dt>{label}</dt>
+                  <dd
+                    className={value == null ? 'is-quiet' : money === true ? 'is-money' : undefined}
+                  >
+                    {value ?? F.notGiven}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+          <Card title={F.assignedTo}>
+            <p className="desk-line enq-erased-who">
+              {viewer.role === 'member' ? P.assignedYou : assignedWords(enquiry, W.notAssigned)}
+            </p>
+          </Card>
+          <Card title={E.dates}>
+            <dl className="enq-facts">
+              <div className="enq-fact">
+                <dt>{E.created}</dt>
+                <dd>{shortDay(erased.createdAt, locale)}</dd>
+              </div>
+              <div className="enq-fact">
+                <dt>{E.closedAsLost}</dt>
+                <dd>{shortDay(erased.closedAt, locale)}</dd>
+              </div>
+            </dl>
+          </Card>
+          {ordered.length > 0 && (
+            <Card title={CW.consultations}>
+              <ul className="con-rows">
+                {ordered.map((one) => (
+                  <ConsultationRow
+                    key={one.id}
+                    consultation={one}
+                    list={ordered}
+                    edits={false}
+                    manages={false}
+                    onChange={() => undefined}
+                    onCancel={() => undefined}
+                  />
+                ))}
+              </ul>
+            </Card>
+          )}
+          <DeleteFoot enquiry={enquiry} viewer={viewer} onOpen={deleting.open} />
+        </div>
+      </div>
+      {deleting.dialog}
     </>
   );
 }

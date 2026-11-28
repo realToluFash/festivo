@@ -24,7 +24,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
@@ -32,6 +32,7 @@ import { useLiveNotifications } from '../liveNotifications.ts';
 import { type Stale, keepsWhatLoaded, useStaleWatch } from '../offline.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
+import { stateFor } from '../routes/app/pageUnder.ts';
 import { placeUnder } from './bellPlace.ts';
 import { type BellRow, BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
@@ -59,6 +60,7 @@ export function NotificationsBell({
   const { t } = useTranslation();
   const zone = readerZoneOf(accountZone);
   const navigate = useNavigate();
+  const location = useLocation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -304,7 +306,7 @@ export function NotificationsBell({
 
     if (item.place != null) {
       closeBell();
-      await navigate(item.place);
+      await navigate(item.place, { state: stateFor(item.place, location) });
     }
   }
 

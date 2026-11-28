@@ -2541,6 +2541,8 @@
       "walkIn": "À porta"
     },
     "repliedOn": "respondeu no dia {{date}}",
+    "repliedOnFromEmailLink": "respondeu no dia {{date}} · pela ligação do e-mail",
+    "repliedFromEmailLink": "{{reply}} · respondeu no dia {{date}} · pela ligação do e-mail",
     "replyHeading": "Resposta",
     "recordReply": "Registar resposta",
     "recordFor": "Para {{name}}. Conta como resposta desta pessoa e fica indicado que foi registada por si.",
@@ -4273,6 +4275,7 @@
     "readOnly": "Pode ver a ligação desta pessoa. Para a partilhar, precisa de permissão para gerir a equipa.",
     "removed": "{{name}} já não faz parte da equipa.",
     "removedLine": "Esta pessoa foi removida do evento na web, e a ligação deixou de funcionar.",
+    "notOnStaff": "Esta pessoa não faz parte da equipa.",
     "loading": "A carregar a ligação"
   },
   "briefing": {

@@ -71,9 +71,9 @@ export function useHandoff(opener: RefObject<ViewInstance | null>, onSignedIn: (
       name={P}
       opener={opener}
       stop={S.stop}
-      onCame={(worked) => {
+      onCame={(came) => {
         setOpen(false);
-        if (worked) onSignedIn();
+        if (came === 'worked') onSignedIn();
         else setFailed(S.didNotWork(P));
       }}
       onStop={() => setOpen(false)}

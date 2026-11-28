@@ -500,6 +500,28 @@ export const rosterWith = start;
 const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
 const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;
 const PORTUGUESE = { lang: 'pt', noShift: 'Ainda sem turno' } as const;
+
+/** Emeka Shared, so a docked state has a Shared row beside Amina's Copied (sc-102333). */
+export function emekaShared<T extends Entry>(one: T): T {
+  return one.id === 'emeka'
+    ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }
+    : one;
+}
+
+/** Amina Copied and Emeka Shared beside Opened, Sent, No link yet and Ada's missing mobile; Ifeoma's and Tolu's shifts run past midnight (sc-102333). */
+function everyLink(): Entry[] {
+  return sample().map(emekaShared);
+}
+
+function docked(name: string, lang: Partial<RosterStart>): RosterStart {
+  return start({
+    name,
+    note: 'Open it at 1280 and 1440 × 800: Amina’s details docked, Station gives way, and every Link cell whole with Copy link and Mark as sent in view. Close the details and Station is back.',
+    entries: everyLink(),
+    panel: { kind: 'details', id: 'amina' },
+    ...lang,
+  });
+}
 const IN_LANG = {
   en: { lang: 'en', noShift: RW.noShift },
   fr: FRENCH,
@@ -1203,6 +1225,30 @@ const STATES = {
       panel: { kind: 'details', id: 'kunle' },
       ...PORTUGUESE,
     }),
+  docked: () => docked('Docked, every Link state', {}),
+  dockedFrench: () => docked('Docked, every Link state, in French', FRENCH),
+  dockedSpanish: () => docked('Docked, every Link state, in Spanish', SPANISH),
+  dockedPortuguese: () => docked('Docked, every Link state, in Portuguese', PORTUGUESE),
+  dockedAdd: () =>
+    start({
+      name: 'Add a person docked, every Link state',
+      note: 'Open it at 1280 × 800: the form docked, Station gives way, Link whole.',
+      entries: everyLink(),
+      panel: { kind: 'add' },
+    }),
+  dockedRefused: () =>
+    start({
+      name: 'Docked, Copy link refused, the link to copy by hand',
+      note: 'Open it at 1280 × 800: Amina’s details docked, Station gives way, and Tolu’s link shown to copy by hand across the four columns in view. The frame does not scroll sideways.',
+      copy: 'refused',
+      entries: everyLink().map((one) =>
+        one.id === 'tolu'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      panel: { kind: 'details', id: 'amina' },
+      held: { id: 'tolu', url: SAMPLE_LINK },
+    }),
   longWord: () =>
     start({
       name: 'A 40-character word, details docked',
@@ -1317,6 +1363,19 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'erasedListPortuguese',
         'erasedDetailsPortuguese',
         'longWord',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'A person open at 1280 and 1440 px: Station and Briefing give way, Link whole (sc-102333)',
+    states: (
+      [
+        'docked',
+        'dockedFrench',
+        'dockedSpanish',
+        'dockedPortuguese',
+        'dockedAdd',
+        'dockedRefused',
       ] as const
     ).map(link),
   },

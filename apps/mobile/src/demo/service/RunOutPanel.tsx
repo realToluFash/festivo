@@ -18,30 +18,38 @@ import {
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { glide } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
 import { Glyph } from '../queue/QueueParts.tsx';
-import { PATHS, shared } from './HowItsGoingParts.tsx';
+import { Chip, PATHS, shared } from './HowItsGoingParts.tsx';
 import {
   type Can,
   type Flag,
   type Guest,
   type RunOut,
+  ASKING,
+  answer,
+  askedNow,
   ITEM,
   MARKED,
   NOBODY_WAITING,
+  NOT_BUILT,
   STANDS_LINE,
   TITLE,
+  askOne,
   bulkLabel,
   bulkRows,
   cancel,
   changed,
   closePanel,
   confirmBulk,
+  confirmNote,
   confirmTitle,
+  countLine,
   markAvailable,
   nowLine,
   openChoose,
@@ -231,6 +239,7 @@ function Body({ r, can, onChange, remember, phone }: Parts) {
         </Text>
       </View>
       <Refusal words={r.refused} offline={!can.online} />
+      <AskedCount r={r} />
       <View style={styles.part}>
         <Text size={17} weight="bold" accessibilityRole="header">
           Everyone at once
@@ -246,6 +255,7 @@ function Body({ r, can, onChange, remember, phone }: Parts) {
                 <Text size={14} weight="semibold">
                   {STANDS_LINE}
                 </Text>
+                {b.bulk.kind === 'ask' && <NotBuilt />}
               </View>
             </View>
           ) : (
@@ -270,11 +280,34 @@ function Body({ r, can, onChange, remember, phone }: Parts) {
         )}
         {list.map((g) => (
           <GuestRow key={g.id} g={g}>
-            <ChooseFor
-              g={g}
-              phone={phone}
-              onPress={(ref) => pressFrom(ref, openChoose(r, can, g.id))}
-            />
+            <View style={phone ? styles.actionsPhone : styles.rowActions}>
+              <ChooseFor
+                g={g}
+                phone={phone}
+                onPress={(ref) => pressFrom(ref, openChoose(r, can, g.id))}
+              />
+              {g.asked ? (
+                <View
+                  style={[
+                    styles.asking,
+                    { minHeight: phone ? tokens.sizeHitPhonePrimary : tokens.sizeHit },
+                  ]}
+                  testID={`runOut.asking.${g.id}`}
+                >
+                  <Glyph paths={PATHS.request} ink={tokens.colorInk} side={16} />
+                  <Text size={15} weight="semibold">
+                    {ASKING}
+                  </Text>
+                </View>
+              ) : (
+                <SecondaryButton
+                  label={`Ask ${g.name}`}
+                  stacked={phone}
+                  onPress={() => pressFrom(null, askOne(r, can, g.id))}
+                  testID={`runOut.ask.${g.id}`}
+                />
+              )}
+            </View>
           </GuestRow>
         ))}
       </View>
@@ -316,6 +349,7 @@ function Body({ r, can, onChange, remember, phone }: Parts) {
           testID="runOut.available"
         />
       </View>
+      <AnswerSwitch r={r} onChange={onChange} />
     </>
   );
 }
@@ -403,6 +437,45 @@ function FlagWords({ f }: { f: Flag }) {
   );
 }
 
+function AnswerSwitch({ r, onChange }: { r: RunOut; onChange: (next: RunOut) => void }) {
+  const g = askedNow(r).sort((a, b) => a.table - b.table || a.seat - b.seat)[0];
+  const o = g == null ? undefined : options(g).find((x) => x.no == null);
+  if (g == null || o == null) return null;
+  return (
+    <DemoOnly title="Board only: a waiter at the table">
+      <SecondaryButton
+        label={`At table ${g.table}, ${g.name} answers ${o.label}`}
+        onPress={() => onChange(answer(r, g.id, o.item))}
+        testID="runOut.demo.answer"
+      />
+    </DemoOnly>
+  );
+}
+
+function NotBuilt() {
+  return (
+    <View style={styles.pill}>
+      <Chip word={NOT_BUILT} paths={PATHS.diamond} tone="outline" />
+    </View>
+  );
+}
+
+function AskedCount({ r }: { r: RunOut }) {
+  const line = countLine(r);
+  if (line === '') return null;
+  return (
+    <View style={styles.count} testID="runOut.count">
+      <Glyph paths={PATHS.request} ink={tokens.colorInk} side={18} />
+      <View style={[shared.grow, styles.headText]}>
+        <Text size={15} weight="semibold">
+          {line}
+        </Text>
+        <NotBuilt />
+      </View>
+    </View>
+  );
+}
+
 export function Refusal({ words, offline }: { words: string; offline: boolean }) {
   if (words === '') return null;
   return (
@@ -461,6 +534,11 @@ function Overlay({ r, can, onChange, backTo, phone }: Parts) {
             <Text ref={title} size={20} weight="bold" accessibilityRole="header">
               {confirmTitle(r, r.confirm)}
             </Text>
+            {confirmNote(r, r.confirm) !== '' && (
+              <Text size={15} testID="runOut.confirm.note">
+                {confirmNote(r, r.confirm)}
+              </Text>
+            )}
             {phone ? (
               <View style={styles.actionsPhone}>
                 <PrimaryButton
@@ -625,6 +703,24 @@ const styles = StyleSheet.create({
   chooseBody: { gap: tokens.spaceMd },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: tokens.spaceSm },
   actionsPhone: { gap: tokens.spaceSm },
+  pill: { alignSelf: 'flex-start' },
+  rowActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+  asking: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    paddingHorizontal: tokens.spaceLg,
+  },
+  count: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+  },
   refusedRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
