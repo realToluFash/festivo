@@ -349,10 +349,6 @@
   list-style: none;
 }
 
-.rout-board-list .button {
-  text-align: left;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .rout-panel,
   .rout-scrim {

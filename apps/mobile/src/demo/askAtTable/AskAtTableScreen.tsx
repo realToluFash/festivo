@@ -408,7 +408,7 @@ function Choices({ x, p }: { x: Seat; p: P }) {
   const { s, setS, z } = p;
   const g = guestOf(x.guest);
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={g.name} style={styles.choices}>
+    <View accessibilityRole="radiogroup" style={styles.choices}>
       {options(x).map((o) =>
         o.no != null ? (
           <View
@@ -440,7 +440,7 @@ function Choices({ x, p }: { x: Seat; p: P }) {
             onPress={() => setS(answer(s, g.id, o.to))}
             accessibilityRole="radio"
             accessibilityState={{ checked: o.now }}
-            accessibilityLabel={o.label}
+            accessibilityLabel={`${o.label}, ${g.name}`}
             style={({ pressed }) => [
               styles.choice,
               { minHeight: z.side },
@@ -500,7 +500,7 @@ function WaitLine({ asked, words }: { asked: boolean; words: string }) {
 function Tables({ p }: { p: P }) {
   const { s, setS, z } = p;
   return (
-    <View style={styles.list} accessibilityRole="radiogroup" accessibilityLabel="Tables">
+    <View style={styles.list} accessibilityRole="radiogroup">
       {floorTables(s).map((t) => {
         const on = s.table === t.table;
         return (
