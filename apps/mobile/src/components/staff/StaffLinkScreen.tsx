@@ -1,5 +1,4 @@
 import { ApiError, type StaffEntry, realtimeTopic } from '@soirely/api-client';
-import { setStringAsync } from 'expo-clipboard';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Share, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -31,6 +30,7 @@ import { Skeleton } from '../Skeleton.tsx';
 import { PageToast } from '../Summary.tsx';
 import { Text } from '../Text.tsx';
 import { LinkMark } from './StaffParts.tsx';
+import { type Held, copyDelivered } from './copyLink.ts';
 import { openedEntry } from './openedEntry.ts';
 
 /** Under the AC's ten seconds from a change made anywhere else, while no line to the hub is open. */
@@ -67,7 +67,7 @@ export function StaffLinkScreen({
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState<Busy>(null);
   const [failed, setFailed] = useState(false);
-  const [held, setHeld] = useState<string | null>(null);
+  const [held, setHeld] = useState<Held | null>(null);
   const [asking, setAsking] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [toast, setToast] = useState('');
@@ -218,19 +218,12 @@ export function StaffLinkScreen({
       setBusy(null);
       return;
     }
-    const copied = await setStringAsync(answer.url).then(
-      () => true,
-      () => false,
-    );
+    const outcome = await copyDelivered(t, answer);
     setBusy(null);
-    took(answer.staff);
-    if (copied) {
-      setToast(t('staffLink.copiedSaid'));
-      announce(t('staffLink.copiedSaid'));
-    } else {
-      setHeld(answer.url);
-      announce(t('staffLink.refused'));
-    }
+    took(outcome.staff);
+    setHeld(outcome.held);
+    if (outcome.toast != null) setToast(outcome.toast);
+    announce(outcome.said);
   }
 
   async function markSent(entry: StaffEntry): Promise<void> {
@@ -391,10 +384,10 @@ export function StaffLinkScreen({
               {t('staffLink.refused')}
             </Text>
           </View>
-          <Field label={t('staffLink.linkFor', { name: entry.fullName })}>
+          <Field label={held.label}>
             <TextField
-              value={held}
-              accessibilityLabel={t('staffLink.linkFor', { name: entry.fullName })}
+              value={held.url}
+              accessibilityLabel={held.label}
               submitting
               selectTextOnFocus
               testID="staffLink.held.field"
