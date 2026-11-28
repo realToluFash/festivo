@@ -138,11 +138,9 @@ export function membersCard({
         lines: [
           notice.handed == null
             ? t('membersScreen.card.removedLine', { organisation })
-            : `${
-                notice.handed.to == null
-                  ? t('handover.ledByYou', { count: notice.handed.count })
-                  : t('handover.ledBy', { count: notice.handed.count, name: notice.handed.to })
-              } ${t('handover.formerKept')}`,
+            : notice.handed.to == null
+              ? t('handover.removedLedByYou', { count: notice.handed.count })
+              : t('handover.removedLedBy', { count: notice.handed.count, name: notice.handed.to }),
         ],
         step: firstStep(list, recoveries, manages, t) ?? seeFormer,
       };

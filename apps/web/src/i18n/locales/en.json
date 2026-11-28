@@ -7259,6 +7259,9 @@
     "ledByYou_other": "Their {{count, number}} events are now led by you.",
     "ledBy_one": "Their 1 event is now led by {{name}}, who is emailed the list.",
     "ledBy_other": "Their {{count, number}} events are now led by {{name}}, who is emailed the list.",
-    "formerKept": "They are listed under Former, with everything they did kept."
+    "removedLedByYou_one": "Their 1 event is now led by you. They are listed under Former, with everything they did kept.",
+    "removedLedByYou_other": "Their {{count, number}} events are now led by you. They are listed under Former, with everything they did kept.",
+    "removedLedBy_one": "Their 1 event is now led by {{name}}, who is emailed the list. They are listed under Former, with everything they did kept.",
+    "removedLedBy_other": "Their {{count, number}} events are now led by {{name}}, who is emailed the list. They are listed under Former, with everything they did kept."
   }
 }

@@ -621,6 +621,31 @@ describe('Settings > General at a desk (sc-30191)', () => {
     );
   });
 
+  it('offers no Leave while what the leaver leads is checked, nor once it fails to load (sc-614)', async () => {
+    signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/orgs/org_1/work': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
+    const ask = within(screen.getByRole('alertdialog', { name: 'Leave Ìrè Events?' }));
+    expect((await ask.findByRole('status')).textContent).toBe('Checking what you lead…');
+    expect(ask.queryByRole('button', { name: 'Leave Ìrè Events' })).toBeNull();
+
+    answer(new Response(null, { status: 500 }));
+
+    expect((await ask.findByRole('alert')).textContent).toBe(
+      'What you lead did not load. Nothing was changed.',
+    );
+    expect(ask.queryByRole('button', { name: 'Leave Ìrè Events' })).toBeNull();
+    expect(ask.getByRole('button', { name: 'Try again' })).toBeDefined();
+  });
+
   it('keeps a failed leave in the confirm, with its words', async () => {
     signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
     answering();

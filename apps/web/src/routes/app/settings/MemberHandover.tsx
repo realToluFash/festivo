@@ -80,11 +80,15 @@ export function MemberHandover({
 
   async function go(handTo: string | null): Promise<void> {
     if (sending === 'sending') return;
+    if (kind === 'hand' && handTo == null) {
+      setSending('refused');
+
+      return;
+    }
     setSending('sending');
 
     try {
-      if (kind === 'hand' && handTo != null)
-        await api.handOverWork(organisation.id, member.id, handTo);
+      if (kind === 'hand') await api.handOverWork(organisation.id, member.id, handTo ?? '');
       else await api.removeMember(organisation.id, member.id, handTo);
       const taker =
         work.state === 'loaded' ? work.offered.find((one) => one.id === handTo) : undefined;

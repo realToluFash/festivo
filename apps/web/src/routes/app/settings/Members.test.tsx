@@ -2219,7 +2219,11 @@ describe('handing over a departing member’s events (sc-614)', () => {
 
     await openPerson('Bisi Adeyemi');
     fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
-    expect(await screen.findByText('Checking what Bisi Adeyemi leads…')).toBeDefined();
+    const checking = within(screen.getByRole('alertdialog'));
+    expect((await checking.findByRole('status')).textContent).toBe(
+      'Checking what Bisi Adeyemi leads…',
+    );
+    expect(checking.queryByRole('button', { name: 'Remove' })).toBeNull();
     const ask = within(
       await screen
         .findByText('Bisi Adeyemi leads 2 events. Hand them to:')
@@ -2255,9 +2259,11 @@ describe('handing over a departing member’s events (sc-614)', () => {
 
     await openPerson('Bisi Adeyemi');
     fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
-    expect(
-      await screen.findByText('What Bisi Adeyemi leads did not load. Nothing was changed.'),
-    ).toBeDefined();
+    const failed = within(screen.getByRole('alertdialog'));
+    expect((await failed.findByRole('alert')).textContent).toBe(
+      'What Bisi Adeyemi leads did not load. Nothing was changed.',
+    );
+    expect(failed.queryByRole('button', { name: 'Remove' })).toBeNull();
     fails = false;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 

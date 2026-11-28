@@ -1,22 +1,11 @@
 import { ApiError, type LedEvent } from '@soirely/api-client';
 import { initials } from '@soirely/domain';
-import {
-  type KeyboardEvent,
-  useContext,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import { createPortal } from 'react-dom';
+import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { LayersContext, useDeskDialog } from '../layers.ts';
 import { meshFor } from '../mesh.ts';
 import { offButton } from '../offButton.ts';
-import { ActionPair } from './ActionPair.tsx';
 import { Glyph } from './Glyph.tsx';
 import { fold } from './orgMenu.ts';
 import { Ask, Head, RowWords, TextAction } from './SettingsParts.tsx';
@@ -124,7 +113,9 @@ export function WorkNotIn({
   const { t } = useTranslation();
 
   return work.state === 'checking' ? (
-    <CheckingAsk title={words.title} words={words} onKeep={onKeep} />
+    <Ask title={words.title} line={words.last} keep={words.keep} told={false} onKeep={onKeep}>
+      <Checking words={words.checking} />
+    </Ask>
   ) : (
     <Ask
       title={words.title}
@@ -201,57 +192,6 @@ export function HandoverAsk({
       <Moves events={events} />
       <p>{words.last}</p>
     </Ask>
-  );
-}
-
-function CheckingAsk(props: { title: string; words: AskWords; onKeep: () => void }) {
-  const { host } = useContext(LayersContext);
-
-  return host == null ? null : createPortal(<CheckingBox {...props} />, host);
-}
-
-function CheckingBox({
-  title,
-  words,
-  onKeep,
-}: {
-  title: string;
-  words: AskWords;
-  onKeep: () => void;
-}) {
-  const id = useId();
-  const box = useRef<HTMLDivElement>(null);
-  const keep = useRef<HTMLButtonElement>(null);
-
-  useDeskDialog(box, keep, onKeep, false);
-
-  return (
-    <>
-      <div className="dialog-scrim is-over" aria-hidden="true" />
-      <div
-        ref={box}
-        className="desk-ask"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-line`}
-      >
-        <h2 id={`${id}-title`}>{title}</h2>
-        <div className="desk-ask-body">
-          <p id={`${id}-line`}>{words.last}</p>
-          <Checking words={words.checking} />
-        </div>
-        <ActionPair
-          className="desk-ask-pair"
-          dismiss={
-            <button ref={keep} type="button" className="desk-text" onClick={onKeep}>
-              {words.keep}
-            </button>
-          }
-          confirm={null}
-        />
-      </div>
-    </>
   );
 }
 
