@@ -1,0 +1,15 @@
+# The app demo's switcher, managed with two invitations, closed then listed then each opened. sc-73668.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?switcher=managed-listed
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-listed
+- tapOn:
+    id: 'switcher.tile.org-celebraciones-alameda'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.invitation.org-celebraciones-alameda.managed.change'
+    timeout: 5000
+- takeScreenshot: demo-celebraciones

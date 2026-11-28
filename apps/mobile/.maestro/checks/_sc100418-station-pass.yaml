@@ -1,0 +1,22 @@
+# sc-100418: ${EVENT_ID}'s station, the Pass opened; screenshots the trays here and the tray's heading.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station\.title|station\.landing|station\.refused\..*|station\.sheet'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'station\.landing'
+    commands:
+      - tapOn:
+          id: 'station.pick.${STATION_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'station\.here\..*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: pass

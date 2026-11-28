@@ -1,0 +1,85 @@
+import { type ReactNode, useEffect, useRef } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
+
+import { FieldError } from './Field.tsx';
+import { fieldFocused, fieldLeft, fieldReshaped } from './focusedField.ts';
+import { Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
+
+/** A typed field as the event's boards draw it: the label and any Optional, the box, then its error or its help. */
+export function EventField({
+  label,
+  optional,
+  error = null,
+  help,
+  linesQuiet = false,
+  held = false,
+  children,
+}: {
+  label: string;
+  /** The word Optional, for a field that may be left empty. */
+  optional?: string | undefined;
+  error?: string | null;
+  help?: string | undefined;
+  /** The error and help lines are out of TalkBack's reach while focus moves to the field (sc-43907). */
+  linesQuiet?: boolean;
+  /** Hidden from TalkBack while the picker below is the only thing it may reach (sc-104673). */
+  held?: boolean;
+  children: ReactNode;
+}) {
+  const field = useRef<ViewInstance>(null);
+  useEffect(() => {
+    const mounted = field.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
+  useEffect(() => {
+    if (error != null) fieldReshaped(field.current);
+  }, [error]);
+
+  return (
+    <View
+      ref={field}
+      onFocus={() => fieldFocused(field.current)}
+      onBlur={() => fieldLeft(field.current)}
+      onLayout={() => fieldReshaped(field.current)}
+      style={styles.labelled}
+    >
+      <View
+        style={styles.fieldHead}
+        accessible
+        importantForAccessibility={held ? 'no-hide-descendants' : 'auto'}
+        accessibilityLabel={optional == null ? label : `${label}, ${optional}`}
+      >
+        <Text size={14} weight="semibold" style={styles.label}>
+          {label}
+        </Text>
+        {optional != null && (
+          <Text size={14} weight="medium" style={[styles.secondary, styles.label]}>
+            {` · ${optional}`}
+          </Text>
+        )}
+      </View>
+      {children}
+      <View importantForAccessibility={linesQuiet || held ? 'no-hide-descendants' : 'auto'}>
+        {error != null ? (
+          <FieldError message={error} />
+        ) : (
+          help != null && (
+            <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
+              {help}
+            </Text>
+          )
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  secondary: { color: tokens.colorInkSecondary },
+  fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
+  labelled: { gap: 7 },
+  label: { lineHeight: 14 * 1.3 },
+  hint: { lineHeight: 13.5 * 1.4 },
+});

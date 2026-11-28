@@ -1,0 +1,59 @@
+# sc-30328: the Calendar demo by taps on a phone's tab bar: opened from Today's tabs, Previous, Next and Today, an event and a milestone opened.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/today
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'tab-calendar'
+    timeout: 20000
+- takeScreenshot: today
+- tapOn:
+    id: 'tab-calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.next'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: opened
+- tapOn:
+    id: 'calendar.next'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: next
+- tapOn:
+    id: 'calendar.previous'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.previous'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: previous
+- tapOn:
+    id: 'calendar.today'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: today-again
+- openLink: ${METRO_URL}/--/demo/calendar?state=agenda
+- waitForAnimationToEnd:
+    timeout: 6000
+- tapOn:
+    id: 'calendar.row.milestone-evt-wed-4.*starts'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: milestone
+- openLink: ${METRO_URL}/--/demo/calendar?state=agenda
+- waitForAnimationToEnd:
+    timeout: 6000
+- tapOn:
+    id: 'calendar.row.event-.*'
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: event

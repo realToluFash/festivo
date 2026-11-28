@@ -1,0 +1,11 @@
+# sc-68438: a state of the story's app demo, at /demo/outside-events?state=switcher-outside-one-org, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/outside-events?state=switcher-outside-one-org
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: demo-switcher-outside-one-org

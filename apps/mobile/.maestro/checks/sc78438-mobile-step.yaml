@@ -1,0 +1,10 @@
+# Votre numéro de portable, the mobile step of creating an account, at the current text size: flag and code beside the number. sc-78438.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone?from=onboarding
+- extendedWaitUntil:
+    visible:
+      id: 'phone.country'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: mobile-step

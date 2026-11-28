@@ -1,0 +1,33 @@
+# sc-29881: Today on a tablet, its top and every row of Your events, in landscape, scrolling its right column, for the side-by-side pair with the demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe:
+    start: 85%, 80%
+    end: 85%, 45%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: r1
+- swipe:
+    start: 85%, 80%
+    end: 85%, 45%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: r2
+- swipe:
+    start: 85%, 80%
+    end: 85%, 45%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: r3
+- swipe:
+    start: 85%, 80%
+    end: 85%, 45%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: r4

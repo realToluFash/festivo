@@ -1,0 +1,51 @@
+# Security: Unlink Apple with the password, its confirmation, and the notice after. sc-20444.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'ways.apple.unlink'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ways.apple.unlink'
+- scrollUntilVisible:
+    element:
+      id: 'ways.password'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: prove-unlink
+- tapOn:
+    id: 'ways.password'
+- inputText: ${PW}
+# On iOS the password field's Return submits the prove step; hideKeyboard can scroll an
+# iPad's form so the tap misses (sc-19359). On Android Enter can type into the field.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'ways.continue'
+- scrollUntilVisible:
+    element:
+      id: 'ways.unlink'
+    centerElement: true
+- takeScreenshot: confirm-unlink
+- tapOn:
+    id: 'ways.unlink'
+- extendedWaitUntil:
+    visible:
+      id: 'ways.apple.link'
+    timeout: 15000
+- scrollUntilVisible:
+    element: '{{t:waysCard.unlinkedDone}}.*'
+    direction: UP
+    centerElement: true
+- takeScreenshot: unlinked

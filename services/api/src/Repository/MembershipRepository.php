@@ -1,0 +1,475 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repository;
+
+use App\Entity\Membership;
+use App\Entity\Organisation;
+use App\Entity\ProviderIdentity;
+use App\Entity\TwoFactorFactor;
+use App\Entity\User;
+use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
+use App\Enum\Suspension;
+use DateTimeImmutable;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\Persistence\ManagerRegistry;
+use Psl\Dict;
+use Psl\Type;
+use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
+
+/** @extends ServiceEntityRepository<Membership> */
+final class MembershipRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, Membership::class);
+    }
+
+    public function findActive(User $user, Uuid $organisationId): ?Membership
+    {
+        return $this->findActiveByUserId($user->getId(), $organisationId);
+    }
+
+    public function findActiveByUserId(Uuid $userId, Uuid $organisationId): ?Membership
+    {
+        /** @var ?Membership */
+        return $this->active()
+            ->andWhere('m.user = :user')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('user', $userId, 'uuid')
+            ->setParameter('organisation', $organisationId, 'uuid')
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** @return list<Membership> oldest first, so the organisation somebody founded leads */
+    public function findActiveFor(User $user): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> in every state, oldest first */
+    public function findInOrganisation(Organisation $organisation): array
+    {
+        return $this->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /**
+     * A page of Settings › Members (sc-49170), oldest first: those in `$statuses` the caller is shown, after `$after`.
+     *
+     * @param list<MembershipStatus> $statuses
+     *
+     * @return list<Membership>
+     */
+    public function findListedPage(Organisation $organisation, array $statuses, bool $decides, ?Membership $after, ?int $limit): array
+    {
+        $query = $this->listed($organisation, $decides)
+            ->addSelect('u', 'r')
+            ->innerJoin('m.user', 'u')
+            ->innerJoin('m.role', 'r')
+            ->andWhere('m.status IN (:statuses)')
+            ->setParameter('statuses', Vec\map($statuses, static fn (MembershipStatus $status): string => $status->value))
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit);
+
+        if (null !== $after) {
+            $query->andWhere('m.createdAt > :afterAt OR (m.createdAt = :afterAt AND m.id > :afterId)')
+                ->setParameter('afterAt', $after->getCreatedAt(), Types::DATETIME_IMMUTABLE)
+                ->setParameter('afterId', $after->getId(), 'uuid');
+        }
+
+        $page = Type\vec(Type\instance_of(Membership::class))->coerce($query->getQuery()->getResult());
+
+        if ([] !== $page) {
+            // Each row shows its person's primary address: read them all in one query rather than one per row.
+            $this->getEntityManager()->createQueryBuilder()
+                ->select('u', 'e')
+                ->from(User::class, 'u')
+                ->leftJoin('u.emailAddresses', 'e')
+                ->andWhere('u IN (:users)')
+                ->setParameter('users', Vec\map($page, static fn (Membership $membership): User => $membership->getUser()))
+                ->getQuery()
+                ->getResult();
+        }
+
+        return $page;
+    }
+
+    /** @return array<string, int> how many of each status Settings › Members shows the caller, by status value */
+    public function countListedByStatus(Organisation $organisation, bool $decides): array
+    {
+        $rows = $this->listed($organisation, $decides)
+            ->select('m.status AS status', 'COUNT(m.id) AS people')
+            ->groupBy('m.status')
+            ->getQuery()
+            ->getArrayResult();
+
+        return Dict\pull(
+            $rows,
+            static fn (array $row): int => Type\int()->coerce($row['people']),
+            static fn (array $row): string => $row['status'] instanceof MembershipStatus ? $row['status']->value : Type\string()->coerce($row['status']),
+        );
+    }
+
+    public function countActiveOwnersIn(Organisation $organisation): int
+    {
+        return Type\int()->coerce($this->active()
+            ->select('COUNT(m.id)')
+            ->innerJoin('m.role', 'r')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('r.seededAs = :owner')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('owner', SeededRole::Owner->value)
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
+    /** Through a verified address only, as accepting counts: an unverified one proves nobody is that person. */
+    public function findOneByAddress(Organisation $organisation, string $normalisedEmail): ?Membership
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->join('u.emailAddresses', 'e')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('e.address = :email')
+            ->andWhere('e.verifiedAt IS NOT NULL')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('email', $normalisedEmail)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** @return list<Membership> */
+    public function findActiveIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countActiveIn(Organisation $organisation): int
+    {
+        return (int) $this->active()
+            ->select('COUNT(m.id)')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Active or suspended memberships each account holds in organisations other than `$except`, in one query.
+     *
+     * @param list<User> $users
+     *
+     * @return array<string, int> by account id; an account with none is left out
+     */
+    public function countHeldElsewhere(array $users, Organisation $except): array
+    {
+        if ([] === $users) {
+            return [];
+        }
+
+        /** @var list<array{userId: Uuid, held: int|string}> $rows */
+        $rows = $this->createQueryBuilder('m')
+            ->select('IDENTITY(m.user) AS userId', 'COUNT(m.id) AS held')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user IN (:users)')
+            ->andWhere('m.organisation <> :except')
+            ->andWhere('m.status IN (:held)')
+            ->setParameter('users', $users)
+            ->setParameter('except', $except)
+            ->setParameter('held', [MembershipStatus::Active, MembershipStatus::Suspended])
+            ->groupBy('m.user')
+            ->getQuery()
+            ->getArrayResult();
+
+        $counts = [];
+
+        foreach ($rows as $row) {
+            $counts[(string) $row['userId']] = (int) $row['held'];
+        }
+
+        return $counts;
+    }
+
+    /** @return list<Membership> in every state, in organisations that still exist */
+    public function findAllFor(User $user): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * The active members tied to a domain (sc-564) in one organisation.
+     *
+     * @return list<Membership>
+     */
+    public function findActiveAtDomain(string $domain, Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.domain = :domain')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('domain', $domain)
+            ->setParameter('organisation', $organisation)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> the active owners and administrators, who hear about a suspension (sc-564) */
+    public function findAdministratorsIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->innerJoin('m.role', 'r')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('r.seededAs IN (:administrators)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('administrators', [SeededRole::Owner->value, SeededRole::Admin->value])
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> suspended with a removal instant at or before now, the earliest first */
+    public function findDueForRemoval(DateTimeImmutable $now, ?Organisation $organisation = null, ?User $user = null): array
+    {
+        $query = $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :suspended')
+            ->andWhere('m.removesAt <= :now')
+            ->setParameter('suspended', MembershipStatus::Suspended)
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->orderBy('m.removesAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC');
+
+        if (null !== $organisation) {
+            $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        if (null !== $user) {
+            $query->andWhere('m.user = :user')->setParameter('user', $user);
+        }
+
+        /** @var list<Membership> */
+        return $query->getQuery()->getResult();
+    }
+
+    /** @return list<Membership> the organisation's owners in every state */
+    public function findOwnersIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->innerJoin('m.role', 'r')
+            ->where('m.organisation = :organisation')
+            ->andWhere('r.seededAs = :owner')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('owner', SeededRole::Owner->value)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> the caller's own domain suspensions, in organisations that still exist: one by hand reads as a removal (sc-3575) */
+    public function findPausedFor(User $user): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user = :user')
+            ->andWhere('m.status = :suspended')
+            ->andWhere('m.suspension <> :manual')
+            ->setParameter('user', $user)
+            ->setParameter('suspended', MembershipStatus::Suspended)
+            ->setParameter('manual', Suspension::Manual)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** The organisation is joined so the soft-delete filter applies to it: a deleted one's members hold nothing (sc-68). */
+    private function active(): QueryBuilder
+    {
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :active')
+            ->setParameter('active', MembershipStatus::Active);
+    }
+
+    /** @return list<Membership> at most $limit active members other than $reader with no Google or Apple linked, by name */
+    public function findActiveWithoutProviderIn(Organisation $organisation, User $reader, int $limit): array
+    {
+        /** @var list<Membership> */
+        return $this->withoutProvider($organisation, $reader)
+            ->orderBy('u.name', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countActiveWithoutProviderIn(Organisation $organisation, User $reader): int
+    {
+        return (int) $this->withoutProvider($organisation, $reader)->select('COUNT(m.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    /** @return list<Membership> at most $limit active members other than $reader with no two-factor on, by name (sc-609) */
+    public function findActiveWithoutTwoFactorIn(Organisation $organisation, User $reader, int $limit): array
+    {
+        /** @var list<Membership> */
+        return $this->withoutTwoFactor($organisation, $reader)
+            ->orderBy('u.name', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countActiveWithoutTwoFactorIn(Organisation $organisation, User $reader): int
+    {
+        return (int) $this->withoutTwoFactor($organisation, $reader)->select('COUNT(m.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    private function withoutProvider(Organisation $organisation, User $reader): QueryBuilder
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->where('m.organisation = :organisation')
+            ->andWhere('m.status = :active')
+            ->andWhere('u <> :reader')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . ProviderIdentity::class . ' p WHERE p.user = u)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', MembershipStatus::Active)
+            ->setParameter('reader', $reader);
+    }
+
+    private function withoutTwoFactor(Organisation $organisation, User $reader): QueryBuilder
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->where('m.organisation = :organisation')
+            ->andWhere('m.status = :active')
+            ->andWhere('u <> :reader')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', MembershipStatus::Active)
+            ->setParameter('reader', $reader);
+    }
+
+    /** @return list<Membership> active, past the deadline for two-factor of everyone, still without it, and not yet recorded as held back (sc-609) */
+    public function findHeldForTwoFactorUnrecorded(DateTimeImmutable $graceStartedBefore): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->join('m.user', 'u')
+            ->andWhere('o.twoFactorRequiredSince <= :before')
+            ->andWhere('m.joinedAt <= :before')
+            ->andWhere('m.twoFactorBlockedAt IS NULL')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
+            ->setParameter('before', $graceStartedBefore)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Switching the rule on or off starts the record of who it held back afresh (sc-609). */
+    public function forgetTwoFactorBlocks(Organisation $organisation): void
+    {
+        $this->createQueryBuilder('m')
+            ->update()
+            ->set('m.twoFactorBlockedAt', 'NULL')
+            ->where('m.organisation = :organisation')
+            ->andWhere('m.twoFactorBlockedAt IS NOT NULL')
+            ->setParameter('organisation', $organisation)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
+     * Requests to join whose instant has come and that nobody answered (sc-392), in one organisation or in all.
+     *
+     * @return list<Membership>
+     */
+    public function findRequestsLapsedBy(DateTimeImmutable $now, ?Organisation $organisation = null): array
+    {
+        $query = $this->createQueryBuilder('m')
+            ->select('m', 'o', 'u')
+            ->innerJoin('m.organisation', 'o')
+            ->innerJoin('m.user', 'u')
+            ->where('m.status = :pending')
+            ->andWhere('m.requestExpiresAt <= :now')
+            ->setParameter('pending', MembershipStatus::PendingApproval)
+            ->setParameter('now', $now)
+            ->orderBy('m.requestExpiresAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC');
+
+        if (null !== $organisation) {
+            $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        return $query->getQuery()->getResult();
+    }
+
+    /** @return list<Membership> every request to join still waiting at this instant, oldest first, in organisations that still exist */
+    public function findRequestsWaitingAt(DateTimeImmutable $now): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :pending')
+            ->andWhere('m.requestExpiresAt > :now')
+            ->setParameter('pending', MembershipStatus::PendingApproval)
+            ->setParameter('now', $now)
+            ->orderBy('m.requestExpiresAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Membership::isListedTo() as a query: somebody waiting on approval, or never let in, only to those who decide on them. */
+    private function listed(Organisation $organisation, bool $decides): QueryBuilder
+    {
+        $query = $this->createQueryBuilder('m')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation);
+
+        return $decides ? $query : $query
+            ->andWhere('m.status <> :pending')
+            ->andWhere('m.joinedAt IS NOT NULL')
+            ->setParameter('pending', MembershipStatus::PendingApproval->value);
+    }
+}

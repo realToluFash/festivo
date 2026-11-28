@@ -1,0 +1,50 @@
+# sc-32801: the tablet, on its side: E2 beside the demo needsYouOverdue; run with the tablet on its side.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${E2}
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Details'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: side-needsYouOverdue-product-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou.row'
+    direction: DOWN
+    visibilityPercentage: 100
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-needsYouOverdue-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=needsYouOverdue
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: 'Adaeze.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: side-needsYouOverdue-demo-top
+- scrollUntilVisible:
+    element:
+      id: 'event.needsYou.row'
+    direction: DOWN
+    visibilityPercentage: 100
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-needsYouOverdue-demo

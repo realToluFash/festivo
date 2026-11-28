@@ -1,0 +1,31 @@
+# B Confetti on a tablet, signed out: the welcome, the email step in its sheet, and an invitation link that
+# finds nothing, in the orientation the device is in. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-confetti-tablet ORIENT=portrait|landscape --android --tablet
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: tablet-${ORIENT}-welcome
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: tablet-${ORIENT}-email-step
+- openLink: ${METRO_URL}/--/join/qa2-sc29078-no-such-invitation
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 20000
+- takeScreenshot: tablet-${ORIENT}-join

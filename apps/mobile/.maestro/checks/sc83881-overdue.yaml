@@ -1,0 +1,25 @@
+# sc-83881 regression: the overdue page keeps its page title and its pill with the role, on each tab. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- tapOn:
+    id: 'frame.home|tab-today'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-today
+- tapOn:
+    id: 'frame.events|tab-events'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-events
+- tapOn:
+    id: 'frame.calendar|tab-calendar'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-calendar
+- tapOn:
+    id: 'frame.settings|tab-settings'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-settings
+- assertVisible: 'Organisation: Overdue Org, your role .*'

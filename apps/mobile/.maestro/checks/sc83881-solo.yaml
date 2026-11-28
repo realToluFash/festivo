@@ -1,0 +1,22 @@
+# sc-83881: suspended from their only organisation, the pill opens the switcher, which lists none and ends with Create an organisation; that opens the Create an organisation sheet.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'frame.home|tab-today'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: solo-today
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: switcher.heading
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: solo-switcher
+- tapOn:
+    id: switcher.tile.create
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: solo-create

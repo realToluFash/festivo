@@ -1,0 +1,15 @@
+# New event on the tablet shows its form body under the header, opened from the Events screen's button. sc-48607.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 15000
+- takeScreenshot: new-event-form-button

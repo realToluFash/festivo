@@ -1,0 +1,70 @@
+# sc-22145: Duplicate {event}'s Cancel (a phone's header back, a tablet's form control) returns to the original's page, and the copy's back (‹ Event on a tablet) does too.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- runFlow:
+    file: ../duplicate-open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'eventForm.cancel'
+          direction: UP
+      - tapOn:
+          id: 'eventForm.cancel'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: after-cancel
+- runFlow:
+    file: ../duplicate-open.yaml
+- runFlow:
+    file: ../duplicate-create-draft.yaml
+- takeScreenshot: copy-page
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
+- waitForAnimationToEnd
+- takeScreenshot: after-event-control
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+          text: '{{t:eventsScreen.back}}'

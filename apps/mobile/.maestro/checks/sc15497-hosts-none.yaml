@@ -1,0 +1,59 @@
+# sc-15497 on sc-48600's Hosted by screen: ${EV_NONE}, a draft with no hosts (ORIENT names the orientation): the none line and Add a host; a 66-character name, a repeated name and an empty row, then Save shows every message at once.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_NONE}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: none
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: host-1-focused
+- tapOn:
+    id: 'event.edit.hosts.field.0'
+- inputText: 'Funmi Adeyemi Oluwaseun Babatunde Olorunfemi Akinwande-Okonkwo XYZ'
+- takeScreenshot: typing-long
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.add'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.field.1'
+- inputText: 'Tayo Adeyemi'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.add'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.hosts.add'
+- tapOn:
+    id: 'event.edit.hosts.field.2'
+- inputText: 'tayo adeyemi'
+- takeScreenshot: typing-third
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.add'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: typed
+- tapOn:
+    id: 'event.edit.hosts.save'
+- waitForAnimationToEnd
+- takeScreenshot: after-save
+- scroll
+- takeScreenshot: after-save-foot
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- tapOn:
+    id: 'event.edit.hosts.discard'

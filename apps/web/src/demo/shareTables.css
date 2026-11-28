@@ -1,0 +1,120 @@
+/* sc-4022: Share tables with guests, the card at the top of Seating's panel. */
+.st-share {
+  gap: var(--spaceSm);
+  padding-bottom: var(--spaceLg);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.st-share-unseated,
+.st-share-on,
+.st-share-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.st-share-unseated {
+  color: var(--colorAttentionText);
+}
+
+.st-share-unseated svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.st-share-on {
+  align-items: center;
+  color: var(--colorInk);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.st-share-said {
+  color: var(--colorInkSecondary);
+}
+
+.st-share-by {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.st-share-by .ev-optional {
+  margin-left: var(--spaceSm);
+}
+
+.st-share-by-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.st-share-by-row .ev-input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.st-share-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.st-share-day {
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.st-share-passed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  padding: 2px var(--spaceSm);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: 600 12px/1.4 var(--fontFamily);
+}
+
+.st-share-acts {
+  display: inline-flex;
+  gap: var(--spaceMd);
+  margin-left: auto;
+}
+
+.st-share-go,
+.st-share-stop {
+  align-self: flex-start;
+  margin-top: var(--spaceXs);
+}
+
+/* Under 600 px the two asks are bottom sheets, their buttons full width, down to 320. */
+@media (width < 600px) {
+  body:has(.st-share.is-asking) .desk-ask {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
+  }
+
+  body:has(.st-share.is-asking) .desk-ask-pair.actions-pair {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: var(--spaceSm);
+  }
+
+  body:has(.st-share.is-asking) .desk-ask-pair button {
+    width: 100%;
+    min-height: var(--sizeHit);
+  }
+
+  .st-share-go,
+  .st-share-stop {
+    align-self: stretch;
+  }
+}

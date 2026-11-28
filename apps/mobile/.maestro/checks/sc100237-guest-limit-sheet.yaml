@@ -1,0 +1,13 @@
+# sc-100237: Add guest on an event the plan has no room for opens the limit sheet in the batch's language; screenshots the sheet as it opens. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.add' }, timeout: 30000 }
+- tapOn: { id: 'guests.add' }
+- extendedWaitUntil: { visible: { id: 'guest.form.fullName' }, timeout: 15000 }
+- tapOn: { id: 'guest.form.fullName' }
+- inputText: 'Zainab Okonkwo'
+- tapOn: { id: 'guest.form.save' }
+- extendedWaitUntil: { visible: { id: 'guest.form.limit' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: limit-sheet

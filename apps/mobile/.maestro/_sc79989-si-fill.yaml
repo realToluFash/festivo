@@ -1,0 +1,21 @@
+appId: com.soirely.app
+---
+- extendedWaitUntil:
+    visible:
+      id: 'signIn\.password|welcome\.email'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'welcome\.email'
+    commands:
+      - tapOn: { id: 'welcome.email' }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: ${EMAIL}
+- tapOn: { id: 'signIn.password' }
+- eraseText: 80
+- inputText: ${PASSWORD}
+- tapOn: { id: 'signIn.password.reveal' }
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

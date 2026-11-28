@@ -1,0 +1,7 @@
+/* sc-102661 */
+@media (width > 40rem) {
+  .vd-tools.is-start .desk-menu {
+    right: auto;
+    left: 0;
+  }
+}

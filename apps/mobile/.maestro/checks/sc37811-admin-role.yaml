@@ -1,0 +1,18 @@
+# sc-37811: the role screen seen by an Admin (not an owner). Needs ${METRO_URL}; Priya an active Member.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- tapOn:
+    id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'members.changeRole'
+- waitForAnimationToEnd
+- takeScreenshot: role

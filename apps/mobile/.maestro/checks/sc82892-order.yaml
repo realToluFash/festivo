@@ -1,0 +1,34 @@
+# sc-82892 on the Edit details Hosted by screen: ${EV} with Tayo Adeyemi, Funmi Adeyemi, Kemi Olatunji. Refused Move up on the first row; moves up and down; Remove; Save keeps the order shown (Funmi, Tayo). Add a host's keyboard on the new row is left out until sc-83720 lands.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: start
+- tapOn: 'Move Tayo Adeyemi up'
+- waitForAnimationToEnd
+- takeScreenshot: first-up-refused
+- tapOn: 'Move Funmi Adeyemi up'
+- waitForAnimationToEnd
+- takeScreenshot: funmi-up
+- tapOn: 'Move Kemi Olatunji down'
+- waitForAnimationToEnd
+- takeScreenshot: last-down-refused
+- tapOn: 'Move Kemi Olatunji up'
+- waitForAnimationToEnd
+- takeScreenshot: kemi-up
+- tapOn: 'Move Kemi Olatunji down'
+- waitForAnimationToEnd
+- takeScreenshot: kemi-down
+- tapOn:
+    id: 'event.edit.hosts.remove.2'
+- waitForAnimationToEnd
+- takeScreenshot: kemi-removed
+- tapOn:
+    id: 'event.edit.hosts.save'
+- waitForAnimationToEnd
+- takeScreenshot: saved
