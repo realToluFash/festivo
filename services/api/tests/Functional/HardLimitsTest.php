@@ -94,6 +94,33 @@ final class HardLimitsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPickFromContactsPastTheFreePlansPeopleIsRefusedWholeAndTheRoomSaysWhatIsLeft(): void
+    {
+        $event = $this->event();
+        $this->seed($event, 96);
+
+        self::assertSame(['plan' => 'free', 'allowed' => 100, 'people' => 96], $this->as('GET', '/api/events/' . $event . '/guests/room'));
+
+        $this->as('POST', '/api/events/' . $event . '/guests/from-contacts', ['guests' => [
+            ['fullName' => 'Bisi Okoro', 'companions' => 2],
+            ['fullName' => 'Kofi Mensah'],
+            ['fullName' => 'Ama Owusu'],
+        ]]);
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::PlanLimitReached->type(), $this->last()['type'] ?? null);
+        self::assertSame(['limit' => 'guests_per_event', 'used' => 96, 'allowed' => 100, 'adding' => 5], $this->members('limit', 'used', 'allowed', 'adding'));
+        self::assertSame(96, $this->people($event));
+
+        $this->as('POST', '/api/events/' . $event . '/guests/from-contacts', ['guests' => [
+            ['fullName' => 'Bisi Okoro', 'companions' => 1],
+            ['fullName' => 'Kofi Mensah'],
+        ]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(99, $this->people($event));
+    }
+
+    #[Test]
     public function aCompanionPlaceGivenPastTheLimitIsRefusedAndOneSwappedForAnotherIsNot(): void
     {
         $event = $this->event();

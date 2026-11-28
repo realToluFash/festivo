@@ -59,6 +59,8 @@ import {
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type ContactGuest,
+  type GuestRoom,
   type PageNeeds,
   type PlaceChoice,
   type PlaceNeeds,
@@ -4668,6 +4670,25 @@ export class ApiClient {
     }
 
     return added;
+  }
+
+  /** Every row or none (sc-7579): `validation_failed` on `guests[i].…`, and 403 `plan_limit_reached` for the whole pick. */
+  async addGuestsFromContacts(eventId: string, guests: readonly ContactGuest[]): Promise<number> {
+    const body = await this.post<{ added?: unknown }>(`${this.guestsPath(eventId)}/from-contacts`, {
+      guests,
+    });
+
+    return typeof body?.added === 'number' ? body.added : guests.length;
+  }
+
+  async guestRoom(eventId: string): Promise<GuestRoom> {
+    const body = await this.get<Partial<GuestRoom>>(`${this.guestsPath(eventId)}/room`);
+
+    return {
+      plan: typeof body?.plan === 'string' ? body.plan : '',
+      allowed: typeof body?.allowed === 'number' ? body.allowed : null,
+      people: typeof body?.people === 'number' ? body.people : 0,
+    };
   }
 
   /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */

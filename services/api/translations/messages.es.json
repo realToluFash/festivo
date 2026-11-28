@@ -139,6 +139,8 @@
     "validation.guest_kitchen_not_coming": "Solo puede indicar a la cocina lo que necesita si su respuesta es «Viene».",
     "validation.guest_name_too_long": "Acorte el nombre a {max} caracteres como máximo.",
     "validation.guest_companions_too_many": "Un invitado puede traer como máximo 10 acompañantes.",
+    "validation.guests_from_contacts_none": "Pick at least one person to add.",
+    "validation.guests_from_contacts_too_many": "Only 250 can be added at a time. Add these, then pick the rest.",
     "validation.guest_places_full": "Todas las plazas reservadas ya tienen nombre. Si necesita otra, pídala a quien organiza el evento.",
     "guest.already_listed": "{name} ya está en la lista",
     "check_in.closed": "Ahora no se pueden registrar llegadas.",
