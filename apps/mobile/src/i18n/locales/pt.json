@@ -2774,10 +2774,10 @@
     "savedAs": "Guardado como {{number}}",
     "numberOf": "{{label}} · número {{index, number}} de {{count, number}} deste contacto",
     "numberType": {
-      "mobile": "Mobile",
-      "home": "Home",
-      "work": "Work",
-      "other": "Other"
+      "mobile": "Telemóvel",
+      "home": "Casa",
+      "work": "Trabalho",
+      "other": "Outro"
     },
     "chooseAnother": "Escolher outro número",
     "clearNumber": "Limpar o número",
