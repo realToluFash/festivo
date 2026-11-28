@@ -7,10 +7,19 @@ import { useSendingWords } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Sheet } from '../../components/Sheet.tsx';
 import { useShell } from '../../components/settingsShell.ts';
-import { FocusedScreen, RowList, ShapeMark, TextAction } from '../../components/Summary.tsx';
+import {
+  FocusedScreen,
+  Line,
+  RowList,
+  RowShapes,
+  ShapeMark,
+  TextAction,
+} from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
+  AS_OF,
+  type BudgetModel,
   type DueNowSheet,
   type Ledger,
   type MarkForm,
@@ -23,7 +32,15 @@ import {
   money,
 } from './BudgetModel.ts';
 import { COLLEAGUE, EVENT_NAME, GALA, REMINDER, TODAY } from './BudgetSample.ts';
-import { AlertBox, MoneyRow, OverdueTag, PlanLine, UndoMark } from './BudgetParts.tsx';
+import {
+  AlertBox,
+  InfoLine,
+  MoneyRow,
+  OverdueTag,
+  PlanLine,
+  Strip,
+  UndoMark,
+} from './BudgetParts.tsx';
 import { MarkFields, SheetHead, useMarkForm } from './MarkPaid.tsx';
 import { W, say } from './BudgetWords.ts';
 
@@ -34,9 +51,11 @@ export function DueNow({
   sheet,
   form,
   ledger,
+  link,
   locale,
   opener,
   onClose,
+  onRetry,
   onPaid,
   onUndo,
   onDifferent,
@@ -46,9 +65,11 @@ export function DueNow({
   sheet: DueNowSheet | null;
   form: MarkForm | null;
   ledger: Ledger;
+  link: BudgetModel['link'];
   locale: string;
   opener: Opener;
   onClose: () => void;
+  onRetry: () => void;
   onPaid: (id: string) => void;
   onUndo: (id: string) => void;
   onDifferent: (id: string) => void;
@@ -72,8 +93,9 @@ export function DueNow({
       <DueList
         sheet={shown}
         ledger={ledger}
+        link={link}
         locale={locale}
-        on={{ onPaid, onUndo, onDifferent, onClose }}
+        on={{ onPaid, onUndo, onDifferent, onClose, onRetry }}
       />
     );
 
@@ -153,14 +175,32 @@ type RowActions = {
 function DueList({
   sheet,
   ledger,
+  link,
   locale,
   on,
 }: {
   sheet: DueNowSheet;
   ledger: Ledger;
+  link: BudgetModel['link'];
   locale: string;
-  on: RowActions & { onClose: () => void };
+  on: RowActions & { onClose: () => void; onRetry: () => void };
 }) {
+  if (sheet.load === 'loading')
+    return (
+      <View style={styles.list}>
+        <Line text={W.loadingPayments} />
+        <RowShapes count={4} words={W.loadingPayments} />
+      </View>
+    );
+
+  if (sheet.load === 'failed')
+    return (
+      <View style={styles.list}>
+        <AlertBox text={W.paymentsNotLoaded} />
+        <TextAction label={W.tryAgain} onPress={on.onRetry} testID="budget.dueNow.retry" />
+      </View>
+    );
+
   if (sheet.notFound === true)
     return (
       <View style={styles.list}>
@@ -190,12 +230,24 @@ function DueList({
           {say.fromReminder(days.month(sheet.sent, locale), sheet.ids.length, events.length)}
         </Text>
       )}
+      {link !== 'live' && <Strip words={say.paymentsAsOf(AS_OF.time, AS_OF.minutes)} />}
+      {link === 'offline' && <InfoLine text={W.paidNeedsConnection} />}
+      {link === 'reconnecting' && <InfoLine text={W.reconnectingPayments} glyph="refresh" />}
       {sheet.readOnly && <PlanLine text={W.readOnly} />}
       <RowList
         items={sheet.ids.map((id) => ({
           key: id,
           selected: sheet.marked.includes(id),
-          row: <DueRow id={id} sheet={sheet} ledger={ledger} locale={locale} on={on} />,
+          row: (
+            <DueRow
+              id={id}
+              sheet={sheet}
+              ledger={ledger}
+              locked={sheet.readOnly || link !== 'live'}
+              locale={locale}
+              on={on}
+            />
+          ),
         }))}
       />
       {settled &&
@@ -224,12 +276,15 @@ function DueRow({
   id,
   sheet,
   ledger,
+  locked,
   locale,
   on,
 }: {
   id: string;
   sheet: DueNowSheet;
   ledger: Ledger;
+  /** Read only, or without a connection: no Paid, no Paid a different amount, no Undo. */
+  locked: boolean;
   locale: string;
   on: RowActions;
 }) {
@@ -249,7 +304,7 @@ function DueRow({
         lead={<ShapeMark kind="yes" side={22} ink={tokens.colorInkOnDark} />}
         lit
         action={
-          sheet.readOnly ? undefined : (
+          locked ? undefined : (
             <TextAction
               label={W.undo}
               renderMark={(ink) => <UndoMark ink={ink} />}
@@ -271,7 +326,7 @@ function DueRow({
       : ledger.cancelled.includes(id)
         ? W.cancelledWord
         : null;
-  const owed = !item.gone && isOwed(ledger, id) && !sheet.readOnly && refusal == null;
+  const owed = !item.gone && isOwed(ledger, id) && !locked && refusal == null;
   const last = sheet.lastAbout.includes(id);
   const line = [item.gone ? `${item.what} · ${item.event}` : base, changed]
     .filter(Boolean)

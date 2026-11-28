@@ -103,6 +103,10 @@ export const DUE_NOW_STATES = [
   'due_refused_plan',
   'due_done_several',
   'due_not_found',
+  'due_loading',
+  'due_failed',
+  'due_offline',
+  'due_reconnecting',
 ] as const;
 
 export const BUDGET_DEMO_STATES = [...BUDGET_STATES, ...PAYERS_STATES, ...DUE_NOW_STATES] as const;
@@ -621,6 +625,8 @@ export interface DueNowSheet {
   readOnly: boolean;
   /** Not the reader's to see, or not there: the same answer either way. */
   notFound?: boolean;
+  /** Still reading the payments, or the read failed: no rows, no subline. */
+  load?: 'loading' | 'failed' | undefined;
 }
 
 export interface BudgetModel {
@@ -911,6 +917,18 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
       };
     case 'due_not_found':
       return { ...base, dueNow: sheet([], { notFound: true }) };
+    case 'due_loading':
+      return { ...base, dueNow: sheet(REMINDER.payments, { load: 'loading' }) };
+    case 'due_failed':
+      return { ...base, dueNow: sheet(REMINDER.payments, { load: 'failed' }) };
+    case 'due_offline':
+    case 'due_reconnecting':
+      return {
+        ...base,
+        link: state === 'due_offline' ? 'offline' : 'reconnecting',
+        ledger: paidBy(base.ledger, bloom, 'Folake Adeyemi', TODAY, amountDue(bloom)),
+        dueNow: sheet(REMINDER.payments, { marked: [bloom] }),
+      };
     case 'due_marked':
       return {
         ...base,
@@ -1011,6 +1029,8 @@ export type BudgetAction =
   | { type: 'duePaid'; id: string; reader: string; words: string }
   | { type: 'dueUndo'; id: string; words: string }
   | { type: 'reconnected' }
+  | { type: 'dueLoaded' }
+  | { type: 'dueRetry' }
   | { type: 'washed' }
   | { type: 'view'; view: View }
   | { type: 'send'; key: PayerKey }
@@ -1026,6 +1046,11 @@ export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
   );
 }
 
+/** Due now's Paid, Paid a different amount and Undo: only with a connection and the rows current, as sc-93's Mark paid. */
+export function canMarkDue(m: BudgetModel): boolean {
+  return m.link === 'live' && m.dueNow != null && m.dueNow.load == null && !m.dueNow.readOnly;
+}
+
 /** Mark paid shows only with a connection, the figures current and `vendors` on (sc-93). */
 export function canMark(m: BudgetModel): boolean {
   return m.link === 'live' && m.vendors === 'on' && m.figures === 'shown';
@@ -1034,6 +1059,7 @@ export function canMark(m: BudgetModel): boolean {
 export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
   switch (action.type) {
     case 'openMark':
+      if (action.from === 'dueNow' && !canMarkDue(m)) return m;
       return {
         ...m,
         form: {
@@ -1091,7 +1117,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
     case 'closeDueNow':
       return { ...m, dueNow: null, form: m.form?.from === 'dueNow' ? null : m.form };
     case 'duePaid': {
-      if (m.dueNow == null) return m;
+      if (m.dueNow == null || !canMarkDue(m)) return m;
       return {
         ...m,
         ledger: paidBy(m.ledger, action.id, action.reader, TODAY, dueItemOf(action.id).amount),
@@ -1100,7 +1126,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
       };
     }
     case 'dueUndo':
-      return m.dueNow == null
+      return m.dueNow == null || !canMarkDue(m)
         ? m
         : {
             ...m,
@@ -1110,6 +1136,10 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
           };
     case 'reconnected':
       return { ...m, link: 'live', showLive: true };
+    case 'dueLoaded':
+      return m.dueNow == null ? m : { ...m, dueNow: { ...m.dueNow, load: undefined } };
+    case 'dueRetry':
+      return m.dueNow?.load === 'failed' ? { ...m, dueNow: { ...m.dueNow, load: 'loading' } } : m;
     case 'washed':
       return { ...m, wash: null, washed: [] };
     case 'liveChange':

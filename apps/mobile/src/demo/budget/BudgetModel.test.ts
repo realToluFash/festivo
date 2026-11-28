@@ -17,6 +17,7 @@ import {
   cardThing,
   categoryState,
   ceilingState,
+  canMarkDue,
   ceilingsAfter,
   checkAmount,
   coverAmount,
@@ -469,6 +470,43 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(eventsOf(several.dueNow?.ids ?? [])).toHaveLength(2);
   });
 
+  it('loads with no rows and no subline, and a failed read comes back through Try again (sc-102309)', () => {
+    const loading = startOf('due_loading', REMOVED_PAYER);
+    expect(loading.dueNow?.load).toBe('loading');
+    expect(canMarkDue(loading)).toBe(false);
+    expect(reduce(loading, { type: 'duePaid', id: 'bloom-balance', reader: 'x', words: 'y' })).toBe(
+      loading,
+    );
+    const failed = startOf('due_failed', REMOVED_PAYER);
+    expect(failed.dueNow?.load).toBe('failed');
+    const retried = reduce(failed, { type: 'dueRetry' });
+    expect(retried.dueNow?.load).toBe('loading');
+    const loaded = reduce(retried, { type: 'dueLoaded' });
+    expect(loaded.dueNow?.load).toBeUndefined();
+    expect(loaded.dueNow?.ids).toEqual(failed.dueNow?.ids);
+    expect(canMarkDue(loaded)).toBe(true);
+    expect(W.paymentsNotLoaded).toBe(
+      'These payments did not load. Check your connection and try again.',
+    );
+  });
+
+  it('offers no Paid, no Paid a different amount and no Undo without a connection, and queues nothing', () => {
+    const offline = startOf('due_offline', REMOVED_PAYER);
+    expect(offline.link).toBe('offline');
+    expect(offline.dueNow?.marked).toEqual(['bloom-balance']);
+    expect(canMarkDue(offline)).toBe(false);
+    expect(
+      reduce(offline, { type: 'duePaid', id: 'savour-deposit', reader: 'x', words: 'y' }),
+    ).toBe(offline);
+    expect(reduce(offline, { type: 'dueUndo', id: 'bloom-balance', words: 'y' })).toBe(offline);
+    expect(reduce(offline, { type: 'openMark', id: 'savour-deposit', from: 'dueNow' })).toBe(
+      offline,
+    );
+    const back = reduce(startOf('due_reconnecting', REMOVED_PAYER), { type: 'reconnected' });
+    expect(canMarkDue(back)).toBe(true);
+    expect(back.dueNow?.marked).toEqual(['bloom-balance']);
+  });
+
   it('settles a reminder across two events with a link for each, and answers not found alone', () => {
     const done = startOf('due_done_several', REMOVED_PAYER);
     expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
@@ -791,6 +829,11 @@ const SPEC_STATES = [
   'payer_paid_past',
   'payer_passphrase',
   'payer_all_revoked',
+  // sc-102309, 28 Nov: Due now loading, not loaded, and without a connection.
+  'due_loading',
+  'due_failed',
+  'due_offline',
+  'due_reconnecting',
 ] as const;
 
 describe('every state the spec names has a link on the demo home', () => {
