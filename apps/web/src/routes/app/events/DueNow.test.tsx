@@ -441,14 +441,28 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
 
   it('Close goes back to the page that was open before the sheet', async () => {
     signedIn();
+    const calendar = { pathname: '/app/calendar', search: '', hash: '', state: null, key: 'k1' };
     const { router } = serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) }, [
-      '/app/calendar',
-      '/app/due/r_1',
+      calendar,
+      { pathname: '/app/due/r_1', state: { under: calendar } },
     ]);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/calendar'));
+  });
+
+  it('Close on a sheet the link opened after sign-in goes to Today', async () => {
+    signedIn();
+    const { router } = serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) }, [
+      '/sign-in',
+      '/app/due/r_1',
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    expect(router.state.historyAction).toBe('REPLACE');
   });
 
   it('Close on a sheet the link opened cold goes to Today', async () => {
@@ -471,6 +485,14 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
 
     expect(await screen.findByRole('button', { name: 'Close' })).toBeTruthy();
     await waitFor(() => expect(container.querySelector('.desk.ev')).not.toBeNull());
+  });
+
+  it('opens inside the desk dialog host, so the desk, event and button styles reach it', async () => {
+    signedIn();
+    serve({ 'GET /api/payment-reminders/r_1': () => json(sheet([])) });
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.closest('.desk.ev.bt')).not.toBeNull();
   });
 
   it('a payment no quote holds any more says it was not marked, under its row', async () => {
