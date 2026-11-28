@@ -45,7 +45,6 @@ export function slotWords(moment: string, before: string | null, clock: NoticeCl
   );
 }
 
-/** A calendar day, `2026-10-16`, as "Friday, Oct 16". */
 export function dayWords(day: string, locale: string): string {
   return formatEventWeekday(`${day}T12:00:00Z`, 'UTC', locale);
 }
@@ -188,12 +187,9 @@ export function reminderLines(
 
 export type FlipResult =
   | { kind: 'saved'; card: StaffReminder }
-  /** The save failed, so the switch stays where it was; a person with staff.read only is refused with 403 and lands here too. */
   | { kind: 'failed'; card: StaffReminder }
-  /** The event is Finished: the card is read again. */
   | { kind: 'over'; card: StaffReminder };
 
-/** Turn the switch: the card the API answers, or the one it was, with why it did not change. */
 export async function flipReminder(
   card: StaffReminder,
   next: boolean,
