@@ -253,9 +253,7 @@ function PersonHead({
 
   return (
     <View
-      experimental_accessibilityOrder={
-        done == null ? undefined : [WORDS_ID, DONE_ID]
-      }
+      experimental_accessibilityOrder={done == null ? undefined : [WORDS_ID, DONE_ID]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {phone && (

@@ -60,7 +60,9 @@ describe('The role sheet header’s reading order (sc-95215, on lead’s review 
   });
 
   it('measures Done itself, not the slot that stretches to the row once Done goes under the line', () => {
-    expect(head).toMatch(/<View onLayout=\{\(event\) => setDoneWidth\(event\.nativeEvent\.layout\.width\)\}>\s*<DoneAction/u);
+    expect(head).toMatch(
+      /<View onLayout=\{\(event\) => setDoneWidth\(event\.nativeEvent\.layout\.width\)\}>\s*<DoneAction/u,
+    );
     expect(head.match(/setDoneWidth/gu)).toHaveLength(2);
   });
 });
