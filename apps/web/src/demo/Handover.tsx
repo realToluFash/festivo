@@ -32,7 +32,7 @@ import { noMatchLine } from './people.ts';
 import { fold } from '../components/orgMenu.ts';
 import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import './handover.css';
+import '../components/handover.css';
 
 type Who = Pick<Person, 'id' | 'name' | 'initials' | 'tone'>;
 

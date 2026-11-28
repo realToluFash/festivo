@@ -123,6 +123,9 @@ function answering(answers: Record<string, () => Response | Promise<Response>> =
     sent.push({ line, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
 
     const answer = all[line];
+    // Nobody leads anything unless a test says so (sc-614).
+    if (answer == null && /^GET \/api\/orgs\/[^/]+(\/members\/[^/]+)?\/work$/.test(line))
+      return json({ events: [] });
     if (answer == null) throw new TypeError('Failed to fetch');
 
     return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();
@@ -572,7 +575,8 @@ describe('Settings > General at a desk (sc-30191)', () => {
     const router = settings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
-    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    await screen.findByRole('button', { name: 'Leave Ìrè Events' });
+    const ask = screen.getByRole('alertdialog', { name: 'Leave Ìrè Events?' });
     expect(
       within(ask)
         .getAllByRole('button')
@@ -587,13 +591,44 @@ describe('Settings > General at a desk (sc-30191)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
   });
 
+  it('asks who takes what the leaver leads, nobody meaning the owners, and sends the choice (sc-614)', async () => {
+    signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
+    const sent = answering({
+      'GET /api/orgs/org_1/work': () => json({ events: [{ id: 'evt_owambe', title: 'Owambe' }] }),
+      'POST /api/orgs/org_1/leave': () => new Response(null, { status: 204 }),
+      'GET /api/invitations/mine': () => json({ invitations: [] }),
+      'GET /api/auth/me': () => json(ME),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
+    await screen.findByText('You lead 1 event. Hand it to:');
+    const ask = screen.getByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    fireEvent.click(
+      within(ask).getByRole('button', { name: 'Hand it to: Nobody: the owners take it' }),
+    );
+    const people = within(ask)
+      .getAllByRole('option')
+      .map((one) => one.querySelector('.handover-option-name')?.textContent);
+    expect(people).toEqual(['Nobody: the owners take it', 'Bisi Adeyemi']);
+    fireEvent.click(within(ask).getByRole('option', { name: 'Bisi Adeyemi' }));
+    fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/leave')?.body).toEqual({
+        handTo: 'm_bisi',
+      }),
+    );
+  });
+
   it('keeps a failed leave in the confirm, with its words', async () => {
     signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
     answering();
     settings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
-    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    await screen.findByRole('button', { name: 'Leave Ìrè Events' });
+    const ask = screen.getByRole('alertdialog', { name: 'Leave Ìrè Events?' });
     fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
 
     expect(
@@ -618,7 +653,8 @@ describe('Settings > General at a desk (sc-30191)', () => {
 
     expect(await screen.findByRole('button', { name: 'Remove ire.events' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
-    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    await screen.findByRole('button', { name: 'Leave Ìrè Events' });
+    const ask = screen.getByRole('alertdialog', { name: 'Leave Ìrè Events?' });
     fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
 
     const only = await screen.findByRole('alertdialog', { name: 'You are the only owner' });

@@ -62,7 +62,6 @@ const SHARED: readonly Family[] = [
       'guestRemove.css',
       'guests.css',
       'guestsMany.css',
-      'handover.css',
       'kitchen.css',
       'limitReached.css',
       'makeLive.css',

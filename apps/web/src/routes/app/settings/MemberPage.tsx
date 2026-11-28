@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import {
   ApiError,
+  type LedEvent,
   type Membership,
   type MembersList,
   type OrganisationMember,
@@ -27,6 +28,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
+import { LeadsBlock, LeadsNotIn } from '../../../components/Handover.tsx';
 import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import {
   Ask,
@@ -45,6 +47,7 @@ import {
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
+import { type Handed, MemberHandover } from './MemberHandover.tsx';
 import { callerIn } from './membersCard.ts';
 import { memberTag, roleChoices } from './memberWords.ts';
 import { type OwnerReturn, provingOnReturn, signInOnReturn } from './ownerReturn.ts';
@@ -54,9 +57,10 @@ type Outcome =
   | { kind: 'suspended' }
   | { kind: 'restored'; role: string }
   | { kind: 'roleChanged'; role: string }
+  | { kind: 'handedOver'; handed: Handed }
   | { kind: 'conflict' };
 
-type Asking = 'role' | 'suspend' | 'remove' | null;
+type Asking = 'role' | 'suspend' | 'remove' | 'hand' | null;
 
 type Refusal = { kind: 'line'; text: string };
 
@@ -85,7 +89,7 @@ export function MemberPage({
   /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
   reread: (changed: string) => Promise<MembersList>;
   onChanged: (list: MembersList) => void;
-  onRemoved: (list: MembersList, name: string) => void;
+  onRemoved: (list: MembersList, name: string, handed: Handed | null) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
@@ -114,6 +118,27 @@ export function MemberPage({
   const named = { name, organisation: organisation.name, domain: suspension?.domain ?? '' };
   const tag = memberTag(t, member);
   const Name = level === 1 ? 'h1' : 'h2';
+  const seesLeads = suspended && manages;
+  const [leads, setLeads] = useState<LedEvent[] | 'checking' | 'failed'>('checking');
+  const [leadsAsked, setLeadsAsked] = useState(0);
+
+  useEffect(() => {
+    if (!seesLeads) return;
+    let live = true;
+    api
+      .memberWork(organisation.id, member.id)
+      .then((events) => live && setLeads(events))
+      .catch(() => live && setLeads('failed'));
+
+    return () => {
+      live = false;
+    };
+  }, [seesLeads, organisation.id, member.id, leadsAsked]);
+
+  function rereadLeads(): void {
+    setLeads('checking');
+    setLeadsAsked((now) => now + 1);
+  }
 
   useEffect(() => {
     if (outcome != null) focusWhenFree(() => said.current);
@@ -160,7 +185,7 @@ export function MemberPage({
 
     try {
       await api.removeMember(organisation.id, member.id);
-      onRemoved(await reread(member.id), name);
+      onRemoved(await reread(member.id), name, null);
     } catch (error) {
       setBusy(false);
       if (asking === 'remove') setFailed(refused(error));
@@ -223,6 +248,13 @@ export function MemberPage({
             t('membersScreen.restoredNowNext', { organisation: organisation.name }),
           ];
         break;
+      case 'handedOver':
+        return [
+          outcome.handed.to == null
+            ? t('handover.ledByYou', { count: outcome.handed.count })
+            : t('handover.ledBy', { count: outcome.handed.count, name: outcome.handed.to }),
+          t('handover.handTail', { name, count: outcome.handed.count }),
+        ];
       case 'suspended':
         if (suspended)
           return [t('membersScreen.suspendedNowNext', { organisation: organisation.name })];
@@ -323,6 +355,12 @@ export function MemberPage({
       {limited != null && (
         <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} onWay={onBack} />
       )}
+      {seesLeads && (leads === 'checking' || leads === 'failed') && (
+        <LeadsNotIn name={name} failed={leads === 'failed'} onRetry={rereadLeads} />
+      )}
+      {seesLeads && Array.isArray(leads) && leads.length > 0 && (
+        <LeadsBlock events={leads} onHandOver={acts ? () => setAsking('hand') : null} />
+      )}
       {acts && suspended && byHand && <Note>{t('membersScreen.roleKeptWhileSuspended')}</Note>}
       <section className="desk-block">
         <Head title={t('membersScreen.howTheyGotHere')} />
@@ -401,27 +439,46 @@ export function MemberPage({
           onGo={() => void suspend()}
         />
       )}
-      {asking === 'remove' && (
-        <Ask
-          title={t('membersScreen.removeAskTitle', named)}
-          line={
-            byHand
-              ? t('membersScreen.suspendedRemoveBody', named)
-              : t('membersScreen.removeBody', { organisation: organisation.name })
-          }
-          keep={
-            byHand
-              ? t('membersScreen.suspendedRemoveKeep')
-              : t('membersScreen.removeKeep', { name: first })
-          }
-          go={t('membersScreen.removeGo')}
-          busy={busy ? t('membersScreen.sending') : undefined}
-          failed={failed ?? undefined}
-          onKeep={() => {
-            setFailed(null);
-            setAsking(null);
+      {(asking === 'remove' || asking === 'hand') && (
+        <MemberHandover
+          kind={asking}
+          organisation={organisation}
+          member={member}
+          renderPlain={(go, sending, failedLine) => (
+            <Ask
+              title={t('membersScreen.removeAskTitle', named)}
+              line={
+                byHand
+                  ? t('membersScreen.suspendedRemoveBody', named)
+                  : t('membersScreen.removeBody', { organisation: organisation.name })
+              }
+              keep={
+                byHand
+                  ? t('membersScreen.suspendedRemoveKeep')
+                  : t('membersScreen.removeKeep', { name: first })
+              }
+              go={t('membersScreen.removeGo')}
+              busy={sending ? t('membersScreen.sending') : undefined}
+              failed={failedLine ?? undefined}
+              onKeep={() => setAsking(null)}
+              onGo={go}
+            />
+          )}
+          onKeep={() => setAsking(null)}
+          onFailed={(error) => (error instanceof ApiError ? error.problem.title : null)}
+          onDone={(handed) => {
+            if (asking === 'hand') {
+              setAsking(null);
+              if (handed != null) setOutcome({ kind: 'handedOver', handed });
+              rereadLeads();
+              reload().catch(() => undefined);
+
+              return;
+            }
+            reread(member.id)
+              .then((changed) => onRemoved(changed, name, handed))
+              .catch(() => onRemoved(list, name, handed));
           }}
-          onGo={() => void remove()}
         />
       )}
     </>

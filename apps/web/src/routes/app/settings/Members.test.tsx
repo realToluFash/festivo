@@ -220,6 +220,9 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
     const one = /^(GET \/api\/orgs\/[^/]+\/members)\/([^/]+)$/.exec(line);
     const whole = one == null ? undefined : served[one[1] ?? ''];
     const answer = served[line];
+    // Nobody leads anything unless a test says so (sc-614).
+    if (answer == null && /^GET \/api\/orgs\/[^/]+(\/members\/[^/]+)?\/work$/.test(line))
+      return json({ events: [] });
     if (answer == null && whole != null && one?.[2] != null)
       return oneMember(await whole(), one[2]);
     if (answer == null) throw new TypeError('Failed to fetch');
@@ -745,7 +748,11 @@ describe('a person at a desk (sc-34200)', () => {
     await openPerson('Bisi Adeyemi');
     fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
     const ask = within(
-      await screen.findByRole('alertdialog', { name: 'Remove Bisi Adeyemi from Ìrè Events?' }),
+      await screen
+        .findByRole('button', { name: 'Remove' })
+        .then(() =>
+          screen.getByRole('alertdialog', { name: 'Remove Bisi Adeyemi from Ìrè Events?' }),
+        ),
     );
     fireEvent.click(ask.getByRole('button', { name: 'Remove' }));
 
@@ -1339,6 +1346,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
       const path = new URL(String(input)).pathname;
       if (path === '/api/orgs/org_1/roles') return json(ROLES);
       if (path === '/api/auth/recovery-requests') return json({ requests: [] });
+      if (path.endsWith('/work')) return json({ events: [] });
       if (path !== '/api/orgs/org_1/members') return new Response(null, { status: 500 });
 
       const language = new Headers(init?.headers).get('Accept-Language') ?? '';
@@ -2033,7 +2041,11 @@ describe('requests to get back in on Members (sc-30189)', () => {
     await openPerson('Kofi Mensah');
     fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
     const ask = within(
-      await screen.findByRole('alertdialog', { name: 'Remove Kofi Mensah from Ìrè Events?' }),
+      await screen
+        .findByRole('button', { name: 'Remove' })
+        .then(() =>
+          screen.getByRole('alertdialog', { name: 'Remove Kofi Mensah from Ìrè Events?' }),
+        ),
     );
     fireEvent.click(ask.getByRole('button', { name: 'Remove' }));
 
@@ -2180,5 +2192,109 @@ describe('the Members title from 961 px (sc-61150)', () => {
 
     expect(cssRule('.members-desk .desk-top', MEMBERS_CSS)).toContain('flex-wrap: wrap;');
     expect(cssRule('.members-desk .desk-title', MEMBERS_CSS)).toContain('min-width: auto;');
+  });
+});
+
+describe('handing over a departing member’s events (sc-614)', () => {
+  const LED = {
+    events: [
+      { id: 'evt_naming', title: 'Naming' },
+      { id: 'evt_owambe', title: 'Owambe' },
+    ],
+  };
+
+  it('asks who takes what they lead before removing, sends the choice, and says who leads them now', async () => {
+    signedIn();
+    let list: unknown = listWith(ACTIVE_BISI);
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(list),
+      'GET /api/orgs/org_1/roles': () => json(ROLES),
+      'GET /api/orgs/org_1/members/m_bisi/work': () => json(LED),
+      'DELETE /api/orgs/org_1/members/m_bisi': () => {
+        list = listWith(member({ ...ACTIVE_BISI, status: 'left_or_removed', former: 'removed' }));
+        return done();
+      },
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
+    expect(await screen.findByText('Checking what Bisi Adeyemi leads…')).toBeDefined();
+    const ask = within(
+      await screen
+        .findByText('Bisi Adeyemi leads 2 events. Hand them to:')
+        .then(() => screen.getByRole('alertdialog')),
+    );
+    expect(ask.getByRole('button', { name: 'Hand them to: Folake Adeyemi · you' })).toBeDefined();
+    expect(ask.getByRole('list', { name: 'What will move, 2 events' }).textContent).toBe(
+      'NamingOwambe',
+    );
+    fireEvent.click(ask.getByRole('button', { name: 'Remove' }));
+
+    expect(await page().findByText('Bisi Adeyemi was removed')).toBeDefined();
+    expect(
+      page().getByText(
+        'Their 2 events are now led by you. They are listed under Former, with everything they did kept.',
+      ),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === 'DELETE /api/orgs/org_1/members/m_bisi')?.body).toEqual({
+      handTo: 'm_folake',
+    });
+  });
+
+  it('keeps the confirm with its way back when the work list does not load, and tries again', async () => {
+    signedIn();
+    let fails = true;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'GET /api/orgs/org_1/members/m_bisi/work': () =>
+        fails ? new Response(null, { status: 500 }) : json(LED),
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
+    expect(
+      await screen.findByText('What Bisi Adeyemi leads did not load. Nothing was changed.'),
+    ).toBeDefined();
+    fails = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Bisi Adeyemi leads 2 events. Hand them to:')).toBeDefined();
+  });
+
+  it('lists what a suspended member leads, and Hand over now moves it while they stay suspended', async () => {
+    signedIn();
+    let led: unknown = { events: [{ id: 'evt_owambe', title: 'Owambe' }] };
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)),
+      'GET /api/orgs/org_1/members/m_bisi/work': () => json(led),
+      'POST /api/orgs/org_1/members/m_bisi/handover': () => {
+        led = { events: [] };
+        return done();
+      },
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    expect(await page().findByRole('heading', { name: 'Leads 1 event' })).toBeDefined();
+    fireEvent.click(page().getByRole('button', { name: 'Hand over now' }));
+    const ask = within(
+      await screen
+        .findByText('Bisi Adeyemi leads 1 event. Hand it to:')
+        .then(() => screen.getByRole('alertdialog', { name: 'Hand over Bisi Adeyemi’s event?' })),
+    );
+    expect(ask.getByText('Restoring Bisi Adeyemi won’t give it back.')).toBeDefined();
+    fireEvent.click(ask.getByRole('button', { name: 'Hand over' }));
+
+    expect(await page().findByText('Their 1 event is now led by you.')).toBeDefined();
+    await waitFor(() =>
+      expect(page().queryByRole('heading', { name: 'Leads 1 event' })).toBeNull(),
+    );
+    expect(
+      sent.find((one) => one.line === 'POST /api/orgs/org_1/members/m_bisi/handover')?.body,
+    ).toEqual({ handTo: 'm_folake' });
   });
 });
