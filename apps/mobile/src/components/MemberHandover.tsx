@@ -85,12 +85,16 @@ export function MemberHandover({
   async function go(): Promise<void> {
     if (sending === 'sending' || loaded == null) return;
     const handTo = count === 0 ? null : to;
+    if (kind === 'hand' && handTo == null) {
+      setSending('refused');
+
+      return;
+    }
     setSending('sending');
     setFailed(null);
 
     try {
-      if (kind === 'hand' && handTo != null)
-        await api.handOverWork(organisation.id, member.id, handTo);
+      if (kind === 'hand') await api.handOverWork(organisation.id, member.id, handTo ?? '');
       else await api.removeMember(organisation.id, member.id, handTo);
     } catch (error) {
       if (refusedHandTo(error)) {

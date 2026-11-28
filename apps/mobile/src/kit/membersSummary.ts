@@ -323,11 +323,9 @@ export function membersCard({
       line:
         said.handed == null
           ? t('membersScreen.card.removedLine', { organisation })
-          : `${
-              said.handed.to == null
-                ? t('handover.ledByYou', { count: said.handed.count })
-                : t('handover.ledBy', { count: said.handed.count, name: said.handed.to })
-            } ${t('handover.formerKept')}`,
+          : said.handed.to == null
+            ? t('handover.removedLedByYou', { count: said.handed.count })
+            : t('handover.removedLedBy', { count: said.handed.count, name: said.handed.to }),
       step: answer ?? seeFormer,
     };
   if (said?.kind === 'withdrew')
