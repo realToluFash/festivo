@@ -9,6 +9,7 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
+import { atDeskWidth } from '../../../test-widths.ts';
 
 const tablesOf = (count: number) =>
   Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
@@ -879,6 +880,64 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
         ),
     ).toBe(true);
     await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('spans a hand-held link row across the four columns in view while a panel is docked, and six when it closes (sc-102333)', async () => {
+    signedIn();
+    atDeskWidth();
+    clipboard(() => Promise.reject(new Error('NotAllowedError')));
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...AMAKA, link: 'none' }),
+      'POST /api/events/ev_1/staff/st_1/link': () =>
+        json({ url: URL_ISSUED, staff: entry('st_1', 'Amaka Eze', COPIED) }),
+    });
+    const span = () => document.querySelector('.rs-held-row td')?.getAttribute('colspan');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+    await screen.findByRole('textbox', { name: 'Link for Amaka Eze' });
+    expect(span()).toBe('6');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Amaka Eze' }));
+    await waitFor(() => expect(span()).toBe('4'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(span()).toBe('6'));
+  });
+
+  it('moves focus to the details’ Copy link after Mark as sent when the row’s column has given way (sc-102333)', async () => {
+    signedIn();
+    atDeskWidth();
+    Object.defineProperty(HTMLElement.prototype, 'checkVisibility', {
+      value(this: HTMLElement) {
+        return !this.closest('.rs-table');
+      },
+      configurable: true,
+    });
+    const copy = { by: 'Folake Adeyemi', at: '2030-11-14T19:12:00+01:00', marked: false };
+    const shift = {
+      id: 'sh_1',
+      startsAt: '2030-11-14T16:30:00+01:00',
+      endsAt: '2030-11-14T21:00:00+01:00',
+    };
+    const changed = { ...AMAKA, link: 'none', shifts: [shift], briefing: 'changed' };
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...changed, briefingCopy: copy }),
+      'POST /api/events/ev_1/staff/st_1/briefing/sent': () =>
+        json({
+          staff: entry('st_1', 'Amaka Eze', {
+            ...changed,
+            briefingCopy: { ...copy, marked: true },
+          }),
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Amaka Eze' }));
+    fireEvent.click(
+      within(row()).getByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
+    );
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('bf-fact-copy-st_1'));
+    Reflect.deleteProperty(HTMLElement.prototype, 'checkVisibility');
   });
 
   it('copies nothing and keeps the status when no link can be issued', async () => {

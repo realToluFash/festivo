@@ -638,11 +638,11 @@
   }
 
   /* The card's own actions run long in French and Spanish: they go under the title rather than break it inside a word. */
-  .rs .mn-split:has(> .mn-panel:not(.bf-panel)) .sn-card-top {
+  .rs .mn-split:has(#rs-roster):has(> .mn-panel:not(.bf-panel)) .sn-card-top {
     flex-wrap: wrap;
   }
 
-  .rs .mn-split:has(> .mn-panel:not(.bf-panel)) .sn-card-names {
+  .rs .mn-split:has(#rs-roster):has(> .mn-panel:not(.bf-panel)) .sn-card-names {
     flex-basis: 12rem;
   }
 }

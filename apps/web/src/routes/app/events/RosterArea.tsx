@@ -43,7 +43,7 @@ import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
-import { useMatches } from '../../../phoneWidth.ts';
+import { DESK_WIDTH, useMatches } from '../../../phoneWidth.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -59,8 +59,6 @@ const FIELD_IDS = {
   job: 'rs-f-job',
 } as const;
 const BAR_MS = 10_000;
-/** roster.css docks the panel from here (sc-71607). */
-const DOCKED_WIDTH = '(width >= 80rem)';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; plan: StaffPlan };
 
@@ -340,7 +338,7 @@ function Roster({
 
   // roster.css docks at the same width: from 1280 px Station and Briefing give way, so a full-width row spans four columns.
   const docked =
-    useMatches(DOCKED_WIDTH) &&
+    useMatches(DESK_WIDTH) &&
     panel != null &&
     (manage || panel.kind === 'details') &&
     (panel.kind === 'add' || opened != null);
@@ -1167,12 +1165,10 @@ function Details({
               )}
             </dd>
           </div>
-          {brief != null && (
-            <div>
-              <dt>{t('briefing.card')}</dt>
-              <dd>{brief}</dd>
-            </div>
-          )}
+          <div>
+            <dt>{t('briefing.card')}</dt>
+            <dd>{brief}</dd>
+          </div>
           {entry.mobile != null && (
             <div>
               <dt>{t('roster.mobile')}</dt>
