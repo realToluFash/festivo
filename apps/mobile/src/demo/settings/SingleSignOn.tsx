@@ -416,7 +416,8 @@ function SsoPage({
         name={name}
         opener={opener}
         stop={W.stopTesting}
-        onCame={(worked) => setModel((now) => testCame(now, worked, clock()))}
+        checks
+        onCame={(came) => setModel((now) => testCame(now, came, clock()))}
         onStop={() => setModel(testStopped)}
       />
     </>

@@ -22,6 +22,7 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { Code, TagRow } from './DataParts.tsx';
 import {
   type CardMark,
+  type Came,
   type Protocol,
   protocolWord,
   SOIRELY_VALUES,
@@ -164,6 +165,7 @@ export function BrowserStandIn({
   name,
   opener,
   stop,
+  checks = false,
   onCame,
   onStop,
 }: {
@@ -172,7 +174,8 @@ export function BrowserStandIn({
   name: string;
   opener: RefObject<ScreenReaderTarget | null>;
   stop: string;
-  onCame: (worked: boolean) => void;
+  checks?: boolean;
+  onCame: (came: Came) => void;
   onStop: () => void;
 }) {
   return (
@@ -187,12 +190,19 @@ export function BrowserStandIn({
     >
       <SheetBody title={title} close={stop} onClose={onStop} closeTestID="sso.browser.stop">
         <DemoOnly title={W.browserDemo(name)}>
-          <SecondaryButton label={W.worked} onPress={() => onCame(true)} testID="sso.worked" />
+          <SecondaryButton label={W.worked} onPress={() => onCame('worked')} testID="sso.worked" />
           <SecondaryButton
             label={W.didNotWork}
-            onPress={() => onCame(false)}
+            onPress={() => onCame('failed')}
             testID="sso.didNotWork"
           />
+          {checks && (
+            <SecondaryButton
+              label={W.failedChecks}
+              onPress={() => onCame('checksFailed')}
+              testID="sso.failedChecks"
+            />
+          )}
         </DemoOnly>
       </SheetBody>
     </Sheet>

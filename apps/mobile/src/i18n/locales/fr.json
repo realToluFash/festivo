@@ -2541,6 +2541,8 @@
       "walkIn": "Sur place"
     },
     "repliedOn": "a répondu le {{date}}",
+    "repliedOnFromEmailLink": "replied {{date}} · from the email link",
+    "repliedFromEmailLink": "{{reply}} · replied {{date}} · from the email link",
     "replyHeading": "Réponse",
     "recordReply": "Saisir la réponse",
     "recordFor": "Pour {{name}}. Cette réponse compte comme la sienne et apparaît comme saisie par vous.",
@@ -4273,6 +4275,7 @@
     "readOnly": "Vous pouvez consulter son lien. Pour le partager, il faut l’autorisation de gérer le personnel.",
     "removed": "{{name}} ne fait plus partie de l’équipe.",
     "removedLine": "Cette personne a été retirée de l’événement sur le web, et son lien a cessé de fonctionner.",
+    "notOnStaff": "Cette personne ne fait pas partie de l’équipe.",
     "loading": "Chargement de son lien"
   },
   "briefing": {
@@ -4306,7 +4309,7 @@
     "saved": "Enregistré. Les consignes sont maintenant sur la page de service de chacun.",
     "notSaved": "Les consignes n’ont pas été enregistrées. Réessayez dans un instant.",
     "previewWho": "Voir la page de",
-    "previewSearch": "Rechercher dans l’équipe",
+    "previewSearch": "Rechercher par nom",
     "previewBanner": "Simple aperçu. Rien n’est enregistré : ni lecture, ni ouverture du lien.",
     "previewNoShift": "Vous êtes dans l’équipe du {{day}}, sans service pour l’instant.",
     "previewLoading": "Chargement de la page…",

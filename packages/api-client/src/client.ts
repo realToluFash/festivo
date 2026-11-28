@@ -229,6 +229,7 @@ import {
   asEventQuotes,
   asOfferedVendors,
 } from './quotes.ts';
+import { type DueNow, asDueNow } from './dueNow.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -4997,6 +4998,13 @@ export class ApiClient {
     };
   }
 
+  /** Due now (sc-1331): what a payment reminder named, as it is now; 404 alike for no such reminder and for one with nothing left the reader may see. */
+  async dueNow(reminderId: string): Promise<DueNow> {
+    return asDueNow(
+      await this.get<unknown>(`/api/payment-reminders/${encodeURIComponent(reminderId)}`),
+    );
+  }
+
   /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */
   async quotes(eventId: string): Promise<EventQuotes> {
     return asEventQuotes(await this.get<unknown>(`${this.budgetPath(eventId)}/quotes`));
@@ -5299,13 +5307,14 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and `emailLink` for one confirmed from an email answer link (sc-1291), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(
     token: string,
     answer: GuestAnswer,
     companions: readonly CompanionChoice[] = [],
     needs: PageNeeds | null = null,
     unnamed: readonly PlaceChoice[] = [],
+    emailLink = false,
   ): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>(
@@ -5316,6 +5325,7 @@ export class ApiClient {
           ...(companions.length === 0 ? {} : { companions }),
           ...(needs == null ? {} : { needs }),
           ...(unnamed.length === 0 ? {} : { unnamed }),
+          ...(emailLink ? { emailLink } : {}),
         },
         { anonymous: true },
       ),

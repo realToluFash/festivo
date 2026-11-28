@@ -500,3 +500,9 @@ a.desk-row.bt-row:hover {
   flex: none;
   margin-top: 2px;
 }
+
+/* sc-1331: Due now's heading once nothing is left to pay from the reminder. */
+.bt-due-done {
+  color: var(--colorInk);
+  font: 700 20px/1.25 var(--fontFamily);
+}

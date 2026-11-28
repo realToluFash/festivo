@@ -217,6 +217,8 @@ export interface Guest {
   companions: Companion[];
   /** Who let them answer again after Reply by, and when, in the event's zone (sc-3780); null until then, and absent reads as null. */
   repliesReopened?: { by: string; at: string } | null;
+  /** A reply confirmed from one of the invitation email's answer links (sc-1291); false for any other, and absent reads as false. */
+  fromEmailLink?: boolean;
   /** A reply a host recorded for them (sc-3787): who, and how the guest told them; null for the guest's own, and absent reads as null. */
   replyRecorded?: GuestReplyRecorded | null;
   /** Added at the door with a name and nothing else (sc-1454): their reply reads Walk-in. */
@@ -807,6 +809,7 @@ export function asGuest(value: unknown): Guest | null {
     companions: companions as Companion[],
     repliesReopened: asReopened(row.repliesReopened),
     replyRecorded: reply === 'noReply' ? null : asRecorded(row.replyRecorded),
+    fromEmailLink: reply !== 'noReply' && row.replySource === 'emailLink',
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
   };

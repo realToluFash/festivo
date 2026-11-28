@@ -14,6 +14,27 @@
   gap: var(--spaceSm) var(--spaceXl);
 }
 
+/* At a phone the column runs to the gutter, which takes its rows' tint. A menu's button may sit anywhere on its line, so its menu opens under the tools at the column's width, inside the window (sc-91831). */
+@media (width <= 40rem) {
+  .vd-column {
+    margin-inline-end: 0;
+  }
+
+  .vd-tools {
+    position: relative;
+  }
+
+  .vd-tools > .desk-menu-at {
+    position: static;
+  }
+
+  .vd-tools .desk-menu {
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+}
+
 .vd-search {
   display: flex;
   flex: 1 1 12rem;

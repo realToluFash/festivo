@@ -109,7 +109,7 @@ describe('the single sign-on transitions', () => {
     expect(standingOf(changing)).toBe('on');
     expect(ssoCard(changing)?.lines).toContain(W.changeNote('Okta'));
     expect(switched(changing, true).refusal).toBe('untested');
-    const tested = testCame(testStarted(changing), true, AT);
+    const tested = testCame(testStarted(changing), 'worked', AT);
     expect(switched(tested, true)).toMatchObject({ on: true, previous: null, refusal: null });
     expect(setupCancelled({ ...changing, setup: none.setup }).previous).toBe(OKTA);
   });
@@ -117,8 +117,12 @@ describe('the single sign-on transitions', () => {
   it('says what came back from a test', () => {
     const saved = begin('saved').model;
     expect(testStarted(saved).test).toBe('running');
-    expect(testCame(saved, true, AT)).toMatchObject({ test: 'passed', testedAt: AT });
-    expect(testCame(saved, false, AT)).toMatchObject({ test: 'failed', testedAt: null });
+    expect(testCame(saved, 'worked', AT)).toMatchObject({ test: 'passed', testedAt: AT });
+    expect(testCame(saved, 'failed', AT)).toMatchObject({ test: 'failed', testedAt: null });
+    expect(testCame(saved, 'checksFailed', AT)).toMatchObject({
+      test: 'checksFailed',
+      testedAt: null,
+    });
   });
 
   it('asks before required sign-on, and refuses switching off or removing while it is on', () => {
@@ -222,6 +226,15 @@ describe('the card and the Sign-in rules row', () => {
     expect(card(begin('test_failed').model)).toMatchObject({ mark: 'alert', word: W.failed });
     expect(card(begin('on').model)).toMatchObject({ mark: 'yes', word: W.on });
     expect(card(begin('required_on').model)?.word).toBe(W.required);
+  });
+
+  it('says a test Soirely’s own checks refused in its own words, with no “Okta said:” lead', () => {
+    const failed = card(begin('test_failed_checks').model);
+
+    expect(failed).toMatchObject({ mark: 'alert', word: W.failed, step: { go: 'test' } });
+    expect(failed?.lines).toContain(W.checks.otherDomain);
+    expect(failed?.lines).toContain(W.checksNext('Okta'));
+    expect(failed?.lines.some((line) => line.includes('said:'))).toBe(false);
   });
 
   it('stands as the page does', () => {

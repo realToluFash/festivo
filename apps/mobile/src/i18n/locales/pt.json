@@ -2541,6 +2541,8 @@
       "walkIn": "À porta"
     },
     "repliedOn": "respondeu no dia {{date}}",
+    "repliedOnFromEmailLink": "replied {{date}} · from the email link",
+    "repliedFromEmailLink": "{{reply}} · replied {{date}} · from the email link",
     "replyHeading": "Resposta",
     "recordReply": "Registar resposta",
     "recordFor": "Para {{name}}. Conta como resposta desta pessoa e fica indicado que foi registada por si.",
@@ -4273,6 +4275,7 @@
     "readOnly": "Pode ver a ligação desta pessoa. Para a partilhar, precisa de permissão para gerir a equipa.",
     "removed": "{{name}} já não faz parte da equipa.",
     "removedLine": "Esta pessoa foi removida do evento na web, e a ligação deixou de funcionar.",
+    "notOnStaff": "Esta pessoa não faz parte da equipa.",
     "loading": "A carregar a ligação"
   },
   "briefing": {
@@ -4306,7 +4309,7 @@
     "saved": "Guardado. As regras já estão na página do turno de cada pessoa.",
     "notSaved": "As regras não foram guardadas. Tente de novo dentro de momentos.",
     "previewWho": "Ver a página de",
-    "previewSearch": "Pesquisar na equipa",
+    "previewSearch": "Pesquisar por nome",
     "previewBanner": "Apenas pré-visualização. Nada fica registado: nem a leitura, nem a abertura da ligação.",
     "previewNoShift": "Faz parte da equipa de {{day}}, ainda sem turno.",
     "previewLoading": "A carregar a página…",

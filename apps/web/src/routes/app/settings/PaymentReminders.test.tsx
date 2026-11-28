@@ -85,6 +85,7 @@ describe('Settings › Vendors › Payment reminders (sc-95)', () => {
     open();
 
     expect(await screen.findByRole('heading', { name: 'Payment reminders' })).toBeDefined();
+    expect(document.querySelector('.settings-desk-page .desk > .desk-page')).not.toBeNull();
     expect(
       screen.getByText('3 days before a payment is due, and once the day after, then silence.'),
     ).toBeDefined();

@@ -2450,6 +2450,8 @@
       "walkIn": "Walk-in"
     },
     "repliedOn": "replied {{date}}",
+    "repliedOnFromEmailLink": "replied {{date}} · from the email link",
+    "repliedFromEmailLink": "{{reply}} · replied {{date}} · from the email link",
     "replyHeading": "Reply",
     "recordReply": "Record a reply",
     "recordFor": "For {{name}}. It counts as their reply, marked as recorded by you.",
@@ -4082,6 +4084,7 @@
     "readOnly": "You can see their link. Sharing it needs permission to manage staff.",
     "removed": "{{name}} is no longer on the staff.",
     "removedLine": "They were removed from the event on the web, and their link stopped working.",
+    "notOnStaff": "This person is not on the staff.",
     "loading": "Loading their link"
   },
   "briefing": {
@@ -4115,7 +4118,7 @@
     "saved": "Saved. The rules are on everyone’s shift page now.",
     "notSaved": "The rules were not saved. Try again in a moment.",
     "previewWho": "Whose page",
-    "previewSearch": "Search the staff",
+    "previewSearch": "Search by name",
     "previewBanner": "Preview only. Nothing is recorded: no read and no link open.",
     "previewNoShift": "You are on the staff for {{day}}, with no shift yet.",
     "previewLoading": "Loading their page…",
