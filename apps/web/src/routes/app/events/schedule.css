@@ -712,6 +712,9 @@
 
 .ro-ask-acts {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: var(--spaceMd);
 }
@@ -728,7 +731,7 @@
 /* The course name is cut short with an ellipsis on the row; the full name is in the form and its list (sc-3898). */
 .ro-course {
   display: inline-block;
-  max-width: min(100%, 18rem);
+  max-width: min(18rem, var(--roWordCap, 100%));
   overflow: hidden;
   padding: 2px var(--spaceSm);
   border: 1px solid var(--colorAccentTintBorder);
@@ -875,6 +878,17 @@
 
 .ro-move .ro-ask-acts {
   justify-content: flex-end;
+}
+
+.ro-ask-acts .desk-text,
+.ro-ask-acts .gs-pill {
+  text-align: center;
+}
+
+.ro-ask-acts .gs-pill {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ro-unlinked {
@@ -1060,7 +1074,7 @@
   .ro-ask-acts .desk-text {
     align-self: stretch;
     justify-content: center;
-    height: 48px;
+    min-height: 48px;
   }
 
   .ro-acts .ro-delete {
@@ -1077,7 +1091,7 @@
   .ro-move .ro-ask-acts .desk-text {
     align-self: stretch;
     justify-content: center;
-    height: 48px;
+    min-height: 48px;
   }
 
   .ro-sheet-scrim {

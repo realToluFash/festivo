@@ -4676,11 +4676,11 @@
     "courseList": "Services du menu",
     "courseTag": "Service · {{name}}",
     "served": "servi à {{time}}",
-    "linkedTo": "lié à {{title}}",
-    "moveAsk": "{{course}} est lié à {{other}}.",
+    "linkedTo": "lié à « {{title}} »",
+    "moveAsk": "{{course}} est lié à « {{other}} ».",
     "moveLine": "Le lier plutôt à cet élément ? {{other}} le perdra.",
     "moveIt": "Déplacer le lien",
-    "keepOn": "Le laisser à {{other}}",
+    "keepOn": "Le garder sur « {{other}} »",
     "moving": "{{other}} perdra ce service à l’enregistrement.",
     "noCourses": "Aucun service au menu pour l’instant",
     "noCoursesLine": "Ajoutez les services sur la page Menu, puis liez-en un ici.",
@@ -5244,7 +5244,7 @@
     "picksByOwn": "Selon la date limite propre au service « {{course}} ». Clôture à {{time}}, heure de {{zone}}.",
     "picksByOwnClosed": "Selon la date limite propre au service « {{course}} ». Clos à {{time}}, heure de {{zone}}.",
     "fromSchedule": "{{time}}, d’après le programme : {{title}}",
-    "fromScheduleHelp": "Elle suit l’heure de début de l’élément sur la page Programme."
+    "fromScheduleHelp": "Suit l’heure de début de l’élément sur la page Programme."
   },
   "guestExport": {
     "export": "Exporter",

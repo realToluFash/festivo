@@ -1121,7 +1121,7 @@ function ItemPanel({
           <div className="ro-ask">
             <p className="ro-ask-words">{RW.deleteAsk(editing.title)}</p>
             <div className="ro-ask-acts">
-              <button id="ro-keep" type="button" className="desk-text" onClick={onKeep}>
+              <button id="ro-keep" type="button" className="desk-text is-wraps" onClick={onKeep}>
                 {RW.keepIt}
               </button>
               <button type="button" className="gs-pill is-secondary" onClick={onDelete}>
@@ -1291,7 +1291,12 @@ function CourseField({
           </p>
           <p className="desk-help">{RW.moveLine(askedHolder.title)}</p>
           <div className="ro-ask-acts">
-            <button id="ro-move-cancel" type="button" className="desk-text" onClick={onCancelMove}>
+            <button
+              id="ro-move-cancel"
+              type="button"
+              className="desk-text is-wraps"
+              onClick={onCancelMove}
+            >
               {RW.keepOn(askedHolder.title)}
             </button>
             <button type="button" className="gs-pill is-secondary" onClick={onMove}>

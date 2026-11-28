@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -35,27 +35,32 @@ import {
   type WhState,
   type WhStateName,
   byId,
+  choiceLabel,
   choose,
   clockIn,
   closeSheet,
   coverCandidates,
+  coverWarnings,
   didntClockIn,
   doorAnswer,
   doorLabel,
   doorProblems,
   dueBy,
+  firstCoverer,
   firstProblem,
   here,
   jobEnd,
   jobLine,
+  loseLead,
   mobileAnswer,
   moveChosen,
+  moveInStations,
   notHere,
   numberProblem,
-  onStation,
   openCover,
   openDoor,
   openMobile,
+  returnTo,
   seed,
   setDoor,
   setMobile,
@@ -70,6 +75,7 @@ import { Chip, CloseX, MarkLine, PersonRow, StationTile } from './WhosHereParts.
 const ADD_MS = 900;
 const MOBILE_MS = 700;
 const RETRY_MS = 1200;
+const RETURN_MS = 3000;
 
 const countryOf = (code: string): Country =>
   COUNTRIES.find((c) => c.code === code) ?? (COUNTRIES[0] as Country);
@@ -99,6 +105,18 @@ function WhosHere({ start }: { start: WhStateName }) {
   }, [toast]);
 
   useEffect(() => {
+    const how = s.lostRead;
+    if (how == null) return undefined;
+    if (s.away) {
+      router.replace(returnTo(how) as Href);
+      return undefined;
+    }
+    if (s.sheet != null) return undefined;
+    const timer = setTimeout(() => router.replace(returnTo(how) as Href), RETURN_MS);
+    return () => clearTimeout(timer);
+  }, [s.lostRead, s.away, s.sheet]);
+
+  useEffect(() => {
     if (s.system !== 'loading' || start === 'loading') return undefined;
     const timer = setTimeout(() => setS((x) => ({ ...x, system: 'live' })), RETRY_MS);
     return () => clearTimeout(timer);
@@ -118,6 +136,7 @@ function WhosHere({ start }: { start: WhStateName }) {
   const close = (): void => finish(s);
 
   const lead = s.role === 'station';
+  const dropOne = firstCoverer(s);
   const lists = s.system === 'live' || s.system === 'stale';
   const showStations = lists && !lead && !phone;
   const door = showsDoor(s) ? (
@@ -172,6 +191,33 @@ function WhosHere({ start }: { start: WhStateName }) {
           )}
         </Body>
         <DemoOnly title="Demo only: the board’s switches">
+          {lead && s.lostRead == null && (
+            <>
+              <SecondaryButton
+                label="The floor lead moves you to cover Section B"
+                onPress={() => setS(loseLead(s, 'moved'))}
+                testID="wh.demo.coverMe"
+              />
+              <SecondaryButton
+                label="The floor lead makes Joy Okoro Section A’s lead in Stations"
+                onPress={() => setS(loseLead(s, 'ended'))}
+                testID="wh.demo.unlead"
+              />
+            </>
+          )}
+          {s.lostRead != null && (
+            <Text size={14} style={styles.secondary} testID="wh.demo.returning">
+              You no longer lead Section A, so this read refuses you. Back to Your night within 10
+              seconds once no sheet is open; a press refused with 403 goes back at once.
+            </Text>
+          )}
+          {dropOne != null && (
+            <SecondaryButton
+              label={`Stations moves ${dropOne.name} to Bar`}
+              onPress={() => setS(moveInStations(s, dropOne.id, 'Bar'))}
+              testID="wh.demo.dropCover"
+            />
+          )}
           <SecondaryButton
             label="Start again"
             onPress={() => setS(seed(start))}
@@ -322,7 +368,7 @@ function Body({
               phone={phone}
               amber={r.nobody}
               mark={
-                r.coveredBy != null ? (
+                r.coveredBy.length > 0 ? (
                   <MarkLine kind="yes" ink={tokens.colorAccent} words={W.coveredBy(r.coveredBy)} />
                 ) : r.nobody ? (
                   <MarkLine
@@ -849,13 +895,12 @@ function CoverForm({
           <View style={styles.choices} accessibilityRole="radiogroup">
             {people.map((p, i) => {
               const on = chosen?.id === p.id;
-              const alone = onStation(s, p.station).length === 1;
               return (
                 <ChoiceRow
                   key={p.id}
                   name={p.name}
                   line={W.onStation(p.station)}
-                  warn={alone ? W.leaves(p.station) : null}
+                  warns={coverWarnings(s, p)}
                   on={on}
                   onPress={() => apply(choose(s, p.id))}
                   ref={i === 0 ? firstRef : undefined}
@@ -896,7 +941,7 @@ function CoverForm({
 function ChoiceRow({
   name,
   line,
-  warn,
+  warns,
   on,
   onPress,
   ref,
@@ -904,7 +949,7 @@ function ChoiceRow({
 }: {
   name: string;
   line: string;
-  warn: string | null;
+  warns: readonly string[];
   on: boolean;
   onPress: () => void;
   ref?: Ref<ViewInstance> | undefined;
@@ -915,7 +960,7 @@ function ChoiceRow({
       ref={ref}
       on={on}
       onPress={onPress}
-      label={`${name}, ${line}${warn == null ? '' : `. ${warn}`}`}
+      label={choiceLabel(name, line, warns)}
       testID={testID}
     >
       <View style={styles.grow}>
@@ -925,7 +970,9 @@ function ChoiceRow({
         <Text size={14} style={styles.secondary}>
           {line}
         </Text>
-        {warn != null && <MarkLine kind="notyet" ink={tokens.colorAttention} words={warn} dashed />}
+        {warns.map((w) => (
+          <MarkLine key={w} kind="notyet" ink={tokens.colorAttention} words={w} dashed />
+        ))}
       </View>
       <View style={[styles.radio, on && styles.radioOn]} />
     </PressRow>

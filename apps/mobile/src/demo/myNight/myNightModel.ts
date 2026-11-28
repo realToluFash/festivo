@@ -26,6 +26,8 @@ export const MY_NIGHT_STATES = [
   'floor_lead',
   'station_lead',
   'station_lead_pass',
+  'lead_moved',
+  'lead_ended',
   'floor_lead_browser',
   'section_app',
   'section_checkin',
@@ -320,6 +322,23 @@ export function nightOf(state: MyNightState): Night {
         inApp: true,
         whosHere: '/demo/whos-here?state=station_lead',
       };
+    case 'lead_moved':
+      return {
+        ...night,
+        station: 'Section B · T7–T12',
+        kind: { kind: 'section', name: 'Section B · T7–T12' },
+        lead: { name: 'Dayo Okafor', phone: '+2348035550101', floor: true },
+        inApp: true,
+        updated: 'Section B · T7–T12',
+      };
+    case 'lead_ended':
+      return {
+        ...night,
+        station: 'Section A · T1–T6',
+        kind: { kind: 'section', name: 'Section A · T1–T6' },
+        lead: { name: 'Joy Okoro', phone: '+2348125550209', floor: false },
+        inApp: true,
+      };
     case 'section_app':
       return { ...night, inApp: true };
     case 'section_checkin':
@@ -465,6 +484,14 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   station_lead_pass: [
     'A station lead with Check-in and Open Pass',
     'Who’s here comes last, a secondary button under the other two; it opens Who’s here’s station-lead sample',
+  ],
+  lead_moved: [
+    'After Who’s here, moved by Cover',
+    'Grace no longer leads Section A: no Who’s here button, Updated: you’re now on Section B · T7–T12',
+  ],
+  lead_ended: [
+    'After Who’s here, lead picked in Stations',
+    'Joy Okoro now leads Section A: no Who’s here button, Grace’s shift as it was, Joy Okoro her lead',
   ],
   section_app: [
     'On a section, in the app',
