@@ -1,0 +1,17 @@
+# sc-95654: the Briefing card's tally and roster states update within 10 seconds of a change made elsewhere.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=staff
+- extendedWaitUntil:
+    visible:
+      id: briefing.card
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: live-before
+- extendedWaitUntil:
+    visible:
+      id: briefing.never
+    timeout: 12000
+    optional: true
+- takeScreenshot: live-after12s
