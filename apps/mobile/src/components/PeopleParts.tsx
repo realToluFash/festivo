@@ -200,6 +200,9 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
   removeFailed: (error: unknown) => string;
 }
 
+const WORDS_ID = 'people.role.words';
+const DONE_ID = 'people.role.done.slot';
+
 /** sc-95215: the sheet's heading and its line, each word whole. From the accessibility sizes the face is not drawn and the words take the row; Done stays beside them where the widest word, the gap and Done fit the room, else it goes under the line at the row's end. */
 function PersonHead({
   person,
@@ -239,6 +242,7 @@ function PersonHead({
   const action =
     done == null ? null : (
       <View
+        nativeID={DONE_ID}
         style={under ? styles.doneUnder : big ? undefined : styles.doneBesideName}
         onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}
       >
@@ -247,7 +251,10 @@ function PersonHead({
     );
 
   return (
-    <View onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
+    <View
+      experimental_accessibilityOrder={done == null ? undefined : [WORDS_ID, DONE_ID]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
       {phone && (
         <>
           <MeasuredWords words={nameParts} size={18} weight="bold" onWidth={record('n')} />
@@ -256,7 +263,7 @@ function PersonHead({
       )}
       <View style={[styles.person, big && styles.personBig, under && styles.personUnder]}>
         {!big && person.face}
-        <View style={styles.grow}>
+        <View nativeID={WORDS_ID} style={styles.grow}>
           <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
