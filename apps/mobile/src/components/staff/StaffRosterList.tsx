@@ -246,9 +246,9 @@ export function StaffRosterList({
                     line,
                     status: briefs
                       ? [
+                          word,
                           t(BRIEFING_WORDS[entry.briefing]),
                           ...noticeLines(entry, finished, clock, t).map((one) => one.words),
-                          word,
                         ].join('. ')
                       : word,
                   })}
