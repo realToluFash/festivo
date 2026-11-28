@@ -1,4 +1,4 @@
-/* Above 40rem a Vendors menu keeps its button's end edge when it fits inside the Settings pane, and otherwise takes the button's start edge (sc-102661). */
+/* sc-102661 */
 @media (width > 40rem) {
   .vd-tools.is-start .desk-menu {
     right: auto;

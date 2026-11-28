@@ -75,4 +75,28 @@ describe('Vendors’ menus open wholly inside the Settings pane above 40rem (sc-
 
     expect(tools?.classList.contains('is-start')).toBe(false);
   });
+
+  it('re-places an open menu when the window resizes, and only then', async () => {
+    lay({ left: 480, right: 640 });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/demo/settings/vendors?state=category_menu'],
+    });
+    const { rerender } = render(<RouterProvider router={router} />);
+    const tools = (await screen.findByRole('search', {}, { timeout: 8000 })).parentElement;
+    await screen.findByRole('menu');
+
+    expect(tools?.classList.contains('is-start')).toBe(false);
+
+    vi.restoreAllMocks();
+    lay({ left: 100, right: 260 });
+    rerender(<RouterProvider router={router} />);
+
+    expect(tools?.classList.contains('is-start')).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    expect(tools?.classList.contains('is-start')).toBe(true);
+  });
 });
