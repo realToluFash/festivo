@@ -32,8 +32,9 @@ describe('the phone’s tab bars (sc-71148, sc-99214)', () => {
   it('measures every word in SemiBold at the start and draws all labels at exactly the size that fits', () => {
     const measuredAt = /export function useMeasuredAt\([\s\S]*?\n\}\n/u.exec(title)?.[0] ?? '';
     expect(measuredAt).toMatch(
-      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight="semibold"\s+allowFontScaling=\{false\}/u,
+      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight=\{weight\}\s+allowFontScaling=\{false\}/u,
     );
+    expect(measuredAt).toMatch(/weight: 'regular' \| 'semibold' = 'semibold'/u);
     expect(cover).toMatch(/size=\{size\}\s+allowFontScaling=\{false\}/u);
   });
 });
@@ -164,7 +165,7 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
     const block = /function WholeNowBlock\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
     expect(block).toMatch(/const under = name \?\? Infinity;/u);
     expect(block).toMatch(/onDrawn=\{setName\}/u);
-    expect(block.match(/under=\{under\}/gu)).toHaveLength(3);
+    expect(block.match(/under=\{under\}/gu)).toHaveLength(4);
     expect(block).toMatch(
       /\{upright \? <Chips now=\{now\} grows \/> : <WholeChips now=\{now\} column=\{column\} under=\{under\} \/>\}/u,
     );
@@ -200,9 +201,21 @@ describe('the live cover upright from AX1 (sc-93578)', () => {
     expect(block).toMatch(
       /<CoverLine\n {8}size=\{48\}[\s\S]*?room=\{column\}\n {8}onDrawn=\{setName\}/u,
     );
+    expect(block).toMatch(/<View style=\{styles\.openUnder\}>\{open\}<\/View>/u);
     expect(block).toMatch(
-      /now\.arrived == null && <View style=\{styles\.openUnder\}>\{open\}<\/View>/u,
+      /now\.arrived != null && \(\s*<View style=\{styles\.arrivedUnder\}>\s*<WholeArrivedFigure figure=\{now\.arrived\} column=\{column\} under=\{under\} \/>\s*<\/View>\s*\)/u,
     );
+  });
+
+  it('steps the arrived figure’s numbers as one unit against the room beside the ring, under the name, and sizes the ring from what is drawn', () => {
+    const figure = /function WholeArrivedFigure\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(figure).toMatch(/useWindowDimensions\(\)/u);
+    expect(figure).toMatch(/labelStart\(FIGURE_NUMBERS, fontScale, under\)/u);
+    expect(figure).toMatch(/words=\{\[numbers\]\}/u);
+    expect(figure).toMatch(/fitWidest\(FIGURE_NUMBERS, start, width, Math\.max\(room, 1\)\)/u);
+    expect(figure).toMatch(/figureRing\(drawn, /u);
+    expect(figure).toMatch(/<CoverLine[\s\S]*?under=\{drawn\}/u);
+    expect(figure).not.toMatch(/PixelRatio/u);
   });
 
   it('draws the chips’ words at main’s 13, never stepped down and never cut to one line', () => {

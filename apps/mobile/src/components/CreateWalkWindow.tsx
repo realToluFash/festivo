@@ -61,6 +61,7 @@ import {
   turnEnded,
   turnTo,
   typed,
+  scrollsToPick,
 } from '../kit/createWalk.ts';
 import { Bars, NavAction, Progress, WalkButton, takingFocus } from './CreateWalkParts.tsx';
 import {
@@ -483,7 +484,7 @@ export function CreateWalkWindow<Made>({
         <CountryStep
           {...shared}
           field={live ? search : spare}
-          toPick={shownWalk.toPick || opening.toPick}
+          toPick={scrollsToPick(shownWalk.toPick, opening.toPick, { phone, readerOn })}
           quiet={live && quiet && opening.focus === 'search'}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}

@@ -42,6 +42,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
 
     public function __construct(
         private ScheduledPaymentRepository $scheduledPaymentRepository,
+        private PaymentReminderSends $paymentReminderSends,
         private PlanFeaturesInterface $planFeatures,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -191,51 +192,34 @@ final readonly class PaymentReminder implements NotificationTypeInterface
             ], $locale);
         }
 
+        $place = '/app/due/' . $this->paymentReminderSends->record($recipient->id, $payments)->toRfc4122();
+
         if (NotificationChannel::Email === $channel) {
-            return new RenderedNotification($title, $this->email($title, $lines, $payments, $locale));
+            return new RenderedNotification($title, $this->email($title, $lines, $payments, $place, $locale));
         }
 
-        return new RenderedNotification($title, Str\join($lines, "\n"), $lines, self::place($payments));
+        return new RenderedNotification($title, Str\join($lines, "\n"), $lines, $place);
     }
 
     /**
      * @param list<string>                     $lines
      * @param non-empty-list<ScheduledPayment> $payments
      */
-    private function email(string $title, array $lines, array $payments, string $locale): string
+    private function email(string $title, array $lines, array $payments, string $place, string $locale): string
     {
         $origin = Str\trim_right($this->webOrigin, '/');
-        $open = self::oneVendor($payments)
-            ? $this->trans('payment_reminder.email.open_payments', ['count' => Iter\count($payments)], $locale)
-            : $this->trans('payment_reminder.email.open_budget', [], $locale);
+        $open = $this->trans('payment_reminder.email.open_payments', ['count' => Iter\count($payments)], $locale);
 
         return Str\join([
             $title,
             '',
             ...$lines,
             '',
-            $this->trans('payment_reminder.email.link', ['label' => $open, 'url' => $origin . self::place($payments)], $locale),
+            $this->trans('payment_reminder.email.link', ['label' => $open, 'url' => $origin . $place], $locale),
             '',
             $this->trans('payment_reminder.email.footer', ['organisation' => $payments[0]->getEngagement()->getEvent()->getOrganisation()->getName()], $locale),
             $this->trans('payment_reminder.email.link', ['label' => $this->trans('payment_reminder.email.settings', [], $locale), 'url' => $origin . '/app/account/notifications'], $locale),
         ], "\n");
-    }
-
-    /** @param non-empty-list<ScheduledPayment> $payments one vendor's open its page, otherwise the first event's budget */
-    private static function place(array $payments): string
-    {
-        $first = $payments[0]->getEngagement();
-        $eventId = $first->getEvent()->getId()->toRfc4122();
-
-        return self::oneVendor($payments)
-            ? Str\format('/app/events/%s/budget/vendors/%s', $eventId, $first->getVendor()->getId()->toRfc4122())
-            : Str\format('/app/events/%s/budget', $eventId);
-    }
-
-    /** @param non-empty-list<ScheduledPayment> $payments */
-    private static function oneVendor(array $payments): bool
-    {
-        return 1 === Iter\count(Vec\unique(Vec\map($payments, static fn (ScheduledPayment $payment): string => $payment->getEngagement()->getId()->toRfc4122())));
     }
 
     private static function date(DateTimeImmutable $day, string $locale): string

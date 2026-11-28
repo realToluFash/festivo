@@ -2321,8 +2321,40 @@ function DueNowDialog({
   const [items] = useState(() => dueItemsOf(first, event));
   const [rows, setRows] = useState<Record<string, DueNowState>>(() => dueStartOf(first, items));
   const [refused] = useState(() => dueRefusedOf(first));
+  const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>(() =>
+    first === 'due_loading' ? 'loading' : first === 'due_failed' ? 'failed' : 'loaded',
+  );
   const events = [...new Set(items.map((item) => item.event))];
   const settled = items.every((item) => rows[item.id] !== 'owed');
+
+  useEffect(() => {
+    if (load !== 'loading' || first === 'due_loading') return;
+    const timer = window.setTimeout(() => setLoad('loaded'), BUSY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [load, first]);
+
+  if (load !== 'loaded')
+    return (
+      <BudgetDialog
+        title="Due now"
+        verb="Close"
+        cancel={false}
+        onDismiss={onClose}
+        onConfirm={onClose}
+      >
+        {load === 'loading' ? (
+          <BudgetLoading words="Loading the payments…" card={false} />
+        ) : (
+          <>
+            <p className="desk-line is-ink" role="alert">
+              These payments did not load. Check your connection and try again.
+            </p>
+            <TextAction label="Try again" onClick={() => setLoad('loading')} />
+          </>
+        )}
+      </BudgetDialog>
+    );
 
   if (first === 'due_not_found')
     return (

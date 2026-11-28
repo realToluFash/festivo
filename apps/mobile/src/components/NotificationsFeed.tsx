@@ -58,7 +58,7 @@ export type FeedWhere =
       onOffline: (offline: ScreenOffline) => void;
     };
 
-/** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame for a phone on its side (sc-62023). */
+/** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame on a tablet reached from a push (sc-23814). A phone, either way up, gets the screen (sc-62023). */
 export function NotificationsFeed({ where }: { where: FeedWhere }) {
   const { t } = useTranslation();
   const zone = readerZoneOf(useSignedIn().account?.timezone);

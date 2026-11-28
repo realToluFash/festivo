@@ -256,7 +256,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
 
   const status = gone ? (
     <View testID="staffLink.removed">
-      <Notice tone="attention" mark="alert" title={W.removed(who.name)} body={W.removedLine} />
+      <Notice tone="attention" mark="!" title={W.removed(who.name)} body={W.removedLine} />
     </View>
   ) : (
     <View style={styles.card} testID="staffLink.status">
