@@ -21,6 +21,7 @@ import {
   shared,
 } from '../service/HowItsGoingParts.tsx';
 import {
+  NOT_SENT_HEAD,
   RUN_OUT,
   type Guest,
   type HeldRow,
@@ -32,15 +33,20 @@ import {
   bringAfter,
   chooseHeld,
   currentStop,
+  dismissNotSent,
   floorSeats,
+  goOffline,
   goBackFor,
   guestOf,
   heldRows,
+  isKept,
+  keptLine,
   leadChooses,
   markNotOn,
   moveOn,
   onTray,
   plural,
+  reconnect,
   runOutStateOf,
   seed,
   stationOf,
@@ -79,7 +85,7 @@ function RunOutTray({ start }: { start: RunOutStateName }) {
 
   const tab: TabId = s.screen === 'floor' ? 'floor' : 'next';
   const pick = (t: TabId) => setS({ ...s, screen: t === 'floor' ? 'floor' : 'next' });
-  const offline = s.online ? '' : s.refused;
+  const offline = s.online ? '' : keptLine(s.kept.length);
   const demo = <Switches s={s} setS={setS} start={start} />;
 
   if (kind === 'tabletLandscape') {
@@ -231,6 +237,9 @@ function Held({ r, s, setS, z }: { r: HeldRow; s: RunOutState; setS: SetS; z: Z 
         {r.where}
       </Text>
       <Flags g={r.guest} />
+      {isKept(s, r.guest.id, ['held', 'takeOff']) && (
+        <Chip word="Waiting to send" paths={PATHS.send} tone="outline" />
+      )}
       <View style={styles.waitLine}>
         <Glyph paths={PATHS.clock} ink={tokens.colorAttentionText} side={15} circle />
         <Text size={15} weight="semibold" style={styles.attention}>
@@ -336,9 +345,10 @@ function TrayPane({ s, setS, z }: { s: RunOutState; setS: SetS; z: Z }) {
       </View>
     );
   }
-  const inline = s.online && s.refused !== '' ? s.refused : '';
+  const inline = s.refused;
   return (
     <View style={styles.list}>
+      <NotSent s={s} setS={setS} />
       <Text size={13} weight="bold" style={styles.kicker}>
         {trayLine(s).toUpperCase()}
       </Text>
@@ -351,6 +361,30 @@ function TrayPane({ s, setS, z }: { s: RunOutState; setS: SetS; z: Z }) {
           </Text>
         </View>
       )}
+    </View>
+  );
+}
+
+function NotSent({ s, setS }: { s: RunOutState; setS: SetS }) {
+  if (s.notSent.length === 0) return null;
+  return (
+    <View style={[shared.card, styles.notSent]} accessibilityRole="alert" testID="runOut.notSent">
+      <View style={styles.waitLine}>
+        <Glyph paths={PATHS.sentBack} ink={tokens.colorInk} side={18} />
+        <Text size={15} weight="bold" style={shared.grow}>
+          {NOT_SENT_HEAD}
+        </Text>
+      </View>
+      {s.notSent.map((t) => (
+        <Text key={t} size={15} weight="medium">
+          {t}
+        </Text>
+      ))}
+      <SecondaryButton
+        label="Dismiss"
+        onPress={() => setS(dismissNotSent(s))}
+        testID="runOut.notSent.dismiss"
+      />
     </View>
   );
 }
@@ -427,6 +461,9 @@ function StopRow({ l, s, setS, z }: { l: StopLine; s: RunOutState; setS: SetS; z
           <Flags g={l.guest} />
           {fresh && (
             <Chip word={`New · instead of ${l.instead ?? ''}`} paths={PATHS.given} tone="accent" />
+          )}
+          {l.item === RUN_OUT && isKept(s, l.guest.id, ['notOn', 'bringAfter']) && (
+            <Chip word="Waiting to send" paths={PATHS.send} tone="outline" />
           )}
         </View>
         {runOut ? (
@@ -566,7 +603,7 @@ function Switches({ s, setS, start }: { s: RunOutState; setS: SetS; start: RunOu
       />
       <SecondaryButton
         label={s.online ? 'Lose the connection' : 'Come back online'}
-        onPress={() => setS({ ...s, online: !s.online, refused: '', note: '' })}
+        onPress={() => setS(s.online ? goOffline(s) : reconnect(s))}
         testID="runOut.demo.online"
       />
       <SecondaryButton
@@ -651,6 +688,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
   },
   resolve: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  notSent: { borderWidth: 1, borderColor: tokens.colorControlBorder, alignItems: 'flex-start' },
   okRow: { paddingTop: tokens.spaceSm, gap: tokens.spaceXxs },
   refused: {
     flexDirection: 'row',
