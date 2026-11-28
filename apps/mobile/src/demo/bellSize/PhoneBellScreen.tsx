@@ -19,7 +19,10 @@ import { goBack } from '../DemoScreen.tsx';
 import { FILTER_SIZES, filterScale } from '../filterSize/filterSizeRules.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { wordsStart } from '../todaySize/todaySizeRules.ts';
-import { BellSampleBody, unreadAt } from './BellSamples.tsx';
+import { BELL_ROWS, type BellRows } from '../bellRows/bellRowsRules.ts';
+import { SizedBellBody } from '../bellRows/SizedBellBody.tsx';
+import { unreadOf } from '../bellRows/unreadOf.ts';
+import { BellSampleBody } from './BellSamples.tsx';
 import type { BellSizeStart } from './BellSizeScreen.tsx';
 import {
   BELL_LANGUAGES,
@@ -38,7 +41,9 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
   const [language, setLanguage] = useState(start.language);
   const [read, setRead] = useState(start.read);
   const [refreshing, setRefreshing] = useState(start.refreshing);
-  const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadAt(start.read));
+  const [rows, setRows] = useState(start.rows);
+  const [rowsAt, setRowsAt] = useState<string | null>(null);
+  const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadOf(start.read, start.rows));
   const [menu, setMenu] = useState<string | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const [drawnAt, setDrawnAt] = useState<number | null>(null);
@@ -63,6 +68,9 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
     <I18nextProvider i18n={words}>
       <BellPage
         scale={scale}
+        language={language}
+        rows={rows}
+        onRows={setRowsAt}
         empty={read === 'none' ? { scale, onDrawn: setEmptyAt } : null}
         unread={unread}
         refreshing={refreshing}
@@ -79,12 +87,14 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
           setTold(`${title}: opens its page, as on main.`);
         }}
         onSettings={() => setTold('Notification settings opens, as on main.')}
+        onShowMore={() => setTold('Show more loads the next page, as on main.')}
         foot={
           <DemoOnly
             title={[
-              'Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the title draws at the size chosen; the row with ‹ and Mark all read, and the list, are main’s at this device’s size. The title grows as on main and, from AX1, steps down only to the largest size at which its own word fits the screen’s width, never under 30. The refreshing mark sits beside it or on the line under it and never makes it smaller. With nothing yet, the empty sentence draws at the size chosen too, by the panel’s rule: whole words, one size, stepped down from AX1 only for its widest word, never under 15, the bell tile above it where that word cannot fit beside it, and Notification settings under it by the same rule. Nothing is sent and no string is added.',
+              'Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the title draws at the size chosen; the row with ‹ and Mark all read, and the list, are main’s at this device’s size. The title grows as on main and, from AX1, steps down only to the largest size at which its own word fits the screen’s width, never under 30. The refreshing mark sits beside it or on the line under it and never makes it smaller. With nothing yet, the empty sentence draws at the size chosen too, by the panel’s rule: whole words, one size, stepped down from AX1 only for its widest word, never under 15, the bell tile above it where that word cannot fit beside it, and Notification settings under it by the same rule. Rows other than As on main draw the list at the size chosen too (sc-102956): each of a row’s texts grows as on main and steps down only to the largest size at which its own widest word fits its line, never under its default size; no text under a title draws larger than it; a word wider than its line even at the default size draws at the default size and breaks at the line’s end. Nothing is sent and no string is added.',
               drawnAt == null ? null : `The title draws at ${tenths(drawnAt)}.`,
               read === 'none' ? emptyAt : null,
+              rows !== 'main' && read !== 'none' ? rowsAt : null,
               told == null ? null : `Said: ${told}`,
             ]
               .filter((line) => line != null)
@@ -112,9 +122,21 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
               chosen={read}
               onChoose={(next) => {
                 setRead(next);
-                setUnread(unreadAt(next));
+                setUnread(unreadOf(next, rows));
               }}
               id="read"
+              prefix="demo.bellSize"
+            />
+            <Choices
+              heading="Rows"
+              options={BELL_ROWS}
+              chosen={rows}
+              onChoose={(next) => {
+                setRows(next);
+                setRowsAt(null);
+                setUnread(unreadOf(read, next));
+              }}
+              id="rows"
               prefix="demo.bellSize"
             />
             <QuietButton
@@ -132,6 +154,9 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
 /** Main's bell screen (BellParts' BellFrame, `screen`): ‹ and Mark all read on one row, then the page that scrolls, its title over the list. */
 function BellPage({
   scale,
+  language,
+  rows,
+  onRows,
   empty,
   unread,
   refreshing,
@@ -141,9 +166,13 @@ function BellPage({
   onMarkAll,
   onPick,
   onSettings,
+  onShowMore,
   foot,
 }: {
   scale: number;
+  language: string;
+  rows: BellRows;
+  onRows: (drawn: string) => void;
   empty: { scale: number; onDrawn: (drawn: string) => void } | null;
   unread: ReadonlySet<string>;
   refreshing: boolean;
@@ -153,6 +182,7 @@ function BellPage({
   onMarkAll: (said: string) => void;
   onPick: (id: string, title: string) => void;
   onSettings: () => void;
+  onShowMore: () => void;
   foot: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -184,14 +214,27 @@ function BellPage({
         ]}
       >
         <PageTitle heading={heading} scale={scale} refreshing={refreshing} onDrawn={onDrawn} />
-        <BellSampleBody
-          empty={empty}
-          unread={unread}
-          menu={menu}
-          onMenu={onMenu}
-          onPick={(row) => onPick(row.id, row.title)}
-          onSettings={onSettings}
-        />
+        {rows !== 'main' && empty == null ? (
+          <SizedBellBody
+            rows={rows}
+            scale={scale}
+            language={language}
+            unread={unread}
+            onPick={onPick}
+            onShowMore={onShowMore}
+            onSettings={onSettings}
+            onReport={onRows}
+          />
+        ) : (
+          <BellSampleBody
+            empty={empty}
+            unread={unread}
+            menu={menu}
+            onMenu={onMenu}
+            onPick={(row) => onPick(row.id, row.title)}
+            onSettings={onSettings}
+          />
+        )}
         <View style={styles.foot}>{foot}</View>
       </ScrollView>
     </View>

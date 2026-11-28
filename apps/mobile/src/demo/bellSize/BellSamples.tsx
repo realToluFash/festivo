@@ -157,7 +157,7 @@ function EmptyBody({
 }
 
 /** Main's Notification settings (BellBody) at the stand-in size, by the sentence's rule: whole words, one size, and from AX1 stepped down only until its widest word fits the body's line, never under 15. */
-function SettingsLink({
+export function SettingsLink({
   scale,
   onDrawn,
   onPress,

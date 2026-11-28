@@ -43,7 +43,9 @@ import { TODAY_FOLD_BOARDS } from '../../src/demo/todayFold/TodayFoldBoards.ts';
 import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
 import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
 import {
+  BELL_ROWS_BOARDS,
   BELL_SIZE_BOARDS,
+  PHONE_BELL_ROWS_BOARDS,
   PHONE_BELL_SIZE_BOARDS,
 } from '../../src/demo/bellSize/BellSizeBoards.ts';
 import { BAND_LIVE_BOARDS } from '../../src/demo/bandLive/BandLiveBoards.ts';
@@ -247,6 +249,22 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'The iPhone bell’s screen · its title whole on one line at the largest text sizes (sc-92959)',
     boards: PHONE_BELL_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPad bell’s panel · its rows read their words whole at the largest text sizes (sc-102956)',
+    boards: BELL_ROWS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPhone bell’s screen · its rows read their words whole at the largest text sizes (sc-102956)',
+    boards: PHONE_BELL_ROWS_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

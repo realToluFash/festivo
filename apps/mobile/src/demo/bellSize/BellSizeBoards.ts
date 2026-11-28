@@ -121,3 +121,76 @@ export const PHONE_BELL_SIZE_BOARDS: readonly BellSizeBoard[] = [
     href: '/demo/bell-size?size=ax5&lang=es&read=none',
   },
 ];
+
+/** The bell's rows at the accessibility sizes (sc-102956), in the iPad's panel; open each on the iPad Pro 13-inch, upright. */
+export const BELL_ROWS_BOARDS: readonly BellSizeBoard[] = [
+  {
+    title: 'QA notification 1 · AX5',
+    what: 'notification whole, never notificatio / n: each title stepped down only as far as its widest word needs',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=qa',
+  },
+  {
+    title: 'Mixed rows · AX5',
+    what: 'The account row steps down for Oluwaseyifunmi between two rows whose words all fit and draw as on main',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=mixed',
+  },
+  {
+    title: 'Title steps down · AX5',
+    what: 'Chukwuemeka steps the title down; its line and its event and time draw no larger than it, never under 13.5',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=steps',
+  },
+  {
+    title: 'A 40-letter name · AX5',
+    what: 'The event’s one long word at 13.5, breaking at the line’s end, every letter drawn and nothing ending in …; the row grows',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=word40',
+  },
+  {
+    title: 'Mixed rows · AX5, French',
+    what: 'l’événement and Oluwaseyifunmi whole, each row stepped down for its own words; the panel scrolls to Show more and Paramètres de notification',
+    href: '/demo/bell-size?size=ax5&lang=fr&rows=mixed',
+  },
+  {
+    title: 'Title steps down · AX5, French',
+    what: 'Chukwuemeka and Organisation whole, the lines under each title no larger than it',
+    href: '/demo/bell-size?size=ax5&lang=fr&rows=steps',
+  },
+  {
+    title: 'Mixed rows · default size',
+    what: 'As on main: every text at its default size',
+    href: '/demo/bell-size?size=default&lang=en&rows=mixed',
+  },
+  {
+    title: 'A 40-letter name · default size',
+    what: 'As on main: the one long word breaks at the line’s end, the only word that does',
+    href: '/demo/bell-size?size=default&lang=en&rows=word40',
+  },
+];
+
+/** The same rows on the phone's own bell screen (sc-102956); open each on the iPhone 17 Pro, upright. */
+export const PHONE_BELL_ROWS_BOARDS: readonly BellSizeBoard[] = [
+  {
+    title: 'QA notification 1 · AX5',
+    what: 'notification whole at 56, never notificatio / n; QA notification 3, read, fits at its full 57.1',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=qa',
+  },
+  {
+    title: 'Mixed rows · AX5',
+    what: 'The account row at 40 for Oluwaseyifunmi, the rows over and under it at their full size, as on main',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=mixed',
+  },
+  {
+    title: 'Title steps down · AX5',
+    what: 'The title at 38 for Chukwuemeka, its line and its event and time at 38 under it',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=steps',
+  },
+  {
+    title: 'A 40-letter name · AX5',
+    what: 'The event and time at 13.5, the long word breaking at the line’s end, the row growing; scroll to Show more and Notification settings',
+    href: '/demo/bell-size?size=ax5&lang=en&rows=word40',
+  },
+  {
+    title: 'Mixed rows · default size',
+    what: 'As on main',
+    href: '/demo/bell-size?size=default&lang=en&rows=mixed',
+  },
+];
