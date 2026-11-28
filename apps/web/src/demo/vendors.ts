@@ -418,6 +418,17 @@ export type VendorsDialog =
       owing?: readonly Owing[];
     };
 
+export type MenuEdge = 'end' | 'start';
+
+/** Above 40rem a menu keeps its button's end edge when its whole width fits inside the pane from there, and otherwise takes the button's start edge (sc-102661). */
+export function menuEdge(
+  button: { left: number; right: number },
+  width: number,
+  pane: { left: number },
+): MenuEdge {
+  return button.right - width >= pane.left ? 'end' : 'start';
+}
+
 export interface VendorsStart {
   load: Load;
   vendors: Vendor[];
