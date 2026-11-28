@@ -102,6 +102,8 @@ import { HowItsGoingPage } from './HowItsGoing.tsx';
 import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
+import { ServiceFirePage } from './ServiceFire.tsx';
+import { FIRE_STATES, FIRE_STATE_WHAT } from './serviceFire.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { JobsShiftsPage } from './JobsShifts.tsx';
 import { StaffHoursPage } from './StaffHours.tsx';
@@ -391,6 +393,7 @@ export default function Demo() {
       <Route path="queue" element={<QueuePage />} />
       <Route path="team" element={<TeamPage />} />
       <Route path="how-its-going" element={<HowItsGoingPage />} />
+      <Route path="service-fire" element={<ServiceFirePage />} />
       <Route path="service-room" element={<ServiceRoomPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -631,6 +634,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={HOW_ITS_GOING_PAGES} />
         <h3>Service · the whole room as a plan or a list (sc-4026) · desktop</h3>
         <BoardPages pages={ROOM_PAGES} />
+        <h3>Service · starting service and firing each course (sc-4009) · desktop</h3>
+        <BoardPages pages={FIRE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -857,6 +862,16 @@ const HOW_ITS_GOING_PAGES = [
     states: SERVICE_STATES.map((state) => ({
       to: `/demo/how-its-going?state=${state}`,
       name: SERVICE_STATE_WHAT[state],
+    })),
+  },
+];
+
+const FIRE_PAGES = [
+  {
+    name: 'The floor lead starts service and fires each course',
+    states: FIRE_STATES.map((state) => ({
+      to: `/demo/service-fire?state=${state}`,
+      name: FIRE_STATE_WHAT[state],
     })),
   },
 ];

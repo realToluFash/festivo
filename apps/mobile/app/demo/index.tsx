@@ -62,6 +62,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { FIRE_BOARDS } from '../../src/demo/service/ServiceFireBoards.ts';
 import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
 import { NEXT_TRAY_BOARDS } from '../../src/demo/nextTray/NextTrayBoards.ts';
@@ -2906,6 +2907,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
     boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · starting service and firing each course (sc-4009) · phone from 320 px and tablet landscape',
+    boards: FIRE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · Next, the waiter’s tray from start to table (sc-1361) · phone from 320 px, tablet portrait and landscape',
