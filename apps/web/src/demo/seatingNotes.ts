@@ -1,5 +1,6 @@
 import { demoWords } from './demoWords.ts';
 import type { Item, Party, Plan } from './seating.ts';
+import { SW } from './seatingWords.ts';
 
 /** sc-1364's English, from its AC (28 Nov) and the 19 Oct boards (`Main.dc.html`, Seating notes · desk web); [en] owns every word. */
 export const NOTE_WORDS = {
@@ -61,7 +62,6 @@ export const NOTE_WORDS = {
   mended_one: '1 note is no longer broken.',
   mended_other: '{{count}} notes are no longer broken.',
   showTable: 'Show {{table}}',
-  guestOf: 'Guest of {{name}}',
 } as const;
 
 export const NW = NOTE_WORDS;
@@ -208,12 +208,7 @@ function plain(text: string): string {
 }
 
 /** Every guest and named companion on the guest list, whatever their reply and seated or not, never the guest themselves nor an unnamed companion place. */
-export function offered(
-  plan: Plan,
-  tray: readonly Party[],
-  self: string,
-  unnamed: (party: Party) => string,
-): string[] {
+export function offered(plan: Plan, tray: readonly Party[], self: string): string[] {
   const seated = plan.items.flatMap((item) =>
     item.chairs.flatMap((chair) =>
       chair.state === 'taken' && chair.who != null ? [chair.who] : [],
@@ -221,11 +216,11 @@ export function offered(
   );
   const waiting = tray.flatMap((party) => [
     ...(party.behind === true ? [] : [party.name]),
-    ...party.companions.filter((name) => name !== unnamed(party)),
+    ...party.companions,
   ]);
 
   return [...new Set([...seated, ...waiting])]
-    .filter((name) => name !== self)
+    .filter((name) => name !== self && !isUnnamed(name))
     .sort((x, y) => x.localeCompare(y, 'en'));
 }
 
@@ -378,6 +373,11 @@ export function movedInto(plan: Plan, name: string, to: string): Plan {
 
 export const LIVE_MOVE = { name: 'Leila Haddad', to: 't6' } as const;
 
-export function unnamedOf(party: Party): string {
-  return say(NW.guestOf, { name: party.name });
+/** The API refuses a note on an unnamed companion place, and two of one guest's places share a label, so neither is offered nor given Notes. */
+export function isUnnamed(name: string): boolean {
+  const [before = '', after = ''] = SW.guestOf.split('{{name}}');
+
+  return (
+    name.length > before.length + after.length && name.startsWith(before) && name.endsWith(after)
+  );
 }

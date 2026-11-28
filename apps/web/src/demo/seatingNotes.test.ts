@@ -9,13 +9,13 @@ import {
   matching,
   movedInto,
   nextId,
+  isUnnamed,
   noteTags,
   offered,
   removing,
   replacing,
   sampleNotes,
   stateOf,
-  unnamedOf,
 } from './seatingNotes.ts';
 import type { Plan } from './seating.ts';
 
@@ -95,7 +95,7 @@ describe('when a note is broken (sc-1364)', () => {
 
 describe('recording a note (sc-1364)', () => {
   it('offers every guest and named companion, never the guest nor an unnamed place', () => {
-    const names = offered(samplePlan(), sampleTray(), 'Lina Haddad', unnamedOf);
+    const names = offered(samplePlan(), sampleTray(), 'Lina Haddad');
 
     expect(names).toContain('Imran Khan');
     expect(names).toContain('Rui Duarte');
@@ -104,8 +104,20 @@ describe('recording a note (sc-1364)', () => {
     expect(names.some((name) => name.startsWith('Guest of'))).toBe(false);
   });
 
+  it('never offers an unnamed place once it is seated', () => {
+    const plan = movedInto(samplePlan(), 'Guest of Kwame Mensah', 't7');
+    const names = offered(plan, sampleTray(), 'Lina Haddad');
+
+    expect(
+      plan.items.some((item) => item.chairs.some((chair) => chair.who === 'Guest of Kwame Mensah')),
+    ).toBe(true);
+    expect(names).not.toContain('Guest of Kwame Mensah');
+    expect(isUnnamed('Guest of Amaka Eze')).toBe(true);
+    expect(isUnnamed('Kwame Mensah')).toBe(false);
+  });
+
   it('finds a guest without their accents, and says nothing matches when nobody does', () => {
-    const names = offered(samplePlan(), sampleTray(), 'Lina Haddad', unnamedOf);
+    const names = offered(samplePlan(), sampleTray(), 'Lina Haddad');
 
     expect(matching(names, 'ines')).toEqual(['Inês Costa', 'Inês Duarte']);
     expect(matching(names, 'Femi Adebayo')).toEqual([]);

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 
 import { Icon } from './SeatingGlyph.tsx';
-import { initials } from './seating.ts';
+import { initials, peopleIn } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
 import {
   type Broken,
@@ -19,6 +19,7 @@ import {
   matching,
   nextId,
   notesOf,
+  isUnnamed,
   offered,
   otherIn,
   removing,
@@ -28,7 +29,6 @@ import {
   shortWords,
   stateOf,
   tablesWords,
-  unnamedOf,
 } from './seatingNotes.ts';
 import type { Ui } from './seatingSeed.ts';
 import { BackHead } from './SeatingPanel.tsx';
@@ -69,7 +69,7 @@ export function NotesButton({ name }: { name: string }) {
   const { ui, set } = useSeating();
   const n = notesOf(ui.notes.list, name).length;
 
-  if (ui.readOnly) return null;
+  if (ui.readOnly || isUnnamed(name)) return null;
   return (
     <button
       type="button"
@@ -92,7 +92,7 @@ export function TraySwitch() {
   const broken = brokenNotes(ui.plan, ui.notes.list).length;
   const without = ui.tray
     .filter((party) => party.reply === 'coming')
-    .reduce((sum, party) => sum + (party.behind === true ? 0 : 1) + party.companions.length, 0);
+    .reduce((sum, party) => sum + peopleIn(party), 0);
   const tabs: ['without' | 'notes', string, number][] = [
     ['without', NW.without, without],
     ['notes', NW.notes, broken],
@@ -330,7 +330,7 @@ function Replacing({ draft, self }: { draft: NoteDraft; self: string }) {
 function AddNote({ self, draft }: { self: string; draft: NoteDraft }) {
   const { ui, set } = useSeating();
   const id = useId();
-  const names = offered(ui.plan, ui.tray, self, unnamedOf);
+  const names = offered(ui.plan, ui.tray, self);
   const found = matching(names, draft.search);
   const shown = found.slice(0, SHOWN_GUESTS);
   const nobody = draft.search.trim() !== '' && found.length === 0;
