@@ -123,7 +123,7 @@ export function whenKey(member: OrganisationMember): string {
 export type MembersSaid =
   | { kind: 'approved'; member: string; name: string; role: string }
   | { kind: 'turnedDown'; name: string }
-  | { kind: 'removed'; name: string }
+  | { kind: 'removed'; name: string; handed?: { to: string | null; count: number } | null }
   | { kind: 'withdrew'; told: boolean }
   | { kind: 'recoveryApproved'; name: string }
   | { kind: 'recoveryTurnedDown'; name: string };
@@ -320,7 +320,14 @@ export function membersCard({
     return {
       ...quiet,
       says: t('membersScreen.card.removed', { name: said.name }),
-      line: t('membersScreen.card.removedLine', { organisation }),
+      line:
+        said.handed == null
+          ? t('membersScreen.card.removedLine', { organisation })
+          : `${
+              said.handed.to == null
+                ? t('handover.ledByYou', { count: said.handed.count })
+                : t('handover.ledBy', { count: said.handed.count, name: said.handed.to })
+            } ${t('handover.formerKept')}`,
       step: answer ?? seeFormer,
     };
   if (said?.kind === 'withdrew')

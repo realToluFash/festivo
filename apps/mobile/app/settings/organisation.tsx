@@ -171,6 +171,7 @@ function Organisation() {
           onlyOwner={onlyOwner}
           candidates={candidates}
           via={via}
+          handsOver
           onTransferred={(to) => {
             say({ kind: 'transferred', to });
             void reloadSignedIn();

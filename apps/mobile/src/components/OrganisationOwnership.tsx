@@ -25,6 +25,7 @@ import {
   TextField,
 } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
+import { LeaveHandover } from './LeaveHandover.tsx';
 import { type OrganisationCalls } from './OrganisationJoining.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -81,6 +82,7 @@ export function OwnershipSection({
   opening = AT_REST,
   leaveRef: givenLeaveRef,
   onLeave,
+  handsOver = false,
   onTransferred,
   onGone,
 }: {
@@ -92,8 +94,10 @@ export function OwnershipSection({
   /** How the owner proves it is them: a password, or the provider they sign in with. */
   via: 'password' | Provider;
   opening?: OwnershipOpening;
-  /** Leave without the plain Ask, as the demo hands over first (sc-614); the product has no handover yet. */
+  /** Leave without the plain Ask, as the demo hands over first (sc-614). */
   onLeave?: (() => void) | undefined;
+  /** Leave asks who takes the events the leaver leads, from the API (sc-614). */
+  handsOver?: boolean;
   leaveRef?: RefObject<ViewInstance | null>;
   onTransferred: (name: string) => void;
   onGone: () => void;
@@ -218,7 +222,24 @@ export function OwnershipSection({
           }))}
         />
       </View>
-      <Ask open={ask != null} opener={leaveRef} {...asked} />
+      <Ask
+        open={ask === 'onlyOwner' || (ask === 'leave' && !handsOver)}
+        opener={leaveRef}
+        {...asked}
+      />
+      {handsOver && (
+        <LeaveHandover
+          open={ask === 'leave'}
+          opener={leaveRef}
+          organisation={organisation}
+          onKeep={() => setAsk(null)}
+          onOnlyOwner={() => setAsk('onlyOwner')}
+          onGone={() => {
+            setAsk(null);
+            onGone();
+          }}
+        />
+      )}
       {owner && (
         <TransferScreen
           key={`transfer.${visit}`}
