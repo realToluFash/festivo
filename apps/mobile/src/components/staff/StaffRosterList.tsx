@@ -21,7 +21,7 @@ import { HeadCount, Row, RowList, SectionHead } from '../SummaryRows.tsx';
 import { Text } from '../Text.tsx';
 import { moveScreenReaderFocus } from '../screenReaderFocus.ts';
 import { BriefWord, BriefingCard } from './BriefingCard.tsx';
-import { BriefingPanel, type BriefingSide, PANEL_WIDTH } from './BriefingPanel.tsx';
+import { BriefingPanel, type BriefingSide } from './BriefingPanel.tsx';
 import { NoticeLines, ReminderCard } from './StaffNotices.tsx';
 import { LinkMark } from './StaffParts.tsx';
 import { openedFrom } from './openedEntry.ts';
@@ -60,7 +60,7 @@ export function StaffRosterList({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-  const { kind } = useLayout();
+  const { kind, height } = useLayout();
   /** The briefing is the tablet's (sc-95654); the phone's Staff shows the roster alone. */
   const briefs = kind !== 'phone';
   const docked = kind === 'tabletLandscape';
@@ -261,10 +261,7 @@ export function StaffRosterList({
     );
 
   const roster = (
-    <View
-      style={[styles.head, docked && side != null && styles.rosterBeside]}
-      testID="staff.roster"
-    >
+    <View style={styles.head} testID="staff.roster">
       <View
         ref={head}
         accessible
@@ -325,24 +322,8 @@ export function StaffRosterList({
         onEntry={took}
         onRules={(rules) => setSeen((was) => (was.kind === 'shown' ? { ...was, rules } : was))}
         onClose={closeSide}
+        docked={docked}
       />
-    );
-
-  if (docked)
-    return (
-      <View style={styles.beside}>
-        <View style={styles.main}>
-          {card}
-          {reminder}
-          {entries}
-          {roster}
-        </View>
-        {panel != null && (
-          <View style={styles.dock} testID="briefing.dock">
-            {panel}
-          </View>
-        )}
-      </View>
     );
 
   return (
@@ -362,28 +343,26 @@ export function StaffRosterList({
               ? previewOpener
               : rulesOpener
         }
+        docked
         testID="briefing.dialog"
       >
-        <View style={styles.dialog}>{panel}</View>
+        <View
+          style={[
+            styles.dialog,
+            docked ? styles.dialogDocked : { maxHeight: Math.min(640, height - 160) },
+          ]}
+        >
+          {panel}
+        </View>
       </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  rosterBeside: { flex: 1 },
-  beside: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
-  main: { flex: 1, minWidth: 0, gap: tokens.spaceLg },
   page: { gap: tokens.spaceXl },
-  dock: {
-    width: PANEL_WIDTH,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-  },
-  dialog: { flexShrink: 1, maxHeight: 640, padding: tokens.space3xl },
+  dialog: { padding: tokens.space3xl, flexShrink: 1 },
+  dialogDocked: { flex: 1 },
   head: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
