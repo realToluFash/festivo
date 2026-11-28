@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 
 import { noteWhere } from './colourScheme.ts';
 import { rereadAccount, rereadOrganisations } from './signedIn.ts';
+import { noteShowing } from './openSheets.ts';
 import { cameToForeground } from './updateRequired.ts';
 
 /** Each move after launch, to another screen or back to the front, reads the organisations again (sc-28178); back at the front, the account too. */
@@ -13,6 +14,7 @@ export function useRereadOnMoves(): void {
 
   useEffect(() => {
     noteWhere(pathname);
+    noteShowing(pathname);
     if (arrivedAt.current === pathname) return;
 
     arrivedAt.current = pathname;

@@ -43,6 +43,7 @@ import {
 } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { noteOpenSheet } from '../openSheets.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -141,6 +142,9 @@ function SheetFrame({
   children,
 }: SheetProps) {
   const close = held ? () => undefined : onClose;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => (open ? noteOpenSheet(() => closeRef.current()) : undefined), [open]);
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';

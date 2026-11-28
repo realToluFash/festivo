@@ -1,7 +1,7 @@
 import { type Href, router } from 'expo-router';
 
-import { leaveThen } from '../src/leaveHeld.ts';
 import { linkedPath } from '../src/linkedPath.ts';
+import { openFromOutside } from '../src/openSheets.ts';
 
 /** A link that opens a screen while a form holds a change asks that form's discard ask first (sc-82245). */
 export function redirectSystemPath({
@@ -15,7 +15,8 @@ export function redirectSystemPath({
 
   let now: string | null | undefined;
   const later = new Promise<string | null>((resolve) => {
-    leaveThen(
+    openFromOutside(
+      linkedPath(path),
       (discarding) => {
         if (!discarding) {
           now = path;
