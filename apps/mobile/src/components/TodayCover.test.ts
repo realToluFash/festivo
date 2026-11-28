@@ -18,38 +18,24 @@ describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
     expect(tabLabel).toMatch(/export const TAB_LABEL = 12;/u);
     expect(tabLabel).toMatch(/export const TAB_LABEL_MOST = 20;/u);
-    expect(cover).toMatch(
-      /useWholeWords\(TAB_LABEL, tabLabelStart\(fontScale\), tabLabels\(props\), \{\s+weight: 'semibold',\s+\}\);/u,
-    );
   });
 
   it('keeps that floor everywhere but the event’s bar (sc-71148)', () => {
     expect(cover).toMatch(
-      /props\.stepsBelowDefault \? <SteppedTabBar \{\.\.\.props\} \/> : <DefaultTabBar \{\.\.\.props\} \/>/u,
+      /stepsBelowDefault\s+\? eventBarLabelSize\(fontScale, widest, slot\)\s+: fitWidest\(TAB_LABEL, start, widest, slot\);/u,
     );
     expect(frame.match(/stepsBelowDefault/gu)).toHaveLength(1);
   });
 });
 
-describe('the event’s bar on a phone (sc-71148)', () => {
-  it('measures every word in SemiBold at the start and draws all five at exactly the size that fits', () => {
-    expect(cover).toMatch(/useMeasuredAt\(start, wordsIn\(tabLabels\(props\)\)\)/u);
+describe('the phone’s tab bars (sc-71148, sc-99214)', () => {
+  it('measures every word in SemiBold at the start and draws all labels at exactly the size that fits', () => {
     const measuredAt = /export function useMeasuredAt\([\s\S]*?\n\}\n/u.exec(title)?.[0] ?? '';
     expect(measuredAt).toMatch(
-      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight="semibold"\s+allowFontScaling=\{false\}/u,
+      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight=\{weight\}\s+allowFontScaling=\{false\}/u,
     );
-    expect(cover).toMatch(
-      /size: eventBarLabelSize\(fontScale, widest, slot\),\s+allowFontScaling: false,/u,
-    );
-  });
-});
-
-describe('the phone’s tab bars before their words are measured (sc-99214)', () => {
-  it('hides both bars’ labels until their size is fitted', () => {
-    expect(cover).toMatch(/style: !words\.fitted && styles\.waiting,/u);
-    expect(cover).toMatch(/\(widest === 0 \|\| slot === 0\) && styles\.waiting\]/u);
-    expect(title).toMatch(/const fitted = slot > 0 && widths\.length === words\.length;/u);
-    expect(title).toMatch(/pending: look\.room !== undefined && !fitted,/u);
+    expect(measuredAt).toMatch(/weight: 'regular' \| 'semibold' = 'semibold'/u);
+    expect(cover).toMatch(/size=\{size\}\s+allowFontScaling=\{false\}/u);
   });
 });
 
@@ -179,7 +165,7 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
     const block = /function WholeNowBlock\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
     expect(block).toMatch(/const under = name \?\? Infinity;/u);
     expect(block).toMatch(/onDrawn=\{setName\}/u);
-    expect(block.match(/under=\{under\}/gu)).toHaveLength(3);
+    expect(block.match(/under=\{under\}/gu)).toHaveLength(4);
     expect(block).toMatch(
       /\{upright \? <Chips now=\{now\} grows \/> : <WholeChips now=\{now\} column=\{column\} under=\{under\} \/>\}/u,
     );
@@ -215,9 +201,21 @@ describe('the live cover upright from AX1 (sc-93578)', () => {
     expect(block).toMatch(
       /<CoverLine\n {8}size=\{48\}[\s\S]*?room=\{column\}\n {8}onDrawn=\{setName\}/u,
     );
+    expect(block).toMatch(/<View style=\{styles\.openUnder\}>\{open\}<\/View>/u);
     expect(block).toMatch(
-      /now\.arrived == null && <View style=\{styles\.openUnder\}>\{open\}<\/View>/u,
+      /now\.arrived != null && \(\s*<View style=\{styles\.arrivedUnder\}>\s*<WholeArrivedFigure figure=\{now\.arrived\} column=\{column\} under=\{under\} \/>\s*<\/View>\s*\)/u,
     );
+  });
+
+  it('steps the arrived figure’s numbers as one unit against the room beside the ring, under the name, and sizes the ring from what is drawn', () => {
+    const figure = /function WholeArrivedFigure\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(figure).toMatch(/useWindowDimensions\(\)/u);
+    expect(figure).toMatch(/labelStart\(FIGURE_NUMBERS, fontScale, under\)/u);
+    expect(figure).toMatch(/words=\{\[numbers\]\}/u);
+    expect(figure).toMatch(/fitWidest\(FIGURE_NUMBERS, start, width, Math\.max\(room, 1\)\)/u);
+    expect(figure).toMatch(/figureRing\(drawn, /u);
+    expect(figure).toMatch(/<CoverLine[\s\S]*?under=\{drawn\}/u);
+    expect(figure).not.toMatch(/PixelRatio/u);
   });
 
   it('draws the chips’ words at main’s 13, never stepped down and never cut to one line', () => {

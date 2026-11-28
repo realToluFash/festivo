@@ -7,7 +7,10 @@ namespace App\Tests\Functional;
 use App\Enum\UploadPurpose;
 use App\Storage\ObjectStore;
 use App\Tests\FunctionalTestCase;
+use AsyncAws\Core\Configuration;
+use AsyncAws\S3\S3Client;
 use InvalidArgumentException;
+use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -34,7 +37,7 @@ final class ObjectStoreTest extends FunctionalTestCase
 
         $put = $this->put($signed->url, "name,email\nAda,ada@example.com\n", 'text/csv');
 
-        self::assertSame(200, $put, 'The store refused an upload to its own signed URL');
+        self::assertSame(200, $put['status'], 'The store refused an upload to its own signed URL');
         self::assertTrue($this->store->exists($signed->bucket, $signed->key));
     }
 
@@ -49,7 +52,34 @@ final class ObjectStoreTest extends FunctionalTestCase
         $signed = $this->store->signUpload(UploadPurpose::EventCover, 'image/png', 'cover.png');
 
         self::assertStringNotContainsString('storage:4566', $signed->url);
-        self::assertStringContainsString('localhost', $signed->url);
+        self::assertMatchesRegularExpression('#^https?://(localhost|127\.0\.0\.1)(:\d+)?/#', $signed->url);
+    }
+
+    #[Test]
+    public function anUploadSentToAnotherHostThanItWasSignedForIsRefused(): void
+    {
+        $signed = $this->store->signUpload(UploadPurpose::GuestImport, 'text/csv', 'moved.csv');
+
+        $put = $this->put($signed->url, "x\n", 'text/csv', 'elsewhere.example:4566');
+
+        self::assertSame(403, $put['status']);
+        self::assertStringContainsString('SignatureDoesNotMatch', $put['body']);
+        self::assertFalse($this->store->exists($signed->bucket, $signed->key));
+    }
+
+    #[Test]
+    public function withNoPublicEndpointUrlsAreSignedForTheStoreEndpoint(): void
+    {
+        $store = $this->storeWithNoPublicEndpoint();
+
+        $signed = $store->signUpload(UploadPurpose::GuestImport, 'text/csv', 'same-host.csv');
+        $put = $this->put($signed->url, "x\n", 'text/csv');
+        $read = $store->urlFor($signed->bucket, $signed->key);
+
+        self::assertStringStartsWith('http://storage:4566/', $signed->url);
+        self::assertSame(200, $put['status']);
+        self::assertStringStartsWith('http://storage:4566/', $read);
+        self::assertSame(200, $this->getStatus($read));
     }
 
     #[Test]
@@ -103,7 +133,7 @@ final class ObjectStoreTest extends FunctionalTestCase
         $signed = $this->store->signUpload(UploadPurpose::GuestImport, 'text/csv', 'private.csv');
         $this->put($signed->url, "secret\n", 'text/csv');
 
-        self::assertSame(200, $this->headStatus($this->store->urlFor($signed->bucket, $signed->key)));
+        self::assertSame(200, $this->getStatus($this->store->urlFor($signed->bucket, $signed->key)));
     }
 
     /**
@@ -144,44 +174,48 @@ final class ObjectStoreTest extends FunctionalTestCase
         self::assertFalse($this->store->exists($signed->bucket, $signed->key));
     }
 
-    /**
-     * The signed URL names the host a BROWSER reaches the store at, which is
-     * not the host this test reaches it at — the test runs inside the container
-     * network and the browser does not.
-     *
-     * Swapped back for the request only. The signature covers the path and
-     * query, not the host, so this exercises exactly the signature a browser
-     * would present.
-     */
-    private function asSeenFromInsideTheNetwork(string $url): string
+    private function storeWithNoPublicEndpoint(): ObjectStore
     {
-        return \str_replace('localhost:4566', 'storage:4566', $url);
+        $env = static fn (string $name): string => \is_string($_SERVER[$name] ?? null) ? $_SERVER[$name] : throw new LogicException($name . ' is not set');
+
+        return new ObjectStore(
+            new S3Client(Configuration::create([
+                'endpoint' => $env('STORAGE_ENDPOINT'),
+                'region' => $env('STORAGE_REGION'),
+                'accessKeyId' => $env('STORAGE_KEY'),
+                'accessKeySecret' => $env('STORAGE_SECRET'),
+                'pathStyleEndpoint' => 'true',
+            ])),
+            $env('STORAGE_BUCKET_PRIVATE'),
+            $env('STORAGE_BUCKET_PUBLIC'),
+            '',
+        );
     }
 
-    private function put(string $url, string $body, string $contentType): int
+    /** @return array{status: int, body: string} */
+    private function put(string $url, string $body, string $contentType, ?string $host = null): array
     {
-        $url = $this->asSeenFromInsideTheNetwork($url);
+        $hostHeader = null === $host ? [] : ['Host: ' . $host];
 
         $handle = \curl_init($url);
         \curl_setopt_array($handle, [
+            \CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $body,
-            \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
+            \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType, ...$hostHeader],
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);
-        \curl_exec($handle);
+        $response = \curl_exec($handle);
 
-        return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
+        return ['status' => (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE), 'body' => \is_string($response) ? $response : ''];
     }
 
-    private function headStatus(string $url): int
+    private function getStatus(string $url): int
     {
-        $url = $this->asSeenFromInsideTheNetwork($url);
-
         $handle = \curl_init($url);
         \curl_setopt_array($handle, [
-            \CURLOPT_NOBODY => true,
+            \CURLOPT_CONNECT_TO => ['::storage:4566'],
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);

@@ -7,7 +7,7 @@ export interface BellBoard {
 export const BELL_BOARDS: readonly BellBoard[] = [
   {
     title: 'Notifications · top of the list',
-    what: 'Turn the phone: on its side the top scrolls away with the list',
+    what: 'Turn the phone: on its side the B frame as upright, past the bars',
     href: '/demo/bell',
   },
   {
@@ -17,12 +17,12 @@ export const BELL_BOARDS: readonly BellBoard[] = [
   },
   {
     title: 'Notifications · scrolled',
-    what: 'The top gone, the first notification at the top',
+    what: 'The title gone, Back and Mark all read still above the list',
     href: '/demo/bell?at=scrolled',
   },
   {
     title: 'Notifications · push ask, scrolled',
-    what: 'The ask scrolled away with the top',
+    what: 'The ask scrolled away with the title',
     href: '/demo/bell?ask=shown&at=scrolled',
   },
 ];

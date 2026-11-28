@@ -111,7 +111,7 @@ export function useShiftNotices(
     <View style={styles.stack}>
       {opening.overNotice && (
         <View testID="shift.over">
-          <Notice tone="quiet" mark="info" body={SW.alreadyOver} />
+          <Notice tone="quiet" mark={tokens.marks.info.glyph} body={SW.alreadyOver} />
         </View>
       )}
       <View style={styles.card} testID={`shift.card.${state}`}>

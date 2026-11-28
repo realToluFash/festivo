@@ -19,6 +19,7 @@ use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\RefreshTokenDelivery;
+use App\Enum\StaffLinkStatus;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\InEvent;
@@ -59,6 +60,16 @@ final readonly class StaffLinkController
     public function deliver(#[InThisEvent('staffId')] StaffMember $entry): JsonResponse
     {
         $url = $this->staffLinks->deliver($entry, $this->user());
+
+        return new JsonResponse(['url' => $url, 'staff' => $this->staffSerialiser->entry($entry)]);
+    }
+
+    /** As deliver, recorded as Shared: the app opens its share sheet with the link, which cannot say whether it went (sc-77903). */
+    #[Route('/api/events/{eventId}/staff/{staffId}/link/share', name: 'staff_link_share', methods: ['POST'])]
+    #[InEvent(Permission::StaffManage)]
+    public function share(#[InThisEvent('staffId')] StaffMember $entry): JsonResponse
+    {
+        $url = $this->staffLinks->deliver($entry, $this->user(), StaffLinkStatus::Shared);
 
         return new JsonResponse(['url' => $url, 'staff' => $this->staffSerialiser->entry($entry)]);
     }

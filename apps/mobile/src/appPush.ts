@@ -40,9 +40,16 @@ export async function registerAppPush(): Promise<void> {
   await api.registerPushTarget({ kind: 'expo', address: data });
 }
 
+/** A QA build asks on a simulator without a project id, so the banners can be tested there; only a device registers a token. */
+function canAsk(): boolean {
+  if (config.environment === 'qa') return true;
+
+  return Device.isDevice && config.easProjectId != null;
+}
+
 /** Whether the bell offers push on this opening: the phone has not been asked, and the card has not shown here before. */
 export async function pushAskDue(): Promise<boolean> {
-  if (!Device.isDevice || config.easProjectId == null) return false;
+  if (!canAsk()) return false;
 
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'undetermined') return false;
@@ -51,7 +58,7 @@ export async function pushAskDue(): Promise<boolean> {
 }
 
 async function pushPermission(): Promise<{ blocked: boolean; granted: boolean }> {
-  if (!Device.isDevice) return { blocked: false, granted: false };
+  if (!Device.isDevice && config.environment !== 'qa') return { blocked: false, granted: false };
 
   const { status, granted } = await Notifications.getPermissionsAsync();
 

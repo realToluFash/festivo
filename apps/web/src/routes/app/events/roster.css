@@ -317,7 +317,8 @@
   background: var(--optionGreen);
 }
 
-.rs-mark.is-copied {
+.rs-mark.is-copied,
+.rs-mark.is-shared {
   background: linear-gradient(90deg, var(--colorAccent) 50%, transparent 50%);
 }
 

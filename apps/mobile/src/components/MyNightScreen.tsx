@@ -412,7 +412,7 @@ function Clock({
   );
 }
 
-function Card({ title, children }: { title: string; children: ReactNode }) {
+export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.card}>
       <Text size={17} weight="semibold" style={styles.secondary} accessibilityRole="header">
@@ -423,7 +423,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
+export function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const end = clockAt(shift.endsAt, locale);
@@ -453,7 +453,7 @@ function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['s
   );
 }
 
-function YourLead({ lead }: { lead: MyNight['lead'] }) {
+export function YourLead({ lead, callable = true }: { lead: MyNight['lead']; callable?: boolean }) {
   const { t } = useTranslation();
 
   if (lead == null) {
@@ -479,7 +479,7 @@ function YourLead({ lead }: { lead: MyNight['lead'] }) {
           </View>
         )}
       </View>
-      {lead.phone != null && (
+      {callable && lead.phone != null && (
         <Pressable
           onPress={() => void Linking.openURL(`tel:${lead.phone}`)}
           accessibilityRole="link"

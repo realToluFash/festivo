@@ -31,8 +31,10 @@ from the main checkout makes it).
   (section 5) and a rollback you have checked exists. Without all three, it does not happen.
 - **Only merged `main` is deployed**, at a commit you name. Never a branch, never a working
   tree, never a commit CI has not passed.
-- **Every infra change has a ticket and the lead's pass. Never push to `main`, never
-  force-push** anything shared. The owner gave ops its own tickets and merges on 20 Oct:
+- **Every infra change has a ticket and the lead's pass. Never push to `main`.** A
+  force-push is for your own pull request branch only, with `--force-with-lease` and never
+  `--force`; never a branch another role works on. The owner gave ops its own tickets and
+  merges on 20 Oct, and the force-push on 27 Nov:
   1. **File the ticket**: `sq ops new-story --name "…" --epic N --state "In Progress"` (or
      `Backlog` for later), body on stdin. Every story belongs to an epic: infra work goes
      in Foundation (26) unless another fits; `sq ops epics` lists them. It is labelled `ops`, so only ops is woken for

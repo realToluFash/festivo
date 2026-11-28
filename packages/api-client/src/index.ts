@@ -22,6 +22,7 @@ export * from './budget.ts';
 export * from './staffRates.ts';
 export * from './margin.ts';
 export * from './payers.ts';
+export * from './dueNow.ts';
 export * from './quotes.ts';
 export * from './staff.ts';
 export * from './myNight.ts';

@@ -1,6 +1,9 @@
-import { BELL_MARK_ALL, PHONE_TITLE } from '../../components/bellTop.ts';
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
-import { tokens } from '../../theme/tokens.ts';
+import {
+  BELL_MARK_ALL,
+  EMPTY_SENTENCE,
+  PHONE_TITLE,
+  SETTINGS_LINK,
+} from '../../components/bellTop.ts';
 import { wordsSize, wordsStart } from '../todaySize/todaySizeRules.ts';
 
 export type BellLanguage = 'en' | 'es' | 'fr' | 'pt';
@@ -40,33 +43,18 @@ export function phoneTitleSize(scale: number, width: number, room: number): numb
   return wordsSize(PHONE_TITLE, scale, Number.POSITIVE_INFINITY, width, room);
 }
 
-/** The empty sentence on main (BellBody): 15, beside a 40 bell tile with 12 between. */
-export const EMPTY_SENTENCE = 15;
-export const EMPTY_TILE = 40;
-export const EMPTY_GAP = tokens.spaceLg;
-
-/** sc-94028: from AX1 the tile moves onto its own line above the sentence where the sentence's widest word, at its grown size, cannot fit beside it; below AX1 never. */
-export function emptyTileAbove(scale: number, widest: number, room: number): boolean {
-  return atAccessibilitySizes(scale) && widest > room - EMPTY_TILE - EMPTY_GAP;
-}
-
-/** sc-94028: main's size below AX1; from AX1 the largest at which the widest word fits the sentence's line, never under 15 and with no cap. */
-export function emptySentenceSize(scale: number, widest: number, room: number): number {
-  const line = emptyTileAbove(scale, widest, room) ? room : room - EMPTY_TILE - EMPTY_GAP;
-
-  return wordsSize(EMPTY_SENTENCE, scale, Number.POSITIVE_INFINITY, widest, Math.max(line, 1));
-}
+export {
+  EMPTY_GAP,
+  EMPTY_SENTENCE,
+  EMPTY_TILE,
+  emptySentenceSize,
+  emptyTileAbove,
+  SETTINGS_LINK,
+  settingsSize,
+} from '../../components/bellTop.ts';
 
 export function emptyStart(scale: number): number {
   return wordsStart(EMPTY_SENTENCE, scale, Number.POSITIVE_INFINITY);
-}
-
-/** Notification settings at the panel's foot on main (BellBody's TextAction): 15 semibold. */
-export const SETTINGS_LINK = 15;
-
-/** sc-94028: the sentence's rule for Notification settings: main's size below AX1; from AX1 the largest at which its widest word fits the body's line, never under 15 and with no cap. */
-export function settingsSize(scale: number, widest: number, room: number): number {
-  return wordsSize(SETTINGS_LINK, scale, Number.POSITIVE_INFINITY, widest, Math.max(room, 1));
 }
 
 export function settingsStart(scale: number): number {

@@ -94,14 +94,14 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
     public function findOnList(Event $event): array
     {
         /** @var list<Guest> */
-        return $this->createQueryBuilder('g')
-            ->where('g.event = :event')
-            ->andWhere('g.removedAt IS NULL')
-            ->setParameter('event', $event->getId(), 'uuid')
-            ->orderBy('g.position', 'ASC')
-            ->addOrderBy('g.id', 'ASC')
-            ->getQuery()
-            ->getResult();
+        return $this->onList($event)->getQuery()->getResult();
+    }
+
+    /** @return list<Guest> {@see findOnList} from `$offset`, at most `$limit` of it */
+    public function findOnListPage(Event $event, int $offset, int $limit): array
+    {
+        /** @var list<Guest> */
+        return $this->onList($event)->setFirstResult($offset)->setMaxResults($limit)->getQuery()->getResult();
     }
 
     /**
@@ -375,5 +375,15 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->orderBy('g.position', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    private function onList(Event $event): QueryBuilder
+    {
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.removedAt IS NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->orderBy('g.position', 'ASC')
+            ->addOrderBy('g.id', 'ASC');
     }
 }

@@ -531,7 +531,7 @@ function Lists({
                     <SecondaryButton
                       label={t('whosHere.cover', { station: row.station.name })}
                       onPress={() => onCover(row)}
-                      stacked={phone}
+                      tall={phone}
                       ref={(v) => keep(refs, `cover|${row.id}`, v)}
                       testID={`whosHere.cover.${row.id}`}
                     />
@@ -886,14 +886,16 @@ function DoorForm({
           testID="whosHere.door.name"
         />
       </Field>
-      <CountryPicker
-        label={t('whosHere.country')}
-        value={draft.country}
-        onChange={(country) => edit({ country })}
-        disabled={open.busy}
-        withCallingCode
-        testID="whosHere.door.country"
-      />
+      <Field label={t('whosHere.country')}>
+        <CountryPicker
+          label={t('whosHere.country')}
+          value={draft.country}
+          onChange={(country) => edit({ country })}
+          disabled={open.busy}
+          withCallingCode
+          testID="whosHere.door.country"
+        />
+      </Field>
       <Field
         label={t('whosHere.mobile')}
         pill={t('whosHere.optional')}
@@ -1054,14 +1056,16 @@ function MobileForm({
       <Text size={15} style={styles.secondary}>
         {t('whosHere.forOnly', { name: open.name })}
       </Text>
-      <CountryPicker
-        label={t('whosHere.country')}
-        value={open.country}
-        onChange={(country) => set({ ...open, country, refusal: null })}
-        disabled={open.busy}
-        withCallingCode
-        testID="whosHere.mobile.country"
-      />
+      <Field label={t('whosHere.country')}>
+        <CountryPicker
+          label={t('whosHere.country')}
+          value={open.country}
+          onChange={(country) => set({ ...open, country, refusal: null })}
+          disabled={open.busy}
+          withCallingCode
+          testID="whosHere.mobile.country"
+        />
+      </Field>
       <Field label={t('whosHere.mobile')} error={said}>
         <TextField
           ref={numberField}

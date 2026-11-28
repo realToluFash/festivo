@@ -229,6 +229,7 @@ import {
   asEventQuotes,
   asOfferedVendors,
 } from './quotes.ts';
+import { type DueNow, asDueNow } from './dueNow.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -3393,7 +3394,20 @@ export class ApiClient {
     return { url: typeof body.url === 'string' ? body.url : '', staff };
   }
 
-  /** Only a Copied row moves; Link sent and Link opened stay. */
+  /** As deliverStaffLink, recorded as Shared: the app's share sheet cannot say whether it went (sc-77903). */
+  async shareStaffLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/share`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
   async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
     return this.staffAnswerOf(
       await this.post<unknown>(
@@ -4982,6 +4996,13 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** Due now (sc-1331): what a payment reminder named, as it is now; 404 alike for no such reminder and for one with nothing left the reader may see. */
+  async dueNow(reminderId: string): Promise<DueNow> {
+    return asDueNow(
+      await this.get<unknown>(`/api/payment-reminders/${encodeURIComponent(reminderId)}`),
+    );
   }
 
   /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */

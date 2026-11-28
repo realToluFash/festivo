@@ -77,6 +77,8 @@ import { EventPeople } from './EventPeople.tsx';
 import { EventMenu } from './EventMenu.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
+import { EventStrip } from './EventStrip.tsx';
+import { StaffRosterList } from './staff/StaffRosterList.tsx';
 import { Screen } from './Screen.tsx';
 import { StepScreen } from '../steps/StepScreen.tsx';
 import { LoadingBlock, PageToast, TextAction, type ToastAt } from './Summary.tsx';
@@ -94,6 +96,8 @@ import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
 import { toastOverPage } from '../kit/savedRowFocus.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+
+const NO_STAFF: readonly EventPlace[] = ['staff'];
 
 interface Editing {
   part: EditPart;
@@ -241,6 +245,7 @@ export function EventScreen({
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
   const event = opened.kind === 'loaded' ? opened.event : null;
+  const noStaff = event != null && !event.permissions.includes('staff.read');
   const creates = event != null && roleHolds(event, 'events.create');
   const manages = offersEdit(event);
   const deletes = offersDelete(event);
@@ -287,6 +292,11 @@ export function EventScreen({
 
   const chooseArea = (next: EventPlace, choice?: Choice) =>
     navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
+  const staffClosed = noStaff && area === 'staff';
+
+  useEffect(() => {
+    if (staffClosed) navigation.setParams({ [EVENT_AREA]: 'overview' });
+  }, [staffClosed, navigation]);
   const stack = navigation.getState();
   const behind = eventBack(stack?.routes ?? [], stack?.index ?? 0, searched);
   const leave = () => {
@@ -433,14 +443,24 @@ export function EventScreen({
           event={event}
           tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
+      ) : area === 'staff' && !noStaff ? (
+        <View style={styles.stack} testID="events.area.staff">
+          <EventStrip event={event} phase={phase ?? event.phase} now={now} />
+          <StaffRosterList
+            key={event.id}
+            eventId={event.id}
+            when={event}
+            manages={event.permissions.includes('staff.manage')}
+            finished={(phase ?? event.phase) === 'finished'}
+            entries={<HoursEntry event={event} />}
+          />
+        </View>
       ) : (
         <PlaceholderArea
           area={area}
           action={
             area === 'schedule' ? (
               <RunViewEntry event={event} happening={phase === 'happening_now'} />
-            ) : area === 'staff' ? (
-              <HoursEntry event={event} />
             ) : null
           }
         >
@@ -574,6 +594,7 @@ export function EventScreen({
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
               outside: outside == null ? undefined : { id: outside.id, role: outside.role },
+              hidden: noStaff ? NO_STAFF : undefined,
               bare,
             }
           : undefined
@@ -793,13 +814,13 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
   );
 }
 
-/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff. */
+/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff: two pills in a row that wraps. */
 function HoursEntry({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   if (!event.permissions.includes('staff.read')) return null;
 
   return (
-    <View style={styles.runEntry}>
+    <View style={styles.entries} testID="events.staff.entries">
       <SecondaryButton
         label={t('staffHours.open')}
         link
@@ -940,6 +961,7 @@ const PEOPLE_UNDER_NAME = StyleSheet.create({
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   nameUnderTitle: { marginTop: tokens.spaceXxs },
+  entries: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },
