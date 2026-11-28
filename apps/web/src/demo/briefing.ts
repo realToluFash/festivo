@@ -412,6 +412,8 @@ export interface BriefingStart {
   result: { lines: string[]; held: string[] } | null;
   said: string | null;
   notices: NoticesStart | null;
+  /** A person whose details open docked beside the Roster (sc-102333). */
+  open: string | null;
 }
 
 /** The reminder card and the S2 lines (sc-4333), on its own states only. */
@@ -458,6 +460,7 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     result: null,
     said: null,
     notices: null,
+    open: null,
     ...o,
   };
 }
@@ -662,6 +665,17 @@ const STATES = {
     start({
       name: 'The Briefing card, the column and its four marks',
       note: 'Read 3 · Sent, not read 2 · Changed since sent 2 · Not sent 5. Send the briefing to 3, Send to 2 changed, Copy link.',
+    }),
+  docked: () =>
+    start({
+      name: 'Docked, the Briefing column with a Copied and a Shared row',
+      note: 'Open it at 1280 and 1440 × 800: Sade’s details docked, Station and Briefing give way, her Briefing in the details with Send again and Copy, Amina Copied and Emeka Shared whole in Link. Close the details and both columns are back.',
+      people: people().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }
+          : one,
+      ),
+      open: 'sade',
     }),
   notLive: () =>
     start({
@@ -1175,7 +1189,12 @@ export function briefingRosterStart(raw: string | null): RosterStart | null {
     name: b.name,
     note: b.note,
     entries: b.people,
-    panel: b.notices?.removing == null ? null : { kind: 'remove', id: b.notices.removing },
+    panel:
+      b.notices?.removing != null
+        ? { kind: 'remove', id: b.notices.removing }
+        : b.open == null
+          ? null
+          : { kind: 'details', id: b.open },
     manage: b.access === 'manage',
     finished: b.finished,
     copy: b.copy === 'slow' ? 'works' : b.copy,
@@ -1205,6 +1224,7 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
     states: (
       [
         'populated',
+        'docked',
         'changedRow',
         'changedRefused',
         'stoppedRow',

@@ -1,5 +1,5 @@
 import { callingCode, formatPhone } from '@soirely/domain';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
@@ -221,7 +221,12 @@ function RosterView({
 
   useEffect(() => {
     if (focusAfter.current == null) return;
-    document.getElementById(focusAfter.current)?.focus();
+    const there = document.getElementById(focusAfter.current);
+    const docked = there?.checkVisibility?.() === false;
+    (docked
+      ? document.getElementById(focusAfter.current.replace(/^bf-(row-)?/, 'bf-fact-'))
+      : there
+    )?.focus();
     focusAfter.current = null;
   });
 
@@ -561,9 +566,15 @@ function RosterView({
                       <tr>
                         <th scope="col">{RW.person}</th>
                         <th scope="col">{RW.job}</th>
-                        <th scope="col">{RW.station}</th>
+                        <th scope="col" className="rs-gives">
+                          {RW.station}
+                        </th>
                         <th scope="col">{RW.shift}</th>
-                        {bf.on && <th scope="col">{BW.column}</th>}
+                        {bf.on && (
+                          <th scope="col" className="rs-gives">
+                            {BW.column}
+                          </th>
+                        )}
                         <th scope="col">{RW.link}</th>
                       </tr>
                     </thead>
@@ -585,7 +596,7 @@ function RosterView({
                             <td className={one.job == null ? 'rs-quiet' : undefined}>
                               {one.job ?? RW.noJob}
                             </td>
-                            <td className={one.station == null ? 'rs-quiet' : undefined}>
+                            <td className={one.station == null ? 'rs-gives rs-quiet' : 'rs-gives'}>
                               {one.station == null && one.gone != null ? (
                                 <Gone section={one.gone} />
                               ) : (
@@ -598,7 +609,7 @@ function RosterView({
                                 <span className="rs-more">{RW.more(one.more.length)}</span>
                               )}
                             </td>
-                            {bf.on && <td>{bf.cell(one)}</td>}
+                            {bf.on && <td className="rs-gives">{bf.cell(one)}</td>}
                             <td>
                               <LinkCell
                                 entry={one}
@@ -643,6 +654,7 @@ function RosterView({
                   onRemove={() => open({ kind: 'remove', id: panel.id })}
                   onStation={(station) => restation(panel.id, station)}
                   onReplace={acts ? () => setReplacing(panel.id) : null}
+                  brief={bf.on ? bf.fact(shown(panel.id)) : null}
                 />
               )}
               {panel.kind === 'remove' && (
@@ -834,6 +846,7 @@ function Details({
   onRemove,
   onStation,
   onReplace,
+  brief,
 }: {
   entry: Entry;
   manage: boolean;
@@ -844,6 +857,7 @@ function Details({
   onRemove: () => void;
   onStation: (station: string) => void;
   onReplace: (() => void) | null;
+  brief: ReactNode;
 }) {
   const { rw: RW, lw: LW, trail: trailLine, close } = useRosterWords();
   const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
@@ -892,6 +906,12 @@ function Details({
               )}
             </dd>
           </div>
+          {brief != null && (
+            <div>
+              <dt>{BW.column}</dt>
+              <dd>{brief}</dd>
+            </div>
+          )}
           {entry.mobile != null && (
             <div>
               <dt>{RW.mobile}</dt>
