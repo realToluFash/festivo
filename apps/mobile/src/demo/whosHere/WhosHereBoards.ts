@@ -3,7 +3,34 @@ import type { WhStateName } from './WhosHereModel.ts';
 const BOARDS: Record<WhStateName, readonly [string, string]> = {
   populated: ['Populated', 'Not here yet, Here and Stations tonight at 18:05'],
   clocked_in: ['Someone clocks in', 'Amina Yusuf clocked in at 18:06.'],
-  covered: ['After a cover', 'Covered by Grace Okon, and who is on which station'],
+  covered: [
+    'After a cover',
+    'Covered by Samuel Okafor, as sc-3918 built it: he leads nothing, so no lead sentence',
+  ],
+  cover_lead: [
+    'Cover · a station’s lead',
+    'Grace leads Section A: the lead line, then Leaves; Bisi leads Door: the lead line alone',
+  ],
+  cover_lead_moved: [
+    'After moving a lead',
+    'Grace Okon left Section A · T1–T6, so it has no lead now.',
+  ],
+  covered_twice: [
+    'Covered twice',
+    'Covered by Grace Okon and Oluwaseun Adebayo-Williamson Okonkwo, in move order',
+  ],
+  covered_dropped: [
+    'A coverer moved off',
+    'Grace moved to Pass in Stations: she drops from the row',
+  ],
+  lost_lead_return: [
+    'Grace stops leading',
+    'Back to Your night within 10 s, no Who’s here button, never “not available”',
+  ],
+  lost_lead_sheet_open: [
+    'Stops leading with a sheet open',
+    'Back once the sheet closes; Add refused with 403 goes back at once',
+  ],
   cover: ['Cover Section B', 'People in Here not on Section B, nobody chosen'],
   cover_selected: ['Cover · Grace chosen', 'Move Grace Okon to Section B'],
   cover_none_selected: ['Cover · moved with nobody chosen', 'Choose who covers Section B.'],
