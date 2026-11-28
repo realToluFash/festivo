@@ -259,3 +259,69 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     },
   );
 });
+
+describe('Course on the item form (sc-3898)', () => {
+  it('lists the menu’s courses in order, each with its served time and holder', SLOW, async () => {
+    await open('coursePicker');
+    const list = document.getElementById('ro-course-list') as HTMLElement;
+    const rows = within(list)
+      .getAllByRole('button')
+      .filter((one) => one.classList.contains('ro-course-row'))
+      .map((one) => one.textContent);
+    expect(rows).toEqual([
+      'No course',
+      'Starter served 17:30 · linked to Dinner',
+      'Main served 19:50 · linked to Mains go out',
+      'Dessert served 21:30',
+      'Late-night bites',
+    ]);
+    expect(document.activeElement?.id).toBe('ro-course-first');
+  });
+
+  it('asks before moving a link, and Keep it leaves it where it was', SLOW, async () => {
+    await open('coursePicker');
+    fireEvent.click(screen.getByRole('button', { name: /^Main served/ }));
+    expect(screen.getByText('Main is linked to Mains go out.')).toBeTruthy();
+    expect(document.activeElement?.id).toBe('ro-move-cancel');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it on Mains go out' }));
+    expect(screen.queryByText('Main is linked to Mains go out.')).toBeNull();
+    expect(document.getElementById('ro-course')?.textContent).toBe('No course');
+  });
+
+  it('moves the link on Save: the row shows Main, Mains go out loses it', SLOW, async () => {
+    await open('courseMove');
+    fireEvent.click(screen.getByRole('button', { name: 'Move the link' }));
+    expect(screen.getByText('Mains go out loses this course when you save.')).toBeTruthy();
+    fireEvent.click(button('Save item') as HTMLElement);
+    const late = document.getElementById('ro-open-late')?.closest('tr') as HTMLElement;
+    const mains = document.getElementById('ro-open-mains')?.closest('tr') as HTMLElement;
+    expect(within(late).getByText('Course · Main')).toBeTruthy();
+    expect(within(mains).queryByText(/^Course · /)).toBeNull();
+  });
+
+  it('points to the Menu page when the menu has no courses', SLOW, async () => {
+    await open('courseNone');
+    expect(screen.getByText('No courses on the menu yet')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open the menu' }).getAttribute('href')).toBe(
+      '/demo/events/evt-wed-4/menu',
+    );
+  });
+
+  it(
+    'offers no Course field without menu.read, and the rest of the form as before',
+    SLOW,
+    async () => {
+      await open('courseRefused');
+      expect(document.getElementById('ro-course')).toBeNull();
+      expect(screen.getByRole('textbox', { name: /Title/ })).toBeTruthy();
+      expect(screen.getByRole('switch', { name: 'Fixed time' })).toBeTruthy();
+    },
+  );
+
+  it('says an item lost its course when the course left the menu', SLOW, async () => {
+    await open('courseUnlinked');
+    expect(screen.getByText('Mains go out is no longer linked to a course.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull();
+  });
+});

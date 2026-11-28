@@ -15,7 +15,9 @@ import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import { Wrong } from './MenuServed.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import { MENU_EVENT, menuAt } from './menuServed.ts';
 import {
+  type Course,
   type Errors,
   type Field,
   type Failure,
@@ -33,6 +35,8 @@ import {
   TITLE_MAX,
   blankForm,
   check,
+  courseLine,
+  courseOf,
   dayCount,
   dayName,
   dayOf,
@@ -41,6 +45,7 @@ import {
   formOf,
   formPlaces,
   headingLine,
+  holderOf,
   itemOf,
   itemsOn,
   lastsCell,
@@ -54,6 +59,7 @@ import {
   tablesOn,
   underLine,
   windowLine,
+  withCourseKept,
   zoneNamed,
 } from './schedule.ts';
 import { RW as RUN_WORDS, runViewAt } from './runView.ts';
@@ -231,6 +237,10 @@ function ScheduleView({
   const [picked, setPicked] = useState<string | null>(null);
   const [said, setSaid] = useState('');
   const [screens, setScreens] = useState(first.screens);
+  const [courseOpen, setCourseOpen] = useState(first.courseOpen);
+  const [moveTo, setMoveTo] = useState(first.moveTo);
+  const [unlinked, setUnlinked] = useState(first.unlinked);
+  const courses = first.courses;
   const focusAfter = useRef<string | null>(null);
   const manage = first.manage;
   const days = first.days;
@@ -245,9 +255,13 @@ function ScheduleView({
             ? FAILED_IDS[first.failed ?? 'save']
             : first.focus === 'ask'
               ? 'ro-keep'
-              : first.focus == null
-                ? null
-                : FIELD_IDS[first.focus];
+              : first.focus === 'course'
+                ? COURSE_FIRST
+                : first.focus === 'move'
+                  ? 'ro-move-cancel'
+                  : first.focus == null
+                    ? null
+                    : FIELD_IDS[first.focus];
     if (at != null) document.getElementById(at)?.focus();
   }, [first]);
 
@@ -286,6 +300,27 @@ function ScheduleView({
     setConflict(null);
     setAsking(false);
     setFailed(null);
+    setCourseOpen(false);
+    setMoveTo(null);
+  }
+
+  function pickCourse(id: string | null) {
+    setCourseOpen(false);
+    if (form == null) return;
+    const holder = id == null ? null : holderOf(id, items, editing?.id ?? null);
+    if (holder != null && id !== form.course) {
+      setMoveTo(id);
+      focusAfter.current = 'ro-move-cancel';
+      return;
+    }
+    setForm({ ...form, course: id });
+    focusAfter.current = 'ro-course';
+  }
+
+  function moveCourse() {
+    if (form != null && moveTo != null) setForm({ ...form, course: moveTo });
+    setMoveTo(null);
+    focusAfter.current = 'ro-course';
   }
 
   function close(back?: string) {
@@ -298,7 +333,7 @@ function ScheduleView({
   }
 
   function keep(saved: Item, words: string) {
-    setItems((was) => [...was.filter((one) => one.id !== saved.id), saved]);
+    setItems((was) => withCourseKept(was, saved));
     setDay(dayOf(saved.starts));
     setPicked(placeOf(saved));
     setSaid(words);
@@ -473,6 +508,16 @@ function ScheduleView({
             {RW.notRestored(unrestored)}
           </p>
         )}
+        {unlinked != null && (
+          <div className="sn-alert ro-unlinked ro-chrome" role="status">
+            <Glyph name="warn" size={18} weight={2.2} />
+            <div className="ro-unlinked-words">
+              <p className="ro-unlinked-title">{RW.unlinked(unlinked)}</p>
+              <p className="desk-help">{RW.unlinkedWhy}</p>
+            </div>
+            <TextAction label={RW.dismiss} onClick={() => setUnlinked(null)} />
+          </div>
+        )}
         <div className="mn-split">
           <div
             id="ro-tables"
@@ -511,6 +556,7 @@ function ScheduleView({
                     day={day}
                     reader={reader}
                     manage={manage}
+                    courses={courses}
                     lit={editing?.id ?? null}
                     shown={table.place === shownPlace}
                     single={tables.length === 1}
@@ -531,6 +577,30 @@ function ScheduleView({
               conflict={conflict}
               asking={asking}
               failed={failed}
+              course={
+                first.menuRead
+                  ? {
+                      courses,
+                      open: courseOpen,
+                      moveTo,
+                      onOpen: () => {
+                        setCourseOpen(!courseOpen);
+                        setMoveTo(null);
+                        focusAfter.current = courseOpen ? 'ro-course' : COURSE_FIRST;
+                      },
+                      onShut: () => {
+                        setCourseOpen(false);
+                        focusAfter.current = 'ro-course';
+                      },
+                      onPick: pickCourse,
+                      onMove: moveCourse,
+                      onCancelMove: () => {
+                        setMoveTo(null);
+                        focusAfter.current = 'ro-course';
+                      },
+                    }
+                  : null
+              }
               onChange={(next) => setForm({ ...form, ...next })}
               onSave={save}
               onClose={() => close()}
@@ -629,6 +699,7 @@ function PlaceTable({
   day,
   reader,
   manage,
+  courses,
   lit,
   shown,
   single,
@@ -639,6 +710,7 @@ function PlaceTable({
   day: string;
   reader: Reader;
   manage: boolean;
+  courses: readonly Course[];
   lit: string | null;
   shown: boolean;
   single: boolean;
@@ -676,59 +748,69 @@ function PlaceTable({
             </tr>
           </thead>
           <tbody>
-            {items.map((one) => (
-              <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-                <td className="ro-starts">{startsCell(one, day, reader)}</td>
-                <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
-                <td>
-                  <div className="ro-item">
-                    {manage ? (
-                      <button
-                        id={`ro-open-${one.id}`}
-                        type="button"
-                        className="ro-open"
-                        onClick={() => onOpen(one)}
-                      >
-                        {one.title}
-                      </button>
+            {items.map((one) => {
+              const course = courseOf(one.course, courses);
+              return (
+                <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
+                  <td className="ro-starts">{startsCell(one, day, reader)}</td>
+                  <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
+                  <td>
+                    <div className="ro-item">
+                      <span className="ro-title-line">
+                        {manage ? (
+                          <button
+                            id={`ro-open-${one.id}`}
+                            type="button"
+                            className="ro-open"
+                            onClick={() => onOpen(one)}
+                          >
+                            {one.title}
+                          </button>
+                        ) : (
+                          <span className="ro-plain">{one.title}</span>
+                        )}
+                        {course != null && (
+                          <span className="ro-course" title={course.name}>
+                            {RW.courseTag(course.name)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="ro-under">
+                        <Words text={underLine(one)} />
+                      </span>
+                      {(one.fixed || one.guests) && (
+                        <span className="ro-pills">
+                          {one.fixed && (
+                            <span className="ro-pill">
+                              <Glyph name="lock" size={13} weight={2.4} />
+                              {RW.fixed}
+                            </span>
+                          )}
+                          {one.guests && (
+                            <span className="ro-pill">
+                              <Glyph name="eye" size={13} weight={2.4} />
+                              {RW.shown}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="ro-wide ro-owner">
+                    {one.owner == null ? (
+                      <span className="ro-quiet">{RW.noOwner}</span>
                     ) : (
-                      <span className="ro-plain">{one.title}</span>
+                      <>
+                        <span className="ro-owner-name">
+                          <Words text={one.owner} />
+                        </span>
+                        {one.role != null && <span className="ro-quiet">{one.role}</span>}
+                      </>
                     )}
-                    <span className="ro-under">
-                      <Words text={underLine(one)} />
-                    </span>
-                    {(one.fixed || one.guests) && (
-                      <span className="ro-pills">
-                        {one.fixed && (
-                          <span className="ro-pill">
-                            <Glyph name="lock" size={13} weight={2.4} />
-                            {RW.fixed}
-                          </span>
-                        )}
-                        {one.guests && (
-                          <span className="ro-pill">
-                            <Glyph name="eye" size={13} weight={2.4} />
-                            {RW.shown}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="ro-wide ro-owner">
-                  {one.owner == null ? (
-                    <span className="ro-quiet">{RW.noOwner}</span>
-                  ) : (
-                    <>
-                      <span className="ro-owner-name">
-                        <Words text={one.owner} />
-                      </span>
-                      {one.role != null && <span className="ro-quiet">{one.role}</span>}
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -760,6 +842,7 @@ function ItemPanel({
   conflict,
   asking,
   failed,
+  course,
   onChange,
   onSave,
   onClose,
@@ -778,6 +861,7 @@ function ItemPanel({
   conflict: Item | null;
   asking: boolean;
   failed: Failure | null;
+  course: CourseControls | null;
   onChange: (next: Partial<Form>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -1005,6 +1089,15 @@ function ItemPanel({
           </p>
           {errors.note != null && <Wrong id="ro-note-error">{errors.note}</Wrong>}
         </div>
+        {course != null && (
+          <CourseField
+            controls={course}
+            chosen={form.course}
+            items={items}
+            editingId={editing?.id ?? null}
+            reader={reader}
+          />
+        )}
         <Switch
           id="ro-fixed"
           label={RW.fixed}
@@ -1057,6 +1150,153 @@ function ItemPanel({
         )}
       </div>
     </aside>
+  );
+}
+
+const COURSE_FIRST = 'ro-course-first';
+
+interface CourseControls {
+  courses: readonly Course[];
+  open: boolean;
+  moveTo: string | null;
+  onOpen: () => void;
+  onShut: () => void;
+  onPick: (id: string | null) => void;
+  onMove: () => void;
+  onCancelMove: () => void;
+}
+
+/** sc-3898: Course, a list of the event's menu courses in menu order, docked under the field and a sheet at 40rem and under. */
+function CourseField({
+  controls,
+  chosen,
+  items,
+  editingId,
+  reader,
+}: {
+  controls: CourseControls;
+  chosen: string | null;
+  items: readonly Item[];
+  editingId: string | null;
+  reader: Reader;
+}) {
+  const { courses, open, moveTo, onOpen, onShut, onPick, onMove, onCancelMove } = controls;
+  const current = courseOf(chosen, courses);
+  const holder = current == null ? null : holderOf(current.id, items, editingId);
+  const asked = courseOf(moveTo, courses);
+  const askedHolder = asked == null ? null : holderOf(asked.id, items, editingId);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (press: globalThis.KeyboardEvent) => {
+      if (press.key === 'Escape') onShut();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onShut]);
+
+  return (
+    <div className="desk-field ro-course-field">
+      <span id="ro-course-label" className="desk-label gs-label">
+        {RW.course}
+        <Optional />
+      </span>
+      <button
+        id="ro-course"
+        type="button"
+        className="desk-box ro-course-box"
+        aria-labelledby="ro-course-label ro-course"
+        aria-describedby="ro-course-help"
+        aria-expanded={open}
+        aria-controls="ro-course-list"
+        onClick={onOpen}
+      >
+        <span className={current == null ? 'ro-course-none' : 'ro-course-name'}>
+          {current?.name ?? RW.noCourse}
+        </span>
+        <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
+      </button>
+      <p id="ro-course-help" className="desk-help">
+        {holder != null ? RW.moving(holder.title) : RW.courseHelp}
+      </p>
+      {open && (
+        <>
+          <div className="ro-sheet-scrim" aria-hidden="true" />
+          <div
+            id="ro-course-list"
+            className="ro-course-list"
+            aria-labelledby="ro-course-list-title"
+          >
+            <div className="ro-course-list-top">
+              <h3 id="ro-course-list-title">{RW.courseList}</h3>
+              <button
+                type="button"
+                className="ev-round ro-course-x"
+                aria-label={RW.close}
+                onClick={onShut}
+              >
+                <Glyph name="clear" size={16} weight={2.4} />
+              </button>
+            </div>
+            {courses.length === 0 ? (
+              <div className="ro-course-empty">
+                <p className="ro-course-empty-title">{RW.noCourses}</p>
+                <p className="desk-help">{RW.noCoursesLine}</p>
+                <Link id={COURSE_FIRST} className="desk-text" to={menuAt(MENU_EVENT)}>
+                  {RW.openMenu}
+                  <Glyph name="chevron" size={16} weight={2.4} />
+                </Link>
+              </div>
+            ) : (
+              <ul className="ro-course-rows">
+                {[null, ...courses].map((one, at) => {
+                  const on = (one?.id ?? null) === chosen;
+                  const line = one == null ? null : courseLine(one, items, editingId, reader);
+                  return (
+                    <li key={one?.id ?? 'none'}>
+                      <button
+                        id={at === 0 ? COURSE_FIRST : undefined}
+                        type="button"
+                        className="ro-course-row"
+                        aria-current={on || undefined}
+                        onClick={() => onPick(one?.id ?? null)}
+                      >
+                        <span className="ro-course-words">
+                          <span className="ro-course-row-name">{one?.name ?? RW.noCourse}</span>
+                          {line != null && (
+                            <>
+                              {' '}
+                              <span className="ro-course-row-line">{line}</span>
+                            </>
+                          )}
+                        </span>
+                        {on && <Glyph name="tick" size={17} weight={2.6} />}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+      {asked != null && askedHolder != null && (
+        <div className="ro-move" role="group" aria-labelledby="ro-move-ask">
+          <p id="ro-move-ask" className="ro-ask-words">
+            {RW.moveAsk(asked.name, askedHolder.title)}
+          </p>
+          <p className="desk-help">{RW.moveLine(askedHolder.title)}</p>
+          <div className="ro-ask-acts">
+            <button id="ro-move-cancel" type="button" className="desk-text" onClick={onCancelMove}>
+              {RW.keepOn(askedHolder.title)}
+            </button>
+            <button type="button" className="gs-pill is-secondary" onClick={onMove}>
+              {RW.moveIt}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

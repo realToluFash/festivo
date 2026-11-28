@@ -743,3 +743,25 @@ button.nt-later-row:hover {
     align-items: stretch;
   }
 }
+
+.nt-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceSm);
+  min-width: 0;
+}
+
+.nt-course {
+  display: inline-block;
+  max-width: min(100%, 18rem);
+  overflow: hidden;
+  padding: 2px var(--spaceSm);
+  border: 1px solid var(--colorAccentTintBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorInk);
+  font: 600 12px/1.4 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

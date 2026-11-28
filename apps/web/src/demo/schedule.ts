@@ -40,6 +40,14 @@ export interface Item {
   note: string | null;
   fixed: boolean;
   guests: boolean;
+  course: string | null;
+}
+
+/** A course on the event's menu (epic 32), in menu order. Its own served time shows only while no item links it (sc-3898, Decided 28 Nov). */
+export interface Course {
+  id: string;
+  name: string;
+  servedAt: string | null;
 }
 
 export interface Form {
@@ -53,6 +61,7 @@ export interface Form {
   note: string;
   fixed: boolean;
   guests: boolean;
+  course: string | null;
 }
 
 export type Field = 'title' | 'date' | 'time' | 'lasts' | 'owner' | 'role' | 'note';
@@ -143,6 +152,24 @@ export const RW = {
   addAgain: 'Add it again',
   move: 'Move',
   more: 'More',
+  course: 'Course',
+  noCourse: 'No course',
+  courseHelp: 'While it is linked, the menu shows this item’s start as the course’s served time.',
+  courseList: 'Courses on the menu',
+  courseTag: (name: string) => `Course · ${name}`,
+  served: (time: string) => `served ${time}`,
+  linkedTo: (title: string) => `linked to ${title}`,
+  moveAsk: (course: string, other: string) => `${course} is linked to ${other}.`,
+  moveLine: (other: string) => `Link it to this item instead? ${other} loses it.`,
+  moveIt: 'Move the link',
+  keepOn: (other: string) => `Keep it on ${other}`,
+  moving: (other: string) => `${other} loses this course when you save.`,
+  noCourses: 'No courses on the menu yet',
+  noCoursesLine: 'Add the courses on the Menu page, then link one here.',
+  openMenu: 'Open the menu',
+  unlinked: (title: string) => `${title} is no longer linked to a course.`,
+  unlinkedWhy: 'Its course was removed from the menu. The item keeps its title and time.',
+  dismiss: 'Dismiss',
 } as const;
 
 const item = (
@@ -165,6 +192,7 @@ const item = (
   note: null,
   fixed: false,
   guests: false,
+  course: null,
   ...extra,
 });
 
@@ -426,6 +454,7 @@ export function blankForm(day: string): Form {
     note: '',
     fixed: false,
     guests: false,
+    course: null,
   };
 }
 
@@ -441,6 +470,7 @@ export function formOf(one: Item): Form {
     note: one.note ?? '',
     fixed: one.fixed,
     guests: one.guests,
+    course: one.course,
   };
 }
 
@@ -458,7 +488,77 @@ export function itemOf(id: string, form: Form, known: readonly string[] = []): I
     note: blankToNull(form.note),
     fixed: form.fixed,
     guests: form.guests,
+    course: form.course,
   };
+}
+
+/** The event's menu, in the Menu demo's order and with its own times (menuCourses.ts sampleCourses). */
+export function sampleCourses(): Course[] {
+  return [
+    { id: 'k1', name: 'Starter', servedAt: '18:30' },
+    { id: 'k2', name: 'Main', servedAt: '20:00' },
+    { id: 'k3', name: 'Dessert', servedAt: '21:30' },
+    { id: 'k4', name: 'Late-night bites', servedAt: null },
+  ];
+}
+
+/** Dinner is the Starter and Mains go out the Main; Late food has no course yet. */
+export function linkedItems(): Item[] {
+  return [
+    ...sampleItems().map((one) => (one.id === 'dinner' ? { ...one, course: 'k1' } : one)),
+    item('mains', 'Mains go out', '2026-11-06T19:50', 20, 'Ballroom', 'Amara Eze', 'Kitchen', {
+      course: 'k2',
+    }),
+  ];
+}
+
+export function courseOf(id: string | null, courses: readonly Course[]): Course | null {
+  return id == null ? null : (courses.find((one) => one.id === id) ?? null);
+}
+
+/** The other item holding a course, so choosing it asks before the link moves. */
+export function holderOf(
+  courseId: string,
+  items: readonly Item[],
+  editingId: string | null,
+): Item | null {
+  return items.find((one) => one.course === courseId && one.id !== editingId) ?? null;
+}
+
+/** A linked course is served at its item's planned start; an unlinked one at its own time, if it has one (Decided 28 Nov). */
+export function servedTime(course: Course, items: readonly Item[], reader: Reader): string | null {
+  const holder = items.find((one) => one.course === course.id);
+  if (holder != null) return timeOf(holder.starts, reader);
+
+  return course.servedAt;
+}
+
+export function courseLine(
+  course: Course,
+  items: readonly Item[],
+  editingId: string | null,
+  reader: Reader,
+): string | null {
+  const time = servedTime(course, items, reader);
+  const holder = holderOf(course.id, items, editingId);
+
+  return (
+    [time == null ? null : RW.served(time), holder == null ? null : RW.linkedTo(holder.title)]
+      .filter((part): part is string => part != null)
+      .join(' · ') || null
+  );
+}
+
+/** Saving an item with a course takes that course from whichever item held it. */
+export function withCourseKept(items: readonly Item[], saved: Item): Item[] {
+  return [
+    ...items
+      .filter((one) => one.id !== saved.id)
+      .map((one) =>
+        saved.course != null && one.course === saved.course ? { ...one, course: null } : one,
+      ),
+    saved,
+  ];
 }
 
 export function windowLine(reader: Reader): string {
@@ -567,8 +667,13 @@ export interface ScheduleStart {
   unrestored: string | null;
   picking: boolean;
   failed: Failure | null;
-  focus: Field | 'limit' | 'conflict' | 'ask' | 'failed' | null;
+  focus: Field | 'limit' | 'conflict' | 'ask' | 'failed' | 'course' | 'move' | null;
   screens: ScreensStart | null;
+  courses: Course[];
+  menuRead: boolean;
+  courseOpen: boolean;
+  moveTo: string | null;
+  unlinked: string | null;
 }
 
 /** Where Show on a screen opens (sc-3897). */
@@ -595,6 +700,11 @@ function start(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
     failed: null,
     focus: null,
     screens: null,
+    courses: sampleCourses(),
+    menuRead: true,
+    courseOpen: false,
+    moveTo: null,
+    unlinked: null,
     ...over,
   };
 }
@@ -607,6 +717,30 @@ function ownedBy(owner: string, name: string): ScheduleStart {
   const seated = items.find((one) => one.id === 'seated') as Item;
 
   return start({ name, items, panel: { kind: 'edit', id: 'seated' }, form: formOf(seated) });
+}
+
+const lateFood = (items: readonly Item[]): Item => items.find((one) => one.id === 'late') as Item;
+
+function editingLate(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
+  const items = over.items ?? linkedItems();
+
+  return start({
+    items,
+    panel: { kind: 'edit', id: 'late' },
+    form: formOf(lateFood(items)),
+    ...over,
+  });
+}
+
+const LONG_FR = 'Plat principal : filet de bœuf, purée de patates douces et sauce au poivre';
+const LONG_PT = 'Prato principal: filé ao molho de pimenta com purê de batata-doce e farofa';
+
+function longCourse(name: string, label: string): ScheduleStart {
+  return start({
+    name: label,
+    items: linkedItems(),
+    courses: sampleCourses().map((one) => (one.id === 'k2' ? { ...one, name } : one)),
+  });
 }
 
 const STATES = {
@@ -746,6 +880,51 @@ const STATES = {
       focus: 'limit',
     }),
   readOnly: () => start({ name: 'Read only, without run_of_show.manage', manage: false }),
+  courseEmpty: () => editingLate({ name: 'Editing Late food, Course empty: No course' }),
+  coursePicker: () =>
+    editingLate({
+      name: 'The course list open, in menu order, two linked elsewhere',
+      courseOpen: true,
+      focus: 'course',
+    }),
+  courseMove: () =>
+    editingLate({
+      name: 'Main chosen, linked to Mains go out: asking before the link moves',
+      moveTo: 'k2',
+      focus: 'move',
+    }),
+  courseMoving: () => {
+    const items = linkedItems();
+    return editingLate({
+      name: 'Move the link pressed: Main waits for Save',
+      items,
+      form: { ...formOf(lateFood(items)), course: 'k2' },
+    });
+  },
+  courseLinked: () =>
+    start({ name: 'Linked items: the course beside the title', items: linkedItems() }),
+  courseNone: () =>
+    editingLate({
+      name: 'No courses on the menu: the list points to the Menu page',
+      items: sampleItems(),
+      courses: [],
+      courseOpen: true,
+      focus: 'course',
+    }),
+  courseRefused: () =>
+    editingLate({
+      name: 'Without menu.read: no Course field, the rest as before',
+      menuRead: false,
+    }),
+  courseUnlinked: () =>
+    start({
+      name: 'Main removed from the menu: Mains go out no longer linked',
+      items: linkedItems().map((one) => (one.id === 'mains' ? { ...one, course: null } : one)),
+      courses: sampleCourses().filter((one) => one.id !== 'k2'),
+      unlinked: 'Mains go out',
+    }),
+  courseLongFr: () => longCourse(LONG_FR, 'A long course name, cut short on the row, in fr-FR'),
+  courseLongPt: () => longCourse(LONG_PT, 'A long course name, cut short on the row, in pt-BR'),
   sevenDays: () =>
     start({
       name: 'Seven days, the tabs wrap to a second row',
@@ -824,6 +1003,29 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
         'atLimit',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'Course, a menu course linked to an item (sc-3898)',
+    states: [
+      ...(
+        [
+          'courseEmpty',
+          'coursePicker',
+          'courseMove',
+          'courseMoving',
+          'courseLinked',
+          'courseNone',
+          'courseRefused',
+          'courseUnlinked',
+        ] as const
+      ).map(link),
+      link('courseLongFr'),
+      link('courseLongPt'),
+      {
+        to: scheduleAt('coursePicker'),
+        name: 'The course list as a sheet at 40rem and under (narrow the window)',
+      },
+    ],
   },
   {
     name: 'Someone else’s change, delete and Undo',
