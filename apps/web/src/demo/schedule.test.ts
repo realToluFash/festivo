@@ -37,6 +37,7 @@ import {
   tablesOn,
   windowLine,
   withCourseKept,
+  withTypedStart,
 } from './schedule.ts';
 
 const FRIDAY = DAYS[1];
@@ -204,6 +205,15 @@ describe('a course linked to an item (sc-3898)', () => {
 
   it('does not say linked to the item being edited', () => {
     expect(courseLine(main, linkedItems(), 'mains', HOME_READER)).toBe('served 19:50');
+  });
+
+  it('serves the edited item’s course at the time typed on its form', () => {
+    const typed = withTypedStart(linkedItems(), 'mains', { date: '2026-11-06', time: '20:10' });
+    expect(courseLine(main, typed, 'mains', HOME_READER)).toBe('served 20:10');
+    expect(courseLine(dessert, typed, 'mains', HOME_READER)).toBe('served 21:30');
+    expect(withTypedStart(linkedItems(), 'mains', { date: '2026-11-06', time: '' })).toEqual(
+      linkedItems(),
+    );
   });
 
   it('moves a link on save: the other item loses the course and keeps its title', () => {

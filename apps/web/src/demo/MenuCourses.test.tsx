@@ -576,4 +576,16 @@ describe('a course linked to a schedule item (sc-3898)', () => {
     expect(within(panel()).getByText('19:50, from the schedule: Mains go out')).toBeTruthy();
     expect(within(panel()).queryByRole('textbox', { name: /Served at/ })).toBeNull();
   });
+
+  it(
+    'gives Served at back as a field, keeping the last time shown, once the link ends',
+    SLOW,
+    async () => {
+      await menu('courseLinkEnded');
+
+      expect(within(panel()).queryByText(/from the schedule/)).toBeNull();
+      const field = within(panel()).getByRole('textbox', { name: /Served at/ }) as HTMLInputElement;
+      expect(field.value).toBe('19:50');
+    },
+  );
 });

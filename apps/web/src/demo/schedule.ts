@@ -533,6 +533,18 @@ export function servedTime(course: Course, items: readonly Item[], reader: Reade
   return course.servedAt;
 }
 
+/** The item being edited at the time typed on its form, so the picker shows the time its course will be served at on Save. */
+export function withTypedStart(
+  items: readonly Item[],
+  editingId: string | null,
+  form: Pick<Form, 'date' | 'time'>,
+): readonly Item[] {
+  if (editingId == null || form.date === '' || form.time === '') return items;
+  const starts = `${form.date}T${form.time}`;
+
+  return items.map((one) => (one.id === editingId ? { ...one, starts } : one));
+}
+
 export function courseLine(
   course: Course,
   items: readonly Item[],

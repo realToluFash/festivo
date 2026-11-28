@@ -60,6 +60,7 @@ import {
   underLine,
   windowLine,
   withCourseKept,
+  withTypedStart,
   zoneNamed,
 } from './schedule.ts';
 import { RW as RUN_WORDS, runViewAt } from './runView.ts';
@@ -1093,7 +1094,7 @@ function ItemPanel({
           <CourseField
             controls={course}
             chosen={form.course}
-            items={items}
+            items={withTypedStart(items, editing?.id ?? null, form)}
             editingId={editing?.id ?? null}
             reader={reader}
           />
@@ -1225,6 +1226,7 @@ function CourseField({
           <div
             id="ro-course-list"
             className="ro-course-list"
+            role="group"
             aria-labelledby="ro-course-list-title"
           >
             <div className="ro-course-list-top">

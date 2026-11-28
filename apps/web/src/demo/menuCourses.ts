@@ -53,6 +53,7 @@ import {
 } from './dishChoices.ts';
 import { type CourseDefault, type DefaultForm, type Given, DFW } from './courseDefault.ts';
 import { MENU_EVENT, moved } from './menuServed.ts';
+import { HOME_READER, linkedItems, timeOf } from './schedule.ts';
 import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
 import { type MenuChange, addedAllergens, pickedWithAdded, recordedOf } from './menuChange.ts';
@@ -450,10 +451,23 @@ function course(
   return { id, name, servedAt, answer: 'choose', skip: false, dishes, ...more };
 }
 
-/** sc-3898: the sample menu with Main linked to the schedule's Mains go out, which starts at 19:50. */
+/** sc-3898: the item the Schedule demo links Main to, so both demos give one answer to when the mains go out. */
+function mainsItem(): { title: string; at: string } {
+  const item = linkedItems().find((one) => one.course === 'k2');
+  if (item == null) throw new Error('The Schedule demo links no item to Main.');
+
+  return { title: item.title, at: timeOf(item.starts, HOME_READER) };
+}
+
+/** sc-3898: the sample menu with Main linked to the Schedule demo's Mains go out. */
 function linkedMain(): EvCourse[] {
+  return sampleCourses().map((one) => (one.id === 'k2' ? { ...one, linked: mainsItem() } : one));
+}
+
+/** sc-3898: Main once its link has ended, keeping the time it last showed as its own. */
+function unlinkedMain(): EvCourse[] {
   return sampleCourses().map((one) =>
-    one.id === 'k2' ? { ...one, linked: { title: 'Mains go out', at: '19:50' } } : one,
+    one.id === 'k2' ? { ...one, servedAt: mainsItem().at, linked: null } : one,
   );
 }
 
@@ -963,6 +977,13 @@ const STATES = {
       name: 'Edit course on a linked course: Served at is text, from the schedule',
       note: 'While Main is linked, Served at is its item’s start and not a field; Save keeps that time.',
       courses: linkedMain(),
+      opened: { kind: 'editCourse', courseId: 'k2' },
+    }),
+  courseLinkEnded: () =>
+    start({
+      name: 'Edit course once the link has ended: Served at is a field again',
+      note: 'Mains go out no longer holds Main, so Served at is a field again, filled with 19:50, the time Main last showed.',
+      courses: unlinkedMain(),
       opened: { kind: 'editCourse', courseId: 'k2' },
     }),
   editCourse: () =>
@@ -2425,7 +2446,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   },
   {
     name: 'A course linked to a schedule item (sc-3898)',
-    states: (['courseLinkedLine', 'courseLinkedForm'] as const).map(link),
+    states: (['courseLinkedLine', 'courseLinkedForm', 'courseLinkEnded'] as const).map(link),
   },
   {
     name: 'When picks close (sc-3905)',

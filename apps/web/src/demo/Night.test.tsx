@@ -35,7 +35,7 @@ describe('the night at a desk (sc-3895)', () => {
     render(<RouterProvider router={router} />);
 
     await screen.findByRole('heading', { level: 2, name: 'Dinner is served' }, SLOW);
-    expect(screen.getByText('Course · Main')).toBeDefined();
+    expect(screen.getByText('Course · Starter')).toBeDefined();
     expect(screen.getByText('Course · Dessert')).toBeDefined();
     expect(document.querySelectorAll('.nt-course')).toHaveLength(2);
   });

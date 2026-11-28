@@ -529,7 +529,7 @@ export interface Scene {
   courses?: Courses;
 }
 
-const LINKED: Courses = { dinner: 'Main', cake: 'Dessert' };
+const LINKED: Courses = { dinner: 'Starter', cake: 'Dessert' };
 const DINING: Marks = { arrive: ['18:02', '18:31'], dinner: ['18:33'] };
 
 const SPEAKING: Marks = { ...DINED, speeches: ['19:50'] };
@@ -633,7 +633,7 @@ export const NIGHT_STATES = {
     foyer: { ...FOYER_RUN, carriages: ['00:31'] },
   },
   course_now: {
-    name: 'Course: Dinner is served is Now, linked to Main',
+    name: 'Course: Dinner is served is Now, linked to Starter',
     clock: '18:44',
     hall: DINING,
     courses: LINKED,
