@@ -12,6 +12,7 @@ import {
   takeLanding,
 } from './theme/deviceScheme.ts';
 import { type Scheme, schemeAtLaunch } from './theme/tokens.ts';
+import { whereNow } from './where.ts';
 
 export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satisfies Href;
 
@@ -118,13 +119,6 @@ export async function forgetOnNewInstall(
   await reload('new install').catch(() => {});
 }
 
-let here: string | null = null;
-
-/** The screen the person is on, so a change heard back in the foreground restarts onto it rather than onto Today. */
-export function noteWhere(path: string): void {
-  here = path === '/' ? null : path;
-}
-
 /** The screens to open over Today after a restart: the landing, with its destination under it, so Back from the landing goes to that destination (sc-30441). */
 export function landingAfterRestart(): Href[] {
   const path = takeLanding();
@@ -147,7 +141,7 @@ export function hearChoice(
 
   holdChoice(choice);
   const follow = schemeToFollow(choice, launchedIn);
-  if (follow != null) void restartIn(follow, here, reload);
+  if (follow != null) void restartIn(follow, whereNow(), reload);
   else if (deviceScheme() !== launchedIn) keepDeviceScheme(inUse(choice));
 }
 

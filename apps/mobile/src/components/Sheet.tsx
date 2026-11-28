@@ -144,10 +144,21 @@ function SheetFrame({
 }: SheetProps) {
   const close = held ? () => undefined : onClose;
   const closeRef = useRef(onClose);
+  const heldRef = useRef(held);
   useEffect(() => {
     closeRef.current = onClose;
+    heldRef.current = held;
   });
-  useEffect(() => (open ? noteOpenSheet(() => closeRef.current()) : undefined), [open]);
+  // A sheet holding a request that closing would not stop stays open, as for the scrim and the escape.
+  useEffect(
+    () =>
+      open
+        ? noteOpenSheet(() => {
+            if (!heldRef.current) closeRef.current();
+          })
+        : undefined,
+    [open],
+  );
   const back = () => {
     if (!pickerTookBack()) close();
   };

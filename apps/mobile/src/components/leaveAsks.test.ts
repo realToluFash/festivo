@@ -71,6 +71,11 @@ describe('each way out goes through the hold (sc-82245)', () => {
     expect(read('../appPush.ts')).toMatch(/openFromOutside\(String\(place\), \(discarding\) =>/u);
   });
 
+  it('an open sheet registers to close, and a link goes through the same ask', () => {
+    expect(read('Sheet.tsx')).toMatch(/noteOpenSheet\(\(\) => \{\s*if \(!heldRef\.current\)/u);
+    expect(read('../../app/+native-intent.tsx')).toMatch(/openFromOutside\(\s*linkedPath\(path\)/u);
+  });
+
   it('the header’s Back, the swipe back and Android’s back', () => {
     expect(read('useLeaveAsk.ts')).toMatch(
       /usePreventRemove\(changed, \(\{ repeat \}\) =>\s*leaveThen\(repeat, undefined, true\),?\s*\)/u,
