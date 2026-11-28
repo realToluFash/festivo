@@ -1,0 +1,25 @@
+# sc-101592: "Zimbab" deleted one letter at a time with the delete key: the whole list comes back, no error.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Zimbab'
+- extendedWaitUntil: { visible: { id: 'createWalk.country.ZW' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- eraseText: 1
+- takeScreenshot: d-zim
+- eraseText: 1
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- takeScreenshot: d-cleared

@@ -1,0 +1,52 @@
+# sc-101592, tablet (its device group is absent at rest, so not asserted): a search typed and cleared five times running, alternating Clear search and the delete key, never stops the app.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- inputText: 'Ni'
+- extendedWaitUntil: { visible: { id: 'createWalk.search.clear' }, timeout: 5000 }
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- takeScreenshot: f-after-five

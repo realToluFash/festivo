@@ -1,0 +1,38 @@
+# sc-101592, in the design demo, tablet (its device group is absent at rest, so not asserted): "zzz" matches nothing; cleared by Clear search, then by the delete key: the message goes and the whole list comes back.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'frame.organisation|home.switchOrganisation' }
+- scrollUntilVisible: { element: { id: 'switcher.tile.create' }, direction: DOWN, timeout: 30000 }
+- tapOn: { id: 'switcher.tile.create' }
+- extendedWaitUntil: { visible: { id: 'createWalk' }, timeout: 30000 }
+- tapOn: { id: 'createWalk.name' }
+- inputText: 'QA Clear Ltd'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'createWalk.countries.noMatch' }, timeout: 5000 }
+- takeScreenshot: demo-z-nomatch
+- tapOn: { id: 'createWalk.search.clear' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- takeScreenshot: demo-z-cleared-button
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'createWalk.countries.noMatch' }, timeout: 5000 }
+- eraseText: 1
+- eraseText: 1
+- eraseText: 1
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: { text: '.*(addViewAt|IndexOutOfBounds).*' }
+- assertVisible: { id: 'createWalk.countries' }
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- assertVisible: { id: 'createWalk.country.AF' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- takeScreenshot: demo-z-cleared-delete
