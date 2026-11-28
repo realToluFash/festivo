@@ -2541,6 +2541,8 @@
       "walkIn": "Sur place"
     },
     "repliedOn": "a répondu le {{date}}",
+    "repliedOnFromEmailLink": "a répondu le {{date}} · via le lien de l’e-mail",
+    "repliedFromEmailLink": "{{reply}} · a répondu le {{date}} · via le lien de l’e-mail",
     "replyHeading": "Réponse",
     "recordReply": "Saisir la réponse",
     "recordFor": "Pour {{name}}. Cette réponse compte comme la sienne et apparaît comme saisie par vous.",

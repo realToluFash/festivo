@@ -2450,6 +2450,8 @@
       "walkIn": "Walk-in"
     },
     "repliedOn": "replied {{date}}",
+    "repliedOnFromEmailLink": "replied {{date}} · from the email link",
+    "repliedFromEmailLink": "{{reply}} · replied {{date}} · from the email link",
     "replyHeading": "Reply",
     "recordReply": "Record a reply",
     "recordFor": "For {{name}}. It counts as their reply, marked as recorded by you.",

@@ -19,10 +19,16 @@ import {
   NO_MANAGE_LINE,
   RUN_OUT_STATES,
   alertOf,
+  answer,
+  askOne,
+  askedNow,
   bulkRows,
+  cancel,
   changed,
   confirmBulk,
+  confirmNote,
   confirmTitle,
+  countLine,
   countsWith,
   covered,
   fresh,
@@ -101,6 +107,7 @@ describe('a bulk choice', () => {
       ['Serve Beef', true],
       ['Serve Grilled fish', false],
       ['Serve without Chicken', false],
+      ['Ask each guest', false],
     ]);
   });
 
@@ -217,7 +224,113 @@ describe('marking it available again, and the refusals', () => {
     expect(alertOf(runOutSeed('runOutAlert'))).toEqual({
       title: 'Chicken has run out',
       sub: 'Grill · 9 waiting for a choice',
+      count: '',
     });
+  });
+});
+
+describe('asking each guest at their table (sc-59426)', () => {
+  const ASK: Bulk = { kind: 'ask' };
+  const panel = () => ({ ...fresh(), panel: true });
+
+  it('asks every waiting guest, flagged guests included, and stands as a line', () => {
+    const r0 = pressBulk(panel(), LEAD, ASK);
+    expect(confirmTitle(r0, ASK)).toBe('Ask 9 guests at their tables?');
+    const r = confirmBulk(r0, LEAD);
+    expect(waiting(r).every((g) => g.asked)).toBe(true);
+    expect(guest(r, 'fa').asked).toBe(true);
+    expect(bulkRows(r).find((b) => b.bulk.kind === 'ask')?.stands).toBe(true);
+    expect(bulkRows(r).filter((b) => !b.stands)).toHaveLength(4);
+    expect(pressBulk(r, LEAD, ASK)).toBe(r);
+  });
+
+  it('cancel changes nothing', () => {
+    const r = cancel(pressBulk(panel(), LEAD, ASK));
+    expect(r.confirm).toBeNull();
+    expect(askedNow(r)).toHaveLength(0);
+    expect(r.stands).toBeNull();
+  });
+
+  it('asks one guest with Ask {name}, with no confirmation and nothing standing', () => {
+    const r = askOne(panel(), LEAD, 'tb');
+    expect(guest(r, 'tb').asked).toBe(true);
+    expect(r.confirm).toBeNull();
+    expect(r.stands).toBeNull();
+    expect(countLine(r)).toBe('0 of 1 guest has chosen at the table');
+  });
+
+  it('confirms for guests still to come when everyone waiting is already asked', () => {
+    const all = waiting(panel()).reduce((x, g) => askOne(x, LEAD, g.id), panel());
+    expect(confirmTitle(all, ASK)).toBe('Ask guests still to come at their tables?');
+  });
+
+  it('leaves asked guests out of a Serve choice and says they stay asked', () => {
+    const r = askOne(askOne(panel(), LEAD, 'tb'), LEAD, 'ya');
+    expect(names(r, BEEF)).toEqual(['Bayo', 'Emeka']);
+    expect(confirmTitle(r, BEEF)).toBe('Serve Beef to 2 guests instead of Chicken?');
+    expect(confirmNote(r, BEEF)).toBe('Guests already asked at their tables stay asked');
+    expect(confirmNote(panel(), BEEF)).toBe('');
+    const after = confirmed(r, BEEF);
+    expect(guest(after, 'tb').asked).toBe(true);
+    expect(guest(after, 'tb').state).toBe('waiting');
+  });
+
+  it('a later Serve choice replaces a standing ask for guests still to come; those asked stay asked', () => {
+    const r = confirmed(confirmed(panel(), ASK), BEEF);
+    expect(r.stands).toEqual(BEEF);
+    expect(askedNow(r)).toHaveLength(9);
+  });
+
+  it('counts the answers, leaving out a guest the lead chose for', () => {
+    const asking = confirmed(panel(), ASK);
+    expect(countLine(asking)).toBe('0 of 9 guests have chosen at the table');
+    const r = answer(answer(asking, 'tb', 'Beef'), 'eo', 'Grilled fish');
+    expect(countLine(r)).toBe('2 of 9 guests have chosen at the table');
+    expect(nowLine(guest(r, 'tb'))).toBe('Now Beef');
+    expect(firstNames(changed(r))).toContain('Tunde');
+    const led = pick(openChoose(r, LEAD, 'fa'), LEAD, '');
+    expect(guest(led, 'fa').asked).toBe(false);
+    expect(countLine(led)).toBe('2 of 8 guests have chosen at the table');
+    expect(alertOf(r)?.count).toBe('2 of 9 guests have chosen at the table');
+  });
+
+  it('refuses a conflicting answer and changes nothing', () => {
+    const asking = confirmed(panel(), ASK);
+    expect(answer(asking, 'fa', 'Grilled fish')).toBe(asking);
+    expect(answer(asking, 'fa', 'Beef')).toBe(asking);
+  });
+
+  it('the alert leaves once the last asked guest has answered', () => {
+    let r = confirmed(panel(), ASK);
+    for (const g of waiting(r)) {
+      const o = options(g).find((x) => x.no == null);
+      if (o != null) r = answer(r, g.id, o.item);
+    }
+    expect(waiting(r)).toHaveLength(0);
+    expect(alertOf(r)).toBeNull();
+    expect(countLine(r)).toBe('');
+  });
+
+  it('asks a late arrival at once under a standing ask, with no alert raised', () => {
+    const r0 = confirmed(panel(), ASK);
+    const r = lateArrival(r0);
+    expect(guest(r, 'bi').asked).toBe(true);
+    expect(r.raised).toBe(r0.raised);
+  });
+
+  it('Mark available again ends every ask; answers stand', () => {
+    const r = markAvailable(answer(confirmed(panel(), ASK), 'tb', 'Beef'), LEAD);
+    expect(askedNow(r)).toHaveLength(0);
+    expect(r.guests.some((g) => g.asked)).toBe(false);
+    expect(nowLine(guest(r, 'tb'))).toBe('Now Beef');
+    expect(answer(r, 'ya', 'Beef')).toBe(r);
+  });
+
+  it('refuses asking offline and without service.manage, keeping nothing', () => {
+    const off = askOne(panel(), { online: false, manage: true }, 'tb');
+    expect(off.refused).toBe('Needs a connection to ask. Nothing is kept to send later.');
+    expect(guest(off, 'tb').asked).toBe(false);
+    expect(askOne(panel(), { online: true, manage: false }, 'tb').refused).toBe(NO_MANAGE_LINE);
   });
 });
 

@@ -313,7 +313,12 @@ function Blocks({
         </Text>
       )}
       {runAlert != null && (
-        <RunOutAlertRow title={runAlert.title} sub={runAlert.sub} onChoose={onChoose} />
+        <RunOutAlertRow
+          title={runAlert.title}
+          sub={runAlert.sub}
+          count={runAlert.count}
+          onChoose={onChoose}
+        />
       )}
       {sum.alerts.map((a, i) => (
         <AlertRow
@@ -616,10 +621,12 @@ function RunOutKitchenRow({
 function RunOutAlertRow({
   title,
   sub,
+  count,
   onChoose,
 }: {
   title: string;
   sub: string;
+  count: string;
   onChoose: (ref: ViewInstance | null) => void;
 }) {
   const ref = useRef<ViewInstance | null>(null);
@@ -636,6 +643,11 @@ function RunOutAlertRow({
           <Text size={14} style={shared.secondary}>
             {sub}
           </Text>
+          {count !== '' && (
+            <Text size={14} weight="semibold" testID="service.alert.runOut.count">
+              {count}
+            </Text>
+          )}
         </View>
       </View>
       <PrimaryButton
