@@ -30,6 +30,7 @@ import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field
 import { controlTaken } from './focusedField.ts';
 import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { LIFT } from './keyboardWatch.ts';
+import { COUNTRY_FIELD } from './listPickerField.ts';
 import { usePickerFocusBack } from './pickerFocusBack.ts';
 import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
@@ -346,7 +347,12 @@ function useListFilling(reader: boolean, up: boolean, revealed: boolean): boolea
 
 function Chevron() {
   return (
-    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+    <Svg
+      width={COUNTRY_FIELD.chevron}
+      height={COUNTRY_FIELD.chevron}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
       <Path
         d="m6 9 6 6 6-6"
         stroke={tokens.colorInkSecondary}
@@ -364,9 +370,9 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingHorizontal: tokens.spaceLg,
-    borderWidth: 1,
+    gap: COUNTRY_FIELD.gap,
+    paddingHorizontal: COUNTRY_FIELD.paddingHorizontal,
+    borderWidth: COUNTRY_FIELD.borderWidth,
     borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,

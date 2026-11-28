@@ -1,14 +1,8 @@
 import { tokens } from '../theme/tokens.ts';
+import { COUNTRY_FIELD } from './listPickerField.ts';
 
 export const COUNTRY_BASIS = 140;
 export const NUMBER_BASIS = 180;
-export const COUNTRY_FIELD = {
-  borderWidth: 1,
-  paddingHorizontal: tokens.spaceLg,
-  gap: tokens.spaceSm,
-  chevron: 14,
-};
-/** ListPicker's field around its name, read from its styles by phoneCountryFit.test.ts: its border, padding, gap and chevron. */
 export const COUNTRY_CHROME =
   COUNTRY_FIELD.borderWidth * 2 +
   COUNTRY_FIELD.paddingHorizontal * 2 +

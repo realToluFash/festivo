@@ -8,7 +8,7 @@ import { CountryPicker } from '../../components/CountryPicker.tsx';
 import { Field, TextField } from '../../components/Field.tsx';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { PhoneCountryRow } from '../phoneCountryFits.tsx';
+import { PhoneCountryRow } from '../../components/PhoneCountryRow.tsx';
 import { phoneCountryOverNumber } from './textSizeRules.ts';
 
 /** Changez votre numéro de portable's number as proposed at a text size: the country beside the number while its name fits there on one line; over it, each the field's full width, once it does not (sc-7579, #104845) and always from the accessibility sizes on (sc-78438). */

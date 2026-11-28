@@ -17,7 +17,7 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
-import { PhoneCountryRow } from '../phoneCountryFits.tsx';
+import { PhoneCountryRow } from '../../components/PhoneCountryRow.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
