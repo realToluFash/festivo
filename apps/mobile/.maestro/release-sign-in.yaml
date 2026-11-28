@@ -51,6 +51,7 @@ appId: com.soirely.app
             - hideKeyboard
             - tapOn:
                 id: 'signIn.submit'
+                optional: true
 - extendedWaitUntil:
     visible:
       id: 'home.openSettings'
