@@ -809,3 +809,49 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* sc-99215: Paste code beside a phone's code field, its line beside it, under it when there is no room. */
+.demo-paste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.demo-paste-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.demo-paste-button {
+  white-space: nowrap;
+}
+
+.demo-paste-nothing {
+  flex: 1 1 11rem;
+  min-width: 0;
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.demo-paste-nothing:empty {
+  display: none;
+}
+
+.demo-paste-copied {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.demo-paste-copied p {
+  margin: 0;
+}
