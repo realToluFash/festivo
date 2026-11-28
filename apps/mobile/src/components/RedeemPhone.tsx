@@ -49,7 +49,7 @@ export function NumberFields({
     <View>
       {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
       <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
-        <View>
+        <View style={over ? undefined : styles.chip}>
           <CountryPicker
             label={t('redeem.phone.countryCode')}
             value={country}
@@ -208,7 +208,13 @@ export function PhoneCodeScreen({
 }
 
 const styles = StyleSheet.create({
-  phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  phoneRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+  },
   phoneOver: { gap: tokens.spaceSm },
-  grow: { flex: 1, minWidth: 0 },
+  chip: { flexGrow: 1, flexBasis: 140 },
+  grow: { flexGrow: 2, flexBasis: 180, minWidth: 0 },
 });
