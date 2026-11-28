@@ -1,0 +1,77 @@
+/* Duplicate: the guest list as one more tick under Starts (sc-3656) */
+
+.ev-copy-guests {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding-top: var(--spaceMd);
+  border-top: 1px solid var(--colorBorder);
+  cursor: pointer;
+}
+
+.ev-copy-box {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.ev-copy-input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 6px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+  cursor: pointer;
+  appearance: none;
+}
+
+.ev-copy-input:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ev-copy-input:checked {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+.ev-copy-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+.ev-copy-input:checked:focus-visible {
+  box-shadow: var(--deskRing);
+}
+
+.ev-copy-tick {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: var(--colorInkOnDark);
+  pointer-events: none;
+}
+
+.ev-copy-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ev-copy-label {
+  color: var(--colorInk);
+  font: 600 16px/24px var(--fontFamily);
+}
+
+.ev-copy-hint {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}

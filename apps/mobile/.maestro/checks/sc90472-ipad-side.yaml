@@ -1,0 +1,23 @@
+# sc-90472: People's Outside tag on the iPad, side, at the device's text size, shot at each third of a screen down.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: s0
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s1
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s2
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s3
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s4
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s5

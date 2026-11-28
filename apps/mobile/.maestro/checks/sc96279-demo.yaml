@@ -1,0 +1,131 @@
+# sc-96279: /demo/kitchen-way-in in each state, from the top, at its foot, and More (or the sidebar's person). L names the layout in the screenshots. LAND=1 turns the tablet to landscape first. Needs ${METRO_URL}, ${L}.
+appId: host.exp.Exponent
+---
+- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=own_course
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: own_course-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: own_course-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: own_course-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=last_pick
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: last_pick-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: last_pick-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: last_pick-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=pick
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: pick-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: pick-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: pick-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=pass_alone
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: pass_alone-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: pass_alone-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: pass_alone-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=floor
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: floor-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: floor-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: floor-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=floor_alone
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: floor_alone-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: floor_alone-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: floor_alone-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=run_floor
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: run_floor-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: run_floor-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: run_floor-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=run_floor_alone
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: run_floor_alone-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: run_floor_alone-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: run_floor_alone-${L}-more-demo
+      - back
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=view
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: view-${L}-demo
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: view-${L}-foot-demo
+- runFlow:
+    when: { visible: 'More' }
+    commands:
+      - tapOn: 'More'
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: view-${L}-more-demo
+      - back

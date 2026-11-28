@@ -1,0 +1,13 @@
+# sc-563: the app demo at /demo/settings/data-and-control/email-domains?state=oo_confirm, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=oo_confirm
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: domains.only.schedule
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-demo-oo_confirm

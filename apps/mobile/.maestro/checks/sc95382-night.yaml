@@ -1,0 +1,32 @@
+# sc-95382: ${EVENT_ID}'s Your night, Open {station} if it shows, and the station it opens with its back control. P prefixes the screenshots. Needs ${METRO_URL}, ${EVENT_ID}, ${P}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/my-night
+- extendedWaitUntil:
+    visible:
+      id: 'myNight.page'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${P}-night
+- runFlow:
+    when:
+      visible:
+        id: 'myNight.openStation'
+    commands:
+      - tapOn:
+          id: 'myNight.openStation'
+      - extendedWaitUntil:
+          visible:
+            id: 'station\.(title|landing|failed|refused\..+)'
+          timeout: 15000
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: ${P}-station
+      - tapOn:
+          id: 'station.back'
+      - extendedWaitUntil:
+          visible:
+            id: 'myNight.page'
+          timeout: 15000
+      - takeScreenshot: ${P}-back

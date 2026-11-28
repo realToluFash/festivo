@@ -1,0 +1,49 @@
+# sc-4235: in the app, a number already on an account signs in under that account's name; a code at its cap lets its holder back in and refuses a new number. Pass CODE (cap 20, unused by these numbers) and CAP (a code with cap 1). Run after sc4235-app-join. Signs the session out.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Ada Typed', NUMBER: '08034440711' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440711' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 02-in-account-name
+- tapOn:
+    id: 'redeem.in.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.enter.code'
+    timeout: 20000
+- openLink: ${METRO_URL}/--/d/${CAP}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440721' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- takeScreenshot: 03-cap-first
+- tapOn:
+    id: 'redeem.in.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.enter.code'
+    timeout: 20000

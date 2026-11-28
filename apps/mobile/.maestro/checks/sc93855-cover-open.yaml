@@ -1,0 +1,17 @@
+# sc-93855: on the phone, scroll to the live cover's Open the event (fr: Ouvrir l'événement) and tap it once; the event opens. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- scrollUntilVisible:
+    { element: { text: 'Ouvrir l.événement|Open the event' }, direction: DOWN, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn: 'Ouvrir l.événement|Open the event'
+- waitForAnimationToEnd
+- takeScreenshot: opened

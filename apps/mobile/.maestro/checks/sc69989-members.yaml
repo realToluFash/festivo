@@ -1,0 +1,7 @@
+# sc-69989 regression: Members' recovery request with its Awaiting approval tag.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: '.*{{t:recoveryRequests.cardTitle}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: members

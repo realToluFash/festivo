@@ -1,0 +1,12 @@
+# sc-3787: the app demo's recordNotSaved state, opened through its Record a reply step, for side-by-side with the product's form.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests?state=recordNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'guest.card.step'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: open

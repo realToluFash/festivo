@@ -1,0 +1,66 @@
+# sc-49170: the demo's Members, ?state=moreFailed, on the tablet in its landscape layout, scrolled to the end of the list column, for the pair.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/members?state=moreFailed
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 30000
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: demo-moreFailed

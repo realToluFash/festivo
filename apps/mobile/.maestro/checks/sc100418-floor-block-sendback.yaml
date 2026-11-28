@@ -1,0 +1,50 @@
+# sc-100418: ${EVENT_ID}'s Floor; the list, the block of single seats, Send back's sheet for seat ${SEAT}; SEND=yes sends it and shows the Sent back line.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/floor
+- extendedWaitUntil:
+    visible:
+      id: 'floor.list'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: list
+- tapOn:
+    id: 'floor\.row\.(Seats|Asientos|Places|Lugares) 1 .* 10'
+- extendedWaitUntil:
+    visible:
+      id: 'floor.table'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: block
+- scrollUntilVisible:
+    element:
+      id: 'floor.sendBack.${SEAT}'
+    timeout: 15000
+- takeScreenshot: seat
+- tapOn:
+    id: 'floor.sendBack.${SEAT}'
+- extendedWaitUntil:
+    visible:
+      id: 'floor.sendBack.sheet'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: sheet
+- runFlow:
+    when:
+      true: ${SEND == 'yes'}
+    commands:
+      - tapOn:
+          id: 'floor\.reason\..*'
+          index: 0
+      - takeScreenshot: reason
+      - tapOn:
+          id: 'floor.sendBack.send'
+      - waitForAnimationToEnd
+      - takeScreenshot: sent
+- runFlow:
+    when:
+      true: ${SEND != 'yes'}
+    commands:
+      - tapOn:
+          id: 'floor.sendBack.cancel'

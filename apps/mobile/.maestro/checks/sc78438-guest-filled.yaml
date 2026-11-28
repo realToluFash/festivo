@@ -1,0 +1,101 @@
+# Add guest at the current text size, left open with Royaume-Uni chosen and a number typed, for a live text-size change. sc-78438.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible: '(Invités|Guests)'
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: 'guests.add'
+    commands:
+      - tapOn:
+          id: 'guests.add'
+- runFlow:
+    when:
+      notVisible:
+        id: 'guest.form'
+    commands:
+      - scrollUntilVisible:
+          element: '(Ajouter un invité|Add guest).*'
+          timeout: 15000
+      - tapOn: '(Ajouter un invité|Add guest).*'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form'
+    timeout: 20000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    timeout: 10000
+    centerElement: true
+- takeScreenshot: guest-field
+- repeat:
+    while:
+      notVisible:
+        id: 'guest.form.mobile.number'
+    times: 12
+    commands:
+      - swipe:
+          start: 50%, 88%
+          end: 50%, 62%
+      - waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.country'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'guest.form.mobile.country'
+- waitForAnimationToEnd
+- takeScreenshot: guest-list-open
+- tapOn:
+    id: 'guest.form.mobile.country.search'
+- inputText: '+44'
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.country.GB'
+    timeout: 15000
+    optional: true
+- tapOn:
+    id: 'guest.form.mobile.country.GB'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    timeout: 10000
+    centerElement: true
+- takeScreenshot: guest-gb
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'guest.form.mobile.number'
+- eraseText: 60
+- inputText: '7400123458'
+- waitForAnimationToEnd
+- takeScreenshot: guest-filled

@@ -1,0 +1,32 @@
+# sc-4015: on ${EVENT_ID}'s station, waits while the stack is stopped from outside, keeps one tap on Jollof rice (Preparing, 5 min), then waits while another disher's change lands and the stack starts, for Waiting to send, the strip's count and Not sent.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.left.jollof rice'
+    timeout: 30000
+- takeScreenshot: online
+- extendedWaitUntil:
+    visible: 'QA_NEVER_THERE'
+    timeout: 30000
+    optional: true
+- takeScreenshot: stopped
+- tapOn:
+    id: 'station.preparing.jollof rice'
+- tapOn:
+    id: 'station.eta.jollof rice.5'
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- extendedWaitUntil:
+    visible:
+      id: 'station.notSent'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: notsent
+- scrollUntilVisible:
+    element:
+      id: 'station.left.jollof rice'
+    direction: DOWN
+    optional: true
+- takeScreenshot: notsent-card

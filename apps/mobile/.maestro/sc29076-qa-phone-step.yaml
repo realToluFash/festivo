@@ -1,0 +1,24 @@
+# The phone step (touched by #1326 for sc-29076): arrival, keys up with a number, then Send. Needs EMAIL, PASSWORD, ${METRO_URL}. sc-29076.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29076-qa-phone-step --android EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in.yaml
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- takeScreenshot: qa-phone-arrival
+- tapOn:
+    id: 'phone.send'
+- takeScreenshot: qa-phone-blank
+- tapOn:
+    id: 'phone.number'
+- inputText: '7700900123'
+- takeScreenshot: qa-phone-keys-up
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: qa-phone-sent

@@ -1,0 +1,8 @@
+# sc-46032: on a tablet on its side, a pick from Calendar shows Now working in Beta. where the calendar demo draws it; shoots the pair.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc46032/pick-landscape.yaml
+    env:
+      TAB: 'Calendar'
+      ROUTE: 'calendar'

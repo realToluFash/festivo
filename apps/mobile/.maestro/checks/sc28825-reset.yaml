@@ -1,0 +1,43 @@
+# Forgot your password? carries the email to Reset; the link is sent; Open Mail opens Set a new password; it ends on Home with a toast.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 20000
+- inputText: 'folake@ire.events'
+- hideKeyboard
+- tapOn:
+    id: 'demo.forgot'
+- extendedWaitUntil:
+    visible: 'Reset your password'
+    timeout: 5000
+- assertVisible: 'folake@ire.events'
+- takeScreenshot: reset-carried
+- tapOn:
+    id: 'demo.sendLink'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.openMail'
+    timeout: 5000
+- takeScreenshot: link-sent
+- tapOn:
+    id: 'demo.openMail'
+- extendedWaitUntil:
+    visible: 'Set a new password'
+    timeout: 5000
+- tapOn:
+    id: 'demo.newPassword'
+- inputText: 'short'
+- takeScreenshot: new-password-short
+- inputText: ' but long enough now'
+- takeScreenshot: new-password-long
+- hideKeyboard
+- tapOn:
+    id: 'demo.save'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.list'
+    timeout: 5000
+- takeScreenshot: home-toast

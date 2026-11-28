@@ -1,0 +1,114 @@
+/* sc-24381: a Coming guest's page on the event's day, as the demo (demo/guestDay.css) and GuestPage.dc.html's On the day row (page 30) draw it. */
+
+.guest-page .gp-band {
+  flex: none;
+  min-height: 0;
+  height: 40px;
+  margin-top: 4px;
+  border-radius: 14px;
+}
+
+:where(.guest-page) .gp-head {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  color: var(--colorInk);
+}
+
+.guest-page .gp-head .gp-cover-h1 {
+  color: var(--colorInkSecondary);
+}
+
+.guest-page .gp-head .gp-cover-name {
+  font-size: 26px;
+}
+
+.guest-page .gp-head .gp-cover-line {
+  color: var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-day-code,
+:where(.guest-page) .gp-day-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+:where(.guest-page) .gp-day-block {
+  align-items: flex-start;
+  padding-top: 20px;
+  border-top: 1px solid var(--colorBorder);
+}
+
+:where(.guest-page) .gp-under.is-day {
+  gap: 20px;
+}
+
+:where(.guest-page) .gp-day-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 18px;
+  background: var(--colorCard);
+  text-align: center;
+}
+
+:where(.guest-page) .gp-day-door {
+  font: 600 17px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-day-card .gp-code {
+  align-self: center;
+  margin-top: 0;
+}
+
+:where(.guest-page) .gp-day-place {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+:where(.guest-page) .gp-day-time {
+  font: 700 20px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.guest-page) .gp-day-venue {
+  font: 600 17px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-day-address {
+  color: var(--colorInkSecondary);
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-day-note {
+  align-self: stretch;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-day-answered {
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-day-block.gp-prog {
+  padding-top: 20px;
+}

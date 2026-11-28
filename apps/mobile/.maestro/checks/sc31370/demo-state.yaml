@@ -1,0 +1,9 @@
+# sc-31370: one state of the app demo's Messages (B), screenshotted for the pair with its board.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: messages-${LAYOUT}-${STATE}-demo

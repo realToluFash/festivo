@@ -1,0 +1,17 @@
+# sc-97945: the app demo's Overview with Kitchen station, state offline, for the side-by-side pair. ORIENT=1 turns an iPad to landscape. P prefixes the screenshot.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${typeof ORIENT !== 'undefined' && ORIENT}
+    commands:
+      - setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/kitchen-way-in?state=offline
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${P}-demo
+- runFlow:
+    when:
+      true: ${typeof ORIENT !== 'undefined' && ORIENT}
+    commands:
+      - setOrientation: PORTRAIT

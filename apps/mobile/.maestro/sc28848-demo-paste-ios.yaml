@@ -1,0 +1,26 @@
+# The demo's sign-in on iPhone: paste an address into the email field from the system pasteboard, then focus the password field for autofill's bar. Put the address on the pasteboard first (xcrun simctl pbcopy). sc-28848.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: demo-email-focused-ios
+- longPressOn:
+    id: 'demo.email'
+- extendedWaitUntil:
+    visible: 'Paste'
+    timeout: 10000
+- tapOn: 'Paste'
+- waitForAnimationToEnd
+- assertVisible: 'folake.adeyemi@example.com'
+- takeScreenshot: demo-email-pasted-ios
+- tapOn:
+    id: 'demo.password'
+- waitForAnimationToEnd
+- takeScreenshot: demo-password-focused-ios
+- openLink: ${METRO_URL}/--/demo/two-factor
+- waitForAnimationToEnd
+- takeScreenshot: demo-code-focused-ios

@@ -1,0 +1,47 @@
+# sc-75211 regression: at the default size, every row, check, radio and Back in Events' Filter with one tap, no swipes.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: { id: 'events.clearFilters' } }
+    commands:
+      - tapOn: { id: 'events.clearFilters' }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: t-top
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: t-type
+- tapOn: { id: 'events.filter.type.anniversary' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.party' }
+- waitForAnimationToEnd
+- takeScreenshot: t-type-two-picked
+- assertVisible: { id: 'events.filter.back' }
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: t-back-from-type
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- takeScreenshot: t-when
+- tapOn: { id: 'events.filter.when.month' }
+- waitForAnimationToEnd
+- takeScreenshot: t-when-month
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.hosts' }
+- waitForAnimationToEnd
+- takeScreenshot: t-hosts
+- tapOn: { id: 'events.filter.host.Chidi Okafor' }
+- waitForAnimationToEnd
+- takeScreenshot: t-host-picked
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: t-back-from-hosts
+- tapOn: { id: 'events.filter.clear' }
+- waitForAnimationToEnd
+- takeScreenshot: t-cleared

@@ -1,0 +1,36 @@
+# sc-94028: the app's Design demo, The iPad bell's panel with Nothing yet (/demo/bell-size?read=none), at the Design section's routes, on its side. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=fr&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-fr
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=es&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-es
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=pt&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-pt
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax5&lang=en&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax5-en
+- openLink: ${METRO_URL}/--/demo/bell-size?size=ax1&lang=en&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: ax1-en
+- openLink: ${METRO_URL}/--/demo/bell-size?size=default&lang=en&read=none
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.panel' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: default-en
+- setOrientation: PORTRAIT

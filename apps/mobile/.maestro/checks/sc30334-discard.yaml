@@ -1,0 +1,36 @@
+# sc-30334: Cancel with nothing entered closes at once; with a name entered it asks Discard first.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 15000
+- tapOn:
+    id: 'createWalk.cancel'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: discard-01-empty-cancel-closed
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 15000
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'Abc'
+- hideKeyboard
+- tapOn:
+    id: 'createWalk.cancel'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: discard-02-asks
+- tapOn:
+    id: 'createWalk.keep'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: discard-03-kept
+- tapOn:
+    id: 'createWalk.cancel'
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn:
+    id: 'createWalk.discard'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: discard-04-discarded

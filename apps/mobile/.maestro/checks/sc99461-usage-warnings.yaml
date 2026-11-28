@@ -1,0 +1,26 @@
+# sc-99461: the billing.usage_warning items in the bell, in the account's language, from the top of the list to its foot.
+# Needs: an organisation owner with usage warnings in their bell (drafts and storage, 80% and 100%).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      text: '.*(has used|ha usado|a utilisé|utilizou).*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: bell-top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+- waitForAnimationToEnd
+- takeScreenshot: bell-middle
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+- waitForAnimationToEnd
+- takeScreenshot: bell-lower
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+- waitForAnimationToEnd
+- takeScreenshot: bell-foot

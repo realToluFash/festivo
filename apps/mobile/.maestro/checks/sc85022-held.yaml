@@ -1,0 +1,26 @@
+# sc-85022: the held page (paused or overdue) on Today, Events, Calendar and Settings, for the side-by-side pair. ORIENT, PAGE (accessPaused or twoFactorOverdue).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: '${PAGE}\..+'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: settings
+- assertVisible:
+    id: '${PAGE}\..+'

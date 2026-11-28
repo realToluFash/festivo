@@ -1,0 +1,53 @@
+# sc-15497: the design demo's Hosted by part edit, for side-by-side pairs: no hosts yet (then Add a host), two, six and the last host.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-draft-4?state=hosts
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '(?s).*(Hosted by|Hôtes|Anfitriones|Anfitriões).*'
+    timeout: 30000
+- takeScreenshot: demo-none
+- tapOn: '.*(Add a host|Ajouter un hôte).*'
+- waitForAnimationToEnd
+- takeScreenshot: demo-added
+- runFlow:
+    when:
+      visible: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+    commands:
+      - tapOn: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=hosts
+- waitForAnimationToEnd
+- takeScreenshot: demo-two
+- runFlow:
+    when:
+      visible: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+    commands:
+      - tapOn: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=hostsSix
+- waitForAnimationToEnd
+- takeScreenshot: demo-six
+- scrollUntilVisible:
+    element: '(6 is the most.*|6 est le nombre.*)'
+    direction: DOWN
+- takeScreenshot: demo-six-foot
+- runFlow:
+    when:
+      visible: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+    commands:
+      - tapOn: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?state=lastHost
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+    commands:
+      - tapOn: '(Discard|Descartar|Abandonner|Ignorer|Rejeitar)'
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?state=lastHost
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '(Guests can see this event.*|Les invités peuvent voir.*)'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-live-one
