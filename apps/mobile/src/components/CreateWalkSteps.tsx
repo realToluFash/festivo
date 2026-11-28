@@ -603,8 +603,7 @@ export function CountryStep({
             ? undefined
             : (_data, index) => ({
                 length: index === 0 ? headingHeight : rowHeight,
-                offset:
-                  headerHeight + (index === 0 ? 0 : headingHeight + (index - 1) * rowHeight),
+                offset: headerHeight + (index === 0 ? 0 : headingHeight + (index - 1) * rowHeight),
                 index,
               })
         }
