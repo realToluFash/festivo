@@ -235,5 +235,8 @@
     "managedNotice.body": "{organisation} gestiona las cuentas de Soirely de {domain}. A partir del {deadline}, su cuenta solo podrá ser miembro de {organisation}. Si esta cuenta es personal y no de la empresa, cambie su dirección de correo electrónico principal antes de esa fecha.",
     "managedNotice.from": "En vigor desde: {deadline}",
     "managedNotice.events": "El acceso a eventos concretos se mantiene.",
-    "managedNotice.footer": "Recibe este correo porque su dirección de correo electrónico principal es de {domain}."
+    "managedNotice.footer": "Recibe este correo porque su dirección de correo electrónico principal es de {domain}.",
+    "handover.subject": "Events handed over: {organisation}",
+    "handover.item": "- {title}",
+    "handover.footer": "You're getting this because you're a member of {organisation}."
 }

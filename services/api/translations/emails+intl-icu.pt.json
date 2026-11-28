@@ -6,5 +6,7 @@
     "verification.text": "O seu código Soirely é {code}. É válido durante {minutes, number, ::group-auto} minutos.",
     "recovery.link.expiry": "Funciona durante {minutes, number, ::group-auto} minutos, e só uma vez.",
     "password.code.expiry": "É válido durante {minutes, number, ::group-auto} minutos.",
-    "twoFactorRecovery.code.expiry": "Funciona durante {minutes, number, ::group-auto} minutos."
+    "twoFactorRecovery.code.expiry": "Funciona durante {minutes, number, ::group-auto} minutos.",
+    "handover.received": "{from}'s events in {organisation} have been handed to you. You now lead {count, plural, one {this event} other {these {count, number, ::group-auto} events}}:",
+    "handover.wentToOwner": "{from} left {organisation} without choosing who takes over {count, plural, one {the event} other {the {count, number, ::group-auto} events}} they led, so you{otherOwners, plural, =0 {} other { and {others}}} now lead {count, plural, one {it} other {them}}:"
 }

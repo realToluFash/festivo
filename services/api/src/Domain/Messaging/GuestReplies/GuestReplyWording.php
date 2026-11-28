@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\GuestReplies;
 
 use App\Domain\Messaging\GuestReplies\Model\GuestReplyTally;
+use App\Locale\ListJoiner;
 use App\Locale\SupportedLocales;
 use DateTimeImmutable;
 use IntlDateFormatter;
@@ -13,13 +14,14 @@ use Psl\Iter;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** `[en]`'s words for Guest replies (sc-4331, "English copy (l10n)"), one key per line; lists are joined by each language's own patterns (CLDR's, as `Intl.ListFormat` has them). */
+/** `[en]`'s words for Guest replies (sc-4331, "English copy (l10n)"), one key per line; lists are joined by each language's own patterns (ListJoiner). */
 final readonly class GuestReplyWording
 {
     public const int NAMES = 10;
 
     public function __construct(
         private TranslatorInterface $translator,
+        private ListJoiner $listJoiner,
     ) {
     }
 
@@ -31,7 +33,7 @@ final readonly class GuestReplyWording
             fn (string $count, array $names): string => $this->translator->trans('guestReplies.bell.' . $count, ['count' => Iter\count($names)], 'messages', $locale),
         );
 
-        return $this->joined(Vec\values($counts), 'unit', $locale);
+        return $this->listJoiner->join(Vec\values($counts), 'unit', $locale);
     }
 
     public function push(GuestReplyTally $tally, string $event, string $locale): string
@@ -47,7 +49,7 @@ final readonly class GuestReplyWording
         $shown = Vec\take($names, self::NAMES);
         $rest = Iter\count($names) - Iter\count($shown);
 
-        return $this->joined(
+        return $this->listJoiner->join(
             0 === $rest ? $shown : [...$shown, $this->translator->trans('guestReplies.email.more', ['count' => $rest], 'messages', $locale)],
             'and',
             $locale,
@@ -67,32 +69,5 @@ final readonly class GuestReplyWording
     public function line(string $key, array $parameters, string $locale): string
     {
         return $this->translator->trans($key, $parameters, 'messages', $locale);
-    }
-
-    /**
-     * CLDR's list patterns: "two" for a pair, then "start", "middle" and "end" from the left.
-     *
-     * @param list<string> $items
-     */
-    private function joined(array $items, string $style, string $locale): string
-    {
-        $count = Iter\count($items);
-        $pattern = fn (string $part, string $first, string $second): string => $this->translator->trans('guestReplies.list.' . $style . '.' . $part, ['first' => $first, 'second' => $second], 'messages', $locale);
-
-        if ($count < 2) {
-            return $items[0] ?? '';
-        }
-
-        if (2 === $count) {
-            return $pattern('two', $items[0], $items[1]);
-        }
-
-        $joined = $pattern('end', $items[$count - 2], $items[$count - 1]);
-
-        for ($index = $count - 3; $index >= 1; --$index) {
-            $joined = $pattern('middle', $items[$index], $joined);
-        }
-
-        return $pattern('start', $items[0], $joined);
     }
 }

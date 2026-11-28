@@ -27,6 +27,7 @@ enum AccountMail: string
     case OrganisationDeleted = 'organisation_deleted';
     case JoinRequest = 'join_request';
     case MemberAccess = 'member_access';
+    case Handover = 'handover';
     case DomainSuspended = 'domain_suspended';
     case OwnerClaim = 'owner_claim';
     case OrganisationExport = 'organisation_export';

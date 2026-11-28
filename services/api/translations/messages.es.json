@@ -582,5 +582,6 @@
     "timeline.open_kitchen_sheet": "Abrir la hoja de cocina",
     "validation.final_numbers_invalid": "Elija una fecha válida.",
     "validation.final_numbers_not_before_event": "La fecha no puede ser el día en que empieza el evento ni posterior. Elija una fecha anterior.",
-    "validation.final_numbers_past": "La fecha no puede estar en el pasado. Elija hoy o una fecha posterior."
+    "validation.final_numbers_past": "La fecha no puede estar en el pasado. Elija hoy o una fecha posterior.",
+    "handover.choose_recipient": "Choose who takes over their events."
 }

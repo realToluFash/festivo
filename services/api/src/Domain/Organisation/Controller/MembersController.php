@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
+use App\Domain\Organisation\Handover\WorkHandover;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationDeliveries;
 use App\Domain\Organisation\Invitations\InvitationSender;
@@ -16,6 +17,7 @@ use App\Domain\Organisation\Members\OwnershipTransfer;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\Mail\UserMailer;
+use App\Entity\Event;
 use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
@@ -87,6 +89,7 @@ final readonly class MembersController
         private UserMailer $userMailer,
         private OwnerClaimHandler $ownerClaimHandler,
         private InvitationDeliveries $invitationDeliveries,
+        private WorkHandover $workHandover,
     ) {
     }
 
@@ -209,12 +212,32 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    /** `handTo` names the membership that takes the events they lead (sc-614), and is required while there are any. */
     #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_remove', methods: ['DELETE'])]
     #[InOrganisation(Permission::MembersManage)]
-    public function remove(string $organisationId, string $membershipId): Response
+    public function remove(Request $request, string $organisationId, string $membershipId): Response
     {
         $organisation = $this->organisation($organisationId);
-        $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+        $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user(), $this->handTo($request));
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/work', name: 'orgs_members_work', methods: ['GET'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function work(string $organisationId, string $membershipId): JsonResponse
+    {
+        $membership = $this->memberActions->find($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new JsonResponse(self::workList($this->workHandover->heldBy($membership)));
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/handover', name: 'orgs_members_handover', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function handOver(Request $request, string $organisationId, string $membershipId): Response
+    {
+        $membership = $this->memberActions->find($this->organisation($organisationId), $membershipId, $this->user());
+        $this->memberActions->handOver($membership, $this->user(), $this->handTo($request));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -261,11 +284,22 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    #[Route('/api/orgs/{organisationId}/work', name: 'orgs_own_work', methods: ['GET'])]
+    #[InOrganisation(null)]
+    public function ownWork(string $organisationId): JsonResponse
+    {
+        $membership = $this->membershipRepository->findActive($this->user(), $this->organisation($organisationId)->getId())
+            ?? throw ApiException::notFound('access.not_found');
+
+        return new JsonResponse(self::workList($this->workHandover->heldBy($membership)));
+    }
+
+    /** With no `handTo`, the events the caller leads go to every other owner (sc-614). */
     #[Route('/api/orgs/{organisationId}/leave', name: 'orgs_leave', methods: ['POST'])]
     #[InOrganisation(null)]
-    public function leave(string $organisationId): Response
+    public function leave(Request $request, string $organisationId): Response
     {
-        $this->memberActions->leave($this->organisation($organisationId), $this->user());
+        $this->memberActions->leave($this->organisation($organisationId), $this->user(), $this->handTo($request));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -344,6 +378,25 @@ final readonly class MembersController
         $membership = Uuid::isValid($id) ? $this->membershipRepository->findOneBy(['id' => $id, 'organisation' => $organisation]) : null;
 
         return null !== $membership && $membership->isListedTo($decides) ? $membership : throw new ShapeRefusal('after');
+    }
+
+    private function handTo(Request $request): ?string
+    {
+        if ('' === Str\trim($request->getContent())) {
+            return null;
+        }
+
+        return Input::body($request, Type\shape(['handTo' => Type\optional(Type\nullable(Type\string()))]))['handTo'] ?? null;
+    }
+
+    /**
+     * @param list<Event> $events
+     *
+     * @return array{events: list<array{id: string, title: string}>}
+     */
+    private static function workList(array $events): array
+    {
+        return ['events' => Vec\map($events, static fn (Event $event): array => ['id' => $event->getId()->toRfc4122(), 'title' => $event->getName()])];
     }
 
     private function role(Organisation $organisation, string $roleId): Role

@@ -582,5 +582,6 @@
     "timeline.open_kitchen_sheet": "Open the kitchen sheet",
     "validation.final_numbers_invalid": "Choose a valid date.",
     "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",
-    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date."
+    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date.",
+    "handover.choose_recipient": "Choose who takes over their events."
 }
