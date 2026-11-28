@@ -195,7 +195,7 @@ export function guestReplyBy(
 
 /** The cover card's line once a guest has replied: a recorded reply names who recorded it, ahead of the Reply by it was asked by (sc-3787); null before any reply. */
 export function guestRepliedLine(
-  guest: Pick<Guest, 'repliedAt' | 'replyRecorded'>,
+  guest: Pick<Guest, 'repliedAt' | 'replyRecorded' | 'fromEmailLink'>,
   word: string,
   asked: string | null,
   timeZone: string,
@@ -212,5 +212,11 @@ export function guestRepliedLine(
       how: t(`guestList.toldInLine.${recorded.how}`),
       date,
     });
-  return asked ?? t('guestList.replied', { reply: word, date });
+  return (
+    asked ??
+    t(guest.fromEmailLink === true ? 'guestList.repliedFromEmailLink' : 'guestList.replied', {
+      reply: word,
+      date,
+    })
+  );
 }

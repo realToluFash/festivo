@@ -12,6 +12,7 @@ use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\GuestReply;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -59,6 +60,12 @@ final readonly class InvitationLinks
         $this->guestInvitations->assertInvitable($guest->getEvent());
 
         return $this->url($guest);
+    }
+
+    /** One of the invitation email's three answers (sc-1291): the guest's own link with `?answer=` and the reply's value. Opening it records nothing; the guest confirms on the page. */
+    public function answerLink(Guest $guest, GuestReply $answer): string
+    {
+        return $this->url($guest) . '?answer=' . $answer->value;
     }
 
     /** Never limited by the phase: ending a link that has leaked is always possible. The audit holds who and when, never the token. */
