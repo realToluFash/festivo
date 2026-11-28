@@ -1,4 +1,9 @@
 # sc-100878 regression (sc-40661): "cote d'ivoire" typed into a fresh country search finds CI.
+# SEARCH is the name in the account's language when it is not English, e.g. SEARCH='costa do marfim'.
+#
+#   node .qa/bin/qa-env.mjs maestro checks/sc100878-search-cote SEARCH='costa do marfim'
+#
+# No `env:` block: a default there shadows the value passed with -e.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
@@ -7,7 +12,7 @@ appId: host.exp.Exponent
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: '{{t:createOrganisation.whereTitle}}', timeout: 10000 }
 - tapOn: { id: 'createWalk.search' }
-- inputText: "cote d'ivoire"
+- inputText: '${SEARCH || "cote d''ivoire"}'
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
 - takeScreenshot: s-cote
 - assertVisible: { id: 'createWalk.country.CI' }

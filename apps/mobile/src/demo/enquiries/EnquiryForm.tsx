@@ -25,6 +25,8 @@ import {
 import { Pill } from '../../components/SettingsParts.tsx';
 import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
+import { PhoneCountryRow } from '../phoneCountryFits.tsx';
 import { Choices, CurrencySearch, useEditGap } from '../events/EventEdits.tsx';
 import { currencyRows } from '../events/EventsSample.ts';
 import {
@@ -115,6 +117,7 @@ export function EnquiryForm({
   const amountRef = useRef<TextInputInstance>(null);
   const dateRef = useRef<ViewInstance>(null);
   const scroll = useRef<ScrollViewInstance>(null);
+  const atAccessibilitySizes = useAccessibilitySizes();
   const offset = useRef(0);
   useFocusedFieldInSight(scroll, offset);
   const saved = useRef(onSaved);
@@ -292,8 +295,10 @@ export function EnquiryForm({
           />
         </Field>
         <Field label={W.phone} error={shown.phone}>
-          <View style={styles.phone}>
-            <View style={styles.country}>
+          <PhoneCountryRow
+            country={typed.country}
+            atAccessibilitySizes={atAccessibilitySizes}
+            picker={
               <CountryPicker
                 label={t('verifyPhone.countryLabel')}
                 value={typed.country}
@@ -302,28 +307,29 @@ export function EnquiryForm({
                 withCallingCode
                 testID="enquiry.form.phone.country"
               />
-            </View>
-            <TextField
-              ref={numberRef}
-              style={styles.number}
-              accessibilityLabel={W.phone}
-              {...(shown.contact == null || shown.phone != null
-                ? {}
-                : { accessibilityHint: shown.contact })}
-              value={typed.number}
-              onChangeText={(number) => change({ number })}
-              onBlur={() => {
-                setLeft((was) => ({ ...was, phone: true }));
-                leave('phone', 'contact');
-              }}
-              wrong={shown.phone != null || shown.contact != null}
-              submitting={busy}
-              keyboardType="phone-pad"
-              textContentType="telephoneNumber"
-              autoComplete="tel"
-              testID="enquiry.form.phone.number"
-            />
-          </View>
+            }
+            field={
+              <TextField
+                ref={numberRef}
+                accessibilityLabel={W.phone}
+                {...(shown.contact == null || shown.phone != null
+                  ? {}
+                  : { accessibilityHint: shown.contact })}
+                value={typed.number}
+                onChangeText={(number) => change({ number })}
+                onBlur={() => {
+                  setLeft((was) => ({ ...was, phone: true }));
+                  leave('phone', 'contact');
+                }}
+                wrong={shown.phone != null || shown.contact != null}
+                submitting={busy}
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                autoComplete="tel"
+                testID="enquiry.form.phone.number"
+              />
+            }
+          />
         </Field>
         <Same same={same('phone')} onOpen={onOpenSame} />
         <Field label={W.email} error={shown.email ?? shown.contact} help={W.contactHint}>
@@ -537,9 +543,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space5xl,
   },
-  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  country: { flexGrow: 1, flexBasis: 140 },
-  number: { flexGrow: 2, flexBasis: 180 },
   divider: {
     paddingTop: tokens.spaceXl,
     borderTopWidth: 1,

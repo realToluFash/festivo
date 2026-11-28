@@ -100,7 +100,7 @@ final readonly class MenuController
         ]));
         $details = $this->courseRules->details($body['name'], $body['servedAt'] ?? null);
         $own = Iter\contains_key($body, 'ownItems') ? $this->itemRules->ownItems($body['ownItems']) : null;
-        $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $own, $this->user(), $body['default'] ?? null, $body['confirmMove'] ?? false);
+        $this->menuEditor->changeCourse($event, $course, $details, Iter\contains_key($body, 'servedAt'), 'choose' === $body['answer'], $body['skippable'], $own, $this->user(), $body['default'] ?? null, $body['confirmMove'] ?? false);
 
         return $this->menu($event, Response::HTTP_OK, ['courseId' => $course->getId()->toRfc4122()]);
     }

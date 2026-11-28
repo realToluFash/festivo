@@ -35,6 +35,7 @@ import {
   zonedAt,
   changedRows,
   readerZoneOf,
+  type PickedPerson,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import {
@@ -83,6 +84,12 @@ import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestRecord } from './GuestRecord.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
+import {
+  ChoosePeople,
+  ContactsReview,
+  contactsPickable,
+  pickContacts,
+} from './GuestsFromContacts.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
@@ -200,7 +207,7 @@ export function EventGuests({
   withdrawAction: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { account } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const eventId = event.id;
   const manages = roleHolds(event, 'guests.manage');
   const invites = phase != null && eventAllows(phase, 'invite');
@@ -241,6 +248,8 @@ export function EventGuests({
   const [form, setForm] = useState<GuestFormMode | null>(null);
   const [round, setRound] = useState(0);
   const [done, setDone] = useState<Done>(null);
+  const [contacts, setContacts] = useState<Contacts>(null);
+  const [contactsRefused, setContactsRefused] = useState(false);
   const [notice, setNotice] = useState<GuestNotice>(null);
   const [marking, setMarking] = useState<{ round: number; sending: boolean; refusal: MarkRefusal }>(
     { round: 0, sending: false, refusal: null },
@@ -966,7 +975,7 @@ export function EventGuests({
       {form != null && (
         <GuestForm
           key={`form.${round}`}
-          open
+          open={contacts == null}
           mode={form}
           eventId={eventId}
           startCountry={account?.organisationCountry ?? ''}
@@ -981,6 +990,20 @@ export function EventGuests({
           }
           onGroupsStale={() => readList(watch)}
           opener={opener}
+          fromContacts={
+            contactsPickable
+              ? {
+                  refused: contactsRefused,
+                  onPress: () =>
+                    void pickContacts().then((outcome) => {
+                      if (outcome.kind !== 'choose') setContactsRefused(outcome.refused);
+                      if (outcome.kind === 'choose') setContacts({ step: 'choose' });
+                      if (outcome.kind === 'picked')
+                        setContacts({ step: 'review', people: outcome.people });
+                    }),
+                }
+              : null
+          }
           onClose={() => setForm(null)}
           onSaved={({ guest, tagged }) => {
             setForm(null);
@@ -994,6 +1017,39 @@ export function EventGuests({
             }
             readList(watch);
           }}
+        />
+      )}
+      {form != null && contacts?.step === 'choose' && (
+        <ChoosePeople
+          open
+          opener={opener}
+          onClose={() => setContacts(null)}
+          onReview={(people) => setContacts({ step: 'review', people })}
+        />
+      )}
+      {form != null && contacts?.step === 'review' && load.kind === 'loaded' && (
+        <ContactsReview
+          open
+          people={contacts.people}
+          eventId={eventId}
+          eventName={event.name}
+          organisationCountry={account?.organisationCountry ?? ''}
+          listedNames={load.list.guests.flatMap((guest) => [
+            guest.fullName,
+            ...guest.companions.flatMap((one) => (one.fullName == null ? [] : [one.fullName])),
+          ])}
+          billing={organisation != null && roleHolds(organisation, 'billing.manage')}
+          opener={opener}
+          onClose={() => setContacts(null)}
+          onAdded={(count) => {
+            setContacts(null);
+            setForm(null);
+            setDone(null);
+            tell(t('fromContacts.added', { count }));
+            setChoice('all');
+            readList(watch);
+          }}
+          onPickAgain={() => setContacts(null)}
         />
       )}
     </>
@@ -1466,6 +1522,9 @@ function PhaseLine({
 
 /** The one done line over the list: a guest just added, or sc-54450's reply just recorded from a copied message. */
 type Done = { kind: 'added'; name: string } | { kind: 'recorded' } | null;
+
+/** sc-7579: the people picked from contacts, Android's Choose people first when it lists them. */
+type Contacts = { step: 'choose' } | { step: 'review'; people: PickedPerson[] } | null;
 
 function DoneLine({ words, testID = 'guests.added' }: { words: string; testID?: string }) {
   useReadOut(words);

@@ -46,6 +46,11 @@ final class ScriptedHardLimits implements HardLimitsInterface
         }
     }
 
+    public function peopleRoom(Event $event): array
+    {
+        return $this->hardLimits->peopleRoom($event);
+    }
+
     public function requireRoomForCopy(Organisation $organisation, int $people): void
     {
         if ($this->consult(__FUNCTION__)) {

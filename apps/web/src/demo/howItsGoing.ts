@@ -2,15 +2,19 @@
 
 import {
   type RunOut,
+  answer,
   askBulk,
+  askOne,
   chooseFor,
   confirmBulk,
+  lateArrival,
   markAvailable,
   offlineLine,
   openChoose,
   openPanel,
   runOutSample,
   SMALL_CHOPS,
+  waiting,
 } from './runOut.ts';
 
 export type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
@@ -549,6 +553,13 @@ export const SERVICE_STATES = [
   'runOutNoManage',
   'runOutOffline',
   'runOutEarlier',
+  'runOutAskConfirm',
+  'runOutAsking',
+  'runOutAskAnswered',
+  'runOutAskStands',
+  'runOutAskLater',
+  'runOutServeWhileAsked',
+  'runOutAskOffline',
 ] as const;
 
 export type ServiceStateName = (typeof SERVICE_STATES)[number];
@@ -590,6 +601,19 @@ export const SERVICE_STATE_WHAT: Record<ServiceStateName, string> = {
   runOutOffline: 'Run out with no connection: Choose pressed, refused, nothing kept',
   runOutEarlier:
     'Run out: Starter · Small chops run out at the Fryer too, its line after the Fryer’s Plantain',
+  runOutAskConfirm:
+    'Asked at the table (sc-59426): Ask each guest pressed, “Ask 9 guests at their tables?”',
+  runOutAsking:
+    'Asked at the table: 9 rows read Asking at the table, “0 of 9 guests have chosen at the table”',
+  runOutAskAnswered:
+    'Asked at the table: Tunde Bakare answered Beef, 1 of 9 chosen, he is in Already changed',
+  runOutAskStands:
+    'Asked at the table: Ask each guest stands, Bola Ige arrives late and is asked, no alert raised',
+  runOutAskLater:
+    'Asked at the table: everyone asked one by one, Ask each guest confirms for guests still to come',
+  runOutServeWhileAsked:
+    'Asked at the table: two guests asked, Serve Beef counts 2, and asked guests stay asked',
+  runOutAskOffline: 'Asked at the table with no connection: Ask Tunde Bakare refused, nothing kept',
 };
 
 export type OpeningView = 'going' | 'plan';
@@ -629,6 +653,12 @@ export function grilledFishReady(summary: Summary): Summary {
   };
 }
 
+const ASK = { kind: 'ask' } as const;
+
+function askEach(ro: RunOut): RunOut {
+  return confirmBulk(askBulk(ro, ASK, LEAD_ACCESS), LEAD_ACCESS);
+}
+
 function runOutSeed(name: ServiceStateName): RunOut | null {
   const base = runOutSample();
   const open = (ro: RunOut) => openPanel(ro, 'choose', LEAD_ACCESS);
@@ -664,6 +694,25 @@ function runOutSeed(name: ServiceStateName): RunOut | null {
       return settle(markAvailable(serveBeef(open(base)), LEAD_ACCESS));
     case 'runOutOffline':
       return { ...base, refused: offlineLine('choose') };
+    case 'runOutAskConfirm':
+      return askBulk(open(base), ASK, LEAD_ACCESS);
+    case 'runOutAsking':
+      return settle(askEach(open(base)));
+    case 'runOutAskAnswered':
+      return settle(answer(askEach(open(base)), 'tb', 'Beef', LEAD_ACCESS));
+    case 'runOutAskStands':
+      return settle(lateArrival(askEach(open(base))));
+    case 'runOutAskLater': {
+      const one = open(base);
+      const all = waiting(one).reduce((ro, x) => askOne(ro, x.id, LEAD_ACCESS), one);
+      return settle(askBulk(all, ASK, LEAD_ACCESS));
+    }
+    case 'runOutServeWhileAsked': {
+      const two = askOne(askOne(open(base), 'tb', LEAD_ACCESS), 'ya', LEAD_ACCESS);
+      return settle(askBulk(two, { kind: 'serve', item: 'Beef' }, LEAD_ACCESS));
+    }
+    case 'runOutAskOffline':
+      return askOne(open(base), 'tb', { online: false, manage: true });
     default:
       return null;
   }
@@ -697,6 +746,7 @@ export function seed(name: ServiceStateName): ServiceState {
     case 'runOutNoManage':
       return { ...s, manage: false };
     case 'runOutOffline':
+    case 'runOutAskOffline':
       return { ...s, online: false };
     default:
       return s;

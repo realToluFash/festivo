@@ -34,7 +34,7 @@ import {
   waitersOn,
 } from './howItsGoing.ts';
 import './howItsGoing.css';
-import { RunOutPanel } from './RunOutPanel.tsx';
+import { AskCount, RunOutPanel } from './RunOutPanel.tsx';
 import { RunOutRoom } from './RunOutRoom.tsx';
 import {
   ITEM,
@@ -752,6 +752,7 @@ function AlertRow({
       <div className="hig-alert-words">
         <strong>{a.title}</strong>
         <span className="hig-meta">{a.sub}</span>
+        {a.kind === 'runOut' && state.runOut != null && <AskCount ro={state.runOut} />}
         {a.flag !== '' && (
           <span className="hig-flag">
             <Glyph paths={FLAG_GLYPH} size={12} />

@@ -99,6 +99,12 @@ class MenuCourse
         return $this->servedAt;
     }
 
+    /** Written only by the item it is linked to (sc-3898): the course's served time is its item's start. */
+    public function setServedAt(?string $servedAt): void
+    {
+        $this->servedAt = $servedAt;
+    }
+
     public function describe(string $name, ?string $servedAt): void
     {
         $this->name = $name;

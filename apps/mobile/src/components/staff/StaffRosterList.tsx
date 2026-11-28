@@ -1,6 +1,6 @@
 import { type StaffEntry, realtimeTopic } from '@soirely/api-client';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -10,6 +10,7 @@ import { dateLocale } from '../../i18n/index.ts';
 import { BRIEFING_WORDS, noteOf } from '../../kit/staffBriefing.ts';
 import { noticeClock, noticeLines } from '@soirely/domain';
 import { linkWord, rowLine } from '../../kit/staffRoster.ts';
+import { briefingDock } from '../../layout/briefingDock.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SecondaryButton } from '../Buttons.tsx';
@@ -21,9 +22,10 @@ import { HeadCount, Row, RowList, SectionHead } from '../SummaryRows.tsx';
 import { Text } from '../Text.tsx';
 import { moveScreenReaderFocus } from '../screenReaderFocus.ts';
 import { BriefWord, BriefingCard } from './BriefingCard.tsx';
-import { BriefingPanel, type BriefingSide, PANEL_WIDTH } from './BriefingPanel.tsx';
+import { BriefingPanel, type BriefingSide } from './BriefingPanel.tsx';
 import { NoticeLines, ReminderCard } from './StaffNotices.tsx';
 import { LinkMark } from './StaffParts.tsx';
+import { openedFrom } from './openedEntry.ts';
 
 /** Under the AC's ten seconds from a change on the web, while no line to the hub is open. */
 const READ_AGAIN_MS = 5_000;
@@ -47,19 +49,22 @@ export function StaffRosterList({
   when,
   manages,
   finished = false,
+  entries,
 }: {
   eventId: string;
   /** The event's own days and zone, which every time on a notice line is read in. */
   when: { startsAt: string; endsAt: string; timeZone: string };
   manages: boolean;
   finished?: boolean;
+  /** Hours and Who's here: after the briefing card where it shows, and above the Roster heading in every state. */
+  entries: ReactNode;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-  const { kind } = useLayout();
+  const { kind, height } = useLayout();
   /** The briefing is the tablet's (sc-95654); the phone's Staff shows the roster alone. */
   const briefs = kind !== 'phone';
-  const docked = kind === 'tabletLandscape';
+  const dock = briefingDock(kind, height);
   const clock = noticeClock(when, locale);
   const acts = manages && !finished;
   const [side, setSide] = useState<BriefingSide | null>(null);
@@ -118,6 +123,7 @@ export function StaffRosterList({
 
   function open(entry: StaffEntry): void {
     opened.current = entry.id;
+    openedFrom(eventId, entry);
     router.push({ pathname: '/events/[id]/staff-link', params: { id: eventId, person: entry.id } });
   }
 
@@ -148,7 +154,12 @@ export function StaffRosterList({
   else if (seen.kind === 'failed')
     body = (
       <View style={styles.failed} testID="staff.failed">
-        <Notice tone="broken" mark="alert" body={t('staffRoster.failed')} answer={answer} />
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('staffRoster.failed')}
+          answer={answer}
+        />
         <SecondaryButton
           label={t('staffRoster.tryAgain')}
           onPress={() => {
@@ -199,6 +210,17 @@ export function StaffRosterList({
                   line={line}
                   below={
                     <>
+                      <View style={styles.status}>
+                        <LinkMark link={entry.link} side={14} />
+                        <Text
+                          size={14}
+                          weight="semibold"
+                          accessible={false}
+                          style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
+                        >
+                          {word}
+                        </Text>
+                      </View>
                       {briefs && (
                         <View style={styles.status} testID={`staff.briefing.${entry.id}`}>
                           <BriefWord briefing={entry.briefing} />
@@ -215,17 +237,6 @@ export function StaffRosterList({
                           lines={noticeLines(entry, finished, clock, t)}
                         />
                       )}
-                      <View style={styles.status}>
-                        <LinkMark link={entry.link} side={14} />
-                        <Text
-                          size={14}
-                          weight="semibold"
-                          accessible={false}
-                          style={[styles.shrink, entry.link === 'no_mobile' && styles.attention]}
-                        >
-                          {word}
-                        </Text>
-                      </View>
                     </>
                   }
                   opens
@@ -235,9 +246,9 @@ export function StaffRosterList({
                     line,
                     status: briefs
                       ? [
+                          word,
                           t(BRIEFING_WORDS[entry.briefing]),
                           ...noticeLines(entry, finished, clock, t).map((one) => one.words),
-                          word,
                         ].join('. ')
                       : word,
                   })}
@@ -251,10 +262,7 @@ export function StaffRosterList({
     );
 
   const roster = (
-    <View
-      style={[styles.head, docked && side != null && styles.rosterBeside]}
-      testID="staff.roster"
-    >
+    <View style={styles.head} testID="staff.roster">
       <View
         ref={head}
         accessible
@@ -273,7 +281,13 @@ export function StaffRosterList({
     </View>
   );
 
-  if (!briefs || seen.kind !== 'shown') return roster;
+  if (!briefs || seen.kind !== 'shown')
+    return (
+      <View style={styles.page}>
+        {entries}
+        {roster}
+      </View>
+    );
 
   const reminder = <ReminderCard eventId={eventId} manages={manages} roster={seen.staff} />;
   const card = (
@@ -309,29 +323,15 @@ export function StaffRosterList({
         onEntry={took}
         onRules={(rules) => setSeen((was) => (was.kind === 'shown' ? { ...was, rules } : was))}
         onClose={closeSide}
+        docked={dock.fills}
       />
     );
 
-  if (docked)
-    return (
-      <View style={styles.beside}>
-        <View style={styles.main}>
-          {card}
-          {reminder}
-          {roster}
-        </View>
-        {panel != null && (
-          <View style={styles.dock} testID="briefing.dock">
-            {panel}
-          </View>
-        )}
-      </View>
-    );
-
   return (
-    <View style={styles.head}>
+    <View style={styles.page}>
       {card}
       {reminder}
+      {entries}
       {roster}
       <Sheet
         open={side != null}
@@ -344,27 +344,26 @@ export function StaffRosterList({
               ? previewOpener
               : rulesOpener
         }
+        docked={dock.docked}
         testID="briefing.dialog"
       >
-        <View style={styles.dialog}>{panel}</View>
+        <View
+          style={[
+            styles.dialog,
+            dock.fills ? styles.dialogDocked : { maxHeight: dock.maxHeight ?? undefined },
+          ]}
+        >
+          {panel}
+        </View>
       </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  rosterBeside: { flex: 1 },
-  beside: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
-  main: { flex: 1, minWidth: 0, gap: tokens.spaceLg },
-  dock: {
-    width: PANEL_WIDTH,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-  },
-  dialog: { flexShrink: 1, maxHeight: 640, padding: tokens.space3xl },
+  page: { gap: tokens.spaceXl },
+  dialog: { padding: tokens.space3xl, flexShrink: 1 },
+  dialogDocked: { flex: 1 },
   head: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },

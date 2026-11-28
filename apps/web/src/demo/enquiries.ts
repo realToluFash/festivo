@@ -70,6 +70,17 @@ export interface Enquiry {
   lost: { reason: LostReason; line: string | null } | null;
   /** Newest first. Never searched (sc-42749, Decided 12 Nov). */
   notesList: Note[];
+  /** Set once the 12-month clock erased the client's details (sc-31235): only what is kept stays. */
+  erased?: Erased;
+}
+
+export interface Erased {
+  on: string;
+  createdAt: string;
+  closedAt: string;
+  /** The event's month, YYYY-MM: the day is erased with the rest. */
+  month: string | null;
+  reason: LostReason | null;
 }
 
 /** The sample's clock: Wednesday 18 Nov 2026, 10:00 in London. */
@@ -356,6 +367,15 @@ export const ENQUIRY_STATES = [
   'refreshing',
   'mine',
   'memberList',
+  'lost-with-erased',
+  'erased-row-no-type',
+  'erased-row-no-date',
+  'erased-row-bare',
+  'warning-row',
+  'open-consultation-ahead',
+  'deleted',
+  'deleted-assigned-to-me',
+  'deleted-from-link',
 ] as const;
 export type EnquiryState = (typeof ENQUIRY_STATES)[number];
 
@@ -374,6 +394,7 @@ export interface Start {
   loading: boolean;
   refreshing: boolean;
   enquiries: readonly Enquiry[];
+  told: string | null;
 }
 
 export function startOf(state: EnquiryState): Start {
@@ -388,6 +409,7 @@ export function startOf(state: EnquiryState): Start {
     loading: false,
     refreshing: false,
     enquiries: ENQUIRIES,
+    told: null,
   };
 
   switch (state) {

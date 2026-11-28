@@ -5,6 +5,7 @@ import { dateLocale } from '../../i18n/index.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { InsideEvent } from '../doorCode/Inside.tsx';
 import { EventScreen } from '../events/EventPage.tsx';
+import { OfflineBand } from '../events/EventsList.tsx';
 import { EventsShell } from '../events/Route.tsx';
 import { floorOverviewOf, floorWayInStateOf } from '../floor/floorWayInBoards.ts';
 import { nightOf, rowLineOf } from '../myNight/myNightModel.ts';
@@ -110,6 +111,7 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
   const [at, setAt] = useState<'overview' | 'people'>('overview');
   const night = nightOf(shown.night);
   const rows = useRows(shown);
+  const offline = shown.offline;
 
   return (
     <InsideEvent
@@ -127,6 +129,14 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
         job: shown.rostered ? night.job : null,
       }}
       {...rows}
+      {...(offline != null && {
+        band: (
+          <OfflineBand
+            at={offline.at}
+            onRetry={() => router.setParams({ state: offline.answered })}
+          />
+        ),
+      })}
       onAt={setAt}
       onSignOut={goBack}
       onAccount={() => router.push('/demo/settings/account?as=noOrg')}

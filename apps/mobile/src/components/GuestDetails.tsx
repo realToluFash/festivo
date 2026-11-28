@@ -406,7 +406,12 @@ export function GuestDetails({
                     date: replyDate(guest.repliedAt, timeZone, locale),
                   })
                 : (after.asked ??
-                  t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) }))
+                  t(
+                    guest.fromEmailLink === true
+                      ? 'guestList.repliedOnFromEmailLink'
+                      : 'guestList.repliedOn',
+                    { date: replyDate(guest.repliedAt, timeZone, locale) },
+                  ))
             }
             lead={<MarkSlot kind={markOf(shown)} />}
             testID="guest.reply"

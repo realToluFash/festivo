@@ -1,0 +1,29 @@
+# sc-94028: on the iPad at the device's text size (set outside the flow), the bell's empty panel opened from Today, upright (top and foot), then on its side (top and scrolled to its foot). Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica(tions|ciones|ções)'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- takeScreenshot: up-early
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- tapOn: 'Notifica(tions|ciones|ções)'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side
+- swipe: { start: '85%, 80%', end: '85%, 35%', duration: 600 }
+- swipe: { start: '85%, 80%', end: '85%, 35%', duration: 600 }
+- swipe: { start: '85%, 80%', end: '85%, 35%', duration: 600 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: side-foot
+- setOrientation: PORTRAIT

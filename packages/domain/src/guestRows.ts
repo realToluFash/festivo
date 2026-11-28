@@ -145,7 +145,7 @@ export function rowWords(
       shown.invitation ??
       (guest.repliedAt == null
         ? word
-        : t('guestList.replied', {
+        : t(guest.fromEmailLink === true ? 'guestList.repliedFromEmailLink' : 'guestList.replied', {
             reply: word,
             date: replyDate(guest.repliedAt, timeZone, locale),
           }));

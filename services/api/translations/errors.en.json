@@ -53,6 +53,7 @@
     "dish_in_use": "An event uses this dish, so it cannot be deleted. Archive it instead.",
     "menu_course_limit": "A menu can have at most {max} courses.",
     "menu_course_picked": "Guests have picked from this course.",
+    "menu_course_linked": "This course is linked to a schedule item, so its served time is the item’s start. Change the item’s time on the Schedule page.",
     "menu_dish_on_course": "This dish is already on this course.",
     "menu_same_one_dish": "“Everyone gets the same” needs exactly one dish.",
     "variant_limit": "A dish can have at most {max} variants.",

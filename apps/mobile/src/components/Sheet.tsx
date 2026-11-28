@@ -47,6 +47,7 @@ import { noteOpenSheet } from '../openSheets.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
+import { pickerTookBack } from './earlyBack.ts';
 import { useKeyboardTop, useKeysUp } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -145,6 +146,9 @@ function SheetFrame({
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => (open ? noteOpenSheet(() => closeRef.current()) : undefined), [open]);
+  const back = () => {
+    if (!pickerTookBack()) close();
+  };
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
@@ -197,7 +201,7 @@ function SheetFrame({
       // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={close}
+      onRequestClose={back}
       onShow={() => setOnScreen(true)}
       onDismiss={gone}
     >
@@ -561,7 +565,7 @@ const StripHeld = createContext(false);
 
 const ScrolledAway = createContext<(scrolled: boolean) => void>(() => undefined);
 
-/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in, so a drag down there while scrolled takes the content back to its top (sc-95217). */
+/** A sheet's scrolling content. A press on a control acts with the keyboard up, as on a screen, and a press on empty space still closes it (sc-104480). It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in, so a drag down there while scrolled takes the content back to its top (sc-95217). */
 export function SheetScrollView({
   holdsHeading = false,
   ...props
@@ -581,6 +585,7 @@ export function SheetScrollView({
 
   const scroll = (
     <ScrollView
+      keyboardShouldPersistTaps="handled"
       {...props}
       ref={scrollRef}
       scrollEnabled={!held && props.scrollEnabled !== false}

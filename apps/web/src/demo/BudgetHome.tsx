@@ -127,7 +127,7 @@ import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
 import { typedAmount } from './quotes.ts';
 import { SaveTemplateDialog } from './Templates.tsx';
-import { type Category } from './vendors.ts';
+import { type Category, LONGEST_EVENT_NAME, ONE_WORD_EVENT_NAME } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 import './budgetHome.css';
 
@@ -2217,6 +2217,11 @@ interface DueItem {
 
 const GALA = { id: 'evt-gala-4', name: 'Gala Fundación Lucía', currency: 'EUR' } as const;
 const REMINDER_SENT = '2026-11-01';
+const SETTLED_SEVERAL: readonly string[] = [
+  'due_done_several',
+  'due_done_long',
+  'due_done_one_word',
+];
 const COLLEAGUE = 'Julien Moreau';
 
 const DUE_REFUSED: Record<DueRefusal, string> = {
@@ -2227,6 +2232,12 @@ const DUE_REFUSED: Record<DueRefusal, string> = {
 
 /** sc-1331's reminders: the wedding's two payments, one since removed, and the gala's in euros. */
 function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
+  const named =
+    first === 'due_done_long'
+      ? LONGEST_EVENT_NAME
+      : first === 'due_done_one_word'
+        ? ONE_WORD_EVENT_NAME
+        : event.name;
   const wedding = ['p6', 'p7'].flatMap((id) => {
     const payment = PAYMENTS.find((one) => one.id === id);
     return payment == null
@@ -2238,7 +2249,7 @@ function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
             what: payment.what,
             amount: payment.amount,
             dueOn: payment.dueOn,
-            event: event.name,
+            event: named,
             currency: CURRENCY,
           },
         ];
@@ -2256,7 +2267,7 @@ function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
         currency: CURRENCY,
       },
     ];
-  if (first === 'due_several' || first === 'due_done_several')
+  if (first === 'due_several' || SETTLED_SEVERAL.includes(first))
     return [
       ...wedding,
       {
@@ -2279,7 +2290,7 @@ function dueStartOf(first: string, items: readonly DueItem[]): Record<string, Du
   if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled', p9: 'gone' };
   if (first === 'due_refused') return { p6: 'owed', p7: 'cancelled' };
   if (first === 'due_refused_paid') return { p6: 'paidElsewhere', p7: 'owed' };
-  if (first === 'due_done' || first === 'due_done_several') return all('paidElsewhere');
+  if (first === 'due_done' || SETTLED_SEVERAL.includes(first)) return all('paidElsewhere');
 
   return all('owed');
 }
@@ -2460,7 +2471,7 @@ function DueNowDialog({
         events.map((name) => (
           <Link
             key={name}
-            className="desk-text"
+            className="desk-text is-wraps"
             to={
               name === GALA.name ? `/demo/events/${GALA.id}` : budgetAt(undefined, { view: 'due' })
             }

@@ -2833,6 +2833,27 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
   });
 
+  it('names the email link a reply came from, after its date (sc-1291)', async () => {
+    await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () =>
+        tagged(
+          {
+            ...BISI_DETAILS,
+            reply: 'notComing',
+            repliedAt: '2026-11-13T10:00:00+01:00',
+            replySource: 'emailLink',
+            invitation: { at: '2026-11-12T10:00:00+01:00', how: 'email', by: null },
+          },
+          '"1"',
+        ),
+    });
+
+    expect(
+      await screen.findByText('Not coming · replied Nov 13 · from the email link'),
+    ).toBeDefined();
+    expect(screen.getByText('replied Nov 13 · from the email link')).toBeDefined();
+  });
+
   it('records the reply of a guest nobody invited, which invites them (sc-52829)', async () => {
     const REPLIED = {
       ...BISI_DETAILS,

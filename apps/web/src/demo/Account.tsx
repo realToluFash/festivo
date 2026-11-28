@@ -40,9 +40,9 @@ import {
   AddPhoneDialog,
   NameDialog,
   ProveDialog,
-  VerifyDialog,
   ZoneDialog,
 } from '../components/AccountDialogs.tsx';
+import { VerifyPasteDialog } from './AccountVerifyPaste.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
@@ -329,7 +329,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
         />
       )}
       {dialog?.kind === 'verify' && target != null && (
-        <VerifyDialog
+        <VerifyPasteDialog
           kind={target.kind}
           source={sampleCodeSource(dialog)}
           start={dialog}

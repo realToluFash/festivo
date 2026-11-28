@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { forgetBudget } from './quotes.ts';
+import { LONGEST_EVENT_NAME, ONE_WORD_EVENT_NAME } from './vendors.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -339,6 +340,27 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       expect(
         within(dialog).getByRole('link', { name: 'Everything due on Gala Fundación Lucía' }),
       ).toBeTruthy();
+    },
+  );
+
+  it.each([
+    ['due_done_several', 'Adaeze & Tunde’s wedding'],
+    ['due_done_long', LONGEST_EVENT_NAME],
+    ['due_done_one_word', ONE_WORD_EVENT_NAME],
+  ])(
+    'settles %s with each event’s link wrapping whole, every word in the link (sc-103479)',
+    SLOW,
+    async (state, name) => {
+      await open(at(state));
+      const dialog = await screen.findByRole('dialog', {}, SLOW);
+      const links = within(dialog).getAllByRole('link');
+
+      expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+        [`Everything due on ${name}`, '/demo/events/evt-wed-4?area=budget&view=due'],
+        ['Everything due on Gala Fundación Lucía', '/demo/events/evt-gala-4'],
+      ]);
+      expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+      expect(links.every((one) => one.childElementCount === 0)).toBe(true);
     },
   );
 

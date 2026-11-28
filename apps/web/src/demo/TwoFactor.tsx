@@ -21,6 +21,8 @@ import {
   timeOfDay,
   twoFactorAt,
 } from './rules.ts';
+import { PasteCode } from './PasteCode.tsx';
+import { usePasteCode } from './usePasteCode.ts';
 
 const PHONE = fullNumber(SAMPLE.number, SAMPLE.country);
 const ASKS_A_DAY = 3;
@@ -486,6 +488,10 @@ function BothCodes({ state }: { state: string }) {
   const [busy, after] = useBusy();
   const emailField = useRef<HTMLInputElement>(null);
   const phoneField = useRef<HTMLInputElement>(null);
+  const paste = usePasteCode(phoneField, (pasted) => {
+    setPhoneCode(pasted);
+    setLines(({ email }) => (email == null ? {} : { email }));
+  });
   const from = texted ? 'the text' : 'WhatsApp';
 
   useEffect(() => {
@@ -633,9 +639,13 @@ function BothCodes({ state }: { state: string }) {
                   field={phoneField}
                   value={phoneCode}
                   busy={busy}
-                  onChange={setPhoneCode}
+                  onChange={(typed) => {
+                    setPhoneCode(typed);
+                    paste.typed();
+                  }}
                 />
               )}
+              {!emailOnly && <PasteCode id="phone-code-paste" paste={paste} />}
             </div>
             <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
               {busy ? 'Asking…' : 'Ask to get back in'}

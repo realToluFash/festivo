@@ -34,4 +34,5 @@ export const BAN_GLYPH = ['M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0', 'm4.9 4.9 
 export const ARROW_GLYPH = ['M5 12h14', 'm13 6 6 6-6 6'];
 export const CHECK_GLYPH = ['M20 6 9 17l-5-5'];
 export const CLOSE_GLYPH = ['M18 6 6 18', 'm6 6 12 12'];
+export const BUBBLE_GLYPH = ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'];
 export const CHEVRON_GLYPH = ['m9 18 6-6-6-6'];

@@ -291,6 +291,8 @@ export function CapsHead({ title, right }: { title: string; right?: ReactNode })
 
 /** Not live: amber with a ring and the time as of; the app's strip has no action (sc-93). */
 export function Strip({ words }: { words: string }) {
+  useReadOut(words);
+
   return (
     <View style={styles.strip}>
       <View style={styles.stripRing} {...hidden} />
@@ -313,7 +315,18 @@ export function PlanLine({ text, action }: { text: string; action?: ReactNode })
   );
 }
 
-export function InfoLine({ text, glyph = 'info' }: { text: string; glyph?: GlyphName }) {
+/** `status`: a line that appears as the connection changes, read out politely as it does (WCAG 4.1.3). */
+export function InfoLine({
+  text,
+  glyph = 'info',
+  status = false,
+}: {
+  text: string;
+  glyph?: GlyphName;
+  status?: boolean;
+}) {
+  useReadOut(status ? text : null);
+
   return (
     <View style={styles.info}>
       <View style={styles.infoMark} {...hidden}>
