@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { TOP_ROW, bellStartOf, fixedAbove, frameSides, listRoom } from './bellRules.ts';
+import {
+  TOP_ROW,
+  bellStartOf,
+  firstItemTop,
+  fixedAbove,
+  frameSides,
+  listRoom,
+} from './bellRules.ts';
 
 describe('Notifications on a phone on its side, in the B frame (sc-62023)', () => {
   it('reads its state from the route', () => {
@@ -12,6 +19,11 @@ describe('Notifications on a phone on its side, in the B frame (sc-62023)', () =
     expect(TOP_ROW).toBe(48);
     expect(fixedAbove({ top: 24 })).toBe(72);
     expect(fixedAbove({ top: 0 })).toBe(48);
+  });
+
+  it('scrolls to the first item, past the push ask when it shows', () => {
+    expect(firstItemTop({ y: 50, height: 700 }, 700)).toBe(50);
+    expect(firstItemTop({ y: 50, height: 836 }, 700)).toBe(186);
   });
 
   it('gives the Android phone on its side at least half its height, with either navigation', () => {

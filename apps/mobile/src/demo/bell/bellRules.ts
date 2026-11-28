@@ -29,6 +29,11 @@ export function fixedAbove(insets: { top: number }): number {
   return insets.top + TOP_ROW;
 }
 
+/** Where the first item's top sits in the page: the body's top, past the push ask, which the body measured once without it and once with it. */
+export function firstItemTop(body: { y: number; height: number }, withoutAsk: number): number {
+  return body.y + body.height - withoutAsk;
+}
+
 export interface ListRoom {
   /** From the foot of what stays above the list to the foot of the screen's safe area, as the AC measures it; the B frame has no tab bar. */
   list: number;

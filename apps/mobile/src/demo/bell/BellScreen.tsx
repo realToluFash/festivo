@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,14 @@ import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { openEvent } from '../events/openEvent.ts';
 import { openedOver } from '../events/opener.ts';
-import { type BellStart, TOP_ROW, fixedAbove, frameSides, listRoom } from './bellRules.ts';
+import {
+  type BellStart,
+  TOP_ROW,
+  firstItemTop,
+  fixedAbove,
+  frameSides,
+  listRoom,
+} from './bellRules.ts';
 
 interface Item {
   id: string;
@@ -104,22 +111,16 @@ export function BellScreen({ start }: { start: BellStart }) {
   const frame = useWindowFrame();
   const onSide = frame.width > frame.height;
   const [items, setItems] = useState(ITEMS);
-  const [asking, setAsking] = useState(start.ask);
+  const [asking, setAsking] = useState(start.ask && start.at === 'top');
   const [menu, setMenu] = useState<string | null>(null);
   const [mutedEvents, setMutedEvents] = useState<ReadonlySet<string>>(new Set());
   const [told, setTold] = useState<string | null>(null);
-  const [titleHeight, setTitleHeight] = useState<number | null>(null);
+  const withoutAsk = useRef<number | null>(null);
   const page = useRef<ScrollViewInstance>(null);
   const scrolledOnce = useRef(false);
   const unread = items.filter((item) => !item.read).length;
   const sides = frameSides(insets);
   const room = listRoom(frame.height, fixedAbove(insets), insets.bottom);
-
-  useEffect(() => {
-    if (start.at !== 'scrolled' || titleHeight == null || scrolledOnce.current) return;
-    scrolledOnce.current = true;
-    page.current?.scrollTo({ y: titleHeight, animated: false });
-  }, [start.at, titleHeight]);
 
   if (kind !== 'phone')
     return (
@@ -191,33 +192,47 @@ export function BellScreen({ start }: { start: BellStart }) {
         ]}
         testID="demo.bell.list"
       >
-        <View onLayout={(event) => setTitleHeight(event.nativeEvent.layout.height)}>
-          <Text
-            size={PHONE_TITLE}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.pageTitle}
-          >
-            {t('notifications.heading')}
-          </Text>
-        </View>
-        <BellBody
-          ask={asking ? { onAnswer: () => setAsking(false) } : null}
-          feed="loaded"
-          rows={rows}
-          menu={menu}
-          onMenu={setMenu}
-          onPick={(row) => {
-            const item = items.find((one) => one.id === row.id);
-            setItems((now) => now.map((one) => (one.id === row.id ? { ...one, read: true } : one)));
-            if (item?.opens != null) openEvent(item.opens, openedOver('notifications'));
-            else setTold(`${row.title}: opens its page, as on main.`);
+        <Text size={PHONE_TITLE} weight="bold" accessibilityRole="header" style={styles.pageTitle}>
+          {t('notifications.heading')}
+        </Text>
+        <View
+          onLayout={(event) => {
+            if (start.at !== 'scrolled' || scrolledOnce.current) return;
+            const { y, height } = event.nativeEvent.layout;
+            if (withoutAsk.current == null) {
+              withoutAsk.current = height;
+              if (start.ask) {
+                setAsking(true);
+                return;
+              }
+            }
+            scrolledOnce.current = true;
+            page.current?.scrollTo({
+              y: firstItemTop({ y, height }, withoutAsk.current),
+              animated: false,
+            });
           }}
-          onTryAgain={() => {}}
-          more={null}
-          onSettings={() => setTold('Notification settings opens, as on main.')}
-          testID="demo.bell"
-        />
+        >
+          <BellBody
+            ask={asking ? { onAnswer: () => setAsking(false) } : null}
+            feed="loaded"
+            rows={rows}
+            menu={menu}
+            onMenu={setMenu}
+            onPick={(row) => {
+              const item = items.find((one) => one.id === row.id);
+              setItems((now) =>
+                now.map((one) => (one.id === row.id ? { ...one, read: true } : one)),
+              );
+              if (item?.opens != null) openEvent(item.opens, openedOver('notifications'));
+              else setTold(`${row.title}: opens its page, as on main.`);
+            }}
+            onTryAgain={() => {}}
+            more={null}
+            onSettings={() => setTold('Notification settings opens, as on main.')}
+            testID="demo.bell"
+          />
+        </View>
         <View style={styles.foot}>
           <DemoOnly
             title={`${onSide ? 'On its side' : 'Upright'}, the list has ${Math.round(room.list)} of ${Math.round(frame.height)} under the row with Back and Mark all read, ${TOP_ROW} tall: at least ${room.least} on its side. No tab bar, as upright.`}
