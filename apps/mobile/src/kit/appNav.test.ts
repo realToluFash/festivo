@@ -256,6 +256,8 @@ describe('The bell in the B frame (sc-83081)', () => {
       /if \(kind === 'phone'\)\s*return <NotificationsFeed where=\{\{ kind: 'screen', onBack: back \}\} \/>;/u,
     );
     expect(parts()).toMatch(/const sides = sidePadding\(tokens\.spaceXxl, insets\)/u);
+    expect(parts()).toMatch(/\[styles\.bellTop, sides\]/u);
+    expect(parts()).toMatch(/styles\.bellPage,\s*sides/u);
   });
 
   it('puts Back and Mark all read on one row, the title under them, and no card', () => {

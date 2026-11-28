@@ -27,7 +27,6 @@ function FramedNotifications({ back }: { back: () => void }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const title = useRef<TextHandle>(null);
-  const phone = kind === 'phone';
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const refreshing = offline.refreshing ? <Refreshing testID="notifications.refreshing" /> : null;
 
@@ -38,25 +37,14 @@ function FramedNotifications({ back }: { back: () => void }) {
       title={t('notifications.heading')}
       titleRef={title}
       offline={offline.stale}
-      besideBack={phone ? refreshing : undefined}
-      besideTitle={phone ? undefined : refreshing}
+      besideTitle={refreshing}
       back={{ label: t('notifications.back'), onPress: back, systemBack: true }}
       backInBody
     >
-      <Screen
-        edges={bodyEdges(kind)}
-        scroll={false}
-        {...(phone ? {} : { contentStyle: styles.body })}
-      >
-        {!phone && (
-          <View style={styles.back}>
-            <BackButton
-              label={t('notifications.back')}
-              onPress={back}
-              testID="notifications.back"
-            />
-          </View>
-        )}
+      <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.body}>
+        <View style={styles.back}>
+          <BackButton label={t('notifications.back')} onPress={back} testID="notifications.back" />
+        </View>
         <NotificationsFeed where={{ kind: 'framed', heading: title, onOffline: setOffline }} />
       </Screen>
     </AppFrame>
