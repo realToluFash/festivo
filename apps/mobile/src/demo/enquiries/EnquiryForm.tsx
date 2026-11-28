@@ -26,7 +26,7 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
-import { PhoneCountryRow } from '../phoneCountryFits.tsx';
+import { PhoneCountryRow } from '../../components/PhoneCountryRow.tsx';
 import { Choices, CurrencySearch, useEditGap } from '../events/EventEdits.tsx';
 import { currencyRows } from '../events/EventsSample.ts';
 import {

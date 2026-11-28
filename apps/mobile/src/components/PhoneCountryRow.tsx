@@ -2,10 +2,10 @@ import { callingCode, countryChoices } from '@soirely/domain';
 import { type ReactNode, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { MeasuredWords } from '../components/Title.tsx';
 import { currentLocale } from '../i18n/index.ts';
 import { CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
+import { MeasuredWords } from './Title.tsx';
 import { COUNTRY_BASIS, NUMBER_BASIS, countryOverNumber } from './phoneCountryFit.ts';
 
 /** A phone number's row: the country picker beside the number while the chosen country's name, measured unseen at the picker's own size, fits there on one line, and over it otherwise, each the field's full width (sc-7579, #104845). */
