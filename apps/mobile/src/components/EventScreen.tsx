@@ -449,6 +449,7 @@ export function EventScreen({
           <StaffRosterList
             key={event.id}
             eventId={event.id}
+            when={event}
             manages={event.permissions.includes('staff.manage')}
             finished={(phase ?? event.phase) === 'finished'}
             entries={<HoursEntry event={event} />}

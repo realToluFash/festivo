@@ -8,6 +8,7 @@ import { api } from '../../api.ts';
 import { followReadingAgain } from '../../followTopic.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { BRIEFING_WORDS, noteOf } from '../../kit/staffBriefing.ts';
+import { noticeClock, noticeLines } from '@soirely/domain';
 import { linkWord, rowLine } from '../../kit/staffRoster.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -21,6 +22,7 @@ import { Text } from '../Text.tsx';
 import { moveScreenReaderFocus } from '../screenReaderFocus.ts';
 import { BriefWord, BriefingCard } from './BriefingCard.tsx';
 import { BriefingPanel, type BriefingSide, PANEL_WIDTH } from './BriefingPanel.tsx';
+import { NoticeLines, ReminderCard } from './StaffNotices.tsx';
 import { LinkMark } from './StaffParts.tsx';
 import { openedFrom } from './openedEntry.ts';
 
@@ -43,11 +45,14 @@ function readRoster(eventId: string, withRules: boolean) {
 /** The event's Staff in the app (sc-77903), as /demo/events/evt-wed-4?area=staff draws it: the roster to read, in the API's roster order, each person opening their own link. */
 export function StaffRosterList({
   eventId,
+  when,
   manages,
   finished = false,
   entries,
 }: {
   eventId: string;
+  /** The event's own days and zone, which every time on a notice line is read in. */
+  when: { startsAt: string; endsAt: string; timeZone: string };
   manages: boolean;
   finished?: boolean;
   /** Hours and Who's here: after the briefing card where it shows, and above the Roster heading in every state. */
@@ -59,6 +64,7 @@ export function StaffRosterList({
   /** The briefing is the tablet's (sc-95654); the phone's Staff shows the roster alone. */
   const briefs = kind !== 'phone';
   const docked = kind === 'tabletLandscape';
+  const clock = noticeClock(when, locale);
   const acts = manages && !finished;
   const [side, setSide] = useState<BriefingSide | null>(null);
   const copyOpener = useRef<ViewInstance | null>(null);
@@ -213,6 +219,12 @@ export function StaffRosterList({
                           )}
                         </View>
                       )}
+                      {briefs && (
+                        <NoticeLines
+                          person={entry.id}
+                          lines={noticeLines(entry, finished, clock, t)}
+                        />
+                      )}
                       <View style={styles.status}>
                         <LinkMark link={entry.link} side={14} />
                         <Text
@@ -231,7 +243,13 @@ export function StaffRosterList({
                   accessibilityLabel={t('staffRoster.rowLabel', {
                     name: entry.fullName,
                     line,
-                    status: briefs ? `${t(BRIEFING_WORDS[entry.briefing])}. ${word}` : word,
+                    status: briefs
+                      ? [
+                          t(BRIEFING_WORDS[entry.briefing]),
+                          ...noticeLines(entry, finished, clock, t).map((one) => one.words),
+                          word,
+                        ].join('. ')
+                      : word,
                   })}
                   testID={`staff.row.${entry.id}`}
                 />
@@ -273,6 +291,7 @@ export function StaffRosterList({
       </View>
     );
 
+  const reminder = <ReminderCard eventId={eventId} manages={manages} roster={seen.staff} />;
   const card = (
     <BriefingCard
       people={seen.staff}
@@ -314,6 +333,7 @@ export function StaffRosterList({
       <View style={styles.beside}>
         <View style={styles.main}>
           {card}
+          {reminder}
           {entries}
           {roster}
         </View>
@@ -328,6 +348,7 @@ export function StaffRosterList({
   return (
     <View style={styles.page}>
       {card}
+      {reminder}
       {entries}
       {roster}
       <Sheet

@@ -100,3 +100,4 @@ export * from './dishItems.ts';
 export * from './dishVariants.ts';
 export * from './staffCoverage.ts';
 export * from './staffRules.ts';
+export * from './staffNotices.ts';
