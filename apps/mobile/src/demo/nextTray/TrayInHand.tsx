@@ -9,6 +9,7 @@ import { FlagLine, Glyph } from '../queue/QueueParts.tsx';
 import { Initials, PATHS, TextAction, shared } from '../service/HowItsGoingParts.tsx';
 import {
   type Item,
+  LEAD,
   NOTHING_ELSE,
   type NextState,
   type Plate,
@@ -433,22 +434,27 @@ function AtTable({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
 }
 
 function SendBack({ p, s, setS }: { p: Plate; s: NextState; setS: SetS }) {
-  const g = guestOf(p.guest);
   return (
     <View style={styles.reasons} accessibilityRole="radiogroup">
       <Text size={15} weight="semibold">
-        {`Why is Seat ${g.seat} going back?`}
+        {`Send back ${dish(p)}?`}
       </Text>
       {REASONS.map((r) => (
-        <SecondaryButton
-          key={r}
-          label={r}
-          onPress={() => setS(sendBack(s, p.id, r))}
-          testID={`nextTray.reason.${p.id}.${r}`}
-        />
+        <View key={r} style={styles.reason}>
+          <SecondaryButton
+            label={r}
+            onPress={() => setS(sendBack(s, p.id, r))}
+            testID={`nextTray.reason.${p.id}.${r}`}
+          />
+          {r === 'Allergy concern' && (
+            <Text size={14} weight="medium" style={shared.secondary}>
+              {`Also alerts the floor lead, ${LEAD}.`}
+            </Text>
+          )}
+        </View>
       ))}
       <QuietButton
-        label="Keep it"
+        label="Cancel"
         onPress={() => setS(openSendBack(s, null))}
         testID={`nextTray.keep.${p.id}`}
       />
@@ -458,6 +464,7 @@ function SendBack({ p, s, setS }: { p: Plate; s: NextState; setS: SetS }) {
 
 export const styles = StyleSheet.create({
   kicker: { color: tokens.colorInkSecondary },
+  reason: { gap: tokens.spaceXxs },
   tray: { borderWidth: 2, borderColor: tokens.colorAccent, gap: tokens.spaceLg },
   waiting: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   attention: { color: tokens.colorAttentionText },

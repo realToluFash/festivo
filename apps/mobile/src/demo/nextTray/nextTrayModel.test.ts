@@ -12,6 +12,8 @@ import {
   check,
   chooseHeld,
   flaggedOffline,
+  goNext,
+  goOffline,
   guestOf,
   heldAt,
   mark,
@@ -223,6 +225,30 @@ describe('undo', () => {
   it('undoes a step that moved the whole tray as one', () => {
     const s = undo(takeToTable(seed('checked')));
     expect(trayPlates(s).every((p) => p.stage === 'checked')).toBe(true);
+  });
+
+  it('offers the step until two minutes on', () => {
+    expect(startTray(seed('nextTray')).undo?.until).toBe('20:26');
+  });
+
+  it('ends the step’s Undo at a request action, so the request survives', () => {
+    const started = startTray(seed('nextTray'));
+    const s = undo(takeRequest(started, 'water'));
+    expect(s.undo).toBeNull();
+    expect(s.tray).toEqual(started.tray);
+    expect(s.requests.find((r) => r.id === 'water')?.mine).toBe(true);
+  });
+
+  it('ends the step’s Undo at Next tray', () => {
+    expect(goNext(startTray(seed('nextTray'))).undo).toBeNull();
+  });
+
+  it('ends the Undo once back online, leaving no tap waiting', () => {
+    const off = mark(goOffline(seed('route')), 'ao', 'Plantain', 'on');
+    const s = undo(reconnect(off));
+    expect(s.undo).toBeNull();
+    expect(s.kept).toHaveLength(0);
+    expect(s.waiting).toHaveLength(0);
   });
 });
 

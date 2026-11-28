@@ -1,5 +1,6 @@
 /** Next on epic 35's tray model (sc-1361): the next tray, its route, the check, the table, the held guests after it, requests, pause and kept taps, on sample data. */
 
+import { undoUntil } from '../floor/FloorModel.ts';
 import { OFFLINE_ACTION } from '../service/RequestsModel.ts';
 
 export const WAITER = 'Bisi Lawal';
@@ -135,7 +136,7 @@ export interface NextState {
   refused: string;
   notSent: readonly string[];
   say: string;
-  undo: { what: string; before: NextState } | null;
+  undo: { what: string; until: string; before: NextState } | null;
   sendingBack: string | null;
   afterTray: string | null;
   servedLine: string;
@@ -457,7 +458,7 @@ export function trayPlates(s: NextState): readonly Plate[] {
 }
 
 function step(s: NextState, what: string, next: NextState): NextState {
-  return { ...next, undo: { what, before: { ...s, undo: null } } };
+  return { ...next, undo: { what, until: undoUntil(NOW), before: { ...s, undo: null } } };
 }
 
 function keep(s: NextState, what: string, ids: readonly string[], next: NextState): NextState {
@@ -467,7 +468,7 @@ function keep(s: NextState, what: string, ids: readonly string[], next: NextStat
     refused: '',
     kept: [...s.kept, { what, plate: ids[0] ?? null }],
     waiting: [...new Set([...s.waiting, ...ids])],
-    undo: { what, before: { ...s, undo: null } },
+    undo: { what, until: undoUntil(NOW), before: { ...s, undo: null } },
   };
 }
 
@@ -725,7 +726,7 @@ export function chooseHeld(s: NextState, id: string, choice: 'now' | 'wait'): Ne
 }
 
 export function goNext(s: NextState): NextState {
-  return { ...s, afterTray: null, say: '' };
+  return { ...s, afterTray: null, undo: null, say: '' };
 }
 
 export function pause(s: NextState): NextState {
@@ -762,6 +763,7 @@ function request(s: NextState, id: string, change: (r: Request) => Request | nul
   return {
     ...s,
     refused: '',
+    undo: null,
     requests: s.requests.flatMap((r) => {
       if (r.id !== id) return [r];
       const c = change(r);
@@ -836,6 +838,7 @@ export function reconnect(s: NextState): NextState {
       kept: [],
       waiting: [],
       refused: '',
+      undo: null,
       say: stripLine({ ...s, online: true }),
     };
   const g = guestOf(plateOf(s, off).guest);

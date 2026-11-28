@@ -57,6 +57,11 @@ export function NextTrayRoute() {
   return <NextTray key={state} start={state} />;
 }
 
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
 function NextTray({ start }: { start: TrayStateName }) {
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
@@ -165,17 +170,24 @@ function Head({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
             </Text>
           ))}
           <QuietButton
-            label="Got it"
+            label="Dismiss"
             onPress={() => setS({ ...s, notSent: [] })}
             testID="nextTray.notSent.ok"
           />
         </View>
       )}
-      {s.undo != null && (
-        <View style={styles.undo}>
-          <Text size={15} style={shared.grow}>
-            {s.undo.what}
-          </Text>
+      {s.undo == null ? (
+        <View style={styles.undo} {...hidden} testID="nextTray.undo.slot" />
+      ) : (
+        <View style={[styles.undo, styles.undoShown]}>
+          <View style={shared.grow}>
+            <Text size={15} weight="semibold">
+              {s.undo.what}
+            </Text>
+            <Text size={13} weight="medium" style={shared.secondary}>
+              {`Undo until ${s.undo.until}`}
+            </Text>
+          </View>
           <TextAction
             label="Undo"
             paths={PATHS.sentBack}
@@ -510,14 +522,15 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAttentionWash,
   },
   undo: {
+    minHeight: 72,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.spaceSm,
     padding: tokens.spaceMd,
     borderRadius: tokens.radiusInset,
-    backgroundColor: tokens.colorInset,
   },
+  undoShown: { backgroundColor: tokens.colorInset },
   list: { gap: tokens.spaceLg },
   section: { gap: tokens.spaceSm },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
