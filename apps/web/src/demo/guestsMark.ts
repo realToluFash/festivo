@@ -29,6 +29,7 @@ export const MW = {
   bar: 'Selected guests',
   markAsInvited: 'Mark as invited',
   addToGroup: 'Add to group',
+  assignTable: 'Assign table',
   remove: 'Remove from the list',
   clear: 'Clear',
   title: (count: number) => guests(count, 'Mark 1 guest as invited', 'Mark {n} guests as invited'),

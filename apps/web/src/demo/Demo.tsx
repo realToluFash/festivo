@@ -78,7 +78,9 @@ import { GUESTS_PAGES } from './guests.ts';
 import { GuestsMark } from './GuestsMark.tsx';
 import { MARK_PAGES } from './guestsMark.ts';
 import { GuestsMany } from './GuestsMany.tsx';
+import { GuestsSeating } from './GuestsSeating.tsx';
 import { MANY_PAGES } from './guestsMany.ts';
+import { SEATING_PAGES as GUEST_SEATING_PAGES } from './guestsSeating.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { KitchenSheetPage } from './KitchenSheet.tsx';
 import { SHEET_PAGES, STATION_PAGES } from './kitchenSheet.ts';
@@ -387,6 +389,7 @@ export default function Demo() {
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
       <Route path="guests/many" element={<GuestsMany />} />
+      <Route path="guests/seating" element={<GuestsSeating />} />
       <Route path="pass" element={<PassPage />} />
       <Route path="queue" element={<QueuePage />} />
       <Route path="team" element={<TeamPage />} />
@@ -518,6 +521,11 @@ function DemoHome({ from }: { from: string }) {
           Select many guests, Add to group and Remove from the list · sc-3776 · desktop and 320
         </h3>
         <BoardPages pages={MANY_PAGES} />
+        <h3>
+          The list reads the plan: Table, Unseated, Seat and Assign table · sc-4025 · desktop and
+          320
+        </h3>
+        <BoardPages pages={GUEST_SEATING_PAGES} />
         <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
