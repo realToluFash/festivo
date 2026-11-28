@@ -6312,7 +6312,8 @@
     "everythingDue": "Everything due on {{event}}",
     "notFound": "We cannot find these payments.",
     "goToEvents": "Go to your events",
-    "notLoaded": "These payments did not load. Check your connection and try again."
+    "notLoaded": "These payments did not load. Check your connection and try again.",
+    "loading": "Loading the payments…"
   },
   "quotes": {
     "dueNext": "Próximos pagos",

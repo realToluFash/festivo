@@ -358,6 +358,42 @@ describe('Due now, from a payment reminder (sc-1331)', () => {
     );
   });
 
+  it('a failed read offers Try again, which says it is loading, then shows the rows', async () => {
+    signedIn();
+    let reads = 0;
+    serve({
+      'GET /api/payment-reminders/r_1': () => {
+        reads += 1;
+
+        return reads === 1
+          ? problem(500, 'internal')
+          : json(
+              sheet([
+                row(
+                  'p1',
+                  'Savour Kitchen',
+                  'Deposit',
+                  '840.00',
+                  payment('p1', 'Deposit', '840.00', '2026-11-04'),
+                ),
+              ]),
+            );
+      },
+    });
+
+    const dialog = await screen.findByRole('dialog');
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(
+      'These payments did not load. Check your connection and try again.',
+    );
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the payments…');
+    expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+    expect(await within(dialog).findByRole('button', { name: 'Paid' })).toBeTruthy();
+  });
+
   it('Paid a different amount opens sc-88’s own Mark paid form for that payment', async () => {
     signedIn();
     const deposit = payment('p6', 'Deposit', '840.00', '2026-11-04');

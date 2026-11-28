@@ -18,6 +18,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { usePageUnder } from '../pageUnder.ts';
 import { SignedInHome } from '../Today.tsx';
+import { Loading } from './BudgetArea.tsx';
 import { minorMoney } from './budgetArea.ts';
 import { dueRowState, dueSettled, monthDay } from './dueNow.ts';
 import { MarkPaidDialog } from './PaymentForms.tsx';
@@ -144,9 +145,13 @@ function DueNowDialog({ reminderId, onClose }: { reminderId: string; onClose: ()
         onDismiss={onClose}
         onConfirm={onClose}
       >
-        {load.kind === 'failed' && (
+        {load.kind === 'loading' ? (
+          <Loading words={t('dueNow.loading')} card={false} />
+        ) : (
           <>
-            <AlertInset>{t('dueNow.notLoaded')}</AlertInset>
+            <p className="desk-line is-ink" role="alert">
+              {t('dueNow.notLoaded')}
+            </p>
             <TextAction
               label={t('budget.tryAgain')}
               onClick={() => {
