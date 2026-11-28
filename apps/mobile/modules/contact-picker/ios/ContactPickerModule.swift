@@ -17,12 +17,36 @@ public class ContactPickerModule: Module {
       let picker = CNContactPickerViewController()
       let picking = Picking { contacts in
         self.picking = nil
-        promise.resolve(contacts.map(Self.kept))
+        Self.once(presenter, isClearOf: picker) {
+          promise.resolve(contacts.map(Self.kept))
+        }
       }
       self.picking = picking
       picker.delegate = picking
       presenter.present(picker, animated: true)
     }.runOnQueue(.main)
+  }
+
+  /// The delegate hears Done while the picker is still going, and a window React Native puts up or takes down meanwhile is refused by UIKit (sc-7579).
+  private static func once(
+    _ presenter: UIViewController,
+    isClearOf picker: UIViewController,
+    waited: Int = 0,
+    then: @escaping () -> Void
+  ) {
+    if presenter.presentedViewController !== picker || waited >= 40 {
+      then()
+      return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+      once(presenter, isClearOf: picker, waited: waited + 1, then: then)
+    }
+  }
+
+  /// iOS names its labels in lower case ("mobile", "home"); the row writes them as a word starting a line, keeping "iPhone" as it is.
+  private static func firstUp(_ label: String) -> String {
+    guard let first = label.first, first.isLowercase, label != "iPhone" else { return label }
+    return first.uppercased() + label.dropFirst()
   }
 
   private static func kept(_ contact: CNContact) -> [String: Any] {
@@ -36,7 +60,7 @@ public class ContactPickerModule: Module {
       let label = labelled.label ?? ""
       return [
         "number": labelled.value.stringValue,
-        "label": label.isEmpty ? "" : CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: label),
+        "label": label.isEmpty ? "" : Self.firstUp(CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: label)),
         "mobile": label == CNLabelPhoneNumberMobile || label == CNLabelPhoneNumberiPhone,
       ]
     }

@@ -1044,7 +1044,8 @@ export function EventGuests({
           onAdded={(count) => {
             setContacts(null);
             setForm(null);
-            setDone({ kind: 'manyAdded', count });
+            setDone(null);
+            tell(t('fromContacts.added', { count }));
             setChoice('all');
             readList(watch);
           }}
@@ -1212,9 +1213,6 @@ function GuestRows({
   return (
     <View style={styles.rows}>
       {done?.kind === 'added' && <DoneLine words={t('guestList.justAdded', { name: done.name })} />}
-      {done?.kind === 'manyAdded' && (
-        <DoneLine words={t('fromContacts.added', { count: done.count })} />
-      )}
       {done?.kind === 'recorded' && (
         <DoneLine words={t('guestList.replyRecorded')} testID="guests.recorded" />
       )}
@@ -1523,11 +1521,7 @@ function PhaseLine({
 }
 
 /** The one done line over the list: a guest just added, or sc-54450's reply just recorded from a copied message. */
-type Done =
-  | { kind: 'added'; name: string }
-  | { kind: 'manyAdded'; count: number }
-  | { kind: 'recorded' }
-  | null;
+type Done = { kind: 'added'; name: string } | { kind: 'recorded' } | null;
 
 /** sc-7579: the people picked from contacts, Android's Choose people first when it lists them. */
 type Contacts = { step: 'choose' } | { step: 'review'; people: PickedPerson[] } | null;
