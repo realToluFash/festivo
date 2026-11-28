@@ -681,9 +681,13 @@ export function ContactsReview({
                       <Refused
                         line={t('fromContacts.notAddedLine', {
                           count,
-                          companions,
+                          companions: t('fromContacts.notAddedCompanions', {
+                            count: companions,
+                          }),
                           event: eventName,
-                          listed: room?.people ?? 0,
+                          listed: t('fromContacts.notAddedListed', {
+                            count: room?.people ?? 0,
+                          }),
                         })}
                         figure={figure}
                         way={way}
