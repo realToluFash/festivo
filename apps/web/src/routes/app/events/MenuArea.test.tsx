@@ -1549,7 +1549,7 @@ describe('The event’s Menu (sc-3902)', () => {
       },
     );
 
-    it('shows a linked course’s served time as text from its schedule item, and keeps it on save (sc-3898)', async () => {
+    it('shows a linked course’s served time as text from its schedule item, and leaves it to the schedule on save (sc-3898)', async () => {
       const linked = {
         ...course('c_main', 'Main', [PLAIN]),
         servedAt: '19:50',
@@ -1572,9 +1572,8 @@ describe('The event’s Menu (sc-3902)', () => {
 
       expect(await screen.findByText('Main saved.')).toBeDefined();
       expect(
-        (sent.find(({ line }) => line.startsWith('PUT')) as { body: { servedAt: string } }).body
-          .servedAt,
-      ).toBe('19:50');
+        (sent.find(({ line }) => line.startsWith('PUT')) as { body: object }).body,
+      ).not.toHaveProperty('servedAt');
     });
 
     it('saves Served with this course on Edit course, and refuses a 4th beside Add', async () => {
