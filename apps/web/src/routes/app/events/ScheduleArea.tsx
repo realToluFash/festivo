@@ -674,6 +674,7 @@ function ScheduleView({
                 seesMenu
                   ? {
                       courses: courses ?? [],
+                      loading: courses === null,
                       eventId: event.id,
                       open: courseOpen,
                       moveTo,
@@ -1262,6 +1263,7 @@ function ItemPanel({
 
 interface CourseControls {
   courses: readonly MenuCourse[];
+  loading: boolean;
   eventId: string;
   open: boolean;
   moveTo: string | null;
@@ -1287,7 +1289,8 @@ function CourseField({
   formTime: string;
 }) {
   const { t } = useTranslation();
-  const { courses, eventId, open, moveTo, onOpen, onShut, onPick, onMove, onCancelMove } = controls;
+  const { courses, loading, eventId, open, moveTo, onOpen, onShut, onPick, onMove, onCancelMove } =
+    controls;
   const current = courses.find((one) => one.id === chosen) ?? null;
   const holder = current == null ? null : holderOf(current.id, items, editingId);
   const asked = courses.find((one) => one.id === moveTo) ?? null;
@@ -1346,7 +1349,9 @@ function CourseField({
                 <Glyph name="clear" size={16} weight={2.4} />
               </button>
             </div>
-            {courses.length === 0 ? (
+            {loading ? (
+              <div className="ro-course-empty" aria-busy="true" />
+            ) : courses.length === 0 ? (
               <div className="ro-course-empty">
                 <p className="ro-course-empty-title">{t('schedule.noCourses')}</p>
                 <p className="desk-help">{t('schedule.noCoursesLine')}</p>
