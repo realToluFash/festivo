@@ -32,8 +32,9 @@ describe('the phone’s tab bars (sc-71148, sc-99214)', () => {
   it('measures every word in SemiBold at the start and draws all labels at exactly the size that fits', () => {
     const measuredAt = /export function useMeasuredAt\([\s\S]*?\n\}\n/u.exec(title)?.[0] ?? '';
     expect(measuredAt).toMatch(
-      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight="semibold"\s+allowFontScaling=\{false\}/u,
+      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight=\{weight\}\s+allowFontScaling=\{false\}/u,
     );
+    expect(measuredAt).toMatch(/weight: 'regular' \| 'semibold' = 'semibold'/u);
     expect(cover).toMatch(/size=\{size\}\s+allowFontScaling=\{false\}/u);
   });
 });
