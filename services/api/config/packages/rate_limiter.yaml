@@ -7,6 +7,12 @@ framework:
             limit: 1
             rate: { interval: '1 second', amount: 1 }
 
+        sso_sign_in:
+            # Per IP: each start of a sign-in through an identity provider is a row until it is answered.
+            policy: fixed_window
+            limit: 30
+            interval: '15 minutes'
+
         address_lookup:
             # Per IP. An autocomplete field fires on keystrokes, so the budget is
             # generous — but a budget that cannot be exhausted is a provider bill

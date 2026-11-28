@@ -52,6 +52,10 @@ class TwoFactorChallenge
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?PhoneSignIn $phoneSignIn = null;
 
+    /** Through the organisation's identity provider (sc-610): the session the code opens keeps that. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $bySingleSignOn = false;
+
     public function __construct(
         User $user,
         string $tokenHash,
@@ -59,7 +63,9 @@ class TwoFactorChallenge
         ?IdentityProvider $linkProvider = null,
         ?string $linkSubject = null,
         ?PhoneSignIn $phoneSignIn = null,
+        bool $bySingleSignOn = false,
     ) {
+        $this->bySingleSignOn = $bySingleSignOn;
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->tokenHash = $tokenHash;
@@ -67,6 +73,11 @@ class TwoFactorChallenge
         $this->linkProvider = $linkProvider;
         $this->linkSubject = $linkSubject;
         $this->phoneSignIn = $phoneSignIn;
+    }
+
+    public function isBySingleSignOn(): bool
+    {
+        return $this->bySingleSignOn;
     }
 
     public function getPhoneSignIn(): ?PhoneSignIn

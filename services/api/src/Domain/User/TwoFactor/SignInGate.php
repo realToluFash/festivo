@@ -50,17 +50,17 @@ final readonly class SignInGate
     }
 
     /** `$byPhoneCode` when the first factor was a phone code (sc-4235); `$endsWithGrants` when that was in a browser. */
-    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null, ?PhoneSignIn $byPhoneCode = null, bool $endsWithGrants = false): IssuedTokens|IssuedChallenge
+    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null, ?PhoneSignIn $byPhoneCode = null, bool $endsWithGrants = false, bool $bySingleSignOn = false): IssuedTokens|IssuedChallenge
     {
         if (!$this->secondFactors->isOn($user)) {
             $this->link($user, $link);
             $this->signedInByPhoneCode($user, $byPhoneCode);
 
-            return $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $endsWithGrants);
+            return $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $endsWithGrants, $bySingleSignOn);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
-        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject, $byPhoneCode);
+        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject, $byPhoneCode, $bySingleSignOn);
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
@@ -99,7 +99,7 @@ final readonly class SignInGate
         $byPhoneCode = $challenge->getPhoneSignIn();
         $this->signedInByPhoneCode($user, $byPhoneCode);
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $inBrowser), $linked);
+        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, null !== $byPhoneCode, null !== $byPhoneCode && $inBrowser, $challenge->isBySingleSignOn()), $linked);
     }
 
     private function open(#[SensitiveParameter] string $token): TwoFactorChallenge
@@ -132,10 +132,14 @@ final readonly class SignInGate
         }
     }
 
-    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $byPhoneCode, bool $endsWithGrants): IssuedTokens
+    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $byPhoneCode, bool $endsWithGrants, bool $bySingleSignOn): IssuedTokens
     {
-        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider, $endsWithGrants);
-        $this->breakGlass->signedIn($user, $link?->provider, $byPhoneCode, $request);
+        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider, $endsWithGrants, $bySingleSignOn);
+
+        if (!$bySingleSignOn) {
+            $this->breakGlass->signedIn($user, $link?->provider, $byPhoneCode, $request);
+        }
+
         $this->entityManager->flush();
 
         if (null !== $request) {

@@ -98,6 +98,7 @@ enum AuditType: string
         'sso.required_off' => self::Security,
         'sso.removed' => self::Security,
         'sso.bypassed' => self::Security,
+        'sso.sign_in_failed' => self::Security,
         'organisation.created' => self::Organisation,
         'organisation.plan_changed' => self::Organisation,
         'organisation.payment_reminders_changed' => self::Organisation,

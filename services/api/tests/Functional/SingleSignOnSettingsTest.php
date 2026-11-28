@@ -10,7 +10,9 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup;
 use App\Domain\Organisation\Plan\PlanChanger;
 use App\Domain\Organisation\SignInRules\BreakGlass;
+use App\Domain\Organisation\SingleSignOn\OidcExchange;
 use App\Domain\Organisation\SingleSignOn\ScriptedProviderDocuments;
+use App\Domain\Organisation\SingleSignOn\SingleSignIn;
 use App\Domain\Organisation\SingleSignOn\SingleSignOnSettings;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -332,6 +334,77 @@ final class SingleSignOnSettingsTest extends ApiTestCase
         $this->come($organisation, ['state' => 'never-issued', 'error' => 'forged']);
         self::assertSame(['failed', 'invalid_client', true], $this->testResult($owner, $organisation), 'a state we never issued records nothing');
         self::assertFalse($this->send('GET', $this->path($organisation))['on']);
+    }
+
+    #[Test]
+    public function signingInThroughTheProviderOpensASessionThatRequiredSignOnLeavesAlone(): void
+    {
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->saveGoogle($owner, $organisation);
+        $this->testWorked($organisation, $owner);
+        $this->send('POST', $this->path($organisation, 'on'));
+        $this->send('POST', $this->path($organisation, 'required'));
+        $member = $this->member('tunde@ire.events', 'Tunde');
+        $verifier = Str\repeat('v', 64);
+
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $handle = $this->signInThroughProvider($organisation, 'Tunde@ire.events', $verifier);
+
+        $this->send('POST', '/api/auth/sso/handle', ['handle' => $handle, 'codeVerifier' => 'somebody else']);
+        self::assertResponseStatusCodeSame(401);
+
+        $session = $this->send('POST', '/api/auth/sso/handle', ['handle' => $handle, 'codeVerifier' => $verifier]);
+        self::assertResponseStatusCodeSame(200);
+
+        $this->send('POST', '/api/auth/refresh', ['refreshToken' => $session['refreshToken'] ?? null]);
+        self::assertResponseStatusCodeSame(200);
+
+        $this->send('POST', '/api/auth/sso/handle', ['handle' => $handle, 'codeVerifier' => $verifier]);
+        self::assertResponseStatusCodeSame(401);
+        self::assertSame(403, $this->passwordSignIn($member->getPrimaryEmailAddress()?->getAddress() ?? ''));
+    }
+
+    #[Test]
+    public function theProviderSignsNobodyInOutsideItsDomainsOrWithoutAnAccount(): void
+    {
+        $this->client->disableReboot();
+        [$owner, $organisation] = $this->proved();
+        $this->saveGoogle($owner, $organisation);
+        $this->testWorked($organisation, $owner);
+        $this->send('POST', $this->path($organisation, 'on'));
+        $this->member('ada@elsewhere.example', 'Ada');
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+
+        foreach (['ada@elsewhere.example' => 'other_domain', 'nobody@ire.events' => 'no_account'] as $asserted => $why) {
+            self::assertNull($this->signInThroughProvider($organisation, $asserted, 'verifier'), $why);
+            self::assertSame(['said' => [null, $why]], $this->audited(SingleSignIn::FAILED, $organisation)->getChanges());
+        }
+
+        $this->send('POST', '/api/auth/sso/attempts', ['email' => 'ada@elsewhere.example', 'codeChallenge' => 'c']);
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    private function signInThroughProvider(Organisation $organisation, string $asserted, string $verifier): ?string
+    {
+        $start = $this->send('POST', '/api/auth/sso/attempts', ['email' => 'anybody@ire.events', 'codeChallenge' => OidcExchange::challengeOf($verifier)]);
+        \parse_str(Type\string()->coerce(\parse_url(Type\string()->coerce($start['authorizationUrl'] ?? null), \PHP_URL_QUERY)), $query);
+        $sent = Type\dict(Type\string(), Type\string())->coerce($query);
+        $this->publishGoogleKeys();
+        ScriptedProviderDocuments::$tokenReply = Json\encode(['id_token' => self::service(TestSigningKeys::class)->sign([
+            'iss' => self::GOOGLE,
+            'aud' => $sent['client_id'],
+            'sub' => 'subject',
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'nonce' => $sent['nonce'],
+            'email' => $asserted,
+        ])]);
+        $this->client->request('GET', Str\format('/api/sso/oidc/%s/callback?%s', $organisation->getId()->toRfc4122(), \http_build_query(['state' => $sent['state'], 'code' => 'a-code'])));
+        self::assertResponseStatusCodeSame(303);
+        \parse_str(Type\string()->coerce(\parse_url((string) $this->client->getResponse()->headers->get('Location'), \PHP_URL_QUERY)), $back);
+
+        return Type\nullable(Type\string())->coerce($back['handle'] ?? null);
     }
 
     /** @return array<string, string> what the browser was sent to the provider with */

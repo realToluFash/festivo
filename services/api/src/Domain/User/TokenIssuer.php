@@ -54,9 +54,9 @@ final readonly class TokenIssuer
     }
 
     /** The caller flushes. `$signedInWith` is the provider the sign-in came through, null for a password; `$endsWithGrants` for a browser signed in by phone code (sc-4235). */
-    public function issueFor(User $user, ?Request $request = null, ?IdentityProvider $signedInWith = null, bool $endsWithGrants = false): IssuedTokens
+    public function issueFor(User $user, ?Request $request = null, ?IdentityProvider $signedInWith = null, bool $endsWithGrants = false, bool $bySingleSignOn = false): IssuedTokens
     {
-        return $this->issue($user, null, $request, $signedInWith, $endsWithGrants);
+        return $this->issue($user, null, $request, $signedInWith, $endsWithGrants, $bySingleSignOn);
     }
 
     /** The caller flushes, so the revocation and the new row commit together. */
@@ -64,7 +64,7 @@ final readonly class TokenIssuer
     {
         $used->setRevokedAt(new DateTimeImmutable());
 
-        return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith(), $used->endsWithGrants());
+        return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith(), $used->endsWithGrants(), $used->isBySingleSignOn());
     }
 
     /** One session, ended from the devices list. The caller flushes. */
@@ -174,7 +174,7 @@ final readonly class TokenIssuer
         return true === $session?->endsWithGrants() ? $this->grantsEndFor($user) : null;
     }
 
-    private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith, bool $endsWithGrants): IssuedTokens
+    private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith, bool $endsWithGrants, bool $bySingleSignOn): IssuedTokens
     {
         $plain = \bin2hex(SecureRandom\bytes(self::REFRESH_BYTES));
 
@@ -187,6 +187,7 @@ final readonly class TokenIssuer
             $request?->getClientIp(),
             $signedInWith,
             $endsWithGrants,
+            $bySingleSignOn,
         );
 
         $this->entityManager->persist($token);

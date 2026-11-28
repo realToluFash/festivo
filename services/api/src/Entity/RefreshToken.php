@@ -62,6 +62,10 @@ class RefreshToken
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $endsWithGrants = false;
 
+    /** Through the organisation's identity provider (sc-610): required sign-on never ends it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $bySingleSignOn = false;
+
     public function __construct(
         User $user,
         string $tokenHash,
@@ -71,7 +75,9 @@ class RefreshToken
         ?string $ipAddress = null,
         ?IdentityProvider $signedInWith = null,
         bool $endsWithGrants = false,
+        bool $bySingleSignOn = false,
     ) {
+        $this->bySingleSignOn = $bySingleSignOn;
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->chainId = $chainId ?? $this->id;
@@ -86,6 +92,11 @@ class RefreshToken
     public function endsWithGrants(): bool
     {
         return $this->endsWithGrants;
+    }
+
+    public function isBySingleSignOn(): bool
+    {
+        return $this->bySingleSignOn;
     }
 
     public function getId(): Uuid

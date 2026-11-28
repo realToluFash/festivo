@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\SingleSignOn\SingleSignIn;
 use App\Domain\Organisation\SingleSignOn\TestSignOn;
+use App\Domain\User\TokenIssuer;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationRepository;
+use App\Repository\SsoAttemptRepository;
 use Psl\Str;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +24,8 @@ final readonly class SingleSignOnCallbackController
     public function __construct(
         private OrganisationRepository $organisationRepository,
         private TestSignOn $testSignOn,
+        private SingleSignIn $singleSignIn,
+        private SsoAttemptRepository $ssoAttemptRepository,
         private string $webOrigin,
     ) {
     }
@@ -34,8 +39,23 @@ final readonly class SingleSignOnCallbackController
 
             return \is_string($value) && '' !== $value ? $value : null;
         };
-        $this->testSignOn->answer($organisation, $query('state') ?? '', $query('code'), $query('error_description') ?? $query('error'));
+        $state = $query('state') ?? '';
+        $said = $query('error_description') ?? $query('error');
+        $attempt = $this->ssoAttemptRepository->findOneBy(['stateHash' => TokenIssuer::hash($state)]);
 
-        return new RedirectResponse(Str\trim_right($this->webOrigin, '/') . '/app/settings/sign-in-rules/single-sign-on', Response::HTTP_SEE_OTHER);
+        if (null !== $attempt?->getClientChallenge() && $attempt->getProvider()->getOrganisation()->getId()->equals($organisation->getId())) {
+            $handle = $this->singleSignIn->receive($attempt, $query('code'), $said);
+
+            return $this->onTo('/sign-in/sso?' . \http_build_query(null === $handle ? ['error' => 'failed'] : ['handle' => $handle]));
+        }
+
+        $this->testSignOn->answer($organisation, $state, $query('code'), $said);
+
+        return $this->onTo('/app/settings/sign-in-rules/single-sign-on');
+    }
+
+    private function onTo(string $path): RedirectResponse
+    {
+        return new RedirectResponse(Str\trim_right($this->webOrigin, '/') . $path, Response::HTTP_SEE_OTHER);
     }
 }

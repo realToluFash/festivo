@@ -47,7 +47,7 @@ final class AuditTypeTest extends TestCase
         'sign_in_rules.changed', 'sign_in_rules.two_factor_held',
         'email_domain.proved', 'email_domain.failed', 'email_domain.record_missing', 'email_domain.lapsed',
         'email_domain.only_ours_on', 'email_domain.only_ours_notice_sent', 'email_domain.only_ours_applied', 'email_domain.only_ours_cancelled', 'email_domain.only_ours_off',
-        'sso.changed', 'sso.tested', 'sso.test_failed', 'sso.switched_on', 'sso.switched_off', 'sso.required_on', 'sso.required_off',
+        'sso.changed', 'sso.tested', 'sso.test_failed', 'sso.switched_on', 'sso.switched_off', 'sso.required_on', 'sso.required_off', 'sso.sign_in_failed',
         'organisation.plan_changed', 'organisation.payment_reminders_changed', 'organisation.ownership_transferred', 'organisation.export_asked', 'organisation.export_downloaded',
         AuditType::VIEWED, AuditType::EXPORTED,
     ];

@@ -592,6 +592,7 @@
     "audit.what.sso.required_off": "Switched required sign-on off",
     "audit.what.sso.removed": "Removed single sign-on",
     "audit.what.sso.bypassed": "Signed in without single sign-on",
+    "audit.what.sso.sign_in_failed": "Single sign-on sign-in failed",
     "audit.field.provider": "Provider",
     "audit.field.sso": "Single sign-on",
     "audit.field.required": "Required sign-on",

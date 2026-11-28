@@ -154,7 +154,7 @@ final class TokenController
     /** A session a password opened ends once the rule turns that password away, as the next sign-in would (sc-69). */
     private function endIfPasswordRefused(#[SensitiveParameter] RefreshToken $token): ?ApiException
     {
-        $refusal = null === $token->getSignedInWith() ? $this->signInRules->passwordRefusal($token->getUser()) : null;
+        $refusal = null === $token->getSignedInWith() && !$token->isBySingleSignOn() ? $this->signInRules->passwordRefusal($token->getUser()) : null;
 
         if (null === $refusal) {
             return null;

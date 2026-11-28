@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\SingleSignOn;
 
 use App\Domain\Organisation\Interfaces\OrganisationIdTokenInterface;
-use App\Domain\Organisation\Interfaces\ProviderDocumentsInterface;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TokenIssuer;
@@ -18,10 +17,7 @@ use App\Repository\SsoAttemptRepository;
 use DateInterval;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
-use Psl\Json;
-use Psl\SecureRandom;
 use Psl\Str;
-use Psl\Type;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -33,10 +29,9 @@ final readonly class TestSignOn
 
     public function __construct(
         private SingleSignOnSettings $settings,
-        private ServiceUrls $serviceUrls,
+        private OidcExchange $oidcExchange,
         #[SensitiveParameter]
         private OrganisationIdTokenInterface $organisationIdToken,
-        private ProviderDocumentsInterface $providerDocuments,
         private SsoAttemptRepository $ssoAttemptRepository,
         private OwnerCheck $ownerCheck,
         private TranslatorInterface $translator,
@@ -58,34 +53,24 @@ final readonly class TestSignOn
             throw ApiException::notFound('sso.not_set_up');
         }
 
-        $state = self::random();
-        $nonce = self::random();
-        $verifier = self::random();
+        $state = OidcExchange::random();
+        $nonce = OidcExchange::random();
+        $verifier = OidcExchange::random();
         $this->entityManager->persist(new SsoAttempt($provider, $by, TokenIssuer::hash($state), $nonce, $verifier, $this->clock->now()->add(new DateInterval(self::LIFETIME))));
         $this->entityManager->flush();
 
-        return $endpoint . (Str\contains($endpoint, '?') ? '&' : '?') . \http_build_query([
-            'response_type' => 'code',
-            'client_id' => $provider->getOidcClientId(),
-            'redirect_uri' => $this->serviceUrls->oidcRedirectUrl($organisation),
-            'scope' => 'openid email profile',
-            'state' => $state,
-            'nonce' => $nonce,
-            'code_challenge' => Str\trim_right(Str\replace_every(\base64_encode(\hash('sha256', $verifier, true)), ['+' => '-', '/' => '_']), '='),
-            'code_challenge_method' => 'S256',
-        ]);
+        return $this->oidcExchange->authorizationUrl($provider, $state, $nonce, $verifier);
     }
 
     /** An unknown, used or expired state, or a starter no longer an Owner, records nothing. */
     public function answer(Organisation $organisation, string $state, #[SensitiveParameter] ?string $code, ?string $providerSaid): void
     {
         $attempt = '' === $state ? null : $this->ssoAttemptRepository->findOneBy(['stateHash' => TokenIssuer::hash($state)]);
+        $owner = $attempt?->getStartedBy();
 
-        if (null === $attempt || !$attempt->getProvider()->getOrganisation()->getId()->equals($organisation->getId()) || !$this->ssoAttemptRepository->claim($attempt)) {
+        if (null === $attempt || null === $owner || !$attempt->getProvider()->getOrganisation()->getId()->equals($organisation->getId()) || !$this->ssoAttemptRepository->claim($attempt)) {
             return;
         }
-
-        $owner = $attempt->getStartedBy();
 
         if (!$attempt->isOpenAt($this->clock->now()) || !$this->ownerCheck->holds($organisation, $owner)) {
             return;
@@ -99,25 +84,13 @@ final readonly class TestSignOn
             return;
         }
 
-        $this->redeem($organisation, $attempt, $code);
+        $this->redeem($attempt, $owner, $code);
     }
 
-    private function redeem(Organisation $organisation, SsoAttempt $attempt, #[SensitiveParameter] string $code): void
+    private function redeem(SsoAttempt $attempt, User $owner, #[SensitiveParameter] string $code): void
     {
         $provider = $attempt->getProvider();
-        $owner = $attempt->getStartedBy();
-        $body = $this->providerDocuments->redeem(
-            $provider->getOidcTokenEndpoint() ?? '',
-            $provider->getOidcClientId() ?? '',
-            $this->settings->openSecret($provider) ?? '',
-            [
-                'grant_type' => 'authorization_code',
-                'code' => $code,
-                'code_verifier' => $attempt->getCodeVerifier(),
-                'redirect_uri' => $this->serviceUrls->oidcRedirectUrl($organisation),
-            ],
-        );
-        $reply = self::reply($body);
+        $reply = $this->oidcExchange->redeem($provider, $code, $attempt->getCodeVerifier());
         $idToken = $reply['id_token'] ?? null;
 
         if (null === $idToken) {
@@ -137,7 +110,7 @@ final readonly class TestSignOn
 
         $email = Str\lowercase($answer->email ?? '');
 
-        if (!Iter\contains($this->settings->domains($organisation), Str\after_last($email, '@') ?? '')) {
+        if (!Iter\contains($this->settings->domains($provider->getOrganisation()), Str\after_last($email, '@') ?? '')) {
             $this->settings->testFailed($provider, $owner, $this->ours('sso.test_other_domain', $owner), false);
 
             return;
@@ -146,31 +119,8 @@ final readonly class TestSignOn
         $this->settings->testWorked($provider, $owner, Str\truncate($email, 0, 254), Str\truncate($answer->name, 0, 255));
     }
 
-    /** @return array{id_token?: non-empty-string, error?: non-empty-string, error_description?: non-empty-string, ...} */
-    private static function reply(?string $body): array
-    {
-        if (null === $body) {
-            return [];
-        }
-
-        try {
-            return Type\shape([
-                'id_token' => Type\optional(Type\non_empty_string()),
-                'error' => Type\optional(Type\non_empty_string()),
-                'error_description' => Type\optional(Type\non_empty_string()),
-            ], true)->coerce(Json\decode($body));
-        } catch (Json\Exception\DecodeException|Type\Exception\CoercionException) {
-            return [];
-        }
-    }
-
     private function ours(string $key, User $owner): string
     {
         return $this->translator->trans($key, locale: $this->userMailer->localeFor($owner));
-    }
-
-    private static function random(): string
-    {
-        return \bin2hex(SecureRandom\bytes(32));
     }
 }
