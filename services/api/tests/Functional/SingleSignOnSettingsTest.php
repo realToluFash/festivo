@@ -378,8 +378,14 @@ final class SingleSignOnSettingsTest extends ApiTestCase
 
         foreach (['ada@elsewhere.example' => 'other_domain', 'nobody@ire.events' => 'no_account'] as $asserted => $why) {
             self::assertNull($this->signInThroughProvider($organisation, $asserted, 'verifier'), $why);
-            self::assertSame(['said' => [null, $why]], $this->audited(SingleSignIn::FAILED, $organisation)->getChanges());
         }
+
+        // Compared as a set: two entries can share a moment.
+        $said = Vec\map(
+            self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findBy(['action' => SingleSignIn::FAILED, 'subjectId' => $organisation->getId()]),
+            static fn (AuditEntry $entry): string => Json\encode($entry->getChanges()),
+        );
+        self::assertEqualsCanonicalizing(['{"said":[null,"other_domain"]}', '{"said":[null,"no_account"]}'], $said);
 
         $this->send('POST', '/api/auth/sso/attempts', ['email' => 'ada@elsewhere.example', 'codeChallenge' => 'c']);
         self::assertResponseStatusCodeSame(404);
