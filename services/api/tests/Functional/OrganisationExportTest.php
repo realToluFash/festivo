@@ -74,7 +74,7 @@ final class OrganisationExportTest extends ApiTestCase
     private const string ASKED_AT = '2026-10-17T13:20:00+00:00';
 
     private const array TABLES = [
-        'organisation' => ['id', 'name', 'country_code', 'currency', 'timezone', 'contact_address', 'locale', 'provider_sign_in_only', 'inactivity_timeout_days', 'administrators_need_two_factor', 'created_at'],
+        'organisation' => ['id', 'name', 'country_code', 'currency', 'timezone', 'contact_address', 'locale', 'provider_sign_in_only', 'inactivity_timeout_days', 'administrators_need_two_factor', 'sso_required_since', 'created_at'],
         'company_domains' => ['domain', 'proved_at', 'created_at'],
         'members' => ['id', 'name', 'email', 'role', 'state', 'joined_at'],
         'invitations' => ['id', 'email', 'role', 'status', 'invited_by', 'created_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at'],
@@ -119,6 +119,7 @@ final class OrganisationExportTest extends ApiTestCase
         'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
         'payers' => ['id', 'event_id', 'name', 'note', 'created_at', 'updated_at'],
         'cost_payers' => ['id', 'event_id', 'line_id', 'payer_id', 'split', 'value', 'value_currency', 'rest_payer_id'],
+        'single_sign_on' => ['which', 'name', 'protocol', 'saved_at', 'switched_on_at', 'saml_metadata_url', 'saml_metadata_file_name', 'saml_entity_id', 'saml_sign_on_url', 'saml_certificates', 'oidc_issuer', 'oidc_client_id', 'oidc_authorization_endpoint', 'oidc_token_endpoint', 'oidc_jwks_uri'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
@@ -148,8 +149,7 @@ final class OrganisationExportTest extends ApiTestCase
         'notification_items' => "notifications: one person's, or deliveries",
         'notification_preferences' => "notifications: one person's, or deliveries",
         'organisation_exports' => "Soirely's own records",
-        'organisation_sso_attempts' => "sign-in credentials (sc-611's rule)",
-        'organisation_sso_providers' => "sign-in credentials (sc-611's rule)",
+        'organisation_sso_attempts' => 'short-lived sign-in state',
         'owner_claims' => 'change history',
         'password_reset_tokens' => "sign-in credentials (sc-611's rule)",
         'password_set_codes' => "sign-in credentials (sc-611's rule)",
@@ -382,6 +382,36 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame([true, false], Vec\map($copies, static fn (array $copy): mixed => $copy['sheet']['names']));
         self::assertEquals([['code' => 'peanuts', 'count' => 1]], $copies[1]['sheet']['allergyCounts']);
         self::assertCount(2, Str\split($files['kitchen_copies.csv'], 'Bísí'), 'the CSV names the guest in the named copy only');
+    }
+
+    #[Test]
+    public function theArchiveHoldsEachSingleSignOnConnectionAndNeverItsSecretOrLastTest(): void
+    {
+        $organisation = $this->organisation->getId()->toRfc4122();
+        self::em()->getConnection()->update('organisations', ['sso_required_since' => '2026-10-12 09:00:00'], ['id' => $organisation]);
+        $sealed = Uuid::v4()->toRfc4122();
+        $shared = ['organisation_id' => $organisation, 'tested_at' => '2026-10-11 09:00:00', 'tested_email' => 'tested@ire.events', 'tested_name' => 'Tested Person', 'test_failure' => 'the provider said no', 'test_failure_from_provider' => true];
+        $this->row('organisation_sso_providers', [...$shared, 'standing' => 'staying', 'protocol' => 'saml', 'name' => 'Okta', 'saved_at' => '2026-10-01 09:00:00', 'switched_on_at' => '2026-10-02 09:00:00', 'metadata_file_name' => 'okta.xml', 'saml_entity_id' => 'urn:okta', 'saml_sign_on_url' => 'https://okta.example/sso', 'saml_certificates' => '["MIIBfirst","MIIBsecond"]']);
+        $this->row('organisation_sso_providers', [...$shared, 'standing' => 'current', 'protocol' => 'oidc', 'name' => 'Entra', 'saved_at' => '2026-10-10 09:00:00', 'saml_certificates' => '[]', 'oidc_issuer' => 'https://id.example', 'oidc_client_id' => 'soirely', 'oidc_client_secret' => $sealed, 'oidc_authorization_endpoint' => 'https://id.example/authorize', 'oidc_token_endpoint' => 'https://id.example/token', 'oidc_jwks_uri' => 'https://id.example/keys']);
+
+        $files = $this->archive();
+        $json = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($files['archive.json']));
+        $rows = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($json['single_sign_on']);
+
+        self::assertSame(
+            [
+                ['newest_saved', 'Entra', 'oidc', '2026-10-10T09:00:00Z', null, null, null, null, null, null, 'https://id.example', 'soirely', 'https://id.example/authorize', 'https://id.example/token', 'https://id.example/keys'],
+                ['still_signing_people_in', 'Okta', 'saml', '2026-10-01T09:00:00Z', '2026-10-02T09:00:00Z', null, 'okta.xml', 'urn:okta', 'https://okta.example/sso', 'MIIBfirst, MIIBsecond', null, null, null, null, null],
+            ],
+            Vec\map($rows, static fn (array $row): array => Vec\values($row)),
+        );
+        self::assertSame('2026-10-12T09:00:00Z', Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($json['organisation'])[0]['sso_required_since']);
+
+        foreach ($files as $file) {
+            foreach ([$sealed, 'tested@ire.events', 'Tested Person', 'the provider said no'] as $kept) {
+                self::assertStringNotContainsString($kept, $file);
+            }
+        }
     }
 
     #[Test]

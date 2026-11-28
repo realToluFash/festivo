@@ -31,7 +31,7 @@ final readonly class OrganisationArchive
         'organisation' => <<<'SQL'
             SELECT o.id, o.name, o.country_code, o.currency, o.timezone, o.contact_address, o.locale,
                    o.provider_sign_in_only, o.inactivity_timeout_days, o.administrators_need_two_factor,
-                   o.created_at
+                   o.sso_required_since, o.created_at
               FROM organisations o
              WHERE o.id = :organisation
             SQL,
@@ -421,13 +421,25 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, pp.line_id, pp.id
             SQL,
+        'single_sign_on' => <<<'SQL'
+            SELECT CASE p.standing WHEN 'current' THEN 'newest_saved' ELSE 'still_signing_people_in' END AS which,
+                   p.name, p.protocol, p.saved_at, p.switched_on_at,
+                   p.metadata_url AS saml_metadata_url, p.metadata_file_name AS saml_metadata_file_name,
+                   p.saml_entity_id, p.saml_sign_on_url,
+                   (SELECT string_agg(c.certificate, ', ' ORDER BY c.position)
+                      FROM jsonb_array_elements_text(p.saml_certificates) WITH ORDINALITY AS c (certificate, position)) AS saml_certificates,
+                   p.oidc_issuer, p.oidc_client_id, p.oidc_authorization_endpoint, p.oidc_token_endpoint, p.oidc_jwks_uri
+              FROM organisation_sso_providers p
+             WHERE p.organisation_id = :organisation
+             ORDER BY p.standing
+            SQL,
     ];
 
     /** Columns holding a date and time, written in UTC as `2026-11-05T14:20:07Z`. */
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
         'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
-        'superseded_at', 'recorded_at',
+        'superseded_at', 'recorded_at', 'sso_required_since', 'saved_at', 'switched_on_at',
     ];
 
     private const array ROLES = [
