@@ -36,3 +36,40 @@ export function markAllUnder({ room, heading, markAll }: BellTop): boolean {
 
   return heading + BELL_BESIDE_GAP + markAll > room;
 }
+
+/** The empty sentence on main: 15, beside a 40 bell tile with 12 between (sc-94028). */
+export const EMPTY_SENTENCE = 15;
+export const EMPTY_TILE = 40;
+export const EMPTY_GAP = tokens.spaceLg;
+
+/** Notification settings at the panel's foot: 15 semibold. */
+export const SETTINGS_LINK = 15;
+
+/** Below AX1 main's size; from AX1 the text size's, no cap. */
+export function bellStart(size: number, scale: number): number {
+  return size * scale;
+}
+
+/** From AX1 the tile moves onto its own line above the sentence where the sentence's widest word, at its grown size, cannot fit beside it; below AX1 never. */
+export function emptyTileAbove(scale: number, widest: number, room: number): boolean {
+  return atAccessibilitySizes(scale) && widest > room - EMPTY_TILE - EMPTY_GAP;
+}
+
+/** Main's size below AX1; from AX1 the largest at which the widest word fits the sentence's line, never under 15, no cap. */
+export function emptySentenceSize(scale: number, widest: number, room: number): number {
+  const line = emptyTileAbove(scale, widest, room) ? room : room - EMPTY_TILE - EMPTY_GAP;
+  const start = bellStart(EMPTY_SENTENCE, scale);
+
+  return atAccessibilitySizes(scale)
+    ? fitWidest(EMPTY_SENTENCE, start, widest, Math.max(line, 1))
+    : start;
+}
+
+/** The sentence's rule for Notification settings, whose line is the body's. */
+export function settingsSize(scale: number, widest: number, room: number): number {
+  const start = bellStart(SETTINGS_LINK, scale);
+
+  return atAccessibilitySizes(scale)
+    ? fitWidest(SETTINGS_LINK, start, widest, Math.max(room, 1))
+    : start;
+}
