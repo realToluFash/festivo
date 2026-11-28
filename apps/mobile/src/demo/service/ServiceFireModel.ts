@@ -14,7 +14,7 @@ export const NOT_YET_MIN = 5;
 export const RUN_ITEM = 'Speeches';
 export const RUN_COURSE = 2;
 
-export const OFFLINE_LINE = 'Firing, the next course and ending service need a connection.';
+export const OFFLINE_LINE = 'Firing, moving the room on and ending service need a connection.';
 export const OFFLINE_BEFORE_LINE = 'Starting service needs a connection.';
 export const NO_MENU_LINE = 'Add a menu to start service';
 export const NOTHING_TICKED = 'Choose at least one table. Nothing was fired.';
@@ -40,7 +40,6 @@ export interface FireChoice {
   scope: Scope;
   ticked: string[];
   error: boolean;
-  fromPrompt: boolean;
 }
 
 export interface FireState {
@@ -192,7 +191,7 @@ function lastCourse(): FireState {
 }
 
 function choice(course: number, scope: Scope): FireChoice {
-  return { course, scope, ticked: [], error: false, fromPrompt: false };
+  return { course, scope, ticked: [], error: false };
 }
 
 export function seed(name: FireStateName): FireState {
@@ -437,7 +436,7 @@ export function pressFire(s: FireState): FireState {
     current: later ? f.course : s.current,
     since: later ? NOW : s.since,
     notYetUntil: later ? null : s.notYetUntil,
-    promptDone: s.promptDone || (f.fromPrompt && f.course === RUN_COURSE),
+    promptDone: s.promptDone || (to.length > 0 && f.course === RUN_COURSE),
     fire: null,
     result,
     say: result.join(' '),
@@ -519,13 +518,6 @@ export function dismissPrompt(s: FireState): FireState {
   return RUN_COURSE === s.current + 1 ? { ...notYet(done), say: 'Prompt dismissed.' } : done;
 }
 
-/** A cue's Fire {course} now opens the choice and never fires; the cue stays until a fire answers it. */
-export function fireFrom(s: FireState, course: number, prompt: boolean): FireState {
-  const opened = openFire(s, course);
-  if (opened.fire == null) return opened;
-  return { ...opened, fire: { ...opened.fire, fromPrompt: prompt } };
-}
-
 export function steppable(s: FireState): number[] {
   return COURSES.map((_, i) => i).filter((i) => s.tables.every((t) => !isFired(t, i)));
 }
@@ -573,7 +565,7 @@ export function confirmTitle(s: FireState): string {
 
 export function confirmLine(s: FireState): string {
   return s.confirm === 'end'
-    ? `No course can be fired after this. ${ENDED_LINE}`
+    ? 'No more courses can be fired after this. Orders already made can still be served.'
     : `Tables still on ${courseWord(s.current)} keep their orders.`;
 }
 

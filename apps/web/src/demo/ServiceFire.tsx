@@ -36,7 +36,6 @@ import {
   courseWord,
   cues,
   dismissPrompt,
-  fireFrom,
   fireLabel,
   fireStateOf,
   firstTickable,
@@ -223,7 +222,7 @@ function ServiceFire({ name }: { name: FireStateName }) {
                       type="button"
                       className="button button-primary"
                       data-sf="prompt"
-                      onClick={() => act(fireFrom(s, RUN_COURSE, true))}
+                      onClick={() => act(openFire(s, RUN_COURSE))}
                     >
                       Fire {courseWord(RUN_COURSE)} now
                     </button>
@@ -257,7 +256,7 @@ function ServiceFire({ name }: { name: FireStateName }) {
                       type="button"
                       className="button button-primary"
                       data-sf="suggest"
-                      onClick={() => act(fireFrom(s, s.current + 1, false))}
+                      onClick={() => act(openFire(s, s.current + 1))}
                     >
                       Fire {courseWord(s.current + 1)} now
                     </button>

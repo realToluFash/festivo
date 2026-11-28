@@ -47,7 +47,6 @@ import {
   courseWord,
   cues,
   dismissPrompt,
-  fireFrom,
   fireLabel,
   fireStateOf,
   firstTickable,
@@ -206,7 +205,7 @@ function ServiceFire({ start }: { start: ReturnType<typeof fireStateOf> }) {
                 later="Not now"
                 go={`Fire ${courseWord(RUN_COURSE)} now`}
                 onLater={() => apply(dismissPrompt(s), 'fire')}
-                onGo={() => apply(fireFrom(s, RUN_COURSE, true))}
+                onGo={() => apply(openFire(s, RUN_COURSE))}
                 id="prompt"
               />
             )}
@@ -218,7 +217,7 @@ function ServiceFire({ start }: { start: ReturnType<typeof fireStateOf> }) {
                 later="Not yet"
                 go={`Fire ${courseWord(s.current + 1)} now`}
                 onLater={() => apply(notYet(s), 'fire')}
-                onGo={() => apply(fireFrom(s, s.current + 1, false))}
+                onGo={() => apply(openFire(s, s.current + 1))}
                 id="suggest"
               />
             )}

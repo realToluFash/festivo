@@ -126,7 +126,8 @@ describe('/demo/service-fire (sc-4009)', () => {
     fireEvent.click(fire);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(
-      screen.getAllByText('Firing, the next course and ending service need a connection.').length,
+      screen.getAllByText('Firing, moving the room on and ending service need a connection.')
+        .length,
     ).toBeGreaterThan(0);
     expect(screen.queryByText('Speeches has started. Fire dessert?')).toBeNull();
   });

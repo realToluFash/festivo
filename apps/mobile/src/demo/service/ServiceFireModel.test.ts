@@ -8,11 +8,11 @@ import {
   askNext,
   closeFire,
   confirm,
+  confirmLine,
   controls,
   courseOffer,
   cues,
   dismissPrompt,
-  fireFrom,
   fireLabel,
   fireStateOf,
   openFire,
@@ -132,12 +132,15 @@ describe('serviceFire (sc-4009)', () => {
 
   it('opens the choice from a cue and never fires, keeping the cue until a fire answers it', () => {
     const s = seed('prompt');
-    const opened = fireFrom(s, 2, true);
+    const opened = openFire(s, 2);
     expect(opened.fire).toMatchObject({ course: 2, scope: 'all' });
     expect(opened.tables).toBe(s.tables);
     expect(cues(closeFire(opened)).prompt).toBe(true);
     const sectionC = pressFire(pickScope(opened, 'C'));
     expect(cues(sectionC).prompt).toBe(false);
+    const fromHeader = pressFire(pickScope(pickCourse(openFire(s), 2), 'A'));
+    expect(fromHeader.current).toBe(2);
+    expect(cues(fromHeader).prompt).toBe(false);
   });
 
   it('shows only the prompt when it names the suggestion’s course, and Not now holds both back', () => {
@@ -155,6 +158,9 @@ describe('serviceFire (sc-4009)', () => {
     expect(fired(moved, 'Table 1', 2)).toBeUndefined();
     const ending = askNext(seed('lastCourse'));
     expect(ending.confirm).toBe('end');
+    expect(confirmLine(ending)).toBe(
+      'No more courses can be fired after this. Orders already made can still be served.',
+    );
     const ended = confirm(ending);
     expect(ended.phase).toBe('ended');
     expect(Object.values(controls(ended)).some(Boolean)).toBe(false);
