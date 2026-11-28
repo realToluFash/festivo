@@ -178,7 +178,7 @@ function OrType() {
 const BIMPE = { name: 'Bimpe Adeyemi', email: 'bimpe.adeyemi@gmail.com', number: '7700 900877' };
 const LUCAS = { name: 'Lucas Moreau', email: 'lucas.moreau@orange.fr', language: 'fr' } as const;
 
-/** Add guest (sc-1468): From contacts first, then the four fields, Add guest pinned at the foot. */
+/** Add guest (sc-1468, sc-3785): From contacts first, then the fields, Add guest at the top right as the app has it. */
 export function AddGuest({
   open,
   start,
@@ -355,11 +355,13 @@ export function AddGuest({
     : null;
 
   return (
-    <PinnedScreen
+    <FocusedScreen
       open={open}
       title={W.addGuest}
-      opener={opener}
+      verb={{ label: W.addGuest, on: true, onPress: () => add(), testID: 'guests.add.do' }}
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      cancelTestID="guests.add.cancel"
+      opener={opener}
       ask={discard}
       over={
         picking
@@ -375,7 +377,6 @@ export function AddGuest({
               )
             : group.over
       }
-      foot={<Pill label={W.addGuest} onPress={() => add()} testID="guests.add.do" />}
       testID="guests.add"
     >
       {added != null && <DoneLine text={say.added(added)} />}
@@ -511,7 +512,7 @@ export function AddGuest({
           />
         </Amber>
       )}
-    </PinnedScreen>
+    </FocusedScreen>
   );
 }
 
