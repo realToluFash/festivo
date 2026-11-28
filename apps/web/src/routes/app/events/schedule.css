@@ -882,10 +882,13 @@
 
 .ro-ask-acts .desk-text,
 .ro-ask-acts .gs-pill {
+  text-align: center;
+}
+
+.ro-ask-acts .gs-pill {
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
-  text-align: center;
 }
 
 .ro-unlinked {

@@ -1216,7 +1216,7 @@ function ItemPanel({
           <div className="ro-ask">
             <p className="ro-ask-words">{t('schedule.deleteAsk', { title: editing.title })}</p>
             <div className="ro-ask-acts">
-              <button id="ro-keep" type="button" className="desk-text" onClick={onKeep}>
+              <button id="ro-keep" type="button" className="desk-text is-wraps" onClick={onKeep}>
                 {t('schedule.keepIt')}
               </button>
               <button
@@ -1406,7 +1406,12 @@ function CourseField({
           </p>
           <p className="desk-help">{t('schedule.moveLine', { other: askedHolder.title })}</p>
           <div className="ro-ask-acts">
-            <button id="ro-move-cancel" type="button" className="desk-text" onClick={onCancelMove}>
+            <button
+              id="ro-move-cancel"
+              type="button"
+              className="desk-text is-wraps"
+              onClick={onCancelMove}
+            >
               {t('schedule.keepOn', { other: askedHolder.title })}
             </button>
             <button type="button" className="gs-pill is-secondary" onClick={onMove}>
