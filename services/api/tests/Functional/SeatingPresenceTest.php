@@ -66,6 +66,7 @@ final class SeatingPresenceTest extends ApiTestCase
             'subscribe' => [
                 'events/' . $this->eventId . '/seating',
                 'events/' . $this->eventId . '/seating/choices',
+                'events/' . $this->eventId . '/seating/notes',
                 '/.well-known/mercure/subscriptions/events%2F' . $this->eventId . '%2Fseating{/subscriber}',
             ],
             'payload' => ['userId' => $this->owner->getId()->toRfc4122(), 'name' => 'Ngozi Eze', 'editor' => true],

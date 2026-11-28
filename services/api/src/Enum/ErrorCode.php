@@ -69,6 +69,9 @@ enum ErrorCode: string
     case SeatingUndoStale = 'seating_undo_stale';
     case SeatingGuestsSeated = 'seating_guests_seated';
     case SeatingGuestNotWaiting = 'seating_guest_not_waiting';
+    case SeatingNoteInvalid = 'seating_note_invalid';
+    case SeatingNoteSame = 'seating_note_same';
+    case SeatingNoteReplaces = 'seating_note_replaces';
     case ScheduleItemLimit = 'schedule_item_limit';
     case ItemStarted = 'item_started';
     case ItemNotStarted = 'item_not_started';
@@ -221,7 +224,7 @@ enum ErrorCode: string
             self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
             self::PlanLimitReached, self::EventCapacityReached, self::PlanRequired => 403,
             self::PlanSoldByContract, self::PlanNotPriced, self::NothingPaidThroughProvider => 409,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::AudienceNameTaken, self::AudiencesFull, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffJobWorked, self::StaffShiftWorked, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::SeatingNoteSame, self::SeatingNoteReplaces, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::AudienceNameTaken, self::AudiencesFull, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffJobWorked, self::StaffShiftWorked, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::TableNotYours, self::TrayNotYours, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
@@ -234,7 +237,7 @@ enum ErrorCode: string
             self::AssistantUnavailable, self::AssistantBusy => 503,
 
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
-            self::AuditExportTooMany => 422,
+            self::AuditExportTooMany, self::SeatingNoteInvalid => 422,
             self::LevelNotAllowedForCode => 422,
             self::PlateStageInvalid, self::PlateEmpty, self::TableNothingToServe, self::TrayCheckIncomplete, self::UndoExpired, self::ServiceChanged => 409,
         };

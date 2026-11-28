@@ -42,7 +42,7 @@ final readonly class SubscriberTokenIssuer
         $seating = RealtimeTopic::EventSeating->for($eventId->toRfc4122());
 
         return $this->issue(
-            [$seating, RealtimeTopic::EventSeatingChoices->for($eventId->toRfc4122()), self::subscribersOf($seating)],
+            [$seating, RealtimeTopic::EventSeatingChoices->for($eventId->toRfc4122()), ...($editor ? [RealtimeTopic::EventSeatingNotes->for($eventId->toRfc4122())] : []), self::subscribersOf($seating)],
             ['userId' => $user->getId()->toRfc4122(), 'name' => $user->getName(), 'editor' => $editor],
             self::SEATING_LIFETIME_SECONDS,
         );

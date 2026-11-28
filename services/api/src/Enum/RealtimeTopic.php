@@ -12,6 +12,7 @@ enum RealtimeTopic: string
     case UserNotifications = 'users/{id}/notifications';
     case EventSeating = 'events/{id}/seating';
     case EventSeatingChoices = 'events/{id}/seating/choices';
+    case EventSeatingNotes = 'events/{id}/seating/notes';
     case EventGuests = 'events/{id}/guests';
     case EventHeadcount = 'events/{id}/headcount';
     case EventCheckIn = 'events/{id}/check-in';
