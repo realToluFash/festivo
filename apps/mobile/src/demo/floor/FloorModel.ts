@@ -57,6 +57,7 @@ export interface Guest {
   held: Held | null;
   owed: Owed[];
   sentBack: boolean;
+  kept: boolean;
 }
 
 export interface Tray {
@@ -88,7 +89,14 @@ export interface SendBackSheet {
 
 export type Step =
   | { kind: 'choice'; place: string; seat: number; from: Choice | null }
-  | { kind: 'sendBack'; place: string; seat: number; made: number; fromOwed: number | null };
+  | {
+      kind: 'sendBack';
+      place: string;
+      seat: number;
+      made: number;
+      /** The owed plate as it was before it went back, null when it was the order. */
+      was: Pick<Owed, 'id' | 'why' | 'reason'> | null;
+    };
 
 export interface Undo {
   line: string;
@@ -151,7 +159,18 @@ function guest(
   stage: Guest['stage'],
   extra: Partial<Guest> = {},
 ): Guest {
-  return { seat, name, dish, stage, flags: [], held: null, owed: [], sentBack: false, ...extra };
+  return {
+    seat,
+    name,
+    dish,
+    stage,
+    flags: [],
+    held: null,
+    owed: [],
+    sentBack: false,
+    kept: false,
+    ...extra,
+  };
 }
 
 function many(from: number, stage: Guest['stage'], names: readonly (string | null)[]): Guest[] {
@@ -198,7 +217,7 @@ function table2(): Place {
       guest(2, 'Tari Briggs', 'Jollof rice · chicken', 'Served', {
         owed: [owed('Plantain', 'To follow', 'Mains')],
       }),
-      guest(3, 'Adaeze Okafor', 'Grilled fish · pepper sauce', 'Served', {
+      guest(3, 'Adaeze Okafor', 'Grilled fish · pepper sauce', 'To serve', {
         flags: ['Nut allergy'],
         sentBack: true,
         owed: [
@@ -456,19 +475,21 @@ export function floorSeed(state: FloorState): Floor {
   if (state === 'sendBack') f.sheet = { place: 'Table 2', seat: 8, owed: null, reason: null };
   if (state === 'undo' && kemi != null) {
     kemi.sentBack = true;
-    kemi.owed.push(owed('Goat curry', 'Sent back', 'Mains', { id: 1, reason: 'Not right' }));
+    kemi.stage = 'To serve';
+    kemi.owed.unshift(owed('Goat curry', 'Sent back', 'Mains', { id: 1, reason: 'Not right' }));
     f.steps = 1;
     f.undo = {
       line: 'Sent back: Kemi Oke’s Goat curry · Not right',
       until: undoUntil(NOW),
       kept: false,
-      step: { kind: 'sendBack', place: 'Table 2', seat: 8, made: 1, fromOwed: null },
+      step: { kind: 'sendBack', place: 'Table 2', seat: 8, made: 1, was: null },
     };
   }
   if (state === 'offline' && ada?.held != null && tari != null) {
     ada.held = { ...ada.held, choice: READY_NOW, kept: true };
     tari.sentBack = true;
-    tari.owed.push(
+    tari.stage = 'To serve';
+    tari.owed.unshift(
       owed('Jollof rice · chicken', 'Sent back', 'Mains', { id: 1, reason: 'Dropped', kept: true }),
     );
     f.steps = 1;
@@ -765,34 +786,42 @@ export function sendBack(f: Floor): Floor {
   const kept = !f.online;
   const line = `Sent back: ${guestName(f, p, g)}’s ${items} · ${reason}`;
   const made = f.steps + 1;
-  const plate = owed(items, 'Sent back', from?.course ?? p.course ?? ROOM_COURSE, {
+  const back = {
     id: made,
+    why: 'Sent back',
     reason,
+    stage: 'To serve',
     kept,
-  });
+    sentBack: true,
+  } as const;
+  const sent = (x: Guest): Guest =>
+    from == null
+      ? {
+          ...x,
+          stage: 'To serve',
+          sentBack: true,
+          kept: false,
+          owed: [owed(items, 'Sent back', p.course ?? ROOM_COURSE, back), ...x.owed],
+        }
+      : { ...x, owed: x.owed.map((o, i) => (i === sh.owed ? { ...o, ...back } : o)) };
   return {
     ...f,
     places: withPlace(f, p.name, (q) => ({
       ...q,
-      seats: q.seats.map((x) =>
-        x.seat === g.seat
-          ? {
-              ...x,
-              sentBack: from == null ? true : x.sentBack,
-              owed: [
-                ...x.owed.map((o, i) => (i === sh.owed ? { ...o, sentBack: true } : o)),
-                plate,
-              ],
-            }
-          : x,
-      ),
+      seats: q.seats.map((x) => (x.seat === g.seat ? sent(x) : x)),
     })),
     sheet: null,
     undo: {
       line,
       until: undoUntil(NOW),
       kept,
-      step: { kind: 'sendBack', place: p.name, seat: g.seat, made, fromOwed: from?.id ?? null },
+      step: {
+        kind: 'sendBack',
+        place: p.name,
+        seat: g.seat,
+        made,
+        was: from == null ? null : { id: from.id, why: from.why, reason: from.reason },
+      },
     },
     kept: f.kept + (kept ? 1 : 0),
     heard: line,
@@ -809,17 +838,17 @@ function reversed(g: Guest, step: Step, kept: boolean): Guest {
   if (step.kind === 'choice')
     return g.held == null ? g : { ...g, held: { ...g.held, choice: step.from, kept } };
   const plate = g.owed.find((o) => o.id === step.made);
-  return {
-    ...g,
-    sentBack: step.fromOwed == null && plate != null ? false : g.sentBack,
-    owed: g.owed
-      .filter((o) => o.id !== step.made)
-      .map((o) =>
-        step.fromOwed != null && plate != null && o.id === step.fromOwed
-          ? { ...o, sentBack: false }
-          : o,
-      ),
-  };
+  if (plate == null) return g;
+  if (step.was == null)
+    return {
+      ...g,
+      stage: 'Served',
+      sentBack: false,
+      kept,
+      owed: g.owed.filter((o) => o !== plate),
+    };
+  const was = { ...step.was, stage: 'Served', kept, sentBack: false } as const;
+  return { ...g, owed: g.owed.map((o) => (o === plate ? { ...o, ...was } : o)) };
 }
 
 export function undo(f: Floor): Floor {
@@ -854,6 +883,7 @@ export function reconnect(f: Floor): Floor {
       ...p,
       seats: p.seats.map((g) => ({
         ...g,
+        kept: false,
         held: g.held == null ? null : { ...g.held, kept: false },
         owed: g.owed.map((o) => ({ ...o, kept: false })),
       })),

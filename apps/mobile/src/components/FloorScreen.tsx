@@ -19,10 +19,13 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
+  orderWaits,
   owesSentBack,
   refusalKey,
   roomCourse,
   sectionsMoved,
+  stageLeftBy,
+  listFormat,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -31,13 +34,14 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dateLocale } from '../i18n/index.ts';
+import { blockName } from '../kit/blockName.ts';
 import { useFloor } from '../kit/useFloor.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Glyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { Sheet, SheetActions } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -104,6 +108,16 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
 }
 
+function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
+  return listFormat(dateLocale(), { type: 'conjunction' }).format(
+    plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')),
+  );
+}
+
+function tableName(t: TFunction, table: FloorTable): string {
+  return blockName(t, table);
+}
+
 function listLine(t: TFunction, read: FloorRead): string {
   const course = roomCourse(read)?.course.name;
 
@@ -129,7 +143,16 @@ function wordSaid(t: TFunction, table: FloorTable): string {
 }
 
 /** Floor (sc-4021): every table, yours first, each in the plan's word; a table opens to its seats, where a held guest's choice and a plate sent back are made. */
-export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () => void }) {
+export function FloorScreen({
+  eventId,
+  onBack,
+  from = null,
+}: {
+  eventId: string;
+  onBack: () => void;
+  /** The way in it opened from (sc-98893): its ‹ names Overview or Your night. */
+  from?: 'overview' | 'night' | null;
+}) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const kind = useLayout().kind;
@@ -206,14 +229,16 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   const tables = groups.flatMap((g) => (g.kind === 'noSection' ? [] : g.tables));
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && open != null && shown != null;
+  const backLabel =
+    from == null
+      ? t('service.floor.listBack')
+      : from === 'overview'
+        ? t('eventNav.overview')
+        : t('myNight.title');
   const pad = phone ? tokens.spaceXl : 28;
-  // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
+  // A kept Undo names its plate in the body.
   const keptOn = new Set(
-    floor.kept.flatMap((tap) => [
-      tap.path.split('/')[2],
-      tap.key,
-      tap.body.subject as string | undefined,
-    ]),
+    floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.body.subject as string | undefined]),
   );
 
   const made = (
@@ -228,7 +253,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
       setUndo({
         subject: plate.id,
         reverses,
-        stage: plate.stage,
+        stage: stageLeftBy(plate, reverses),
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
       });
@@ -248,12 +273,29 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
             <Pressable
               onPress={onBack}
               accessibilityRole="button"
+              accessibilityLabel={backLabel}
               style={styles.back}
               testID="floor.back"
             >
-              <Text size={15} weight="semibold" style={styles.accent}>
-                {t('service.floor.listBack')}
-              </Text>
+              {from == null ? (
+                <Text size={15} weight="semibold" style={styles.accent}>
+                  {backLabel}
+                </Text>
+              ) : (
+                <View style={styles.backTo}>
+                  <Text
+                    size={15}
+                    weight="semibold"
+                    style={styles.accent}
+                    importantForAccessibility="no"
+                  >
+                    ‹
+                  </Text>
+                  <Text size={15} weight="semibold" style={styles.accent}>
+                    {backLabel}
+                  </Text>
+                </View>
+              )}
             </Pressable>
             <View style={styles.header}>
               <Text size={wide ? 28 : 30} weight="bold" accessibilityRole="header">
@@ -314,7 +356,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                 headingRef={headingRef}
                 onSendBack={(plate, guest, opener) => {
                   openerRef.current = opener;
-                  setSending({ plate, guest, table: shown.name, reason: null });
+                  setSending({ plate, guest, table: tableName(t, shown), reason: null });
                 }}
               />
             </ScrollView>
@@ -337,7 +379,7 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                   onPress={() => {
                     void floor.tap(
                       { kind: 'undo', subject: undo.subject, reverses: undo.reverses },
-                      {},
+                      { plates: { [undo.subject]: undo.stage } },
                     );
                     setUndo(null);
                     setHeard(t('service.floor.undone'));
@@ -375,10 +417,10 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
                 sending.plate,
                 t('service.floor.step.sentBack', {
                   guest: sending.guest,
-                  items: itemsOf(sending.plate, t),
+                  items: itemsInSentence(sending.plate, t),
                   reason: t(`service.sentBack.${reason}`),
                 }),
-                { kind: 'sendBack' },
+                { kind: 'sendBack', was: sending.plate.owedReason },
               );
               openerRef.current = headingRef.current;
               setSending(null);
@@ -565,8 +607,9 @@ function Row({
   const { t } = useTranslation();
   const served = t('service.floor.servedCount', { n: table.served, count: table.ordered });
   const covers = t('service.floor.covers', { count: table.covers });
+  const name = tableName(t, table);
   const said = [
-    table.name,
+    name,
     wordSaid(t, table),
     served,
     covers,
@@ -588,12 +631,12 @@ function Row({
         current && styles.rowCurrent,
         pressed && styles.pressed,
       ]}
-      testID={`floor.row.${table.name}`}
+      testID={`floor.row.${name}`}
     >
       <View style={[styles.grow, styles.rowText]}>
         <View style={styles.wrap}>
           <Text size={17} weight="bold">
-            {table.name}
+            {name}
           </Text>
           {other && table.section != null && (
             <Text size={14} weight="medium" style={styles.secondary}>
@@ -643,7 +686,10 @@ function stageSaid(t: TFunction, guest: ServiceGuestRead): { shape: Shape; said:
       said: t(`service.stage.${guest.order.stage}`),
     };
 
-  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder ?? 'notHereYet'}`) };
+  // No order and no reason: they have arrived and nothing is fired for the table.
+  if (guest.noOrder == null) return { shape: 'grey', said: t('service.floor.word.notFiredYet') };
+
+  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder}`) };
 }
 
 function TableView({
@@ -696,7 +742,7 @@ function TableView({
         )}
         <View ref={headingRef}>
           <Text size={wide ? 28 : 30} weight="bold" accessibilityRole="header">
-            {table.name}
+            {tableName(t, table)}
           </Text>
         </View>
         <WordLine shape={SHAPE_OF_WORD[table.word]} said={wordSaid(t, table)} size={16} />
@@ -830,7 +876,14 @@ function Seat({
             {itemsOf(order, t)}
           </Text>
         )}
-        <WordLine {...stageSaid(t, guest)} size={14} />
+        <View style={styles.wrap}>
+          <WordLine {...stageSaid(t, guest)} size={14} />
+          {orderWaits(guest, keptOn) && (
+            <Text size={13} weight="semibold" style={styles.chip}>
+              {t('service.waitingToSend')}
+            </Text>
+          )}
+        </View>
         {held != null && (
           <View style={styles.held}>
             <Text size={14} weight="medium" style={styles.secondary}>
@@ -970,11 +1023,7 @@ function SendBackSheet({
     <View style={styles.sheet} testID="floor.sendBack.sheet">
       <View style={styles.header}>
         <Text size={22} weight="bold" accessibilityRole="header">
-          {t('service.floor.sendBackTitle', {
-            items: sending.plate.items
-              .map((one) => one.name ?? t('service.floor.chefsChoice'))
-              .join(', '),
-          })}
+          {t('service.floor.sendBackTitle', { items: itemsInSentence(sending.plate, t) })}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
           {t('service.floor.sendBackWho', { guest: sending.guest, table: sending.table })}
@@ -1039,6 +1088,7 @@ const styles = StyleSheet.create({
   body: { paddingTop: tokens.spaceSm, gap: tokens.spaceXl, paddingBottom: 40 },
   tableBody: { paddingBottom: 140 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   header: { gap: tokens.spaceXs },
   strip: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   live: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colorAccent },
@@ -1210,7 +1260,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorCard,
   },
-  sheet: { gap: tokens.spaceXl },
+  sheet: {
+    gap: tokens.spaceXl,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.spaceLg,
+  },
   reasons: { gap: tokens.spaceXs },
   reason: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd, minHeight: 48 },
   radio: {

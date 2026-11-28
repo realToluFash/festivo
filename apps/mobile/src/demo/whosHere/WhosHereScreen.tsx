@@ -633,12 +633,16 @@ function DoorForm({
           testID="wh.door.name"
         />
       </Field>
-      <SelectRow
-        label={W.country}
-        country={country}
-        onChange={(c) => apply(setDoor(s, { country: c.code }))}
-        testID="wh.door.country"
-      />
+      <Field label={W.country}>
+        <SelectRow
+          label={W.country}
+          country={country}
+          onChange={(c) => apply(setDoor(s, { country: c.code }))}
+          withCallingCode
+          labelled
+          testID="wh.door.country"
+        />
+      </Field>
       <Field label={W.mobile} pill={W.optional} error={shown.number}>
         <TextField
           ref={numberField}
@@ -761,12 +765,16 @@ function MobileForm({ s, apply }: { s: WhState; apply: (next: WhState) => void }
       <Text size={15} style={styles.secondary}>
         {W.forOnly(name)}
       </Text>
-      <SelectRow
-        label={W.country}
-        country={country}
-        onChange={(c) => apply(setMobile(s, { country: c.code }))}
-        testID="wh.mobile.country"
-      />
+      <Field label={W.country}>
+        <SelectRow
+          label={W.country}
+          country={country}
+          onChange={(c) => apply(setMobile(s, { country: c.code }))}
+          withCallingCode
+          labelled
+          testID="wh.mobile.country"
+        />
+      </Field>
       <Field label={W.mobile} error={f.tried ? problem : null}>
         <TextField
           ref={numberField}

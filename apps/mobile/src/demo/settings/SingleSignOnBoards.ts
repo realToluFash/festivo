@@ -25,6 +25,7 @@ const PAGE: Record<SsoState, readonly [string, string]> = {
   test_running: ['testing', 'The system browser’s stand-in, It worked or not'],
   test_passed: ['test worked', 'Who came back, and the switch'],
   test_failed: ['test did not work', 'The provider’s error in plain words'],
+  test_failed_checks: ['test failed our checks', 'Soirely’s own reason, no “Okta said:”'],
   switch_untested: ['switch before a test', 'Refused until a test works'],
   on: ['on', 'Required sign-on, Change provider…, Remove Okta…'],
   required_confirm: ['Require sign-on?', 'The owners’ own sign-in stays'],

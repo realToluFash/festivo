@@ -1377,6 +1377,13 @@ span {
   }
 }
 
+/* At a phone the page's gutter is the frame's own, so a desk page inside Settings adds none (sc-91831). */
+@media (width <= 40rem) {
+  .settings-desk-page .desk > .desk-page {
+    padding-inline: 0;
+  }
+}
+
 /* The reading column stops at 680, so a wider window leaves the room at the right. A column cap leaves out .dialog and .dialog-scrim, which are fixed to the window. */
 .settings-desk .settings-desk-page > * > :not(.account-header, .toast, .dialog, .dialog-scrim) {
   max-width: 42.5rem;

@@ -27,6 +27,7 @@ import {
 } from '../../src/demo/enquiries/EnquiriesBoards.ts';
 import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
 import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
+import { ERASE_BOARDS } from '../../src/demo/enquiries/EraseModel.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
@@ -63,6 +64,8 @@ import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
+import { NEXT_TRAY_BOARDS } from '../../src/demo/nextTray/NextTrayBoards.ts';
+import { ASK_AT_TABLE_BOARDS } from '../../src/demo/askAtTable/AskAtTableBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
@@ -146,6 +149,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: '31221 · Enquiries · Erased after 12 months, and Delete enquiry (sc-31235)',
+    boards: ERASE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',
@@ -2403,6 +2410,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Draft created. Opening it.',
         href: '/demo/events/evt-wed-4?state=duplicateCreated',
       },
+      {
+        title: 'Duplicate · guest list ticked',
+        what: 'Also copy the guest list, and the lists it changes',
+        href: '/demo/events/evt-wed-4?state=duplicateGuests',
+      },
+      {
+        title: 'Duplicate · guest list copied',
+        what: 'Draft created. 128 guests copied.',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsCreated',
+      },
+      {
+        title: 'Duplicate · guest list over the plan',
+        what: 'A host without billing.manage: no in-app plan line',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefused',
+      },
+      {
+        title: 'Duplicate · over the plan, as an owner',
+        what: 'With billing.manage: the plan cannot be changed in the app',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedOwner',
+      },
+      {
+        title: 'Duplicate · guest list over the ceiling',
+        what: 'An owner, yet no plan line: no plan lifts 10,000 people',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsRefusedCeiling',
+      },
+      {
+        title: 'Duplicate · guest list, not created',
+        what: 'The start and the tick are kept',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsNotCreated',
+      },
+      {
+        title: 'Duplicate · no guests.manage',
+        what: 'No box: the copy is set up only',
+        href: '/demo/events/evt-wed-4?state=duplicateGuestsHidden',
+      },
+      {
+        title: 'Duplicate · small list, ticked copy',
+        what: 'Tick and Create draft: 12 guests copied',
+        href: '/demo/events/evt-draft-4?state=duplicate',
+      },
       { title: 'Mute · on', what: 'Just for you', href: '/demo/events/evt-wed-4?state=muted' },
       {
         title: 'Mute · not loaded',
@@ -2861,8 +2908,20 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Service · Next, the waiter’s tray from start to table (sc-1361) · phone from 320 px, tablet portrait and landscape',
+    boards: NEXT_TRAY_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Service · the waiter’s tray when an item runs out (sc-59384) · phone, tablet portrait and landscape',
     boards: RUN_OUT_TRAY_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · the waiter asks at the table when an item runs out (sc-59426) · phone, tablet portrait and landscape',
+    boards: ASK_AT_TABLE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

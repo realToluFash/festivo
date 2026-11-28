@@ -44,9 +44,11 @@ export interface ServiceGuestRead {
 
 export interface ServiceTableRead {
   key: string;
-  kind: 'table' | 'row' | 'seats';
-  name: string;
-  seats: number;
+  kind: 'table' | 'row' | 'block';
+  /** Null on a block of single seats, which is named from its seats. */
+  name: string | null;
+  /** A block's seat names, in label order; empty on a table or a row. */
+  seats: string[];
   section: { id: string; name: string } | null;
   people: { id: string; name: string }[];
   firedAt: string | null;
@@ -105,7 +107,8 @@ const ON_A_TRAY: readonly PlateStage[] = ['dishing', 'checked', 'onItsWay'];
 export interface FloorTable {
   key: string;
   kind: ServiceTableRead['kind'];
-  name: string;
+  name: string | null;
+  seats: string[];
   covers: number;
   section: { id: string; name: string } | null;
   people: { id: string; name: string }[];
@@ -131,12 +134,31 @@ function plates(guest: ServiceGuestRead): ServicePlateRead[] {
   return guest.order == null ? [] : [guest.order, ...guest.order.owed];
 }
 
+/** An order sent back is owed as itself, not as a second plate, until it is served again (sc-4005). */
+function owedBy({ order }: ServiceGuestRead): ServicePlateRead[] {
+  if (order == null) return [];
+
+  return order.owedReason != null && order.stage !== 'served' ? [order, ...order.owed] : order.owed;
+}
+
 export function owesSentBack(guest: FloorGuest): boolean {
   return guest.owed.some(
     (plate) =>
       plate.courseId === guest.order?.courseId &&
       plate.owedReason === 'sentBack' &&
       plate.stage !== 'served',
+  );
+}
+
+/** A held guest's choice and an owed plate carry their own mark; a kept tap on any other order, as an undone send-back is, marks the order's stage (sc-4021). */
+export function orderWaits(guest: FloorGuest, keptOn: ReadonlySet<string | undefined>): boolean {
+  const order = guest.order;
+
+  return (
+    order != null &&
+    !order.held &&
+    !guest.owed.some((plate) => plate.id === order.id) &&
+    keptOn.has(order.id)
   );
 }
 
@@ -159,17 +181,19 @@ export function floorWord(fired: readonly ServiceTableRead[], any: ServiceTableR
   return 'served';
 }
 
-const KIND_ORDER: Record<ServiceTableRead['kind'], number> = { table: 0, row: 1, seats: 2 };
+const KIND_ORDER: Record<ServiceTableRead['kind'], number> = { table: 0, row: 1, block: 2 };
 
 /** Tables by name with numbers compared by value, then rows, then blocks of single seats (sc-36033); never the order received. */
-export function inFloorOrder<T extends { kind: ServiceTableRead['kind']; name: string }>(
+export function inFloorOrder<T extends Pick<ServiceTableRead, 'kind' | 'name' | 'seats'>>(
   tables: readonly T[],
   locale: string,
 ): T[] {
   const collator = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' });
 
+  const label = (one: T) => one.name ?? one.seats[0] ?? '';
+
   return [...tables].sort(
-    (a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || collator.compare(a.name, b.name),
+    (a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || collator.compare(label(a), label(b)),
   );
 }
 
@@ -210,7 +234,7 @@ export function floorTables(floor: FloorRead): FloorTable[] {
     const theirs = fired.flatMap(({ table }) => table.guests);
     const guests = latest.table.guests.map((guest) => ({
       ...guest,
-      owed: theirs.filter((g) => g.id === guest.id).flatMap((g) => g.order?.owed ?? []),
+      owed: theirs.filter((g) => g.id === guest.id).flatMap(owedBy),
     }));
     const unserved = new Set(
       theirs.filter((g) => plates(g).some((p) => p.stage !== 'served')).map((g) => g.id),
@@ -228,6 +252,7 @@ export function floorTables(floor: FloorRead): FloorTable[] {
       key: any.key,
       kind: any.kind,
       name: any.name,
+      seats: any.seats,
       covers: any.guests.length,
       section: any.section,
       people: any.people,
@@ -267,7 +292,16 @@ export function floorGroups(floor: FloorRead, locale: string): FloorGroup[] {
   return [...head, { kind: 'other', tables: other }];
 }
 
-export type FloorReversed = { kind: 'sendBack' } | { kind: 'choice'; was: HeldChoice | null };
+export type FloorReversed =
+  { kind: 'sendBack'; was: OwedReason | null } | { kind: 'choice'; was: HeldChoice | null };
+
+/** The stage the step left its plate at, which its Undo sends as expected: a send-back moves it, a choice does not. */
+export function stageLeftBy(
+  plate: Pick<ServicePlateRead, 'stage'>,
+  reverses: FloorReversed,
+): PlateStage {
+  return reverses.kind === 'sendBack' ? 'toServe' : plate.stage;
+}
 
 export interface FloorKeptTap {
   key: string;
@@ -281,34 +315,28 @@ export interface FloorKeptTap {
 function onPlate(
   floor: FloorRead,
   id: string,
-  change: (order: ServiceOrderRead, plate: ServicePlateRead) => ServiceOrderRead,
+  change: <T extends ServicePlateRead>(plate: T) => T,
 ): FloorRead {
+  const changed = <T extends ServicePlateRead>(plate: T) =>
+    plate.id === id ? change(plate) : plate;
+
   return {
     ...floor,
     courses: floor.courses.map((course) => ({
       ...course,
       tables: course.tables.map((table) => ({
         ...table,
-        guests: table.guests.map((guest) => {
-          const order = guest.order;
-          const plate = order == null ? null : [order, ...order.owed].find((one) => one.id === id);
-
-          return order == null || plate == null ? guest : { ...guest, order: change(order, plate) };
-        }),
+        guests: table.guests.map((guest) =>
+          guest.order == null
+            ? guest
+            : {
+                ...guest,
+                order: changed({ ...guest.order, owed: guest.order.owed.map(changed) }),
+              },
+        ),
       })),
     })),
   };
-}
-
-function withoutOwedSentBack(order: ServiceOrderRead, plate: ServicePlateRead): ServiceOrderRead {
-  const made = [...order.owed]
-    .reverse()
-    .find(
-      (one) =>
-        one.courseId === plate.courseId && one.owedReason === 'sentBack' && one.stage !== 'served',
-    );
-
-  return { ...order, owed: order.owed.filter((one) => one !== made) };
 }
 
 /** What the device holds with its kept choices, sent-back plates and Undos shown as made (sc-4028). */
@@ -334,7 +362,7 @@ export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): F
     if (tap.kind === 'choice') {
       const { choice } = tap.body as { choice: HeldChoice };
 
-      return onPlate(read, id, (order) => ({ ...order, choice }));
+      return onPlate(read, id, (plate) => ({ ...plate, choice }));
     }
 
     const { reverses } = tap;
@@ -342,30 +370,28 @@ export function withKeptTaps(floor: FloorRead, kept: readonly FloorKeptTap[]): F
     if (reverses != null) {
       const { subject } = tap.body as { subject: string };
 
-      return onPlate(read, subject, (order, plate) =>
+      return onPlate(read, subject, (plate) =>
         reverses.kind === 'choice'
-          ? { ...order, choice: reverses.was }
-          : withoutOwedSentBack(order, plate),
+          ? { ...plate, choice: reverses.was }
+          : {
+              ...plate,
+              stage: 'served',
+              owedReason: reverses.was,
+              sentBack: plate.sentBack.slice(0, -1),
+            },
       );
     }
 
     if (tap.kind !== 'sendBack') return read;
     const { reason } = tap.body as { reason: SentBackReason };
 
-    return onPlate(read, id, (order, plate) => ({
-      ...order,
-      owed: [
-        ...order.owed,
-        {
-          ...plate,
-          id: tap.key,
-          isOrder: false,
-          stage: 'toServe',
-          trayId: null,
-          owedReason: 'sentBack',
-          sentBack: [{ reason, at: tap.tappedAt, by: null }],
-        },
-      ],
+    return onPlate(read, id, (plate) => ({
+      ...plate,
+      stage: 'toServe',
+      trayId: null,
+      choice: null,
+      owedReason: 'sentBack',
+      sentBack: [...plate.sentBack, { reason, at: tap.tappedAt, by: null }],
     }));
   }, floor);
 }

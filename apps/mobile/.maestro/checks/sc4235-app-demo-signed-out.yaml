@@ -1,0 +1,9 @@
+# sc-4235: the app demo's redeem after a door code's Sign out (/demo/redeem?state=signed-out), opened directly, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/redeem?state=signed-out
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.signedOut'
+    timeout: 10000
+- takeScreenshot: demo-signed-out

@@ -1,5 +1,12 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
@@ -10,7 +17,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
+import { addressParts, addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -30,6 +37,9 @@ import {
   TextAction,
 } from './Summary.tsx';
 import { NameText } from './SummaryRows.tsx';
+import { MeasuredWords } from './Title.tsx';
+import { atAccessibilitySizes, wordsIn } from '../layout/textSize.ts';
+import { cancelUnder } from '../layout/titleFit.ts';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
@@ -190,6 +200,75 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
   removeFailed: (error: unknown) => string;
 }
 
+/** sc-95215: the sheet's heading and its line, each word whole. From the accessibility sizes the face is not drawn and the words take the row; Done stays beside them where the widest word, the gap and Done fit the room, else it goes under the line at the row's end. */
+function PersonHead({
+  person,
+  done,
+  phone,
+}: {
+  person: { name: string; line: string; face: ReactNode };
+  done: { label: string; onPress: () => void } | null;
+  phone: boolean;
+}) {
+  const fontScale = useWindowDimensions().fontScale;
+  const big = phone && atAccessibilitySizes(fontScale);
+  const [row, setRow] = useState(0);
+  const [doneWidth, setDoneWidth] = useState(0);
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const nameParts = addressParts(person.name) ?? wordsIn([person.name]);
+  const lineWords = wordsIn([person.line]);
+  const widthOf = (kind: 'n' | 'l', word: string) => measured[`${fontScale}|${kind}|${word}`];
+  const widths = [
+    ...nameParts.map((word) => widthOf('n', word)),
+    ...lineWords.map((word) => widthOf('l', word)),
+  ];
+  const widest = widths.every((width) => width != null) ? Math.max(0, ...widths) : 0;
+  const gap = big ? tokens.spaceMd : tokens.spaceLg;
+  const under =
+    done != null &&
+    cancelUnder({
+      room: big ? row : row - tokens.sizeHit - tokens.spaceLg,
+      widest,
+      cancel: doneWidth,
+      gap,
+    });
+  const record = (kind: 'n' | 'l') => (word: string, width: number) => {
+    const key = `${fontScale}|${kind}|${word}`;
+    setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+  };
+  const action =
+    done == null ? null : (
+      <View
+        style={under ? styles.doneUnder : big ? undefined : styles.doneBesideName}
+        onLayout={(event) => setDoneWidth(event.nativeEvent.layout.width)}
+      >
+        <DoneAction label={done.label} onPress={done.onPress} testID="people.role.done" />
+      </View>
+    );
+
+  return (
+    <View onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
+      {phone && (
+        <>
+          <MeasuredWords words={nameParts} size={18} weight="bold" onWidth={record('n')} />
+          <MeasuredWords words={lineWords} size={14} weight="medium" onWidth={record('l')} />
+        </>
+      )}
+      <View style={[styles.person, big && styles.personBig, under && styles.personUnder]}>
+        {!big && person.face}
+        <View style={styles.grow}>
+          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
+          <Text size={14} weight="medium" style={styles.secondary}>
+            {person.line}
+          </Text>
+        </View>
+        {!under && action}
+      </View>
+      {under && action}
+    </View>
+  );
+}
+
 /** `save` applies the change wherever it lives before it resolves, so a pick overtaken by a later one still lands. */
 export function RoleSheet<R extends string>({
   person,
@@ -287,20 +366,11 @@ export function RoleSheet<R extends string>({
   };
   const parts = (
     <>
-      <View style={styles.person}>
-        {person.face}
-        <View style={styles.grow}>
-          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
-          <Text size={14} weight="medium" style={styles.secondary}>
-            {person.line}
-          </Text>
-        </View>
-        {phone && (
-          <View style={styles.doneBesideName}>
-            <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />
-          </View>
-        )}
-      </View>
+      <PersonHead
+        person={person}
+        phone={phone}
+        done={phone ? { label: words.done, onPress: onClose } : null}
+      />
       {notes}
       {failed != null && <Refused failed={failed} />}
       <EventRoles
@@ -833,6 +903,9 @@ const styles = StyleSheet.create({
   },
   // Done's word level with the name's first line, however many lines the name takes.
   doneBesideName: { marginTop: -10 },
+  doneUnder: { alignSelf: 'flex-end', marginTop: tokens.spaceSm },
+  personBig: { gap: tokens.spaceMd },
+  personUnder: { paddingBottom: 0 },
   done: {
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,

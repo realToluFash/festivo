@@ -15,6 +15,9 @@ import {
   GREET_AS_MAXIMUM,
   formatPhone,
   invitationLine,
+  type LimitRefusal,
+  limitRefusalOf,
+  optOutLines,
   ownLanguageName,
   phoneE164,
   phoneFields,
@@ -26,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { type Mesh } from '../../../mesh.ts';
@@ -705,6 +709,8 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
+  const optOuts = optOutLines(guest);
+  const dayOf = (at: string) => replyDate(at, timeZone, dateLocale());
   const replied =
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
@@ -725,7 +731,10 @@ function GuestView({
             how: t(`guestList.toldInLine.${recordedBy.how}`),
             date: replied,
           })
-        : t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
+        : t(guest.fromEmailLink === true ? 'guestList.repliedFromEmailLink' : 'guestList.replied', {
+            reply: t(REPLY_KEY[guest.reply]),
+            date: replied,
+          })
       : notYet
         ? manages && invites
           ? t('guestList.copyFirst')
@@ -864,7 +873,13 @@ function GuestView({
                         how: t(`guestList.toldInLine.${recordedBy.how}`),
                         date: replied,
                       })
-                    : (decides ?? t('guestList.repliedOn', { date: replied })),
+                    : (decides ??
+                      t(
+                        guest.fromEmailLink === true
+                          ? 'guestList.repliedOnFromEmailLink'
+                          : 'guestList.repliedOn',
+                        { date: replied },
+                      )),
                 ]}
               />
             </li>
@@ -905,6 +920,12 @@ function GuestView({
                   lines={[t('guestList.emailAddress')]}
                 />
               </li>
+              {optOuts.email != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutEmail', { date: dayOf(optOuts.email.at) })}
+                  closes={optOuts.email.closes}
+                />
+              )}
               <li className={guest.mobile == null ? 'desk-row is-none' : 'desk-row'}>
                 <IconLead name="phone" />
                 <RowWords
@@ -912,6 +933,21 @@ function GuestView({
                   lines={[t('guestList.mobileNumber')]}
                 />
               </li>
+              {optOuts.texts != null && (
+                <OptOutRow
+                  title={t('guestList.optedOutTexts', { date: dayOf(optOuts.texts.at) })}
+                  closes={optOuts.texts.closes}
+                />
+              )}
+              {optOuts.whatsApp != null && (
+                <li className="desk-row">
+                  <IconLead name="whatsApp" />
+                  <RowWords
+                    title={t('guestList.optedOutWhatsApp', { date: dayOf(optOuts.whatsApp) })}
+                    lines={[t('guestList.onlyTheGuest')]}
+                  />
+                </li>
+              )}
               <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
                 <IconLead name="globe" />
                 <div className="gs-row-words">
@@ -1093,6 +1129,18 @@ function GuestView({
         />
       )}
     </div>
+  );
+}
+
+/** sc-3969: a channel the guest stopped, under the row it concerns; a record, not a control. */
+function OptOutRow({ title, closes }: { title: string; closes: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <li className="desk-row">
+      <IconLead name="slash" />
+      <RowWords title={title} lines={closes ? [t('guestList.onlyTheGuest')] : []} />
+    </li>
   );
 }
 
@@ -1373,6 +1421,7 @@ function EditForm({
     changed: readonly Field[];
   } | null>(null);
   const [failed, setFailed] = useState<boolean | string>(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const form = useRef<HTMLDivElement>(null);
@@ -1546,7 +1595,10 @@ function EditForm({
 
       onSaved(saved, true);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) onGone();
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiError && error.status === 404) onGone();
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
@@ -1818,6 +1870,13 @@ function EditForm({
           onChange={(companions) => change({ companions })}
         />
       </div>
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          guestsAt={`/app/events/${eventId}/guests`}
+          onBack={() => setLimited(null)}
+        />
+      )}
     </div>
   );
 }

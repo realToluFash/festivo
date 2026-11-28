@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
+use App\Entity\AuditEntry;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -19,6 +21,7 @@ use App\Locale\NameNormaliser;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 
 /** Locks the event so two adds of one name queue (sc-1468). The audit holds who and when only: no name outlives the purge. */
 final readonly class GuestAdder
@@ -32,10 +35,11 @@ final readonly class GuestAdder
         private GuestListPublisher $guestListPublisher,
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestGroupEditor $guestGroupEditor,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
-    /** Refused 409 `guest_already_listed`, naming the guest already there, unless `allowDuplicate`. */
+    /** Refused 409 `guest_already_listed`, naming the guest already there, unless `allowDuplicate`; 403 past the plan's people per event or the ceiling (sc-3930). */
     public function add(Event $event, NewGuest $new, User $by, bool $allowDuplicate): Guest
     {
         $guest = $this->entityManager->wrapInTransaction(function () use ($event, $new, $by, $allowDuplicate): Guest {
@@ -45,6 +49,7 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
+            $this->hardLimits->requirePeopleRoom($event, 1 + Iter\count($new->companions));
             $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token(), InvitationLinks::token());
             $guest->setLanguage($new->language);
             $guest->setGreetAs($new->greetAs);
@@ -71,8 +76,8 @@ final readonly class GuestAdder
     }
 
     /** The one audit entry for a guest arriving, added here or copied with a duplicated event (sc-3656). */
-    public static function recordAdded(Auditor $auditor, Guest $guest, User $by): void
+    public static function recordAdded(Auditor $auditor, Guest $guest, User $by): AuditEntry
     {
-        $auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
+        return $auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
     }
 }

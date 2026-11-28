@@ -65,7 +65,9 @@ class Conflict(unittest.TestCase):
             payloads.conflict(p, pr("feature/sc-9/x"), ticket(labels=()), {"id": 5})
         said = " ".join(p.lines)
         self.assertIn("on feature/sc-9/x: `git fetch origin && git merge origin/main`", said)
-        self.assertIn("Never rebase or force-push", said)
+        self.assertIn("by merging, not by rebasing", said)
+        self.assertIn("`--force-with-lease`, never `--force`", said)
+        self.assertNotIn("Never rebase or force-push", said)
         self.assertIn("A push after a pass voids it, and the lead reviews the new head", said)
         self.assertIn("sq dev2 done 5", said)
 

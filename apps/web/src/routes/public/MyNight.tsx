@@ -18,7 +18,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import { forgetSession } from '../../session.ts';
 import { clockAt, crossesMidnight, dietaryOf, headingOf, weekdayOf } from './myNight.ts';
-import { doorAddress } from './doorCheckIn.ts';
+import { doorAddress, floorAddress } from './doorCheckIn.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import {
   type ClockLine,
@@ -242,6 +242,16 @@ function Night({ night, now, clock }: { night: MyNight; now: number; clock: Reac
           {night.checksIn && (
             <Link className="button button-primary myn-check-in" to={doorAddress(night.event.id)}>
               {t('checkIn.title')}
+            </Link>
+          )}
+          {night.floor && (
+            <Link
+              className={
+                night.checksIn ? 'myn-secondary myn-check-in' : 'button button-primary myn-check-in'
+              }
+              to={floorAddress(night.event.id)}
+            >
+              {t('staffLink.night.openFloor')}
             </Link>
           )}
           {night.shift != null && <NightShift night={night} shift={night.shift} />}

@@ -1,4 +1,4 @@
-/* The bell's popover in the B frame (sc-83081): 380 wide, capped at the window less 96; the head, the band, the ask and the foot stay and only the items scroll. */
+/* The bell's popover in the B frame (sc-83081): 380 wide and at most the window less 48, its height capped at the window less 96; the head, the band, the ask and the foot stay and only the items scroll. */
 
 .bell-pop {
   position: absolute;
@@ -9,6 +9,7 @@
   flex-direction: column;
   box-sizing: border-box;
   width: 380px;
+  max-width: calc(100vw - 48px);
   max-height: calc(100vh - 96px);
   padding: var(--spaceMd) var(--spaceXl) var(--spaceXs);
   border: 1px solid var(--colorBorder);

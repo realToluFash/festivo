@@ -1,13 +1,20 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { copyStartRefusal, localDateTime } from '@soirely/domain';
+import {
+  type LimitRefusal,
+  copyStartRefusal,
+  limitRefusalOf,
+  localDateTime,
+} from '@soirely/domain';
 import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { CopyGuestsBox, DuplicateBody } from '../../../components/DuplicateBody.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { Dialog } from '../../../components/SettingsParts.tsx';
 import { copyStart } from '../../../copyStart.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn } from '../../../session.ts';
 import { duplicated } from './duplicated.ts';
@@ -88,6 +95,7 @@ function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: (
   const when = useRef<HTMLDivElement>(null);
   const guests = useGuestsToCopy(event);
   const [ticked, setTicked] = useState(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const copying = ticked && guests > 0;
   const busy = status === 'creating';
 
@@ -118,6 +126,14 @@ function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: (
         state: duplicated(guestsCopied),
       });
     } catch (failure) {
+      const limit = limitRefusalOf(failure, 'copy', t, dateLocale());
+
+      if (limit != null) {
+        setStatus('editing');
+        setLimited(limit);
+        return;
+      }
+
       const refused =
         failure instanceof ApiError && failure.status === 422
           ? failure.fieldErrors().startsAt
@@ -132,6 +148,10 @@ function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: (
 
       setStatus('failed');
     }
+  }
+
+  if (limited != null) {
+    return <LimitRefusalDialog refusal={limited} inPlace onBack={() => setLimited(null)} />;
   }
 
   return (

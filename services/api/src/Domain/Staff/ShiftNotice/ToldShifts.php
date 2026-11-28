@@ -40,6 +40,16 @@ final readonly class ToldShifts
         $entry->told($this->shiftSnapshots->of($entry)->toArray());
     }
 
+    /** For when nothing differs: what they were told then names the shifts they are on now, so a later change to one reads as that shift's. The caller flushes. */
+    public function sameHoursNow(StaffMember $entry): void
+    {
+        $told = $entry->getTold();
+
+        if (null !== $told) {
+            $entry->told([...$told, 'shifts' => $this->shiftSnapshots->of($entry)->shifts]);
+        }
+    }
+
     /** A delivered S2 is what the person was last told: the snapshot and the briefing's print both settle, so the roster's Changed since sent clears. The caller flushes. */
     public function settled(StaffMember $entry): void
     {

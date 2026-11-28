@@ -19,21 +19,25 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
+  orderWaits,
   owesSentBack,
   refusalKey,
   roomCourse,
   sectionsMoved,
+  stageLeftBy,
+  listFormat,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { restoreSession, useSessionState } from '../../session.ts';
 import { NotSignedIn } from './DoorCheckIn.tsx';
+import { shiftAddress } from './doorCheckIn.ts';
 import { useFloor } from './useFloor.ts';
 import './floor.css';
 
@@ -73,6 +77,8 @@ interface SendingBack {
 
 interface Undoable {
   subject: string;
+  /** The stage the step left its plate at, which the Undo says it saw (sc-4028). */
+  stage: PlateStage;
   line: string;
   until: Date;
   reverses: FloorReversed;
@@ -92,6 +98,20 @@ function seatName(t: TFunction, guest: ServiceGuestRead): string {
 
 function itemsOf(t: TFunction, plate: ServicePlateRead): string {
   return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
+}
+
+function itemsInSentence(t: TFunction, plate: ServicePlateRead): string {
+  return listFormat(dateLocale(), { type: 'conjunction' }).format(
+    plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')),
+  );
+}
+
+function tableName(t: TFunction, { name, seats }: FloorTable): string {
+  if (name != null) return name;
+
+  return seats.length === 1
+    ? t('service.floor.seat', { seat: seats[0] })
+    : t('service.floor.seatRange', { first: seats[0], last: seats.at(-1) });
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
@@ -130,7 +150,7 @@ function useWide(): boolean {
   );
 }
 
-/** /floor/:eventId (sc-4021): Floor in a signed-in staff member's browser, as the app draws it. */
+/** /floor/:eventId (sc-4021): Floor in a signed-in staff member's browser, as the app draws it; ?from=night gives it Your night's way back (sc-98893). */
 export function FloorPage() {
   const { eventId = '' } = useParams();
   const session = useSessionState();
@@ -148,6 +168,8 @@ export function FloorPage() {
 
 function Floor({ eventId }: { eventId: string }) {
   const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const fromNight = params.get('from') === 'night';
   const floor = useFloor(eventId);
   const wide = useWide();
   const [open, setOpen] = useState<string | null>(null);
@@ -201,13 +223,9 @@ function Floor({ eventId }: { eventId: string }) {
   const tables = groups.flatMap((g) => (g.kind === 'noSection' ? [] : g.tables));
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && shown != null;
-  // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
+  // A kept Undo names its plate in the body.
   const keptOn = new Set(
-    floor.kept.flatMap((tap) => [
-      tap.path.split('/')[2],
-      tap.key,
-      tap.body.subject as string | undefined,
-    ]),
+    floor.kept.flatMap((tap) => [tap.path.split('/')[2], tap.body.subject as string | undefined]),
   );
 
   const made = (
@@ -220,6 +238,7 @@ function Floor({ eventId }: { eventId: string }) {
       if (!ok) return;
       setUndo({
         subject: plate.id,
+        stage: stageLeftBy(plate, reverses),
         reverses,
         line,
         until: new Date(Date.now() + UNDO_MINUTES * 60_000),
@@ -240,6 +259,12 @@ function Floor({ eventId }: { eventId: string }) {
       {!inFront && (
         <div className="flr-list">
           <div className="flr-head">
+            {fromNight && (
+              <Link className="flr-back" to={shiftAddress(eventId)}>
+                <Glyph name="back" size={22} />
+                <span>{t('staffLink.night.title')}</span>
+              </Link>
+            )}
             <h1>{t('service.floor.title')}</h1>
             <p className="flr-quiet">{listLine(t, read)}</p>
             <Strip freshness={floor.freshness} />
@@ -281,7 +306,7 @@ function Floor({ eventId }: { eventId: string }) {
             }
             onSendBack={(plate, guest, button) => {
               opener.current = button;
-              setSending({ plate, guest, table: shown.name });
+              setSending({ plate, guest, table: tableName(t, shown) });
             }}
           />
           {undo != null && (
@@ -297,7 +322,7 @@ function Floor({ eventId }: { eventId: string }) {
                 onClick={() => {
                   void floor.tap(
                     { kind: 'undo', subject: undo.subject, reverses: undo.reverses },
-                    {},
+                    { plates: { [undo.subject]: undo.stage } },
                   );
                   setUndo(null);
                   setHeard(t('service.floor.undone'));
@@ -320,10 +345,10 @@ function Floor({ eventId }: { eventId: string }) {
               sending.plate,
               t('service.floor.step.sentBack', {
                 guest: sending.guest,
-                items: itemsOf(t, sending.plate),
+                items: itemsInSentence(t, sending.plate),
                 reason: t(`service.sentBack.${reason}`),
               }),
-              { kind: 'sendBack' },
+              { kind: 'sendBack', was: sending.plate.owedReason },
             );
             closeSheet(heading.current);
           }}
@@ -469,8 +494,9 @@ function Row({
   const { t } = useTranslation();
   const served = t('service.floor.servedCount', { n: table.served, count: table.ordered });
   const covers = t('service.floor.covers', { count: table.covers });
+  const name = tableName(t, table);
   const said = [
-    table.name,
+    name,
     wordSaid(t, table),
     served,
     covers,
@@ -490,7 +516,7 @@ function Row({
     >
       <span className="flr-row-lines">
         <span className="flr-wrap">
-          <span className="flr-name">{table.name}</span>
+          <span className="flr-name">{name}</span>
           {other && table.section != null && (
             <span className="flr-quiet">{table.section.name}</span>
           )}
@@ -520,7 +546,10 @@ function stageOf(t: TFunction, guest: ServiceGuestRead): { shape: Shape; said: s
       said: t(`service.stage.${guest.order.stage}`),
     };
 
-  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder ?? 'notHereYet'}`) };
+  // No order and no reason: they have arrived and nothing is fired for the table.
+  if (guest.noOrder == null) return { shape: 'grey', said: t('service.floor.word.notFiredYet') };
+
+  return { shape: 'dashed', said: t(`service.noOrder.${guest.noOrder}`) };
 }
 
 type Choose = (order: ServiceOrderRead, guest: string, choice: HeldChoice) => void;
@@ -564,7 +593,7 @@ function TableView({
           </button>
         )}
         <Title ref={heading} className="flr-title" tabIndex={-1}>
-          {table.name}
+          {tableName(t, table)}
         </Title>
         <WordLine shape={SHAPE_OF_WORD[table.word]} said={wordSaid(t, table)} />
         <p className="flr-quiet">
@@ -682,7 +711,10 @@ function Seat({
         </p>
         <FlagWords guest={guest} />
         {order != null && <p>{itemsOf(t, order)}</p>}
-        <WordLine {...stageOf(t, guest)} />
+        <p className="flr-wrap">
+          <WordLine {...stageOf(t, guest)} />
+          {orderWaits(guest, keptOn) && waiting}
+        </p>
         {held != null && (
           <>
             <p className="flr-quiet">
@@ -781,7 +813,7 @@ function SendBackSheet({
         aria-labelledby="flr-sheet-title"
       >
         <h2 id="flr-sheet-title" ref={title} tabIndex={-1}>
-          {t('service.floor.sendBackTitle', { items: itemsOf(t, sending.plate) })}
+          {t('service.floor.sendBackTitle', { items: itemsInSentence(t, sending.plate) })}
         </h2>
         <p className="flr-quiet">
           {t('service.floor.sendBackWho', { guest: sending.guest, table: sending.table })}

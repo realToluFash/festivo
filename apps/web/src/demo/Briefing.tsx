@@ -60,6 +60,8 @@ export interface Briefing {
   side: boolean;
   card: ReactNode;
   cell: (one: Entry) => ReactNode;
+  /** The open person's Briefing in their details, with its actions once the column gives way (sc-102333). */
+  fact: (one: Entry) => ReactNode;
   held: (one: Entry, span: number) => ReactNode;
   panel: ReactNode;
   check: ReactNode;
@@ -69,6 +71,8 @@ export interface Briefing {
   adopt: (made: Entry, before: Entry | null) => Entry;
   removal: (one: Entry) => string | null;
   footnote: string | null;
+  /** Finished by a call-off, End now or its end: no Copy link, as sc-3917's finished event (sc-4333, pm #100278). */
+  concluded: boolean;
 }
 
 const OFF: Briefing = {
@@ -76,6 +80,7 @@ const OFF: Briefing = {
   side: false,
   card: null,
   cell: () => null,
+  fact: () => null,
   held: () => null,
   panel: null,
   check: null,
@@ -83,6 +88,7 @@ const OFF: Briefing = {
   adopt: (made) => made,
   removal: () => null,
   footnote: null,
+  concluded: false,
 };
 
 /** The briefing's state and actions on the Roster's own rows: a briefing copy turns the Link column to Copied, and a Link-column copy leaves Briefing alone. */
@@ -157,7 +163,7 @@ export function useBriefing({
 
   const people = entries as readonly Person[];
   const manage = first.access === 'manage';
-  const acts = manage && !first.finished;
+  const acts = manage && !first.finished && concluded == null;
   const notices = first.notices;
   const sends = acts && sendsOffered(first.live, concluded);
   const rows = sorted(people) as Person[];
@@ -604,6 +610,22 @@ export function useBriefing({
     card,
     cell: (one) => (
       <BriefCell
+        place="row"
+        one={one as Person}
+        acts={acts}
+        sends={sends}
+        busy={busy === one.id}
+        missed={missed === one.id}
+        notices={notices != null}
+        concluded={concluded}
+        onAgain={() => ask(one.id)}
+        onCopy={() => void copy(one.id)}
+        onMark={() => mark(one.id)}
+      />
+    ),
+    fact: (one) => (
+      <BriefCell
+        place="fact"
         one={one as Person}
         acts={acts}
         sends={sends}
@@ -630,6 +652,7 @@ export function useBriefing({
     adopt: asPerson,
     removal: (one) => (notices == null ? null : removalLine(one as Person, concluded)),
     footnote: notices == null || concluded != null ? null : NW.footnote,
+    concluded: concluded != null,
   };
 }
 
@@ -662,6 +685,7 @@ export function BriefWord({ brief }: { brief: Brief }) {
 }
 
 function BriefCell({
+  place,
   one,
   acts,
   sends,
@@ -673,6 +697,7 @@ function BriefCell({
   onCopy,
   onMark,
 }: {
+  place: 'row' | 'fact';
   one: Person;
   acts: boolean;
   sends: boolean;
@@ -689,7 +714,7 @@ function BriefCell({
   const changedActs = acts && one.brief === 'changed' && one.mobile != null;
 
   return (
-    <span className="rs-link-cell">
+    <span className={place === 'fact' ? 'rs-link-cell bf-fact' : 'rs-link-cell'}>
       {notices && stateOf(one) === 'unreachable' ? (
         <UnreachableWord />
       ) : (
@@ -708,7 +733,7 @@ function BriefCell({
         <span className="rs-link-acts">
           {sends && !one.heldText && !one.waitText && one.stopped !== true && (
             <button
-              id={`bf-again-${one.id}`}
+              id={place === 'fact' ? `bf-fact-again-${one.id}` : `bf-again-${one.id}`}
               type="button"
               className="desk-text"
               aria-label={`${BW.sendAgain}: ${one.name}`}
@@ -718,7 +743,12 @@ function BriefCell({
               {BW.sendAgain}
             </button>
           )}
-          <CopyButton id={`bf-row-copy-${one.id}`} one={one} busy={busy} onCopy={onCopy} />
+          <CopyButton
+            id={place === 'fact' ? `bf-fact-copy-${one.id}` : `bf-row-copy-${one.id}`}
+            one={one}
+            busy={busy}
+            onCopy={onCopy}
+          />
           {one.briefCopy != null && !one.briefCopy.marked && (
             <MarkButton one={one} onMark={onMark} />
           )}

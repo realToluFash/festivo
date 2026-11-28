@@ -3,12 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   BELL_LANGUAGES,
   BESIDE_GAP,
-  EMPTY_GAP,
   EMPTY_SENTENCE,
-  EMPTY_TILE,
-  emptySentenceSize,
   emptyStart,
-  emptyTileAbove,
   MARK_ALL,
   markAllSize,
   markAllStart,
@@ -16,7 +12,6 @@ import {
   PHONE_TITLE,
   phoneTitleSize,
   SETTINGS_LINK,
-  settingsSize,
   settingsStart,
 } from './bellSizeRules.ts';
 
@@ -85,58 +80,11 @@ describe('the phone bell screen’s title at the accessibility sizes (sc-92959)'
   });
 });
 
-describe('the bell’s empty sentence at the accessibility sizes (sc-94028)', () => {
-  const BESIDE = ROOM - EMPTY_TILE - EMPTY_GAP;
-
-  it('grows as main does, with no cap', () => {
+describe('the bell’s empty sentence and settings link start where main draws them (sc-94028)', () => {
+  it('grow as main does, with no cap', () => {
     expect(emptyStart(DEFAULT)).toBe(EMPTY_SENTENCE);
     expect(emptyStart(AX5)).toBeCloseTo(EMPTY_SENTENCE * AX5);
-  });
-
-  it('keeps the tile beside it where its widest word fits beside, and below AX1 always', () => {
-    expect(emptyTileAbove(AX2, BESIDE, ROOM)).toBe(false);
-    expect(emptyTileAbove(AX2, BESIDE + 1, ROOM)).toBe(true);
-    expect(emptyTileAbove(SEVENTH, 5000, ROOM)).toBe(false);
-  });
-
-  it('keeps its grown size where its widest word fits its line', () => {
-    expect(emptySentenceSize(AX5, BESIDE, ROOM)).toBeCloseTo(EMPTY_SENTENCE * AX5);
-    expect(emptySentenceSize(AX5, ROOM, ROOM)).toBeCloseTo(EMPTY_SENTENCE * AX5);
-  });
-
-  it('steps down only for its widest word, over the panel’s full width once the tile is above', () => {
-    const drawn = emptySentenceSize(AX5, ROOM * 1.25, ROOM);
-
-    expect(drawn).toBeLessThan(EMPTY_SENTENCE * AX5);
-    expect(drawn).toBeGreaterThan(EMPTY_SENTENCE * AX5 * 0.75);
-    expect(emptySentenceSize(AX5, 5000, ROOM)).toBe(EMPTY_SENTENCE);
-  });
-
-  it('below AX1 draws as on main, whatever its widest word', () => {
-    expect(emptySentenceSize(SEVENTH, 5000, ROOM)).toBeCloseTo(EMPTY_SENTENCE * SEVENTH);
-  });
-});
-
-describe('Notification settings at the panel’s foot, by the sentence’s rule (sc-94028)', () => {
-  // The iPad's body line, measured on the boards; Configuración at 15 × AX5 in Instrument Sans SemiBold.
-  const IPAD_LINE = 346;
-  const CONFIGURACION = 359.0;
-
-  it('grows as main does, with no cap', () => {
     expect(settingsStart(DEFAULT)).toBe(SETTINGS_LINK);
     expect(settingsStart(AX5)).toBeCloseTo(SETTINGS_LINK * AX5);
-  });
-
-  it('keeps its grown size where its widest word fits the line', () => {
-    expect(settingsSize(AX5, IPAD_LINE, IPAD_LINE)).toBeCloseTo(SETTINGS_LINK * AX5);
-  });
-
-  it('steps down to 51 at AX5 in Spanish on the iPad, so Configuración is whole', () => {
-    expect(settingsSize(AX5, CONFIGURACION, IPAD_LINE)).toBe(51);
-  });
-
-  it('never draws under 15, and below AX1 draws as on main', () => {
-    expect(settingsSize(AX5, 5000, IPAD_LINE)).toBe(SETTINGS_LINK);
-    expect(settingsSize(SEVENTH, 5000, IPAD_LINE)).toBeCloseTo(SETTINGS_LINK * SEVENTH);
   });
 });

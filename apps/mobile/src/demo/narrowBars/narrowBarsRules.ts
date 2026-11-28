@@ -1,26 +1,8 @@
-import {
-  TAB_BAR_NARROW_BELOW,
-  tabBarGeometry,
-  type TabBarGeometry,
-} from '../../components/bodyEdges.ts';
+import { tabBarGeometry } from '../../components/bodyEdges.ts';
 import { fitWidest } from '../../layout/textSize.ts';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../../layout/tabLabel.ts';
 
-const BORDER = 1;
-
 export const barGeometry = tabBarGeometry;
-export const MAIN = tabBarGeometry(TAB_BAR_NARROW_BELOW);
-
-/** One tab's width in a bar of `count` tabs on a window `width` wide, on `geometry` when given. */
-export function tabWidth(
-  width: number,
-  count: number,
-  geometry: TabBarGeometry = barGeometry(width),
-): number {
-  const { side, padSides, gap } = geometry;
-
-  return (width - 2 * (side + BORDER + padSides) - (count - 1) * gap) / count;
-}
 
 /** Today's bar never draws under the default size (sc-37298). `widest` is measured at `tabLabelStart(scale)`. */
 export function todayLabelSize(scale: number, widest: number, slot: number): number {

@@ -12,21 +12,10 @@
   text-decoration: none;
 }
 
-/* A day tab's words are never broken, cut or ended with an ellipsis (sc-64803). A tab is never narrower than its words; tabs that do not fit go to another row and share its width, the row's corners concentric with the tabs'. */
-.ro-days {
-  flex-wrap: wrap;
-  max-width: 100%;
-  border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
-}
-
+/* A day tab's name and count wrap as two words, never broken, cut or ended with an ellipsis (sc-64803); the row and the tab's width are .sn-tabs' and .sn-tab's. */
 .ro-day {
-  flex: 1 0 auto;
   flex-wrap: wrap;
   gap: var(--spaceXxs);
-  max-width: 100%;
-  border-radius: calc(var(--sizeHit) / 2);
-  overflow-wrap: normal;
-  text-align: center;
 }
 
 .ro-day > span {
@@ -37,10 +26,6 @@
   background: var(--colorCard);
   box-shadow: var(--shadowKnob);
   color: var(--colorAccentText);
-}
-
-.ro-day:hover {
-  color: var(--colorInk);
 }
 
 .ro-empty {
@@ -444,6 +429,180 @@
   gap: var(--spaceMd);
 }
 
+.ro-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceSm);
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The course name is cut short with an ellipsis on the row; the full name is in the form and its list (sc-3898). */
+.ro-course {
+  display: inline-block;
+  max-width: min(100%, 18rem);
+  overflow: hidden;
+  padding: 2px var(--spaceSm);
+  border: 1px solid var(--colorAccentTintBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorInk);
+  font: 600 12px/1.4 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ro-course-field {
+  position: relative;
+}
+
+.ro-course-box {
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  width: 100%;
+  cursor: pointer;
+  color: var(--colorInk);
+  font: 500 16px/1.3 var(--fontFamily);
+  text-align: left;
+}
+
+.ro-course-none {
+  color: var(--colorInkSecondary);
+}
+
+.ro-course-name,
+.ro-course-none {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ro-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--colorInk) 12%, transparent);
+}
+
+.ro-course-list-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  padding: var(--spaceXxs) var(--spaceSm) 0;
+}
+
+.ro-course-list-top h3 {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.ro-course-x,
+.ro-sheet-scrim {
+  display: none;
+}
+
+.ro-course-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ro-course-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ro-course-row:hover {
+  background: var(--colorRowHover);
+}
+
+.ro-course-row[aria-current='true'] {
+  background: var(--colorRowSelected);
+}
+
+.ro-course-row > svg {
+  flex: none;
+  color: var(--colorAccentText);
+}
+
+.ro-course-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ro-course-row-name {
+  font: 600 15px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ro-course-row-line {
+  color: var(--colorInkSecondary);
+  font: 400 13px/1.4 var(--fontFamily);
+}
+
+.ro-course-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd) var(--spaceMd);
+}
+
+.ro-course-empty-title,
+.ro-unlinked-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.ro-move {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1.5px solid var(--colorAttention);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+}
+
+.ro-move .ro-ask-acts {
+  justify-content: flex-end;
+}
+
+.ro-unlinked {
+  align-items: center;
+}
+
+.ro-unlinked-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.ro-unlinked-words .desk-help {
+  margin: 0;
+}
+
 .ro-panel .mn-panel-acts {
   width: 100%;
 }
@@ -511,6 +670,7 @@
   .ro .mn-page > .mn-lock,
   .ro .mn-page > .mn-said,
   .ro .mn-page > .ro-unsaid,
+  .ro .mn-page > .ro-unlinked,
   .ro .mn-page > .mn-split {
     order: 2;
   }
@@ -615,5 +775,41 @@
   .ro-ask {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ro-move .ro-ask-acts .gs-pill,
+  .ro-move .ro-ask-acts .desk-text {
+    align-self: stretch;
+    justify-content: center;
+    height: 48px;
+  }
+
+  .ro-sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: color-mix(in srgb, var(--colorInk) 40%, transparent);
+  }
+
+  .ro-course-list {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 41;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: var(--spaceMd) var(--spaceMd) var(--spaceLg);
+    border-radius: 18px 18px 0 0;
+  }
+
+  .ro-course-list-top h3 {
+    color: var(--colorInk);
+    font: 700 17px/1.3 var(--fontFamily);
+  }
+
+  .ro-course-x {
+    display: inline-flex;
   }
 }

@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Audit\Auditor;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Staff\Attendance\Clocking;
+use App\Domain\Staff\Attendance\ClockWindow;
+use App\Domain\Staff\WhosHere\WhosHereSignal;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Organisation;
@@ -12,11 +16,20 @@ use App\Entity\PhoneNumber;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\User;
+use App\Enum\ClockPhase;
+use App\Enum\ErrorCode;
+use App\Http\Exception\ApiException;
+use App\Repository\ShiftAttendanceRepository;
+use App\Repository\StaffShiftRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
+use ArrayObject;
 use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\Decorator\EntityManagerDecorator;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
@@ -24,9 +37,11 @@ use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mercure\Update;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Clocking in and out (sc-234): Grace's shift is 17:00 to 01:00 in Lagos (16:00Z to 00:00Z), so her link runs until 03:00 (02:00Z). */
 final class ClockingTest extends ApiTestCase
@@ -93,6 +108,45 @@ final class ClockingTest extends ApiTestCase
         self::assertSame(1, $this->whosHereSignals(), 'a second clock-in changes nothing, so signals nothing');
         $this->clock($user, 'out');
         self::assertSame(2, $this->whosHereSignals(), 'and again on a clock-out');
+    }
+
+    /** A save that moves the shifts holds the event's lock, so a clock-in that waited on it is judged by the shift it left (sc-100276). */
+    #[Test]
+    public function aClockInLocksTheEventBeforeTheEntryAndReadsTheShiftAgain(): void
+    {
+        $user = $this->signedIn();
+        self::mockTime(new DateTimeImmutable('2027-03-06T15:00:00Z'));
+        $entry = $this->entry($this->grace);
+        $clocking = self::service(Clocking::class);
+        self::assertSame(ClockPhase::Ready, ClockWindow::phase($clocking->cardOf($entry)['shift'] ?? self::fail('no shift'), null, new DateTimeImmutable('2027-03-06T15:00:00Z')));
+        self::em()->getConnection()->executeStatement("UPDATE staff_shifts SET starts_at = starts_at + INTERVAL '1 day', ends_at = ends_at + INTERVAL '1 day'");
+        $locked = new ArrayObject();
+        $em = new class(self::em(), $locked) extends EntityManagerDecorator {
+            /** @param ArrayObject<int, class-string> $locked */
+            public function __construct(EntityManagerInterface $wrapped, private readonly ArrayObject $locked)
+            {
+                parent::__construct($wrapped);
+            }
+
+            public function refresh(object $object, LockMode|int|null $lockMode = null): void
+            {
+                if (LockMode::PESSIMISTIC_WRITE === $lockMode) {
+                    $this->locked->append($object instanceof Event ? Event::class : $object::class);
+                }
+
+                parent::refresh($object, $lockMode);
+            }
+        };
+        $held = new Clocking($em, self::service(StaffShiftRepository::class), self::service(ShiftAttendanceRepository::class), self::service(Auditor::class), self::service(TranslatorInterface::class), self::service(ClockInterface::class), self::service(WhosHereSignal::class));
+
+        try {
+            $held->clockIn($entry, $user);
+            self::fail('clocked in to the shift as it stood before the move');
+        } catch (ApiException $refused) {
+            self::assertSame(ErrorCode::Conflict, $refused->errorCode);
+        }
+
+        self::assertSame([Event::class, StaffMember::class], $locked->getArrayCopy());
     }
 
     #[Test]

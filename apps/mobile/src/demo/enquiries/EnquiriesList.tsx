@@ -55,6 +55,18 @@ import {
 import { W } from './EnquiriesWords.ts';
 import { EnquiryForm } from './EnquiryForm.tsx';
 import { type NewStart } from './EnquiryFormModel.ts';
+import { ErasedChip, WarningLine } from './ErasedParts.tsx';
+import {
+  ERASE_WORDS as E,
+  type ErasedEnquiry,
+  type Landing,
+  backQuery,
+  eraseListStart,
+  erasedTitle,
+  landedStart,
+  shortDay,
+  warnsOn,
+} from './EraseModel.ts';
 import { keepMade } from './made.ts';
 
 const SEARCH_PAUSE_MS = 300;
@@ -70,14 +82,27 @@ export function enquiryHref(id: string, query: string): Href {
 export function EnquiriesList({
   state,
   newStart = null,
+  landing = null,
 }: {
   state: EnquiryState;
   newStart?: NewStart | null;
+  landing?: Landing | null;
 }) {
   const { t } = useTranslation();
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const start = useMemo(() => startOf(state), [state]);
+  const landedTab = landing?.tab ?? null;
+  const landedMine = landing?.mine ?? null;
+  const landedId = landing?.deleted ?? null;
+  const start = useMemo(
+    () =>
+      landedStart(eraseListStart(state, startOf(state)), {
+        tab: landedTab,
+        mine: landedMine,
+        deleted: landedId,
+      }),
+    [state, landedTab, landedMine, landedId],
+  );
   const [tab, setTab] = useState<EnquiryTab>(start.tab);
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.pausing ? '' : start.typed);
@@ -107,6 +132,10 @@ export function EnquiriesList({
   useEffect(() => {
     if (start.pausing) field.current?.focus();
   }, [start]);
+
+  useEffect(() => {
+    if (start.told != null) shell.tell(start.told);
+  }, [start, shell]);
 
   useEffect(() => {
     if (!refreshing || start.refreshing) return undefined;
@@ -165,25 +194,35 @@ export function EnquiriesList({
     setSearched('');
     setSearchFailed(false);
   };
-  const row = (enquiry: Enquiry) => {
-    const what = whatLine(enquiry, (type) => t(`eventTypes.${type}`), W.noDate, NOW, locale);
+  const back = backQuery(state, tab, mine);
+  const row = (enquiry: ErasedEnquiry) => {
+    const erased = enquiry.erased != null;
+    const typeWord = (type: NonNullable<Enquiry['type']>) => t(`eventTypes.${type}`);
+    const what = erased ? null : whatLine(enquiry, typeWord, W.noDate, NOW, locale);
+    const title = erased ? erasedTitle(enquiry, typeWord, locale) : enquiry.client;
     const who = assignedWords(enquiry, W.notAssigned);
     const when = changedWords(enquiry.changedAt, NOW, locale);
     const next = enquiry.tab === 'open' ? nextFor(enquiry) : null;
     const consultation = next == null ? null : relativeWords(next, locale);
+    const warnDay = warnsOn(enquiry, next);
+    const warning = warnDay == null ? null : E.warning(shortDay(warnDay, locale));
 
     return {
       key: enquiry.id,
       inset: 0,
       row: (
         <Row
-          title={enquiry.client}
-          line={what}
+          title={title}
+          line={what ?? undefined}
           below={
             <View style={styles.below}>
+              {erased && <ErasedChip testID={`enquiries.row.${enquiry.id}.erased`} />}
               <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
                 {wide ? who : `${who} · ${when}`}
               </Text>
+              {warning != null && (
+                <WarningLine words={warning} testID={`enquiries.row.${enquiry.id}.warning`} />
+              )}
               {consultation != null && (
                 <View style={styles.next}>
                   <Glyph name="users" size={15} ink={tokens.colorAccentText} weight={2.4} />
@@ -196,11 +235,26 @@ export function EnquiriesList({
           }
           value={wide ? when : undefined}
           opens
-          accessibilityLabel={[enquiry.client, what, who, when, consultation]
+          accessibilityLabel={[
+            title,
+            what,
+            erased ? E.erased : null,
+            who,
+            when,
+            consultation,
+            warning,
+          ]
             .filter((part) => part != null)
             .join(', ')}
           accessibilityRole="link"
-          onPress={() => router.push(enquiryHref(enquiry.id, as))}
+          onPress={() =>
+            router.push(
+              enquiryHref(
+                enquiry.id,
+                [as, 'from=list', `back=${encodeURIComponent(back)}`].filter(Boolean).join('&'),
+              ),
+            )
+          }
           testID={`enquiries.row.${enquiry.id}`}
         />
       ),

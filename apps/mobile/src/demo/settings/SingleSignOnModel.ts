@@ -21,7 +21,9 @@ export interface Provider {
   source: string;
 }
 
-export type Test = 'untested' | 'running' | 'passed' | 'failed';
+export type Test = 'untested' | 'running' | 'passed' | 'failed' | 'checksFailed';
+
+export type Came = 'worked' | 'failed' | 'checksFailed';
 
 export interface Setup {
   protocol: Protocol | null;
@@ -233,10 +235,10 @@ export function testStarted(model: SsoModel): SsoModel {
   return { ...model, test: 'running', refusal: null };
 }
 
-export function testCame(model: SsoModel, worked: boolean, at: string): SsoModel {
-  return worked
+export function testCame(model: SsoModel, came: Came, at: string): SsoModel {
+  return came === 'worked'
     ? { ...model, test: 'passed', testedAt: at }
-    : { ...model, test: 'failed', testedAt: null };
+    : { ...model, test: came, testedAt: null };
 }
 
 export function testStopped(model: SsoModel): SsoModel {
@@ -392,6 +394,14 @@ export function ssoCard(model: SsoModel): SsoCard | null {
         lines: lines([W.failedLine(name), W.failedNext(name)]),
         step: owner ? { label: W.testAgain, go: 'test' } : null,
       };
+    case 'checksFailed':
+      return {
+        mark: 'alert',
+        word: W.failed,
+        says,
+        lines: lines([W.checks.otherDomain, W.checksNext(name)]),
+        step: owner ? { label: W.testAgain, go: 'test' } : null,
+      };
     case 'untested':
       return {
         mark: 'notyet',
@@ -461,6 +471,7 @@ export const SSO_STATES = [
   'test_running',
   'test_passed',
   'test_failed',
+  'test_failed_checks',
   'switch_untested',
   'on',
   'required_confirm',
@@ -567,6 +578,8 @@ export function ssoStart(
       return start({ ...saved, test: 'passed', testedAt: at });
     case 'test_failed':
       return start({ ...saved, test: 'failed' });
+    case 'test_failed_checks':
+      return start({ ...saved, test: 'checksFailed' });
     case 'switch_untested':
       return start({ ...saved, refusal: 'untested' });
     case 'on':

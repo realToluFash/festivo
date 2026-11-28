@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
@@ -37,6 +38,7 @@ final readonly class GuestEditor
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestRules $guestRules,
         private GuestGroupEditor $guestGroupEditor,
+        private HardLimitsInterface $hardLimits,
     ) {
     }
 
@@ -73,6 +75,9 @@ final readonly class GuestEditor
             if ($renamed && !$allowDuplicate && null !== $this->guestRepository->findOneNamed($event, $new->nameKey, $guest)) {
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
+
+            $given = Iter\count(Vec\filter_keys($new->companions, static fn (int $index): bool => null === ($companionIds[$index] ?? null)));
+            $this->hardLimits->requirePeopleRoom($event, $given - (Iter\count($companions) - Iter\count($kept)));
 
             $guest->setFullName($new->fullName, $new->nameKey);
             $guest->setEmail($new->email);

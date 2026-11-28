@@ -1,7 +1,7 @@
 import { formatPhone, formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -31,11 +31,19 @@ import {
   PEOPLE,
   type Person,
   asQuery,
+  enquiryOf,
   personOf,
 } from './EnquiriesModel.ts';
 import { W } from './EnquiriesWords.ts';
 import { EnquiryForm } from './EnquiryForm.tsx';
-import { type PageState, noteWhen, notesNewestFirst, pageStartOf } from './EnquiryPageModel.ts';
+import {
+  type PageState,
+  type PageStart,
+  noteWhen,
+  notesNewestFirst,
+  pageStartOf,
+  visibleEnquiry,
+} from './EnquiryPageModel.ts';
 import { Fact, PagePart, StatusLine, StatusShape } from './EnquiryParts.tsx';
 import {
   NOTE_COUNTER_FROM,
@@ -48,6 +56,32 @@ import {
   savedLine,
 } from './EnquiryRules.ts';
 import { madeOf } from './made.ts';
+import { nextFor } from './ConsultationsModel.ts';
+import {
+  DeleteFoot,
+  DeleteSheet,
+  ErasedConsultations,
+  ErasedStatus,
+  WarningNote,
+  WonNote,
+} from './ErasedParts.tsx';
+import {
+  type Asking,
+  ERASE_WORDS as E,
+  type ErasePageState,
+  type ErasedEnquiry,
+  erasePageStart,
+  extraOf,
+  landingHref,
+  mayDelete,
+  monthWords,
+  shortDay,
+  warnsOn,
+} from './EraseModel.ts';
+
+const DELETE_MS = 700;
+
+const foundOf = (id: string | undefined): Enquiry | null => madeOf(id) ?? extraOf(id);
 
 type Closing = { reason: LostReason | null; line: string; tried: boolean };
 
@@ -63,23 +97,54 @@ function dayWords(date: string, locale: string): string {
   }).format(day);
 }
 
-/** An enquiry's page (sc-31226): how to reach them, the event, who has it, the notes, and Close as lost or Reopen. */
+function startFor(
+  state: PageState,
+  erase: ErasePageState | null,
+  id: string | undefined,
+  as: string | undefined,
+): PageStart & { asking: Asking; consultations: ErasePageStart['consultations'] } {
+  if (erase == null)
+    return { ...pageStartOf(state, id, as, foundOf), asking: 'none', consultations: [] };
+  const begin = erasePageStart(erase);
+  const found = enquiryOf(id) ?? foundOf(id);
+
+  return {
+    viewer: begin.viewer,
+    enquiry: visibleEnquiry(found == null ? null : { ...found, ...begin.patch }, begin.viewer),
+    editing: null,
+    closing: null,
+    failed: false,
+    asking: begin.asking,
+    consultations: begin.consultations,
+  };
+}
+
+type ErasePageStart = ReturnType<typeof erasePageStart>;
+
+/** An enquiry's page (sc-31226): how to reach them, the event, who has it, the notes, and Close as lost or Reopen; sc-31235's erased page, warning and Delete enquiry. */
 export function EnquiryPage({
   id,
   state,
+  erase = null,
   as,
+  from,
+  backTo,
 }: {
   id: string | undefined;
   state: PageState;
+  erase?: ErasePageState | null;
   as: string | undefined;
+  from?: string | undefined;
+  backTo?: string | undefined;
 }) {
   const { t } = useTranslation();
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const [start] = useState(() => pageStartOf(state, id, as, madeOf));
+  const [start] = useState(() => startFor(state, erase, id, as));
   const viewer = start.viewer;
-  const [enquiry, setEnquiry] = useState<Enquiry | null>(start.enquiry);
+  const [enquiry, setEnquiry] = useState<ErasedEnquiry | null>(start.enquiry);
   const [failed, setFailed] = useState(start.failed);
+  const [asking, setAsking] = useState<Asking>(start.asking);
   const [closing, setClosing] = useState<Closing | null>(start.closing);
   const [assigning, setAssigning] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -120,8 +185,45 @@ export function EnquiryPage({
       </EnquiriesFrame>
     );
 
+  const remove = () => {
+    setAsking('deleting');
+    setTimeout(() => router.dismissTo(landingHref(enquiry.id, from, backTo) as Href), DELETE_MS);
+  };
+  const sheet = asking !== 'none' && (
+    <DeleteSheet
+      asking={asking}
+      body={enquiry.erased == null ? E.deleteBody(enquiry.client) : E.deleteBodyErased}
+      onKeep={() => setAsking('none')}
+      onDelete={remove}
+      onCloseRace={() => {
+        setEnquiry({ ...enquiry, tab: 'won' });
+        setAsking('none');
+      }}
+    />
+  );
+  const deletes = mayDelete(enquiry, viewer);
+  const deleteFoot = deletes && (
+    <DeleteFoot erased={enquiry.erased != null} onPress={() => setAsking('confirm')} />
+  );
+
+  if (enquiry.erased != null)
+    return (
+      <ErasedPage
+        enquiry={enquiry}
+        viewer={viewer}
+        wide={wide}
+        locale={locale}
+        top={top}
+        consultations={start.consultations}
+        foot={deleteFoot}
+        overlay={sheet}
+      />
+    );
+
   const lost = enquiry.lost;
-  const status = lost == null ? W.open : `${W.lost} · ${W.reasons[lost.reason]}`;
+  const won = enquiry.tab === 'won';
+  const status = won ? E.won : lost == null ? W.open : `${W.lost} · ${W.reasons[lost.reason]}`;
+  const warnDay = warnsOn(enquiry, nextFor(enquiry));
   const close = (reason: LostReason, line: string) => {
     setEnquiry({
       ...enquiry,
@@ -166,6 +268,7 @@ export function EnquiryPage({
   const overlay = (
     <>
       {form}
+      {sheet}
       {closing != null && !docked && (
         <SheetLayer onClose={() => setClosing(null)} label={W.keepOpen}>
           {panel}
@@ -216,8 +319,9 @@ export function EnquiryPage({
         title={enquiry.client}
         pill={<OrgPill />}
         bell={<Bell tell={shell.tell} />}
-        under={<StatusLine lost={lost != null} words={status} />}
+        under={won ? <WonLine /> : <StatusLine lost={lost != null} words={status} />}
       />
+      {warnDay != null && <WarningNote words={E.warning(shortDay(warnDay, locale))} />}
       {lost != null && (
         <View style={styles.banner} testID="enquiry.lost">
           <View style={styles.bannerHead}>
@@ -341,7 +445,7 @@ export function EnquiryPage({
         onNotes={(notesList) => setEnquiry({ ...enquiry, notesList, changedAt: NOW })}
       />
 
-      {lost == null && (
+      {lost == null && !won && (
         <View style={styles.start}>
           <Pill
             label={W.closeAsLostOpens}
@@ -353,6 +457,97 @@ export function EnquiryPage({
           />
         </View>
       )}
+      {won && viewer.role !== 'member' && <WonNote />}
+      {deleteFoot}
+    </EnquiriesFrame>
+  );
+}
+
+function WonLine() {
+  return (
+    <View style={styles.won} accessible accessibilityLabel={E.won} testID="enquiry.status">
+      <Glyph name="tick" size={14} ink={tokens.colorInk} weight={2.8} />
+      <Text size={16} weight="semibold" accessible={false}>
+        {E.won}
+      </Text>
+    </View>
+  );
+}
+
+/** What the clock kept, read only: no way to reach them, no notes, no Edit, no Where, no Reopen. */
+function ErasedPage({
+  enquiry,
+  viewer,
+  wide,
+  locale,
+  top,
+  consultations,
+  foot,
+  overlay,
+}: {
+  enquiry: ErasedEnquiry;
+  viewer: Person;
+  wide: boolean;
+  locale: string;
+  top: ReactNode;
+  consultations: ErasePageStart['consultations'];
+  foot: ReactNode;
+  overlay: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const shell = useShell();
+  const erased = enquiry.erased!;
+  const status = erased.reason == null ? W.lost : `${W.lost} · ${W.reasons[erased.reason]}`;
+  const assigned = personOf(enquiry.assignedTo);
+  const facts: [string, string | null][] = [
+    [W.eventType, enquiry.type == null ? null : t(`eventTypes.${enquiry.type}`)],
+    [W.date, erased.month == null ? null : monthWords(erased.month, locale)],
+    [W.guests, enquiry.guests == null ? null : enquiry.guests.toLocaleString(locale)],
+    [W.budget, enquiry.budget == null ? null : moneyWords(enquiry.budget, locale)],
+    [W.foundVia, enquiry.foundVia == null ? null : W.foundVias[enquiry.foundVia]],
+  ];
+
+  return (
+    <EnquiriesFrame band={null} overlay={overlay}>
+      {top}
+      <ListTop
+        kind={kindOf(shell.layout)}
+        title={E.erasedEnquiry}
+        pill={<OrgPill />}
+        bell={<Bell tell={shell.tell} />}
+        under={<StatusLine lost words={status} />}
+      />
+      <ErasedStatus date={shortDay(erased.on, locale)} />
+      <PagePart wide={wide} title={W.aboutEvent} testID="enquiry.about">
+        <View style={[styles.facts, wide && styles.factsWide]}>
+          {facts.map(([label, value]) => (
+            <View key={label} style={wide ? styles.factWide : undefined}>
+              <Fact label={label} value={value ?? W.notGiven} given={value != null} />
+            </View>
+          ))}
+        </View>
+      </PagePart>
+      <PagePart wide={wide} title={W.assignedTo} testID="enquiry.assignedTo">
+        <Text size={16} weight="medium">
+          {assigned == null
+            ? W.notAssigned
+            : assigned.id === viewer.id
+              ? W.you(assigned.name)
+              : assigned.name}
+        </Text>
+      </PagePart>
+      <PagePart wide={wide} title={E.dates} testID="enquiry.dates">
+        <View style={[styles.facts, wide && styles.factsWide]}>
+          <View style={wide ? styles.factWide : undefined}>
+            <Fact label={E.created} value={shortDay(erased.createdAt, locale)} given />
+          </View>
+          <View style={wide ? styles.factWide : undefined}>
+            <Fact label={E.closedAsLost} value={shortDay(erased.closedAt, locale)} given />
+          </View>
+        </View>
+      </PagePart>
+      <ErasedConsultations wide={wide} list={consultations} locale={locale} />
+      {foot}
     </EnquiriesFrame>
   );
 }
@@ -611,6 +806,7 @@ const styles = StyleSheet.create({
   },
   meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: tokens.spaceXs },
   edited: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  won: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   panel: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,

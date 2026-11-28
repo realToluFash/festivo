@@ -29,8 +29,8 @@ import {
   windowAt,
   wordsRoomKey,
   wordsSlot,
+  titleOnOneLine,
   wholeLineHeight,
-  wordsPending,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -414,16 +414,18 @@ describe('rowsFloor', () => {
 
 describe('the width labels have to fit (sc-37298)', () => {
   it('keeps a container’s reported width when only the text size changes', () => {
-    const reported = { window: windowAt(360, 360), width: 76 };
+    const reported = 76;
 
     expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, windowAt(360, 360))).toBe(76);
     expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360))).toBe(76);
   });
 
-  it('forgets a reported width once the window changes width', () => {
-    const reported = { window: windowAt(360, 360), width: 76 };
+  it('keeps a width reported mid-turn, which no new layout would replace (sc-99214)', () => {
+    // The tab reaches its final width when the window moves, before the frame does, so its onLayout does not fire again.
+    const room = { wrapped: null, kept: null, reported: 76 };
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(412, 412))).toBe(0);
+    expect(wordsSlot(room, 12, windowAt(800, 360))).toBe(76);
+    expect(wordsSlot(room, 12, windowAt(800, 800))).toBe(76);
   });
 
   it('keeps a wrapped text’s width only for the start it wrapped at', () => {
@@ -435,7 +437,7 @@ describe('the width labels have to fit (sc-37298)', () => {
 
   it('forgets a wrapped text’s width once its container reports a new room (sc-69816)', () => {
     const kept = { key: wordsRoomKey(43, windowAt(402, 402)), width: 129 };
-    const reported = { window: windowAt(402, 402), width: 238 };
+    const reported = 238;
 
     expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(238);
     expect(
@@ -450,7 +452,7 @@ describe('the width labels have to fit (sc-37298)', () => {
 
   it('keeps a wrapped text’s width while its container’s room is the same (sc-69816)', () => {
     const kept = { key: wordsRoomKey(43, windowAt(402, 402), 238), width: 236 };
-    const reported = { window: windowAt(402, 402), width: 238 };
+    const reported = 238;
 
     expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(236);
   });
@@ -458,13 +460,7 @@ describe('the width labels have to fit (sc-37298)', () => {
   it('takes the width a text wrapped at over anything kept', () => {
     const kept = { key: wordsRoomKey(20, windowAt(360, 360)), width: 120 };
 
-    expect(
-      wordsSlot(
-        { wrapped: 90, kept, reported: { window: windowAt(360, 360), width: 76 } },
-        20,
-        windowAt(360, 360),
-      ),
-    ).toBe(90);
+    expect(wordsSlot({ wrapped: 90, kept, reported: 76 }, 20, windowAt(360, 360))).toBe(90);
   });
 
   it('keeps no wrap read while a turn upright had moved the window but not yet the frame (sc-90463)', () => {
@@ -478,7 +474,7 @@ describe('the width labels have to fit (sc-37298)', () => {
 
   it('steps the bar’s labels below the cap after a live change with no new layout', () => {
     const tab = 76;
-    const reported = { window: windowAt(360, 360), width: tab };
+    const reported = tab;
     const widestAt = (start: number) => (start / 12) * 60;
 
     expect(
@@ -544,22 +540,6 @@ describe('drawnSize', () => {
   });
 });
 
-describe('wordsPending', () => {
-  it('never holds a text given no room', () => {
-    expect(wordsPending(undefined, 0, 0, 3)).toBe(false);
-  });
-
-  it('holds a text whose room is not reported yet', () => {
-    expect(wordsPending(0, 0, 3, 3)).toBe(true);
-    expect(wordsPending(120, 0, 3, 3)).toBe(true);
-  });
-
-  it('holds a text until every word is measured, then draws it', () => {
-    expect(wordsPending(120, 120, 2, 3)).toBe(true);
-    expect(wordsPending(120, 120, 3, 3)).toBe(false);
-  });
-});
-
 describe('dayLineShares, a This week day line (sc-92250)', () => {
   it('keeps the name and its dotted date on one line while both fit', () => {
     expect(dayLineShares(120, 110, 4, 234)).toBe(true);
@@ -567,5 +547,14 @@ describe('dayLineShares, a This week day line (sc-92250)', () => {
 
   it('sends the date to the line under once one pixel short', () => {
     expect(dayLineShares(120, 110, 4, 233)).toBe(false);
+  });
+});
+
+describe('titleOnOneLine', () => {
+  it('holds a title to one line when it is no wider than its room', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+    expect(titleOnOneLine(10, 0)).toBe(false);
   });
 });

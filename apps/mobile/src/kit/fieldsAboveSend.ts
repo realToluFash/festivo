@@ -27,6 +27,26 @@ export function focusedBlock({ name, number, focus }: EventFields): Placed {
   return focus === 'name' ? name : number;
 }
 
+/** The field the step has in focus: the one under the caret, else the last one that had it, as the Country code list takes no input focus and coming back from it the row it sits in keeps it. */
+export function fieldInFocus(
+  { name, number }: { name: Placed; number: Placed },
+  focus: Placed | null,
+  last: EventField,
+): EventField {
+  if (focus == null) return last;
+
+  return focus.contentY >= number.contentY ? 'number' : 'name';
+}
+
+/** What the step's dock rule is told (sc-7099): the focused field's block height, whether or not the caret is reported at this moment. */
+export function dockedHeight(
+  fields: Omit<EventFields, 'focus'>,
+  focus: Placed | null,
+  last: EventField,
+): number {
+  return focusedBlock({ ...fields, focus: fieldInFocus(fields, focus, last) }).height;
+}
+
 const fits = (block: Placed, room: number, margin: number) => block.height + 2 * margin <= room;
 
 /** What the keys leave in view above Send code (sc-97734, pm 26 Nov): the refusal and both fields when they fit, else the refusal and the focused field, else the focused field (WCAG 2.2 SC 2.4.11). */

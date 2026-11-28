@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Station;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Briefing\FinishedBriefings;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
@@ -65,6 +66,7 @@ final readonly class StationPlan
         private StationRules $stationRules,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private FinishedBriefings $finishedBriefings,
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -365,7 +367,7 @@ final readonly class StationPlan
     {
         $done = $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $done = $change();
+            $done = $this->finishedBriefings->keeping($event, $change);
             $this->entityManager->flush();
 
             return $done;
