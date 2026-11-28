@@ -134,14 +134,16 @@ final readonly class KitchenSheetDocument
         }
 
         $item = $line['item'];
+        $figure = null === $item['state'] ? null : $this->word(match ($item['state']) {
+            'needsHost' => 'needs_host',
+            'menuChanged' => 'menu_changed',
+            'notYet' => 'cell_notyet',
+            'never' => 'cell_never',
+            default => $item['state'],
+        }, $locale);
         $name = match (true) {
-            null !== $item['state'] => $this->word(match ($item['state']) {
-                'needsHost' => 'needs_host',
-                'menuChanged' => 'menu_changed',
-                'notYet' => 'cell_notyet',
-                'never' => 'cell_never',
-                default => $item['state'],
-            }, $locale),
+            // A copy recorded before course figures named their course holds no parent.
+            null !== $figure => '' === ($item['parent'] ?? '') ? $figure : $this->word('changes.in_course', $locale, ['course' => $item['parent'] ?? '', 'name' => $figure]),
             null !== $item['parent'] => $this->word('changes.named', $locale, ['dish' => $item['parent'], 'name' => $item['name']]),
             default => $item['name'],
         };

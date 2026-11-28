@@ -543,6 +543,7 @@
     "kitchen_sheet.changes.removed": "Retiré : {dish}, auparavant {count, number, ::group-auto}",
     "kitchen_sheet.changes.renamed": "Renommé : {old}, désormais {new}",
     "kitchen_sheet.changes.named": "{dish} · {name}",
+    "kitchen_sheet.changes.in_course": "{course} · {name}",
     "kitchen_sheet.changes.since_page": "Modifications depuis le {date} à {time}",
     "guest_message.notice.subject": "{event} : un message signé {hosts}",
     "guest_message.notice.dear": "Bonjour {greeting},",

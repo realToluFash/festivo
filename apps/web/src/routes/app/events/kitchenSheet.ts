@@ -160,7 +160,10 @@ export function changeLine(t: TFunction, line: KitchenChange): string {
 
   const name =
     item.state != null
-      ? t(ITEM_STATE_WORDS[item.state])
+      ? t('kitchenSheet.changes.inCourse', {
+          course: item.parent,
+          name: t(ITEM_STATE_WORDS[item.state]),
+        })
       : item.parent == null
         ? item.name
         : t('kitchenSheet.changes.named', { dish: item.parent, name: item.name });

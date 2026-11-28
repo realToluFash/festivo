@@ -411,7 +411,7 @@ const CHANGES = {
     line('added', { item: item('Sea bream'), count: 6 }),
     line('removed', { item: item('Fish'), count: 6 }),
     line('renamed', { item: item('Fish', 'Jollof rice'), to: 'Sea bass' }),
-    line('count', { item: { name: '', parent: null, state: 'notYet' }, old: 3, count: 0 }),
+    line('count', { item: { name: '', parent: 'Dessert', state: 'notYet' }, old: 3, count: 0 }),
   ],
 };
 
@@ -433,7 +433,7 @@ describe('Changes since the latest copy (sc-30692)', () => {
       'Added: Sea bream, 6',
       'Removed: Fish, was 6',
       'Renamed: Jollof rice · Fish, now Sea bass',
-      'Not chosen yet: 3 to 0',
+      'Dessert · Not chosen yet: 3 to 0',
     ]);
   });
 

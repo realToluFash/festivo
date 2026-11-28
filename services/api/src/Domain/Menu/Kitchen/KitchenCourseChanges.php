@@ -69,7 +69,7 @@ final readonly class KitchenCourseChanges
                         ($after ?? $before)['never'] ?? false => 'never',
                         default => 'notYet',
                     };
-                    $lines[] = KitchenChanges::line('count', item: ['name' => '', 'parent' => null, 'state' => $shown], old: $old, count: $new);
+                    $lines[] = KitchenChanges::line('count', item: ['name' => '', 'parent' => ($after ?? $before)['name'] ?? '', 'state' => $shown], old: $old, count: $new);
                 }
             }
         }

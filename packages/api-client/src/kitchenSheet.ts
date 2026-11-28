@@ -84,7 +84,7 @@ const CHANGE_KINDS = [
 
 export type KitchenChangeKind = (typeof CHANGE_KINDS)[number];
 
-/** A dish, variant or side, `parent` its dish's name on the last two; or with `state`, one of a course's other figures. */
+/** A dish, variant or side, `parent` its dish's name on the last two; or with `state`, one of a course's other figures, `parent` its course's name. */
 export interface KitchenChangeItem {
   name: string;
   parent: string | null;
