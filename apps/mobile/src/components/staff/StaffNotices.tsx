@@ -128,9 +128,11 @@ export function ReminderCard({
             ))}
         </View>
         {lines.kind === 'finished' ? (
-          <Text size={15} weight="semibold" testID="reminder.finished">
-            {lines.line}
-          </Text>
+          <View style={styles.box}>
+            <Text size={15} weight="semibold" testID="reminder.finished">
+              {lines.line}
+            </Text>
+          </View>
         ) : (
           <>
             {notSaved && (

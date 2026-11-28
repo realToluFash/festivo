@@ -22,6 +22,7 @@ use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
 use App\Enum\GuestReply;
+use App\Enum\GuestReplySource;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
@@ -71,7 +72,7 @@ final readonly class GuestPageController
         return $this->answered($this->guest($request));
     }
 
-    /** Refused 422 for an answer the page does not offer, a place that is not the guest's, or one sent as unnamed that has a name (sc-48740), or a need it does not know (sc-3778), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
+    /** `emailLink` is true for a reply confirmed from one of the invitation email's answer links (sc-1291), which the host's list names. Refused 422 for an answer the page does not offer, a place that is not the guest's, or one sent as unnamed that has a name (sc-48740), or a need it does not know (sc-3778), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
     #[Route('/api/guest-links/reply', name: 'guest_links_reply', methods: ['POST'])]
     #[PublicAccess]
     public function reply(Request $request): JsonResponse
@@ -79,6 +80,7 @@ final readonly class GuestPageController
         $body = Input::body($request, Type\shape([
             'token' => Type\string(),
             'answer' => Type\string(),
+            'emailLink' => Type\optional(Type\bool()),
             'companions' => Type\optional(Type\vec(Type\shape([
                 'id' => Type\string(),
                 'fullName' => Type\string(),
@@ -103,7 +105,12 @@ final readonly class GuestPageController
             ]]);
         }
 
-        $this->guestAnswers->answer($guest, $answer, $this->guestRules->pageReply($body['companions'] ?? [], $body['needs'] ?? null, $body['unnamed'] ?? []));
+        $this->guestAnswers->answer(
+            $guest,
+            $answer,
+            $this->guestRules->pageReply($body['companions'] ?? [], $body['needs'] ?? null, $body['unnamed'] ?? []),
+            source: ($body['emailLink'] ?? false) ? GuestReplySource::EmailLink : GuestReplySource::GuestPage,
+        );
 
         return $this->answered($guest);
     }

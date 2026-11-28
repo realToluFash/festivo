@@ -1,0 +1,22 @@
+# sc-97614: the event's Staff on the tablet, in ${ORIENT}: the top, and the foot scrolled.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=staff
+- extendedWaitUntil:
+    visible:
+      id: 'staff\.roster|staff\.failed|staff\.empty'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'reminder\.card'
+    timeout: 15000
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe:
+    start: '50%,80%'
+    end: '50%,30%'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: foot

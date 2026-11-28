@@ -250,6 +250,12 @@ describe('The event’s Schedule (sc-3893)', () => {
     ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
   });
 
+  it("holds a long course pill inside the Item column, so the page doesn't scroll sideways at 320 px (sc-3898)", () => {
+    expect(cssRule('.ro-course', SCHEDULE_CSS)).toContain(
+      'max-width: min(18rem, var(--roWordCap, 100%));',
+    );
+  });
+
   it("sits inside the desk's button and field resets, and gives the narrow page no inset beyond the shell's gutter", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
@@ -437,6 +443,7 @@ describe('The event’s Schedule (sc-3893)', () => {
       note: null,
       fixedTime: false,
       showToGuests: false,
+      courseId: null,
     });
     expect(screen.getByRole('table', { name: 'Garden' }).textContent).toContain('Fireworks');
   });
@@ -935,5 +942,169 @@ describe('Show on a screen (sc-3897)', () => {
     expect(within(row).getByRole('button', { name: 'Copy screen link' })).toBeDefined();
     expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
     expect(sent.some(({ line }) => line.endsWith('/replace'))).toBe(false);
+  });
+});
+
+const MENU = {
+  menu: {
+    courses: [
+      { id: 'k_starter', name: 'Starter', servedAt: '19:00', scheduleItem: null },
+      { id: 'k_main', name: 'Main course', servedAt: '20:30', scheduleItem: null },
+    ].map((one) => ({
+      ...one,
+      answer: 'choose',
+      skippable: false,
+      dishes: [],
+      ownItems: [],
+      items: [],
+      picksClose: null,
+      default: null,
+    })),
+  },
+};
+
+const MAINS = item('it_mains', 'Mains go out', '2030-11-15T20:15:00+00:00', '2030-11-15', {
+  course: { id: 'k_main', name: 'Main course' },
+});
+
+describe('A schedule item as a course (sc-3898)', () => {
+  it('names the course beside the title, to everyone who reads the schedule', async () => {
+    await onSchedule(
+      { 'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([MAINS]) }) },
+      ['events.read', 'run_of_show.read'],
+    );
+
+    const pill = await screen.findByText('Course · Main course');
+    expect(pill.closest('tr')?.textContent).toContain('Mains go out');
+  });
+
+  it('lists the menu’s courses with their served time, links one, and sends its id', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'GET /api/events/ev_1/menu': () => json(MENU),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () =>
+        json({ schedule: schedule([DRINKS]), itemId: 'it_drinks' }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Course/ }));
+    const list = await screen.findByRole('group', { name: 'Courses on the menu' });
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['', 'No course', 'Starter served 19:00', 'Main course served 20:30']);
+
+    fireEvent.click(within(list).getByRole('button', { name: /^Main course/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line.startsWith('PUT'))?.body).toMatchObject({
+        courseId: 'k_main',
+      }),
+    );
+  });
+
+  it("doesn't say the menu has no courses while it is still loading (sc-104509)", async () => {
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'GET /api/events/ev_1/menu': async () => {
+        await pending;
+
+        return json(MENU);
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Course/ }));
+    const list = await screen.findByRole('group', { name: 'Courses on the menu' });
+
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+    release();
+
+    expect(await within(list).findByRole('button', { name: /^Starter/ })).toBeDefined();
+    expect(within(list).getByRole('button', { name: /^Main course/ })).toBeDefined();
+    expect(screen.queryByText('No courses on the menu yet')).toBeNull();
+  });
+
+  it("wraps the ask's buttons and keeps them at least 48 px tall when narrow (sc-104509)", () => {
+    expect(cssRule('.ro-ask-acts', SCHEDULE_CSS)).toContain('flex-wrap: wrap;');
+    expect(
+      cssRule(
+        '.ro-ask-acts .desk-text',
+        SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)')),
+      ),
+    ).toContain('min-height: 48px;');
+  });
+
+  it('asks before moving a course held by another item, and shows the other loses it', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, MAINS]) }),
+      'GET /api/events/ev_1/menu': () => json(MENU),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Course/ }));
+    const list = await screen.findByRole('group', { name: 'Courses on the menu' });
+    expect(
+      within(list).getByRole('button', { name: /Main course.*linked to Mains go out/ }),
+    ).toBeDefined();
+
+    fireEvent.click(within(list).getByRole('button', { name: /^Main course/ }));
+
+    expect(await screen.findByText('Main course is linked to Mains go out.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Move the link' }));
+    expect(screen.getByText('Mains go out loses this course when you save.')).toBeDefined();
+  });
+
+  it('leaves Course out of a save, and does not offer it, without menu.read', async () => {
+    const sent = await onSchedule(
+      {
+        'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([MAINS]) }),
+        'PUT /api/events/ev_1/schedule/items/it_mains': () =>
+          json({ schedule: schedule([MAINS]), itemId: 'it_mains' }),
+      },
+      ['events.read', 'run_of_show.read', 'run_of_show.manage'],
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Mains go out' }));
+    expect(screen.queryByRole('button', { name: /^Course/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(sent.some(({ line }) => line.startsWith('PUT'))).toBe(true));
+    expect(sent.find(({ line }) => line.startsWith('PUT'))?.body).not.toHaveProperty('courseId');
+    expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/menu')).toBe(false);
+  });
+
+  it('shows the notice to a planner only, and dismissing it ends it', async () => {
+    const notice = item('it_mains', 'Mains go out', '2030-11-15T20:15:00+00:00', '2030-11-15', {
+      courseNotice: true,
+    });
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([notice]) }),
+      'DELETE /api/events/ev_1/schedule/items/it_mains/course-notice': () =>
+        json({ schedule: schedule([{ ...notice, courseNotice: false }]), itemId: 'it_mains' }),
+    });
+
+    expect(await screen.findByText('Mains go out is no longer linked to a course.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull(),
+    );
+    expect(sent.some(({ line }) => line.startsWith('DELETE'))).toBe(true);
+  });
+
+  it('shows no notice without run_of_show.manage', async () => {
+    const notice = item('it_mains', 'Mains go out', '2030-11-15T20:15:00+00:00', '2030-11-15', {
+      courseNotice: true,
+    });
+    await onSchedule(
+      { 'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([notice]) }) },
+      ['events.read', 'run_of_show.read'],
+    );
+
+    await screen.findByText('Mains go out');
+    expect(screen.queryByText(/no longer linked/)).toBeNull();
   });
 });

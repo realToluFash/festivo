@@ -31,6 +31,13 @@ export function underOf(location: Location): Location | null {
   return under as Location;
 }
 
+/** The page a person sees: under Due now, the page it opened over, or Today when it opened the desk. */
+export function pathShown(location: Location): string {
+  if (!location.pathname.startsWith(DUE_NOW)) return location.pathname;
+
+  return underOf(location)?.pathname ?? '/app';
+}
+
 export function usePageUnder(): ReactNode {
   return use(PageUnderContext);
 }

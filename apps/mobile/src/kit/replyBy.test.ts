@@ -182,6 +182,19 @@ describe('the cover card’s line once a guest has replied', () => {
     expect(line(null, asked)).toBe(asked);
   });
 
+  it('names the email link a reply came from (sc-1291)', () => {
+    expect(
+      guestRepliedLine(
+        { repliedAt: '2026-11-05T10:00:00Z', replyRecorded: null, fromEmailLink: true },
+        'Not coming',
+        null,
+        LONDON,
+        'en-GB',
+        t,
+      ),
+    ).toBe('Not coming · replied 5 Nov · from the email link');
+  });
+
   it('has no line before any reply', () => {
     expect(guestRepliedLine({ repliedAt: null }, 'No reply', null, LONDON, 'en-GB', t)).toBeNull();
   });

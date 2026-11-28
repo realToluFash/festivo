@@ -57,6 +57,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { discardCoverUpload } from './CoverField.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { useEarlyBack } from './earlyBack.ts';
 import { EventCover } from './EventCover.tsx';
 import {
   ArrivalNoteField,
@@ -85,6 +86,7 @@ import { BoxField, type Picking, pick } from './MomentPick.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { type ScreenReaderTarget, useScreenReaderOn } from './screenReaderFocus.ts';
+import { usePickerFocusBack } from './pickerFocusBack.ts';
 import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen } from './Summary.tsx';
 
@@ -134,6 +136,19 @@ export function NewEventScreen({
   const [picking, setPicking] = useState<Picking | null>(null);
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const listFocusBack = usePickerFocusBack(list == null);
+  const closeList = () => {
+    listFocusBack.closing();
+    setList(null);
+  };
+  const [listDrawn, setListDrawn] = useState(false);
+  if (list == null && listDrawn) setListDrawn(false);
+  const takeBack = useEarlyBack(list != null, listDrawn, closeList);
+  const openList = (which: ListOpen, opener: RefObject<ViewInstance | null>) => {
+    listFocusBack.opening(opener);
+    takeBack();
+    setList(which);
+  };
   const [said, setSaid] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo>({ kind: 'none' });
   const [coverRefused, setCoverRefused] = useState<string | null>(null);
@@ -485,7 +500,6 @@ export function NewEventScreen({
       }
     : null;
 
-  const closeList = () => setList(null);
   const listed: { title: string; body: ReactNode } | null =
     list === 'type'
       ? {
@@ -538,7 +552,11 @@ export function NewEventScreen({
       ? null
       : {
           layer: (
-            <SheetLayer onClose={closeList} label={t('eventEdit.cancel')}>
+            <SheetLayer
+              onClose={closeList}
+              label={t('eventEdit.cancel')}
+              onDrawn={() => setListDrawn(true)}
+            >
               <SheetBody
                 title={listed.title}
                 close={t('eventEdit.cancel')}
@@ -636,12 +654,13 @@ export function NewEventScreen({
               linesQuiet={quietAfter === 'type'}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.type}
                 label={t('eventForm.type')}
                 value={draft.type === '' ? null : t(`eventTypes.${draft.type}`)}
                 placeholder={t('eventForm.typePlaceholder')}
                 wrong={errors.type != null}
-                onPress={() => !busy && setList('type')}
+                onPress={() => !busy && openList('type', pickers.type)}
                 testID="eventForm.type"
               />
             </EventField>
@@ -783,11 +802,12 @@ export function NewEventScreen({
               help={t('eventForm.timesIn', { zone: timeZone })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.timeZone}
                 label={t('eventForm.timeZone')}
                 value={timezoneLabel(timeZone)}
                 wrong={errors.timeZone != null}
-                onPress={() => !busy && setList('zone')}
+                onPress={() => !busy && openList('zone', pickers.timeZone)}
                 testID="eventForm.timeZone"
               />
             </EventField>
@@ -803,12 +823,13 @@ export function NewEventScreen({
               help={t('eventForm.defaultsHint', { name: organisation.name })}
             >
               <SelectBox
+                key={listFocusBack.openerKey}
                 ref={pickers.currency}
                 label={t('eventForm.currency')}
                 value={currencyWords(currencies, currency)}
                 placeholder={t('orgGeneral.currencyPlaceholder')}
                 wrong={errors.currency != null}
-                onPress={() => !busy && setList('currency')}
+                onPress={() => !busy && openList('currency', pickers.currency)}
                 testID="eventForm.currency"
               />
             </EventField>

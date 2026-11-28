@@ -831,7 +831,10 @@ function HoursEntry({ event }: { event: OrganisationEvent }) {
         label={t('whosHere.open')}
         link
         onPress={() =>
-          router.push({ pathname: '/events/[id]/whos-here', params: { id: event.id } })
+          router.push({
+            pathname: '/events/[id]/whos-here',
+            params: { id: event.id, name: event.name },
+          })
         }
         testID="events.staff.whosHere"
       />

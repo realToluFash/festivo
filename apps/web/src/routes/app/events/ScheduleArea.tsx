@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type MenuCourse,
   type OrganisationEvent,
   SCHEDULE_TITLE_MAXIMUM,
   SCHEDULE_NOTE_MAXIMUM,
@@ -18,6 +19,7 @@ import { Link } from 'react-router';
 import { api } from '../../../api.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { TextAction } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -32,6 +34,7 @@ import {
   type Reader,
   blankForm,
   check,
+  courseLine,
   dayName,
   daysOf,
   detailsOf,
@@ -41,6 +44,7 @@ import {
   formOf,
   formPlaces,
   headingLine,
+  holderOf,
   itemsOn,
   lastsCell,
   lastsHelp,
@@ -239,7 +243,24 @@ function ScheduleView({
   const [unrestored, setUnrestored] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [screens, setScreens] = useState(false);
+  const [courses, setCourses] = useState<readonly MenuCourse[] | null>(null);
+  const [courseOpen, setCourseOpen] = useState(false);
+  const [moveTo, setMoveTo] = useState<string | null>(null);
+  const seesMenu = manage && canOn(event, 'menu.read');
   const focusAfter = useRef<string | null>(null);
+
+  const formOpen = panel != null;
+  useEffect(() => {
+    if (!seesMenu || !formOpen) return undefined;
+    let current = true;
+    api.menu(event.id).then(
+      (menu) => current && setCourses(menu.courses),
+      () => current && setCourses((was) => was ?? []),
+    );
+    return () => {
+      current = false;
+    };
+  }, [seesMenu, formOpen, event.id]);
 
   useEffect(() => {
     if (focusAfter.current == null) return;
@@ -257,7 +278,33 @@ function ScheduleView({
   const shownPlace = picked != null && places.includes(picked) ? picked : (places[0] ?? main);
   const line = headingLine(schedule, day, reader, main, t);
 
+  async function dismiss(one: ScheduleItem) {
+    try {
+      onSchedule((await api.dismissCourseNotice(event.id, one.id)).schedule);
+    } catch {
+      setFailed('save');
+    }
+  }
+
+  function pickCourse(id: string | null) {
+    setCourseOpen(false);
+    const holder =
+      id == null || form == null || id === form.course
+        ? null
+        : holderOf(id, items, editing?.id ?? null);
+    if (holder != null) {
+      setMoveTo(id);
+      focusAfter.current = 'ro-move-cancel';
+      return;
+    }
+    setMoveTo(null);
+    if (form != null) setForm({ ...form, course: id });
+    focusAfter.current = 'ro-course';
+  }
+
   function reset() {
+    setCourseOpen(false);
+    setMoveTo(null);
     setPressed(false);
     setRefused({});
     setLimit(false);
@@ -311,7 +358,7 @@ function ScheduleView({
     if (form == null || sent == null) return;
     const title = form.title.trim();
     const changing = sent.kind === 'edit' && !gone;
-    const details = detailsOf(form, formPlaces(items, form, main), main);
+    const details = detailsOf(form, formPlaces(items, form, main), main, seesMenu);
     setBusy(true);
     setFailed(null);
     try {
@@ -542,6 +589,21 @@ function ScheduleView({
             {t('schedule.notRestored', { title: unrestored })}
           </p>
         )}
+        {manage &&
+          items
+            .filter((one) => one.courseNotice)
+            .map((one) => (
+              <div key={one.id} className="sn-alert ro-unlinked ro-chrome" role="status">
+                <Glyph name="warn" size={18} weight={2.2} />
+                <div className="ro-unlinked-words">
+                  <p className="ro-unlinked-title">
+                    {t('schedule.unlinked', { title: one.title })}
+                  </p>
+                  <p className="desk-help">{t('schedule.unlinkedWhy')}</p>
+                </div>
+                <TextAction label={t('schedule.dismiss')} onClick={() => void dismiss(one)} />
+              </div>
+            ))}
         <div className="mn-split">
           <div
             id="ro-tables"
@@ -608,6 +670,35 @@ function ScheduleView({
               failed={failed}
               gone={gone}
               busy={busy}
+              course={
+                seesMenu
+                  ? {
+                      courses: courses ?? [],
+                      loading: courses === null,
+                      eventId: event.id,
+                      open: courseOpen,
+                      moveTo,
+                      onOpen: () => {
+                        setCourseOpen(!courseOpen);
+                        focusAfter.current = courseOpen ? 'ro-course' : 'ro-course-first';
+                      },
+                      onShut: () => {
+                        setCourseOpen(false);
+                        focusAfter.current = 'ro-course';
+                      },
+                      onPick: pickCourse,
+                      onMove: () => {
+                        if (moveTo != null) setForm({ ...form, course: moveTo });
+                        setMoveTo(null);
+                        focusAfter.current = 'ro-course';
+                      },
+                      onCancelMove: () => {
+                        setMoveTo(null);
+                        focusAfter.current = 'ro-course';
+                      },
+                    }
+                  : null
+              }
               onChange={(next) => {
                 setForm({ ...form, ...next });
                 const cleared = { ...refused };
@@ -770,18 +861,25 @@ function PlaceTable({
                 <td className="ro-wide ro-lasts">{lastsCell(one.lengthMinutes, t)}</td>
                 <td>
                   <div className="ro-item">
-                    {manage ? (
-                      <button
-                        id={`ro-open-${one.id}`}
-                        type="button"
-                        className="ro-open"
-                        onClick={() => onOpen(one)}
-                      >
-                        {one.title}
-                      </button>
-                    ) : (
-                      <span className="ro-plain">{one.title}</span>
-                    )}
+                    <span className="ro-title-line">
+                      {manage ? (
+                        <button
+                          id={`ro-open-${one.id}`}
+                          type="button"
+                          className="ro-open"
+                          onClick={() => onOpen(one)}
+                        >
+                          {one.title}
+                        </button>
+                      ) : (
+                        <span className="ro-plain">{one.title}</span>
+                      )}
+                      {one.course != null && (
+                        <span className="ro-course" title={one.course.name}>
+                          {t('schedule.courseTag', { name: one.course.name })}
+                        </span>
+                      )}
+                    </span>
                     <span className="ro-under">
                       <Words text={underLine(one, t)} />
                     </span>
@@ -852,6 +950,7 @@ function ItemPanel({
   failed,
   gone,
   busy,
+  course,
   onChange,
   onSave,
   onClose,
@@ -874,6 +973,7 @@ function ItemPanel({
   failed: 'save' | 'delete' | null;
   gone: boolean;
   busy: boolean;
+  course: CourseControls | null;
   onChange: (next: Partial<Form>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -1087,6 +1187,15 @@ function ItemPanel({
           </p>
           {errors.note != null && <FieldWrong id="ro-note-error">{errors.note}</FieldWrong>}
         </div>
+        {course != null && (
+          <CourseField
+            controls={course}
+            chosen={form.course}
+            items={items}
+            editingId={editing?.id ?? null}
+            formTime={form.time}
+          />
+        )}
         <Switch
           id="ro-fixed"
           label={t('schedule.fixed')}
@@ -1107,7 +1216,7 @@ function ItemPanel({
           <div className="ro-ask">
             <p className="ro-ask-words">{t('schedule.deleteAsk', { title: editing.title })}</p>
             <div className="ro-ask-acts">
-              <button id="ro-keep" type="button" className="desk-text" onClick={onKeep}>
+              <button id="ro-keep" type="button" className="desk-text is-wraps" onClick={onKeep}>
                 {t('schedule.keepIt')}
               </button>
               <button
@@ -1149,6 +1258,169 @@ function ItemPanel({
         )}
       </div>
     </aside>
+  );
+}
+
+interface CourseControls {
+  courses: readonly MenuCourse[];
+  loading: boolean;
+  eventId: string;
+  open: boolean;
+  moveTo: string | null;
+  onOpen: () => void;
+  onShut: () => void;
+  onPick: (id: string | null) => void;
+  onMove: () => void;
+  onCancelMove: () => void;
+}
+
+/** sc-3898: Course, a list of the event's menu courses in menu order, docked under the field and a sheet at 40rem and under. */
+function CourseField({
+  controls,
+  chosen,
+  items,
+  editingId,
+  formTime,
+}: {
+  controls: CourseControls;
+  chosen: string | null;
+  items: readonly ScheduleItem[];
+  editingId: string | null;
+  formTime: string;
+}) {
+  const { t } = useTranslation();
+  const { courses, loading, eventId, open, moveTo, onOpen, onShut, onPick, onMove, onCancelMove } =
+    controls;
+  const current = courses.find((one) => one.id === chosen) ?? null;
+  const holder = current == null ? null : holderOf(current.id, items, editingId);
+  const asked = courses.find((one) => one.id === moveTo) ?? null;
+  const askedHolder = asked == null ? null : holderOf(asked.id, items, editingId);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (press: globalThis.KeyboardEvent) => {
+      if (press.key === 'Escape') onShut();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onShut]);
+
+  return (
+    <div className="desk-field ro-course-field">
+      <span id="ro-course-label" className="desk-label gs-label">
+        {t('schedule.course')}
+        <Optional />
+      </span>
+      <button
+        id="ro-course"
+        type="button"
+        className="desk-box ro-course-box"
+        aria-labelledby="ro-course-label ro-course"
+        aria-describedby="ro-course-help"
+        aria-expanded={open}
+        aria-controls="ro-course-list"
+        onClick={onOpen}
+      >
+        <span className={current == null ? 'ro-course-none' : 'ro-course-name'}>
+          {current?.name ?? t('schedule.noCourse')}
+        </span>
+        <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
+      </button>
+      <p id="ro-course-help" className="desk-help">
+        {holder != null ? t('schedule.moving', { other: holder.title }) : t('schedule.courseHelp')}
+      </p>
+      {open && (
+        <>
+          <div className="ro-sheet-scrim" aria-hidden="true" />
+          <div
+            id="ro-course-list"
+            className="ro-course-list"
+            role="group"
+            aria-labelledby="ro-course-list-title"
+          >
+            <div className="ro-course-list-top">
+              <h3 id="ro-course-list-title">{t('schedule.courseList')}</h3>
+              <button
+                type="button"
+                className="ev-round ro-course-x"
+                aria-label={t('schedule.close')}
+                onClick={onShut}
+              >
+                <Glyph name="clear" size={16} weight={2.4} />
+              </button>
+            </div>
+            {loading ? (
+              <div className="ro-course-empty" aria-busy="true" />
+            ) : courses.length === 0 ? (
+              <div className="ro-course-empty">
+                <p className="ro-course-empty-title">{t('schedule.noCourses')}</p>
+                <p className="desk-help">{t('schedule.noCoursesLine')}</p>
+                <Link
+                  id="ro-course-first"
+                  className="desk-text"
+                  to={`/app/events/${encodeURIComponent(eventId)}/menu`}
+                >
+                  {t('schedule.openMenu')}
+                  <Glyph name="chevron" size={16} weight={2.4} />
+                </Link>
+              </div>
+            ) : (
+              <ul className="ro-course-rows">
+                {[null, ...courses].map((one, at) => {
+                  const on = (one?.id ?? null) === chosen;
+                  const line = one == null ? null : courseLine(one, items, editingId, formTime, t);
+                  return (
+                    <li key={one?.id ?? 'none'}>
+                      <button
+                        id={at === 0 ? 'ro-course-first' : undefined}
+                        type="button"
+                        className="ro-course-row"
+                        aria-current={on || undefined}
+                        onClick={() => onPick(one?.id ?? null)}
+                      >
+                        <span className="ro-course-words">
+                          <span className="ro-course-row-name">
+                            {one?.name ?? t('schedule.noCourse')}
+                          </span>
+                          {line != null && (
+                            <>
+                              {' '}
+                              <span className="ro-course-row-line">{line}</span>
+                            </>
+                          )}
+                        </span>
+                        {on && <Glyph name="tick" size={17} weight={2.6} />}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+      {asked != null && askedHolder != null && (
+        <div className="ro-move" role="group" aria-labelledby="ro-move-ask">
+          <p id="ro-move-ask" className="ro-ask-words">
+            {t('schedule.moveAsk', { course: asked.name, other: askedHolder.title })}
+          </p>
+          <p className="desk-help">{t('schedule.moveLine', { other: askedHolder.title })}</p>
+          <div className="ro-ask-acts">
+            <button
+              id="ro-move-cancel"
+              type="button"
+              className="desk-text is-wraps"
+              onClick={onCancelMove}
+            >
+              {t('schedule.keepOn', { other: askedHolder.title })}
+            </button>
+            <button type="button" className="gs-pill is-secondary" onClick={onMove}>
+              {t('schedule.moveIt')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -11,6 +11,8 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { useShownAfter } from '../shownAfter.ts';
 import { BoardPage, Tick } from './BoardPage.tsx';
+import { PasteCode } from './PasteCode.tsx';
+import { usePasteCode } from './usePasteCode.ts';
 import { CODE_LENGTH, RESEND_SECONDS, SAMPLE, TRIES, codeDigits, codeLine } from './rules.ts';
 
 /** The parts the board's pages share, so each new board imports them rather than copying. */
@@ -175,6 +177,7 @@ export function CodeForm({
   resendNote,
   resend = true,
   onRunOut,
+  pastes = false,
 }: {
   opening: string;
   label: string;
@@ -191,6 +194,8 @@ export function CodeForm({
   resend?: boolean;
   /** The sign-up's hold has run out: Verify and Send a new code both end here. */
   onRunOut?: (() => void) | undefined;
+  /** A code sent to a phone number: Paste code under the field (sc-99215). */
+  pastes?: boolean;
 }) {
   const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
   const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
@@ -203,6 +208,10 @@ export function CodeForm({
   const [countFrom, setCountFrom] = useState(() => Date.now());
   const field = useRef<HTMLInputElement>(null);
   const focusOnMount = useRef(false);
+  const paste = usePasteCode(field, (pasted) => {
+    setCode(pasted);
+    setLine(null);
+  });
 
   useEffect(() => {
     if (!focusOnMount.current || field.current == null) return;
@@ -303,8 +312,12 @@ export function CodeForm({
           field={field}
           value={code}
           busy={busy}
-          onChange={setCode}
+          onChange={(typed) => {
+            setCode(typed);
+            paste.typed();
+          }}
         />
+        {pastes && <PasteCode id="code-paste" paste={paste} />}
         <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>

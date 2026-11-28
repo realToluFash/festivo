@@ -731,7 +731,10 @@ function GuestView({
             how: t(`guestList.toldInLine.${recordedBy.how}`),
             date: replied,
           })
-        : t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
+        : t(guest.fromEmailLink === true ? 'guestList.repliedFromEmailLink' : 'guestList.replied', {
+            reply: t(REPLY_KEY[guest.reply]),
+            date: replied,
+          })
       : notYet
         ? manages && invites
           ? t('guestList.copyFirst')
@@ -870,7 +873,13 @@ function GuestView({
                         how: t(`guestList.toldInLine.${recordedBy.how}`),
                         date: replied,
                       })
-                    : (decides ?? t('guestList.repliedOn', { date: replied })),
+                    : (decides ??
+                      t(
+                        guest.fromEmailLink === true
+                          ? 'guestList.repliedOnFromEmailLink'
+                          : 'guestList.repliedOn',
+                        { date: replied },
+                      )),
                 ]}
               />
             </li>

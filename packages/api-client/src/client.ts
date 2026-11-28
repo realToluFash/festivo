@@ -59,6 +59,8 @@ import {
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type ContactGuest,
+  type GuestRoom,
   type PageNeeds,
   type PlaceChoice,
   type PlaceNeeds,
@@ -3784,11 +3786,12 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
+  /** The whole course; `servedAt` left out keeps the time, and a linked course's time is its item's (sc-3898): one that differs is refused 409 `menu_course_linked`. `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & {
+    details: Omit<MenuCourseDetails, 'servedAt'> & {
+      servedAt?: string | null;
       answer: MenuAnswer;
       skippable: boolean;
       ownItems?: string[];
@@ -4201,6 +4204,15 @@ export class ApiClient {
         `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
         details,
         { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** Ends the notice an item keeps when its course was removed from the menu, for everyone who plans the schedule (sc-3898). */
+  async dismissCourseNotice(eventId: string, itemId: string): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/course-notice`,
       ),
     );
   }
@@ -4668,6 +4680,25 @@ export class ApiClient {
     }
 
     return added;
+  }
+
+  /** Every row or none (sc-7579): `validation_failed` on `guests[i].…`, and 403 `plan_limit_reached` for the whole pick. */
+  async addGuestsFromContacts(eventId: string, guests: readonly ContactGuest[]): Promise<number> {
+    const body = await this.post<{ added?: unknown }>(`${this.guestsPath(eventId)}/from-contacts`, {
+      guests,
+    });
+
+    return typeof body?.added === 'number' ? body.added : guests.length;
+  }
+
+  async guestRoom(eventId: string): Promise<GuestRoom> {
+    const body = await this.get<Partial<GuestRoom>>(`${this.guestsPath(eventId)}/room`);
+
+    return {
+      plan: typeof body?.plan === 'string' ? body.plan : '',
+      allowed: typeof body?.allowed === 'number' ? body.allowed : null,
+      people: typeof body?.people === 'number' ? body.people : 0,
+    };
   }
 
   /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */
@@ -5307,13 +5338,14 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and `emailLink` for one confirmed from an email answer link (sc-1291), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(
     token: string,
     answer: GuestAnswer,
     companions: readonly CompanionChoice[] = [],
     needs: PageNeeds | null = null,
     unnamed: readonly PlaceChoice[] = [],
+    emailLink = false,
   ): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>(
@@ -5324,6 +5356,7 @@ export class ApiClient {
           ...(companions.length === 0 ? {} : { companions }),
           ...(needs == null ? {} : { needs }),
           ...(unnamed.length === 0 ? {} : { unnamed }),
+          ...(emailLink ? { emailLink } : {}),
         },
         { anonymous: true },
       ),

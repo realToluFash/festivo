@@ -322,6 +322,9 @@ export function CreateWalkWindow<Made>({
     playing.current = null;
     move.setValue(1);
     setTurning((now) => turnEnded(now, now.turn));
+    // Only once the step it left is gone: the step it left is unmounted and the arriving one is at full opacity, and a move before then let TalkBack settle on Back (sc-100878).
+    clearTimeout(focusing.current ?? undefined);
+    focusing.current = setTimeout(() => moveScreenReaderFocus(question.current), SETTLED_MS);
   };
   const goTo = (next: Walk) => {
     if (next.step === walk.step) {
@@ -344,7 +347,6 @@ export function CreateWalkWindow<Made>({
     clearTimeout(settling.current ?? undefined);
     settling.current = setTimeout(settle, turnMs + SETTLED_MS);
     clearTimeout(focusing.current ?? undefined);
-    focusing.current = setTimeout(() => moveScreenReaderFocus(question.current), SETTLED_MS);
   };
   // A glide started before the arriving step's views exist is lost, so it starts once they are laid out (sc-23267).
   const play = (forTurn: number) => {

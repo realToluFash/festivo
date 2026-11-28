@@ -29,11 +29,13 @@ export function SheetLayer({
   onClose,
   label,
   alert = false,
+  onDrawn,
   children,
 }: {
   onClose: () => void;
   label: string;
   alert?: boolean;
+  onDrawn?: () => void;
   children: ReactNode;
 }) {
   const phone = useShellLayout() === 'phone';
@@ -48,6 +50,7 @@ export function SheetLayer({
       />
       <View
         style={phone ? styles.layerPhone : styles.layerWide}
+        onLayout={onDrawn}
         accessibilityViewIsModal
         onAccessibilityEscape={onClose}
         accessibilityRole={alert ? 'alert' : undefined}

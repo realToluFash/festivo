@@ -5,8 +5,10 @@ import es from '../i18n/locales/es.json';
 import fr from '../i18n/locales/fr.json';
 import pt from '../i18n/locales/pt.json';
 
+import { COURSE_NAME_MAX } from './menuCourses.ts';
 import {
   DAYS,
+  LONG_COURSE_NAMES,
   HOME_READER,
   MAIN,
   MOST_ITEMS,
@@ -17,6 +19,7 @@ import {
   atLimit,
   blankForm,
   check,
+  courseLine,
   dayCount,
   dayOf,
   differences,
@@ -25,14 +28,18 @@ import {
   headingLine,
   itemOf,
   lastsHelp,
+  linkedItems,
   placeHelp,
   readerOf,
+  sampleCourses,
   sampleItems,
   sevenDayItems,
   scheduleAt,
   startsCell,
   tablesOn,
   windowLine,
+  withCourseKept,
+  withTypedStart,
 } from './schedule.ts';
 
 const FRIDAY = DAYS[1];
@@ -153,7 +160,23 @@ describe('the schedule’s rules (sc-3893)', () => {
 
   it('links every state from the demo’s home', () => {
     const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
-    for (const state of SCHEDULE_STATES) expect(linked).toContain(scheduleAt(state));
+    for (const state of SCHEDULE_STATES) {
+      const at = scheduleAt(state);
+      expect(linked.some((one) => one === at || one.startsWith(`${at}&`))).toBe(true);
+    }
+  });
+
+  it('opens the long French and Portuguese courses in their own locale', () => {
+    const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
+    expect(linked).toContain(scheduleAt('courseLongFr', 'locale=fr-FR'));
+    expect(linked).toContain(scheduleAt('courseLongPt', 'locale=pt-BR'));
+  });
+
+  it('keeps each long course name within the 60 characters the API allows', () => {
+    for (const name of LONG_COURSE_NAMES) {
+      expect([...name].length).toBeLessThanOrEqual(COURSE_NAME_MAX);
+      expect([...name].length).toBeGreaterThan(50);
+    }
   });
 });
 
@@ -173,5 +196,55 @@ describe('the day tabs’ words (sc-64803)', () => {
       counts.set(dayOf(one.starts), (counts.get(dayOf(one.starts)) ?? 0) + 1);
     expect(counts.get('2026-11-07')).toBe(1);
     expect(counts.get('2026-11-08')).toBe(12);
+  });
+});
+
+describe('a course linked to an item (sc-3898)', () => {
+  const [starter, main, dessert, bites] = sampleCourses() as [
+    ReturnType<typeof sampleCourses>[number],
+    ReturnType<typeof sampleCourses>[number],
+    ReturnType<typeof sampleCourses>[number],
+    ReturnType<typeof sampleCourses>[number],
+  ];
+
+  it('serves a linked course at its item’s start, and names that item', () => {
+    expect(courseLine(starter, linkedItems(), 'late', HOME_READER)).toBe(
+      'served 17:30 · linked to Dinner',
+    );
+    expect(courseLine(main, linkedItems(), 'late', HOME_READER)).toBe(
+      'served 19:50 · linked to Mains go out',
+    );
+  });
+
+  it('serves an unlinked course at its own time, and a course with none says nothing', () => {
+    expect(courseLine(dessert, linkedItems(), 'late', HOME_READER)).toBe('served 21:30');
+    expect(courseLine(bites, linkedItems(), 'late', HOME_READER)).toBeNull();
+  });
+
+  it('does not say linked to the item being edited', () => {
+    expect(courseLine(main, linkedItems(), 'mains', HOME_READER)).toBe('served 19:50');
+  });
+
+  it('serves the edited item’s course at the time typed on its form', () => {
+    const typed = withTypedStart(linkedItems(), 'mains', { date: '2026-11-06', time: '20:10' });
+    expect(courseLine(main, typed, 'mains', HOME_READER)).toBe('served 20:10');
+    expect(courseLine(dessert, typed, 'mains', HOME_READER)).toBe('served 21:30');
+    expect(withTypedStart(linkedItems(), 'mains', { date: '2026-11-06', time: '' })).toEqual(
+      linkedItems(),
+    );
+  });
+
+  it('moves a link on save: the other item loses the course and keeps its title', () => {
+    const items = linkedItems();
+    const late = items.find((one) => one.id === 'late');
+    const kept = withCourseKept(items, { ...(late as (typeof items)[number]), course: 'k2' });
+    const mains = kept.find((one) => one.id === 'mains');
+    expect(mains?.course).toBeNull();
+    expect(mains?.title).toBe('Mains go out');
+    expect(kept.filter((one) => one.course === 'k2').map((one) => one.id)).toEqual(['late']);
+  });
+
+  it('leaves items without a course as they were', () => {
+    expect(sampleItems().every((one) => one.course === null)).toBe(true);
   });
 });
