@@ -12,14 +12,16 @@ import {
   type ItemMark,
   type ItemState,
   type ServicePhase,
+  type TapExpected,
   type TapRefusal,
   UNDO_MINUTES,
+  formatTimeOfDay,
   heldUpMinutes,
   refusalKey,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import { tableName } from './tableName.ts';
+import { blockName } from './blockName.ts';
 
 export interface StationItemLine {
   courseId: string;
@@ -123,7 +125,8 @@ export function hereSince(tray: ServiceTray, station: string): string | null {
 interface Seen {
   plates: Map<string, ServicePlate>;
   seats: Map<string, { seat: string; flags: ServiceFlags }>;
-  tables: Map<string, ServiceRead['tables'][number]>;
+  tables: Map<string, string | null>;
+  blocks: Map<string, string[]>;
   courses: Map<string, string>;
   trays: Map<string, ServiceTray>;
 }
@@ -133,6 +136,7 @@ function seen(reads: readonly ServiceRead[]): Seen {
     plates: new Map(),
     seats: new Map(),
     tables: new Map(),
+    blocks: new Map(),
     courses: new Map(),
     trays: new Map(),
   };
@@ -140,7 +144,8 @@ function seen(reads: readonly ServiceRead[]): Seen {
   for (const read of reads) {
     out.courses.set(read.course.id, read.course.name);
     for (const table of read.tables) {
-      out.tables.set(table.key, table);
+      out.tables.set(table.key, table.name);
+      out.blocks.set(table.key, table.seats);
       for (const plate of table.plates) out.plates.set(plate.id, plate);
       for (const guest of table.guests) {
         out.seats.set(guest.id, { seat: guest.seat, flags: guest.flags });
@@ -171,6 +176,14 @@ function markHere(
   const stop = tray?.stops.find((one) => one.id === station);
 
   return stop?.marks.find((one) => one.plateId === plate.id && one.item === key)?.mark ?? null;
+}
+
+function trayName(t: TFunction, key: string, all: Seen): string {
+  const name = all.tables.get(key);
+  if (name != null) return name;
+  const seats = all.blocks.get(key) ?? [];
+
+  return seats.length === 0 ? key : blockName(t, { name: null, seats });
 }
 
 /** @param fired every fired course's read, in the menu's order; the last is the latest fired */
@@ -259,10 +272,9 @@ export function stationView(
         });
     }
     const since = hereSince(tray, station);
-    const table = all.tables.get(tray.table);
     const read: StationTray = {
       id: tray.id,
-      table: table == null ? tray.table : tableName(t, table),
+      table: trayName(t, tray.table, all),
       waiter: tray.waiter.name,
       plates: plates.length,
       flagged: plates.filter((plate) => isFlagged(flagsOf(plate))).length,
@@ -367,7 +379,7 @@ export function undoCloses(marks: Iterable<StationMark>): number[] {
 
 export type UndoPlan =
   | { kind: 'drop'; tapKey: string }
-  | { kind: 'send'; subject: string; expected: { item: ItemState } }
+  | { kind: 'send'; subject: string; expected: TapExpected }
   | { kind: 'unknown' };
 
 export function undoPlan(
@@ -382,7 +394,11 @@ export function undoPlan(
 
   return id == null
     ? { kind: 'unknown' }
-    : { kind: 'send', subject: id, expected: { item: mark.to } };
+    : {
+        kind: 'send',
+        subject: id,
+        expected: { item: mark.to, of: { courseId: mark.courseId, item: mark.key } },
+      };
 }
 
 /** The marks still open to Undo once these taps were refused as Not sent: a refused mark never landed, so there is nothing to undo. */
@@ -406,6 +422,11 @@ export function stationTime(at: Date | number | string, locale: string): string 
     minute: '2-digit',
     hourCycle: 'h23',
   });
+}
+
+/** The row's as of, in the Offline band's own form and, unless a zone is given, the device's zone (sc-97945). */
+export function stationAsOf(at: Date | number | string, locale: string, timeZone?: string): string {
+  return formatTimeOfDay(new Date(at), locale, timeZone);
 }
 
 export function notSentLine(t: TFunction, line: TapRefusal, reads: readonly ServiceRead[]): string {

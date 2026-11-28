@@ -1,7 +1,8 @@
-import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
+  PixelRatio,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -11,10 +12,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { coverRowSides, pastSides, sidePadding, tabBarFit } from './bodyEdges.ts';
+import {
+  TAB_BAR_BORDER,
+  coverRowSides,
+  pastSides,
+  sidePadding,
+  tabBarFit,
+  tabWidth,
+} from './bodyEdges.ts';
 import { BandLiveLine } from './BandLiveLine.tsx';
-import { Text, TitleCap, type TextProps } from './Text.tsx';
-import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
+import { Text, TitleCap } from './Text.tsx';
+import { CappedWholeWords, MeasuredWords, useMeasuredAt } from './Title.tsx';
 import {
   BAND_CLEAR,
   BAND_TITLE,
@@ -30,6 +38,8 @@ import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.
 import {
   atAccessibilitySizes,
   capUnderTitle,
+  fitWidest,
+  labelStart,
   wholeLineHeight,
   wordsIn,
 } from '../layout/textSize.ts';
@@ -37,6 +47,16 @@ import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.
 import { CAPSULE_TOP, LIVE_FOOT, liveLineHeight } from '../layout/bandLive.ts';
 import { OPEN_ABOVE_SHEET, TAB_FADE } from '../layout/todayFold.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
+import {
+  FIGURE_LABEL,
+  FIGURE_LABEL_LINE,
+  FIGURE_NUMBERS,
+  FIGURE_NUMBERS_LINE,
+  FIGURE_RING,
+  figureRing,
+  figureRoom,
+  figureStroke,
+} from '../layout/arrivedFigure.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
@@ -44,7 +64,12 @@ import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Box } from '../kit/confettiClearance.ts';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
-import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
+import {
+  useAccessibilitySizes,
+  useLayout,
+  useNameLines,
+  useWindowFrame,
+} from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import {
   Chips,
@@ -504,7 +529,15 @@ function Rail({ now }: { now: Now }) {
   );
 }
 
-function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; line?: number }) {
+function Ring({
+  share,
+  side = FIGURE_RING,
+  line = 4,
+}: {
+  share: number;
+  side?: number;
+  line?: number;
+}) {
   const r = (side - line) / 2;
   const round = 2 * Math.PI * r;
 
@@ -568,6 +601,94 @@ export function ArrivedFigure({ figure }: { figure: Figure }) {
   );
 }
 
+/** The arrived figure from AX1 on the iPad's live cover (sc-94022): its numbers step down as one unit only where they would not fit one line beside the ring, never under 18 and never larger than the name (`under`); arrived steps alone, never larger than the numbers; the ring is as tall as the two lines as drawn. Hidden until the numbers are measured. */
+function WholeArrivedFigure({
+  figure,
+  column,
+  under,
+}: {
+  figure: Figure;
+  column: number;
+  under: number;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const numbers = `${figure.count}${figure.of != null ? `/${figure.of}` : ''}`;
+  const start = labelStart(FIGURE_NUMBERS, fontScale, under);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const key = `${start}|${numbers}`;
+  const width = measured?.key === key ? measured.width : null;
+  const labelAt = labelStart(FIGURE_LABEL, fontScale, Math.min(under, start));
+  const ringAt = figureRing(start, labelAt);
+  const side = figure.share != null ? ringAt : 0;
+  const room = figureRoom(column, side, side > 0 ? tokens.spaceMd : 0);
+  const pending = width == null || column === 0;
+  const drawn = pending ? start : fitWidest(FIGURE_NUMBERS, start, width, Math.max(room, 1));
+  const ring = figureRing(drawn, labelStart(FIGURE_LABEL, fontScale, Math.min(under, drawn)));
+  const line = { lineHeight: Math.ceil(drawn * FIGURE_NUMBERS_LINE) };
+
+  return (
+    <>
+      <MeasuredWords
+        words={[numbers]}
+        size={start}
+        weight="bold"
+        allowFontScaling={false}
+        onWidth={(_, measuredWidth) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === measuredWidth ? now : { key, width: measuredWidth },
+          )
+        }
+      />
+      <View
+        style={[styles.arrived, pending && styles.waiting]}
+        accessible
+        accessibilityLabel={figure.spoken}
+      >
+        {figure.share != null && (
+          <Ring share={figure.share} side={ring} line={figureStroke(ring)} />
+        )}
+        <View style={styles.shrink}>
+          <View style={styles.figureLine}>
+            <Text
+              key={`count|${drawn}`}
+              size={drawn}
+              weight="bold"
+              allowFontScaling={false}
+              accessible={false}
+              style={[styles.white, styles.figures, line]}
+            >
+              {figure.count}
+            </Text>
+            {figure.of != null && (
+              <Text
+                key={`of|${drawn}`}
+                size={drawn}
+                weight="semibold"
+                allowFontScaling={false}
+                accessible={false}
+                style={[styles.white, styles.figures, styles.soft, styles.tight, line]}
+              >
+                {`/${figure.of}`}
+              </Text>
+            )}
+          </View>
+          <CoverLine
+            size={FIGURE_LABEL}
+            line={FIGURE_LABEL_LINE}
+            weight="medium"
+            room={figure.share != null ? figureRoom(column, ring, tokens.spaceMd) : column}
+            under={drawn}
+            accessible={false}
+            style={[styles.white, styles.soft]}
+          >
+            {figure.label}
+          </CoverLine>
+        </View>
+      </View>
+    </>
+  );
+}
+
 function NextAndArrived({ now }: { now: Now }) {
   const { t } = useTranslation();
 
@@ -591,7 +712,7 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright), then the arrived figure on the line under it (sc-94022), never between the end line and the button, where ux rejected it. Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
 function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -633,21 +754,16 @@ function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
       >
         {now.ends}
       </CoverLine>
-      {now.arrived == null && <View style={styles.openUnder}>{open}</View>}
+      <View style={styles.openUnder}>{open}</View>
+      {now.arrived != null && (
+        <View style={styles.arrivedUnder}>
+          <WholeArrivedFigure figure={now.arrived} column={column} under={under} />
+        </View>
+      )}
     </View>
   );
 
-  return now.arrived == null ? (
-    words
-  ) : (
-    <View style={styles.wideRow}>
-      {words}
-      <View style={styles.right}>
-        <ArrivedFigure figure={now.arrived} />
-        {open}
-      </View>
-    </View>
-  );
+  return words;
 }
 
 export function NowBlock({
@@ -1219,69 +1335,11 @@ interface TabBarProps<T extends string> {
   stepsBelowDefault?: boolean;
 }
 
-interface TabWords {
-  measure: ReactNode;
-  room: (width: number) => void;
-  label: Pick<TextProps, 'size' | 'maxFontSizeMultiplier' | 'allowFontScaling' | 'style'>;
-}
+/** Each tab word's width at its start, kept past the bar that measured it, so the next bar draws fitted from its first frame (sc-99214). */
+const TAB_WORDS = new Map<string, number>();
 
-export function TabBar<T extends string>(props: TabBarProps<T>) {
-  return props.stepsBelowDefault ? <SteppedTabBar {...props} /> : <DefaultTabBar {...props} />;
-}
-
-function tabLabels<T extends string>({ tabs, say = (tab) => tab }: TabBarProps<T>): string[] {
-  return tabs.map(([label, glyph]) => say(label, glyph));
-}
-
-/** Labels never drawn under the default size, stepping down from their start rather than break a word (sc-37298). */
-function DefaultTabBar<T extends string>(props: TabBarProps<T>) {
-  const { fontScale } = useWindowDimensions();
-  const words = useWholeWords(TAB_LABEL, tabLabelStart(fontScale), tabLabels(props), {
-    weight: 'semibold',
-  });
-
-  return (
-    <TabRow
-      {...props}
-      words={{
-        measure: words.measure,
-        room: words.room,
-        label: {
-          size: TAB_LABEL,
-          maxFontSizeMultiplier: words.maxFontSizeMultiplier,
-          // Hidden until it is fitted, so no frame draws a word cut at its start size.
-          style: !words.fitted && styles.waiting,
-        },
-      }}
-    />
-  );
-}
-
-/** The five labels at one size, measured at semibold so selecting a tab never moves it, and drawn at exactly that size (sc-71148). */
-function SteppedTabBar<T extends string>(props: TabBarProps<T>) {
-  const { fontScale } = useWindowDimensions();
-  const [slot, setSlot] = useState(0);
-  const start = tabLabelStart(fontScale);
-  const { widths, measure } = useMeasuredAt(start, wordsIn(tabLabels(props)));
-  const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
-
-  return (
-    <TabRow
-      {...props}
-      words={{
-        measure,
-        room: (width) => setSlot((now) => (now === width ? now : width)),
-        label: {
-          size: eventBarLabelSize(fontScale, widest, slot),
-          allowFontScaling: false,
-          style: [styles.tabLabelCentred, (widest === 0 || slot === 0) && styles.waiting],
-        },
-      }}
-    />
-  );
-}
-
-function TabRow<T extends string>({
+/** The labels at one size, never under the default, or under 10 on the event's bar (sc-37298, sc-71148). Measured at semibold, so selecting a tab never moves it, and fitted to a tab worked out from this render's frame, never one measured before a turn (sc-99214). */
+export function TabBar<T extends string>({
   tabs,
   bottom,
   onTab,
@@ -1289,15 +1347,25 @@ function TabRow<T extends string>({
   say = (tab) => tab,
   ids,
   refs,
-  words,
-}: TabBarProps<T> & { words: TabWords }) {
+  stepsBelowDefault,
+}: TabBarProps<T>) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  // The frame arrives with the insets; the window's width can follow a turn seconds later (sc-99214).
+  const { width, fontScale } = useWindowFrame();
+  const start = tabLabelStart(fontScale);
+  const words = wordsIn(tabs.map(([label, glyph]) => say(label, glyph)));
+  const { widths, measure } = useMeasuredAt(start, words, TAB_WORDS);
+  const measured = widths.every((word) => word != null);
+  const widest = measured ? Math.max(...widths.map(Number)) : 0;
+  const slot = tabWidth(width, insets, tabs.length, PixelRatio.get());
+  const size = stepsBelowDefault
+    ? eventBarLabelSize(fontScale, widest, slot)
+    : fitWidest(TAB_LABEL, start, widest, slot);
 
   return (
     <View style={[styles.tabBar, tabBarFit(width, insets), { bottom }]} accessibilityRole="tablist">
-      {words.measure}
-      {tabs.map(([label, glyph], index) => {
+      {measure}
+      {tabs.map(([label, glyph]) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
@@ -1311,16 +1379,15 @@ function TabRow<T extends string>({
             accessibilityState={{ selected: on }}
             accessibilityLabel={say(label, glyph)}
             testID={ids?.[label] ?? `tab-${label.toLowerCase()}`}
-            onLayout={
-              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
-            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              {...words.label}
+              size={size}
+              allowFontScaling={false}
               weight={on ? 'semibold' : 'medium'}
               accessible={false}
-              style={[words.label.style, { color: ink }]}
+              // Hidden until its words are measured, so no frame draws one cut.
+              style={[styles.tabLabelCentred, !measured && styles.waiting, { color: ink }]}
             >
               {say(label, glyph)}
             </Text>
@@ -1579,6 +1646,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
+  arrivedUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },
@@ -1636,7 +1704,7 @@ const styles = StyleSheet.create({
     height: PHONE_TAB_BAR,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
-    borderWidth: 1,
+    borderWidth: TAB_BAR_BORDER,
     borderColor: tokens.colorBorder,
     flexDirection: 'row',
     ...tokens.elevationNative.raised.ios,

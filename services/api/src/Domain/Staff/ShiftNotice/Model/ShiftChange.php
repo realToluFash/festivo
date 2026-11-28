@@ -22,18 +22,19 @@ final readonly class ShiftChange
         public ?string $old = null,
         public int $count = 0,
         public ?DateTimeImmutable $on = null,
+        public bool $dated = false,
     ) {
     }
 
-    /** A start or end time, `on` being the day the shift now starts, which a time on another day names. */
-    public static function time(ShiftChangeKind $kind, DateTimeImmutable $new, DateTimeImmutable $old, DateTimeImmutable $on): self
+    /** A start or end time. A time on a day other than `on` names its day, and every time does when `on` is null; `dated` adds the date to each day named. */
+    public static function time(ShiftChangeKind $kind, DateTimeImmutable $new, DateTimeImmutable $old, ?DateTimeImmutable $on, bool $dated): self
     {
-        return new self($kind, start: $new, oldStart: $old, on: $on);
+        return new self($kind, start: $new, oldStart: $old, on: $on, dated: $dated);
     }
 
-    public static function shift(ShiftChangeKind $kind, DateTimeImmutable $start, DateTimeImmutable $end, ?DateTimeImmutable $oldStart = null, ?DateTimeImmutable $oldEnd = null): self
+    public static function shift(ShiftChangeKind $kind, DateTimeImmutable $start, DateTimeImmutable $end, ?DateTimeImmutable $oldStart = null, ?DateTimeImmutable $oldEnd = null, bool $dated = false): self
     {
-        return new self($kind, $start, $end, $oldStart, $oldEnd);
+        return new self($kind, $start, $end, $oldStart, $oldEnd, dated: $dated);
     }
 
     public static function value(ShiftChangeKind $kind, ?string $new, ?string $old): self

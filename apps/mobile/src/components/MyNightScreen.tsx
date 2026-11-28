@@ -8,8 +8,8 @@ import {
   type ShiftClockCard as ClockCard,
 } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
-import { router } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,9 +109,11 @@ export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: ()
   const { account } = useSignedIn();
   const { seen, again } = useMyNight(eventId);
 
-  useEffect(() => {
-    if (seen.kind === 'gone') onBack();
-  }, [seen.kind, onBack]);
+  useFocusEffect(
+    useCallback(() => {
+      if (seen.kind === 'gone') onBack();
+    }, [seen.kind, onBack]),
+  );
 
   useReadOut(
     seen.kind === 'shown' && seen.updated != null
@@ -236,7 +238,10 @@ function Night({
     },
     whosHere: {
       label: t('whosHere.open'),
-      href: { pathname: '/events/[id]/whos-here', params: { id: night.event.id } },
+      href: {
+        pathname: '/events/[id]/whos-here',
+        params: { id: night.event.id, name: night.event.name },
+      },
       testID: 'myNight.whosHere',
     },
   };
@@ -259,11 +264,19 @@ function Night({
       </View>
       {clock}
       {nightButtonsOf(night).map(({ opens, kind }) => {
-        const Button = kind === 'primary' ? PrimaryButton : SecondaryButton;
         const { label, href, testID } = buttons[opens];
+        const press = () => router.push(href);
 
-        return (
-          <Button key={opens} label={label} onPress={() => router.push(href)} testID={testID} />
+        return kind === 'primary' ? (
+          <PrimaryButton key={opens} label={label} onPress={press} testID={testID} />
+        ) : (
+          <SecondaryButton
+            key={opens}
+            label={label}
+            onPress={press}
+            tall={opens === 'floor' && !wide}
+            testID={testID}
+          />
         );
       })}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
@@ -402,7 +415,7 @@ function Clock({
   );
 }
 
-function Card({ title, children }: { title: string; children: ReactNode }) {
+export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.card}>
       <Text size={17} weight="semibold" style={styles.secondary} accessibilityRole="header">
@@ -413,7 +426,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
+export function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const end = clockAt(shift.endsAt, locale);
@@ -443,7 +456,7 @@ function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['s
   );
 }
 
-function YourLead({ lead }: { lead: MyNight['lead'] }) {
+export function YourLead({ lead, callable = true }: { lead: MyNight['lead']; callable?: boolean }) {
   const { t } = useTranslation();
 
   if (lead == null) {
@@ -469,7 +482,7 @@ function YourLead({ lead }: { lead: MyNight['lead'] }) {
           </View>
         )}
       </View>
-      {lead.phone != null && (
+      {callable && lead.phone != null && (
         <Pressable
           onPress={() => void Linking.openURL(`tel:${lead.phone}`)}
           accessibilityRole="link"

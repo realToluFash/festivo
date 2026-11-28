@@ -263,3 +263,18 @@ describe('the boards', () => {
     );
   });
 });
+
+describe('a course beside a linked item (sc-3898)', () => {
+  it('carries the course on the linked items only', () => {
+    const items = nightAt('course_now').night.tracks[0]?.items ?? [];
+    expect(items.filter((one) => one.course != null).map((one) => [one.id, one.course])).toEqual([
+      ['dinner', 'Starter'],
+      ['cake', 'Dessert'],
+    ]);
+  });
+
+  it('leaves every other state without a course', () => {
+    const items = nightAt('populated').night.tracks.flatMap((one) => one.items);
+    expect(items.every((one) => one.course == null)).toBe(true);
+  });
+});

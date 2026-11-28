@@ -233,6 +233,9 @@ export function overviewOf(state: WayInState, zone: string = deviceZone()): WayI
     now: sample.now,
     station: today && opensStations(sample.role) ? sampleLink(sample, zone) : null,
     floor: today && opensFloor(sample.role) ? floorLinkOf(sample.floor, 'en') : null,
+    ...(sample.lastRead != null && {
+      offline: { at: readAt(sample.lastRead, zone), answered: 'own_course' },
+    }),
   };
 }
 
@@ -245,7 +248,7 @@ const WHAT: Record<WayInState, readonly [string, string]> = {
   ],
   offline: [
     'No connection',
-    'Kitchen station · Fryer · Mains · as of {time}, its last line kept; {time} in this device’s zone',
+    'The Offline band above the card, as of {time}, with Try again; Kitchen station · Fryer · Mains · as of {time}, its last line kept; both {time}s the last read, in this device’s zone',
   ],
   past_midnight: ['Past midnight', '00:30 on Sunday, before the end: the row stays'],
   last_pick: [

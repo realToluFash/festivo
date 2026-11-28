@@ -8,6 +8,7 @@ use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Domain\Staff\ShiftNotice\ShiftChanges;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Psl\Iter;
 use Psl\Vec;
@@ -45,6 +46,34 @@ final class ShiftChangesTest extends TestCase
             [['start_time', '2027-03-07 17:00', '2027-03-06 17:00'], ['end_time', '2027-03-07 23:00', '2027-03-06 23:00']],
             self::read($told, self::told(['b' => ['2027-03-07 17:00', '2027-03-07 23:00']])),
         );
+    }
+
+    #[Test]
+    #[TestWith(['2027-03-06 19:00', '2027-03-06 19:00', false])]
+    #[TestWith(['2027-03-07 17:00', null, false])]
+    #[TestWith(['2027-03-05 17:00', null, false])]
+    #[TestWith(['2027-03-12 23:30', null, false])]
+    #[TestWith(['2027-03-13 00:30', null, true])]
+    #[TestWith(['2027-02-27 17:00', null, true])]
+    public function aOneShiftTimeNeedNotNameADayOnlyWhileItsStartStaysOnIt(string $start, ?string $on, bool $dated): void
+    {
+        $lines = ShiftChanges::between(self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00']]), self::told(['a' => [$start, '2027-03-14 01:00']]));
+
+        self::assertSame(
+            [[$on, $dated], [$on, $dated]],
+            Vec\map($lines, static fn (ShiftChange $line): array => [$line->on?->format('Y-m-d H:i'), $line->dated]),
+        );
+    }
+
+    #[Test]
+    public function amongSeveralShiftsOnlyOneMovedAWeekIsDated(): void
+    {
+        $lines = ShiftChanges::between(
+            self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00'], 'b' => ['2027-03-07 12:00', '2027-03-07 18:00']]),
+            self::told(['a' => ['2027-03-12 17:00', '2027-03-12 23:00'], 'b' => ['2027-03-14 12:00', '2027-03-14 18:00']]),
+        );
+
+        self::assertSame([false, true], Vec\map($lines, static fn (ShiftChange $line): bool => $line->dated));
     }
 
     #[Test]
@@ -167,16 +196,48 @@ final class ShiftChangesTest extends TestCase
     }
 
     #[Test]
-    public function theDateAndVenueEachHaveTheirLineAfterTheShifts(): void
+    public function amongSeveralShiftsOneOffAndOneOnAtTheSameHoursPairOffOneForOne(): void
+    {
+        $saturday = ['2027-03-06 17:00', '2027-03-06 23:00'];
+        $sunday = ['2027-03-07 17:00', '2027-03-07 23:00'];
+        $told = self::told(['a' => $saturday, 'b' => $sunday]);
+
+        self::assertSame([], self::read($told, self::told(['c' => $saturday, 'd' => $sunday])));
+        self::assertSame(
+            [['job', null, null]],
+            self::read($told, new ShiftTold(['c' => $saturday, 'd' => $sunday], ['job-runner', 'Runner'], $told->date, $told->venue)),
+        );
+        self::assertSame(
+            [['shift_added', '2027-03-06 17:00', '2027-03-06 23:00']],
+            self::read($told, self::told(['b' => $sunday, 'c' => $saturday, 'd' => $saturday])),
+        );
+    }
+
+    #[Test]
+    public function aPairNamedNowhereTakesNoneOfTheThreeLines(): void
+    {
+        $told = self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00'], 'b' => ['2027-03-07 17:00', '2027-03-07 23:00']]);
+        $now = self::told([
+            'c' => ['2027-03-06 17:00', '2027-03-06 23:00'],
+            'd' => ['2027-03-07 17:00', '2027-03-07 23:00'],
+            'e' => ['2027-03-08 10:00', '2027-03-08 14:00'],
+        ]);
+
+        self::assertSame([['shift_added', '2027-03-08 10:00', '2027-03-08 14:00']], self::read($told, $now));
+    }
+
+    #[Test]
+    public function theDateLineLeadsTheShiftsAndTheVenueFollowsThem(): void
     {
         $told = self::told(['a' => ['2027-03-06 17:00', '2027-03-06 23:00']]);
         $moved = new ShiftTold(['a' => ['2027-03-07 17:00', '2027-03-07 23:00']], $told->job, '2027-03-07', 'Eko Hotel');
 
         self::assertSame(
-            ['start_time', 'end_time', 'date', 'venue'],
+            ['date', 'start_time', 'end_time', 'venue'],
             Vec\map(ShiftChanges::between($told, $moved), static fn (ShiftChange $line): string => $line->kind->value),
         );
-        self::assertSame([['date', '2027-03-07', '2027-03-06'], ['venue', 'Eko Hotel', 'Harbour Hall']], Vec\slice(self::values(ShiftChanges::between($told, $moved)), 2));
+        $values = self::values(ShiftChanges::between($told, $moved));
+        self::assertSame([['date', '2027-03-07', '2027-03-06'], ['venue', 'Eko Hotel', 'Harbour Hall']], [$values[0], $values[3]]);
     }
 
     /** @param array<string, array{0: string, 1: string}> $shifts */

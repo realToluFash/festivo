@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
 import { barFits } from './keyboard.ts';
-import { type EventFields, focusedBlock, keptInView, offsetAboveSend } from './fieldsAboveSend.ts';
+import {
+  dockedHeight,
+  type EventFields,
+  fieldInFocus,
+  focusedBlock,
+  keptInView,
+  offsetAboveSend,
+} from './fieldsAboveSend.ts';
 
 const MARGIN = tokens.spaceLg;
 // The tile and the heading take 0 to 180, the refusal 196 to 240, then the two fields spaceLg apart, as `styles.fields` gaps them.
@@ -119,5 +126,33 @@ describe("what the step's dock rule is given (sc-97734, AC bullet 3)", () => {
       expect(barFits({ ...inline(room), field: focusedBlock(PLAIN).height })).toBe(true);
     }
     expect(barFits({ ...inline(167), field: focusedBlock(PLAIN).height })).toBe(false);
+  });
+});
+
+describe('what the dock is told on the event step (sc-97734)', () => {
+  const fields = { refusal: null, name: NAME, number: NUMBER };
+
+  it('is the name block with no field reporting focus and Your name the last one focused', () => {
+    expect(dockedHeight(fields, null, 'name')).toBe(NAME.height);
+  });
+
+  it('is the number block with no field reporting focus and the number row the last one focused', () => {
+    expect(dockedHeight(fields, null, 'number')).toBe(NUMBER.height);
+  });
+
+  it('follows the field that does report focus over the last one', () => {
+    expect(fieldInFocus(fields, { contentY: NUMBER.contentY + 20, height: 40 }, 'name')).toBe(
+      'number',
+    );
+    expect(fieldInFocus(fields, { contentY: NAME.contentY + 20, height: 40 }, 'number')).toBe(
+      'name',
+    );
+    expect(
+      dockedHeight(
+        { ...fields, name: { ...NAME, height: 204 } },
+        { contentY: NAME.contentY, height: 40 },
+        'number',
+      ),
+    ).toBe(204);
   });
 });

@@ -342,6 +342,29 @@ describe('live and offline', () => {
     expect(stripLine(more)).toBe('No connection · as of 21:04 · 3 taps waiting');
   });
 
+  it('marks an order whose send-back was undone offline Waiting to send, until connecting again', () => {
+    const off = loseConnection(floorSeed('table'));
+    const back = undo(sendBack(pickReason(openSendBack(off, 'Table 2', 8, null), 'Dropped')));
+    const kemi = at(back, 'Table 2').seats[7];
+    expect(kemi?.stage).toBe('Served');
+    expect(kemi?.kept).toBe(true);
+    expect(stripLine(back)).toContain('2 taps waiting');
+    expect(at(reconnect(back), 'Table 2').seats[7]?.kept).toBe(false);
+    const twice = at(
+      sendBack(pickReason(openSendBack(back, 'Table 2', 8, null), 'Wrong dish')),
+      'Table 2',
+    ).seats[7];
+    expect(twice?.stage).toBe('To serve');
+    expect(twice?.kept).toBe(false);
+    expect(twice?.owed.map((o) => [o.reason, o.kept])).toEqual([
+      ['Wrong dish', true],
+      [null, false],
+    ]);
+    const online = floorSeed('table');
+    const live = undo(sendBack(pickReason(openSendBack(online, 'Table 2', 8, null), 'Dropped')));
+    expect(at(live, 'Table 2').seats[7]?.kept).toBe(false);
+  });
+
   it('sends the kept taps on connecting again, so none still reads Waiting to send', () => {
     const f = reconnect(choose(floorSeed('offline'), 'Table 2', 5, WAIT_ALL));
     const t2 = at(f, 'Table 2');

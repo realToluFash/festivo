@@ -76,23 +76,26 @@ export function MeasuredWords({
   );
 }
 
-/** Each of `words` measured hidden in SemiBold at exactly `start`, unscaled: its width, or undefined until it has been laid out. */
+/** Each of `words` measured hidden in `weight` (SemiBold unless said) at exactly `start`, unscaled: its width, or undefined until it has been laid out. Widths filed in `kept` outlive the caller, and stand until it measures its own. */
 export function useMeasuredAt(
   start: number,
   words: readonly string[],
+  kept?: Map<string, number>,
+  weight: 'regular' | 'semibold' = 'semibold',
 ): { widths: (number | undefined)[]; measure: ReactNode } {
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
 
   return {
-    widths: words.map((word) => measured[`${start}|${word}`]),
+    widths: words.map((word) => measured[`${start}|${word}`] ?? kept?.get(`${start}|${word}`)),
     measure: (
       <MeasuredWords
         words={words}
         size={start}
-        weight="semibold"
+        weight={weight}
         allowFontScaling={false}
         onWidth={(word, width) => {
           const key = `${start}|${word}`;
+          kept?.set(key, width);
           setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
         }}
       />
@@ -159,8 +162,6 @@ export function useWholeWords(
     maxFontSizeMultiplier: drawn / size,
     /** A text given a `room` is not drawn until it is fitted, so no frame cuts a word; one given no room never waits (sc-69816). */
     pending: look.room !== undefined && !fitted,
-    /** Its width and every word are known, so the size drawn is the fitted one. */
-    fitted,
     // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
     lineHeight: wholeLineHeight(size, drawn),
     /** The width each of the texts has, whatever the texts say, until its container reports another. */

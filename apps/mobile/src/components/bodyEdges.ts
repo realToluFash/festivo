@@ -51,6 +51,22 @@ export function tabBarFit(windowWidth: number, insets: { left: number; right: nu
   };
 }
 
+/** The bar's own border, which its tabs sit inside. */
+export const TAB_BAR_BORDER = 1;
+
+/** One of `count` equal tabs in `tabBarFit`'s bar, down to a whole pixel, as layout may round it. */
+export function tabWidth(
+  windowWidth: number,
+  insets: { left: number; right: number },
+  count: number,
+  pixelRatio: number,
+): number {
+  const { left, right, paddingHorizontal, gap } = tabBarFit(windowWidth, insets);
+  const inside = windowWidth - left - right - 2 * (TAB_BAR_BORDER + paddingHorizontal);
+
+  return Math.floor(((inside - (count - 1) * gap) / count) * pixelRatio) / pixelRatio;
+}
+
 /** How far Today's top row on a phone sits in from each side while no bar takes one. */
 const COVER_ROW_SIDE = tokens.spaceXl;
 

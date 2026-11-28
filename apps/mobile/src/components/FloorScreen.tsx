@@ -19,11 +19,13 @@ import {
   UNDO_MINUTES,
   floorGroups,
   freshnessKey,
+  orderWaits,
   owesSentBack,
   refusalKey,
   roomCourse,
   sectionsMoved,
   stageLeftBy,
+  listFormat,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -32,14 +34,14 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dateLocale } from '../i18n/index.ts';
-import { tableName } from '../kit/tableName.ts';
+import { blockName } from '../kit/blockName.ts';
 import { useFloor } from '../kit/useFloor.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Glyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { Sheet, SheetActions } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -107,7 +109,13 @@ function itemsOf(plate: ServicePlateRead, t: TFunction): string {
 }
 
 function itemsInSentence(plate: ServicePlateRead, t: TFunction): string {
-  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')).join(', ');
+  return listFormat(dateLocale(), { type: 'conjunction' }).format(
+    plate.items.map((one) => one.name ?? t('service.floor.chefsChoiceInSentence')),
+  );
+}
+
+function tableName(t: TFunction, table: FloorTable): string {
+  return blockName(t, table);
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
@@ -868,7 +876,14 @@ function Seat({
             {itemsOf(order, t)}
           </Text>
         )}
-        <WordLine {...stageSaid(t, guest)} size={14} />
+        <View style={styles.wrap}>
+          <WordLine {...stageSaid(t, guest)} size={14} />
+          {orderWaits(guest, keptOn) && (
+            <Text size={13} weight="semibold" style={styles.chip}>
+              {t('service.waitingToSend')}
+            </Text>
+          )}
+        </View>
         {held != null && (
           <View style={styles.held}>
             <Text size={14} weight="medium" style={styles.secondary}>
@@ -1245,7 +1260,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorCard,
   },
-  sheet: { gap: tokens.spaceXl },
+  sheet: {
+    gap: tokens.spaceXl,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.spaceLg,
+  },
   reasons: { gap: tokens.spaceXs },
   reason: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd, minHeight: 48 },
   radio: {

@@ -47,7 +47,7 @@ export interface ServiceGuest {
 export interface ServiceTable {
   key: string;
   kind: string;
-  /** Null on a block of single seats, which is named from its seats. */
+  /** Null for a block of single seats; its seats name it. */
   name: string | null;
   seats: string[];
   firedAt: string | null;
@@ -203,13 +203,11 @@ function asGuest(raw: Raw): ServiceGuest | null {
 function asTable(raw: Raw): ServiceTable | null {
   const key = text(raw.key);
   const name = text(raw.name);
+  const seats = texts(raw.seats);
   const guests = each(raw.guests, asGuest);
   const plates = each(raw.plates ?? [], asPlate);
 
-  const seats = texts(raw.seats);
-
-  if (key == null || (name == null && seats.length === 0) || guests == null || plates == null)
-    return null;
+  if (key == null || guests == null || plates == null) return null;
 
   return {
     key,

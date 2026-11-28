@@ -5,8 +5,10 @@ import {
   changedWords,
   makeLiveHostError,
   makeLiveRow,
+  limitRefusalOf,
   makeLiveWithHost,
   needsHost,
+  type LimitRefusal,
   rereadOf,
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
@@ -14,7 +16,9 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { HostOneField } from '../../../components/HostOneField.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { Ask, AskAlert } from '../../../components/SettingsParts.tsx';
 import { focusWhenFree } from '../../../layers.ts';
 import { StatusChip } from '../../../components/StatusChip.tsx';
@@ -66,6 +70,7 @@ export function useMakeLive({
   const { t } = useTranslation();
   const [opened, setOpened] = useState<TaggedEvent>({ event, tag });
   const [asking, setAsking] = useState<Confirming | Told | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
 
   function close(): void {
     setAsking(null);
@@ -138,16 +143,11 @@ export function useMakeLive({
     if (step.saved != null) changed(step.saved);
 
     const problem = step.error instanceof ApiError ? step.error : null;
+    const limit = limitRefusalOf(step.error, 'makeLive', t, dateLocale());
 
-    if (problem?.is('plan_limit') === true) {
-      refused(
-        t('eventLive.planLimit', {
-          plan: problem.problem.plan ?? '',
-          limit: problem.problem.limit ?? 0,
-          count: problem.problem.limit ?? 0,
-        }),
-        t('eventLive.planLimitStays'),
-      );
+    if (limit != null) {
+      setAsking(null);
+      setLimited(limit);
     } else if (problem?.is('event_concluded') === true) {
       await reread();
       refused(t('eventLive.notMadeLive'), t('eventLive.endPassed'), true);
@@ -173,15 +173,30 @@ export function useMakeLive({
     });
   }
 
-  const dialogs = asking != null && (
-    <MakeLiveAsking
-      asking={asking}
-      event={opened.event}
-      onType={(typed) => asking.kind === 'confirm' && setAsking({ ...asking, typed, error: null })}
-      onGo={() => asking.kind === 'confirm' && void go(asking)}
-      onClose={close}
-      onChangeDates={() => setAsking(null)}
-    />
+  const dialogs = (
+    <>
+      {asking != null && (
+        <MakeLiveAsking
+          asking={asking}
+          event={opened.event}
+          onType={(typed) =>
+            asking.kind === 'confirm' && setAsking({ ...asking, typed, error: null })
+          }
+          onGo={() => asking.kind === 'confirm' && void go(asking)}
+          onClose={close}
+          onChangeDates={() => setAsking(null)}
+        />
+      )}
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          onBack={() => {
+            setLimited(null);
+            close();
+          }}
+        />
+      )}
+    </>
   );
 
   return { start, dialogs };

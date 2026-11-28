@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Invitations;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -24,6 +25,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
+use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -43,6 +45,8 @@ final readonly class InvitationSender
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private HardLimitsInterface $hardLimits,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -74,6 +78,10 @@ final readonly class InvitationSender
     private function write(Organisation $organisation, string $address, Role $role, User $by, #[SensitiveParameter] string $token, DateTimeImmutable $expiresAt, ?Request $request): Invitation
     {
         $invitation = $this->invitationRepository->findPending($organisation, $address);
+
+        if (null === $invitation || $invitation->getExpiresAt() <= $this->clock->now()) {
+            $this->hardLimits->requireSeatToInvite($organisation);
+        }
 
         if (null === $invitation) {
             $invitation = new Invitation($organisation, $address, $role, $by, TokenIssuer::hash($token), $expiresAt);

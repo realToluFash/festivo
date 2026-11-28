@@ -4,13 +4,20 @@ import { sample } from './howItsGoing.ts';
 import {
   type Access,
   LATE,
+  STAY_ASKED,
+  answer,
   askBulk,
+  askCount,
+  askOne,
+  askedNow,
   bulkRows,
   changed,
   chooseFor,
   confirmBulk,
+  confirmNote,
   confirmTitle,
   conflict,
+  countLine,
   covered,
   lateArrival,
   markAvailable,
@@ -34,8 +41,11 @@ const guest = (id: string) => runOutSample().guests.find((x) => x.id === id)!;
 const beef = { kind: 'serve', item: 'Beef' } as const;
 const fish = { kind: 'serve', item: 'Grilled fish' } as const;
 const without = { kind: 'without' } as const;
-const settle = (bulk: typeof beef | typeof fish | typeof without, ro = runOutSample()) =>
-  confirmBulk(askBulk(ro, bulk, LEAD), LEAD);
+const ask = { kind: 'ask' } as const;
+const settle = (
+  bulk: typeof beef | typeof fish | typeof without | typeof ask,
+  ro = runOutSample(),
+) => confirmBulk(askBulk(ro, bulk, LEAD), LEAD);
 
 describe('who waits, and in what order (sc-59384)', () => {
   it('lists flagged guests first, then by table and seat', () => {
@@ -96,6 +106,7 @@ describe('a bulk choice stands until the item is available again', () => {
       ['Serve Beef', true],
       ['Serve Grilled fish', false],
       ['Serve without Chicken', false],
+      ['Ask each guest', false],
     ]);
   });
 
@@ -277,5 +288,128 @@ describe('Plan and List with Chicken run out', () => {
   it('no table reads it once Chicken is available again', () => {
     const tables = runOutTables(room(), markAvailable(runOutSample(), LEAD));
     expect(tables.some((t) => wordOf(t) === 'choice')).toBe(false);
+  });
+});
+
+describe('asked at the table (sc-59426)', () => {
+  it('lists Ask each guest last, and confirms for everyone waiting, flagged guests too', () => {
+    const ro = runOutSample();
+    expect(bulkRows(ro).map((r) => r.label)).toEqual([
+      'Serve Jollof rice',
+      'Serve Beef',
+      'Serve Grilled fish',
+      'Serve without Chicken',
+      'Ask each guest',
+    ]);
+    expect(confirmTitle(ro, ask)).toBe('Ask 9 guests at their tables?');
+    const cancelled = { ...askBulk(ro, ask, LEAD), confirm: null };
+    expect(askedNow(cancelled)).toEqual([]);
+  });
+
+  it('says 1 guest, and guests still to come once everyone waiting is asked', () => {
+    let ro = runOutSample();
+    for (const x of waiting(ro).slice(1)) ro = askOne(ro, x.id, LEAD);
+    expect(confirmTitle(ro, ask)).toBe('Ask 1 guest at their table?');
+    ro = askOne(ro, waiting(ro)[0]!.id, LEAD);
+    expect(confirmTitle(ro, ask)).toBe('Ask guests still to come at their tables?');
+    expect(bulkRows(ro).some((r) => r.stands)).toBe(false);
+  });
+
+  it('asks everyone at once, stands, and counts 0 of 9 chosen', () => {
+    const ro = settle(ask);
+    expect(askedNow(ro)).toHaveLength(9);
+    expect(waiting(ro)).toHaveLength(9);
+    expect(
+      bulkRows(ro)
+        .filter((r) => r.stands)
+        .map((r) => r.label),
+    ).toEqual(['Ask each guest']);
+    expect(countLine(ro)).toBe('0 of 9 guests have chosen at the table');
+    expect(countLine(runOutSample())).toBe('');
+  });
+
+  it('records a guest’s answer as Choose for does, and keeps them in the count', () => {
+    const ro = answer(settle(ask), 'tb', 'Beef', LEAD);
+    expect(nowLine(ro, guest('tb'))).toBe('Now Beef');
+    expect(names(changed(ro))).toContain('Tunde Bakare');
+    expect(countLine(ro)).toBe('1 of 9 guests have chosen at the table');
+    expect(answer(ro, 'tb', 'Grilled fish', LEAD)).toBe(ro);
+    expect(answer(settle(ask), 'fa', 'Beef', LEAD).fate['fa']?.status).toBe('waiting');
+  });
+
+  it('ends a guest’s ask on Choose for, and they leave the count', () => {
+    const ro = chooseFor(settle(ask), 'tb', 'Grilled fish', LEAD);
+    expect(ro.fate['tb']).toMatchObject({ asked: false, by: 'lead' });
+    expect(askCount(ro)).toEqual({ chosen: 0, asked: 8 });
+  });
+
+  it('asks one guest with no confirmation and leaves nothing standing', () => {
+    const ro = askOne(runOutSample(), 'tb', LEAD);
+    expect(names(askedNow(ro))).toEqual(['Tunde Bakare']);
+    expect(ro.stands).toBeNull();
+    expect(ro.confirm).toBeNull();
+    expect(countLine(ro)).toBe('0 of 1 guest has chosen at the table');
+  });
+
+  it('leaves asked guests out of a Serve choice, and says they stay asked', () => {
+    const ro = askOne(askOne(runOutSample(), 'tb', LEAD), 'ya', LEAD);
+    expect(names(covered(ro, beef))).toEqual(['Bayo Ojo', 'Emeka Obi']);
+    expect(confirmTitle(ro, beef)).toBe('Serve Beef to 2 guests instead of Chicken?');
+    expect(confirmNote(ro, beef)).toBe(STAY_ASKED);
+    expect(confirmNote(runOutSample(), beef)).toBe('');
+    const served = settle(beef, ro);
+    expect(names(askedNow(served))).toEqual(['Tunde Bakare', 'Yemi Alabi']);
+  });
+
+  it('a later Serve choice replaces the standing Ask, and guests already asked stay asked', () => {
+    const ro = settle(beef, settle(ask));
+    expect(
+      bulkRows(ro)
+        .filter((r) => r.stands)
+        .map((r) => r.label),
+    ).toEqual(['Serve Beef']);
+    expect(askedNow(ro)).toHaveLength(9);
+    expect(nowLine(lateArrival(ro), LATE)).toBe('Now Beef');
+  });
+
+  it('asks a late arrival at once under a standing Ask, and raises no alert', () => {
+    const ro = lateArrival(settle(ask));
+    expect(names(askedNow(ro))).toContain(LATE.name);
+    expect(ro.say).toBe('Bola Ige arrived late: asking at the table.');
+    expect(countLine(ro)).toBe('0 of 10 guests have chosen at the table');
+  });
+
+  it('ends every ask on Mark available again; answers are kept', () => {
+    const ro = markAvailable(answer(settle(ask), 'tb', 'Beef', LEAD), LEAD);
+    expect(Object.values(ro.fate).some((f) => f.asked)).toBe(false);
+    expect(nowLine(ro, guest('tb'))).toBe('Now Beef');
+    expect(countLine(ro)).toBe('');
+  });
+
+  it('the alert leaves by itself once everyone asked has answered', () => {
+    let ro = settle(ask);
+    for (const x of waiting(ro)) {
+      const o = options(ro, x).find((y) => y.no == null);
+      ro = answer(ro, x.id, o?.to ?? null, LEAD);
+    }
+    expect(waiting(ro)).toEqual([]);
+    expect(withRunOut(sample(), ro).alerts.some((a) => a.kind === 'runOut')).toBe(false);
+  });
+
+  it('refuses asking and answering offline, and keeps nothing', () => {
+    const off = { online: false, manage: true };
+    const one = askOne(runOutSample(), 'tb', off);
+    expect(one.refused).toBe('Needs a connection to ask. Nothing is kept to send later.');
+    expect(askedNow(one)).toEqual([]);
+    expect(askBulk(runOutSample(), ask, off).confirm).toBeNull();
+    const asked = settle(ask);
+    const no = answer(asked, 'tb', 'Beef', off);
+    expect(no.refused).toBe(
+      'Needs a connection to record an answer. Nothing is kept to send later.',
+    );
+    expect(no.fate['tb']?.status).toBe('waiting');
+    expect(askOne(runOutSample(), 'tb', { online: true, manage: false }).refused).toBe(
+      'Only the floor lead chooses what guests get instead. Nothing changed.',
+    );
   });
 });

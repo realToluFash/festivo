@@ -54,6 +54,8 @@ const ZONES = [
   'Africa/Lagos',
   'America/New_York',
 ];
+const DELETED = 'Enquiry deleted.';
+const NOTHING_ON_DAY = 'Nothing on this day.';
 const HOW_GLYPH: Record<How, GlyphName> = { inPerson: 'pin', video: 'device', phone: 'phone' };
 
 /** /demo/consultations (sc-31228): Consultations on an enquiry's page, with ?state= for each of its states. */
@@ -65,6 +67,7 @@ export function Consultations() {
   return (
     <EventsShell
       fit
+      told={start.calendar.deleted == null ? null : DELETED}
       renderSide={(tell, covered) => (
         <TodaySidebar
           phone
@@ -699,11 +702,22 @@ const KIND_WORD = { event: 'Event', milestone: 'Milestone', consultation: CW.cal
 function CalendarStrip({ start }: { start: ConsultationStart }) {
   const [view, setView] = useState(start.calendar.view);
   const [show, setShow] = useState(start.calendar.show);
+  const gone = start.calendar.deleted;
+  const emptied = new Set(
+    gone == null
+      ? []
+      : NOVEMBER.filter((line) => line.title === CW.calendarLine(gone)).map((line) => line.day),
+  );
   const lines = NOVEMBER.filter(
     (line) =>
       (show === 'all' || line.kind === 'event') &&
-      !(start.calendar.free && line.kind === 'consultation'),
+      !(start.calendar.free && line.kind === 'consultation') &&
+      !(gone != null && line.title === CW.calendarLine(gone)),
   );
+  const agenda = [
+    ...lines.map((line) => ({ day: line.day, line })),
+    ...[...emptied].map((day) => ({ day, line: null })),
+  ].sort((a, b) => a.day - b.day);
 
   return (
     <div className="desk-page cal-page">
@@ -759,10 +773,14 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
           </div>
         ) : (
           <ul className="desk-rows con-agenda">
-            {lines.map((line) => (
-              <li key={line.title + line.day} className="con-agenda-day">
-                <p className="con-agenda-date">{`${DAYS[(line.day + 5) % 7]}, Nov ${line.day}`}</p>
-                <CalendarLine line={line} />
+            {agenda.map(({ day, line }) => (
+              <li key={line == null ? `none-${day}` : line.title + day} className="con-agenda-day">
+                <p className="con-agenda-date">{`${DAYS[(day + 5) % 7]}, Nov ${day}`}</p>
+                {line == null ? (
+                  <p className="con-nothing">{NOTHING_ON_DAY}</p>
+                ) : (
+                  <CalendarLine line={line} />
+                )}
               </li>
             ))}
           </ul>

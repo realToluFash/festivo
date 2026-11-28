@@ -561,3 +561,31 @@ describe('a default and a choose-by date (sc-1362)', () => {
     ).toBeNull();
   });
 });
+
+describe('a course linked to a schedule item (sc-3898)', () => {
+  it('shows the linked item’s start as the course’s served time', SLOW, async () => {
+    await menu('courseLinkedLine');
+
+    expect(within(card('Main')).getByText('Course 2 of 4 · served 19:50')).toBeTruthy();
+    expect(within(card('Dessert')).getByText('Course 3 of 4 · served 21:30')).toBeTruthy();
+  });
+
+  it('shows Served at as text from the schedule, not a field, while linked', SLOW, async () => {
+    await menu('courseLinkedForm');
+
+    expect(within(panel()).getByText('19:50, from the schedule: Mains go out')).toBeTruthy();
+    expect(within(panel()).queryByRole('textbox', { name: /Served at/ })).toBeNull();
+  });
+
+  it(
+    'gives Served at back as a field, keeping the last time shown, once the link ends',
+    SLOW,
+    async () => {
+      await menu('courseLinkEnded');
+
+      expect(within(panel()).queryByText(/from the schedule/)).toBeNull();
+      const field = within(panel()).getByRole('textbox', { name: /Served at/ }) as HTMLInputElement;
+      expect(field.value).toBe('19:50');
+    },
+  );
+});

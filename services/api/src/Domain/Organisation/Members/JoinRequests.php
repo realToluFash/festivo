@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Interfaces\HardLimitsInterface;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Membership;
@@ -46,6 +47,7 @@ final readonly class JoinRequests
         private RoleAssignment $roleAssignment,
         private RoleManager $roleManager,
         private JoinRequestMailer $joinRequestMailer,
+        private HardLimitsInterface $hardLimits,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
@@ -66,7 +68,8 @@ final readonly class JoinRequests
 
         $this->roleManager->mayGrant($organisation, $by, $role);
 
-        return $this->answer($organisation, $membershipId, $by, function (Membership $membership) use ($role, $by): void {
+        return $this->answer($organisation, $membershipId, $by, function (Membership $membership) use ($organisation, $role, $by): void {
+            $this->hardLimits->requireSeatToApprove($organisation);
             $before = $membership->getRole();
             $this->roleAssignment->assign($membership, $role);
             $this->membershipMachine->move($membership, MembershipStatus::Active, MembershipChannel::Settings, $by);

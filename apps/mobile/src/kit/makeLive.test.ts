@@ -90,14 +90,6 @@ describe('refusalOf', () => {
     expect(refusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
-  it('reads a 403 plan_limit with its plan and limit', () => {
-    expect(refusalOf(problem('plan_limit', { status: 403, plan: 'Free', limit: 3 }))).toEqual({
-      kind: 'planLimit',
-      plan: 'Free',
-      limit: 3,
-    });
-  });
-
   it.each([new Error('offline'), problem('internal_error', { status: 500 })])(
     'reads anything else as failed',
     (error) => {
@@ -122,7 +114,7 @@ describe('endRefusalOf', () => {
     expect(endRefusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
-  it.each([new Error('offline'), problem('plan_limit', { status: 403 })])(
+  it.each([new Error('offline'), problem('plan_limit_reached', { status: 403 })])(
     'reads anything else as failed',
     (error) => {
       expect(endRefusalOf(error)).toEqual({ kind: 'failed' });
@@ -157,22 +149,6 @@ describe('Make live’s alert (sc-48601)', () => {
     pending: false,
     failed: false,
   };
-
-  it('opens makeLivePlanLimit on a 403 plan_limit, with its plan and limit and Close alone', () => {
-    const told = toldOf(
-      refusalOf(problem('plan_limit', { status: 403, plan: 'Pro', limit: 7 })),
-      t,
-    );
-
-    expect(liveAlertOf(told, event, t, true)).toMatchObject({
-      turn: 'told',
-      title: 'eventLive.planLimit {"plan":"Pro","count":7}',
-      line: 'eventLive.planLimitStays',
-      alert: true,
-      keep: { label: 'eventLive.close' },
-      confirm: null,
-    });
-  });
 
   it('opens makeLiveEndPassed on event_concluded, with Change dates for somebody who can edit', () => {
     const told = toldOf(refusalOf(problem('event_concluded')), t);
@@ -234,7 +210,6 @@ describe('Make live’s words are the demo’s (sc-48601)', () => {
     changedElsewhere: LIVE.changedTitle,
     nowState_live: LIVE.nowLive,
     notMadeLive: LIVE.notMadeLive,
-    planLimitStays: LIVE.planLimitStays,
     close: LIVE.close,
     hostExplainer: LIVE.hostExplainer,
     notSavedChanged: LIVE.notSavedChanged,

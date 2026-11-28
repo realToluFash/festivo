@@ -15,6 +15,8 @@ import {
   GREET_AS_MAXIMUM,
   formatPhone,
   invitationLine,
+  type LimitRefusal,
+  limitRefusalOf,
   optOutLines,
   ownLanguageName,
   phoneE164,
@@ -27,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { type Mesh } from '../../../mesh.ts';
@@ -728,7 +731,10 @@ function GuestView({
             how: t(`guestList.toldInLine.${recordedBy.how}`),
             date: replied,
           })
-        : t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
+        : t(guest.fromEmailLink === true ? 'guestList.repliedFromEmailLink' : 'guestList.replied', {
+            reply: t(REPLY_KEY[guest.reply]),
+            date: replied,
+          })
       : notYet
         ? manages && invites
           ? t('guestList.copyFirst')
@@ -867,7 +873,13 @@ function GuestView({
                         how: t(`guestList.toldInLine.${recordedBy.how}`),
                         date: replied,
                       })
-                    : (decides ?? t('guestList.repliedOn', { date: replied })),
+                    : (decides ??
+                      t(
+                        guest.fromEmailLink === true
+                          ? 'guestList.repliedOnFromEmailLink'
+                          : 'guestList.repliedOn',
+                        { date: replied },
+                      )),
                 ]}
               />
             </li>
@@ -1409,6 +1421,7 @@ function EditForm({
     changed: readonly Field[];
   } | null>(null);
   const [failed, setFailed] = useState<boolean | string>(false);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const form = useRef<HTMLDivElement>(null);
@@ -1582,7 +1595,10 @@ function EditForm({
 
       onSaved(saved, true);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) onGone();
+      const limit = limitRefusalOf(error, 'guestAdded', t, dateLocale());
+
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiError && error.status === 404) onGone();
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
@@ -1854,6 +1870,13 @@ function EditForm({
           onChange={(companions) => change({ companions })}
         />
       </div>
+      {limited != null && (
+        <LimitRefusalDialog
+          refusal={limited}
+          guestsAt={`/app/events/${eventId}/guests`}
+          onBack={() => setLimited(null)}
+        />
+      )}
     </div>
   );
 }

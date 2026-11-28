@@ -54,6 +54,7 @@ import {
 } from './EventLifecycle.tsx';
 import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
 import { duplicateStateOf } from './Duplicate.ts';
+import { guestsOn } from './DuplicateGuests.ts';
 import {
   type CardStep,
   type EditPart,
@@ -181,7 +182,7 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
-const HOST = ['events.read', 'events.create', 'events.manage'];
+const HOST = ['events.read', 'events.create', 'events.manage', 'guests.manage'];
 const VIEWER = ['events.read'];
 
 /** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
@@ -1054,6 +1055,9 @@ export function EventScreen({
             event={event}
             locale={locale}
             start={copies === 0 ? duplicateStateOf(state) : null}
+            guests={guestsOn(event.id, peopleOn(event.id))}
+            people={peopleOn(event.id)}
+            permissions={member.permissions}
             opener={opener}
             onClose={() => setDuplicating(false)}
             onCreated={(copy) => {

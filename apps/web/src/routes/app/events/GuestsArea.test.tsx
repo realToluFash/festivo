@@ -599,6 +599,62 @@ describe('Guests (sc-1468)', () => {
     expect(within(form()).queryByRole('heading', { name: /is already on the list$/u })).toBeNull();
   });
 
+  it('refuses a guest over the plan’s people per event and keeps the form (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'guests_per_event',
+          plan: 'free',
+          used: 100,
+          allowed: 100,
+          adding: 1,
+        }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'Your plan allows 100 people per event',
+    });
+    expect(within(refused).getByText('This event already has 100 people.')).toBeDefined();
+    expect(
+      within(refused).getByText('100 of 100 people · companions count as people · Free plan'),
+    ).toBeDefined();
+    expect(within(refused).getByText('The form is kept as you left it.')).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('link', { name: 'Go to the guest list' })).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change plan' })).toBeNull();
+    expect(within(refused).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Back to the form' }));
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Your plan allows 100 people per event' }),
+    ).toBeNull();
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /^Full name/u }).value).toBe(
+      'Kwame Mensah',
+    );
+  });
+
+  it('refuses a guest past the ceiling with no plan named (sc-3930)', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('event_capacity_reached', 403, { ceiling: 10000, onEvent: 10000, adding: 1 }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.click(addButton());
+
+    const refused = await screen.findByRole('dialog', {
+      name: 'An event can have up to 10,000 people',
+    });
+    expect(
+      within(refused).getByText('10,000 of 10,000 people · companions count as people'),
+    ).toBeDefined();
+    expect(within(refused).getByText('Remove a guest')).toBeDefined();
+    expect(within(refused).getByRole('button', { name: 'Back to the form' })).toBeDefined();
+  });
+
   it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
     await opened({
       'POST /api/events/ev_1/guests': () =>
@@ -2775,6 +2831,27 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
 
     expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+  });
+
+  it('names the email link a reply came from, after its date (sc-1291)', async () => {
+    await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () =>
+        tagged(
+          {
+            ...BISI_DETAILS,
+            reply: 'notComing',
+            repliedAt: '2026-11-13T10:00:00+01:00',
+            replySource: 'emailLink',
+            invitation: { at: '2026-11-12T10:00:00+01:00', how: 'email', by: null },
+          },
+          '"1"',
+        ),
+    });
+
+    expect(
+      await screen.findByText('Not coming · replied Nov 13 · from the email link'),
+    ).toBeDefined();
+    expect(screen.getByText('replied Nov 13 · from the email link')).toBeDefined();
   });
 
   it('records the reply of a guest nobody invited, which invites them (sc-52829)', async () => {

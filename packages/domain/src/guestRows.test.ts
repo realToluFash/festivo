@@ -144,6 +144,7 @@ describe("the app row's group (sc-5519)", () => {
   const EN: Record<string, string> = {
     'guestList.reply.coming': 'Coming',
     'guestList.replied': '{reply} · replied {date}',
+    'guestList.repliedFromEmailLink': '{reply} · replied {date} · from the email link',
     'guestList.withGroup': '{reply} · {group}',
     'guestList.withPlaces': '{reply} · {places}',
     'guestList.countCompanions': '{count} companion',
@@ -164,6 +165,14 @@ describe("the app row's group (sc-5519)", () => {
     expect(
       rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
     ).toBe('Coming · replied 14 Oct · Bride’s side · 1 companion');
+  });
+
+  it('names the email link a reply came from, before the group and the places (sc-1291)', () => {
+    const [person] = peopleOf([guest({ ...bride, fromEmailLink: true })]);
+
+    expect(
+      rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · replied 14 Oct · from the email link · Bride’s side · 1 companion');
   });
 
   it("gives a companion their host's group", () => {

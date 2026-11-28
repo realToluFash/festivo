@@ -117,7 +117,7 @@ describe("Make live's Host 1 (sc-22143)", () => {
   });
 
   it('keeps the saved host when going live is refused, with the version the save returned', async () => {
-    const limit = problem(403, 'plan_limit');
+    const limit = problem(403, 'plan_limit_reached');
     const api = calls({
       makeLive: vi.fn(async () => {
         throw limit;

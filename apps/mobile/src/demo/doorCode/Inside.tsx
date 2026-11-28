@@ -141,6 +141,7 @@ export function InsideEvent({
   night,
   station,
   floor,
+  band,
   onAt,
   onSignOut,
   onAccount,
@@ -155,6 +156,8 @@ export function InsideEvent({
   night?: NightRow;
   station?: StationRow;
   floor?: FloorRow;
+  /** The Offline band, held above the scrolling body as the product's frame holds it, so it stays while the page moves (sc-97945). */
+  band?: ReactNode;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -246,6 +249,7 @@ export function InsideEvent({
           onPerson={() => setMore(true)}
         />
         <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
+          {band}
           <ScrollView contentContainerStyle={styles.pane} showsVerticalScrollIndicator={false}>
             {page}
           </ScrollView>
@@ -257,17 +261,20 @@ export function InsideEvent({
 
   return (
     <View style={styles.page}>
+      {band != null && (
+        <View style={{ paddingTop: insets.top + (phone ? 0 : UPRIGHT_TOP) }}>{band}</View>
+      )}
       <ScrollView
         contentContainerStyle={[
           styles.blocks,
           phone
             ? {
-                paddingTop: insets.top + tokens.spaceLg,
+                paddingTop: band != null ? BLOCK_GAP : insets.top + tokens.spaceLg,
                 paddingHorizontal: tokens.spaceXxl,
                 paddingBottom: foot + TAB_BAR + tokens.space6xl,
               }
             : {
-                paddingTop: insets.top + 76,
+                paddingTop: band != null ? BLOCK_GAP : insets.top + UPRIGHT_TOP,
                 paddingHorizontal: tokens.space5xl,
                 paddingBottom: insets.bottom + tokens.space6xl,
               },
@@ -753,6 +760,9 @@ function Capsule({
   );
 }
 
+const UPRIGHT_TOP = 76;
+const BLOCK_GAP = 18;
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
   chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
@@ -765,7 +775,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     overflow: 'hidden',
   },
-  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl, gap: 18 },
+  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl, gap: BLOCK_GAP },
   logo: { height: 30, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   sideCard: {
     flexDirection: 'row',
@@ -794,7 +804,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
-  blocks: { gap: 18 },
+  blocks: { gap: BLOCK_GAP },
   you: { gap: tokens.spaceHair },
   title: { gap: tokens.spaceXxs, paddingTop: 14 },
   titleText: { letterSpacing: 30 * -0.02 },

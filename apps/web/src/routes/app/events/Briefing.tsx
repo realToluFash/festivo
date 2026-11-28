@@ -20,7 +20,7 @@ import { headingOf, weekdayOf } from '../../public/myNight.ts';
 import { StationSelect } from './StationsArea.tsx';
 import { NoticeLines, ReminderCard } from './Notices.tsx';
 import { countLine, fitRules, noteOf, tallyOf } from './briefing.ts';
-import { type NoticeClock, noticeClock, noticeLines } from './notices.ts';
+import { type NoticeClock, noticeClock, noticeLines } from '@soirely/domain';
 import { type StaffTimes, clockWords, rangeWords } from './staffTimes.ts';
 import '../../public/myNight.css';
 import './briefing.css';
@@ -37,11 +37,18 @@ const TALLY_KEYS: Record<StaffBriefing, string> = {
 type Side =
   { kind: 'copy' } | { kind: 'rules'; editing: boolean } | { kind: 'preview'; id: string };
 
+function isConcluded(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'event_concluded';
+}
+
 /** The briefing's parts on the Roster (sc-3917): the card above it, the Briefing column, the held link under a row, and its panel. */
+
 export interface BriefingParts {
   side: boolean;
   card: ReactNode;
   cell: (one: StaffEntry) => ReactNode;
+  /** The open person's Briefing in their details, with its actions once the column gives way (sc-102333). */
+  fact: (one: StaffEntry) => ReactNode;
   held: (one: StaffEntry, span: number) => ReactNode;
   panel: ReactNode;
   /** Closes the briefing's panel when the Roster opens one of its own. */
@@ -114,23 +121,41 @@ export function useBriefing({
     focus(back);
   }
 
+  function alreadyOver() {
+    setOver(true);
+    announce(t('notices.alreadyOver'));
+    reload();
+    focus('sv-over');
+  }
+
   async function copy(entry: StaffEntry) {
     if (busy != null) return;
     setBusy(entry.id);
     setMissed(null);
     if (handHeld?.id === entry.id) setHandHeld(null);
     let answered: StaffEntry | null = null;
+    let concluded = false;
     const issue = () =>
-      api.copyBriefingLink(event.id, entry.id).then((answer) => {
-        answered = answer.staff;
-        return answer.url;
-      });
+      api.copyBriefingLink(event.id, entry.id).then(
+        (answer) => {
+          answered = answer.staff;
+          return answer.url;
+        },
+        (error: unknown) => {
+          concluded = isConcluded(error);
+          throw error;
+        },
+      );
     const outcome: CopyOutcome = await copyIssued(
       issue,
       navigator.clipboard ?? null,
       typeof ClipboardItem === 'undefined' ? null : plainItem,
     );
     setBusy(null);
+    if (concluded) {
+      alreadyOver();
+      return;
+    }
     if (outcome.kind === 'notIssued' || answered == null) {
       setMissed(entry.id);
       announce(t('roster.linkNotIssued'));
@@ -154,11 +179,8 @@ export function useBriefing({
       announce(t('roster.markedSent', { name: entry.fullName }));
       focus(side?.kind === 'copy' ? `bf-copy-${entry.id}` : `bf-row-copy-${entry.id}`);
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'event_concluded') {
-        setOver(true);
-        announce(t('notices.alreadyOver'));
-        reload();
-        focus('sv-over');
+      if (isConcluded(error)) {
+        alreadyOver();
         return;
       }
       setMissed(entry.id);
@@ -352,6 +374,21 @@ export function useBriefing({
     card,
     cell: (one) => (
       <BriefCell
+        place="row"
+        one={one}
+        times={times}
+        clock={clock}
+        finished={finished}
+        acts={acts}
+        busy={busy === one.id}
+        missed={missed === one.id}
+        onCopy={() => void copy(one)}
+        onMark={() => void mark(one)}
+      />
+    ),
+    fact: (one) => (
+      <BriefCell
+        place="fact"
         one={one}
         times={times}
         clock={clock}
@@ -392,6 +429,7 @@ function BriefWord({ briefing }: { briefing: StaffBriefing }) {
 }
 
 function BriefCell({
+  place,
   one,
   times,
   clock,
@@ -402,6 +440,7 @@ function BriefCell({
   onCopy,
   onMark,
 }: {
+  place: 'row' | 'fact';
   one: StaffEntry;
   times: StaffTimes;
   clock: NoticeClock;
@@ -419,7 +458,7 @@ function BriefCell({
   const changedActs = acts && changed && one.mobile != null && !one.contactsErased;
 
   return (
-    <span className="rs-link-cell">
+    <span className={place === 'fact' ? 'rs-link-cell bf-fact' : 'rs-link-cell'}>
       <BriefWord briefing={one.briefing} />
       {note != null && <span className="rs-trail">{note}</span>}
       <NoticeLines lines={lines} />
@@ -427,7 +466,12 @@ function BriefCell({
       {missed && changed && <Missed />}
       {changedActs && (
         <span className="rs-link-acts">
-          <CopyButton id={`bf-row-copy-${one.id}`} one={one} busy={busy} onCopy={onCopy} />
+          <CopyButton
+            id={place === 'fact' ? `bf-fact-copy-${one.id}` : `bf-row-copy-${one.id}`}
+            one={one}
+            busy={busy}
+            onCopy={onCopy}
+          />
           {one.briefingCopy != null && !one.briefingCopy.marked && (
             <MarkButton one={one} onMark={onMark} />
           )}

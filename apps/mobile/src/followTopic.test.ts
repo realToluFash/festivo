@@ -61,6 +61,21 @@ describe('reading again while the hub is down', () => {
     expect(read).toHaveBeenCalledTimes(3);
   });
 
+  it('reads every so often with a line open too, when asked to (sc-3918)', async () => {
+    const read = vi.fn();
+    const stop = followReadingAgain('topic', subscribe, read, EVERY_MS, EVERY_MS * 3);
+    await vi.advanceTimersByTimeAsync(0);
+    sources[0]!.listeners.get('open')!();
+    expect(read).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(EVERY_MS * 3);
+    expect(read).toHaveBeenCalledTimes(2);
+
+    stop();
+    await vi.advanceTimersByTimeAsync(EVERY_MS * 6);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it('follows several topics on one line (sc-3786)', async () => {
     const stop = followReadingAgain(
       [realtimeTopic('EventHeadcount', 'e1'), realtimeTopic('EventHeadcount', 'e2')],
