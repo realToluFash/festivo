@@ -339,6 +339,7 @@ function ScheduleView({
     setPicked(placeOf(saved));
     setSaid(words);
     setUnrestored(null);
+    if (editing?.title === unlinked) setUnlinked(null);
     close(`ro-open-${saved.id}`);
   }
 
@@ -394,6 +395,7 @@ function ScheduleView({
     setItems((was) => was.filter((one) => one.id !== editing.id));
     setDeleted(editing);
     setUnrestored(null);
+    if (editing.title === unlinked) setUnlinked(null);
     setSaid('');
     close('ro-add');
   }
@@ -509,7 +511,7 @@ function ScheduleView({
             {RW.notRestored(unrestored)}
           </p>
         )}
-        {unlinked != null && (
+        {manage && unlinked != null && (
           <div className="sn-alert ro-unlinked ro-chrome" role="status">
             <Glyph name="warn" size={18} weight={2.2} />
             <div className="ro-unlinked-words">

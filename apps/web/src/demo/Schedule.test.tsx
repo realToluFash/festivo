@@ -324,4 +324,19 @@ describe('Course on the item form (sc-3898)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull();
   });
+
+  it('ends the unlinked notice on a save from that item’s form', SLOW, async () => {
+    await open('courseUnlinked');
+    fireEvent.click(document.getElementById('ro-open-mains') as HTMLElement);
+    fireEvent.click(button('Save item') as HTMLElement);
+    expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull();
+  });
+
+  it('ends the unlinked notice when that item is deleted', SLOW, async () => {
+    await open('courseUnlinked');
+    fireEvent.click(document.getElementById('ro-open-mains') as HTMLElement);
+    fireEvent.click(button('Delete item…') as HTMLElement);
+    fireEvent.click(button('Delete item') as HTMLElement);
+    expect(screen.queryByText('Mains go out is no longer linked to a course.')).toBeNull();
+  });
 });

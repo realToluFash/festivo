@@ -158,7 +158,16 @@ describe('the schedule’s rules (sc-3893)', () => {
 
   it('links every state from the demo’s home', () => {
     const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
-    for (const state of SCHEDULE_STATES) expect(linked).toContain(scheduleAt(state));
+    for (const state of SCHEDULE_STATES) {
+      const at = scheduleAt(state);
+      expect(linked.some((one) => one === at || one.startsWith(`${at}&`))).toBe(true);
+    }
+  });
+
+  it('opens the long French and Portuguese courses in their own locale', () => {
+    const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
+    expect(linked).toContain(scheduleAt('courseLongFr', 'locale=fr-FR'));
+    expect(linked).toContain(scheduleAt('courseLongPt', 'locale=pt-BR'));
   });
 });
 

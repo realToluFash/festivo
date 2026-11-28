@@ -1031,8 +1031,8 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
           'courseUnlinked',
         ] as const
       ).map(link),
-      link('courseLongFr'),
-      link('courseLongPt'),
+      { to: scheduleAt('courseLongFr', 'locale=fr-FR'), name: STATES.courseLongFr().name },
+      { to: scheduleAt('courseLongPt', 'locale=pt-BR'), name: STATES.courseLongPt().name },
       {
         to: scheduleAt('coursePicker'),
         name: 'The course list as a sheet at 40rem and under (narrow the window)',
