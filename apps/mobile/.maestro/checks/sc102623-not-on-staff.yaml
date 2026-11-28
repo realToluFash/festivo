@@ -1,0 +1,18 @@
+# sc-102623: in ${ORIENT}, /events/${EVENT_ID}/staff-link?person=<an id the roster lacks> shows the not-on-staff line, whole, with no name. Needs ${METRO_URL}, ${EVENT_ID}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/staff-link?person=01a220ec-0000-7000-8000-000000000000
+- extendedWaitUntil:
+    visible:
+      id: 'staffLink.notOnStaff'
+    timeout: 30000
+- assertVisible: '{{t:staffLink.notOnStaff}}'
+- takeScreenshot: not-on-staff-stale
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/staff-link?person=typed-by-hand
+- extendedWaitUntil:
+    visible:
+      id: 'staffLink.notOnStaff'
+    timeout: 30000
+- assertVisible: '{{t:staffLink.notOnStaff}}'
+- takeScreenshot: not-on-staff-typed
