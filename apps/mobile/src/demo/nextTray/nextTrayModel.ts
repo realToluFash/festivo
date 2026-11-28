@@ -903,5 +903,7 @@ export function owedLine(p: Plate): string {
 }
 
 export function dish(p: Plate): string {
-  return p.items.map((i) => (i.follow ? `${i.name} to follow` : i.name)).join(', ');
+  return p.items
+    .map((i) => (i.follow || i.mark === 'bringAfter' ? `${i.name} to follow` : i.name))
+    .join(', ');
 }

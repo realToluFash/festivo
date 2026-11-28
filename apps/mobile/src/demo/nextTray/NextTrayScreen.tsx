@@ -223,7 +223,7 @@ function List({ s, setS, z, withTray }: { s: NextState; setS: SetS; z: Z; withTr
             const g = guestOf(p.guest);
             return (
               <View key={p.id} style={shared.card}>
-                <Kicker>{`${g.table.toUpperCase()} · SEAT ${g.seat}`}</Kicker>
+                <Kicker>{`${g.table} · Seat ${g.seat}`}</Kicker>
                 <Text size={17} weight="semibold">
                   {g.name}
                 </Text>
@@ -276,7 +276,7 @@ function Offer({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
         </Text>
         <Step side={z.side} plus off={n >= 8} onPress={() => setS(setPerTrip(s, n + 1))} />
       </View>
-      <Kicker>NEXT TRAY</Kicker>
+      <Kicker>Next tray</Kicker>
       <Text size={28} weight="bold" accessibilityRole="header">
         {offer.table}
       </Text>
@@ -344,7 +344,7 @@ function AfterTray({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
   const held = heldAt(s, table);
   return (
     <View style={[shared.card, styles.offer]} testID="nextTray.afterTray">
-      <Kicker>{`${table.toUpperCase()} · HELD`}</Kicker>
+      <Kicker>{`${table} · Held`}</Kicker>
       <Text size={22} weight="bold" accessibilityRole="header">
         {`Still waiting at ${table}`}
       </Text>
@@ -395,7 +395,7 @@ function RequestCard({ r, s, setS }: { r: Request; s: NextState; setS: SetS }) {
     <View style={shared.card} testID={`nextTray.request.${r.id}`}>
       <View style={styles.rowCenter}>
         <Glyph paths={PATHS.request} ink={tokens.colorInk} side={16} />
-        <Kicker>{`REQUEST · ${where.toUpperCase()}`}</Kicker>
+        <Kicker>{`Request · ${where}`}</Kicker>
       </View>
       <Text size={17} weight="semibold">
         {r.words}

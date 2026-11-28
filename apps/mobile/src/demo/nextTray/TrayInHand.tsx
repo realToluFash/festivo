@@ -101,7 +101,7 @@ export function TrayInHand({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
   const away = onItsWay(s);
   return (
     <View style={[shared.card, styles.tray]} testID="nextTray.inHand">
-      <Kicker>TRAY IN HAND</Kicker>
+      <Kicker>Tray in hand</Kicker>
       <Text size={24} weight="bold" accessibilityRole="header">
         {trayTitle(s)}
       </Text>
@@ -154,7 +154,7 @@ function Route({ s, setS, z }: { s: NextState; setS: SetS; z: Z }) {
         <View key={stop.station.id} style={styles.stop}>
           <View style={styles.stopHead}>
             <Text size={13} weight="bold" style={styles.kicker}>
-              {`STOP ${n + 1}`}
+              {`Stop ${n + 1}`}
             </Text>
             <Text size={19} weight="bold" accessibilityRole="header">
               {stop.station.name}
@@ -457,7 +457,7 @@ function SendBack({ p, s, setS }: { p: Plate; s: NextState; setS: SetS }) {
 }
 
 export const styles = StyleSheet.create({
-  kicker: { color: tokens.colorInkSecondary, letterSpacing: 0.6 },
+  kicker: { color: tokens.colorInkSecondary },
   tray: { borderWidth: 2, borderColor: tokens.colorAccent, gap: tokens.spaceLg },
   waiting: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   attention: { color: tokens.colorAttentionText },
